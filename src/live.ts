@@ -4,15 +4,26 @@
  *
  * Read-only follow of a game that is being played right now. Two sources:
  *
- *   http(s)://…/frames.jsonl   POLL the frame log the bridge is writing
- *                              (mtg-table docs/protocol.md §8: flushed per line).
- *                              Works today, needs only a static file server with
- *                              CORS in front of `var/games/<gameId>/`.
+ *   ws://127.0.0.1:8642/observe   the DEFAULT. mtg-table's read-only observer
+ *                              socket (protocol amendment M50): any number of
+ *                              observers, receive-only. On connect it sends the
+ *                              seat's cached hello_ok, the latest state, the
+ *                              over-or-latest input, then any open ask (same
+ *                              bytes and seq as the seat), then every later s2c
+ *                              frame. Anything we send is ignored (we send
+ *                              nothing). A slow observer is dropped (close 1006)
+ *                              and we reconnect with backoff for a fresh
+ *                              catch-up; a new game's hello_ok mid-connection
+ *                              starts a new log. The upgrade carries our Origin,
+ *                              which must be on mtg-table's wsAllowedOrigins
+ *                              (https://jalirkan.github.io and localhost are);
+ *                              otherwise the handshake is a 403 and the browser
+ *                              just sees a failed connection.
  *
- *   ws(s)://…/observe          a READ-ONLY observer socket. mtg-table does not
- *                              have one yet (its README lists "no spectators" as
- *                              a non-goal); this client is written for the
- *                              endpoint described in README.md § Live mode.
+ *   http(s)://…/frames.jsonl   FALLBACK: POLL the frame log the bridge is writing
+ *                              (mtg-table docs/protocol.md §8: flushed per line).
+ *                              Needs a static file server with CORS in front of
+ *                              `var/games/<gameId>/`.
  *
  * What this module refuses to do, on purpose: connect to the bridge's SEAT
  * socket (`ws://127.0.0.1:8642/ws`). That socket admits exactly one client
@@ -31,11 +42,13 @@
 import type { HelloOkBody, OverBody, SessionHeader } from './protocol.ts';
 import type { GameLog, LoggedFrame } from './log.ts';
 
-/** Serve the game's directory with `npx http-server <dir> -p 8650 --cors -c-1` (README § Live mode). */
-export const DEFAULT_LIVE_URL = 'http://127.0.0.1:8650/frames.jsonl';
+/** mtg-table's read-only observer socket (needs the "read-only /observe" bridge update). */
+export const DEFAULT_LIVE_URL = 'ws://127.0.0.1:8642/observe';
+/** The HTTP fallback: `npx http-server <dir> -p 8650 --cors -c-1` (README § Live mode). */
+export const FALLBACK_LIVE_URL = 'http://127.0.0.1:8650/frames.jsonl';
 /** The bridge's single-seat socket path. Never connected to. */
 export const SEAT_PATH = '/ws';
-/** The observer path a bridge would need to add (README § Live mode). */
+/** mtg-table's read-only observer path (protocol amendment M50). */
 export const OBSERVER_PATH = '/observe';
 /** mtg-table's "one client at a time" refusal (protocol amendment M13). */
 export const REFUSED_CLOSE_CODE = 4001;
@@ -92,7 +105,7 @@ export function classifyLiveUrl(url: string): { kind: Kind } | { error: string }
         error:
           `${url} is the bridge's player-seat socket (or its root). ForgeCoach never connects there: the bridge ` +
           `admits one client, so connecting could take the seat from your board and spend your pending ` +
-          `decisions. Follow the frames.jsonl file over HTTP instead, or an observer endpoint (${OBSERVER_PATH}).`,
+          `decisions. Follow the frames.jsonl file over HTTP instead, or the observer endpoint (${OBSERVER_PATH}).`,
       };
     }
     return { kind: 'ws' };
@@ -259,7 +272,9 @@ export function connectLive(url: string, h: LiveHandlers, opts: LiveOptions = {}
       return;
     }
     socket = s;
+    let opened = false;
     s.onopen = () => {
+      opened = true;
       failures = 0;
       status('open');
     };
@@ -287,8 +302,23 @@ export function connectLive(url: string, h: LiveHandlers, opts: LiveOptions = {}
         stopped = true;
         return;
       }
+      if (ev.code === 1000 && builder.over) {
+        status('closed', 'the game is over');
+        stopped = true;
+        return;
+      }
       failures++;
       const wait = backoff();
+      if (!opened) {
+        status(
+          'error',
+          `could not connect to ${url}. Is mtg-table running with the /observe update (needs the bridge from mtg-table ` +
+            `PR "read-only /observe")? Chrome may ask for local network permission; Safari blocks it. Or use the HTTP ` +
+            `fallback (http-server on the game folder; see README). Retrying in ${Math.round(wait / 100) / 10} s`,
+        );
+        later(openSocket, wait);
+        return;
+      }
       status('error', `disconnected${ev.code ? ` (${ev.code})` : ''}; retrying in ${Math.round(wait / 100) / 10} s`);
       later(openSocket, wait);
     };

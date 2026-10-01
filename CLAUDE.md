@@ -17,8 +17,8 @@ frame logs. No backend: everything runs in the browser. The product brief is
 - `review.ts` — whole-game summary and the post-game review prompt.
 - `guide.ts` — user-written deck play guides in localStorage.
 - `claude.ts` — browser-side Claude API calls with the user's own key; model list; settings.
-- `live.ts` — read-only live follow: polls a growing `frames.jsonl` over HTTP, or an
-  observer WebSocket. **Never connects to the bridge's `/ws` seat socket** and never
+- `live.ts` — read-only live follow: follows mtg-table's read-only `/observe` WebSocket
+  (default `ws://127.0.0.1:8642/observe`, amendment M50), or polls a growing `frames.jsonl` over HTTP as a fallback. **Never connects to the bridge's `/ws` seat socket** and never
   sends a frame (see the file header and README § Live mode for why).
 - `ui/` — React components; `main.tsx` mounts the app.
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.

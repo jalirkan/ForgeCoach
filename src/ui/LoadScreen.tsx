@@ -6,7 +6,7 @@
  * game served over HTTP.
  */
 import { useRef, useState } from 'react';
-import { DEFAULT_LIVE_URL } from '../live.ts';
+import { DEFAULT_LIVE_URL, FALLBACK_LIVE_URL } from '../live.ts';
 import { IconArrowRight, IconBroadcast, IconCheck, IconCopy, IconFile, IconGear, IconUpload } from './Icons.tsx';
 import { copyText, cx } from './util.ts';
 import { Logo } from './Logo.tsx';
@@ -141,20 +141,9 @@ export function LoadScreen({
               <IconBroadcast size={15} /> Follow a live game
             </h2>
             <div className="live-box">
-              <p className="small muted">Serve the game folder while you play, then connect. ForgeCoach only reads — it never touches your seat.</p>
-              <div className="cmd">
-                <code>{LIVE_CMD}</code>
-                <button
-                  className="icon-btn"
-                  aria-label="Copy command"
-                  onClick={async () => {
-                    setCopied(await copyText(LIVE_CMD));
-                    setTimeout(() => setCopied(false), 1800);
-                  }}
-                >
-                  {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
-                </button>
-              </div>
+              <p className="small muted">
+                Start mtg-table as usual, then connect. ForgeCoach only reads from the new <code>/observe</code> socket — it never touches your seat.
+              </p>
               <form
                 className="field-row"
                 onSubmit={(e) => {
@@ -162,12 +151,35 @@ export function LoadScreen({
                   onLive(url.trim());
                 }}
               >
-                <input value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false} aria-label="Live frames URL" />
+                <input value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false} aria-label="Live URL" />
                 <button className="btn btn-primary" type="submit" disabled={!url.trim()}>
                   Connect
                 </button>
               </form>
-              <p className="tiny muted">Chrome may ask for local-network access — allow it. Safari can’t read from localhost over HTTPS, so use Chrome or Firefox.</p>
+              <p className="tiny muted">Chrome may ask for local-network access — allow it. Safari blocks it; use Chrome or Firefox.</p>
+              <details className="tiny muted">
+                <summary>No /observe yet?</summary>
+                <p>
+                  If your mtg-table predates the read-only <code>/observe</code> update, serve the game folder and connect to{' '}
+                  <code>{FALLBACK_LIVE_URL}</code> instead:
+                </p>
+                <div className="cmd">
+                  <code>{LIVE_CMD}</code>
+                  <button
+                    className="icon-btn"
+                    aria-label="Copy command"
+                    onClick={async () => {
+                      setCopied(await copyText(LIVE_CMD));
+                      setTimeout(() => setCopied(false), 1800);
+                    }}
+                  >
+                    {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+                  </button>
+                </div>
+                <button type="button" className="btn" onClick={() => setUrl(FALLBACK_LIVE_URL)}>
+                  Use the HTTP URL
+                </button>
+              </details>
             </div>
           </section>
         </div>

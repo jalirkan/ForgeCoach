@@ -82,59 +82,43 @@ ForgeCoach ever took it (say, while your board tab was reloading) your board
 would be locked out, and when ForgeCoach let go the bridge would answer your
 pending choices with Forge's defaults. ForgeCoach refuses that URL outright.
 
-Instead it follows the log file as it is written. Serve the game's directory
-over HTTP with CORS, from the mtg-table checkout, once the game has started:
+Instead it connects to mtg-table's **read-only observer socket**,
+`ws://127.0.0.1:8642/observe` (the default; protocol amendment M50, mtg-table PR
+"read-only /observe"). Start mtg-table as usual, then click **Live** in
+ForgeCoach and **Connect**. Any number of observers may connect; the socket is
+receive-only (anything ForgeCoach sent would be ignored, and it sends nothing).
+On connect it catches up from the seat's cached hello, latest state, input and
+any open ask, then streams every frame. A new game in a match starts a new log
+automatically, and ForgeCoach reconnects with backoff if the socket drops (for
+example when it falls too far behind). mtg-table only accepts the socket from an
+allowed `Origin` (`https://jalirkan.github.io` and `localhost` / `127.0.0.1` by
+default); otherwise the browser just sees a failed connection.
+
+Browser notes, because the page is `https://` and the server is on your machine:
+
+- **Chrome / Edge**: newer versions ask *"Allow jalirkan.github.io to access apps
+  and services on this device?"* the first time. Allow it (site settings ->
+  *Local network access*).
+- **Firefox**: allows `127.0.0.1` from an https page; use `127.0.0.1`, not a LAN
+  address.
+- **Safari**: blocks it. Run ForgeCoach locally instead (`npm run dev`, below),
+  or use another browser.
+
+#### Fallback: follow the log file over HTTP
+
+If your mtg-table does not have `/observe` yet, serve the game's directory over
+HTTP with CORS, from the mtg-table checkout, once the game has started:
 
 ```bash
 npx http-server "var/games/$(ls -t var/games | head -1)" -p 8650 --cors -c-1
 ```
 
-and use the live URL `http://127.0.0.1:8650/frames.jsonl` (the default). Serving
-all of `var/games` instead (`npx http-server var/games -p 8650 --cors -c-1`)
-works too, with `http://127.0.0.1:8650/<gameId>/frames.jsonl`. ForgeCoach polls
-once a second, reads only the new bytes, and stops when the game ends. Each game
-of a match is a new file, so point it at the next one when a game ends.
-
-Browser notes, because the page is `https://` and the server is on your machine:
-
-- **Chrome / Edge**: requests to `127.0.0.1` from an https page are allowed, but
-  newer versions ask *"Allow jalirkan.github.io to access apps and services on
-  this device?"* the first time. Allow it (site settings → *Local network
-  access*). The file server must send CORS headers, which `--cors` does.
-- **Firefox**: allows `http://127.0.0.1` from an https page; use `127.0.0.1`,
-  not a LAN address.
-- **Safari**: blocks it. Run ForgeCoach locally instead (`npm run dev`, below),
-  or use another browser.
-
-If mtg-table gains a read-only observer socket (see *For mtg-table* below),
-enter its `ws://127.0.0.1:8642/observe` URL instead and no file server is needed.
-
-#### For mtg-table: what a read-only observer socket would need
-
-Today the bridge has one WebSocket path, `/ws`, with one owner, and no `Origin`
-check. A spectator endpoint safe for ForgeCoach would be:
-
-1. **A separate path**, `/observe`, any number of connections, never counted by
-   `connected()`, never the seat owner.
-2. **Receive-only.** Every inbound frame on it is dropped without dispatch and
-   without a reply, and never written to the frame log. Connecting is not an
-   implicit `resync`: no `onResync()`, no `pool.reopen()`, no `cancelAll()` on
-   disconnect, no log line.
-3. **On connect**, the cached `hello_ok`, last `state`, last `input` and any
-   outstanding `ask`, verbatim (same `seq`, as M10 does for the seat); then a
-   copy of every s2c frame the seat is sent, same redaction (the seat's view —
-   never the opponent's hidden cards), same `seq`. A new game's `hello_ok`
-   (M38) flows through as usual. No `seq: 0` frames except `pong`.
-4. **An `Origin` allowlist** on the upgrade request (for example
-   `http://127.0.0.1:*`, `http://localhost:*` and `https://jalirkan.github.io`),
-   because any web page can open a socket to `127.0.0.1`. The same check is
-   worth adding to `/ws`, which today will accept an `act` from any site the
-   player has open.
-
-ForgeCoach's `src/live.ts` is already written against that shape. An
-alternative with the same safety is an HTTP route on the bridge port that serves
-the current game's `frames.jsonl` with `Range` support and the same `Origin`
-allowlist; ForgeCoach's HTTP follower reads that unchanged.
+and connect to `http://127.0.0.1:8650/frames.jsonl`. Serving all of `var/games`
+(`npx http-server var/games -p 8650 --cors -c-1`) works too, with
+`http://127.0.0.1:8650/<gameId>/frames.jsonl`. ForgeCoach polls once a second,
+reads only the new bytes, and stops when the game ends. Each game of a match is
+a new file, so point it at the next one when a game ends. Any `http(s)://` URL
+is treated this way.
 
 ## Privacy
 

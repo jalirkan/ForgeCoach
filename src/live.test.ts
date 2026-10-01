@@ -9,6 +9,7 @@ import { parseLog, type GameLog } from './log.ts';
 import {
   classifyLiveUrl,
   connectLive,
+  DEFAULT_LIVE_URL,
   REFUSED_CLOSE_CODE,
   type FetchResponseLike,
   type LiveStatus,
@@ -72,6 +73,10 @@ describe('classifyLiveUrl', () => {
     expect(classifyLiveUrl('ws://127.0.0.1:8642/ws')).toHaveProperty('error');
     expect(classifyLiveUrl('ws://127.0.0.1:8642/ws/')).toHaveProperty('error');
     expect(classifyLiveUrl('ws://127.0.0.1:8642')).toHaveProperty('error');
+  });
+  it('defaults to the /observe socket, which is accepted', () => {
+    expect(DEFAULT_LIVE_URL).toBe('ws://127.0.0.1:8642/observe');
+    expect(classifyLiveUrl(DEFAULT_LIVE_URL)).toEqual({ kind: 'ws' });
   });
   it('accepts an observer socket and an http log', () => {
     expect(classifyLiveUrl('ws://127.0.0.1:8642/observe')).toEqual({ kind: 'ws' });
@@ -168,6 +173,72 @@ describe('connectLive — observer socket', () => {
     vi.advanceTimersByTime(60_000);
     expect(socks.length).toBe(1);
     expect(t.statuses.at(-1)).toEqual(['error', expect.stringMatching(/not retrying/)]);
+  });
+
+  it('explains a failed connection plainly and keeps retrying with backoff', () => {
+    const socks: FakeSocket[] = [];
+    const t = harness();
+    connectLive(DEFAULT_LIVE_URL, t.h, {
+      socketFactory: (u) => {
+        const s = new FakeSocket(u);
+        socks.push(s);
+        return s;
+      },
+    });
+    socks[0]!.drop(1006); // never opened: refused, 403 on Origin, or nothing listening
+    const detail = t.statuses.at(-1)?.[1] ?? '';
+    expect(t.statuses.at(-1)?.[0]).toBe('error');
+    expect(detail).toMatch(/mtg-table running with the \/observe update/);
+    expect(detail).toMatch(/read-only \/observe/);
+    expect(detail).toMatch(/Chrome/);
+    expect(detail).toMatch(/Safari/);
+    expect(detail).toMatch(/HTTP fallback/);
+    vi.advanceTimersByTime(501);
+    expect(socks.length).toBe(2);
+    socks[1]!.drop(1006);
+    vi.advanceTimersByTime(900);
+    expect(socks.length).toBe(2); // backoff doubled to 1 s
+    vi.advanceTimersByTime(200);
+    expect(socks.length).toBe(3);
+  });
+
+  it('reconnects after a slow-observer drop (1006) and takes the fresh catch-up', () => {
+    const socks: FakeSocket[] = [];
+    const t = harness();
+    connectLive(DEFAULT_LIVE_URL, t.h, {
+      socketFactory: (u) => {
+        const s = new FakeSocket(u);
+        socks.push(s);
+        return s;
+      },
+    });
+    socks[0]!.open();
+    for (const f of s2c.slice(0, 5)) socks[0]!.msg(f);
+    socks[0]!.drop(1006);
+    expect(t.statuses.at(-1)?.[1]).toMatch(/disconnected \(1006\)/);
+    vi.advanceTimersByTime(501);
+    socks[1]!.open();
+    for (const f of s2c.slice(0, 8)) socks[1]!.msg(f);
+    vi.advanceTimersByTime(300);
+    expect(t.logs.at(-1)!.frames.length).toBe(8);
+  });
+
+  it('stops for good when the server closes 1000 after the game is over', () => {
+    const socks: FakeSocket[] = [];
+    const t = harness();
+    connectLive(DEFAULT_LIVE_URL, t.h, {
+      socketFactory: (u) => {
+        const s = new FakeSocket(u);
+        socks.push(s);
+        return s;
+      },
+    });
+    socks[0]!.open();
+    for (const f of s2c) socks[0]!.msg(f);
+    socks[0]!.drop(1000, 'game over');
+    vi.advanceTimersByTime(60_000);
+    expect(socks.length).toBe(1);
+    expect(t.statuses.at(-1)).toEqual(['closed', 'the game is over']);
   });
 
   it('starts a new log when hello_ok names a new game', () => {
