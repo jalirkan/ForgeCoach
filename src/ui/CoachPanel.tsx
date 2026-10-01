@@ -12,7 +12,9 @@ import type { Decision } from '../decisions.ts';
 import { buildCoachPrompt, coachCardNames, promptAsText, type Prompt } from '../prompt.ts';
 import { buildReviewPrompt, reviewCardNames, summarizeGame } from '../review.ts';
 import { activeGuideText as guideText } from '../guide.ts';
-import { MODELS, hasKey as settingsHaveKey } from '../claude.ts';
+import { MODELS } from '../claude.ts';
+import { SOURCE_LABEL } from '../coachHelper.ts';
+import { useCoachAvailability } from './hooks.ts';
 import { startAnswer, stopAnswer, useAnswer, type Answer } from './answers.ts';
 import { cardsForPrompt } from './cardData.ts';
 import { Markdown } from './Markdown.tsx';
@@ -230,10 +232,22 @@ function ReviewView({ log, onOpenSettings }: { log: GameLog; onOpenSettings: () 
   );
 }
 
-function modelLabel(id: string | null): string | null {
+/** "Opus 5.5" for an API model id ("claude-opus-5-5…") or a Claude Code alias ("opus"). */
+export function modelLabel(id: string | null): string | null {
   if (!id) return null;
-  return MODELS.find((m) => id.startsWith(m.id))?.label ?? id;
+  const exact = MODELS.find((m) => id.startsWith(m.id));
+  if (exact) return exact.label;
+  const family = /^(opus|sonnet|haiku)$/i.exec(id.trim())?.[1]?.toLowerCase();
+  if (family) return MODELS.find((m) => m.id.includes(family))?.label ?? id;
+  return id;
 }
+
+/** Plain text with `code` spans (helper instructions name commands). */
+function withCode(text: string) {
+  return text.split(/(`[^`]+`)/).map((part, i) => (part.length > 2 && part.startsWith('`') && part.endsWith('`') ? <code key={i}>{part.slice(1, -1)}</code> : part));
+}
+
+const SETUP_ERRORS = new Set(['no_key', 'auth', 'helper_down', 'not_logged_in']);
 
 export function AnswerBox({
   answer,
@@ -265,33 +279,45 @@ export function AnswerBox({
     setTimeout(() => setCopyState('idle'), 2200);
   };
   const busy = answer?.status === 'preparing' || answer?.status === 'streaming';
-  const hasKey = useMemo(() => safe(() => settingsHaveKey(), false), [answer?.status]);
-  const missingKey = answer?.status === 'error' && (answer.errorKind === 'no_key' || answer.errorKind === 'auth' || /api key/i.test(answer.error ?? ''));
+  const coach = useCoachAvailability();
+  const needsSetup = answer?.status === 'error' && (SETUP_ERRORS.has(answer.errorKind ?? '') || /api key/i.test(answer.error ?? ''));
+  const showSource = answer?.source && answer.status !== 'error';
   return (
     <div className="card-box answer">
       <div className="box-h">
         <span>
           <IconSpark size={13} /> Coach
         </span>
-        {answer?.model && answer.status === 'done' && (
-          <span className="muted small" title={answer.fallbackFrom ? `${modelLabel(answer.fallbackFrom)} declined; answered by a fallback model` : undefined}>
-            {modelLabel(answer.model)}
-            {answer.fallbackFrom ? ' (fallback)' : ''}
+        {showSource && (
+          <span
+            className={cx('source-badge', answer.source === 'helper' && 'is-helper')}
+            title={answer.fallbackFrom ? `${modelLabel(answer.fallbackFrom)} declined; answered by a fallback model` : undefined}
+          >
+            {SOURCE_LABEL[answer.source!]}
+            {answer.model && answer.status === 'done' && (
+              <>
+                {' · '}
+                <b>{modelLabel(answer.model)}</b>
+                {answer.fallbackFrom ? ' (fallback)' : ''}
+              </>
+            )}
           </span>
         )}
       </div>
       {!answer && <p className="muted small">{idleText}</p>}
-      {answer?.status === 'preparing' && <p className="muted small pulse">Gathering exact card text…</p>}
+      {answer?.status === 'preparing' && <p className="muted small pulse">{answer.source ? 'Gathering exact card text…' : 'Looking for a coach…'}</p>}
       {answer && answer.text && <Markdown text={answer.text} streaming={answer.status === 'streaming'} />}
-      {answer?.status === 'streaming' && !answer.text && <p className="muted small pulse">{answer.thinking ? 'Thinking it through…' : 'Waiting for Claude…'}</p>}
+      {answer?.status === 'streaming' && !answer.text && (
+        <p className="muted small pulse">{answer.thinking ? 'Thinking it through…' : answer.source === 'helper' ? 'Waiting for Claude Code on your PC…' : 'Waiting for Claude…'}</p>
+      )}
       {answer?.refused && <div className="notice-inline warn">Claude declined to answer this one. Try rephrasing via “Copy prompt” in the Claude app.</div>}
       {answer?.status === 'stopped' && <div className="notice-inline">Stopped.</div>}
       {answer?.status === 'error' && (
         <div className="notice-inline bad">
-          {answer.error}
-          {missingKey && (
+          {withCode(answer.error ?? '')}
+          {needsSetup && (
             <button className="link-btn" onClick={onOpenSettings}>
-              Add a key
+              Coach settings
             </button>
           )}
         </div>
@@ -311,9 +337,12 @@ export function AnswerBox({
           {copyState === 'ok' ? 'Copied' : copyState === 'err' ? 'Copy failed' : 'Copy prompt'}
         </button>
       </div>
-      {!hasKey && !answer && (
+      {!coach.ready && !answer && (
         <p className="muted tiny">
-          No API key yet — “Copy prompt” works without one. <button className="link-btn" onClick={onOpenSettings}>Add a key</button>
+          {coach.settings.coachSource === 'apiKey' ? 'No API key yet' : 'No coach connected'} — “Copy prompt” works without one.{' '}
+          <button className="link-btn" onClick={onOpenSettings}>
+            Set up coaching
+          </button>
         </p>
       )}
     </div>

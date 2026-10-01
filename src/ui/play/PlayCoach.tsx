@@ -10,24 +10,17 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AskBody, GameStateBody, InputBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import type { Decision } from '../../decisions.ts';
-import { hasKey } from '../../claude.ts';
 import { startAnswer, stopAnswer, useAnswer } from '../answers.ts';
 import { AnswerBox, coachPrompt } from '../CoachPanel.tsx';
 import { Markdown } from '../Markdown.tsx';
 import { IconBook, IconChevronDown, KindIcon, KIND_LABEL } from '../Icons.tsx';
 import { stripRound } from '../Timeline.tsx';
 import { cx, readLS, writeLS } from '../util.ts';
+import { useCoachAvailability } from '../hooks.ts';
+import { detectHelper } from '../../coachHelper.ts';
 import { liveDecision, momentKey } from './liveDecision.ts';
 
 const AUTO_KEY = 'forgecoach.autoCoach';
-
-function safeHasKey(): boolean {
-  try {
-    return hasKey();
-  } catch {
-    return false;
-  }
-}
 
 export const PlayCoach = memo(function PlayCoach({
   log,
@@ -52,6 +45,8 @@ export const PlayCoach = memo(function PlayCoach({
   onOpenSettings: () => void;
 }) {
   const [auto, setAuto] = useState(() => readLS(AUTO_KEY) === '1');
+  // Auto-coach only asks when something can answer (Claude Code on the PC, or an API key).
+  const coachReady = useCoachAvailability().ready;
   const moment = useMemo(() => (log ? { log, state, input, ask, seat } : null), [log, state, input, ask, seat]);
   const key = moment && myMove ? momentKey(moment) : null;
   const decision: Decision | null = useMemo(() => (moment && myMove ? liveDecision(moment) : null), [moment, myMove]);
@@ -76,10 +71,15 @@ export const PlayCoach = memo(function PlayCoach({
   useEffect(() => {
     if (!auto || !key || !decision || current) return;
     if (decision.kind !== 'main' && decision.kind !== 'attack' && decision.kind !== 'block') return;
-    if (autoDone.current.has(key) || !safeHasKey()) return;
+    if (autoDone.current.has(key)) return;
+    if (!coachReady) {
+      // Claude Code's helper may have started since we last looked (cached; asks at most every few seconds).
+      void detectHelper();
+      return;
+    }
     autoDone.current.add(key);
     ask_(key, decision);
-  }, [auto, key, decision, current, ask_]);
+  }, [auto, key, decision, current, ask_, coachReady]);
 
   const [showPrev, setShowPrev] = useState(true);
   const makePrompt = useCallback(async () => {
@@ -91,7 +91,7 @@ export const PlayCoach = memo(function PlayCoach({
     <div className="coach play-coach">
       <div className="pc-head">
         <div className="pc-title">Coach</div>
-        <label className="switch" title="Ask the coach automatically at your main phases, attacks and blocks (uses your API key)">
+        <label className="switch" title="Ask the coach automatically at your main phases, attacks and blocks (uses Claude Code on your PC, or your API key)">
           <input
             type="checkbox"
             checked={auto}

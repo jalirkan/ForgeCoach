@@ -18,6 +18,7 @@ import { SettingsDialog } from './SettingsDialog.tsx';
 import { IconUpload } from './Icons.tsx';
 import { readLS, writeLS } from './util.ts';
 import { defaultSeatUrl, servedByEngine, tokenFromSearch } from '../play/session.ts';
+import { SEAT_TOKEN_KEY } from '../play/seatUrl.ts';
 import { usePlaySession } from './play/usePlaySession.ts';
 import { PlayView } from './play/PlayView.tsx';
 
@@ -26,8 +27,6 @@ const AskGallery = lazy(() => import('./play/AskGallery.tsx'));
 
 const LAST_SAMPLE_KEY = 'forgecoach.lastSample';
 const SEAT_URL_KEY = 'forgecoach.seatUrl';
-
-const SEAT_TOKEN_KEY = 'forgecoach.seatToken';
 
 /**
  * Served by the mtg-table bridge itself (a phone opening

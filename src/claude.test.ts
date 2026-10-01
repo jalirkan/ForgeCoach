@@ -1,9 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { askClaude, buildRequest, friendlyError, hasKey, loadSdk, loadSettings, saveSettings, SETTINGS_KEY, type Settings } from './claude.ts';
+import { askClaude, buildRequest, friendlyError, hasKey, loadSdk, loadSettings, onSettingsChange, saveSettings, SETTINGS_KEY, type Settings } from './claude.ts';
 
 const prompt = { system: 'You are a Magic coach.', user: 'Should I attack?' };
-const settings: Settings = { apiKey: 'sk-ant-test', model: 'claude-opus-5-5' };
+const settings: Settings = { apiKey: 'sk-ant-test', model: 'claude-opus-5-5', coachSource: 'apiKey' };
 
 function sse(events: Array<Record<string, unknown>>): Response {
   const body = events.map((e) => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`).join('');
@@ -85,7 +85,7 @@ describe('buildRequest', () => {
 describe('askClaude', () => {
   it('rejects without a key, before any request', async () => {
     stubFetch(() => message('x', 'end_turn', []));
-    await expect(askClaude(prompt, { onText() {} }, { settings: { apiKey: ' ', model: 'claude-opus-5-5' } })).rejects.toMatchObject({ kind: 'no_key' });
+    await expect(askClaude(prompt, { onText() {} }, { settings: { apiKey: ' ', model: 'claude-opus-5-5', coachSource: 'apiKey' } })).rejects.toMatchObject({ kind: 'no_key' });
     expect(requests).toHaveLength(0);
   });
 
@@ -161,20 +161,35 @@ describe('settings', () => {
       getItem: (k: string) => mem.get(k) ?? null,
       setItem: (k: string, v: string) => void mem.set(k, v),
     });
-    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5' });
+    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto' });
     expect(hasKey()).toBe(false);
-    saveSettings({ apiKey: ' sk-ant-abc ', model: 'claude-haiku-4-5' });
-    expect(JSON.parse(mem.get(SETTINGS_KEY)!)).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5' });
-    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5' });
+    saveSettings({ apiKey: ' sk-ant-abc ', model: 'claude-haiku-4-5', coachSource: 'helper' });
+    expect(JSON.parse(mem.get(SETTINGS_KEY)!)).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5', coachSource: 'helper' });
+    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5', coachSource: 'helper' });
     expect(hasKey()).toBe(true);
-    mem.set(SETTINGS_KEY, JSON.stringify({ apiKey: 'k', model: 'gpt-4' }));
+    mem.set(SETTINGS_KEY, JSON.stringify({ apiKey: 'k', model: 'gpt-4', coachSource: 'cloud' }));
     expect(loadSettings().model).toBe('claude-opus-5-5');
+    expect(loadSettings().coachSource).toBe('auto');
     mem.set(SETTINGS_KEY, '{not json');
-    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5' });
+    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto' });
+  });
+  it('migrates settings saved before the coach source existed to auto, keeping key and model', () => {
+    const mem = new Map<string, string>([[SETTINGS_KEY, JSON.stringify({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5' })]]);
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => mem.get(k) ?? null,
+      setItem: (k: string, v: string) => void mem.set(k, v),
+    });
+    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5', coachSource: 'auto' });
+    const seen = vi.fn();
+    const off = onSettingsChange(seen);
+    saveSettings({ ...loadSettings(), coachSource: 'apiKey' });
+    off();
+    expect(seen).toHaveBeenCalledTimes(1);
+    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5', coachSource: 'apiKey' });
   });
   it('works without localStorage', () => {
     vi.stubGlobal('localStorage', undefined);
-    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5' });
-    expect(() => saveSettings({ apiKey: 'x', model: 'claude-opus-5-5' })).not.toThrow();
+    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto' });
+    expect(() => saveSettings({ apiKey: 'x', model: 'claude-opus-5-5', coachSource: 'auto' })).not.toThrow();
   });
 });

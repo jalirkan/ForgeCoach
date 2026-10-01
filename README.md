@@ -62,14 +62,28 @@ engine decides what is legal.
 ### The coach
 
 The panel beside the board follows the current decision (main phases, attacks,
-blocks, responses, engine questions). Either:
+blocks, responses, engine questions). The coach can answer three ways:
 
-- **Use your own API key.** Paste an Anthropic API key in Settings and pick a
-  model. ForgeCoach sends the decision's state and the exact text of the cards
-  involved to Claude. A switch asks automatically at your main phases, attacks
-  and blocks.
-- **Copy prompt.** No key needed: copy the full prompt (state, card text, your
-  deck guide) and paste it into the Claude app or claude.ai.
+- **Claude Code on your PC (no API key).** mtg-table's `./scripts/play.sh`
+  also starts a small *coach helper* (`http://127.0.0.1:8643`) when the
+  [Claude Code](https://claude.com/claude-code) CLI is installed and logged in
+  on that machine. ForgeCoach finds it on its own; answers come from your
+  Claude Code login and are marked *via Claude Code on your PC*. On a phone
+  (the engine-served page, below) the helper is on the desktop's address,
+  port 8643, and the page's pairing token goes along with each request.
+- **Your own API key.** Paste an Anthropic API key in Settings. ForgeCoach
+  sends the request straight to Anthropic; answers are marked *via API key*.
+- **Copy prompt.** Nothing needed: copy the full prompt (state, card text,
+  your deck guide) and paste it into the Claude app or claude.ai.
+
+Settings → **Coach source** shows whether the helper is running and picks the
+source: *Automatic* (the default: the helper when it is found, else your key),
+*Claude Code* or *API key*. The model choice applies to both (Opus 5.5 → `opus`,
+Sonnet 5.5 → `sonnet`, Haiku 4.5 → `haiku` for Claude Code). Either way the
+coach gets the decision's state and the exact text of the cards involved, and a
+switch asks automatically at your main phases, attacks and blocks.
+For development, `?coach=http://127.0.0.1:<port>` points the page at a helper
+on another port.
 
 A **deck guide**, your notes on how a deck wants to play, is written in the page
 and included in every prompt for that deck.
@@ -78,7 +92,8 @@ and included in every prompt for that deck.
 
 The game-over card offers **Review this game with the coach**: a turn-by-turn
 summary and a review in the same style (what went well, at most three mistakes
-each tied to a general rule). Same choice: your key, or copy the prompt. **Next
+each tied to a general rule). Same choice: Claude Code on your PC, your key, or
+copy the prompt. **Next
 game** continues a match.
 
 ## Play on your phone
@@ -131,8 +146,9 @@ second and reads only new bytes. Each game of a match is a new file. Any
   `api.anthropic.com`, directly from your browser. Nothing goes through a
   ForgeCoach server; there isn't one.
 - **Game logs** are read locally and never uploaded. When you coach, the
-  decision's state and card text go to Anthropic with your request. Copy prompt
-  sends nothing anywhere.
+  decision's state and card text go to Anthropic with your request — straight
+  from the browser with your key, or through the coach helper and Claude Code
+  on your own PC. Copy prompt sends nothing anywhere.
 - **Card data and images** come from [Scryfall](https://scryfall.com), fetched
   by your browser and cached in it (IndexedDB).
 

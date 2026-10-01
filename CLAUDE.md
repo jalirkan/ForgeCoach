@@ -19,6 +19,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 - `review.ts` — whole-game summary and the post-game review prompt.
 - `guide.ts` — user-written deck play guides in localStorage.
 - `claude.ts` — browser-side Claude API calls with the user's own key; model list; settings.
+- `coachHelper.ts` — coaching with no key: mtg-table's local coach helper (`http://127.0.0.1:8643`, started by `play.sh`) runs the logged-in Claude Code CLI; `detectHelper` (cached `/health`), `askHelper` (NDJSON `/coach`), `chooseSource` for Settings' `coachSource` (`auto` | `helper` | `apiKey`). `ui/answers.ts` `startAnswer` is the one entry point that picks the source.
 - `live.ts` — read-only live follow: follows mtg-table's read-only `/observe` WebSocket
   (default `ws://127.0.0.1:8642/observe`, amendment M50), or polls a growing `frames.jsonl` over HTTP as a fallback. Never uses `/ws` and never sends a frame (see the file header and README § Live watch).
 - `play/` — playing a game. `session.ts` owns the seat socket (`/ws`), the growing
