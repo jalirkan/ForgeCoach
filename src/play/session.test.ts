@@ -242,6 +242,23 @@ describe('connectSeat — connection', () => {
     expect(h.session.snapshot().log!.frames.map((f) => f.type)).toEqual(['hello_ok']);
   });
 
+  it('keeps the newest state and input when frames arrive out of seq order', () => {
+    const h = harness();
+    h.sock().open();
+    h.sock().msg({ v: 1, seq: 1, t: 1, type: 'hello_ok', body: { gameId: 'g', you: 0, seed: 1, forgeVersion: 'x', forgeJarSha256: 'y', unsupportedCards: [], players: [] } });
+    const st = (seq: number, turn: number) => ({ v: 1, seq, t: seq, type: 'state', body: { gameId: 'g', turn } });
+    const inp = (seq: number, prompt: string) => ({ v: 1, seq, t: seq, type: 'input', body: { prompt } });
+    h.sock().msg(st(5, 3));
+    h.sock().msg(st(3, 2));
+    h.sock().msg(inp(6, 'newer'));
+    h.sock().msg(inp(4, 'older'));
+    h.flush();
+    const s = h.session.snapshot();
+    expect(s.state?.turn).toBe(3);
+    expect(s.input?.prompt).toBe('newer');
+    expect(s.log!.frames.filter((f) => f.type === 'state')).toHaveLength(2);
+  });
+
   it('sends keepalive pings while open', () => {
     const h = harness({ pingMs: 1000 });
     h.sock().open();
