@@ -52,8 +52,10 @@ function useOpen(card: AnyCard) {
   const mark: PlayMark = play ? play.mark(card) : null;
   const chosen = play ? play.chosen(card) : null;
   const hint = play && !mark ? false : play ? play.hint(card) : false;
-  // Long-press (touch) opens details without acting; the click that follows is swallowed.
+  // Long-press (touch) opens details without acting; the click that follows is
+  // swallowed. A finger that moves (scrolling the hand) is not a long-press.
   const pressTimer = useRef<number | null>(null);
+  const pressAt = useRef<{ x: number; y: number } | null>(null);
   const longPressed = useRef(false);
   const activate = useCallback(() => {
     if (longPressed.current) {
@@ -85,33 +87,56 @@ function useOpen(card: AnyCard) {
   const clearPress = useCallback(() => {
     if (pressTimer.current !== null) window.clearTimeout(pressTimer.current);
     pressTimer.current = null;
+    pressAt.current = null;
   }, []);
-  const onLeave = useCallback(() => {
-    clearPress();
-    actions.hover(null);
-  }, [actions, clearPress]);
+  const onLeave = useCallback(
+    (e: PointerEvent<HTMLElement>) => {
+      // A touch that slides off the tile cancels; the mouse only ends its hover.
+      if (e.pointerType !== 'mouse') clearPress();
+      actions.hover(null);
+    },
+    [actions, clearPress],
+  );
   const onDown = useCallback(
     (e: PointerEvent<HTMLElement>) => {
       longPressed.current = false;
-      if (!play || e.pointerType === 'mouse') return;
+      if (!play || e.pointerType === 'mouse' || !e.isPrimary) return;
       clearPress();
+      pressAt.current = { x: e.clientX, y: e.clientY };
       pressTimer.current = window.setTimeout(() => {
+        pressTimer.current = null;
         longPressed.current = true;
+        try {
+          navigator.vibrate?.(12);
+        } catch {
+          /* not supported */
+        }
         open();
-      }, 480);
+      }, 450);
     },
     [play, open, clearPress],
+  );
+  const onMove = useCallback(
+    (e: PointerEvent<HTMLElement>) => {
+      const at = pressAt.current;
+      if (!at || pressTimer.current === null) return;
+      if (Math.abs(e.clientX - at.x) > 8 || Math.abs(e.clientY - at.y) > 8) clearPress();
+    },
+    [clearPress],
   );
   const onContext = useCallback(
     (e: MouseEvent<HTMLElement>) => {
       if (!play) return;
       e.preventDefault();
+      // Touch browsers fire contextmenu on their own long-press; the timer already opened it.
+      if (longPressed.current) return;
       clearPress();
+      longPressed.current = (e.nativeEvent as globalThis.PointerEvent).pointerType === 'touch';
       open();
     },
     [play, open, clearPress],
   );
-  return { open, activate, onKey, onEnter, onLeave, onDown, onUp: clearPress, onContext, mark, hint, chosen, playing: !!play };
+  return { open, activate, onKey, onEnter, onLeave, onDown, onMove, onUp: clearPress, onContext, mark, hint, chosen, playing: !!play };
 }
 
 function ptClass(now: string | null, printed: string | undefined): string {
@@ -132,7 +157,7 @@ interface TileProps {
 function TileInner({ card, attachments, inHand }: TileProps) {
   const name = card.name || card.alt?.name || '';
   const info = useCardInfo(name || null);
-  const { open, activate, onKey, onEnter, onLeave, onDown, onUp, onContext, mark, hint, chosen, playing } = useOpen(card);
+  const { open, activate, onKey, onEnter, onLeave, onDown, onMove, onUp, onContext, mark, hint, chosen, playing } = useOpen(card);
   const attacking = card.attacking || chosen === 'attack';
   const blocking = card.blocking || chosen === 'block';
   const kind = typeKind(card.types || info?.typeLine);
@@ -165,6 +190,7 @@ function TileInner({ card, attachments, inHand }: TileProps) {
       onPointerEnter={onEnter}
       onPointerLeave={onLeave}
       onPointerDown={onDown}
+      onPointerMove={onMove}
       onPointerUp={onUp}
       onPointerCancel={onUp}
       onContextMenu={onContext}
@@ -239,7 +265,7 @@ function TileInner({ card, attachments, inHand }: TileProps) {
             )}
             {counters.map(([k, n]) => (
               <span key={k} className="badge badge-counter" title={`${n} ${counterLabel(k)} counter${n > 1 ? 's' : ''}`}>
-                {k === 'P1P1' || k === 'M1M1' ? `${n}× ${counterLabel(k)}` : `${counterLabel(k)} ${n}`}
+                {/^(P1P1|M1M1|[+-]\d+\/[+-]\d+)$/.test(k) ? `${n > 1 ? `${n}× ` : ''}${counterLabel(k)}` : `${counterLabel(k)} ${n}`}
               </span>
             ))}
             {card.token && <span className="badge badge-muted">Token</span>}
@@ -310,7 +336,7 @@ export const LandChip = memo(
   function LandChip({ cards }: { cards: Card[] }) {
     const first = cards[0]!;
     const info = useCardInfo(first.name || null);
-    const { activate, onKey, onEnter, onLeave, onDown, onUp, onContext, mark } = useOpen(first);
+    const { activate, onKey, onEnter, onLeave, onDown, onMove, onUp, onContext, mark } = useOpen(first);
     const colors = cardColors(first, info?.producedMana, info?.colors);
     const tapped = first.tapped;
     return (
@@ -333,6 +359,7 @@ export const LandChip = memo(
         onPointerEnter={onEnter}
         onPointerLeave={onLeave}
         onPointerDown={onDown}
+        onPointerMove={onMove}
         onPointerUp={onUp}
         onPointerCancel={onUp}
         onContextMenu={onContext}

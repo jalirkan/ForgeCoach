@@ -9,8 +9,8 @@
 import { useEffect, useRef, useState } from 'react';
 import './play/play.css';
 import { DEFAULT_LIVE_URL, FALLBACK_LIVE_URL } from '../live.ts';
-import { DEFAULT_SEAT_URL, type SeatStatus } from '../play/session.ts';
-import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconCopy, IconFile, IconGear, IconPlay, IconUpload } from './Icons.tsx';
+import { redactSeatUrl, type SeatStatus } from '../play/session.ts';
+import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconPlay, IconUpload } from './Icons.tsx';
 import { copyText, cx } from './util.ts';
 import { Logo } from './Logo.tsx';
 
@@ -75,7 +75,52 @@ function CopyCmd({ cmd }: { cmd: string }) {
   );
 }
 
-function PlayCard({ seatUrl, play, onPlay, onCancel }: { seatUrl: string; play: PlayStatus | null; onPlay: (url: string) => void; onCancel: () => void }) {
+/** What the seat status means, in words (never showing the pairing token). */
+function seatStatusText(play: PlayStatus | null, url: string): string | null {
+  if (!play) return null;
+  if (play.status === 'open') return 'Connected — waiting for the engine to deal…';
+  if (play.status === 'connecting' || play.status === 'idle') {
+    return play.attempts > 0 ? `Looking for the engine… (attempt ${play.attempts + 1})` : 'Connecting to the engine…';
+  }
+  if (play.status === 'refused') return 'Another window has the player’s seat.';
+  return `Couldn’t reach the engine at ${redactSeatUrl(url)}.`;
+}
+
+function SeatStatusBox({ play, url }: { play: PlayStatus | null; url: string }) {
+  const text = seatStatusText(play, url);
+  if (!play || !text) return null;
+  const busy = play.status === 'connecting' || play.status === 'idle' || play.status === 'open';
+  const retry = play.detail ? /Retrying in ([\d.]+ s)/.exec(play.detail)?.[1] ?? null : null;
+  return (
+    <div className={cx('play-status', !busy ? 'is-bad' : play.status === 'open' ? 'is-ok' : 'is-wait')} role="status">
+      <b>{text}</b> {retry && <span className="play-status-detail">Retrying in {retry}.</span>}
+      {play.detail && play.detail.length > 140 ? (
+        <details className="play-status-more">
+          <summary>Details</summary>
+          <p>{play.detail}</p>
+        </details>
+      ) : (
+        play.detail && <span className="play-status-detail"> {play.detail}</span>
+      )}
+    </div>
+  );
+}
+
+function PlayCard({
+  seatUrl,
+  homeSeatUrl,
+  engineServed,
+  play,
+  onPlay,
+  onCancel,
+}: {
+  seatUrl: string;
+  homeSeatUrl: string;
+  engineServed: boolean;
+  play: PlayStatus | null;
+  onPlay: (url: string) => void;
+  onCancel: () => void;
+}) {
   const [url, setUrl] = useState(seatUrl);
   useEffect(() => setUrl(seatUrl), [seatUrl]);
   const busy = play !== null && (play.status === 'connecting' || play.status === 'idle' || play.status === 'open');
@@ -84,84 +129,125 @@ function PlayCard({ seatUrl, play, onPlay, onCancel }: { seatUrl: string; play: 
   useEffect(() => {
     if (failed || (play && play.attempts > 0)) setHelpOpen(true);
   }, [failed, play]);
-  const statusText = !play
-    ? null
-    : play.status === 'open'
-      ? 'Connected — waiting for the engine to deal…'
-      : play.status === 'connecting' || play.status === 'idle'
-        ? play.attempts > 0
-          ? `Looking for the engine… (attempt ${play.attempts + 1})`
-          : 'Connecting to the engine…'
-        : play.status === 'refused'
-          ? 'Another window has the player’s seat.'
-          : `Couldn’t reach the engine at ${url}.`;
   const cmd = ENGINE_CMD + portArg(url);
-  const retry = play?.detail ? /Retrying in ([\d.]+ s)/.exec(play.detail)?.[1] ?? null : null;
   return (
     <section className="play-card" aria-label="Play against Forge">
       <div className="play-card-main">
         <div className="play-card-text">
           <h2 className="play-card-title">Play vs Forge</h2>
-          <p className="muted">A full game against the Forge AI, with the coach one tap away. Your Forge engine runs on this computer.</p>
+          <p className="muted">
+            {engineServed
+              ? 'A full game against the Forge AI, with the coach one tap away. Forge runs on the computer that served this page.'
+              : 'A full game against the Forge AI, with the coach one tap away. Your Forge engine runs on this computer.'}
+          </p>
         </div>
         {busy ? (
           <button className="btn btn-quiet play-go" onClick={onCancel}>
             <span className="spinner" /> Cancel
           </button>
         ) : (
-          <button className="btn btn-primary play-go" onClick={() => onPlay(url.trim() || DEFAULT_SEAT_URL)}>
+          <button className="btn btn-primary play-go" onClick={() => onPlay(engineServed ? homeSeatUrl : url.trim() || homeSeatUrl)}>
             <IconPlay size={16} /> {failed ? 'Try again' : 'Play'}
           </button>
         )}
       </div>
-      {statusText && (
-        <div className={cx('play-status', failed ? 'is-bad' : play?.status === 'open' ? 'is-ok' : 'is-wait')} role="status">
-          <b>{statusText}</b> {retry && <span className="play-status-detail">Retrying in {retry}.</span>}
-          {play?.detail && play.detail.length > 140 ? (
-            <details className="play-status-more">
-              <summary>Details</summary>
-              <p>{play.detail}</p>
-            </details>
-          ) : (
-            play?.detail && <span className="play-status-detail"> {play.detail}</span>
-          )}
-        </div>
+      <SeatStatusBox play={play} url={url} />
+      {!engineServed && (
+        <details className="play-help" open={helpOpen} onToggle={(e) => setHelpOpen((e.target as HTMLDetailsElement).open)}>
+          <summary>
+            <span>Start the engine first</span> <IconChevronDown size={14} />
+          </summary>
+          <ol className="play-steps">
+            <li>
+              In your <b>mtg-table</b> checkout, start the engine:
+              <CopyCmd cmd={cmd} />
+            </li>
+            <li>
+              Wait for <i>Engine ready on ws://…</i>. Close any mtg-table board tab first — only one window can hold the player’s seat.
+            </li>
+            <li>
+              Press <b>Play</b>. Chrome may ask to let this page reach devices on your local network — allow it. Safari blocks it; use Chrome or Firefox.
+            </li>
+          </ol>
+          <form
+            className="field-row play-url"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onPlay(url.trim() || homeSeatUrl);
+            }}
+          >
+            <label className="tiny muted" htmlFor="seat-url">
+              Engine address
+            </label>
+            <input id="seat-url" value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false} aria-label="Engine seat URL" />
+            {url !== homeSeatUrl && (
+              <button type="button" className="btn btn-quiet btn-sm" onClick={() => setUrl(homeSeatUrl)}>
+                Reset
+              </button>
+            )}
+          </form>
+        </details>
       )}
-      <details className="play-help" open={helpOpen} onToggle={(e) => setHelpOpen((e.target as HTMLDetailsElement).open)}>
-        <summary>
-          <span>Start the engine first</span> <IconChevronDown size={14} />
-        </summary>
-        <ol className="play-steps">
-          <li>
-            In your <b>mtg-table</b> checkout, start the engine:
-            <CopyCmd cmd={cmd} />
-          </li>
-          <li>
-            Wait for <i>Engine ready on ws://…</i>. Close any mtg-table board tab first — only one window can hold the player’s seat.
-          </li>
-          <li>
-            Press <b>Play</b>. Chrome may ask to let this page reach devices on your local network — allow it. Safari blocks it; use Chrome or Firefox.
-          </li>
-        </ol>
-        <form
-          className="field-row play-url"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onPlay(url.trim() || DEFAULT_SEAT_URL);
-          }}
-        >
-          <label className="tiny muted" htmlFor="seat-url">
-            Engine address
-          </label>
-          <input id="seat-url" value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false} aria-label="Engine seat URL" />
-          {url !== DEFAULT_SEAT_URL && (
-            <button type="button" className="btn btn-quiet btn-sm" onClick={() => setUrl(DEFAULT_SEAT_URL)}>
-              Reset
+    </section>
+  );
+}
+
+/**
+ * The page the engine served to a phone: no landing choices, just the
+ * connection to this table (with a way to the other options).
+ */
+function EngineConnect({
+  seatUrl,
+  play,
+  onPlay,
+  onCancel,
+  onMore,
+  onSettings,
+}: {
+  seatUrl: string;
+  play: PlayStatus | null;
+  onPlay: (url: string) => void;
+  onCancel: () => void;
+  onMore: () => void;
+  onSettings: () => void;
+}) {
+  const busy = play !== null && (play.status === 'connecting' || play.status === 'idle' || play.status === 'open');
+  const failed = play !== null && !busy;
+  return (
+    <div className="engine-connect">
+      <header className="load-top">
+        <Logo />
+        <button className="icon-btn" onClick={onSettings} aria-label="Settings">
+          <IconGear size={18} />
+        </button>
+      </header>
+      <main className="engine-connect-main">
+        <div className="engine-connect-card">
+          <div className={cx('engine-connect-icon', busy && 'is-busy', failed && 'is-bad')} aria-hidden="true">
+            {busy ? <span className="spinner spinner-lg" /> : <IconPlay size={26} />}
+          </div>
+          <h1 className="engine-connect-title">{busy ? 'Joining your table…' : failed ? 'Can’t reach the table' : 'Play vs Forge'}</h1>
+          <p className="muted engine-connect-sub">
+            {failed
+              ? 'Is the engine still running on your computer, and is this phone on the same network?'
+              : 'The Forge engine on your computer served this page. You play from here; the coach is one tap away.'}
+          </p>
+          <SeatStatusBox play={play} url={seatUrl} />
+          {busy ? (
+            <button className="btn btn-quiet engine-connect-go" onClick={onCancel}>
+              Cancel
+            </button>
+          ) : (
+            <button className="btn btn-primary engine-connect-go" onClick={() => onPlay(seatUrl)}>
+              <IconPlay size={16} /> {failed ? 'Try again' : 'Play'}
             </button>
           )}
-        </form>
-      </details>
-    </section>
+          <button className="link-btn engine-connect-more" onClick={onMore}>
+            <IconChevronLeft size={14} /> Other options — review a game, settings
+          </button>
+        </div>
+      </main>
+    </div>
   );
 }
 
@@ -172,6 +258,8 @@ export function LoadScreen({
   onPlay,
   onCancelPlay,
   seatUrl,
+  homeSeatUrl,
+  engineServed = false,
   play,
   onSettings,
   lastSample,
@@ -184,6 +272,10 @@ export function LoadScreen({
   onPlay: (url: string) => void;
   onCancelPlay: () => void;
   seatUrl: string;
+  /** Where Play connects by default (this origin's seat when the engine served the page). */
+  homeSeatUrl: string;
+  /** The mtg-table bridge served this page: open straight onto the connection. */
+  engineServed?: boolean;
   play: PlayStatus | null;
   onSettings: () => void;
   lastSample: string | null;
@@ -194,6 +286,10 @@ export function LoadScreen({
   const [url, setUrl] = useState(DEFAULT_LIVE_URL);
   const [copied, setCopied] = useState(false);
   const samples = [...SAMPLES].sort((a, b) => Number(b.id === lastSample) - Number(a.id === lastSample));
+  const [more, setMore] = useState(false);
+  if (engineServed && !more) {
+    return <EngineConnect seatUrl={seatUrl} play={play} onPlay={onPlay} onCancel={onCancelPlay} onMore={() => setMore(true)} onSettings={onSettings} />;
+  }
   return (
     <div className="load">
       <header className="load-top">
@@ -213,7 +309,7 @@ export function LoadScreen({
           </p>
         </section>
 
-        <PlayCard seatUrl={seatUrl} play={play} onPlay={onPlay} onCancel={onCancelPlay} />
+        <PlayCard seatUrl={seatUrl} homeSeatUrl={homeSeatUrl} engineServed={engineServed} play={play} onPlay={onPlay} onCancel={onCancelPlay} />
 
         {error && (
           <div className="banner banner-bad" role="alert">

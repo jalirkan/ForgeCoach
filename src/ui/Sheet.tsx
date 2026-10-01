@@ -29,6 +29,9 @@ export function Sheet({
   footer?: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Close on a tap that both starts and ends on the backdrop — not on the
+  // release of the long-press that opened the sheet.
+  const downOnBackdrop = useRef(false);
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
@@ -50,7 +53,16 @@ export function Sheet({
   }, [open, onClose]);
   if (!open) return null;
   return createPortal(
-    <div className="sheet-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className="sheet-backdrop"
+      onPointerDown={(e) => {
+        downOnBackdrop.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (downOnBackdrop.current && e.target === e.currentTarget) onClose();
+        downOnBackdrop.current = false;
+      }}
+    >
       <div
         className={cx('sheet', className)}
         role="dialog"

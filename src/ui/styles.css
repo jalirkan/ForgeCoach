@@ -62,6 +62,9 @@
 }
 html {
   -webkit-text-size-adjust: 100%;
+  /* no double-tap zoom anywhere (pinch zoom stays) */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 body {
   margin: 0;
@@ -210,6 +213,7 @@ code {
   opacity: 0.3;
 }
 .link-btn {
+  -webkit-tap-highlight-color: transparent;
   color: var(--accent-2);
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -498,8 +502,8 @@ code {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 56px;
-  padding: 0 12px 0 10px;
+  height: calc(56px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left));
   border-bottom: 1px solid var(--line);
   background: var(--bg-2);
   flex: none;
@@ -638,7 +642,7 @@ code {
   padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));
 }
 .game.is-narrow .topbar {
-  height: 52px;
+  height: calc(52px + env(safe-area-inset-top));
   gap: 6px;
 }
 .game.is-narrow .topbar-title {
@@ -646,7 +650,7 @@ code {
 }
 .phone-tabs {
   position: sticky;
-  top: 52px;
+  top: calc(52px + env(safe-area-inset-top));
   z-index: 15;
   margin: 0;
   border-radius: 0;
@@ -1033,6 +1037,7 @@ code {
 }
 .tile-art {
   position: relative;
+  flex: none;
   height: 58px;
   background: radial-gradient(120% 140% at 20% 0%, color-mix(in srgb, var(--tc) 38%, #15181e) 0%, #15181e 75%);
   overflow: hidden;
@@ -1223,6 +1228,17 @@ code {
 }
 .tile.is-tapped .tile-art img {
   filter: grayscale(0.75) brightness(0.65);
+}
+/* An attacking or blocking creature is tapped (or about to be) but is the
+   most important thing on the table: never dim it. */
+.tile.is-tapped.is-attacking,
+.tile.is-tapped.is-blocking {
+  opacity: 1;
+  border-style: solid;
+}
+.tile.is-tapped.is-attacking .tile-art img,
+.tile.is-tapped.is-blocking .tile-art img {
+  filter: none;
 }
 .tile.is-attacking {
   border-color: rgba(239, 111, 108, 0.75);
@@ -1488,6 +1504,9 @@ button.zone-pill:not(:disabled) {
 }
 button.zone-pill:disabled {
   opacity: 0.55;
+}
+.zl-short {
+  display: none;
 }
 .zone-static {
   background: transparent;
@@ -2538,6 +2557,7 @@ textarea:focus {
 
 .load {
   overflow-x: clip;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
@@ -2954,6 +2974,48 @@ textarea:focus {
     padding: 0 9px 0 8px;
   }
 }
+/* ------------------------------------------------------------------ */
+/* Touch: finger-sized targets, no iOS input zoom */
+
+@media (pointer: coarse) {
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .btn {
+    min-height: 44px;
+  }
+  .btn-sm {
+    min-height: 0;
+    position: relative;
+  }
+  .btn-sm::after {
+    content: '';
+    position: absolute;
+    inset: -8px 0;
+  }
+  .seg > button {
+    min-height: 40px;
+  }
+  button.zone-pill {
+    position: relative;
+  }
+  button.zone-pill::after {
+    content: '';
+    position: absolute;
+    inset: -9px -2px;
+  }
+  .land-chip {
+    min-height: 36px;
+  }
+  /* iOS zooms into any focused field under 16px */
+  input:not([type='radio']):not([type='range']):not([type='file']):not([type='checkbox']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

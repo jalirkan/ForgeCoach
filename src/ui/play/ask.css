@@ -524,16 +524,20 @@ button.ask-card.is-previewable:hover {
 }
 .ask-face-top {
   display: flex;
+  flex-wrap: wrap-reverse;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 4px;
+  gap: 3px 4px;
 }
 .ask-face-name {
+  flex: 1 1 60px;
+  min-width: 0;
   font-size: 11.5px;
   font-weight: 650;
   line-height: 1.2;
   color: var(--text);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 .ask-face-art {
   flex: 1;
@@ -549,6 +553,9 @@ button.ask-card.is-previewable:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.ask-face-frame:has(.ask-face-pt) .ask-face-type {
+  padding-right: 34px;
 }
 .ask-face-pt {
   position: absolute;
@@ -624,6 +631,30 @@ button.ask-card.is-previewable:hover {
 .ask-move .icon-btn {
   width: 32px;
   height: 32px;
+}
+@media (pointer: coarse) {
+  .ask-move .icon-btn {
+    width: 40px;
+    height: 44px;
+  }
+  .ask-check {
+    min-height: 44px;
+    margin-top: 6px;
+  }
+  .ask-dialog .ask-check input.ask-check-box:not([type='radio']) {
+    width: 20px;
+    height: 20px;
+  }
+  .ask-preview {
+    width: 40px;
+    height: 40px;
+  }
+  .ask-step {
+    height: 44px;
+  }
+  .ask-step > button {
+    width: 44px;
+  }
 }
 .ask-order-row.is-fixed {
   opacity: 0.65;
@@ -839,7 +870,8 @@ button.ask-card.is-previewable:hover {
   position: fixed;
   z-index: 90;
   left: 50%;
-  bottom: calc(16px + var(--dock-h) + env(safe-area-inset-bottom));
+  /* above the play dock (PlayView measures it), or the replay dock */
+  bottom: calc(12px + var(--play-dock-h, calc(var(--dock-h) + env(safe-area-inset-bottom))));
   transform: translateX(-50%);
   display: flex;
   align-items: center;
