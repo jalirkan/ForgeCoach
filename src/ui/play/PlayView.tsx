@@ -1,0 +1,513 @@
+/*
+ * ForgeCoach — ui/play/PlayView.tsx
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * Playing a game against the Forge AI from the player's seat: the replay
+ * board made interactive, an action bar that always has one obvious primary
+ * button, your hand along the bottom, and the coach beside the board.
+ *
+ * The engine is the judge of every click (mtg-table protocol §4.1): cards the
+ * engine names are outlined, cards a click plausibly drives are lightly
+ * outlined, and the acts are the protocol's own (clickCard, clickPlayer,
+ * buttonOk / buttonCancel with the engine's labels, passPriority, yieldTo,
+ * useMana, undo, alphaStrike, concede, newGame).
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ActBody, AnswerValue, AnyCard, Card, GameStateBody } from '../../protocol.ts';
+import { isHidden, MANA_COLORS, undoOf } from '../../protocol.ts';
+import type { GameLog } from '../../log.ts';
+import type { PlaySession, PlaySnapshot } from '../../play/session.ts';
+import { activeGuideId, listGuides } from '../../guide.ts';
+import { canPay, turnFacts, untappedManaSources } from '../../state.ts';
+import { cardIndex } from '../../decisions.ts';
+import { Board } from '../Board.tsx';
+import { CardDetail, HoverPreview } from '../CardDetail.tsx';
+import { BoardStateRef, CardActionsContext, PlayContext, type CardActions, type PlayInteraction } from '../cardContext.ts';
+import { cachedMap, prefetchCards, useCardsVersion } from '../cardData.ts';
+import { GuideSheet } from '../GuideSheet.tsx';
+import { useMediaQuery } from '../hooks.ts';
+import { IconFlag, IconGear, IconSpark, IconX } from '../Icons.tsx';
+import { Logo } from '../Logo.tsx';
+import { Sheet } from '../Sheet.tsx';
+import { allCardNames, cx, readLS, stateCardNames, writeLS } from '../util.ts';
+import { AskDialog, OpeningDialog, openingKind } from './AskDialog.tsx';
+import { ActionBar } from './ActionBar.tsx';
+import { GameOverCard } from './GameOverCard.tsx';
+import { HandDock } from './HandDock.tsx';
+import { cardRole, describeInput, playerClickable, type ClickContext } from './inputView.ts';
+import { lastStateFrame } from './liveDecision.ts';
+import { PlayCoach } from './PlayCoach.tsx';
+import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
+
+import './play.css';
+
+const COACH_OPEN_KEY = 'forgecoach.playCoachOpen';
+
+function guideNameNow(): string | null {
+  try {
+    const id = activeGuideId();
+    return id ? listGuides().find((g) => g.id === id)?.name ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
+function isLandCard(c: Card): boolean {
+  return /\bland\b/i.test(c.types ?? '');
+}
+
+export function PlayView({
+  session,
+  snapshot: snap,
+  onReview,
+  onLeave,
+  onSettings,
+}: {
+  session: PlaySession;
+  snapshot: PlaySnapshot;
+  onReview: (log: GameLog) => void;
+  onLeave: () => void;
+  onSettings: () => void;
+}) {
+  const { state, input, ask, over, log, status } = snap;
+  const seat = snap.seat ?? log?.seat ?? null;
+  const wide = useMediaQuery('(min-width: 1024px)');
+  const connected = status === 'open';
+
+  if (import.meta.env.DEV) (window as unknown as { __forgecoach?: unknown }).__forgecoach = snap;
+  const view = useMemo(() => describeInput(input, state, seat, { ask, over: !!over }), [input, state, seat, ask, over]);
+
+  // ---- card data
+  const names = useMemo(() => (log ? allCardNames(log, Math.max(0, log.frames.length - 40)) : []), [log]);
+  useEffect(() => prefetchCards(names), [names]);
+  const cardsVersion = useCardsVersion();
+
+  // ---- sending
+  const [busy, setBusy] = useState<'ok' | 'cancel' | null>(null);
+  useEffect(() => setBusy(null), [input, state, ask]);
+  useEffect(() => {
+    if (!busy) return;
+    const t = setTimeout(() => setBusy(null), 2500);
+    return () => clearTimeout(t);
+  }, [busy]);
+  const [flash, setFlash] = useState<string | null>(null);
+  useEffect(() => {
+    if (!flash) return;
+    const t = setTimeout(() => setFlash(null), 2600);
+    return () => clearTimeout(t);
+  }, [flash]);
+  // The engine's (and the session's) notices surface briefly in the bar.
+  const lastNotice = snap.notices[snap.notices.length - 1];
+  const seenNotice = useRef<number | null>(lastNotice ? lastNotice.seq * 1e13 + lastNotice.t : null);
+  useEffect(() => {
+    if (!lastNotice) return;
+    const id = lastNotice.seq * 1e13 + lastNotice.t;
+    if (seenNotice.current === id) return;
+    seenNotice.current = id;
+    if (lastNotice.level === 'info' && lastNotice.source === 'engine') return;
+    setFlash(`${lastNotice.title}${lastNotice.text ? ` — ${lastNotice.text}` : ''}`);
+  }, [lastNotice]);
+  const act = useCallback((body: ActBody) => void session.act(body), [session]);
+  const pressOk = useCallback(() => {
+    if (!view.ok.enabled) return;
+    setBusy('ok');
+    act({ action: 'buttonOk' });
+  }, [view.ok.enabled, act]);
+  const pressCancel = useCallback(() => {
+    if (!view.cancel.enabled) return;
+    setBusy('cancel');
+    act({ action: 'buttonCancel' });
+  }, [view.cancel.enabled, act]);
+
+
+  // ---- derived facts for hints
+  const frameIndex = log ? lastStateFrame(log) : -1;
+  const landOpen = useMemo(() => {
+    if (!log || !state || seat === null || state.activePlayer !== seat || frameIndex < 0) return null;
+    try {
+      const f = turnFacts(log, frameIndex, seat);
+      return f.landPlayed === null ? null : !f.landPlayed;
+    } catch {
+      return null;
+    }
+  }, [log, state, seat, frameIndex]);
+  const affordable = useMemo(() => {
+    const out = new Set<number>();
+    if (!state || seat === null || view.mode !== 'main') return out;
+    const me = state.players.find((p) => p.id === seat);
+    if (!me) return out;
+    try {
+      const cards = cachedMap(stateCardNames(state));
+      const sources = untappedManaSources(state, seat, cards);
+      for (const any of me.zones.hand.cards) {
+        if (isHidden(any)) continue;
+        const c = any as Card;
+        if (isLandCard(c)) {
+          if (landOpen) out.add(c.id);
+        } else if (c.manaCost !== null && canPay(c.manaCost, sources, me.manaPool as unknown as Record<string, number>)) out.add(c.id);
+      }
+    } catch {
+      /* hints only */
+    }
+    return out;
+  }, [state, seat, view.mode, landOpen, cardsVersion]);
+
+  // ---- attackers / blockers chosen so far (the wire does not say until you confirm)
+  const [chosenAtk, setChosenAtk] = useState<ReadonlySet<number>>(() => new Set());
+  const [chosenBlk, setChosenBlk] = useState<ReadonlyMap<number, number | null>>(() => new Map());
+  useEffect(() => {
+    // "Alpha Strike" is only offered while nobody is attacking yet: the engine's own reset.
+    if (view.mode !== 'attack' || /alpha/i.test(view.cancel.label)) setChosenAtk((s) => (s.size ? new Set() : s));
+    if (view.mode !== 'block') setChosenBlk((m) => (m.size ? new Map() : m));
+  }, [view.mode, view.cancel.label]);
+  const isMyCreature = useCallback(
+    (c: AnyCard) => !isHidden(c) && (c as Card).controller === seat && (c as Card).zone === 'battlefield' && /creature/i.test((c as Card).types ?? ''),
+    [seat],
+  );
+  const clickCard = useCallback(
+    (c: AnyCard) => {
+      if (view.mode === 'attack' && isMyCreature(c)) {
+        setChosenAtk((s) => {
+          const n = new Set(s);
+          if (n.has(c.id)) n.delete(c.id);
+          else n.add(c.id);
+          return n;
+        });
+      } else if (view.mode === 'block' && isMyCreature(c)) {
+        setChosenBlk((m) => {
+          const n = new Map(m);
+          if (n.has(c.id)) n.delete(c.id);
+          else n.set(c.id, view.blockingAttackerId);
+          return n;
+        });
+      }
+      act({ action: 'clickCard', cardId: c.id });
+    },
+    [view.mode, view.blockingAttackerId, isMyCreature, act],
+  );
+  const alphaStrike = useCallback(() => {
+    const me = state?.players.find((p) => p.id === seat);
+    const all = (me?.zones.battlefield.cards ?? []).filter((c) => isMyCreature(c) && !(c as Card).tapped && !(c as Card).sick).map((c) => c.id);
+    setChosenAtk(new Set(all));
+  }, [state, seat, isMyCreature]);
+  /** Cancel, keeping the chosen-attackers picture in step with what the engine's Cancel means here. */
+  const doCancel = useCallback(() => {
+    if (view.mode === 'attack' && /alpha/i.test(view.cancel.label)) alphaStrike();
+    if (view.mode === 'attack' && /call back/i.test(view.cancel.label)) setChosenAtk(new Set());
+    pressCancel();
+  }, [view.mode, view.cancel.label, alphaStrike, pressCancel]);
+  const doAct = useCallback(
+    (body: ActBody) => {
+      if (body.action === 'alphaStrike') alphaStrike();
+      act(body);
+    },
+    [act, alphaStrike],
+  );
+
+  // ---- interaction context for tiles and avatars
+  const ctx: ClickContext = useMemo(() => ({ view, input, state, seat }), [view, input, state, seat]);
+  const play = useMemo<PlayInteraction>(
+    () => ({
+      mark: (c: AnyCard) => cardRole(c, ctx),
+      hint: (c: AnyCard) => affordable.has(c.id),
+      click: clickCard,
+      chosen: (c: AnyCard) => (chosenAtk.has(c.id) ? 'attack' : chosenBlk.has(c.id) ? 'block' : null),
+      blockersFor: (attackerId: number) => [...chosenBlk].filter(([, a]) => a === attackerId).map(([b]) => b),
+      playerMark: () => playerClickable(ctx),
+      clickPlayer: (id: number) => {
+        if (playerClickable(ctx)) act({ action: 'clickPlayer', playerId: id });
+      },
+    }),
+    [ctx, affordable, act, clickCard, chosenAtk, chosenBlk],
+  );
+
+  // ---- details / hover
+  const [detail, setDetail] = useState<{ card: AnyCard; state: GameStateBody | null } | null>(null);
+  const [hover, setHover] = useState<{ name: string | null; rect: DOMRect | null }>({ name: null, rect: null });
+  const actions = useMemo<CardActions>(
+    () => ({
+      open: (card, st) => {
+        setHover({ name: null, rect: null });
+        setDetail({ card, state: st });
+      },
+      hover: (name, rect) => setHover({ name, rect: rect ?? null }),
+    }),
+    [],
+  );
+  const previewId = useCallback(
+    (id: number) => {
+      const c = state ? cardIndex(state).get(id) : undefined;
+      if (c) setDetail({ card: c, state });
+    },
+    [state],
+  );
+  const boardStateRef = useRef<GameStateBody | null>(state);
+  boardStateRef.current = state;
+
+  // ---- panels
+  const [coachOpen, setCoachOpen] = useState(() => readLS(COACH_OPEN_KEY) !== '0');
+  const [phoneTab, setPhoneTab] = useState<'board' | 'coach'>('board');
+  const [handCollapsed, setHandCollapsed] = useState(false);
+  const [help, setHelp] = useState(false);
+  const [concede, setConcede] = useState(false);
+  const [guidesOpen, setGuidesOpen] = useState(false);
+  const [guideName, setGuideName] = useState<string | null>(guideNameNow);
+  const [waitingNext, setWaitingNext] = useState(false);
+  useEffect(() => {
+    if (!over) setWaitingNext(false);
+  }, [over]);
+
+  // ---- phones: combat and paying need the board, not the hand
+  const boardMode = view.mode === 'attack' || view.mode === 'block' || view.mode === 'pay';
+  const handHidden = handCollapsed || (!wide && boardMode);
+  useEffect(() => {
+    if (wide || !boardMode || phoneTab !== 'board') return;
+    const t = setTimeout(() => {
+      const q = (sel: string) => document.querySelector(`.play-phone-main ${sel}`);
+      const el =
+        view.mode === 'attack'
+          ? q('.player-me .battlefield')
+          : view.mode === 'pay'
+            ? q('.player-me .bf-chips') ?? q('.player-me .battlefield')
+            : q('.combat-panel') ?? q('.player-me .battlefield');
+      el?.scrollIntoView({ block: view.mode === 'attack' ? 'start' : 'center', behavior: 'smooth' });
+    }, 60);
+    return () => clearTimeout(t);
+  }, [wide, boardMode, view.mode, phoneTab]);
+
+  // ---- keyboard
+  const pool = useMemo(() => state?.players.find((p) => p.id === seat)?.manaPool ?? null, [state, seat]);
+  const undo = undoOf(state);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const overlay = !!detail || help || concede || guidesOpen || !!document.querySelector('.sheet-backdrop');
+      const plan = planPlayKey(
+        { key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, isComposing: e.isComposing, targetTag: t?.tagName, targetEditable: t?.isContentEditable },
+        {
+          view,
+          askOpen: !!ask,
+          over: !!over,
+          canUndo: undo.can,
+          poolColors: pool ? MANA_COLORS.filter((c) => pool[c] > 0) : [],
+          overlay,
+        },
+      );
+      if (!plan) return;
+      if (plan.kind === 'closeOverlay') return; // the sheet closes itself
+      e.preventDefault();
+      switch (plan.kind) {
+        case 'ok':
+          pressOk();
+          break;
+        case 'cancel':
+          doCancel();
+          break;
+        case 'act':
+          doAct(plan.body);
+          setFlash(plan.label);
+          break;
+        case 'help':
+          setHelp(true);
+          break;
+        case 'inert':
+          setFlash(plan.why);
+          break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, pressOk, doCancel, doAct]);
+
+  // ---- render
+  const me = state?.players.find((p) => p.id === seat) ?? null;
+  const players = log?.hello?.players ?? state?.players ?? [];
+  const opp = players.find((p) => p.id !== seat);
+  const hello = log?.hello ?? null;
+  const gameNo = hello?.gameNumber && (hello.gameCount ?? hello.match?.games) ? `Game ${hello.gameNumber} of ${hello.gameCount ?? hello.match?.games}` : null;
+  const myDeck = hello?.match?.yourDeck?.name ?? null;
+  const myMove = !!(ask || (input && view.mode !== 'waiting' && view.mode !== 'yield' && !over));
+
+  const board =
+    state && log && seat !== null ? (
+      <Board log={log} state={state} frameIndex={Math.max(0, frameIndex)} seat={seat} hideHand />
+    ) : (
+      <div className="board board-empty">
+        <div>
+          <span className="spinner spinner-lg" />
+          <p className="muted">{status === 'open' ? 'Shuffling up — waiting for the first game state…' : status === 'connecting' ? 'Connecting to the engine…' : snap.detail ?? 'Not connected.'}</p>
+        </div>
+      </div>
+    );
+
+  const coach = (
+    <PlayCoach
+      log={log}
+      state={state}
+      input={input}
+      ask={ask}
+      seat={seat}
+      myMove={myMove}
+      guideName={guideName}
+      onOpenGuides={() => setGuidesOpen(true)}
+      onOpenSettings={onSettings}
+    />
+  );
+
+  const dock = (
+    <div className="play-dock">
+      <ActionBar
+        view={view}
+        busy={busy}
+        pool={pool}
+        canUndo={undo.can && !ask && !over}
+        undoDepth={undo.depth}
+        onOk={pressOk}
+        onCancel={doCancel}
+        onAct={doAct}
+        onHelp={() => setHelp(true)}
+        flash={flash}
+      />
+      <HandDock player={me} landOpen={landOpen} collapsed={handHidden} onToggle={() => setHandCollapsed(!handHidden)} />
+    </div>
+  );
+
+  return (
+    <CardActionsContext.Provider value={actions}>
+      <BoardStateRef.Provider value={boardStateRef}>
+        <PlayContext.Provider value={play}>
+          <div className={cx('game', 'play', wide ? 'is-wide' : 'is-narrow', `mode-${view.mode}`)}>
+            <header className="topbar">
+              <button className="logo-btn" onClick={onLeave} aria-label="Back to start">
+                <Logo compact={!wide} />
+              </button>
+              <div className="topbar-title">
+                <span className="topbar-game">You vs {opp?.name ?? 'Forge AI'}</span>
+                <span className="topbar-sub">{[gameNo, myDeck].filter(Boolean).join(' · ') || 'Playing live'}</span>
+              </div>
+              <span className={cx('live-pill', connected ? 'is-open' : status === 'connecting' ? 'is-connecting' : 'is-error')} title={snap.detail ?? undefined}>
+                <span className="live-dot" />
+                {connected ? 'Connected' : status === 'connecting' ? 'Connecting' : status === 'refused' ? 'Seat taken' : 'Disconnected'}
+              </span>
+              {!connected && status !== 'connecting' && (
+                <button className="btn btn-quiet btn-sm" onClick={() => session.reconnect()}>
+                  Reconnect
+                </button>
+              )}
+              <span className="grow" />
+              {wide && (
+                <button className={cx('btn btn-sm', coachOpen ? 'btn-quiet is-on' : 'btn-quiet')} onClick={() => {
+                  setCoachOpen((o) => {
+                    writeLS(COACH_OPEN_KEY, o ? '0' : '1');
+                    return !o;
+                  });
+                }} aria-pressed={coachOpen}>
+                  <IconSpark size={14} /> Coach
+                </button>
+              )}
+              <button className="icon-btn" onClick={() => setConcede(true)} aria-label="Concede" title="Concede" disabled={!connected || !!over || !state}>
+                <IconFlag size={17} />
+              </button>
+              <button className="icon-btn" onClick={onSettings} aria-label="Settings">
+                <IconGear size={18} />
+              </button>
+              <button className="icon-btn" onClick={onLeave} aria-label="Leave game">
+                <IconX size={18} />
+              </button>
+            </header>
+            {!connected && snap.detail && status !== 'connecting' && <div className="live-banner play-banner">{snap.detail}</div>}
+
+            {wide ? (
+              <div className={cx('play-cols', coachOpen && 'has-coach')}>
+                <main className="play-main">
+                  <div className="play-board">{board}</div>
+                  {dock}
+                </main>
+                {coachOpen && <aside className="col col-coach">{coach}</aside>}
+              </div>
+            ) : (
+              <>
+                <div className="phone-tabs seg">
+                  <button className={cx(phoneTab === 'board' && 'is-on')} onClick={() => setPhoneTab('board')}>
+                    Board
+                  </button>
+                  <button className={cx(phoneTab === 'coach' && 'is-on')} onClick={() => setPhoneTab('coach')}>
+                    <IconSpark size={13} /> Coach
+                  </button>
+                </div>
+                <main className="phone-main play-phone-main">{phoneTab === 'board' ? board : coach}</main>
+                {dock}
+              </>
+            )}
+
+            {over && (
+              <GameOverCard
+                over={over}
+                seat={seat}
+                oppName={opp?.name ?? 'Forge AI'}
+                connected={connected}
+                waitingNext={waitingNext}
+                onReview={() => log && onReview(log)}
+                onNext={() => {
+                  setWaitingNext(true);
+                  act({ action: 'newGame', mode: 'continue' });
+                }}
+                onRestart={() => {
+                  setWaitingNext(true);
+                  act({ action: 'newGame', mode: 'restart' });
+                }}
+                onLeave={onLeave}
+              />
+            )}
+          </div>
+          {ask && (
+            <AskDialog ask={ask} state={state} onAnswer={(value: AnswerValue) => void session.answer(ask.askId, value)} onPreviewCard={previewId} />
+          )}
+          {!ask && !over && input && openingKind(input, state) && (
+            <OpeningDialog key={input.prompt} input={input} state={state} seat={seat} onChoose={(b) => (b === 'ok' ? pressOk() : pressCancel())} onPreviewCard={previewId} />
+          )}
+          <CardDetail card={detail?.card ?? null} state={detail?.state ?? null} seat={seat ?? 0} onClose={() => setDetail(null)} />
+          {wide && <HoverPreview name={hover.name} rect={hover.rect} />}
+          <GuideSheet open={guidesOpen} onClose={() => setGuidesOpen(false)} onChange={() => setGuideName(guideNameNow())} />
+          <Sheet open={help} onClose={() => setHelp(false)} title="Keyboard" width={460}>
+            <dl className="keys-list">
+              {PLAY_KEYS.map((k) => (
+                <div key={k.chord} className="keys-row">
+                  <dt>
+                    <kbd>{k.chord}</kbd>
+                  </dt>
+                  <dd>{k.what}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="tiny muted">Right-click a card (or press and hold on a phone) to read it without playing it.</p>
+          </Sheet>
+          <Sheet
+            open={concede}
+            onClose={() => setConcede(false)}
+            title="Concede this game?"
+            width={420}
+            footer={
+              <>
+                <button className="btn btn-quiet" onClick={() => setConcede(false)}>
+                  Keep playing
+                </button>
+                <button
+                  className="btn btn-stop"
+                  onClick={() => {
+                    setConcede(false);
+                    act({ action: 'concede' });
+                  }}
+                >
+                  Concede
+                </button>
+              </>
+            }
+          >
+            <p className="muted">There’s no undo. You can still review the game afterwards.</p>
+          </Sheet>
+        </PlayContext.Provider>
+      </BoardStateRef.Provider>
+    </CardActionsContext.Provider>
+  );
+}

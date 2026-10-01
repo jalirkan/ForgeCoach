@@ -59,16 +59,21 @@ export function GameView({
   title,
   live,
   initialDecision,
+  initialTab = 'moment',
   onIndexChange,
   onClose,
+  closeLabel,
   onSettings,
 }: {
   log: GameLog;
   title: string;
   live: LiveInfo | null;
   initialDecision: number | null;
+  initialTab?: CoachTab;
   onIndexChange?: (i: number) => void;
   onClose: () => void;
+  /** Shown as a labelled button instead of the bare ✕ (e.g. "Back to the table"). */
+  closeLabel?: string;
   onSettings: () => void;
 }) {
   const frames = useMemo(() => stateFrames(log), [log]);
@@ -82,7 +87,7 @@ export function GameView({
     initialDecision !== null ? Math.min(Math.max(0, initialDecision), Math.max(0, decisions.length - 1)) : live ? Math.max(0, decisions.length - 1) : 0,
   );
   const [fIdx, setFIdx] = useState(() => (live ? Math.max(0, frames.length - 1) : 0));
-  const [tab, setTab] = useState<CoachTab>('moment');
+  const [tab, setTab] = useState<CoachTab>(initialTab);
   const [phoneTab, setPhoneTab] = useState<'board' | 'coach'>('board');
   const [listOpen, setListOpen] = useState(false);
   const [guidesOpen, setGuidesOpen] = useState(false);
@@ -270,9 +275,15 @@ export function GameView({
             <button className="icon-btn" onClick={onSettings} aria-label="Settings">
               <IconGear size={18} />
             </button>
-            <button className="icon-btn" onClick={onClose} aria-label="Close game">
-              <IconX size={18} />
-            </button>
+            {closeLabel ? (
+              <button className="btn btn-primary btn-sm" onClick={onClose}>
+                {closeLabel}
+              </button>
+            ) : (
+              <button className="icon-btn" onClick={onClose} aria-label="Close game">
+                <IconX size={18} />
+              </button>
+            )}
           </header>
           {live && live.detail && !wide && <div className="live-banner">{live.detail}</div>}
 

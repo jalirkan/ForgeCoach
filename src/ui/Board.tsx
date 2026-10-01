@@ -12,7 +12,7 @@ import type { GameLog } from '../log.ts';
 import { cardIndex, cardName, phaseLabel } from '../decisions.ts';
 import { manaSummary, turnFacts, type ManaSource } from '../state.ts';
 import { cachedMap, useCardsVersion } from './cardData.ts';
-import { useCardActions } from './cardContext.ts';
+import { useCardActions, usePlay } from './cardContext.ts';
 import { CardBack, CardTile, LandChip, displayName } from './CardTile.tsx';
 import { IconHeart, IconLayers, IconShield, IconSword } from './Icons.tsx';
 import { Pip } from './Mana.tsx';
@@ -24,9 +24,11 @@ interface BoardProps {
   state: GameStateBody;
   frameIndex: number;
   seat: number;
+  /** Play mode draws the hand in its own dock. */
+  hideHand?: boolean;
 }
 
-export function Board({ log, state, frameIndex, seat }: BoardProps) {
+export function Board({ log, state, frameIndex, seat, hideHand }: BoardProps) {
   const me = state.players.find((p) => p.id === seat) ?? state.players[0];
   const opps = state.players.filter((p) => p !== me);
   const byId = useMemo(() => {
@@ -48,7 +50,7 @@ export function Board({ log, state, frameIndex, seat }: BoardProps) {
         <PlayerArea key={p.id} player={p} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} top />
       ))}
       <Midline state={state} seat={seat} />
-      <PlayerArea player={me} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} />
+      <PlayerArea player={me} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} hideHand={hideHand} />
     </div>
   );
 }
@@ -91,6 +93,7 @@ const PlayerArea = memo(function PlayerArea({
   seat,
   byId,
   top,
+  hideHand,
 }: {
   player: PlayerState;
   state: GameStateBody;
@@ -99,6 +102,7 @@ const PlayerArea = memo(function PlayerArea({
   seat: number;
   byId: Map<number, Card>;
   top?: boolean;
+  hideHand?: boolean;
 }) {
   const { lands, creatures, other } = useMemo(() => groupBattlefield(player, byId), [player, byId]);
   const mine = player.id === seat;
@@ -134,7 +138,7 @@ const PlayerArea = memo(function PlayerArea({
         {empty ? <div className="bf-empty">No permanents</div> : rows}
       </div>
       {!top && <PlayerHeader player={player} state={state} log={log} frameIndex={frameIndex} seat={seat} />}
-      {mine && <Hand player={player} />}
+      {mine && !hideHand && <Hand player={player} />}
     </section>
   );
 });
@@ -184,6 +188,8 @@ function PlayerHeader({
   seat: number;
 }) {
   const v = useCardsVersion();
+  const play = usePlay();
+  const targetable = play ? play.playerMark(player.id) : false;
   const [zone, setZone] = useState<'graveyard' | 'exile' | 'command' | null>(null);
   const mine = player.id === seat;
   const sources = useMemo(() => {
@@ -206,9 +212,21 @@ function PlayerHeader({
   const z = player.zones;
   const otherCounters = Object.entries(player.counters ?? {}).filter(([k, n]) => n > 0 && k !== 'POISON');
   return (
-    <div className={cx('phead', active && 'is-active')}>
+    <div className={cx('phead', active && 'is-active', targetable && 'is-targetable')}>
       <div className="phead-id">
-        <span className={cx('avatar', mine ? 'avatar-me' : 'avatar-opp')}>{(player.name || '?').charAt(0)}</span>
+        {play ? (
+          <button
+            type="button"
+            className={cx('avatar', mine ? 'avatar-me' : 'avatar-opp', targetable && 'is-select')}
+            aria-label={`Choose ${mine ? 'yourself' : player.name}`}
+            data-player-id={player.id}
+            onClick={() => play.clickPlayer(player.id)}
+          >
+            {(player.name || '?').charAt(0)}
+          </button>
+        ) : (
+          <span className={cx('avatar', mine ? 'avatar-me' : 'avatar-opp')}>{(player.name || '?').charAt(0)}</span>
+        )}
         <div className="phead-names">
           <div className="phead-name">
             {mine ? 'You' : player.name}
@@ -217,7 +235,7 @@ function PlayerHeader({
           <div className="phead-tags">
             {active && <span className="tag tag-turn">{mine ? 'Your turn' : 'Their turn'}</span>}
             {priority && <span className="tag tag-prio">Priority</span>}
-            {facts && mine && facts.landPlayed !== null && (
+            {facts && mine && active && facts.landPlayed !== null && (
               <span className={cx('tag', facts.landPlayed ? 'tag-muted' : 'tag-ok')}>
                 {facts.landPlayed ? 'Land played' : 'Land drop open'}
               </span>
@@ -452,6 +470,12 @@ function StackPanel({ state, seat }: { state: GameStateBody; seat: number }) {
 
 function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {
   const idx = useMemo(() => cardIndex(state), [state]);
+  const play = usePlay();
+  // In play, blockers you have clicked but not yet confirmed (the engine reports them on confirm).
+  const blockersOf = (b: { attackerIds: number[]; blockerIds: number[] }) => {
+    const extra = play ? b.attackerIds.flatMap((a) => play.blockersFor(a)).filter((id) => !b.blockerIds.includes(id)) : [];
+    return [...b.blockerIds, ...extra];
+  };
   const defenderName = (d: { kind: 'player' | 'card'; id: number } | null) => {
     if (!d) return 'someone';
     if (d.kind === 'player') return d.id === seat ? 'You' : state.players.find((p) => p.id === d.id)?.name ?? 'Opponent';
@@ -474,12 +498,12 @@ function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {
               <span>→</span> <b>{defenderName(b.defender)}</b>
             </div>
             <div className="combat-side combat-blk">
-              {b.blockerIds.length === 0 ? (
+              {blockersOf(b).length === 0 ? (
                 <span className="muted">unblocked</span>
               ) : (
                 <>
                   <IconShield size={12} />
-                  {b.blockerIds.map((id) => (
+                  {blockersOf(b).map((id) => (
                     <CardRef key={id} card={idx.get(id)} state={state} />
                   ))}
                 </>

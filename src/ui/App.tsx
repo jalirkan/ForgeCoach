@@ -2,10 +2,13 @@
  * ForgeCoach — ui/App.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Top level: which game is loaded (sample, file, live) and the global
- * surfaces (settings, drag-and-drop).
+ * Top level: playing a game against Forge (the seat), or a loaded game
+ * (sample, file, live follow) in the replay view, plus the global surfaces
+ * (settings, drag-and-drop).
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+// The base stylesheet first, so feature sheets (play.css, ask.css) layer on top of it.
+import './styles.css';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { GameLog } from '../log.ts';
 import { readLogBytes } from '../log.ts';
 import { connectLive, type LiveHandle } from '../live.ts';
@@ -14,8 +17,26 @@ import { LoadScreen, SAMPLES } from './LoadScreen.tsx';
 import { SettingsDialog } from './SettingsDialog.tsx';
 import { IconUpload } from './Icons.tsx';
 import { readLS, writeLS } from './util.ts';
+import { DEFAULT_SEAT_URL } from '../play/session.ts';
+import { usePlaySession } from './play/usePlaySession.ts';
+import { PlayView } from './play/PlayView.tsx';
+
+// #ask-gallery: every ask kind rendered from fixtures (a design/QA page); lazy so the fixtures stay out of the main bundle.
+const AskGallery = lazy(() => import('./play/AskGallery.tsx'));
 
 const LAST_SAMPLE_KEY = 'forgecoach.lastSample';
+const SEAT_URL_KEY = 'forgecoach.seatUrl';
+
+/** `?seat=ws://…/ws` pre-fills (and remembers) the engine URL. */
+function initialSeatUrl(): string {
+  try {
+    const q = new URLSearchParams(location.search).get('seat');
+    if (q && /^wss?:\/\//.test(q)) return q;
+  } catch {
+    /* ignore */
+  }
+  return readLS(SEAT_URL_KEY) || DEFAULT_SEAT_URL;
+}
 
 function friendly(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
@@ -40,6 +61,23 @@ function parseHash(): { sample: string | null; d: number | null } {
 }
 
 export function App() {
+  const [gallery, setGallery] = useState(() => location.hash === '#ask-gallery');
+  useEffect(() => {
+    const on = () => setGallery(location.hash === '#ask-gallery');
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+  if (gallery) {
+    return (
+      <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>
+        <AskGallery />
+      </Suspense>
+    );
+  }
+  return <MainApp />;
+}
+
+function MainApp() {
   const [log, setLog] = useState<GameLog | null>(null);
   const [title, setTitle] = useState('');
   const [sampleId, setSampleId] = useState<string | null>(null);
@@ -52,6 +90,36 @@ export function App() {
   const [lastSample, setLastSample] = useState<string | null>(() => readLS(LAST_SAMPLE_KEY));
   const liveRef = useRef<LiveHandle | null>(null);
   const loadSeq = useRef(0);
+
+  // ---- Play: one seat connection while playUrl is set.
+  const [seatUrl, setSeatUrl] = useState(initialSeatUrl);
+  const [playUrl, setPlayUrl] = useState<string | null>(null);
+  const [playStarted, setPlayStarted] = useState(false);
+  const [review, setReview] = useState<GameLog | null>(null);
+  const play = usePlaySession(playUrl);
+  const snap = play.snapshot;
+  useEffect(() => {
+    if (playUrl && snap && (snap.state || snap.hello)) setPlayStarted(true);
+  }, [playUrl, snap]);
+  const playRef = useRef(play);
+  playRef.current = play;
+  const startPlay = useCallback((url: string) => {
+    // Same engine: retry now on the session we have (its URL is its identity).
+    if (playRef.current.session && playRef.current.snapshot?.url === url) {
+      playRef.current.session.reconnect();
+      return;
+    }
+    writeLS(SEAT_URL_KEY, url === DEFAULT_SEAT_URL ? null : url);
+    setSeatUrl(url);
+    setPlayStarted(false);
+    setReview(null);
+    setPlayUrl(url);
+  }, []);
+  const stopPlay = useCallback(() => {
+    setPlayUrl(null);
+    setPlayStarted(false);
+    setReview(null);
+  }, []);
 
   const stopLive = useCallback(() => {
     liveRef.current?.close();
@@ -70,6 +138,7 @@ export function App() {
   const loadSample = useCallback(
     async (id: string, d: number | null = null) => {
       stopLive();
+      setPlayUrl(null);
       const seq = ++loadSeq.current;
       setLoading(id);
       setError(null);
@@ -94,6 +163,7 @@ export function App() {
   const loadFile = useCallback(
     async (f: File) => {
       stopLive();
+      setPlayUrl(null);
       const seq = ++loadSeq.current;
       setLoading('file');
       setError(null);
@@ -118,6 +188,7 @@ export function App() {
   const startLive = useCallback(
     (url: string) => {
       stopLive();
+      setPlayUrl(null);
       setError(null);
       setLive({ url, status: 'connecting' });
       try {
@@ -144,6 +215,15 @@ export function App() {
     setSampleId(null);
     history.replaceState(null, '', location.pathname + location.search);
   }, [stopLive]);
+
+  // ?play=1 connects to the engine straight away (bookmarkable).
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(location.search).get('play') === '1') startPlay(initialSeatUrl());
+    } catch {
+      /* ignore */
+    }
+  }, [startPlay]);
 
   // Deep link: #sample=<id>&d=<decision>
   useEffect(() => {
@@ -197,32 +277,59 @@ export function App() {
   }, [loadFile]);
 
   const showGame = log !== null || (live !== null && live.status !== 'error');
+  const playing = playUrl !== null && playStarted && play.session && snap;
+  let main: ReactNode;
+  if (playing && review) {
+    main = (
+      <GameView
+        key={`review:${review.header.gameId}@${review.header.startedAt}`}
+        log={review}
+        title={`Review · ${review.hello?.gameNumber ? `game ${review.hello.gameNumber}` : review.header.gameId}`}
+        live={null}
+        initialDecision={null}
+        initialTab="review"
+        onClose={() => setReview(null)}
+        closeLabel="Back to the table"
+        onSettings={() => setSettingsOpen(true)}
+      />
+    );
+  } else if (playing) {
+    main = <PlayView session={play.session!} snapshot={snap!} onReview={setReview} onLeave={stopPlay} onSettings={() => setSettingsOpen(true)} />;
+  } else if (showGame && log) {
+    main = (
+      <GameView
+        key={sampleId ?? title + (live ? ':live' : '')}
+        log={log}
+        title={title}
+        live={live}
+        initialDecision={initialDecision}
+        onIndexChange={onIndexChange}
+        onClose={close}
+        onSettings={() => setSettingsOpen(true)}
+      />
+    );
+  } else if (live && live.status !== 'error') {
+    main = <LiveWaiting live={live} onCancel={close} />;
+  } else {
+    main = (
+      <LoadScreen
+        onSample={(id) => void loadSample(id)}
+        onFile={(f) => void loadFile(f)}
+        onLive={startLive}
+        onPlay={startPlay}
+        onCancelPlay={stopPlay}
+        seatUrl={seatUrl}
+        play={playUrl && snap ? { status: snap.status, detail: snap.detail, attempts: snap.attempts } : playUrl ? { status: 'connecting', detail: null, attempts: 0 } : null}
+        onSettings={() => setSettingsOpen(true)}
+        lastSample={lastSample}
+        loading={loading}
+        error={error ?? (live?.status === 'error' ? live.detail ?? 'Couldn’t reach the live game.' : null)}
+      />
+    );
+  }
   return (
     <>
-      {showGame && log ? (
-        <GameView
-          key={sampleId ?? title + (live ? ':live' : '')}
-          log={log}
-          title={title}
-          live={live}
-          initialDecision={initialDecision}
-          onIndexChange={onIndexChange}
-          onClose={close}
-          onSettings={() => setSettingsOpen(true)}
-        />
-      ) : live && live.status !== 'error' ? (
-        <LiveWaiting live={live} onCancel={close} />
-      ) : (
-        <LoadScreen
-          onSample={(id) => void loadSample(id)}
-          onFile={(f) => void loadFile(f)}
-          onLive={startLive}
-          onSettings={() => setSettingsOpen(true)}
-          lastSample={lastSample}
-          loading={loading}
-          error={error ?? (live?.status === 'error' ? live.detail ?? 'Couldn’t reach the live game.' : null)}
-        />
-      )}
+      {main}
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {dragging && (
         <div className="drop-overlay" aria-hidden="true">

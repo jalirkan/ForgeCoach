@@ -1,0 +1,393 @@
+/*
+ * ForgeCoach — play/session.test.ts
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The seat session against a fake WebSocket fed from real mtg-table
+ * recordings (fixtures/games/human-ability-42 and human-amount-7, copied
+ * gzipped into ./testdata, and public/samples/human-auto-42): every s2c frame
+ * is delivered as the bridge sent it, and every c2s frame the recorded seat
+ * sent is re-sent through the session's own act()/answer() — so the guard is
+ * held against every act a real seat made, and the log the session grows is
+ * compared line for line with the recording.
+ */
+import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { parseLog, type GameLog, type LoggedFrame } from '../log.ts';
+import { extractDecisions } from '../decisions.ts';
+import type { ActBody, AnswerBody, AskBody, OverBody } from '../protocol.ts';
+import {
+  connectSeat,
+  REFUSED_DETAIL,
+  SEAT_REFUSED_CLOSE_CODE,
+  type PlaySnapshot,
+  type SeatOptions,
+  type SeatSocket,
+} from './session.ts';
+import * as A from './acts.ts';
+
+function load(url: URL): GameLog {
+  return parseLog(gunzipSync(readFileSync(url)).toString('utf8'));
+}
+const RECORDINGS: Record<string, GameLog> = {
+  'human-ability-42': load(new URL('./testdata/human-ability-42.jsonl.gz', import.meta.url)),
+  'human-amount-7': load(new URL('./testdata/human-amount-7.jsonl.gz', import.meta.url)),
+  'human-auto-42': load(new URL('../../public/samples/human-auto-42.jsonl.gz', import.meta.url)),
+};
+
+class FakeSocket implements SeatSocket {
+  readyState = 0;
+  onopen: SeatSocket['onopen'] = null;
+  onmessage: SeatSocket['onmessage'] = null;
+  onclose: SeatSocket['onclose'] = null;
+  onerror: SeatSocket['onerror'] = null;
+  readonly sent: LoggedFrame[] = [];
+  closed: number | null = null;
+  constructor(readonly url: string) {}
+  send(data: string) {
+    this.sent.push(JSON.parse(data) as LoggedFrame);
+  }
+  close(code = 1000) {
+    this.closed = code;
+    this.readyState = 3;
+  }
+  open() {
+    this.readyState = 1;
+    this.onopen?.({});
+  }
+  msg(f: object) {
+    this.onmessage?.({ data: JSON.stringify(f) });
+  }
+  drop(code = 1006, reason = '') {
+    this.readyState = 3;
+    this.onclose?.({ code, reason });
+  }
+  sentOf(type: string) {
+    return this.sent.filter((f) => f.type === type);
+  }
+}
+
+function harness(opts: SeatOptions = {}) {
+  const sockets: FakeSocket[] = [];
+  const queue: (() => void)[] = [];
+  const session = connectSeat('ws://127.0.0.1:8642/ws', {
+    socketFactory: (u) => {
+      const s = new FakeSocket(u);
+      sockets.push(s);
+      return s;
+    },
+    schedule: (fn) => queue.push(fn),
+    pingMs: 0,
+    ...opts,
+  });
+  const flush = () => {
+    while (queue.length) queue.shift()!();
+  };
+  return { session, sockets, sock: () => sockets[sockets.length - 1]!, queue, flush };
+}
+
+/** A recorded s2c line as it was on the wire (no `dir`). */
+const wire = (f: LoggedFrame) => {
+  const { dir: _dir, ...rest } = f;
+  return rest;
+};
+
+/** Feeds a recording through the session; returns what was refused. */
+function replay(h: ReturnType<typeof harness>, rec: GameLog, gameId?: string) {
+  const refused: string[] = [];
+  for (const f of rec.frames) {
+    if (f.dir === 'c2s') {
+      if (f.type === 'act') {
+        if (!h.session.act(f.body as ActBody)) refused.push(`act ${JSON.stringify(f.body)}`);
+      } else if (f.type === 'answer') {
+        const b = f.body as AnswerBody;
+        if (!h.session.answer(b.askId, b.value)) refused.push(`answer ${b.askId}`);
+      } else if (f.type === 'resync') {
+        h.session.resync();
+      }
+    } else {
+      const w = wire(f) as LoggedFrame;
+      if (gameId !== undefined) {
+        // Re-id a recording as another game of the same match (M38).
+        const body = w.body as { gameId?: string };
+        if (typeof body.gameId === 'string') w.body = { ...body, gameId } as typeof w.body;
+      }
+      h.sock().msg(w);
+    }
+  }
+  return refused;
+}
+
+const key = (f: LoggedFrame) => `${f.dir}:${f.type}:${JSON.stringify(f.body)}`;
+
+describe('connectSeat — replaying real recordings through a fake bridge', () => {
+  for (const [name, rec] of Object.entries(RECORDINGS)) {
+    it(`${name}: every recorded act/answer passes the guard and the log matches the recording`, () => {
+      const h = harness();
+      expect(h.session.snapshot().status).toBe('connecting');
+      h.sock().open();
+      expect(h.session.snapshot().status).toBe('open');
+      // A first connect sends nothing: no handshake from the client, no resync (§2.1, ws.ts).
+      expect(h.sock().sent).toEqual([]);
+
+      const refused = replay(h, rec);
+      expect(refused).toEqual([]);
+
+      // What went out is exactly what the recorded seat sent, numbered from 1.
+      const recC2s = rec.frames.filter((f) => f.dir === 'c2s');
+      expect(h.sock().sent.map((f) => `${f.type}:${JSON.stringify(f.body)}`)).toEqual(
+        recC2s.map((f) => `${f.type}:${JSON.stringify(f.body)}`),
+      );
+      expect(h.sock().sent.map((f) => f.seq)).toEqual(recC2s.map((_, i) => i + 1));
+      expect(h.sock().sent.every((f) => f.v === 1 && typeof f.t === 'number')).toBe(true);
+
+      const s = h.session.snapshot();
+      expect(s.over).toEqual(rec.over);
+      expect(s.ask).toBeNull();
+      expect(s.seat).toBe(rec.seat);
+      expect(s.hello?.gameId).toBe(rec.hello?.gameId);
+      const log = s.log!;
+      expect(log.header.kind).toBe('session');
+      expect(log.header.recordedBy).toBe('client');
+      expect(log.header.seat).toBe(rec.seat);
+      expect(log.frames.map(key)).toEqual(rec.frames.map(key));
+
+      // The coach reads the live log exactly as it reads the file.
+      const strip = (d: ReturnType<typeof extractDecisions>) =>
+        d.map((x) => ({ kind: x.kind, label: x.label, actions: x.actions, frameIndex: x.frameIndex }));
+      expect(strip(extractDecisions(log))).toEqual(strip(extractDecisions(rec)));
+    });
+  }
+
+  it('an ask is cleared by our own answer, and a second answer is never sent', () => {
+    const rec = RECORDINGS['human-ability-42']!;
+    const h = harness();
+    h.sock().open();
+    const firstAsk = rec.frames.findIndex((f) => f.type === 'ask');
+    for (const f of rec.frames.slice(0, firstAsk + 1)) {
+      if (f.dir === 's2c') h.sock().msg(wire(f));
+      else if (f.type === 'act') h.session.act(f.body as ActBody);
+      else if (f.type === 'answer') h.session.answer((f.body as AnswerBody).askId, (f.body as AnswerBody).value);
+    }
+    const ask = h.session.snapshot().ask as AskBody;
+    expect(ask).not.toBeNull();
+
+    // The board is modal while the question is open; concede stays reachable (§5.4).
+    expect(h.session.act(A.ok())).toBe(false);
+    expect(h.session.snapshot().notices.at(-1)).toMatchObject({ source: 'client', title: 'Not sent' });
+    expect(h.session.answer('nope', null)).toBe(false);
+
+    const before = h.sock().sent.length;
+    expect(h.session.answer(ask.askId, null)).toBe(true);
+    expect(h.session.snapshot().ask).toBeNull();
+    expect(h.session.answer(ask.askId, null)).toBe(false);
+    expect(h.sock().sent.length).toBe(before + 1);
+
+    // A verbatim re-delivery of the answered ask (a resync, M10) does not reopen it.
+    h.sock().msg(wire(rec.frames[firstAsk]!));
+    expect(h.session.snapshot().ask).toBeNull();
+    expect(h.session.act(A.ok())).toBe(true);
+  });
+});
+
+describe('connectSeat — guard', () => {
+  const hello = { v: 1, seq: 1, t: 1, type: 'hello_ok', body: { gameId: 'g', you: 0, seed: 1, forgeVersion: 'x', forgeJarSha256: 'y', unsupportedCards: [], players: [] } };
+  const input = { v: 1, seq: 3, t: 3, type: 'input', body: { prompt: 'p', focusCardId: null, focusCard: null, buttons: { ok: { label: 'OK', enabled: true }, cancel: { label: 'Cancel', enabled: false } }, selectable: { cardIds: [], min: 0, max: 0, mode: 'none' }, highlighted: [], weak: [], openZones: [] } };
+
+  it('drops acts before the first input (M42), except concede; newGame only after over', () => {
+    const h = harness();
+    expect(h.session.act(A.ok())).toBe(false); // not connected
+    h.sock().open();
+    h.sock().msg(hello);
+    expect(h.session.snapshot().inputSeen).toBe(false);
+    expect(h.session.act(A.clickCard(5))).toBe(false);
+    expect(h.session.act(A.newGame('continue'))).toBe(false);
+    h.sock().msg(input);
+    expect(h.session.act(A.clickCard(5))).toBe(true);
+    expect(h.session.act(A.newGame('continue'))).toBe(false);
+    h.sock().msg({ v: 1, seq: 4, t: 4, type: 'over', body: { winner: 0, reason: 'AllOpponentsLost', matchOver: false } });
+    expect(h.session.act(A.ok())).toBe(false);
+    expect(h.session.act(A.newGameAfter(h.session.snapshot().over as OverBody))).toBe(true);
+    expect(h.sock().sentOf('act').map((f) => f.body)).toEqual([
+      { action: 'clickCard', cardId: 5 },
+      { action: 'newGame', mode: 'continue' },
+    ]);
+    // The newGame after `over` is not written into the finished game's log (§8.4).
+    expect(h.session.snapshot().log!.frames.at(-1)!.type).toBe('over');
+  });
+
+  it('builders spell every act as §2.2 does', () => {
+    expect(A.yieldTo('marker', 'END_OF_TURN', 'opp')).toEqual({ action: 'yieldTo', kind: 'marker', phase: 'END_OF_TURN', turn: 'opp' });
+    expect(A.yieldTo('endOfTurn')).toEqual({ action: 'yieldTo', kind: 'endOfTurn' });
+    expect(A.setPhaseStop('MAIN1', 'own', true)).toEqual({ action: 'setPhaseStop', phase: 'MAIN1', turn: 'own', stop: true });
+    expect(A.clickAbility(3, 7)).toEqual({ action: 'clickAbility', cardId: 3, abilityId: 7 });
+    expect(A.newGameAfter({ winner: 1, reason: null, matchOver: true })).toEqual({ action: 'newGame', mode: 'restart' });
+    expect([A.ok(), A.cancel(), A.pass(), A.undo(), A.alphaStrike(), A.concede(), A.nextGame()].map((a) => a.action)).toEqual([
+      'buttonOk', 'buttonCancel', 'passPriority', 'undo', 'alphaStrike', 'concede', 'nextGame',
+    ]);
+  });
+});
+
+describe('connectSeat — connection', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('answers ping with pong, which is never logged', () => {
+    const h = harness();
+    h.sock().open();
+    h.sock().msg({ v: 1, seq: 1, t: 1, type: 'hello_ok', body: { gameId: 'g', you: 0, seed: 1, forgeVersion: 'x', forgeJarSha256: 'y', unsupportedCards: [], players: [] } });
+    h.sock().msg({ v: 1, seq: 0, t: 2, type: 'ping', body: {} });
+    expect(h.sock().sentOf('pong')).toHaveLength(1);
+    h.sock().msg({ v: 1, seq: 0, t: 3, type: 'pong', body: {} });
+    expect(h.session.snapshot().log!.frames.map((f) => f.type)).toEqual(['hello_ok']);
+  });
+
+  it('sends keepalive pings while open', () => {
+    const h = harness({ pingMs: 1000 });
+    h.sock().open();
+    vi.advanceTimersByTime(3500);
+    expect(h.sock().sentOf('ping')).toHaveLength(3);
+    h.sock().drop(1006);
+    vi.advanceTimersByTime(100);
+    expect(h.sockets[0]!.sentOf('ping')).toHaveLength(3);
+  });
+
+  it('close 4001 is "refused" with the board-tab explanation and is not retried', () => {
+    const h = harness();
+    h.sock().open();
+    h.sock().drop(SEAT_REFUSED_CLOSE_CODE, 'another client is connected');
+    const s = h.session.snapshot();
+    expect(s.status).toBe('refused');
+    expect(s.detail).toBe(REFUSED_DETAIL);
+    vi.advanceTimersByTime(60_000);
+    expect(h.sockets).toHaveLength(1);
+    h.session.reconnect();
+    expect(h.sockets).toHaveLength(2);
+    expect(h.session.snapshot().status).toBe('connecting');
+  });
+
+  it('an unreachable engine explains how to start it, retries with backoff, and gives up', () => {
+    const h = harness();
+    h.sock().drop(1006);
+    let s = h.session.snapshot();
+    expect(s.status).toBe('error');
+    expect(s.detail).toMatch(/\.\/scripts\/play\.sh --engine-only/);
+    expect(s.detail).toMatch(/scripts\/play\.sh/);
+    expect(s.detail).toMatch(/local network/);
+    expect(s.detail).toMatch(/Retrying in 0\.3 s/);
+    const waits: number[] = [];
+    for (let i = 0; i < 20 && h.session.snapshot().status === 'error'; i++) {
+      const n = h.sockets.length;
+      let t = 0;
+      while (h.sockets.length === n) {
+        vi.advanceTimersByTime(50);
+        t += 50;
+      }
+      waits.push(t);
+      expect(h.session.snapshot().status).toBe('connecting');
+      h.sock().drop(1006);
+    }
+    expect(waits.slice(0, 6)).toEqual([250, 500, 1000, 2000, 4000, 5000]);
+    s = h.session.snapshot();
+    expect(s.status).toBe('closed');
+    expect(h.sockets).toHaveLength(12);
+    expect(s.detail).toMatch(/Gave up after 12 attempts/);
+  });
+
+  it('reconnects after a drop, resyncs, and does not duplicate re-delivered frames', () => {
+    const rec = RECORDINGS['human-amount-7']!;
+    const h = harness();
+    h.sock().open();
+    const cut = rec.frames.findIndex((f, i) => i > 50 && f.type === 'state');
+    replay(h, { ...rec, frames: rec.frames.slice(0, cut + 1) });
+    const sentBefore = h.sock().sent.length;
+    h.sock().drop(1006);
+    expect(h.session.snapshot().status).toBe('error');
+    expect(h.session.act(A.ok())).toBe(false); // never queued across a disconnect
+    vi.advanceTimersByTime(250);
+    expect(h.sockets).toHaveLength(2);
+    h.sock().open();
+    // §2.4: a RE-connect sends resync.
+    expect(h.sock().sent.map((f) => f.type)).toEqual(['resync']);
+    expect(h.sock().sent[0]!.seq).toBe(sentBefore + 1);
+    // The bridge re-delivers hello_ok and the last state verbatim (M10).
+    const lastState = rec.frames[cut]!;
+    h.sock().msg(wire(rec.frames[0]!));
+    h.sock().msg(wire(lastState));
+    const log = h.session.snapshot().log!;
+    expect(log.frames.filter((f) => f.type === 'hello_ok')).toHaveLength(1);
+    expect(log.frames.filter((f) => f.seq === lastState.seq && f.type === 'state')).toHaveLength(1);
+    expect(log.frames.at(-1)).toMatchObject({ dir: 'c2s', type: 'resync' });
+    // Continue the game on the new socket to the end.
+    const refused = replay(h, { ...rec, frames: rec.frames.slice(cut + 1) });
+    expect(refused).toEqual([]);
+    expect(h.session.snapshot().over).toEqual(rec.over);
+    // The server closing after `over` is the end, not a hiccup.
+    h.sock().drop(1000, 'game over');
+    expect(h.session.snapshot().status).toBe('closed');
+    vi.advanceTimersByTime(60_000);
+    expect(h.sockets).toHaveLength(2);
+  });
+
+  it('a new game in the match starts a new log and keeps the finished one', () => {
+    const g1 = RECORDINGS['human-ability-42']!;
+    const g2 = RECORDINGS['human-amount-7']!;
+    const h = harness();
+    h.sock().open();
+    replay(h, g1);
+    expect(h.session.act(A.newGame('continue'))).toBe(true);
+    replay(h, { ...g2, frames: g2.frames.slice(0, 40) }, 'rerec-ability-42-g2');
+    const s = h.session.snapshot();
+    expect(s.previousLogs).toHaveLength(1);
+    expect(s.previousLogs[0]!.over).toEqual(g1.over);
+    expect(s.previousLogs[0]!.frames.length).toBe(g1.frames.length);
+    expect(s.hello?.gameId).toBe('rerec-ability-42-g2');
+    expect(s.over).toBeNull();
+    expect(s.log!.header.gameId).toBe('rerec-ability-42-g2');
+    expect(s.log!.frames[0]!.type).toBe('hello_ok');
+    expect(s.state?.gameId).toBe('rerec-ability-42-g2');
+  });
+
+  it('notifies subscribers once per scheduled flush, with a stable snapshot', () => {
+    const rec = RECORDINGS['human-amount-7']!;
+    const h = harness();
+    const seen: PlaySnapshot[] = [];
+    h.session.subscribe((s) => seen.push(s));
+    h.sock().open();
+    for (const f of rec.frames.slice(0, 30)) if (f.dir === 's2c') h.sock().msg(wire(f));
+    expect(seen).toHaveLength(0);
+    expect(h.queue).toHaveLength(1);
+    h.flush();
+    expect(seen).toHaveLength(1);
+    expect(h.session.snapshot()).toBe(seen[0]);
+    expect(h.session.snapshot()).toBe(h.session.snapshot());
+  });
+
+  it('reconnect() opens the new seat only after the old socket has closed (one seat, M13)', () => {
+    const h = harness();
+    h.sock().open();
+    h.session.reconnect();
+    const old = h.sockets[0]!;
+    expect(old.closed).toBe(1000);
+    expect(h.sockets).toHaveLength(1);
+    old.onclose?.({ code: 1000 });
+    expect(h.sockets).toHaveLength(2);
+    h.sock().open();
+    expect(h.sock().sent.map((f) => f.type)).toEqual(['resync']);
+    // …and does not wait forever for a close event that never comes.
+    h.session.reconnect();
+    expect(h.sockets).toHaveLength(2);
+    vi.advanceTimersByTime(1000);
+    expect(h.sockets).toHaveLength(3);
+  });
+
+  it('close() shuts the socket and stops retrying', () => {
+    const h = harness();
+    h.sock().open();
+    h.session.close();
+    expect(h.sockets[0]!.closed).toBe(1000);
+    expect(h.session.snapshot().status).toBe('closed');
+    vi.advanceTimersByTime(60_000);
+    expect(h.sockets).toHaveLength(1);
+  });
+});
