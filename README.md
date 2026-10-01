@@ -2,123 +2,119 @@
 
 **https://jalirkan.github.io/ForgeCoach/**
 
-ForgeCoach coaches your *Magic: The Gathering* games against the Forge AI. It
-reads the frame logs that [mtg-table](https://github.com/jalirkan/mtg-table)
-writes while you play — exact snapshots of the game as your seat saw it:
-every card, tapped or untapped, summoning-sick or not, mana in pool, what was
-cast this turn — and at each decision you made it asks Claude for the play it
-would have made, with the reason, the heuristic it follows and the trap to
-avoid. After the game it writes a short review: what went well and at most
-three things to fix.
+ForgeCoach is a 2D client for playing *Magic: The Gathering* against the Forge
+AI, with a coach beside the board. You play from the web page; the Forge engine
+runs on your own computer via [mtg-table](https://github.com/jalirkan/mtg-table).
+At any decision you can ask Claude for the play it would make, with the reason,
+the heuristic and the trap to avoid, and after the game you get a short review.
+The coach reads the engine's own state (what is tapped, what was cast, mana in
+pool), and card text comes from Scryfall rather than memory.
 
-Because the coach reads the engine's own state rather than a screenshot, it
-never has to guess what is tapped, and card text comes from Scryfall rather than
-from memory.
+Recorded games can be replayed and reviewed, and a game played elsewhere can be
+watched live (see below). It is a static page: there is no ForgeCoach server,
+and your API key, logs and deck guides stay in your browser.
 
-It is a static web page. There is no ForgeCoach server: your game log, your API
-key and your deck guides stay in your browser.
+## Play vs Forge
 
-## Using it
+1. In an mtg-table checkout, start the engine:
 
-### 1. Get a game log
+   ```bash
+   ./scripts/play.sh --engine-only
+   ```
 
-mtg-table writes one log per game, per seat, flushed line by line while the game
-runs:
+   Wait for `Engine ready on ws://127.0.0.1:8642/ws`. Match options come from
+   `play.sh`: `--deck`, `--ai-deck`, `--ai-profile`, `--mirror`, `--seed`,
+   `--games`.
+2. Close any mtg-table board tab. Only one window can hold your seat.
+3. Open ForgeCoach and click **Play vs Forge**. The engine address can be
+   changed there if you use another port.
 
-```
-<mtg-table>/var/games/<gameId>/frames.jsonl
-```
+Browser notes, because the page is `https://` and the engine is on your machine:
 
-Play a game the normal way (`./scripts/play.sh` in mtg-table) and the file is
-there when it ends; a three-game match writes `<gameId>/`, `<gameId>-g2/`,
-`<gameId>-g3/`. `ls -t var/games | head -1` is the game you just played.
+- **Chrome / Edge** ask *"Allow jalirkan.github.io to access apps and services
+  on this device?"* the first time. Allow it (site settings, *Local network
+  access*).
+- **Firefox** works; use `127.0.0.1`, not a LAN address.
+- **Safari is not supported**; it blocks the connection. Use another browser, or
+  run ForgeCoach locally (`npm run dev`).
 
-Games two Forge AIs played against each other (`./scripts/spectate.sh`) are
-written to `var/spectate/<name>.jsonl`. ForgeCoach reads those too; with no
-choices of yours to review, it coaches every turn from the viewing seat's side.
+mtg-table only accepts the connection from an allowed `Origin`
+(`https://jalirkan.github.io` and `localhost` / `127.0.0.1` by default).
 
-You can gzip a log first (`gzip -k frames.jsonl`) — ForgeCoach reads
-`.jsonl` and `.jsonl.gz`.
+### Keyboard
 
-### 2. Open it in ForgeCoach
+Forge's own buttons and your clicks on highlighted cards do the rest; the
+engine decides what is legal.
 
-Open the site and either **load a sample** (two recorded games ship with the
-page) or **upload** your `frames.jsonl` / `.jsonl.gz`. The log is read in the
-browser; it is not uploaded anywhere.
+| Key | Does |
+| --- | --- |
+| Space / Enter | the highlighted (primary) button, usually OK / pass |
+| Esc | the engine's Cancel button (End Turn, Alpha Strike, Cancel...) |
+| P | pass priority once |
+| E | pass until end of turn (Cancel stops it) |
+| T | pass until my next turn |
+| B | pass until just before my turn (opponent's end step) |
+| A | attack with everything (while declaring attackers) |
+| Ctrl+Z | undo the last mana tap |
+| W U B R G C | spend one floating mana of that colour |
+| ? | show this list in the game |
 
-ForgeCoach lists your decisions — main phases, attacks, blocks, responses and
-the questions the engine asked you — each with the board as it was at that
-moment and what you actually did.
+### The coach
 
-### 3. Coach a decision
+The panel beside the board follows the current decision (main phases, attacks,
+blocks, responses, engine questions). Either:
 
-Pick a decision, then either:
+- **Use your own API key.** Paste an Anthropic API key in Settings and pick a
+  model. ForgeCoach sends the decision's state and the exact text of the cards
+  involved to Claude. A switch asks automatically at your main phases, attacks
+  and blocks.
+- **Copy prompt.** No key needed: copy the full prompt (state, card text, your
+  deck guide) and paste it into the Claude app or claude.ai.
 
-- **Coach with your own API key.** Paste an Anthropic API key in Settings and
-  pick a model. ForgeCoach sends the decision's state and the exact text of the
-  cards involved to Claude and shows the recommendation.
-- **Copy prompt.** No key needed: ForgeCoach copies the full prompt (state,
-  card text, your deck guide) to the clipboard. Paste it into the Claude app or
-  claude.ai and ask away.
+A **deck guide**, your notes on how a deck wants to play, is written in the page
+and included in every prompt for that deck.
 
-A **deck guide** — your notes on how a deck wants to play ("hold payoffs until
-there's a sac outlet", "Skullclamp only on 1-toughness creatures") — can be
-written in the page and is included in every prompt for that deck.
+### After the game
 
-### 4. Post-game review
+The game-over card offers **Review this game with the coach**: a turn-by-turn
+summary and a review in the same style (what went well, at most three mistakes
+each tied to a general rule). Same choice: your key, or copy the prompt. **Next
+game** continues a match.
 
-**Review** summarises the whole game turn by turn and asks for a review in the
-same coaching style: at most three mistakes, each tied to a general rule, and
-what went well. Same choice: your key, or copy the prompt.
+## Replay and review a recorded game
 
-### 5. Live mode (optional)
+mtg-table writes a log per game and seat at
+`<mtg-table>/var/games/<gameId>/frames.jsonl` (`ls -t var/games | head -1` is
+the latest). Games between two Forge AIs (`./scripts/spectate.sh`) are in
+`var/spectate/<name>.jsonl`; with no choices of yours to review, the coach
+covers every turn from the viewing seat's side.
 
-Live mode follows a game *while you play it*, so the newest decision is always
-on screen. ForgeCoach never sends anything to the game — it only reads.
+On the load screen, pick one of the two bundled samples or upload a
+`frames.jsonl` / `.jsonl.gz`. It is read in the browser and not uploaded.
+You get your decisions with the board at that moment and what you did, and can
+coach each one or run the whole-game **Review** as above.
 
-It does **not** connect to mtg-table's game socket (`ws://127.0.0.1:8642/ws`).
-That socket admits exactly one client: the board you are playing on. If
-ForgeCoach ever took it (say, while your board tab was reloading) your board
-would be locked out, and when ForgeCoach let go the bridge would answer your
-pending choices with Forge's defaults. ForgeCoach refuses that URL outright.
+## Live watch (optional)
 
-Instead it connects to mtg-table's **read-only observer socket**,
-`ws://127.0.0.1:8642/observe` (the default; protocol amendment M50, mtg-table PR
-"read-only /observe"). Start mtg-table as usual, then click **Live** in
-ForgeCoach and **Connect**. Any number of observers may connect; the socket is
-receive-only (anything ForgeCoach sent would be ignored, and it sends nothing).
-On connect it catches up from the seat's cached hello, latest state, input and
-any open ask, then streams every frame. A new game in a match starts a new log
-automatically, and ForgeCoach reconnects with backoff if the socket drops (for
-example when it falls too far behind). mtg-table only accepts the socket from an
-allowed `Origin` (`https://jalirkan.github.io` and `localhost` / `127.0.0.1` by
-default); otherwise the browser just sees a failed connection.
+Follows a game being played in mtg-table's own board, read-only, so the newest
+decision is always on screen. Live watch uses mtg-table's observer socket,
+`ws://127.0.0.1:8642/observe` (the default), which any number of clients may
+join and which cannot send anything. It never touches the `/ws` seat socket
+(taking it would lock out your board). Start mtg-table as usual, click **Live**
+and **Connect**. It catches up from the cached state, streams every frame,
+starts a new log for each game of a match, and reconnects with backoff. The same
+browser notes apply (Chrome permission prompt, Safari unsupported).
 
-Browser notes, because the page is `https://` and the server is on your machine:
-
-- **Chrome / Edge**: newer versions ask *"Allow jalirkan.github.io to access apps
-  and services on this device?"* the first time. Allow it (site settings ->
-  *Local network access*).
-- **Firefox**: allows `127.0.0.1` from an https page; use `127.0.0.1`, not a LAN
-  address.
-- **Safari**: blocks it. Run ForgeCoach locally instead (`npm run dev`, below),
-  or use another browser.
-
-#### Fallback: follow the log file over HTTP
-
-If your mtg-table does not have `/observe` yet, serve the game's directory over
-HTTP with CORS, from the mtg-table checkout, once the game has started:
+Fallback if your mtg-table lacks `/observe`: serve the game directory over HTTP
+with CORS from the mtg-table checkout once the game has started,
 
 ```bash
 npx http-server "var/games/$(ls -t var/games | head -1)" -p 8650 --cors -c-1
 ```
 
-and connect to `http://127.0.0.1:8650/frames.jsonl`. Serving all of `var/games`
-(`npx http-server var/games -p 8650 --cors -c-1`) works too, with
-`http://127.0.0.1:8650/<gameId>/frames.jsonl`. ForgeCoach polls once a second,
-reads only the new bytes, and stops when the game ends. Each game of a match is
-a new file, so point it at the next one when a game ends. Any `http(s)://` URL
-is treated this way.
+and connect to `http://127.0.0.1:8650/frames.jsonl`. ForgeCoach polls once a
+second and reads only new bytes. Each game of a match is a new file. Any
+`http(s)://` URL is treated this way.
 
 ## Privacy
 
