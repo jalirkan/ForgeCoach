@@ -8,7 +8,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import type { Prompt } from '../prompt.ts';
-import { askClaude } from '../claude.ts';
+import { askClaude, hasKey } from '../claude.ts';
 
 export type AnswerStatus = 'preparing' | 'streaming' | 'done' | 'stopped' | 'error';
 
@@ -61,6 +61,11 @@ function subscribe(l: () => void) {
   return () => listeners.delete(l);
 }
 
+/** Current answer for a key (non-reactive; for tests and handlers). */
+export function getAnswer(key: string): Answer | undefined {
+  return answers.get(key);
+}
+
 export function useAnswer(key: string | null): Answer | undefined {
   return useSyncExternalStore(subscribe, () => (key ? answers.get(key) : undefined));
 }
@@ -96,6 +101,12 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
   controllers.set(key, ctrl);
   answers.delete(key);
   snapVersion++;
+  if (!hasKey()) {
+    // No key: say so now, before building the prompt or fetching any card text.
+    set(key, { status: 'error', error: 'Add your Anthropic API key to ask the coach — or copy the prompt and paste it into the Claude app.', errorKind: 'no_key' });
+    controllers.delete(key);
+    return;
+  }
   set(key, { status: 'preparing' });
   try {
     const prompt = await makePrompt();

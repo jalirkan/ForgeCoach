@@ -7,6 +7,7 @@
 import type { AnyCard, Card, GameStateBody } from '../protocol.ts';
 import { isHidden } from '../protocol.ts';
 import type { GameLog } from '../log.ts';
+import { isLookupName } from '../cards.ts';
 
 export interface StateFrame {
   frameIndex: number;
@@ -29,9 +30,9 @@ export function allCardNames(log: GameLog, from = 0): string[] {
     if (isHidden(c)) return;
     const card = c as Card;
     // Tokens and engine-made effect cards have no Scryfall printing to fetch.
-    if (card.token || / Effect$/.test(card.name ?? '')) return;
-    if (card.name) names.add(card.name);
-    if (card.alt?.name) names.add(card.alt.name);
+    if (card.token) return;
+    if (isLookupName(card.name)) names.add(card.name);
+    if (isLookupName(card.alt?.name)) names.add(card.alt!.name);
   };
   for (let i = from; i < log.frames.length; i++) {
     const f = log.frames[i]!;

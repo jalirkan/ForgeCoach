@@ -3,7 +3,7 @@
  * Browser-side calls to the Claude API with the user's own key.
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-import Anthropic, { type APIError } from '@anthropic-ai/sdk';
+import type { APIError } from '@anthropic-ai/sdk';
 import type { BetaMessageStreamParams } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import type { Prompt } from './prompt.ts';
 
@@ -111,6 +111,19 @@ export function buildRequest(prompt: Prompt, model: ModelId): BetaMessageStreamP
 }
 
 // ---------------------------------------------------------------------------
+// SDK (loaded lazily so it only downloads on the first "Ask coach")
+
+type SdkModule = typeof import('@anthropic-ai/sdk');
+let sdkPromise: Promise<SdkModule['default']> | null = null;
+/** The SDK once loaded; friendlyError uses it for instanceof checks (an SDK error can only exist after load). */
+let sdk: SdkModule['default'] | null = null;
+
+/** Dynamically imports the Anthropic SDK (cached). */
+export function loadSdk(): Promise<SdkModule['default']> {
+  return (sdkPromise ??= import('@anthropic-ai/sdk').then((m) => (sdk = m.default)));
+}
+
+// ---------------------------------------------------------------------------
 // Errors
 
 export type CoachErrorKind = 'no_key' | 'auth' | 'permission' | 'not_found' | 'rate_limit' | 'overloaded' | 'server' | 'bad_request' | 'network' | 'aborted' | 'unknown';
@@ -134,6 +147,13 @@ function apiMessage(e: APIError): string {
 /** Maps any thrown value to a CoachError with a user-readable message. */
 export function friendlyError(e: unknown): CoachError {
   if (e instanceof CoachError) return e;
+  const Anthropic = sdk;
+  if (!Anthropic) {
+    // SDK never loaded, so this can't be an SDK error.
+    if (e instanceof Error && e.name === 'AbortError') return new CoachError('Request cancelled.', 'aborted');
+    if (e instanceof TypeError) return new CoachError("Couldn't reach the Claude API (network or CORS error). Check your connection.", 'network');
+    return new CoachError(e instanceof Error ? e.message : String(e), 'unknown');
+  }
   if (e instanceof Anthropic.APIUserAbortError || (e instanceof Error && e.name === 'AbortError')) {
     return new CoachError('Request cancelled.', 'aborted');
   }
@@ -192,9 +212,10 @@ export async function askClaude(prompt: Prompt, h: StreamHandlers, opts?: { sign
   if (!apiKey) throw new CoachError('Add your Anthropic API key in Settings to ask the coach.', 'no_key');
   const model = isModelId(settings.model) ? settings.model : DEFAULT_MODEL;
 
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 });
   let text = '';
   try {
+    const Anthropic = await loadSdk();
+    const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 });
     const stream = client.beta.messages.stream(buildRequest(prompt, model), { signal: opts?.signal });
     for await (const event of stream) {
       if (event.type === 'content_block_delta') {

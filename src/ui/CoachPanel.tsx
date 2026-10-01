@@ -291,7 +291,7 @@ export function AnswerBox({
           {answer.error}
           {missingKey && (
             <button className="link-btn" onClick={onOpenSettings}>
-              Add an API key
+              Add a key
             </button>
           )}
         </div>

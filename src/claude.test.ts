@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { askClaude, buildRequest, friendlyError, hasKey, loadSettings, saveSettings, SETTINGS_KEY, type Settings } from './claude.ts';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { askClaude, buildRequest, friendlyError, hasKey, loadSdk, loadSettings, saveSettings, SETTINGS_KEY, type Settings } from './claude.ts';
 
 const prompt = { system: 'You are a Magic coach.', user: 'Should I attack?' };
 const settings: Settings = { apiKey: 'sk-ant-test', model: 'claude-opus-5-5' };
@@ -34,6 +34,10 @@ function message(model: string, stopReason: string, blocks: Array<Record<string,
   events.push({ type: 'message_stop' });
   return sse(events);
 }
+
+beforeAll(async () => {
+  await loadSdk();
+});
 
 let requests: Array<{ url: string; headers: Headers; body: Record<string, unknown> }>;
 

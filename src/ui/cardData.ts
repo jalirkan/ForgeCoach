@@ -7,7 +7,7 @@
  */
 import { useMemo, useSyncExternalStore } from 'react';
 import type { CardInfo } from '../cards.ts';
-import { getCachedCard, getCards, initCardCache } from '../cards.ts';
+import { getCachedCard, getCards, initCardCache, isLookupName } from '../cards.ts';
 
 let version = 0;
 const listeners = new Set<() => void>();
@@ -35,7 +35,7 @@ function ensureInit() {
 /** Fetches every not-yet-requested name in the background; bumps the version per batch. */
 export function prefetchCards(names: string[]): void {
   ensureInit();
-  const fresh = names.filter((n) => n && !requested.has(n));
+  const fresh = names.filter((n) => isLookupName(n) && !requested.has(n));
   if (fresh.length === 0) return;
   for (const n of fresh) requested.add(n);
   // Smaller chunks so the first tiles light up quickly.
