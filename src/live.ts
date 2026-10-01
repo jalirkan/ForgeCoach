@@ -39,7 +39,7 @@
  * Nothing is ever sent on an observer socket — not an act, not an answer, not a
  * resync, not even a pong.
  */
-import type { HelloOkBody, OverBody, SessionHeader } from './protocol.ts';
+import type { GameStateBody, HelloOkBody, OverBody, SessionHeader } from './protocol.ts';
 import type { GameLog, LoggedFrame } from './log.ts';
 
 /** mtg-table's read-only observer socket (needs the "read-only /observe" bridge update). */
@@ -170,6 +170,11 @@ export class LiveLogBuilder {
         this.reset();
       }
       if (!this.header && synthesizeHeader) this.header = LiveLogBuilder.headerFromHello(hello, f.v);
+    }
+    // A catch-up between a new game's hello_ok and its first state can carry
+    // the previous game's last state (M50); it belongs to no log we keep.
+    if (synthesizeHeader && f.type === 'state' && this.hello && (f.body as GameStateBody).gameId !== this.hello.gameId) {
+      return false;
     }
     const key = `${f.dir ?? 's2c'}:${f.type}:${f.seq}`;
     if (synthesizeHeader && this.#seen.has(key)) return false;

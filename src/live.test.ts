@@ -5,9 +5,10 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseLog, type GameLog } from './log.ts';
+import { parseLog, type GameLog, type LoggedFrame } from './log.ts';
 import {
   classifyLiveUrl,
+  LiveLogBuilder,
   connectLive,
   DEFAULT_LIVE_URL,
   REFUSED_CLOSE_CODE,
@@ -339,5 +340,21 @@ describe('connectLive — following frames.jsonl over HTTP', () => {
     handle.close();
     expect(t.statuses.at(-1)?.[0]).toBe('closed');
     expect(t.logs).toEqual([]);
+  });
+});
+
+describe('LiveLogBuilder across games', () => {
+  it("drops a previous game's state that arrives after the new game's hello_ok", () => {
+    const b = new LiveLogBuilder();
+    const hello = (gameId: string, seq: number) =>
+      ({ v: 1, type: 'hello_ok', seq, body: { gameId } }) as unknown as LoggedFrame;
+    const state = (gameId: string, seq: number) =>
+      ({ v: 1, type: 'state', seq, body: { gameId } }) as unknown as LoggedFrame;
+    b.add(hello('g1', 1), true);
+    b.add(state('g1', 2), true);
+    b.add(hello('g2', 1), true);
+    expect(b.add(state('g1', 2), true)).toBe(false);
+    expect(b.add(state('g2', 2), true)).toBe(true);
+    expect(b.frames.map((f) => (f.body as { gameId: string }).gameId)).toEqual(['g2', 'g2']);
   });
 });
