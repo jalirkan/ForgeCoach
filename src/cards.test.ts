@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { __resetCardCacheForTests, cleanCardName, getCachedCard, getCards, mapScryfallCard, type ScryfallCard } from './cards.ts';
+import { __resetCardCacheForTests, cleanCardName, isLookupName, getCachedCard, getCards, mapScryfallCard, type ScryfallCard } from './cards.ts';
 
 type Call = { url: string; init?: RequestInit };
 let calls: Call[];
@@ -211,5 +211,27 @@ describe('getCards', () => {
     const got = await getCards(['Opt']);
     expect(calls.length).toBe(0);
     expect(got.get('Opt')!.found).toBe(true);
+  });
+});
+
+describe('isLookupName', () => {
+  it('rejects names that cannot be real cards', () => {
+    for (const n of ['Goblin Token', 'Treasure Token', 'Ajani’s Effect', 'Elspeth\'s Effect', 'Pact Effect', 'Emblem — Elspeth', 'Elspeth Emblem', '???', '', '  ']) {
+      expect(isLookupName(n), n).toBe(false);
+    }
+    expect(isLookupName(null)).toBe(false);
+    expect(isLookupName(undefined)).toBe(false);
+  });
+  it('accepts real names, including Forge suffixes and split cards', () => {
+    for (const n of ['Lightning Bolt', 'Lightning Bolt|M10', 'Fire // Ice', 'Emblem of the Warmind', 'Tokens of Fate']) {
+      expect(isLookupName(n), n).toBe(true);
+    }
+  });
+  it('getCards never fetches for such names', async () => {
+    installFetch([simpleCard('Opt')]);
+    const got = await getCards(['Goblin Token', 'Sol Ring Effect', '???']);
+    expect(calls).toHaveLength(0);
+    expect(got.get('Goblin Token')!.found).toBe(false);
+    expect(got.size).toBe(3);
   });
 });

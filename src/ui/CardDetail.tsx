@@ -42,7 +42,11 @@ export function CardDetail({
 function CardDetailBody({ card, info, state, seat }: { card: Card; info: CardInfo | undefined; state: GameStateBody | null; seat: number }) {
   const img = info?.image?.normal ?? info?.faces?.[0]?.image?.normal;
   const [imgLoaded, setImgLoaded] = useState(false);
-  useEffect(() => setImgLoaded(false), [img]);
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => {
+    setImgLoaded(false);
+    setImgFailed(false);
+  }, [img]);
   const idx = state ? cardIndex(state) : new Map<number, AnyCard>();
   const playerName = (id: number | null) => (id === null ? '—' : id === seat ? 'You' : state?.players.find((p) => p.id === id)?.name ?? `Player ${id}`);
   const kw = keywordsOf(card);
@@ -63,8 +67,8 @@ function CardDetailBody({ card, info, state, seat }: { card: Card; info: CardInf
   return (
     <div className="cd">
       <div className="cd-image">
-        {img ? (
-          <img src={img} alt={displayName(card)} className={imgLoaded ? 'is-loaded' : ''} onLoad={() => setImgLoaded(true)} decoding="async" />
+        {img && !imgFailed ? (
+          <img src={img} alt={displayName(card)} className={imgLoaded ? 'is-loaded' : ''} onLoad={() => setImgLoaded(true)} onError={() => setImgFailed(true)} decoding="async" />
         ) : null}
         {!imgLoaded && <TextCard card={card} info={info} />}
       </div>
@@ -219,21 +223,44 @@ export function HoverPreview({ name, rect }: { name: string | null; rect: DOMRec
   const info = useCardInfo(name);
   const img = info?.image?.normal ?? info?.faces?.[0]?.image?.normal;
   const [shown, setShown] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     setShown(false);
     if (!name) return;
     const t = setTimeout(() => setShown(true), 380);
     return () => clearTimeout(t);
   }, [name]);
-  if (!name || !rect || !img || !shown) return null;
+  useEffect(() => {
+    setLoaded(false);
+    setFailed(false);
+  }, [img]);
+  if (!name || !rect || !shown) return null;
   const W = 244;
   const H = 340;
   const right = rect.right + 12 + W < window.innerWidth;
   const left = right ? rect.right + 12 : Math.max(8, rect.left - 12 - W);
   const top = Math.min(Math.max(8, rect.top + rect.height / 2 - H / 2), window.innerHeight - H - 8);
+  const showImg = img && !failed;
   return (
     <div className="hover-preview" style={{ left, top, width: W, height: H }} aria-hidden="true">
-      <img src={img} alt="" decoding="async" />
+      {!(showImg && loaded) && <InfoCard name={info?.name || name} info={info} />}
+      {showImg && <img src={img} alt="" className={loaded ? 'is-loaded' : ''} decoding="async" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
+    </div>
+  );
+}
+
+/** Card-shaped placeholder built from the text we already have (no image needed). */
+function InfoCard({ name, info }: { name: string; info: CardInfo | undefined }) {
+  return (
+    <div className="text-card">
+      <div className="text-card-head">
+        <span>{name}</span>
+        <ManaCost cost={info?.manaCost} size="sm" />
+      </div>
+      <div className="text-card-art" />
+      <div className="text-card-type">{info?.typeLine || (info ? '' : 'Loading…')}</div>
+      <div className="text-card-body">{info?.oracleText ? <SymbolText text={info.oracleText.split('\n').slice(0, 6).join('\n')} /> : null}</div>
     </div>
   );
 }

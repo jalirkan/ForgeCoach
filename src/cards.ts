@@ -74,6 +74,21 @@ export function cleanCardName(name: string): string {
   return n.replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * False for names that can never be a real Scryfall card: tokens ("... Token"),
+ * engine effect cards ("... Effect", "...'s Effect"), emblems, and hidden/face-down
+ * placeholders ("???"). These are never sent to Scryfall.
+ */
+export function isLookupName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  const n = cleanCardName(name);
+  if (!n || /^[?\s]+$/.test(n)) return false;
+  if (/\bToken$/i.test(n)) return false;
+  if (/\bEffect$/i.test(n)) return false;
+  if (/^Emblem\s*[—–:-]/i.test(n) || /\bEmblem$/i.test(n)) return false;
+  return true;
+}
+
 /** Cache / matching key: cleaned, lower-cased, diacritics stripped. */
 function keyOf(name: string): string {
   return cleanCardName(name)
@@ -489,6 +504,10 @@ export async function getCards(names: string[], opts?: { signal?: AbortSignal })
 
   for (const name of new Set(names)) {
     if (!name || !name.trim()) continue;
+    if (!isLookupName(name)) {
+      result.set(name, emptyCard(name)); // not a real card: answer locally, never fetch
+      continue;
+    }
     const k = keyOf(name);
     const e = memory.get(k);
     if (fresh(e, now)) {

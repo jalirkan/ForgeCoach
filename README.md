@@ -150,6 +150,37 @@ Pushes to `main` deploy to GitHub Pages (`.github/workflows/pages.yml`); pull
 requests and other branches run typecheck, tests and build
 (`.github/workflows/ci.yml`).
 
+### End-to-end test (play a whole game)
+
+`e2e/play.e2e.mjs` opens the real app in a browser, joins the real Forge
+engine's seat and plays one game to the end using only what a player sees:
+it answers the opening dialogs and Forge's questions with their default
+button, plays the hand cards the board outlines as playable (lands first),
+pays with Auto, sometimes attacks with everything, and otherwise presses the
+action bar's primary button. It fails on a stall (nothing on screen changes
+for `STALL_SECONDS`, default 90), on any page error or console error, or when
+it cannot join the table, and saves a screenshot and the console log to
+`e2e/out/`.
+
+```bash
+# in mtg-table, in another terminal
+./scripts/play.sh --engine-only
+# here
+npm run e2e                                    # desktop viewport
+VIEWPORT=phone npm run e2e                     # a phone-sized, touch viewport
+HEADLESS=0 MAX_TURNS=10 npm run e2e            # watch it, stop after round 10
+```
+
+Other settings: `SEAT_URL` (default `ws://127.0.0.1:8642/ws`), `APP_URL` (an
+already-running ForgeCoach; by default the test starts vite on a free port of
+127.0.0.1), `SEED`, `NEXT_GAME=0` (by default it starts the next game at the
+end, because mtg-table ends its session when the client leaves at a game's
+result) and `BROWSER_PATH`. It needs `playwright-core` with a Chromium, which
+are deliberately not project dependencies: `npm install --no-save
+playwright-core && npx playwright-core install chromium` once. The test is
+not part of `npm test` and does not run in CI, since it needs mtg-table (a
+private repository) and Forge (large) on the machine.
+
 ## Licence
 
 GPL-3.0-or-later — see `LICENSE`. `src/protocol.ts` is copied from mtg-table
