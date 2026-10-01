@@ -1,9 +1,11 @@
+/*
+ * ForgeCoach — main.tsx
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-
-function App() {
-  return <main style={{ fontFamily: 'system-ui', padding: 24 }}>ForgeCoach — building.</main>;
-}
+import { App } from './ui/App.tsx';
+import './ui/styles.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
