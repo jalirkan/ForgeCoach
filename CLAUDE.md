@@ -24,6 +24,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 - `play/` — playing a game. `session.ts` owns the seat socket (`/ws`), the growing
   GameLog, current input/ask, and sending acts and answers. `acts.ts` has the
   typed act builders and the guard deciding whether an act may go on the wire.
+- `play/seatUrl.ts` — `defaultSeatUrl(location)` / `servedByEngine(location)`: when the mtg-table bridge serves this site itself (`--lan`, phone play), the seat is same-origin `ws://<host>/ws?token=<T>`; the token is redacted from on-screen text. Site builds with `FORGECOACH_BASE=./` for any path.
 - `ui/` — React components; `main.tsx` mounts the app.
 - `ui/play/` — the play screen: `PlayView` (board), `ActionBar`, `HandDock`,
   `AskDialog` + `askModel` (engine questions), `PlayCoach` + `liveDecision`

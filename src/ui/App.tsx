@@ -17,7 +17,7 @@ import { LoadScreen, SAMPLES } from './LoadScreen.tsx';
 import { SettingsDialog } from './SettingsDialog.tsx';
 import { IconUpload } from './Icons.tsx';
 import { readLS, writeLS } from './util.ts';
-import { DEFAULT_SEAT_URL } from '../play/session.ts';
+import { defaultSeatUrl, servedByEngine, tokenFromSearch } from '../play/session.ts';
 import { usePlaySession } from './play/usePlaySession.ts';
 import { PlayView } from './play/PlayView.tsx';
 
@@ -27,6 +27,42 @@ const AskGallery = lazy(() => import('./play/AskGallery.tsx'));
 const LAST_SAMPLE_KEY = 'forgecoach.lastSample';
 const SEAT_URL_KEY = 'forgecoach.seatUrl';
 
+const SEAT_TOKEN_KEY = 'forgecoach.seatToken';
+
+/**
+ * Served by the mtg-table bridge itself (a phone opening
+ * http://<desktop-ip>:<port>/?token=…): the seat is on this origin and the
+ * page connects straight away.
+ */
+const ENGINE_SERVED = (() => {
+  try {
+    return servedByEngine(window.location);
+  } catch {
+    return false;
+  }
+})();
+
+/**
+ * The seat on this origin. The pairing token comes from the page URL; it is
+ * also remembered (this origin only) so a home-screen launch — which opens
+ * the manifest's start_url, without the query — can still take the seat.
+ */
+function engineSeatUrl(): string {
+  const fromUrl = tokenFromSearch(location.search);
+  if (fromUrl) writeLS(SEAT_TOKEN_KEY, fromUrl);
+  const token = fromUrl ?? readLS(SEAT_TOKEN_KEY);
+  return defaultSeatUrl({ protocol: location.protocol, host: location.host, search: token ? `?token=${encodeURIComponent(token)}` : '' });
+}
+
+/** Where Play connects when nothing else is said. */
+const HOME_SEAT_URL = (() => {
+  try {
+    return ENGINE_SERVED ? engineSeatUrl() : defaultSeatUrl(window.location);
+  } catch {
+    return 'ws://127.0.0.1:8642/ws';
+  }
+})();
+
 /** `?seat=ws://…/ws` pre-fills (and remembers) the engine URL. */
 function initialSeatUrl(): string {
   try {
@@ -35,7 +71,9 @@ function initialSeatUrl(): string {
   } catch {
     /* ignore */
   }
-  return readLS(SEAT_URL_KEY) || DEFAULT_SEAT_URL;
+  // Served by the engine: its own seat, never one remembered from elsewhere.
+  if (ENGINE_SERVED) return HOME_SEAT_URL;
+  return readLS(SEAT_URL_KEY) || HOME_SEAT_URL;
 }
 
 function friendly(e: unknown): string {
@@ -109,7 +147,8 @@ function MainApp() {
       playRef.current.session.reconnect();
       return;
     }
-    writeLS(SEAT_URL_KEY, url === DEFAULT_SEAT_URL ? null : url);
+    // Never remember an engine-served seat: its URL carries the pairing token.
+    if (!ENGINE_SERVED) writeLS(SEAT_URL_KEY, url === HOME_SEAT_URL ? null : url);
     setSeatUrl(url);
     setPlayStarted(false);
     setReview(null);
@@ -216,10 +255,11 @@ function MainApp() {
     history.replaceState(null, '', location.pathname + location.search);
   }, [stopLive]);
 
-  // ?play=1 connects to the engine straight away (bookmarkable).
+  // ?play=1 connects to the engine straight away (bookmarkable), and so does a
+  // page the engine served (there is nothing else to choose there).
   useEffect(() => {
     try {
-      if (new URLSearchParams(location.search).get('play') === '1') startPlay(initialSeatUrl());
+      if (ENGINE_SERVED || new URLSearchParams(location.search).get('play') === '1') startPlay(initialSeatUrl());
     } catch {
       /* ignore */
     }
@@ -319,6 +359,8 @@ function MainApp() {
         onPlay={startPlay}
         onCancelPlay={stopPlay}
         seatUrl={seatUrl}
+        homeSeatUrl={HOME_SEAT_URL}
+        engineServed={ENGINE_SERVED}
         play={playUrl && snap ? { status: snap.status, detail: snap.detail, attempts: snap.attempts } : playUrl ? { status: 'connecting', detail: null, attempts: 0 } : null}
         onSettings={() => setSettingsOpen(true)}
         lastSample={lastSample}

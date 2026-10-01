@@ -25,6 +25,12 @@ jobs:
       - run: npm run build
         env:
           GITHUB_PAGES: '1'
+      # The same site with relative asset paths, zipped (index.html at the zip
+      # root) for the mtg-table bridge to serve itself (`--lan`, phone play).
+      - name: Build relative-base site zip
+        run: |
+          FORGECOACH_BASE=./ npx vite build --outDir "$RUNNER_TEMP/site-rel" --emptyOutDir
+          (cd "$RUNNER_TEMP/site-rel" && zip -qr "$GITHUB_WORKSPACE/dist/forgecoach-site.zip" .)
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

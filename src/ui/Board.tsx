@@ -256,8 +256,8 @@ function PlayerHeader({
             Hand <OppHand n={z.hand.count} /> <b>{z.hand.count}</b>
           </span>
         )}
-        <ZonePill label="Library" n={z.library.count} />
-        <ZonePill label="Graveyard" n={z.graveyard.count} onClick={() => setZone('graveyard')} />
+        <ZonePill label="Library" short="Lib" n={z.library.count} />
+        <ZonePill label="Graveyard" short="GY" n={z.graveyard.count} onClick={() => setZone('graveyard')} />
         <ZonePill label="Exile" n={z.exile.count} onClick={() => setZone('exile')} />
         {z.command.count > 0 && <ZonePill label="Command" n={z.command.count} onClick={() => setZone('command')} />}
         {otherCounters.map(([k, n]) => (
@@ -306,17 +306,28 @@ function sortSources(s: ManaSource[]): ManaSource[] {
   return [...s].sort((a, b) => a.colors.length - b.colors.length || order.indexOf(a.colors[0] ?? 'C') - order.indexOf(b.colors[0] ?? 'C'));
 }
 
-function ZonePill({ label, n, onClick }: { label: string; n: number; onClick?: () => void }) {
+function ZonePill({ label, short, n, onClick }: { label: string; short?: string; n: number; onClick?: () => void }) {
+  // Narrow screens show the short label (Lib, GY); the long one stays for screen readers.
+  const text = short ? (
+    <>
+      <span className="zl-long">{label}</span>
+      <span className="zl-short" aria-hidden="true">
+        {short}
+      </span>
+    </>
+  ) : (
+    label
+  );
   if (!onClick) {
     return (
-      <span className="zone-pill zone-static">
-        {label} <b>{n}</b>
+      <span className="zone-pill zone-static" title={label}>
+        {text} <b>{n}</b>
       </span>
     );
   }
   return (
-    <button className="zone-pill" onClick={onClick} disabled={n === 0}>
-      {label} <b>{n}</b>
+    <button className="zone-pill" onClick={onClick} disabled={n === 0} title={label}>
+      {text} <b>{n}</b>
     </button>
   );
 }

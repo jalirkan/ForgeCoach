@@ -50,7 +50,10 @@ import type { GameLog, LoggedFrame } from '../log.ts';
 import { LiveLogBuilder } from '../live.ts';
 import { whyNotAct, whyNotAnswer } from './acts.ts';
 
-export const DEFAULT_SEAT_URL = 'ws://127.0.0.1:8642/ws';
+import { DEFAULT_SEAT_URL, redactSeatUrl } from './seatUrl.ts';
+
+export { DEFAULT_SEAT_URL, defaultSeatUrl, servedByEngine, redactSeatUrl, tokenFromSearch } from './seatUrl.ts';
+export type { PageLocation } from './seatUrl.ts';
 /** mtg-table's "one client at a time" refusal (protocol amendment M13). */
 export const SEAT_REFUSED_CLOSE_CODE = 4001;
 
@@ -153,14 +156,15 @@ export const REFUSED_DETAIL =
   'Another window is the player (probably the mtg-table board tab) — close it and retry';
 
 /** What to tell the user when the seat socket cannot be reached at all. */
-export function unreachableDetail(url: string, retryInMs: number | null): string {
-  const port = portOf(url);
+export function unreachableDetail(rawUrl: string, retryInMs: number | null): string {
+  const port = portOf(rawUrl);
+  const url = redactSeatUrl(rawUrl);
   return (
     `Could not reach the Forge engine at ${url}. Start it in your mtg-table checkout with ` +
     `\`./scripts/play.sh --engine-only${port === '8642' ? '' : ` --port ${port}`}\`, and close any mtg-table ` +
     `board tab (it would take the seat). Chrome may ask to let this page access devices on your local network — allow it ` +
-    `(Safari blocks it). The page must be served from https://jalirkan.github.io or localhost, or the bridge ` +
-    `refuses the handshake.` +
+    `(Safari blocks it). The page must be served from https://jalirkan.github.io, localhost or the bridge itself ` +
+    `(\`--lan\`), or the bridge refuses the handshake.` +
     (retryInMs === null ? '' : ` Retrying in ${(Math.round(retryInMs / 100) / 10).toString()} s.`)
   );
 }
@@ -416,7 +420,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
       setStatus(
         'closed',
         everOpened
-          ? `Lost the engine at ${url} and ${attempts.toString()} reconnects failed. Is the bridge still running? Press Retry.`
+          ? `Lost the engine at ${redactSeatUrl(url)} and ${attempts.toString()} reconnects failed. Is the bridge still running? Press Retry.`
           : `${unreachableDetail(url, null)} Gave up after ${attempts.toString()} attempts — press Retry.`,
       );
       return;

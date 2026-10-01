@@ -5,7 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0e1014" />
     <meta name="color-scheme" content="dark" />
-    <meta name="description" content="Coach your Forge Magic: The Gathering games from exact mtg-table state logs." />
+    <!-- Add to Home Screen: full-screen, dark status bar. Relative paths so the
+         same build works on github.io/ForgeCoach/ and served at / by the engine. -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ForgeCoach" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <meta name="description" content="Play Magic: The Gathering against the Forge AI, with a coach beside the board." />
     <title>ForgeCoach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

@@ -232,6 +232,11 @@ export const IconFlag = (p: P) => (
     <path d="M5 21V4M5 4h11l-2 4 2 4H5" />
   </Svg>
 );
+export const IconMore = (p: P) => (
+  <Svg {...p}>
+    <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={2.6} />
+  </Svg>
+);
 export const IconKeyboard = (p: P) => (
   <Svg {...p}>
     <rect x="2.5" y="6" width="19" height="12" rx="2" />

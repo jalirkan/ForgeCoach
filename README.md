@@ -81,6 +81,15 @@ summary and a review in the same style (what went well, at most three mistakes
 each tied to a general rule). Same choice: your key, or copy the prompt. **Next
 game** continues a match.
 
+## Play on your phone
+
+On the desktop, in your mtg-table checkout, run `./scripts/play.sh --engine-only --lan`.
+It prints an address like `http://192.168.1.20:8642/?token=...`; open that on
+your phone (same Wi-Fi), or scan the QR code if one is shown. The bridge serves
+ForgeCoach itself, so the seat socket is on the same origin and no
+https-to-ws mixed content is involved. This is for your home network only. The
+token is the key to your seat: don't share the link or post screenshots of it.
+
 ## Replay and review a recorded game
 
 mtg-table writes a log per game and seat at
