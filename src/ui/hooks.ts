@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import { useEffect, useState } from 'react';
+import { loadSettings, onSettingsChange, type Settings } from '../claude.ts';
+import { coachReady, detectHelper, onHelperStatus, peekHelper, type HelperStatus } from '../coachHelper.ts';
 
 export function useMediaQuery(q: string): boolean {
   const [m, setM] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
@@ -38,4 +40,35 @@ export function useStepKeys(step: (delta: number | 'first' | 'last') => void, en
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [step, enabled]);
+}
+
+/**
+ * The saved settings and what is known about the coach helper (Claude Code on
+ * the player's PC), kept current. Asks the helper once on mount (cached), and
+ * every `pollMs` while given (the settings dialog shows it live).
+ */
+export function useCoachAvailability(pollMs?: number): { settings: Settings; helper: HelperStatus | null; ready: boolean; recheck: () => void } {
+  const read = () => {
+    let settings: Settings;
+    try {
+      settings = loadSettings();
+    } catch {
+      settings = { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto' };
+    }
+    return { settings, helper: peekHelper() };
+  };
+  const [v, setV] = useState(read);
+  useEffect(() => {
+    const on = () => setV(read());
+    const offA = onSettingsChange(on);
+    const offB = onHelperStatus(on);
+    void detectHelper();
+    const t = pollMs ? setInterval(() => void detectHelper({ force: true }), pollMs) : null;
+    return () => {
+      offA();
+      offB();
+      if (t) clearInterval(t);
+    };
+  }, [pollMs]);
+  return { ...v, ready: coachReady(v.settings, v.helper), recheck: () => void detectHelper({ force: true }) };
 }

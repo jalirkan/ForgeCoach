@@ -3,10 +3,18 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import { useEffect, useState } from 'react';
-import { MODELS, loadSettings, saveSettings, type ModelId, type Settings } from '../claude.ts';
+import { DEFAULT_COACH_SOURCE, MODELS, loadSettings, saveSettings, type CoachSource, type ModelId, type Settings } from '../claude.ts';
+import { chooseSource, pageHelperTarget, type HelperStatus } from '../coachHelper.ts';
+import { useCoachAvailability } from './hooks.ts';
 import { IconExternal } from './Icons.tsx';
 import { Sheet } from './Sheet.tsx';
 import { cx } from './util.ts';
+
+const SOURCES: Array<{ id: CoachSource; label: string; hint: string }> = [
+  { id: 'auto', label: 'Automatic', hint: 'Claude Code if found, else the key' },
+  { id: 'helper', label: 'Claude Code', hint: 'On your PC, no key needed' },
+  { id: 'apiKey', label: 'API key', hint: 'Your own Anthropic key' },
+];
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [s, setS] = useState<Settings>(() => safeLoad());
@@ -33,7 +41,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
       open={open}
       onClose={onClose}
       title="Settings"
-      subtitle="Coaching uses your own Anthropic API key."
+      subtitle="The coach runs on Claude Code on your PC (no key needed) or on your own Anthropic API key."
       width={520}
       footer={
         <>
@@ -53,6 +61,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           save();
         }}
       >
+        <CoachSourceField s={s} setS={setS} />
         <label className="field">
           <span className="field-label">Anthropic API key</span>
           <div className="field-row">
@@ -87,6 +96,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               </label>
             ))}
           </div>
+          <span className="field-help">Claude Code uses the same choice (opus, sonnet or haiku).</span>
         </fieldset>
         {s.apiKey && (
           <button
@@ -104,6 +114,68 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   );
 }
 
+/** Coach source: the helper's live status and the auto / helper / key choice. Mounted only while the dialog is open. */
+function CoachSourceField({ s, setS }: { s: Settings; setS: (s: Settings) => void }) {
+  const { helper, recheck } = useCoachAvailability(4000);
+  const active = chooseSource(s, helper);
+  return (
+    <fieldset className="field">
+      <legend className="field-label">Coach source</legend>
+      <div className="helper-status" role="status" aria-live="polite">
+        <span className={cx('helper-dot', helper?.state === 'ok' ? 'is-ok' : helper ? 'is-down' : 'is-checking')} aria-hidden="true" />
+        <span className="helper-text">
+          <HelperStatusText helper={helper} />
+        </span>
+        <button type="button" className="link-btn" onClick={recheck}>
+          Check again
+        </button>
+      </div>
+      <div className="model-grid" role="radiogroup" aria-label="Coach source">
+        {SOURCES.map((o) => (
+          <label key={o.id} className={cx('model-opt', s.coachSource === o.id && 'is-on')}>
+            <input type="radio" name="coachSource" value={o.id} checked={s.coachSource === o.id} onChange={() => setS({ ...s, coachSource: o.id })} />
+            <span className="model-name">{o.label}</span>
+            <span className="model-hint">{o.hint}</span>
+          </label>
+        ))}
+      </div>
+      <span className="field-help">
+        {active === 'helper'
+          ? 'Answers come from Claude Code on your PC, through mtg-table’s coach helper — no API key needed.'
+          : active === 'apiKey'
+            ? 'Answers use your API key.'
+            : s.coachSource === 'apiKey'
+              ? 'Add a key below to ask the coach. “Copy prompt” works without one.'
+              : 'Nothing to answer with yet: start the helper or add a key. “Copy prompt” works without either.'}
+      </span>
+    </fieldset>
+  );
+}
+
+function HelperStatusText({ helper }: { helper: HelperStatus | null }) {
+  if (!helper) return <>Looking for Claude Code on your PC…</>;
+  if (helper.state === 'ok') {
+    return (
+      <>
+        <b>Detected</b> — Claude Code{helper.claude ? ` ${helper.claude.replace(/\s*\(Claude Code\)\s*$/i, '')}` : ''} on your PC
+      </>
+    );
+  }
+  if (helper.reason === 'not_running') {
+    return (
+      <>
+        <b>Not running</b> — start <code>./scripts/play.sh</code> in mtg-table (it starts the helper), or install Claude Code and log in.{' '}
+        <span className="helper-addr">Looked at {pageHelperTarget().baseUrl}.</span>
+      </>
+    );
+  }
+  return (
+    <>
+      <b>{helper.reason === 'unauthorized' ? 'Refused' : 'Found, not ready'}</b> — {helper.message.replace(/`/g, '')}
+    </>
+  );
+}
+
 function hint(id: string): string {
   if (id.includes('opus')) return 'Best judgement';
   if (id.includes('sonnet')) return 'Fast and sharp';
@@ -115,6 +187,6 @@ function safeLoad(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: MODELS[0].id };
+    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE };
   }
 }

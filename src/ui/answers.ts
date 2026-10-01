@@ -8,7 +8,8 @@
  */
 import { useSyncExternalStore } from 'react';
 import type { Prompt } from '../prompt.ts';
-import { askClaude, hasKey } from '../claude.ts';
+import { askClaude, loadSettings, type CoachResult, type Settings, type StreamHandlers } from '../claude.ts';
+import { askHelper, chooseSource, detectHelper, helperFresh, pageHelperTarget, peekHelper, type ActiveSource } from '../coachHelper.ts';
 
 export type AnswerStatus = 'preparing' | 'streaming' | 'done' | 'stopped' | 'error';
 
@@ -24,6 +25,8 @@ export interface Answer {
   errorKind: string | null;
   /** Set when a server-side fallback answered instead of the chosen model. */
   fallbackFrom: string | null;
+  /** Who is answering: Claude Code on the player's PC (the coach helper) or the API key. */
+  source: ActiveSource | null;
 }
 
 const answers = new Map<string, Answer>();
@@ -51,6 +54,7 @@ function set(key: string, patch: Partial<Answer>) {
     error: null,
     errorKind: null,
     fallbackFrom: null,
+    source: null,
   };
   answers.set(key, { ...prev, ...patch });
   notify();
@@ -101,25 +105,34 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
   controllers.set(key, ctrl);
   answers.delete(key);
   snapVersion++;
-  if (!hasKey()) {
-    // No key: say so now, before building the prompt or fetching any card text.
-    set(key, { status: 'error', error: 'Add your Anthropic API key to ask the coach — or copy the prompt and paste it into the Claude app.', errorKind: 'no_key' });
+  const settings = safeSettings();
+  // Auto: is Claude Code on the PC reachable? (Cached; at most ~800 ms when it isn't known.)
+  let helper = peekHelper();
+  if (settings.coachSource === 'auto' && !helperFresh()) {
+    set(key, { status: 'preparing' });
+    helper = await detectHelper();
+    if (ctrl.signal.aborted || controllers.get(key) !== ctrl) return;
+  }
+  const source = chooseSource(settings, helper);
+  if (!source) {
+    // Nothing to answer with: say so now, before building the prompt or fetching any card text.
+    set(key, { status: 'error', error: noCoachMessage(settings), errorKind: 'no_key' });
     controllers.delete(key);
     return;
   }
-  set(key, { status: 'preparing' });
+  set(key, { status: 'preparing', source });
   try {
     const prompt = await makePrompt();
     if (ctrl.signal.aborted) return;
     set(key, { status: 'streaming' });
-    const res = await askClaude(
-      prompt,
-      {
-        onText: (d) => set(key, { text: (answers.get(key)?.text ?? '') + d }),
-        onThinking: (d) => set(key, { thinking: (answers.get(key)?.thinking ?? '') + d }),
-      },
-      { signal: ctrl.signal },
-    );
+    const handlers: StreamHandlers = {
+      onText: (d) => set(key, { text: (answers.get(key)?.text ?? '') + d }),
+      onThinking: (d) => set(key, { thinking: (answers.get(key)?.thinking ?? '') + d }),
+    };
+    const res: CoachResult =
+      source === 'helper'
+        ? await askHelper(prompt, handlers, { signal: ctrl.signal, model: settings.model, target: pageHelperTarget() })
+        : await askClaude(prompt, handlers, { signal: ctrl.signal, settings });
     set(key, {
       status: 'done',
       text: res.text || answers.get(key)?.text || '',
@@ -139,6 +152,20 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
   } finally {
     if (controllers.get(key) === ctrl) controllers.delete(key);
   }
+}
+
+function safeSettings(): Settings {
+  try {
+    return loadSettings();
+  } catch {
+    return { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto' };
+  }
+}
+
+/** Why nothing can answer, and what to do about it. */
+export function noCoachMessage(s: Pick<Settings, 'coachSource'>): string {
+  if (s.coachSource === 'apiKey') return 'Add your Anthropic API key to ask the coach — or copy the prompt and paste it into the Claude app.';
+  return 'No coach connected. Start `./scripts/play.sh` in mtg-table to coach with Claude Code on your PC, or add an Anthropic API key in Settings — or copy the prompt and paste it into the Claude app.';
 }
 
 export function stopAnswer(key: string): void {

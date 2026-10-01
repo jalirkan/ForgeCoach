@@ -10,6 +10,9 @@
 
 export const DEFAULT_SEAT_URL = 'ws://127.0.0.1:8642/ws';
 
+/** localStorage key remembering the pairing token of an engine-served page (this origin only). */
+export const SEAT_TOKEN_KEY = 'forgecoach.seatToken';
+
 export interface PageLocation {
   protocol: string;
   /** hostname plus port, like `location.host`. */

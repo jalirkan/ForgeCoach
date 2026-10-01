@@ -24,9 +24,25 @@ export function isModelId(x: unknown): x is ModelId {
 
 export const SETTINGS_KEY = 'forgecoach.settings';
 
+/**
+ * Who answers the coach:
+ * - 'auto' (default): Claude Code on your PC via mtg-table's coach helper when it is
+ *   running, else your API key when one is set;
+ * - 'helper': always the coach helper;
+ * - 'apiKey': always your API key.
+ */
+export type CoachSource = 'auto' | 'helper' | 'apiKey';
+export const COACH_SOURCES: readonly CoachSource[] = ['auto', 'helper', 'apiKey'];
+export const DEFAULT_COACH_SOURCE: CoachSource = 'auto';
+
+export function isCoachSource(x: unknown): x is CoachSource {
+  return COACH_SOURCES.includes(x as CoachSource);
+}
+
 export interface Settings {
   apiKey: string;
   model: ModelId;
+  coachSource: CoachSource;
 }
 
 function storage(): Storage | null {
@@ -38,25 +54,43 @@ function storage(): Storage | null {
 }
 
 export function loadSettings(): Settings {
-  const out: Settings = { apiKey: '', model: DEFAULT_MODEL };
+  // Settings saved before the coach helper existed have no coachSource → 'auto'.
+  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE };
   try {
     const raw = storage()?.getItem(SETTINGS_KEY);
     if (!raw) return out;
     const v = JSON.parse(raw) as Partial<Settings>;
     if (typeof v.apiKey === 'string') out.apiKey = v.apiKey;
     if (isModelId(v.model)) out.model = v.model;
+    if (isCoachSource(v.coachSource)) out.coachSource = v.coachSource;
   } catch {
     /* corrupt or unavailable storage → defaults */
   }
   return out;
 }
 
+const settingsListeners = new Set<() => void>();
+
+/** Called after settings are saved (so open panels can re-read them). */
+export function onSettingsChange(l: () => void): () => void {
+  settingsListeners.add(l);
+  return () => settingsListeners.delete(l);
+}
+
 export function saveSettings(s: Settings): void {
   try {
-    storage()?.setItem(SETTINGS_KEY, JSON.stringify({ apiKey: s.apiKey.trim(), model: isModelId(s.model) ? s.model : DEFAULT_MODEL }));
+    storage()?.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({
+        apiKey: s.apiKey.trim(),
+        model: isModelId(s.model) ? s.model : DEFAULT_MODEL,
+        coachSource: isCoachSource(s.coachSource) ? s.coachSource : DEFAULT_COACH_SOURCE,
+      }),
+    );
   } catch {
     /* storage full or disabled — settings just won't persist */
   }
+  for (const l of settingsListeners) l();
 }
 
 /** True when an API key is configured (in `s`, or in saved settings). */
@@ -126,7 +160,24 @@ export function loadSdk(): Promise<SdkModule['default']> {
 // ---------------------------------------------------------------------------
 // Errors
 
-export type CoachErrorKind = 'no_key' | 'auth' | 'permission' | 'not_found' | 'rate_limit' | 'overloaded' | 'server' | 'bad_request' | 'network' | 'aborted' | 'unknown';
+export type CoachErrorKind =
+  | 'no_key'
+  /** The coach helper (Claude Code on the player's PC) isn't reachable. */
+  | 'helper_down'
+  /** The coach helper is already answering something else (429). */
+  | 'helper_busy'
+  /** Claude Code on the player's PC isn't logged in. */
+  | 'not_logged_in'
+  | 'auth'
+  | 'permission'
+  | 'not_found'
+  | 'rate_limit'
+  | 'overloaded'
+  | 'server'
+  | 'bad_request'
+  | 'network'
+  | 'aborted'
+  | 'unknown';
 
 export class CoachError extends Error {
   constructor(
