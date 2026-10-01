@@ -25,3 +25,29 @@ export const useCardActions = () => useContext(CardActionsContext);
  */
 export const BoardStateRef = createContext<{ current: GameStateBody | null }>({ current: null });
 export const useBoardStateRef = () => useContext(BoardStateRef);
+
+/**
+ * Play mode: how tiles react to a click. Absent (null) in replay, where a
+ * click opens the card's details. In play a card the engine is asking about
+ * (or that a click plausibly drives) sends `act: clickCard`; everything else
+ * still opens details, and long-press / right-click always does.
+ */
+export type PlayMark = 'select' | 'act' | null;
+export interface PlayInteraction {
+  mark(card: AnyCard): PlayMark;
+  /** A gentle "you can afford this" glow for hand cards (a hint, never a gate). */
+  hint(card: AnyCard): boolean;
+  click(card: AnyCard): void;
+  /**
+   * Attackers / blockers you have clicked while declaring. The wire has no
+   * "chosen so far" field (combat stays null until you confirm), so this is
+   * what this browser sent, drawn as chosen.
+   */
+  chosen(card: AnyCard): 'attack' | 'block' | null;
+  /** Blockers chosen so far for one attacker (same caveat as `chosen`). */
+  blockersFor(attackerId: number): number[];
+  playerMark(playerId: number): boolean;
+  clickPlayer(playerId: number): void;
+}
+export const PlayContext = createContext<PlayInteraction | null>(null);
+export const usePlay = () => useContext(PlayContext);

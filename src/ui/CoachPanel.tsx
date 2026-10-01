@@ -46,7 +46,7 @@ function safe<T>(f: () => T, fallback: T): T {
   }
 }
 
-async function coachPrompt(log: GameLog, d: Decision): Promise<Prompt> {
+export async function coachPrompt(log: GameLog, d: Decision): Promise<Prompt> {
   const names = safe(() => coachCardNames(log, d), [] as string[]);
   const cards = await cardsForPrompt(names);
   const guide = activeGuideText();
@@ -235,7 +235,7 @@ function modelLabel(id: string | null): string | null {
   return MODELS.find((m) => id.startsWith(m.id))?.label ?? id;
 }
 
-function AnswerBox({
+export function AnswerBox({
   answer,
   askLabel,
   idleText,

@@ -5,13 +5,13 @@
  * Compact, readable card tiles. Memoised on the fields they draw, so scrubbing
  * between states only re-renders tiles whose card actually changed.
  */
-import { memo, useCallback, useRef, type KeyboardEvent, type PointerEvent } from 'react';
+import { memo, useCallback, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import type { AnyCard, Card } from '../protocol.ts';
 import { isHidden, keywordsOf } from '../protocol.ts';
 import { useCardInfo } from './cardData.ts';
-import { useBoardStateRef, useCardActions } from './cardContext.ts';
+import { useBoardStateRef, useCardActions, usePlay, type PlayMark } from './cardContext.ts';
 import { ManaCost } from './Mana.tsx';
-import { IconMoon, IconShield, IconSword, IconTapped, TypeGlyph } from './Icons.tsx';
+import { IconInfo, IconMoon, IconShield, IconSword, IconTapped, TypeGlyph } from './Icons.tsx';
 import { cardColors, colorClass, counterLabel, cx, shortType, typeKind } from './util.ts';
 
 export function displayName(card: Card): string {
@@ -45,17 +45,35 @@ export function tileSig(c: AnyCard | undefined): string {
 function useOpen(card: AnyCard) {
   const actions = useCardActions();
   const stateRef = useBoardStateRef();
+  const play = usePlay();
   const cardRef = useRef(card);
   cardRef.current = card;
   const open = useCallback(() => actions.open(cardRef.current, stateRef.current), [actions, stateRef]);
+  const mark: PlayMark = play ? play.mark(card) : null;
+  const chosen = play ? play.chosen(card) : null;
+  const hint = play && !mark ? false : play ? play.hint(card) : false;
+  // Long-press (touch) opens details without acting; the click that follows is swallowed.
+  const pressTimer = useRef<number | null>(null);
+  const longPressed = useRef(false);
+  const activate = useCallback(() => {
+    if (longPressed.current) {
+      longPressed.current = false;
+      return;
+    }
+    if (play && mark) play.click(cardRef.current);
+    else open();
+  }, [play, mark, open]);
+  // Enter activates a focused tile. In play, Space is left to the table's
+  // primary button (click a land, then Space = OK); in replay it opens too.
   const onKey = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.key === 'Enter' || (e.key === ' ' && !play)) {
         e.preventDefault();
-        open();
+        e.stopPropagation();
+        activate();
       }
     },
-    [open],
+    [activate, play],
   );
   const name = !isHidden(card) ? (card as Card).name || (card as Card).alt?.name || null : null;
   const onEnter = useCallback(
@@ -64,8 +82,36 @@ function useOpen(card: AnyCard) {
     },
     [actions, name],
   );
-  const onLeave = useCallback(() => actions.hover(null), [actions]);
-  return { open, onKey, onEnter, onLeave };
+  const clearPress = useCallback(() => {
+    if (pressTimer.current !== null) window.clearTimeout(pressTimer.current);
+    pressTimer.current = null;
+  }, []);
+  const onLeave = useCallback(() => {
+    clearPress();
+    actions.hover(null);
+  }, [actions, clearPress]);
+  const onDown = useCallback(
+    (e: PointerEvent<HTMLElement>) => {
+      longPressed.current = false;
+      if (!play || e.pointerType === 'mouse') return;
+      clearPress();
+      pressTimer.current = window.setTimeout(() => {
+        longPressed.current = true;
+        open();
+      }, 480);
+    },
+    [play, open, clearPress],
+  );
+  const onContext = useCallback(
+    (e: MouseEvent<HTMLElement>) => {
+      if (!play) return;
+      e.preventDefault();
+      clearPress();
+      open();
+    },
+    [play, open, clearPress],
+  );
+  return { open, activate, onKey, onEnter, onLeave, onDown, onUp: clearPress, onContext, mark, hint, chosen, playing: !!play };
 }
 
 function ptClass(now: string | null, printed: string | undefined): string {
@@ -86,7 +132,9 @@ interface TileProps {
 function TileInner({ card, attachments, inHand }: TileProps) {
   const name = card.name || card.alt?.name || '';
   const info = useCardInfo(name || null);
-  const { open, onKey, onEnter, onLeave } = useOpen(card);
+  const { open, activate, onKey, onEnter, onLeave, onDown, onUp, onContext, mark, hint, chosen, playing } = useOpen(card);
+  const attacking = card.attacking || chosen === 'attack';
+  const blocking = card.blocking || chosen === 'block';
   const kind = typeKind(card.types || info?.typeLine);
   const colors = cardColors(card, info?.producedMana, info?.colors);
   const art = info?.image?.artCrop;
@@ -100,34 +148,72 @@ function TileInner({ card, attachments, inHand }: TileProps) {
         'tile',
         colorClass(colors),
         !inHand && card.tapped && 'is-tapped',
-        card.attacking && 'is-attacking',
-        card.blocking && 'is-blocking',
+        attacking && 'is-attacking',
+        blocking && 'is-blocking',
         card.token && 'is-token',
+        mark === 'select' && 'is-select',
+        mark === 'act' && 'is-act',
+        hint && 'is-hint',
       )}
       role="button"
       tabIndex={0}
       aria-label={label}
-      onClick={open}
+      data-card-id={card.id}
+      data-mark={mark ?? undefined}
+      onClick={activate}
       onKeyDown={onKey}
       onPointerEnter={onEnter}
       onPointerLeave={onLeave}
+      onPointerDown={onDown}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      onContextMenu={onContext}
     >
+      {playing && (
+        <button
+          type="button"
+          className="tile-info"
+          aria-label={`Details: ${displayName(card)}`}
+          tabIndex={-1}
+          onClick={(e) => {
+            e.stopPropagation();
+            open();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <IconInfo size={12} />
+        </button>
+      )}
       <div className="tile-art">
-        {art ? <img src={art} alt="" loading="lazy" decoding="async" draggable={false} /> : <span className="tile-art-fallback"><TypeGlyph kind={kind} size={22} /></span>}
+        <span className="tile-art-fallback">
+          <TypeGlyph kind={kind} size={22} />
+        </span>
+        {art && (
+          <img
+            src={art}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        )}
         <span className="tile-cost">
           <ManaCost cost={card.manaCost} size="sm" />
         </span>
-        {card.attacking && (
+        {attacking && (
           <span className="tile-flag flag-attack" title="Attacking">
             <IconSword size={11} /> Attacking
           </span>
         )}
-        {card.blocking && (
+        {blocking && (
           <span className="tile-flag flag-block" title="Blocking">
             <IconShield size={11} /> Blocking
           </span>
         )}
-        {!inHand && card.tapped && !card.attacking && !card.blocking && (
+        {!inHand && card.tapped && !attacking && !blocking && (
           <span className="tile-flag flag-tapped" title="Tapped">
             <IconTapped size={11} /> Tapped
           </span>
@@ -224,19 +310,32 @@ export const LandChip = memo(
   function LandChip({ cards }: { cards: Card[] }) {
     const first = cards[0]!;
     const info = useCardInfo(first.name || null);
-    const { open, onKey, onEnter, onLeave } = useOpen(first);
+    const { activate, onKey, onEnter, onLeave, onDown, onUp, onContext, mark } = useOpen(first);
     const colors = cardColors(first, info?.producedMana, info?.colors);
     const tapped = first.tapped;
     return (
       <div
-        className={cx('land-chip', colorClass(colors), tapped && 'is-tapped', first.attacking && 'is-attacking')}
+        className={cx(
+          'land-chip',
+          colorClass(colors),
+          tapped && 'is-tapped',
+          first.attacking && 'is-attacking',
+          mark === 'select' && 'is-select',
+          mark === 'act' && 'is-act',
+        )}
         role="button"
         tabIndex={0}
         aria-label={`${cards.length} ${displayName(first)}${tapped ? ', tapped' : ', untapped'}`}
-        onClick={open}
+        data-card-id={first.id}
+        data-mark={mark ?? undefined}
+        onClick={activate}
         onKeyDown={onKey}
         onPointerEnter={onEnter}
         onPointerLeave={onLeave}
+        onPointerDown={onDown}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+        onContextMenu={onContext}
       >
         <span className="land-dot" aria-hidden="true" />
         <span className="land-name">{displayName(first)}</span>

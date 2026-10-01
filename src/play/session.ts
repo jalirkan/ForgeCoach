@@ -156,10 +156,9 @@ export const REFUSED_DETAIL =
 export function unreachableDetail(url: string, retryInMs: number | null): string {
   const port = portOf(url);
   return (
-    `Could not reach the Forge engine at ${url}. Start it in your mtg-table checkout — ` +
-    `engine only: \`./bridge/build.sh && ./bridge/run.sh mtgtable.MtgTable --transport ws --port ${port} ` +
-    `--games 3 --keep-open\`, or \`./scripts/play.sh --no-open\` (then do not open mtg-table's own board: ` +
-    `it would take the seat). Chrome may ask to let this page access devices on your local network — allow it ` +
+    `Could not reach the Forge engine at ${url}. Start it in your mtg-table checkout with ` +
+    `\`./scripts/play.sh --engine-only${port === '8642' ? '' : ` --port ${port}`}\`, and close any mtg-table ` +
+    `board tab (it would take the seat). Chrome may ask to let this page access devices on your local network — allow it ` +
     `(Safari blocks it). The page must be served from https://jalirkan.github.io or localhost, or the bridge ` +
     `refuses the handshake.` +
     (retryInMs === null ? '' : ` Retrying in ${(Math.round(retryInMs / 100) / 10).toString()} s.`)

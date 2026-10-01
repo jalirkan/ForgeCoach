@@ -2,12 +2,15 @@
  * ForgeCoach — ui/LoadScreen.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Pick a game: a bundled sample, a frames.jsonl(.gz) from disk, or a live
- * game served over HTTP.
+ * The start page. The primary action is playing against Forge (ForgeCoach
+ * takes the player's seat on a running mtg-table engine); reviewing a
+ * recorded game (sample or file) and following a live game are secondary.
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import './play/play.css';
 import { DEFAULT_LIVE_URL, FALLBACK_LIVE_URL } from '../live.ts';
-import { IconArrowRight, IconBroadcast, IconCheck, IconCopy, IconFile, IconGear, IconUpload } from './Icons.tsx';
+import { DEFAULT_SEAT_URL, type SeatStatus } from '../play/session.ts';
+import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconCopy, IconFile, IconGear, IconPlay, IconUpload } from './Icons.tsx';
 import { copyText, cx } from './util.ts';
 import { Logo } from './Logo.tsx';
 
@@ -34,11 +37,142 @@ export const SAMPLES: SampleInfo[] = [
 ];
 
 const LIVE_CMD = 'npx http-server var/games/<gameId> -p 8650 --cors -c-1';
+/** Run in an mtg-table checkout: the engine only (mtg-table's own board would take the seat). */
+export const ENGINE_CMD = './scripts/play.sh --engine-only';
+
+export interface PlayStatus {
+  status: SeatStatus;
+  detail: string | null;
+  attempts: number;
+}
+
+function portArg(url: string): string {
+  try {
+    const p = new URL(url).port;
+    return p && p !== '8642' ? ` --port ${p}` : '';
+  } catch {
+    return '';
+  }
+}
+
+function CopyCmd({ cmd }: { cmd: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="cmd">
+      <code>{cmd}</code>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label="Copy command"
+        onClick={async () => {
+          setCopied(await copyText(cmd));
+          setTimeout(() => setCopied(false), 1800);
+        }}
+      >
+        {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+      </button>
+    </div>
+  );
+}
+
+function PlayCard({ seatUrl, play, onPlay, onCancel }: { seatUrl: string; play: PlayStatus | null; onPlay: (url: string) => void; onCancel: () => void }) {
+  const [url, setUrl] = useState(seatUrl);
+  useEffect(() => setUrl(seatUrl), [seatUrl]);
+  const busy = play !== null && (play.status === 'connecting' || play.status === 'idle' || play.status === 'open');
+  const failed = play !== null && !busy;
+  const [helpOpen, setHelpOpen] = useState(false);
+  useEffect(() => {
+    if (failed || (play && play.attempts > 0)) setHelpOpen(true);
+  }, [failed, play]);
+  const statusText = !play
+    ? null
+    : play.status === 'open'
+      ? 'Connected — waiting for the engine to deal…'
+      : play.status === 'connecting' || play.status === 'idle'
+        ? play.attempts > 0
+          ? `Looking for the engine… (attempt ${play.attempts + 1})`
+          : 'Connecting to the engine…'
+        : play.status === 'refused'
+          ? 'Another window has the player’s seat.'
+          : `Couldn’t reach the engine at ${url}.`;
+  const cmd = ENGINE_CMD + portArg(url);
+  const retry = play?.detail ? /Retrying in ([\d.]+ s)/.exec(play.detail)?.[1] ?? null : null;
+  return (
+    <section className="play-card" aria-label="Play against Forge">
+      <div className="play-card-main">
+        <div className="play-card-text">
+          <h2 className="play-card-title">Play vs Forge</h2>
+          <p className="muted">A full game against the Forge AI, with the coach one tap away. Your Forge engine runs on this computer.</p>
+        </div>
+        {busy ? (
+          <button className="btn btn-quiet play-go" onClick={onCancel}>
+            <span className="spinner" /> Cancel
+          </button>
+        ) : (
+          <button className="btn btn-primary play-go" onClick={() => onPlay(url.trim() || DEFAULT_SEAT_URL)}>
+            <IconPlay size={16} /> {failed ? 'Try again' : 'Play'}
+          </button>
+        )}
+      </div>
+      {statusText && (
+        <div className={cx('play-status', failed ? 'is-bad' : play?.status === 'open' ? 'is-ok' : 'is-wait')} role="status">
+          <b>{statusText}</b> {retry && <span className="play-status-detail">Retrying in {retry}.</span>}
+          {play?.detail && play.detail.length > 140 ? (
+            <details className="play-status-more">
+              <summary>Details</summary>
+              <p>{play.detail}</p>
+            </details>
+          ) : (
+            play?.detail && <span className="play-status-detail"> {play.detail}</span>
+          )}
+        </div>
+      )}
+      <details className="play-help" open={helpOpen} onToggle={(e) => setHelpOpen((e.target as HTMLDetailsElement).open)}>
+        <summary>
+          <span>Start the engine first</span> <IconChevronDown size={14} />
+        </summary>
+        <ol className="play-steps">
+          <li>
+            In your <b>mtg-table</b> checkout, start the engine:
+            <CopyCmd cmd={cmd} />
+          </li>
+          <li>
+            Wait for <i>Engine ready on ws://…</i>. Close any mtg-table board tab first — only one window can hold the player’s seat.
+          </li>
+          <li>
+            Press <b>Play</b>. Chrome may ask to let this page reach devices on your local network — allow it. Safari blocks it; use Chrome or Firefox.
+          </li>
+        </ol>
+        <form
+          className="field-row play-url"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onPlay(url.trim() || DEFAULT_SEAT_URL);
+          }}
+        >
+          <label className="tiny muted" htmlFor="seat-url">
+            Engine address
+          </label>
+          <input id="seat-url" value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false} aria-label="Engine seat URL" />
+          {url !== DEFAULT_SEAT_URL && (
+            <button type="button" className="btn btn-quiet btn-sm" onClick={() => setUrl(DEFAULT_SEAT_URL)}>
+              Reset
+            </button>
+          )}
+        </form>
+      </details>
+    </section>
+  );
+}
 
 export function LoadScreen({
   onSample,
   onFile,
   onLive,
+  onPlay,
+  onCancelPlay,
+  seatUrl,
+  play,
   onSettings,
   lastSample,
   loading,
@@ -47,6 +181,10 @@ export function LoadScreen({
   onSample: (id: string) => void;
   onFile: (f: File) => void;
   onLive: (url: string) => void;
+  onPlay: (url: string) => void;
+  onCancelPlay: () => void;
+  seatUrl: string;
+  play: PlayStatus | null;
   onSettings: () => void;
   lastSample: string | null;
   loading: string | null;
@@ -67,13 +205,15 @@ export function LoadScreen({
       <main className="load-main">
         <section className="hero">
           <h1>
-            Exact state. <span className="accent">Honest coaching.</span>
+            Play Forge. <span className="accent">Get coached.</span>
           </h1>
           <p className="hero-sub">
-            Load a Forge game recorded by mtg-table and step through every decision you made — with the real board, real card
-            text, and a coach that never has to guess what was tapped.
+            A clean, calm table for games against the Forge AI — with a coach that sees the exact board and every card’s real
+            text, and a full review when the game is done.
           </p>
         </section>
+
+        <PlayCard seatUrl={seatUrl} play={play} onPlay={onPlay} onCancel={onCancelPlay} />
 
         {error && (
           <div className="banner banner-bad" role="alert">
@@ -82,7 +222,7 @@ export function LoadScreen({
         )}
 
         <section className="load-section">
-          <h2 className="section-h">Try a sample game</h2>
+          <h2 className="section-h">Review a recorded game</h2>
           <div className="sample-grid">
             {samples.map((s) => (
               <button key={s.id} className={cx('sample', s.id === lastSample && 'is-last')} onClick={() => onSample(s.id)} disabled={!!loading}>
@@ -112,7 +252,7 @@ export function LoadScreen({
 
         <div className="load-two">
           <section className="load-section">
-            <h2 className="section-h">Your own game</h2>
+            <h2 className="section-h">Your own recording</h2>
             <button className={cx('drop', loading === 'file' && 'is-busy')} onClick={() => fileRef.current?.click()} disabled={!!loading}>
               <span className="drop-icon">{loading === 'file' ? <span className="spinner" /> : <IconUpload size={22} />}</span>
               <span className="drop-title">Open frames.jsonl</span>
@@ -138,11 +278,11 @@ export function LoadScreen({
 
           <section className="load-section">
             <h2 className="section-h">
-              <IconBroadcast size={15} /> Follow a live game
+              <IconBroadcast size={15} /> Watch a game live
             </h2>
             <div className="live-box">
               <p className="small muted">
-                Start mtg-table as usual, then connect. ForgeCoach only reads from the new <code>/observe</code> socket — it never touches your seat.
+                Playing in mtg-table’s own board instead? Follow along here, read-only, from its <code>/observe</code> socket.
               </p>
               <form
                 className="field-row"
@@ -152,8 +292,8 @@ export function LoadScreen({
                 }}
               >
                 <input value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false} aria-label="Live URL" />
-                <button className="btn btn-primary" type="submit" disabled={!url.trim()}>
-                  Connect
+                <button className="btn btn-quiet" type="submit" disabled={!url.trim()}>
+                  Watch
                 </button>
               </form>
               <p className="tiny muted">Chrome may ask for local-network access — allow it. Safari blocks it; use Chrome or Firefox.</p>

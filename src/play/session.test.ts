@@ -271,7 +271,7 @@ describe('connectSeat — connection', () => {
     h.sock().drop(1006);
     let s = h.session.snapshot();
     expect(s.status).toBe('error');
-    expect(s.detail).toMatch(/bridge\/run\.sh mtgtable\.MtgTable --transport ws --port 8642/);
+    expect(s.detail).toMatch(/\.\/scripts\/play\.sh --engine-only/);
     expect(s.detail).toMatch(/scripts\/play\.sh/);
     expect(s.detail).toMatch(/local network/);
     expect(s.detail).toMatch(/Retrying in 0\.3 s/);
