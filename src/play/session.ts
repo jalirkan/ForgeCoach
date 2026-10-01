@@ -215,6 +215,10 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
   let hello: HelloOkBody | null = null;
   let state: GameStateBody | null = null;
   let input: InputBody | null = null;
+  // The bridge can put concurrent frames on the wire out of seq order (5, 3, 4);
+  // an older state or input must not replace a newer one on screen.
+  let stateSeq = 0;
+  let inputSeq = 0;
   let ask: AskBody | null = null;
   let over: OverBody | null = null;
   let inputSeen = false;
@@ -293,6 +297,8 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     builder.reset();
     state = null;
     input = null;
+    stateSeq = 0;
+    inputSeq = 0;
     ask = null;
     over = null;
     inputSeen = false;
@@ -313,11 +319,15 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
         // Between a new game's hello_ok and its first state, a reconnect can be
         // handed the previous game's last state (M50); it belongs to no game we show.
         if (hello !== null && body.gameId !== hello.gameId) return;
+        if (f.seq > 0 && f.seq < stateSeq) break; // stale: log it, don't show it
         state = body;
+        if (f.seq > 0) stateSeq = f.seq;
         break;
       }
       case 'input':
+        if (f.seq > 0 && f.seq < inputSeq) break; // stale: log it, don't show it
         input = f.body as InputBody;
+        if (f.seq > 0) inputSeq = f.seq;
         inputSeen = true;
         break;
       case 'ask': {
