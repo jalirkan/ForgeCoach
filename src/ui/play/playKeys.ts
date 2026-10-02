@@ -26,6 +26,7 @@ export const PLAY_KEYS: KeyRow[] = [
   { chord: 'A', what: 'attack with everything (while declaring attackers)' },
   { chord: 'Ctrl+Z', what: 'undo the last mana tap' },
   { chord: 'W U B R G C', what: 'spend one floating mana of that colour' },
+  { chord: 'L', what: 'open the game log' },
   { chord: '?', what: 'show this list' },
 ];
 
@@ -55,6 +56,7 @@ export type PlayKeyPlan =
   | { kind: 'cancel' }
   | { kind: 'act'; body: ActBody; label: string }
   | { kind: 'help' }
+  | { kind: 'log' }
   | { kind: 'closeOverlay' }
   | { kind: 'inert'; why: string };
 
@@ -114,6 +116,8 @@ export function planPlayKey(e: KeyLike, ctx: PlayKeyContext): PlayKeyPlan | null
     case '?':
     case 'h':
       return { kind: 'help' };
+    case 'l':
+      return { kind: 'log' };
   }
   return null;
 }

@@ -468,19 +468,7 @@ kbd {
   scroll-padding-inline: 16px;
   overscroll-behavior-x: contain;
 }
-.hand-dock-row > .tile {
-  flex: 1 1 0;
-  min-width: 124px;
-  max-width: 172px;
-  scroll-snap-align: start;
-}
-.hand-dock-row > .tile .tile-art {
-  height: 60px;
-}
-.hand-dock-row > .card-back {
-  flex: 0 0 72px;
-  height: 100px;
-}
+
 .hand-dock.is-collapsed .hand-dock-head {
   padding-bottom: 8px;
 }
@@ -488,35 +476,11 @@ kbd {
 /* ------------------------------------------------------------------ */
 /* Click affordances on tiles, lands and players */
 
-.tile.is-act,
-.land-chip.is-act {
-  border-color: rgba(227, 178, 95, 0.32);
-}
-.tile.is-act:hover,
-.land-chip.is-act:hover {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 8px 20px rgba(0, 0, 0, 0.35);
-}
-.tile.is-hint {
-  border-color: rgba(92, 196, 154, 0.7);
-  box-shadow: 0 0 0 1px rgba(92, 196, 154, 0.55), 0 0 18px rgba(92, 196, 154, 0.18);
-}
-.hand-dock-row > .tile.is-hint {
-  transform: translateY(-3px);
-}
-.tile.is-select,
-.land-chip.is-select {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent), 0 0 14px rgba(227, 178, 95, 0.25);
-}
 /* The pulse is an inner glow that only changes opacity (no repaint of the
-   shadow every frame — cheap on phones). */
-.land-chip.is-select,
+   shadow every frame — cheap on phones). Cards: ui/cards.css. */
 button.avatar.is-select {
   position: relative;
 }
-.tile.is-select::after,
-.land-chip.is-select::after,
 button.avatar.is-select::after {
   content: '';
   position: absolute;
@@ -532,40 +496,7 @@ button.avatar.is-select::after {
     opacity: 0.2;
   }
 }
-.tile-info {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  z-index: 4;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: rgba(14, 16, 20, 0.72);
-  color: var(--text-2);
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.tile:hover .tile-info,
-.tile:focus-within .tile-info {
-  opacity: 1;
-}
-@media (hover: none) {
-  .tile-info {
-    opacity: 0.85;
-  }
-}
-.tile-info::after {
-  /* a finger-sized hit area around the small badge */
-  content: '';
-  position: absolute;
-  inset: -9px;
-}
-.tile-info:hover {
-  color: var(--text);
-  background: rgba(14, 16, 20, 0.92);
-}
+
 .avatar {
   border: 0;
 }
@@ -575,14 +506,6 @@ button.avatar {
 button.avatar.is-select {
   cursor: pointer;
   box-shadow: 0 0 0 2px var(--accent), 0 0 14px rgba(227, 178, 95, 0.35);
-}
-
-/* Combat state reads at a glance */
-.play .tile.is-attacking {
-  box-shadow: 0 0 0 2px rgba(239, 111, 108, 0.75), 0 0 16px rgba(239, 111, 108, 0.25);
-}
-.play .tile.is-blocking {
-  box-shadow: 0 0 0 2px rgba(110, 169, 238, 0.75), 0 0 16px rgba(110, 169, 238, 0.25);
 }
 
 /* ------------------------------------------------------------------ */
@@ -761,63 +684,11 @@ button.avatar.is-select {
   color: var(--text-2);
 }
 
-/* Paying: the lands you can tap read as buttons. */
-.mode-pay .land-chip.is-act {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
-  box-shadow: 0 0 0 1px rgba(227, 178, 95, 0.4);
-}
-.mode-pay .tile.is-act {
-  border-color: rgba(227, 178, 95, 0.7);
-}
-.game.play.is-wide .play-board .tile-art {
-  height: 42px;
-}
-.game.play.is-wide .play-board .tile-name {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  -webkit-line-clamp: unset;
-  min-height: 0;
-}
-.game.play.is-wide .play-board .tile-body {
-  gap: 2px;
-}
-/* Creatures and other permanents share one flowing row; lands get their own line. */
-.game.play.is-wide .play-board .battlefield {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  align-items: flex-start;
-}
-.game.play.is-wide .play-board .bf-row {
-  flex: 0 1 auto;
-  max-width: 100%;
-}
-.game.play.is-wide .play-board .bf-row:has(.bf-chips),
-.game.play.is-wide .play-board .bf-empty {
-  flex-basis: 100%;
-}
-.game.play.is-wide .play-board .bf-tiles {
-  display: flex;
-  flex-wrap: wrap;
-}
-.game.play.is-wide .play-board .bf-tiles > .tile {
-  width: 128px;
-}
+/* Desktop play: each side keeps room for its header and one row of cards;
+   the battlefield scrolls when it holds more (cards: ui/cards.css). */
 .game.play.is-wide .play-board .player-top {
   min-height: min(240px, 44%);
   flex-shrink: 0.4;
-}
-/* Desktop play: every row earns its height. Row labels go (the tiles say what
-   they are), the type line goes from board tiles, and each side always keeps
-   room for its header and one row of cards. */
-.game.play.is-wide .play-board .bf-label {
-  display: none;
-}
-.game.play.is-wide .play-board .tile-type {
-  display: none;
 }
 .game.play.is-wide .play-board .player {
   min-height: 168px;
@@ -1053,48 +924,9 @@ button.avatar.is-select {
     padding: 8px;
     gap: 8px;
   }
-  .play-phone-main .bf-tiles {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 6px;
-  }
   .play-phone-main .bf-empty {
     padding: 2px 2px 0;
     font-size: 12.5px;
-  }
-  .play-phone-main .tile-art {
-    height: 42px;
-  }
-  .play-phone-main .tile-type {
-    display: none;
-  }
-  .play-phone-main .tile-name {
-    display: block;
-    min-height: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 12px;
-  }
-  .play-phone-main .tile-body {
-    padding: 5px 6px 6px;
-    gap: 0;
-  }
-  .play-phone-main .tile-foot {
-    padding-top: 4px;
-    min-height: 23px;
-  }
-  .play-phone-main .tile-cost {
-    top: 5px;
-    right: 4px;
-  }
-  .play-phone-main .tile-flag {
-    left: 4px;
-    bottom: 4px;
-  }
-  .play-phone-main .land-chip {
-    height: 34px;
-    font-size: 12.5px;
-    padding: 0 11px 0 9px;
   }
 
   /* ---- player headers: one line of identity, one of zones */
@@ -1385,26 +1217,6 @@ button.avatar.is-select {
     scroll-padding-inline: 10px;
     touch-action: pan-x;
   }
-  .hand-dock-row > .tile {
-    flex: 0 0 112px;
-    min-width: 0;
-  }
-  .hand-dock-row > .tile .tile-art {
-    height: 46px;
-  }
-  .hand-dock-row > .tile .tile-type {
-    display: none;
-  }
-  .hand-dock-row > .tile .tile-body {
-    padding: 6px 7px 7px;
-  }
-  .hand-dock-row > .tile .tile-foot {
-    min-height: 22px;
-  }
-  .hand-dock-row > .card-back {
-    flex: 0 0 64px;
-    height: 92px;
-  }
   .hand-dock-row > .bf-empty {
     padding: 4px;
   }
@@ -1413,14 +1225,8 @@ button.avatar.is-select {
   }
 }
 @media (max-width: 380px) {
-  .hand-dock-row > .tile {
-    flex-basis: 104px;
-  }
   .ab-btn {
     padding: 4px 10px;
-  }
-  .play-phone-main .bf-tiles {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -1474,12 +1280,6 @@ button.avatar.is-select {
     overflow-x: hidden;
     overflow-y: auto;
     touch-action: pan-y;
-  }
-  .game.play.is-narrow .hand-dock-row > .tile {
-    max-width: none;
-  }
-  .game.play.is-narrow .hand-dock-row > .card-back {
-    height: 92px;
   }
   .game.play.is-narrow .play-phone-main .board {
     padding: 6px 8px 10px;

@@ -1,0 +1,307 @@
+/*
+ * ForgeCoach — eventLog.ts
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The readable game log: the §3.6 events of every state frame as plain lines
+ * ("Forge AI cast Lightning Bolt", "Grizzly Bears died", "You: 20 → 17 life"),
+ * grouped under turn headers, oldest first.
+ *
+ * Names come from review.ts's per-frame resolver, the same rule the post-game
+ * summary uses: an id is named only from the snapshot its event arrived with or
+ * the one before, so a card that went back into a hidden zone is never named.
+ * The choice of which events are worth a line follows mtg-table's
+ * render/describe.ts (GPL-3.0-or-later, the mtg-table authors), in words
+ * instead of ids.
+ *
+ * Built incrementally: a live game's GameLog is append-only, so the walk keeps
+ * its place per session header and only reads the new frames.
+ */
+import type { Card, EntityRef, GameStateBody } from './protocol.ts';
+import type { GameLog } from './log.ts';
+import { frameResolver, indexOf, playerLabel, type CardIndex, type FrameResolver } from './review.ts';
+
+/** One piece of a line: text, a card (tappable to read it), or a player. */
+export type LogSeg = string | { card: Card | null; name: string; id: number } | { player: number; name: string };
+
+export type LogKind =
+  | 'land'
+  | 'cast'
+  | 'ability'
+  | 'attack'
+  | 'block'
+  | 'damage'
+  | 'life'
+  | 'died'
+  | 'left'
+  | 'token'
+  | 'counter'
+  | 'attach'
+  | 'info'
+  | 'outcome';
+
+export interface LogLine {
+  frameIndex: number;
+  kind: LogKind;
+  /** The player the line is about (colours the line), or null. */
+  who: number | null;
+  segs: LogSeg[];
+}
+
+export interface LogTurn {
+  /** Player-turn number; 0 for the pre-game. */
+  turn: number;
+  activePlayer: number | null;
+  /** First state frame of the turn. */
+  frameIndex: number;
+  lines: LogLine[];
+}
+
+/** The plain text of a line, for tests and copy. */
+export function lineText(line: LogLine): string {
+  return line.segs.map((s) => (typeof s === 'string' ? s : s.name)).join('');
+}
+
+interface Walk {
+  frames: GameLog['frames'];
+  done: number;
+  prevIdx: CardIndex;
+  turns: LogTurn[];
+  pendingToStack: Set<number>;
+  /** Cards whose leaving play a `sacrificed` event already wrote (or will rewrite). */
+  sacrificed: Set<number>;
+}
+
+const walks = new WeakMap<object, Walk>();
+
+const ABILITY_TEXT_MAX = 110;
+
+/** Forge's stack text without the ids it embeds ("(47) - Attach to Soldier Token (91)"). */
+export function abilityText(text: string, name: string | null): string {
+  let t = text.replace(/\[\[|\]\]/g, '').replace(/\s*\(\d+\)/g, '');
+  if (name && t.startsWith(name)) t = t.slice(name.length);
+  t = t.replace(/^\s*[-—:]\s*/, '').replace(/\s*\(Targeting:\s*\)/, '');
+  return t;
+}
+
+function shorten(s: string, max: number): string {
+  const one = s.replace(/\s+/g, ' ').trim();
+  return one.length > max ? one.slice(0, max - 1).trimEnd() + '…' : one;
+}
+
+/**
+ * The turn-by-turn log up to and including `upTo` (a frame index; default:
+ * the whole log). Turns with no lines are kept so the headers still read in
+ * order; the pre-game is dropped when nothing happened in it.
+ */
+export function gameEventLog(log: GameLog, upTo = Infinity): LogTurn[] {
+  const key = log.header as object;
+  let w = walks.get(key);
+  // A different (or reset) frame list: start again.
+  if (!w || w.done > log.frames.length || (w.done > 0 && w.frames[w.done - 1] !== log.frames[w.done - 1])) {
+    w = { frames: log.frames, done: 0, prevIdx: new Map(), turns: [], pendingToStack: new Set(), sacrificed: new Set() };
+    walks.set(key, w);
+  }
+  w.frames = log.frames;
+  for (; w.done < log.frames.length; w.done++) {
+    const f = log.frames[w.done]!;
+    if (f.type !== 'state') continue;
+    const s = f.body as GameStateBody;
+    const postIdx = indexOf(s);
+    foldFrame(w, log, w.done, s, frameResolver(w.prevIdx, postIdx));
+    w.prevIdx = postIdx;
+  }
+  const out: LogTurn[] = [];
+  for (const t of w.turns) {
+    if (t.frameIndex > upTo) break;
+    const lines = upTo === Infinity ? t.lines : t.lines.filter((l) => l.frameIndex <= upTo);
+    if (t.turn === 0 && lines.length === 0) continue;
+    out.push(lines === t.lines ? { ...t, lines: t.lines.slice() } : { ...t, lines });
+  }
+  return out;
+}
+
+function foldFrame(w: Walk, log: GameLog, fi: number, s: GameStateBody, r: FrameResolver): void {
+  const ensure = (turn: number, active: number | null): LogTurn => {
+    const cur = w.turns[w.turns.length - 1];
+    if (cur && cur.turn === turn) return cur;
+    const t: LogTurn = { turn, activePlayer: active, frameIndex: fi, lines: [] };
+    w.turns.push(t);
+    return t;
+  };
+  if (w.turns.length === 0) ensure(s.turn || 0, s.activePlayer);
+  const player = (id: number | null): LogSeg => (id === null ? 'Someone' : { player: id, name: playerLabel(log, id) });
+  const card = (id: number, fallback = 'a hidden card'): LogSeg => {
+    const name = r.nameOf(id);
+    return name ? { card: r.cardOf(id), name, id } : fallback;
+  };
+  const entity = (ref: EntityRef | null): LogSeg => (ref === null ? 'someone' : ref.kind === 'player' ? player(ref.id) : card(ref.id, 'a permanent'));
+  const controllerOf = (id: number): number | null => r.cardOf(id)?.controller ?? null;
+  const landIds = new Set<number>();
+  for (const e of s.events ?? []) if (e.kind === 'land') landIds.add(e.cardId);
+
+  for (const e of s.events ?? []) {
+    const t = w.turns[w.turns.length - 1]!;
+    const add = (kind: LogKind, who: number | null, ...segs: LogSeg[]) => t.lines.push({ frameIndex: fi, kind, who, segs });
+    switch (e.kind) {
+      case 'turn':
+        ensure(e.turn, e.player);
+        w.pendingToStack.clear();
+        break;
+      case 'mulligan':
+        add('info', e.player, player(e.player), ' took a mulligan');
+        break;
+      case 'land':
+        add('land', e.player, player(e.player), ' played ', card(e.cardId, 'a land'));
+        break;
+      case 'cast': {
+        const spell = w.pendingToStack.has(e.cardId);
+        w.pendingToStack.delete(e.cardId);
+        if (spell) {
+          add('cast', e.controller, player(e.controller), ' cast ', card(e.cardId, 'a spell'));
+        } else {
+          const name = r.nameOf(e.cardId);
+          // The stack text usually starts "Name - "; the name is already a segment.
+          const text = e.text === '' ? '' : shorten(abilityText(e.text, name), ABILITY_TEXT_MAX);
+          add('ability', e.controller, card(e.cardId, 'a hidden source'), text ? ` ability: ${text}` : ' ability');
+        }
+        break;
+      }
+      case 'resolved':
+        if (e.fizzled) add('info', controllerOf(e.cardId), card(e.cardId, 'a spell'), ' fizzled');
+        break;
+      case 'attackers': {
+        for (const b of e.bands) {
+          if (b.attackerIds.length === 0) continue;
+          const segs: LogSeg[] = [player(e.player), ' attacked ', entity(b.defender), ' with '];
+          b.attackerIds.forEach((id, i) => {
+            if (i > 0) segs.push(i === b.attackerIds.length - 1 ? ' and ' : ', ');
+            segs.push(card(id, 'a creature'));
+          });
+          add('attack', e.player, ...segs);
+        }
+        break;
+      }
+      case 'blockers': {
+        let any = false;
+        for (const b of e.blocks) {
+          // An unblocked attacker is `blockerIds: []` (M52) or, before M52, blocked by itself.
+          const by = b.blockerIds.filter((id) => id !== b.attackerId);
+          if (by.length === 0) continue;
+          any = true;
+          const segs: LogSeg[] = [];
+          by.forEach((id, i) => {
+            if (i > 0) segs.push(i === by.length - 1 ? ' and ' : ', ');
+            segs.push(card(id, 'a creature'));
+          });
+          segs.push(' blocked ', card(b.attackerId, 'an attacker'));
+          add('block', e.defendingPlayer, ...segs);
+        }
+        if (!any && e.blocks.length > 0) add('block', e.defendingPlayer, player(e.defendingPlayer), ' did not block');
+        break;
+      }
+      case 'damage':
+        add('damage', controllerOf(e.sourceCardId), card(e.sourceCardId, 'a source'), ` dealt ${e.amount} ${e.combat ? 'combat ' : ''}damage to `, entity(e.target));
+        break;
+      case 'life':
+        if (e.from !== e.to) add('life', e.player, player(e.player), ` ${e.to > e.from ? 'gained' : 'lost'} ${Math.abs(e.to - e.from)} life (${e.from} → ${e.to})`);
+        break;
+      case 'poison':
+        add('life', e.player, player(e.player), ` got ${e.amount} poison counter${e.amount === 1 ? '' : 's'} (${e.from + e.amount} total)`);
+        break;
+      case 'zone': {
+        const from = e.from?.zone ?? null;
+        const to = e.to?.zone ?? null;
+        if (to === 'stack' && from && from !== 'stack') {
+          w.pendingToStack.add(e.cardId);
+          break;
+        }
+        if (from === null && to === 'battlefield') {
+          add('token', e.to!.player, player(e.to!.player), ' created ', card(e.cardId, 'a token'));
+          break;
+        }
+        if (from === 'battlefield' && to !== 'battlefield') {
+          if (w.sacrificed.has(e.cardId)) {
+            w.sacrificed.delete(e.cardId);
+            break;
+          }
+          const c = r.cardOf(e.cardId);
+          const who = c?.controller ?? e.from!.player ?? null;
+          const creature = !!c && /\bCreature\b/.test(c.types);
+          if (to === 'graveyard' || to === null) add(creature ? 'died' : 'left', who, card(e.cardId, 'a permanent'), creature ? ' died' : to === null ? ' left play' : ' was put into the graveyard');
+          else if (to === 'exile') add('left', who, card(e.cardId, 'a permanent'), ' was exiled');
+          else if (to === 'hand') add('left', who, card(e.cardId, 'a permanent'), ' returned to its owner’s hand');
+          else if (to === 'library') add('left', who, card(e.cardId, 'a permanent'), ' was put into its owner’s library');
+          break;
+        }
+        if (to === 'battlefield' && from !== 'stack' && !landIds.has(e.cardId)) {
+          const name = r.nameOf(e.cardId);
+          if (name) add('token', e.to!.player, card(e.cardId), ` entered the battlefield${from === 'graveyard' ? ' from the graveyard' : from === 'exile' ? ' from exile' : ''}`);
+          break;
+        }
+        if (from === 'hand' && to === 'graveyard') {
+          add('left', e.from!.player, player(e.from!.player), ' discarded ', card(e.cardId, 'a card'));
+          break;
+        }
+        if (from === 'library' && to === 'graveyard') {
+          const name = r.nameOf(e.cardId);
+          if (name) add('left', e.from!.player, card(e.cardId), ' was put into the graveyard from the library');
+          break;
+        }
+        if (from === 'graveyard' && to === 'hand') {
+          const name = r.nameOf(e.cardId);
+          if (name) add('info', e.to!.player, player(e.to!.player), ' returned ', card(e.cardId), ' to hand');
+          break;
+        }
+        if (to === 'exile' && (from === 'graveyard' || from === 'hand')) {
+          const name = r.nameOf(e.cardId);
+          if (name) add('left', e.from!.player, card(e.cardId), ` was exiled from ${from === 'hand' ? 'a hand' : 'the graveyard'}`);
+        }
+        break;
+      }
+      case 'sacrificed': {
+        // The zone event may already have written "died"; rewrite it.
+        const prior = [...t.lines].reverse().find((l) => l.frameIndex === fi && (l.kind === 'died' || l.kind === 'left') && l.segs.some((sg) => typeof sg !== 'string' && 'id' in sg && sg.id === e.cardId));
+        const who = controllerOf(e.cardId);
+        if (prior) {
+          prior.kind = 'died';
+          prior.segs = [player(prior.who ?? who), ' sacrificed ', card(e.cardId, 'a permanent')];
+        } else {
+          w.sacrificed.add(e.cardId);
+          add('died', who, player(who), ' sacrificed ', card(e.cardId, 'a permanent'));
+        }
+        break;
+      }
+      case 'counters': {
+        const d = e.to - e.from;
+        if (d === 0) break;
+        const n = Math.abs(d);
+        add('counter', controllerOf(e.cardId), card(e.cardId, 'a permanent'), ` ${d > 0 ? 'got' : 'lost'} ${n === 1 ? 'a' : n} ${e.counter} counter${n === 1 ? '' : 's'} (now ${e.to})`);
+        break;
+      }
+      case 'attach':
+        if (e.to === null) add('attach', controllerOf(e.cardId), card(e.cardId, 'a permanent'), ' became unattached');
+        else add('attach', controllerOf(e.cardId), card(e.cardId, 'a permanent'), ' was attached to ', entity(e.to));
+        break;
+      case 'scry':
+        add('info', e.player, player(e.player), ` scried ${e.toTop + e.toBottom} (${e.toTop} on top, ${e.toBottom} on the bottom)`);
+        break;
+      case 'surveil':
+        add('info', e.player, player(e.player), ` surveilled ${e.toLibrary + e.toGraveyard} (${e.toLibrary} back, ${e.toGraveyard} to the graveyard)`);
+        break;
+      case 'phased':
+        add('info', controllerOf(e.cardId), card(e.cardId, 'a permanent'), ` phased ${e.phasedOut ? 'out' : 'in'}`);
+        break;
+      case 'foretold':
+        add('info', e.player, player(e.player), ' foretold a card');
+        break;
+      case 'outcome':
+        if (e.winner === null) add('outcome', null, 'The game is a draw');
+        else add('outcome', e.winner, player(e.winner), ' won the game');
+        break;
+      default:
+        // tap, stats, phase, shuffle, combat_end, unstacked: not worth a line.
+        break;
+    }
+  }
+  w.sacrificed.clear();
+}

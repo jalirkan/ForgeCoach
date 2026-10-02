@@ -1,0 +1,715 @@
+/*
+ * ForgeCoach — ui/cards.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * Cards on the table, in the hand and in zone sheets (ui/CardTile.tsx): the
+ * real card image in a card-shaped box, the live state drawn on top, land
+ * piles, ownership frames, and the play-mode click affordances.
+ *
+ * Sizes are one variable: --cw, the card's width. A tapped card lies in a slot
+ * as wide as the card is tall, so tapping never reflows a row.
+ */
+
+/* ------------------------------------------------------------------ */
+/* Sizes */
+
+.board,
+.hand-dock-row,
+.zone-grid,
+.hand-tiles {
+  --cw: 100px;
+}
+.bf-row-lands {
+  --cw: 88px;
+}
+.bf-row.is-dense {
+  --cw: 86px;
+}
+.bf-row-lands.is-dense {
+  --cw: 78px;
+}
+.bf-row.is-crowded {
+  --cw: 74px;
+}
+.bf-row-lands.is-crowded {
+  --cw: 68px;
+}
+@media (max-width: 560px) {
+  /* Phones: rows scroll sideways rather than shrinking cards past legible. */
+  .board {
+    --cw: 76px;
+  }
+  .bf-row-lands {
+    --cw: 68px;
+  }
+  .bf-row.is-dense,
+  .bf-row.is-crowded {
+    --cw: 68px;
+  }
+  .bf-row-lands.is-dense,
+  .bf-row-lands.is-crowded {
+    --cw: 62px;
+  }
+  .hand-dock-row,
+  .hand-tiles {
+    --cw: 80px;
+  }
+  .zone-grid {
+    --cw: 96px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Rows */
+
+.bf-row {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bf-row + .bf-row {
+  border-top: 1px dashed rgba(255, 255, 255, 0.07);
+  padding-top: 4px;
+}
+.bf-row > .bf-label {
+  display: none;
+}
+.bf-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 10px 8px;
+  padding: 8px 6px 6px;
+  min-width: 0;
+}
+.bf-gap {
+  flex: none;
+  width: 6px;
+}
+@media (max-width: 560px) {
+  .bf-cards {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    gap: 6px;
+    padding: 8px 8px 6px;
+    margin: 0 -8px;
+  }
+  .bf-cards::-webkit-scrollbar {
+    display: none;
+  }
+  /* Centred while it fits, scrollable from the first card when it does not. */
+  .bf-cards > :first-child {
+    margin-left: auto;
+  }
+  .bf-cards > :last-child {
+    margin-right: auto;
+  }
+}
+
+/* Desktop play: height is what is scarce, so a side's rows sit next to each
+   other while they fit (lands at the outer edge), and wrap when they do not. */
+@media (min-width: 1024px) {
+  /* One line per side when it fits: the card width follows the side's width
+     (--slots, card widths in a line, set by Board) and its height. */
+  .game.play.is-wide .play-board .player .battlefield {
+    container-type: size;
+  }
+  .game.play.is-wide .play-board .battlefield {
+    /* one line: every row side by side; two lines: the widest row, half the height */
+    --cw-one: min(calc((100cqw - 64px) / var(--slots, 8) - 9px), calc((100cqh - 22px - var(--attach-h, 0px)) * 63 / 88));
+    --cw-two: min(calc((100cqw - 32px) / var(--slots-row, 6) - 9px), calc((50cqh - 24px - var(--attach-h, 0px) / 2) * 63 / 88));
+  }
+  .game.play.is-wide .play-board .bf-row {
+    --cw: clamp(60px, max(var(--cw-one), var(--cw-two)), 104px);
+  }
+  .game.play.is-wide .play-board .bf-row-lands {
+    --cw: clamp(56px, calc(0.9 * max(var(--cw-one), var(--cw-two))), 94px);
+  }
+  .game.play.is-wide .play-board .bf-cards {
+    padding: 6px 4px 4px;
+  }
+  .game.play.is-wide .play-board .player .battlefield {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: flex-start;
+    column-gap: 28px;
+    row-gap: 2px;
+    padding: 4px 10px;
+  }
+  .game.play.is-wide .play-board .bf-row {
+    flex: 0 1 auto;
+    max-width: 100%;
+  }
+  .game.play.is-wide .play-board .bf-row + .bf-row {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .game.play.is-wide .play-board .bf-empty {
+    flex-basis: 100%;
+  }
+}
+
+/* The two sides read as two places at the table. */
+.player-top .battlefield {
+  background: linear-gradient(180deg, rgba(64, 92, 140, 0.16), rgba(64, 92, 140, 0.03));
+}
+.player-me .battlefield {
+  background: linear-gradient(0deg, rgba(150, 110, 50, 0.09), rgba(150, 110, 50, 0.02));
+}
+
+/* ------------------------------------------------------------------ */
+/* A card */
+
+.tile {
+  --ch: calc(var(--cw) * 88 / 63);
+  --cr: calc(var(--cw) * 0.055);
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+.tile-slot {
+  position: relative;
+  width: var(--cw);
+  height: var(--ch);
+  flex: none;
+}
+.tile.is-tapped .tile-slot {
+  width: var(--ch);
+}
+.tile-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--cw);
+  height: var(--ch);
+  transform: translate(-50%, -50%);
+  border-radius: var(--cr);
+  overflow: hidden;
+  background: #0c0d10;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.45);
+  transition: transform 0.18s ease, box-shadow 0.15s, filter 0.15s;
+}
+.tile.is-tapped .tile-card {
+  transform: translate(-50%, -50%) rotate(90deg);
+  filter: brightness(0.78) saturate(0.85);
+}
+.tile.is-tapped.is-attacking .tile-card,
+.tile.is-tapped.is-blocking .tile-card {
+  filter: none;
+}
+.tile:hover .tile-card {
+  filter: brightness(1.06);
+}
+.tile.is-tapped:hover .tile-card {
+  filter: brightness(0.92);
+}
+.tile:focus-visible .tile-card {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+/* The image, over the text face once it has loaded. */
+.tile-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.tile-card.has-img .tile-img {
+  opacity: 1;
+}
+
+/* The text face: what a card is when there is no image (yet). */
+.tile-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3%;
+  padding: 5% 5% 22%;
+  border: max(2px, calc(var(--cw) * 0.035)) solid #121317;
+  border-radius: inherit;
+  background: linear-gradient(170deg, color-mix(in srgb, var(--tc) 34%, #1a1d24), color-mix(in srgb, var(--tc) 12%, #14161b) 70%);
+  color: var(--text);
+}
+.tile.is-token .tile-face {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--tc) 22%, #1a1d24) 0 7px, color-mix(in srgb, var(--tc) 14%, #16181e) 7px 8px);
+}
+.tile-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2px;
+  min-width: 0;
+}
+.tile-name {
+  font-size: clamp(8.5px, calc(var(--cw) * 0.112), 12.5px);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.tile-cost {
+  flex: none;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 55%;
+  zoom: 0.78;
+}
+.tile-cost:empty {
+  display: none;
+}
+.tile-art {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 2px;
+  overflow: hidden;
+  background: radial-gradient(120% 140% at 20% 0%, color-mix(in srgb, var(--tc) 38%, #15181e) 0%, #15181e 75%);
+}
+.tile-art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+.tile-art-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--tc);
+  opacity: 0.6;
+}
+.tile-type {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  font-size: clamp(7.5px, calc(var(--cw) * 0.088), 10.5px);
+  color: var(--text-2);
+}
+.tile-type svg {
+  flex: none;
+  color: var(--tc);
+}
+.tile-type span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ */
+/* Live state, upright over the card (a tapped card's overlay sits on its
+   lying-down footprint). */
+
+.tile-ovl {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.tile.is-tapped .tile-ovl {
+  top: calc((var(--ch) - var(--cw)) / 2);
+  bottom: calc((var(--ch) - var(--cw)) / 2);
+}
+.tile-pt {
+  position: absolute;
+  left: 5%;
+  bottom: 4%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px clamp(3px, calc(var(--cw) * 0.05), 6px);
+  border-radius: 5px;
+  font-size: clamp(10.5px, calc(var(--cw) * 0.15), 15px);
+  font-weight: 750;
+  line-height: 1.2;
+  color: #f4f1ea;
+  background: rgba(10, 11, 14, 0.9);
+  border: 1.5px solid rgba(214, 205, 180, 0.55);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.tile-pt .up {
+  color: #8ff0c4;
+}
+.tile-pt .down {
+  color: #ffa19e;
+}
+.tile-pt.pt-up {
+  border-color: #4fc58f;
+}
+.tile-pt.pt-down {
+  border-color: #e0605c;
+}
+.tile-pt.pt-loyalty {
+  left: auto;
+  right: 5%;
+  border-color: var(--accent);
+  border-radius: 5px 5px 50% 50% / 5px 5px 40% 40%;
+  padding-bottom: 3px;
+  color: var(--accent-2);
+}
+.tile-dmg {
+  position: absolute;
+  right: 5%;
+  bottom: 4%;
+  z-index: 2;
+  min-width: 1.6em;
+  height: 1.6em;
+  display: grid;
+  place-items: center;
+  padding: 0 3px;
+  border-radius: 999px;
+  font-size: clamp(9.5px, calc(var(--cw) * 0.12), 12.5px);
+  font-weight: 750;
+  color: #fff;
+  background: #b8322f;
+  box-shadow: 0 0 0 1.5px rgba(10, 11, 14, 0.85), 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+.tile-dmg::before {
+  content: '−';
+}
+.tile-marks {
+  position: absolute;
+  right: 4%;
+  top: 13%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  max-width: 92%;
+}
+.mk {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: clamp(15px, calc(var(--cw) * 0.19), 19px);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: clamp(9px, calc(var(--cw) * 0.12), 11.5px);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  color: var(--text);
+  background: rgba(10, 11, 14, 0.86);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.mk-counter {
+  color: #9af0c9;
+  border: 1px solid rgba(92, 196, 154, 0.55);
+}
+.mk-minus {
+  color: #ffaaa7;
+  border: 1px solid rgba(239, 111, 108, 0.55);
+}
+.mk-sick {
+  color: #cbbdfb;
+  border: 1px solid rgba(166, 144, 242, 0.5);
+}
+.mk-token {
+  color: var(--text-2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: clamp(8px, calc(var(--cw) * 0.1), 10px);
+}
+.tile-flag {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 2;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: clamp(17px, calc(var(--cw) * 0.22), 21px);
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: clamp(9px, calc(var(--cw) * 0.12), 11px);
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.flag-attack {
+  color: #fff;
+  background: #c23d38;
+}
+.flag-block {
+  color: #fff;
+  background: #2f6fb8;
+}
+@media (max-width: 560px) {
+  .tile-flag .flag-text {
+    display: none;
+  }
+  .tile-flag {
+    padding: 0 5px;
+  }
+}
+
+/* The details button (play): a small badge on the card's corner. */
+.tile-info {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  z-index: 4;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(14, 16, 20, 0.88);
+  border: 1px solid var(--line-2);
+  color: var(--text-2);
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity 0.15s;
+}
+.tile:hover .tile-info,
+.tile:focus-within .tile-info {
+  opacity: 1;
+}
+@media (hover: none) {
+  .tile-info {
+    display: none;
+  }
+}
+.tile-info::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+.tile-info:hover {
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------------ */
+/* Ownership frames: yours glow warm gold, theirs sit in crimson. */
+
+.tile.own-me .tile-card {
+  box-shadow: 0 0 0 1.5px rgba(214, 170, 90, 0.75), 0 0 10px rgba(227, 178, 95, 0.28), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.tile.own-opp .tile-card {
+  box-shadow: 0 0 0 1.5px #a8323a, 0 0 8px rgba(190, 46, 56, 0.3), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+/* ------------------------------------------------------------------ */
+/* Play: what a click does (same semantics as before — `act` you may click,
+   `hint` you can afford it, `select` the engine is asking for it). */
+
+.tile.is-act:hover .tile-card {
+  box-shadow: 0 0 0 2px var(--accent-2), 0 0 14px rgba(227, 178, 95, 0.45), 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.mode-pay .tile.is-act .tile-card {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 12px rgba(227, 178, 95, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.tile.is-hint .tile-card {
+  box-shadow: 0 0 0 2px #5cc49a, 0 0 16px rgba(92, 196, 154, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.tile.is-hint.is-hand {
+  transform: translateY(-4px);
+}
+.tile.is-select .tile-card {
+  box-shadow: 0 0 0 2.5px var(--accent-2), 0 0 18px rgba(240, 199, 127, 0.55), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+/* Declared (or being declared) attackers and blockers read red / blue even
+   while the engine still offers them for a click. */
+.tile.is-attacking .tile-card {
+  box-shadow: 0 0 0 2.5px #ef6f6c, 0 0 16px rgba(239, 111, 108, 0.45), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.tile.is-blocking .tile-card {
+  box-shadow: 0 0 0 2.5px #6ea9ee, 0 0 16px rgba(110, 169, 238, 0.45), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+/* The pulse only changes opacity (cheap on phones). */
+.tile.is-select .tile-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px rgba(240, 199, 127, 0.7), inset 0 0 18px rgba(227, 178, 95, 0.55);
+  pointer-events: none;
+  z-index: 3;
+  animation: select-pulse 1.6s ease-in-out infinite;
+}
+@keyframes select-pulse {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Auras and equipment, tucked under their host */
+
+.tile-attach {
+  position: relative;
+  z-index: 0;
+  margin-top: -3px;
+  width: calc(var(--cw) - 6px);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.tile.is-tapped .tile-attach {
+  width: calc(var(--ch) - 6px);
+  margin-top: calc((var(--cw) - var(--ch)) / 2 - 3px);
+}
+.attach-chip {
+  display: flex;
+  flex-direction: column;
+  padding: 5px 5px 3px;
+  border-radius: 0 0 5px 5px;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  border-top: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 30%, #191b20), color-mix(in srgb, var(--tc) 16%, #121317));
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 70%, #000), 0 2px 4px rgba(0, 0, 0, 0.45);
+  color: var(--text);
+  font-size: clamp(8px, calc(var(--cw) * 0.1), 10.5px);
+  line-height: 1.2;
+  cursor: pointer;
+  min-width: 0;
+}
+.attach-chip:hover {
+  filter: brightness(1.15);
+}
+.attach-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attach-effect {
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.attach-chip.is-tapped {
+  opacity: 0.7;
+}
+
+/* ------------------------------------------------------------------ */
+/* Land piles */
+
+.land-pile {
+  --off: calc(var(--cw) * 0.2);
+}
+.land-pile .tile-slot {
+  width: calc(var(--cw) + var(--pile) * var(--off));
+}
+.land-pile.is-tapped .tile-slot {
+  width: calc(var(--ch) + var(--pile) * var(--off));
+}
+.pile-item {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--i) * var(--off));
+  width: var(--cw);
+}
+.land-pile.is-tapped .pile-item {
+  width: var(--ch);
+}
+.land-pile .pile-item:not(:last-of-type) .tile-card {
+  filter: brightness(0.7);
+}
+.land-pile.is-tapped .pile-item:not(:last-of-type) .tile-card {
+  filter: brightness(0.6) saturate(0.85);
+}
+/* The ring and pulse belong to the top card only. */
+.land-pile .pile-item:not(:last-of-type) .tile-card::after {
+  display: none;
+}
+.land-pile.is-tapped .tile-ovl {
+  top: calc((var(--ch) - var(--cw)) / 2);
+  bottom: calc((var(--ch) - var(--cw)) / 2);
+}
+.pile-count {
+  position: absolute;
+  right: 5%;
+  top: 5%;
+  z-index: 2;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: clamp(10.5px, calc(var(--cw) * 0.15), 14px);
+  font-weight: 750;
+  color: #fff;
+  background: rgba(10, 11, 14, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* ------------------------------------------------------------------ */
+/* Hand, zone sheets, card backs */
+
+.hand-tiles {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 6px 2px 4px;
+}
+.zone-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.hand-dock-row {
+  align-items: flex-end;
+  padding-top: 10px;
+}
+.hand-dock-row > .tile {
+  scroll-snap-align: start;
+}
+.game.play.is-narrow .hand-dock-row {
+  justify-items: center;
+}
+.card-back {
+  --ch: calc(var(--cw, 100px) * 88 / 63);
+  display: inline-block;
+  flex: none;
+  width: var(--cw, 100px);
+  height: var(--ch);
+  border-radius: calc(var(--cw, 100px) * 0.055);
+  border: 1px solid #3a3f4a;
+  background: radial-gradient(70% 60% at 50% 50%, #3b3020 0%, transparent 70%), repeating-linear-gradient(45deg, #1d2029 0 6px, #191c24 6px 12px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.card-back.card-back-sm {
+  width: 9px;
+  height: 13px;
+  border-radius: 2px;
+  margin-right: -3px;
+  border: 1px solid #4a5263;
+  box-shadow: 1px 0 0 var(--surface-2);
+  background: linear-gradient(135deg, #3a4250, #262c36);
+}

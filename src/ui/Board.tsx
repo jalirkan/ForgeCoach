@@ -5,7 +5,7 @@
  * The table at one state: opponent on top, you at the bottom, with the turn
  * header, stack and combat between them.
  */
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, type CSSProperties } from 'react';
 import type { AnyCard, Card, GameStateBody, PlayerState } from '../protocol.ts';
 import { isHidden, MANA_COLORS } from '../protocol.ts';
 import type { GameLog } from '../log.ts';
@@ -13,10 +13,11 @@ import { cardIndex, cardName, phaseLabel } from '../decisions.ts';
 import { manaSummary, turnFacts, type ManaSource } from '../state.ts';
 import { cachedMap, useCardsVersion } from './cardData.ts';
 import { useCardActions, usePlay } from './cardContext.ts';
-import { CardBack, CardTile, LandChip, displayName } from './CardTile.tsx';
+import { CardBack, CardTile, LandPile, displayName } from './CardTile.tsx';
 import { IconHeart, IconLayers, IconShield, IconSword } from './Icons.tsx';
 import { Pip } from './Mana.tsx';
 import { Sheet } from './Sheet.tsx';
+import { groupLands, pileWeight } from './landPiles.ts';
 import { cx, stateCardNames, typeKind } from './util.ts';
 
 interface BoardProps {
@@ -58,8 +59,7 @@ export function Board({ log, state, frameIndex, seat, hideHand }: BoardProps) {
 // ---------------------------------------------------------------------------
 
 function groupBattlefield(player: PlayerState, byId: Map<number, Card>) {
-  const lands: Card[][] = [];
-  const landKey = new Map<string, Card[]>();
+  const landCards: { card: Card; attachments: number }[] = [];
   const creatures: { card: Card; att: Card[] }[] = [];
   const other: { card: Card; att: Card[] }[] = [];
   for (const any of player.zones.battlefield.cards) {
@@ -68,21 +68,21 @@ function groupBattlefield(player: PlayerState, byId: Map<number, Card>) {
     if (c.attachedToId !== null && byId.has(c.attachedToId)) continue; // drawn on its host
     const att = c.attachmentIds.map((id) => byId.get(id)).filter((x): x is Card => !!x);
     const kind = typeKind(c.types);
-    if (kind === 'land' && att.length === 0 && !c.attacking && !c.blocking) {
-      const key = `${c.name}|${c.tapped}|${JSON.stringify(c.counters)}|${c.damage}`;
-      let g = landKey.get(key);
-      if (!g) {
-        g = [];
-        landKey.set(key, g);
-        lands.push(g);
-      }
-      g.push(c);
-    } else if (kind === 'creature') creatures.push({ card: c, att });
+    if (kind === 'land') landCards.push({ card: c, attachments: att.length });
+    else if (kind === 'creature') creatures.push({ card: c, att });
     else other.push({ card: c, att });
   }
-  // Untapped lands first, then by name, so the mana you have reads left to right.
-  lands.sort((a, b) => Number(a[0]!.tapped) - Number(b[0]!.tapped) || a[0]!.name.localeCompare(b[0]!.name));
-  return { lands, creatures, other };
+  return { lands: groupLands(landCards), creatures, other };
+}
+
+/** How crowded a row is, in card widths (a tapped card is a card lying down, ~1.4 wide). */
+function rowWeight(cards: Card[]): number {
+  return cards.reduce((n, c) => n + (c.tapped ? 1.4 : 1), 0);
+}
+function density(weight: number): string | undefined {
+  if (weight > 11) return 'is-crowded';
+  if (weight > 7) return 'is-dense';
+  return undefined;
 }
 
 const PlayerArea = memo(function PlayerArea({
@@ -106,25 +106,32 @@ const PlayerArea = memo(function PlayerArea({
 }) {
   const { lands, creatures, other } = useMemo(() => groupBattlefield(player, byId), [player, byId]);
   const mine = player.id === seat;
+  const side = mine ? 'me' : 'opp';
+  const permanents = [...creatures, ...other];
+  const landWeight = lands.reduce((n, g) => n + pileWeight(g), 0);
+  const permWeight = rowWeight(permanents.map((p) => p.card)) + (creatures.length && other.length ? 0.15 : 0);
   const rows = [
-    creatures.length > 0 && (
-      <Row key="c" label="Creatures" count={creatures.length}>
+    permanents.length > 0 && (
+      <Row
+        key="p"
+        kind="permanents"
+        label={other.length && creatures.length ? 'Creatures and other permanents' : creatures.length ? 'Creatures' : 'Other permanents'}
+        count={permanents.length}
+        dense={density(permWeight)}
+      >
         {creatures.map(({ card, att }) => (
-          <CardTile key={card.id} card={card} attachments={att} />
+          <CardTile key={card.id} card={card} attachments={att} side={side} />
         ))}
-      </Row>
-    ),
-    other.length > 0 && (
-      <Row key="o" label="Other permanents" count={other.length}>
+        {creatures.length > 0 && other.length > 0 && <span className="bf-gap" aria-hidden="true" />}
         {other.map(({ card, att }) => (
-          <CardTile key={card.id} card={card} attachments={att} />
+          <CardTile key={card.id} card={card} attachments={att} side={side} />
         ))}
       </Row>
     ),
     lands.length > 0 && (
-      <Row key="l" label="Lands" count={lands.reduce((n, g) => n + g.length, 0)} chips>
+      <Row key="l" kind="lands" label="Lands" count={lands.reduce((n, g) => n + g.length, 0)} dense={density(landWeight)}>
         {lands.map((g) => (
-          <LandChip key={g[0]!.id} cards={g} />
+          <LandPile key={g[0]!.id} cards={g} side={side} />
         ))}
       </Row>
     ),
@@ -134,7 +141,17 @@ const PlayerArea = memo(function PlayerArea({
   return (
     <section className={cx('player', top ? 'player-top' : 'player-me', mine && 'is-me')} aria-label={`${player.name}'s side`}>
       {top && <PlayerHeader player={player} state={state} log={log} frameIndex={frameIndex} seat={seat} />}
-      <div className="battlefield">
+      <div
+        className="battlefield"
+        style={
+          {
+            // Card widths per line, for desktop play's sizing (ui/cards.css): all rows in one line, or the widest row.
+            '--slots': Math.max(4, permWeight + landWeight * 0.9 + (permanents.length && lands.length ? 0.4 : 0)).toFixed(2),
+            '--slots-row': Math.max(4, permWeight, landWeight * 0.9).toFixed(2),
+            '--attach-h': permanents.some((p) => p.att.length > 0) ? '34px' : '0px',
+          } as CSSProperties
+        }
+      >
         {empty ? <div className="bf-empty">No permanents</div> : rows}
       </div>
       {!top && <PlayerHeader player={player} state={state} log={log} frameIndex={frameIndex} seat={seat} />}
@@ -143,13 +160,16 @@ const PlayerArea = memo(function PlayerArea({
   );
 });
 
-function Row({ label, count, chips, children }: { label: string; count: number; chips?: boolean; children: React.ReactNode }) {
+function Row({ kind, label, count, dense, children }: { kind: 'permanents' | 'lands'; label: string; count: number; dense?: string; children: React.ReactNode }) {
   return (
-    <div className="bf-row">
+    <div className={cx('bf-row', `bf-row-${kind}`, dense)}>
       <div className="bf-label">
         {label} <span className="bf-count">{count}</span>
       </div>
-      <div className={chips ? 'bf-chips' : 'bf-tiles'}>{children}</div>
+      {/* bf-chips / bf-tiles: kept class names (the play screen scrolls to the lands row by it). */}
+      <div className={cx('bf-cards', kind === 'lands' ? 'bf-chips' : 'bf-tiles')} role="group" aria-label={`${label}: ${count}`}>
+        {children}
+      </div>
     </div>
   );
 }

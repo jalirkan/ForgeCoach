@@ -2,17 +2,26 @@
  * ForgeCoach — ui/CardTile.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Compact, readable card tiles. Memoised on the fields they draw, so scrubbing
- * between states only re-renders tiles whose card actually changed.
+ * Cards on the table and in the hand, drawn as the real card (Scryfall image)
+ * with the live state on top: P/T, counters, damage, loyalty, summoning
+ * sickness, combat, tapped (rotated a quarter turn in a slot that already has
+ * room for it, so nothing reflows). Until the image arrives — or when there is
+ * none (unknown name, face-down, most tokens) — the same card-sized box shows
+ * a text face. Memoised on the fields they draw, so scrubbing between states
+ * only re-renders tiles whose card actually changed.
  */
-import { memo, useCallback, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import { memo, useCallback, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import type { AnyCard, Card } from '../protocol.ts';
-import { isHidden, keywordsOf } from '../protocol.ts';
+import { isHidden } from '../protocol.ts';
+import type { CardInfo } from '../cards.ts';
 import { useCardInfo } from './cardData.ts';
 import { useBoardStateRef, useCardActions, usePlay, type PlayMark } from './cardContext.ts';
+import { PILE_SHOWN, pilePlan } from './landPiles.ts';
 import { ManaCost } from './Mana.tsx';
-import { IconInfo, IconMoon, IconShield, IconSword, IconTapped, TypeGlyph } from './Icons.tsx';
+import { IconInfo, IconMoon, IconShield, IconSword, TypeGlyph } from './Icons.tsx';
 import { cardColors, colorClass, counterLabel, cx, shortType, typeKind } from './util.ts';
+
+import './cards.css';
 
 export function displayName(card: Card): string {
   if (card.name) return card.name;
@@ -36,11 +45,15 @@ export function tileSig(c: AnyCard | undefined): string {
     c.toughness,
     c.loyalty,
     c.types,
+    c.controller,
     JSON.stringify(c.counters),
     c.attachmentIds.join(','),
     (c.keywords ?? []).join(','),
   ].join('|');
 }
+
+/** Whose side a permanent is drawn on: framed gold (yours) or crimson (theirs). */
+export type TileSide = 'me' | 'opp';
 
 function useOpen(card: AnyCard) {
   const actions = useCardActions();
@@ -136,10 +149,22 @@ function useOpen(card: AnyCard) {
     },
     [play, open, clearPress],
   );
-  return { open, activate, onKey, onEnter, onLeave, onDown, onMove, onUp: clearPress, onContext, mark, hint, chosen, playing: !!play };
+  const handlers = {
+    onClick: activate,
+    onKeyDown: onKey,
+    onPointerEnter: onEnter,
+    onPointerLeave: onLeave,
+    onPointerDown: onDown,
+    onPointerMove: onMove,
+    onPointerUp: clearPress,
+    onPointerCancel: clearPress,
+    onContextMenu: onContext,
+  };
+  return { open, activate, onKey, onEnter, onLeave, handlers, mark, hint, chosen, playing: !!play };
 }
 
-function ptClass(now: string | null, printed: string | undefined): string {
+/** "up" / "down" against the printed value; '' when equal or not numeric. */
+function ptClass(now: string | null, printed: string | undefined): '' | 'up' | 'down' {
   if (!now || !printed) return '';
   const a = Number(now);
   const b = Number(printed);
@@ -147,142 +172,193 @@ function ptClass(now: string | null, printed: string | undefined): string {
   return a > b ? 'up' : 'down';
 }
 
+// ---------------------------------------------------------------------------
+// The card itself: the Scryfall image over a text face of the same size.
+
+/** Image URLs for a visible, face-up card (none for face-down cards). */
+function imageOf(card: Card, info: CardInfo | undefined): { src: string; srcSet?: string } | null {
+  if (!card.name || card.faceDown || !info?.found) return null;
+  const img = info.image;
+  if (!img) return null;
+  const src = img.normal ?? img.small ?? img.large;
+  if (!src) return null;
+  const set = [img.small && `${img.small} 146w`, img.normal && `${img.normal} 488w`, img.large && `${img.large} 672w`].filter(Boolean).join(', ');
+  return { src, srcSet: set || undefined };
+}
+
+/**
+ * The card face: a text face (name, cost, art crop, type) that is always there
+ * and sized like a card, and the full card image on top of it once it loads.
+ */
+function CardFace({ card, info, kind, eager }: { card: Card; info: CardInfo | undefined; kind: ReturnType<typeof typeKind>; eager?: boolean }) {
+  const img = imageOf(card, info);
+  const [state, setState] = useState<{ src: string; ok: boolean | null } | null>(null);
+  const status = state && img && state.src === img.src ? state.ok : null;
+  const art = info?.image?.artCrop;
+  return (
+    <div className={cx('tile-card', status === true && 'has-img')}>
+      <div className="tile-face">
+        <div className="tile-head">
+          <span className="tile-name">{displayName(card)}</span>
+          <span className="tile-cost">
+            <ManaCost cost={card.manaCost} size="sm" />
+          </span>
+        </div>
+        <div className="tile-art">
+          <span className="tile-art-fallback">
+            <TypeGlyph kind={kind} size={18} />
+          </span>
+          {art && !card.faceDown && card.name && (
+            <img
+              src={art}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          )}
+        </div>
+        <div className="tile-type">
+          <TypeGlyph kind={kind} size={9} />
+          <span>{shortType(card.types || info?.typeLine) || '—'}</span>
+        </div>
+      </div>
+      {img && status !== false && (
+        <img
+          className="tile-img"
+          src={img.src}
+          srcSet={img.srcSet}
+          sizes="(max-width: 560px) 80px, 120px"
+          alt=""
+          loading={eager ? 'eager' : 'lazy'}
+          decoding="async"
+          draggable={false}
+          ref={(el) => {
+            // A cached image can finish before React attaches onLoad.
+            if (el && el.complete && el.naturalWidth > 0 && status !== true) setState({ src: img.src, ok: true });
+          }}
+          onLoad={() => setState({ src: img.src, ok: true })}
+          onError={() => setState({ src: img.src, ok: false })}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
 interface TileProps {
   card: Card;
   attachments?: Card[];
   /** Hand tiles skip battlefield-only badges. */
   inHand?: boolean;
+  /** Ownership frame on the battlefield (gold for yours, crimson for theirs). */
+  side?: TileSide;
 }
 
-function TileInner({ card, attachments, inHand }: TileProps) {
+function counterText(k: string, n: number): string {
+  if (k === 'P1P1') return `+${n}/+${n}`;
+  if (k === 'M1M1') return `−${n}/−${n}`;
+  if (/^[+-]\d+\/[+-]\d+$/.test(k)) return n > 1 ? `${n}× ${k}` : k;
+  return `${counterLabel(k)} ${n}`;
+}
+
+function TileInner({ card, attachments, inHand, side }: TileProps) {
   const name = card.name || card.alt?.name || '';
   const info = useCardInfo(name || null);
-  const { open, activate, onKey, onEnter, onLeave, onDown, onMove, onUp, onContext, mark, hint, chosen, playing } = useOpen(card);
+  const { open, handlers, mark, hint, chosen, playing } = useOpen(card);
   const attacking = card.attacking || chosen === 'attack';
   const blocking = card.blocking || chosen === 'block';
   const kind = typeKind(card.types || info?.typeLine);
   const colors = cardColors(card, info?.producedMana, info?.colors);
-  const art = info?.image?.artCrop;
   const isCreature = kind === 'creature' || (card.power !== null && card.toughness !== null && !inHand);
-  const kw = keywordsOf(card);
-  const counters = Object.entries(card.counters ?? {}).filter(([, n]) => n > 0);
-  const label = `${displayName(card)}${card.tapped ? ', tapped' : ''}${card.sick && !inHand ? ', summoning sick' : ''}`;
+  const counters = Object.entries(card.counters ?? {}).filter(([k, n]) => n > 0 && !(k === 'LOYALTY' && card.loyalty !== null));
+  const tapped = !inHand && card.tapped;
+  const label = `${displayName(card)}${tapped ? ', tapped' : ''}${card.sick && !inHand && isCreature ? ', summoning sick' : ''}${attacking ? ', attacking' : ''}${blocking ? ', blocking' : ''}`;
+  const pUp = ptClass(card.power, info?.power);
+  const tUp = ptClass(card.toughness, info?.toughness);
+  const ptTone = card.damage > 0 || pUp === 'down' || tUp === 'down' ? 'down' : pUp === 'up' || tUp === 'up' ? 'up' : '';
+  const showPt = card.power !== null && card.toughness !== null && isCreature;
+  const showLoyalty = card.loyalty !== null && kind === 'planeswalker';
   return (
     <div
       className={cx(
         'tile',
         colorClass(colors),
-        !inHand && card.tapped && 'is-tapped',
+        side && `own-${side}`,
+        inHand && 'is-hand',
+        tapped && 'is-tapped',
         attacking && 'is-attacking',
         blocking && 'is-blocking',
         card.token && 'is-token',
         mark === 'select' && 'is-select',
         mark === 'act' && 'is-act',
         hint && 'is-hint',
+        attachments && attachments.length > 0 && 'has-attach',
       )}
       role="button"
       tabIndex={0}
       aria-label={label}
       data-card-id={card.id}
       data-mark={mark ?? undefined}
-      onClick={activate}
-      onKeyDown={onKey}
-      onPointerEnter={onEnter}
-      onPointerLeave={onLeave}
-      onPointerDown={onDown}
-      onPointerMove={onMove}
-      onPointerUp={onUp}
-      onPointerCancel={onUp}
-      onContextMenu={onContext}
+      {...handlers}
     >
-      {playing && (
-        <button
-          type="button"
-          className="tile-info"
-          aria-label={`Details: ${displayName(card)}`}
-          tabIndex={-1}
-          onClick={(e) => {
-            e.stopPropagation();
-            open();
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <IconInfo size={12} />
-        </button>
-      )}
-      <div className="tile-art">
-        <span className="tile-art-fallback">
-          <TypeGlyph kind={kind} size={22} />
-        </span>
-        {art && (
-          <img
-            src={art}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
-          />
-        )}
-        <span className="tile-cost">
-          <ManaCost cost={card.manaCost} size="sm" />
-        </span>
-        {attacking && (
-          <span className="tile-flag flag-attack" title="Attacking">
-            <IconSword size={11} /> Attacking
-          </span>
-        )}
-        {blocking && (
-          <span className="tile-flag flag-block" title="Blocking">
-            <IconShield size={11} /> Blocking
-          </span>
-        )}
-        {!inHand && card.tapped && !attacking && !blocking && (
-          <span className="tile-flag flag-tapped" title="Tapped">
-            <IconTapped size={11} /> Tapped
-          </span>
-        )}
-      </div>
-      <div className="tile-body">
-        <div className="tile-name">{displayName(card)}</div>
-        <div className="tile-type">
-          <TypeGlyph kind={kind} size={10} />
-          <span>{shortType(card.types || info?.typeLine) || '—'}</span>
-        </div>
-        <div className="tile-foot">
-          <span className="tile-badges">
-            {!inHand && card.sick && isCreature && (
-              <span className="badge badge-sick" title="Summoning sick: can't attack or use {T} abilities">
-                <IconMoon size={10} /> Sick
-              </span>
-            )}
-            {card.damage > 0 && (
-              <span className="badge badge-dmg" title={`${card.damage} damage marked`}>
-                {card.damage} dmg
-              </span>
-            )}
-            {counters.map(([k, n]) => (
-              <span key={k} className="badge badge-counter" title={`${n} ${counterLabel(k)} counter${n > 1 ? 's' : ''}`}>
-                {/^(P1P1|M1M1|[+-]\d+\/[+-]\d+)$/.test(k) ? `${n > 1 ? `${n}× ` : ''}${counterLabel(k)}` : `${counterLabel(k)} ${n}`}
-              </span>
-            ))}
-            {card.token && <span className="badge badge-muted">Token</span>}
-            {kw.slice(0, 2).map((k) => (
-              <span key={k} className="badge badge-kw">
-                {k.toLowerCase().replace(/_/g, ' ')}
-              </span>
-            ))}
-          </span>
-          {card.loyalty !== null && kind === 'planeswalker' ? (
-            <span className="pt pt-loyalty">{card.loyalty}</span>
-          ) : card.power !== null && card.toughness !== null ? (
-            <span className={cx('pt', card.damage > 0 && 'pt-hurt')}>
-              <span className={ptClass(card.power, info?.power)}>{card.power}</span>/
-              <span className={ptClass(card.toughness, info?.toughness)}>{card.toughness}</span>
+      <div className="tile-slot">
+        <CardFace card={card} info={info} kind={kind} eager={inHand} />
+        <div className="tile-ovl">
+          {playing && (
+            <button
+              type="button"
+              className="tile-info"
+              aria-label={`Details: ${displayName(card)}`}
+              tabIndex={-1}
+              onClick={(e) => {
+                e.stopPropagation();
+                open();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <IconInfo size={12} />
+            </button>
+          )}
+          {(attacking || blocking) && (
+            <span className={cx('tile-flag', attacking ? 'flag-attack' : 'flag-block')} title={attacking ? 'Attacking' : 'Blocking'}>
+              {attacking ? <IconSword size={11} /> : <IconShield size={11} />}
+              <span className="flag-text">{attacking ? 'Attack' : 'Block'}</span>
+            </span>
+          )}
+          {(counters.length > 0 || card.token || (!inHand && card.sick && isCreature)) && (
+            <span className="tile-marks">
+              {!inHand && card.sick && isCreature && (
+                <span className="mk mk-sick" title="Summoning sick: can't attack or use {T} abilities">
+                  <IconMoon size={10} />
+                </span>
+              )}
+              {counters.map(([k, n]) => (
+                <span key={k} className={cx('mk', k === 'M1M1' ? 'mk-minus' : 'mk-counter')} title={`${n} ${counterLabel(k)} counter${n > 1 ? 's' : ''}`}>
+                  {counterText(k, n)}
+                </span>
+              ))}
+              {card.token && <span className="mk mk-token">Token</span>}
+            </span>
+          )}
+          {showLoyalty ? (
+            <span className="tile-pt pt-loyalty" title="Loyalty">
+              {card.loyalty}
+            </span>
+          ) : showPt ? (
+            <span className={cx('tile-pt', ptTone && `pt-${ptTone}`)} title={`${card.power}/${card.toughness}${card.damage > 0 ? `, ${card.damage} damage` : ''}`}>
+              <span className={pUp}>{card.power}</span>/<span className={tUp}>{card.toughness}</span>
             </span>
           ) : null}
+          {!inHand && card.damage > 0 && (
+            <span className="tile-dmg" title={`${card.damage} damage marked`}>
+              {card.damage}
+            </span>
+          )}
         </div>
       </div>
       {attachments && attachments.length > 0 && (
@@ -297,7 +373,7 @@ function TileInner({ card, attachments, inHand }: TileProps) {
 }
 
 export const CardTile = memo(TileInner, (a, b) => {
-  if (a.inHand !== b.inHand) return false;
+  if (a.inHand !== b.inHand || a.side !== b.side) return false;
   if (tileSig(a.card) !== tileSig(b.card)) return false;
   const aa = a.attachments ?? [];
   const bb = b.attachments ?? [];
@@ -306,78 +382,115 @@ export const CardTile = memo(TileInner, (a, b) => {
   return true;
 });
 
-const AttachmentChip = memo(function AttachmentChip({ card }: { card: Card }) {
-  const { open, onKey, onEnter, onLeave } = useOpen(card);
-  return (
-    <span
-      className={cx('attach-chip', card.tapped && 'is-tapped')}
-      role="button"
-      tabIndex={0}
-      onClick={(e) => {
-        e.stopPropagation();
-        open();
-      }}
-      onKeyDown={(e) => {
-        e.stopPropagation();
-        onKey(e);
-      }}
-      onPointerEnter={onEnter}
-      onPointerLeave={onLeave}
-    >
-      <span className="attach-link" aria-hidden="true">↳</span>
-      <span className="attach-name">{displayName(card)}</span>
-      {card.tapped && <IconTapped size={10} />}
-    </span>
-  );
-}, (a, b) => tileSig(a.card) === tileSig(b.card));
+/** "Equipped creature gets +1/+2." — the line of an attachment that says what it does to its host. */
+function hostEffect(info: CardInfo | undefined): string | null {
+  const text = info?.oracleText ?? '';
+  const m = /(?:^|\n)((?:Equipped|Enchanted|Fortified) [a-z]+[^.\n]*\.)/.exec(text);
+  return m ? m[1]! : null;
+}
 
-/** Lands: identical name + tapped state collapse into one chip with a count. */
-export const LandChip = memo(
-  function LandChip({ cards }: { cards: Card[] }) {
-    const first = cards[0]!;
-    const info = useCardInfo(first.name || null);
-    const { activate, onKey, onEnter, onLeave, onDown, onMove, onUp, onContext, mark } = useOpen(first);
-    const colors = cardColors(first, info?.producedMana, info?.colors);
-    const tapped = first.tapped;
+/**
+ * An aura or equipment, tucked under its host: the edge of the card showing
+ * below it, labelled with its name and what it does to the host.
+ */
+const AttachmentChip = memo(
+  function AttachmentChip({ card }: { card: Card }) {
+    const info = useCardInfo(card.name || null);
+    const { open, onKey, onEnter, onLeave } = useOpen(card);
+    const colors = cardColors(card, info?.producedMana, info?.colors);
+    const effect = hostEffect(info);
     return (
-      <div
-        className={cx(
-          'land-chip',
-          colorClass(colors),
-          tapped && 'is-tapped',
-          first.attacking && 'is-attacking',
-          mark === 'select' && 'is-select',
-          mark === 'act' && 'is-act',
-        )}
+      <span
+        className={cx('attach-chip', colorClass(colors), card.tapped && 'is-tapped')}
         role="button"
         tabIndex={0}
-        aria-label={`${cards.length} ${displayName(first)}${tapped ? ', tapped' : ', untapped'}`}
-        data-card-id={first.id}
-        data-mark={mark ?? undefined}
-        onClick={activate}
-        onKeyDown={onKey}
+        aria-label={`Attached: ${displayName(card)}${effect ? ` — ${effect}` : ''}`}
+        title={`${displayName(card)}${effect ? ` — ${effect}` : ''}`}
+        data-card-id={card.id}
+        onClick={(e) => {
+          e.stopPropagation();
+          open();
+        }}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          onKey(e);
+        }}
         onPointerEnter={onEnter}
         onPointerLeave={onLeave}
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
-        onContextMenu={onContext}
+        onPointerDown={(e) => e.stopPropagation()}
       >
-        <span className="land-dot" aria-hidden="true" />
-        <span className="land-name">{displayName(first)}</span>
-        {cards.length > 1 && <span className="land-count">×{cards.length}</span>}
-        {tapped && (
-          <span className="land-tapped" title="Tapped">
-            <IconTapped size={11} />
-          </span>
-        )}
-        {first.sick && typeKind(first.types) === 'creature' && <IconMoon size={11} />}
-      </div>
+        <span className="attach-name">{displayName(card)}</span>
+        {effect && <span className="attach-effect">{effect}</span>}
+      </span>
     );
   },
-  (a, b) => a.cards.length === b.cards.length && a.cards.every((c, i) => tileSig(c) === tileSig(b.cards[i])),
+  (a, b) => tileSig(a.card) === tileSig(b.card),
 );
+
+// ---------------------------------------------------------------------------
+// Lands: identical lands as one fanned pile.
+
+/**
+ * Identical lands (same name, tapped state, counters, damage) as one fanned
+ * pile with a count. A click acts on the pile's top card the engine wants
+ * (they are interchangeable: same name and state); a long-press reads it.
+ * When the engine asks you to *choose* among them (a target, a sacrifice),
+ * the pile opens up into separate cards so each one is addressable.
+ */
+export const LandPile = memo(
+  function LandPile({ cards, side }: { cards: Card[]; side?: TileSide }) {
+    const play = usePlay();
+    const plan = pilePlan(cards.map((c) => (play ? play.mark(c) : null)));
+    if (plan.open) {
+      return (
+        <>
+          {cards.map((c) => (
+            <CardTile key={c.id} card={c} side={side} />
+          ))}
+        </>
+      );
+    }
+    return <PileStack cards={cards} side={side} top={cards[plan.top]!} />;
+  },
+  (a, b) => a.side === b.side && a.cards.length === b.cards.length && a.cards.every((c, i) => tileSig(c) === tileSig(b.cards[i])),
+);
+
+function PileStack({ cards, side, top }: { cards: Card[]; side?: TileSide; top: Card }) {
+  const info = useCardInfo(top.name || null);
+  const { handlers, mark } = useOpen(top);
+  const kind = typeKind(top.types || info?.typeLine);
+  const colors = cardColors(top, info?.producedMana, info?.colors);
+  const shown = Math.min(cards.length, PILE_SHOWN);
+  const tapped = top.tapped;
+  return (
+    <div
+      className={cx('tile', 'land-pile', colorClass(colors), side && `own-${side}`, tapped && 'is-tapped', mark === 'select' && 'is-select', mark === 'act' && 'is-act')}
+      role="button"
+      tabIndex={0}
+      aria-label={`${cards.length} ${displayName(top)}${tapped ? ', tapped' : ', untapped'}`}
+      data-card-id={top.id}
+      data-mark={mark ?? undefined}
+      style={{ '--pile': shown - 1 } as CSSProperties}
+      {...handlers}
+    >
+      <div className="tile-slot">
+        {Array.from({ length: shown }, (_, i) => (
+          <div key={i} className="pile-item" style={{ '--i': i } as CSSProperties}>
+            <CardFace card={top} info={info} kind={kind} />
+          </div>
+        ))}
+        <div className="tile-ovl">
+          <span className="pile-count" title={`${cards.length} ${displayName(top)}`}>
+            ×{cards.length}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Kept for callers of the old chip name. */
+export const LandChip = LandPile;
 
 /** A face-down card back (opponent hand, hidden cards). */
 export function CardBack({ small }: { small?: boolean }) {

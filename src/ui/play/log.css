@@ -1,0 +1,235 @@
+/*
+ * ForgeCoach — ui/play/log.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The game log: the LOG tab (phone, right edge), the Log button and the
+ * drawer. Used by the play screen and by replay.
+ */
+
+.log-tab,
+.log-drawer-wrap {
+  --you: var(--accent);
+  --opp: #6f9fe0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Log: the tab and the drawer */
+
+.log-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+.log-tab-edge {
+  position: fixed;
+  right: 0;
+  top: 30%;
+  z-index: 15;
+  width: 30px;
+  padding: 14px 0;
+  border: 1px solid var(--line-2);
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  background: rgba(14, 16, 20, 0.92);
+  box-shadow: -4px 4px 14px rgba(0, 0, 0, 0.4);
+  -webkit-tap-highlight-color: transparent;
+}
+.log-tab-edge .log-tab-text {
+  writing-mode: vertical-rl;
+}
+.log-tab-edge::after {
+  content: '';
+  position: absolute;
+  inset: -6px 0 -6px -10px;
+}
+.log-tab-button {
+  height: 40px;
+  min-width: 96px;
+  padding: 0 18px;
+  border-radius: 20px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+}
+.log-tab-button:hover,
+.log-tab.is-open {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.log-tab-count {
+  font-size: 11px;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.log-drawer-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.log-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  animation: log-fade 0.15s ease-out;
+}
+@keyframes log-fade {
+  from {
+    opacity: 0;
+  }
+}
+.log-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(440px, 88vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-2);
+  border-left: 1px solid var(--line-2);
+  box-shadow: -20px 0 40px rgba(0, 0, 0, 0.45);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: log-in 0.2s ease-out;
+}
+@keyframes log-in {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+}
+.log-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--line-2);
+}
+.log-drawer-title {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+.log-drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 0 18px;
+}
+.log-empty {
+  padding: 16px;
+}
+.log-turn {
+  padding: 0 0 6px;
+}
+.log-turn-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 16px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+.log-turn.is-you .log-turn-head {
+  box-shadow: inset 3px 0 0 var(--you);
+}
+.log-turn.is-opp .log-turn-head {
+  box-shadow: inset 3px 0 0 var(--opp);
+}
+.log-turn-no {
+  color: var(--text);
+}
+.log-turn.is-you .log-turn-who {
+  color: var(--you);
+}
+.log-turn.is-opp .log-turn-who {
+  color: var(--opp);
+}
+.log-lines {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0 0;
+}
+.log-line {
+  padding: 3px 16px 3px 26px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-2);
+  position: relative;
+}
+.log-line::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 0.75em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--line-2);
+}
+.log-line.w-you::before {
+  background: var(--you);
+}
+.log-line.w-opp::before {
+  background: var(--opp);
+}
+.log-line.is-quiet {
+  color: var(--faint);
+  font-style: italic;
+}
+.log-line.k-ability {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.log-line.k-died,
+.log-line.k-life {
+  color: var(--text);
+}
+.log-line.k-outcome {
+  color: var(--text);
+  font-weight: 700;
+}
+.log-player {
+  font-weight: 650;
+}
+.log-player.is-you {
+  color: var(--you);
+}
+.log-player.is-opp {
+  color: var(--opp);
+}
+.log-card {
+  display: inline;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.log-card:hover {
+  text-decoration-color: var(--accent);
+}
+.log-card.is-plain {
+  text-decoration: none;
+  cursor: default;
+}

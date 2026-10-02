@@ -34,12 +34,16 @@ import { AskDialog, OpeningDialog, openingKind } from './AskDialog.tsx';
 import { ActionBar } from './ActionBar.tsx';
 import { GameOverCard } from './GameOverCard.tsx';
 import { HandDock } from './HandDock.tsx';
+import { LogDrawer, LogTab } from './LogDrawer.tsx';
+import { PhaseStrip } from './PhaseStrip.tsx';
 import { cardRole, describeInput, playerClickable, type ClickContext } from './inputView.ts';
 import { lastStateFrame } from './liveDecision.ts';
 import { PlayCoach } from './PlayCoach.tsx';
 import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
 
 import './play.css';
+import './controls.css';
+import './log.css';
 
 const COACH_OPEN_KEY = 'forgecoach.playCoachOpen';
 
@@ -256,6 +260,8 @@ export function PlayView({
   const [help, setHelp] = useState(false);
   const [concede, setConcede] = useState(false);
   const [guidesOpen, setGuidesOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  const closeLog = useCallback(() => setLogOpen(false), []);
   const [guideName, setGuideName] = useState<string | null>(guideNameNow);
   const [waitingNext, setWaitingNext] = useState(false);
   useEffect(() => {
@@ -330,7 +336,7 @@ export function PlayView({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      const overlay = !!detail || help || concede || guidesOpen || !!document.querySelector('.sheet-backdrop');
+      const overlay = !!detail || help || concede || guidesOpen || logOpen || !!document.querySelector('.sheet-backdrop');
       const plan = planPlayKey(
         { key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, isComposing: e.isComposing, targetTag: t?.tagName, targetEditable: t?.isContentEditable },
         {
@@ -359,6 +365,9 @@ export function PlayView({
         case 'help':
           setHelp(true);
           break;
+        case 'log':
+          setLogOpen(true);
+          break;
         case 'inert':
           setFlash(plan.why);
           break;
@@ -366,7 +375,7 @@ export function PlayView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, pressOk, doCancel, doAct]);
+  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, logOpen, pressOk, doCancel, doAct]);
 
   // ---- render
   const me = state?.players.find((p) => p.id === seat) ?? null;
@@ -388,6 +397,19 @@ export function PlayView({
         </div>
       </div>
     );
+
+  // Phase stops can be changed while this is a live seat with nothing else open (M33).
+  const stripInteractive = connected && !!state && !ask && !over;
+  const strip = (variant: 'bar' | 'column') => (
+    <PhaseStrip
+      state={state}
+      seat={seat}
+      interactive={stripInteractive}
+      onAct={act}
+      variant={variant}
+      footer={variant === 'column' ? <LogTab variant="button" onClick={() => setLogOpen(true)} open={logOpen} /> : undefined}
+    />
+  );
 
   const coach = (
     <PlayCoach
@@ -416,6 +438,7 @@ export function PlayView({
         onAct={doAct}
         onHelp={() => setHelp(true)}
         flash={flash}
+        wide={wide}
       />
       <HandDock player={me} landOpen={landOpen} collapsed={handHidden} onToggle={toggleHand} />
     </div>
@@ -426,6 +449,8 @@ export function PlayView({
       <BoardStateRef.Provider value={boardStateRef}>
         <PlayContext.Provider value={play}>
           <div className={cx('game', 'play', wide ? 'is-wide' : 'is-narrow', `mode-${view.mode}`)}>
+            {/* Phones: the steps across the very top, above everything (endstep-style). */}
+            {!wide && strip('bar')}
             <header className="topbar">
               <button className="logo-btn" onClick={onLeave} aria-label="Back to start">
                 <Logo compact={!wide} />
@@ -506,10 +531,12 @@ export function PlayView({
                   <div className="play-board">{board}</div>
                   {dock}
                 </main>
+                {strip('column')}
                 {coachOpen && <aside className="col col-coach">{coach}</aside>}
               </div>
             ) : (
               <>
+                {!phoneCoach && <LogTab variant="edge" onClick={() => setLogOpen(true)} open={logOpen} />}
                 <div className="play-stage">
                   <main className="phone-main play-phone-main" aria-hidden={phoneCoach || undefined}>
                     {board}
@@ -550,6 +577,7 @@ export function PlayView({
           {!ask && !over && input && openingKind(input, state) && (
             <OpeningDialog key={input.prompt} input={input} state={state} seat={seat} onChoose={(b) => (b === 'ok' ? pressOk() : pressCancel())} onPreviewCard={previewId} />
           )}
+          <LogDrawer log={log} open={logOpen} onClose={closeLog} />
           <CardDetail card={detail?.card ?? null} state={detail?.state ?? null} seat={seat ?? 0} onClose={() => setDetail(null)} />
           {wide && <HoverPreview name={hover.name} rect={hover.rect} />}
           <GuideSheet open={guidesOpen} onClose={() => setGuidesOpen(false)} onChange={() => setGuideName(guideNameNow())} />
