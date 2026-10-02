@@ -445,6 +445,7 @@ export function PlayView({
   );
 
   // The top bar: across the top on a phone; at the top of the sidebar on a desktop (the board keeps the height).
+  const liveWords = connected ? 'Connected' : status === 'connecting' ? 'Connecting' : status === 'refused' ? 'Seat taken' : 'Disconnected';
   const header = (
     <header className={cx('topbar', wide && 'play-side-top')}>
       <button className="logo-btn" onClick={onLeave} aria-label="Back to start">
@@ -455,9 +456,9 @@ export function PlayView({
         <span className="topbar-sub">{[gameNo, myDeck].filter(Boolean).join(' · ') || 'Playing live'}</span>
       </div>
       {wide && <span className="side-break" aria-hidden="true" />}
-      <span className={cx('live-pill', connected ? 'is-open' : status === 'connecting' ? 'is-connecting' : 'is-error')} title={snap.detail ?? undefined}>
+      <span className={cx('live-pill', connected ? 'is-open' : status === 'connecting' ? 'is-connecting' : 'is-error')} title={snap.detail ?? liveWords} role="status" aria-label={liveWords}>
         <span className="live-dot" />
-        <span className="live-pill-text">{connected ? 'Connected' : status === 'connecting' ? 'Connecting' : status === 'refused' ? 'Seat taken' : 'Disconnected'}</span>
+        <span className="live-pill-text">{liveWords}</span>
       </span>
       {!connected && status !== 'connecting' && (
         <button className="btn btn-quiet btn-sm top-reconnect" onClick={() => session.reconnect()}>
