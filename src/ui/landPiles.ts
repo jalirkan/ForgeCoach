@@ -32,17 +32,27 @@ export function groupLands(lands: { card: Card; attachments: number }[]): Card[]
 }
 
 /**
- * How a pile draws and what a click on it does:
- * - `open`: the engine is asking you to *choose* among these cards (a target,
- *   a sacrifice) — the pile opens into separate cards, each addressable;
- * - otherwise one stack, and a click goes to `top`: the first card the engine
- *   would act on (the cards are interchangeable — same name and state), else
- *   the first card (a click then opens its details).
+ * What a click on a pile does. Lands in a pile are interchangeable (same name,
+ * same tapped state, nothing on them), so the pile never has to open up:
+ * - the engine is asking you to *choose* lands (a sacrifice, a target, a cost):
+ *   each click selects one more selectable land from the pile — the first one
+ *   this pile has not sent yet. `tried` is the ids this pile already clicked
+ *   while the selectable set stayed the same; once every selectable land has
+ *   been sent, it starts over (a second click on a land the engine still
+ *   offers is how you take it back);
+ * - otherwise a click goes to the first land the engine would act on (paying
+ *   mana: an untapped one), else to the first land, whose details then open.
+ * `restart`: every selectable land was already sent, so `tried` starts over.
+ * `select` is true while the engine is choosing among the pile's lands.
  */
-export function pilePlan(marks: PlayMark[]): { open: boolean; top: number } {
-  if (marks.length <= 1 || marks.includes('select')) return { open: true, top: 0 };
+export function pilePlan(ids: number[], marks: PlayMark[], tried: ReadonlySet<number> = new Set()): { top: number; select: boolean; selectable: number; restart: boolean } {
+  const sel = marks.flatMap((m, i) => (m === 'select' ? [i] : []));
+  if (sel.length > 0) {
+    const fresh = sel.find((i) => !tried.has(ids[i]!));
+    return { top: fresh ?? sel[0]!, select: true, selectable: sel.length, restart: fresh === undefined };
+  }
   const act = marks.indexOf('act');
-  return { open: false, top: act >= 0 ? act : 0 };
+  return { top: act >= 0 ? act : 0, select: false, selectable: 0, restart: false };
 }
 
 /** A pile's width in card widths: the top card plus a fifth per extra card shown (ui/cards.css). */

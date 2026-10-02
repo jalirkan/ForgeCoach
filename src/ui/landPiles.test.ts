@@ -59,19 +59,19 @@ describe('groupLands', () => {
 });
 
 describe('pilePlan', () => {
-  it('opens a pile the engine asks you to choose from, so each land is addressable', () => {
-    expect(pilePlan(['select', null, null]).open).toBe(true);
-    expect(pilePlan([null, null, 'select']).open).toBe(true);
+  it('while the engine asks for lands, a click selects the first selectable land not yet sent', () => {
+    expect(pilePlan([1, 2, 3], [null, 'select', 'select'])).toEqual({ top: 1, select: true, selectable: 2, restart: false });
+    expect(pilePlan([1, 2, 3], [null, 'select', 'select'], new Set([2]))).toMatchObject({ top: 2, restart: false });
   });
-  it('a click on a pile goes to the first land the engine would act on', () => {
-    expect(pilePlan([null, 'act', 'act'])).toEqual({ open: false, top: 1 });
-    expect(pilePlan(['act', 'act'])).toEqual({ open: false, top: 0 });
+  it('after every selectable land was sent, it starts over (the engine may still offer them)', () => {
+    expect(pilePlan([1, 2], ['select', 'select'], new Set([1, 2]))).toMatchObject({ top: 0, restart: true });
   });
-  it('with nothing to act on, the pile stays closed (a click opens details)', () => {
-    expect(pilePlan([null, null])).toEqual({ open: false, top: 0 });
+  it('otherwise a click goes to the first land the engine would act on', () => {
+    expect(pilePlan([1, 2, 3], [null, 'act', 'act'])).toMatchObject({ top: 1, select: false });
+    expect(pilePlan([1, 2], ['act', 'act'])).toMatchObject({ top: 0, select: false });
   });
-  it('a single land is just a card', () => {
-    expect(pilePlan([null]).open).toBe(true);
+  it('with nothing to act on, the first land (a click opens its details)', () => {
+    expect(pilePlan([1, 2], [null, null])).toMatchObject({ top: 0, select: false, selectable: 0 });
   });
 });
 

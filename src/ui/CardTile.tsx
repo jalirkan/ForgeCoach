@@ -55,7 +55,7 @@ export function tileSig(c: AnyCard | undefined): string {
 /** Whose side a permanent is drawn on: framed gold (yours) or crimson (theirs). */
 export type TileSide = 'me' | 'opp';
 
-function useOpen(card: AnyCard) {
+function useOpen(card: AnyCard, onClicked?: (card: AnyCard) => void) {
   const actions = useCardActions();
   const stateRef = useBoardStateRef();
   const play = usePlay();
@@ -75,9 +75,11 @@ function useOpen(card: AnyCard) {
       longPressed.current = false;
       return;
     }
-    if (play && mark) play.click(cardRef.current);
-    else open();
-  }, [play, mark, open]);
+    if (play && mark) {
+      onClicked?.(cardRef.current);
+      play.click(cardRef.current);
+    } else open();
+  }, [play, mark, open, onClicked]);
   // Enter activates a focused tile. In play, Space is left to the table's
   // primary button (click a land, then Space = OK); in replay it opens too.
   const onKey = useCallback(
@@ -431,44 +433,58 @@ const AttachmentChip = memo(
 // Lands: identical lands as one fanned pile.
 
 /**
- * Identical lands (same name, tapped state, counters, damage) as one fanned
- * pile with a count. A click acts on the pile's top card the engine wants
- * (they are interchangeable: same name and state); a long-press reads it.
- * When the engine asks you to *choose* among them (a target, a sacrifice),
- * the pile opens up into separate cards so each one is addressable.
+ * Identical lands (basics of one name and tapped state, nothing on them) as
+ * one fanned pile with a count. They are interchangeable, so the pile never
+ * opens up: a click acts on one of them (landPiles.ts `pilePlan`).
+ * - The engine asks you to choose lands (sacrifice, target, a cost): each tap
+ *   selects one more selectable land from the pile; the badge shows how many
+ *   of the pile you have sent.
+ * - Paying mana: a tap taps one untapped land of the pile.
+ * - Otherwise a tap (or a long-press, always) opens the land's details.
+ * Every land keeps its own id: the pile lists them in `data-card-ids`, and
+ * `data-card-id` is the land the next tap goes to.
  */
 export const LandPile = memo(
   function LandPile({ cards, side }: { cards: Card[]; side?: TileSide }) {
-    const play = usePlay();
-    const plan = pilePlan(cards.map((c) => (play ? play.mark(c) : null)));
-    if (plan.open) {
-      return (
-        <>
-          {cards.map((c) => (
-            <CardTile key={c.id} card={c} side={side} />
-          ))}
-        </>
-      );
-    }
-    return <PileStack cards={cards} side={side} top={cards[plan.top]!} />;
+    if (cards.length === 1) return <CardTile card={cards[0]!} side={side} />;
+    return <PileStack cards={cards} side={side} />;
   },
   (a, b) => a.side === b.side && a.cards.length === b.cards.length && a.cards.every((c, i) => tileSig(c) === tileSig(b.cards[i])),
 );
 
-function PileStack({ cards, side, top }: { cards: Card[]; side?: TileSide; top: Card }) {
+function PileStack({ cards, side }: { cards: Card[]; side?: TileSide }) {
+  const play = usePlay();
+  const ids = cards.map((c) => c.id);
+  const marks = cards.map((c) => (play ? play.mark(c) : null));
+  // The lands this pile has sent while the engine's selectable set stayed the same.
+  const selKey = ids.filter((_, i) => marks[i] === 'select').join(',');
+  const tried = useRef<{ key: string; ids: Set<number> }>({ key: '', ids: new Set() });
+  if (tried.current.key !== selKey) tried.current = { key: selKey, ids: new Set() };
+  const plan = pilePlan(ids, marks, tried.current.ids);
+  const top = cards[plan.top]!;
+  const restart = useRef(plan.restart);
+  restart.current = plan.restart;
+  const onClicked = useCallback((c: AnyCard) => {
+    const t = tried.current;
+    if (!t.key) return;
+    if (restart.current) t.ids = new Set();
+    t.ids.add(c.id);
+  }, []);
   const info = useCardInfo(top.name || null);
-  const { handlers, mark } = useOpen(top);
+  const { handlers, mark } = useOpen(top, onClicked);
   const kind = typeKind(top.types || info?.typeLine);
   const colors = cardColors(top, info?.producedMana, info?.colors);
   const shown = Math.min(cards.length, PILE_SHOWN);
   const tapped = top.tapped;
+  const sent = plan.select ? ids.filter((id) => tried.current.ids.has(id)).length : 0;
   return (
     <div
       className={cx('tile', 'land-pile', colorClass(colors), side && `own-${side}`, tapped && 'is-tapped', mark === 'select' && 'is-select', mark === 'act' && 'is-act')}
       role="button"
       tabIndex={0}
-      aria-label={`${cards.length} ${displayName(top)}${tapped ? ', tapped' : ', untapped'}`}
+      aria-label={`${cards.length} ${displayName(top)}${tapped ? ', tapped' : ', untapped'}${plan.select ? `, ${plan.selectable} selectable: tap to select one` : ''}`}
       data-card-id={top.id}
+      data-card-ids={ids.join(',')}
       data-mark={mark ?? undefined}
       style={{ '--pile': shown - 1 } as CSSProperties}
       {...handlers}
@@ -483,6 +499,11 @@ function PileStack({ cards, side, top }: { cards: Card[]; side?: TileSide; top: 
           <span className="pile-count" title={`${cards.length} ${displayName(top)}`}>
             ×{cards.length}
           </span>
+          {plan.select && sent > 0 && (
+            <span className="pile-sent" title={`${sent} of these sent as a choice`}>
+              {sent} picked
+            </span>
+          )}
         </div>
       </div>
     </div>
