@@ -73,6 +73,9 @@ Play-mode code adapted from mtg-table
 -------------------------------------
 src/play/* and src/ui/play/* (the seat session, act builders, the ask dialog
 model) adapt behaviour and code from mtg-table's web/src (transport/ws.ts,
-render/AskModal.tsx, render/picker.ts, keys.ts), GPL-3.0-or-later, with their
-copyright lines kept. src/ui/play/askFixtures.json and src/play/testdata/ hold
+render/AskModal.tsx, render/picker.ts, keys.ts, render/PhaseStrip.tsx,
+render/labels.ts, render/LogDrawer.tsx, render/describe.ts), GPL-3.0-or-later,
+with their copyright lines kept. The phase strip (src/ui/play/PhaseStrip.tsx,
+phaseStrip.ts), the log drawer (src/ui/play/LogDrawer.tsx) and the game log's
+choice of events (src/eventLog.ts) follow those files. src/ui/play/askFixtures.json and src/play/testdata/ hold
 asks and frames recorded by mtg-table's fixture corpus.

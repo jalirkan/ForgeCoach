@@ -12,6 +12,8 @@ import { extractDecisions, type Decision } from '../decisions.ts';
 import { activeGuideId, listGuides } from '../guide.ts';
 import type { LiveStatus } from '../live.ts';
 import { Board } from './Board.tsx';
+import { LogDrawer, LogTab } from './play/LogDrawer.tsx';
+import './play/log.css';
 import { CardDetail, HoverPreview } from './CardDetail.tsx';
 import { BoardStateRef, CardActionsContext, type CardActions } from './cardContext.ts';
 import { cachedMap, prefetchCards, useCardsVersion } from './cardData.ts';
@@ -91,6 +93,8 @@ export function GameView({
   const [phoneTab, setPhoneTab] = useState<'board' | 'coach'>('board');
   const [listOpen, setListOpen] = useState(false);
   const [guidesOpen, setGuidesOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  const closeLog = useCallback(() => setLogOpen(false), []);
   const [guideName, setGuideName] = useState<string | null>(guideNameNow);
   const [detail, setDetail] = useState<{ card: AnyCard; state: GameStateBody | null } | null>(null);
   const [hover, setHover] = useState<{ name: string | null; rect: DOMRect | null }>({ name: null, rect: null });
@@ -272,6 +276,7 @@ export function GameView({
               </span>
             )}
             <span className="grow" />
+            <LogTab variant="button" onClick={() => setLogOpen(true)} open={logOpen} />
             <button className="icon-btn" onClick={onSettings} aria-label="Settings">
               <IconGear size={18} />
             </button>
@@ -321,6 +326,7 @@ export function GameView({
             </>
           )}
         </div>
+        <LogDrawer log={log} upTo={frameIndex} open={logOpen} onClose={closeLog} />
         <CardDetail card={detail?.card ?? null} state={detail?.state ?? null} seat={log.seat} onClose={() => setDetail(null)} />
         {wide && <HoverPreview name={hover.name} rect={hover.rect} />}
         <GuideSheet open={guidesOpen} onClose={() => setGuidesOpen(false)} onChange={() => setGuideName(guideNameNow())} />

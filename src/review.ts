@@ -137,8 +137,11 @@ function stateAt(log: GameLog, i: number): GameStateBody | null {
   return f && f.type === 'state' ? (f.body as GameStateBody) : null;
 }
 
-function indexOf(state: GameStateBody | null): Map<number, { card: AnyCard; playerId: number | null; zone: string }> {
-  const m = new Map<number, { card: AnyCard; playerId: number | null; zone: string }>();
+/** Every card of one snapshot by id, with the player whose zone holds it. */
+export type CardIndex = Map<number, { card: AnyCard; playerId: number | null; zone: string }>;
+
+export function indexOf(state: GameStateBody | null): CardIndex {
+  const m: CardIndex = new Map();
   if (!state) return m;
   for (const c of state.stackCards ?? []) m.set(c.id, { card: c, playerId: c.controller, zone: 'stack' });
   for (const p of state.players) {
@@ -147,6 +150,36 @@ function indexOf(state: GameStateBody | null): Map<number, { card: AnyCard; play
     }
   }
   return m;
+}
+
+/**
+ * Names and cards for the ids one state frame's events mention: the snapshot
+ * the events arrived with (after the change) first, then the one before it
+ * (before the change) — never any other, so a card that was public once and
+ * went back into a hidden zone is not named by accident.
+ */
+export interface FrameResolver {
+  nameOf(id: number): string | null;
+  cardOf(id: number): Card | null;
+}
+
+export function frameResolver(prevIdx: CardIndex, postIdx: CardIndex): FrameResolver {
+  return {
+    nameOf(id) {
+      const post = postIdx.get(id);
+      const n = post ? visibleName(post.card) : null;
+      if (n) return n;
+      const pre = prevIdx.get(id);
+      return pre ? visibleName(pre.card) : null;
+    },
+    cardOf(id) {
+      const post = postIdx.get(id);
+      if (post && !isHidden(post.card)) return post.card as Card;
+      const pre = prevIdx.get(id);
+      if (pre && !isHidden(pre.card)) return pre.card as Card;
+      return null;
+    },
+  };
 }
 
 const historyCache = new WeakMap<GameLog, GameHistory>();
@@ -159,7 +192,7 @@ export function gameHistory(log: GameLog): GameHistory {
   const stateFrames: number[] = [];
   let cur: TurnRecord | null = null;
   const pendingToStack = new Set<number>();
-  let prevIdx = new Map<number, { card: AnyCard; playerId: number | null; zone: string }>();
+  let prevIdx: CardIndex = new Map();
   let openAttack: AttackRecord | null = null;
 
   const ensure = (turn: number, active: number | null): TurnRecord => {
@@ -175,20 +208,7 @@ export function gameHistory(log: GameLog): GameHistory {
     stateFrames.push(fi);
     const s = f.body as GameStateBody;
     const postIdx = indexOf(s);
-    const nameOf = (id: number): string | null => {
-      const post = postIdx.get(id);
-      const n = post ? visibleName(post.card) : null;
-      if (n) return n;
-      const pre = prevIdx.get(id);
-      return pre ? visibleName(pre.card) : null;
-    };
-    const cardOf = (id: number): Card | null => {
-      const post = postIdx.get(id);
-      if (post && !isHidden(post.card)) return post.card as Card;
-      const pre = prevIdx.get(id);
-      if (pre && !isHidden(pre.card)) return pre.card as Card;
-      return null;
-    };
+    const { nameOf, cardOf } = frameResolver(prevIdx, postIdx);
     if (!cur) ensure(s.turn || 0, s.activePlayer);
     for (const e of s.events ?? []) {
       let t: TurnRecord = cur!;
@@ -287,7 +307,8 @@ export function gameHistory(log: GameLog): GameHistory {
 // ---------------------------------------------------------------------------
 // Summary
 
-function playerLabel(log: GameLog, id: number | null): string {
+/** "You" for the viewing seat, the player's name otherwise. */
+export function playerLabel(log: GameLog, id: number | null): string {
   if (id === null) return 'nobody';
   if (id === log.seat) return 'You';
   const p = log.hello?.players.find((x) => x.id === id);

@@ -327,8 +327,8 @@ async function play(page, { random, errors, log }) {
 
     // ---- round limit
     // textContent: the label is uppercased by CSS.
-    const roundText = await page.evaluate(() => document.querySelector('.phase-round')?.textContent ?? '');
-    const r = Number(/Round (\d+)/i.exec(roundText)?.[1] ?? 0);
+    const roundText = await page.evaluate(() => document.querySelector('.pstrip[data-round]')?.getAttribute('data-round') ?? document.querySelector('.phase-round')?.textContent ?? '');
+    const r = Number(/^\d+$/.test(roundText) ? roundText : /Round (\d+)/i.exec(roundText)?.[1] ?? 0);
     if (r !== round) {
       round = r;
       if (r) log(`round ${r}`);
@@ -374,7 +374,8 @@ async function play(page, { random, errors, log }) {
     const ok = bar.locator('[data-engine-button="ok"]');
     const cancel = bar.locator('[data-engine-button="cancel"]');
     const enabled = async (b) => (await b.count()) > 0 && (await b.isEnabled());
-    const label = async (b) => ((await b.count()) ? (await b.locator('.ab-btn-main').innerText()).trim() : '');
+    // The button's plain words plus the engine's own label (its sub-line).
+    const label = async (b) => ((await b.count()) ? (await b.innerText()).trim().replace(/\s+/g, ' ') : '');
     const before = sig;
     let did = null;
 
@@ -435,9 +436,9 @@ async function play(page, { random, errors, log }) {
 
     // Otherwise: the bar's primary button.
     if (!did) {
-      const primary = bar.locator('.ab-primary');
+      const primary = bar.locator('[data-primary][data-engine-button]');
       if ((await primary.count()) && (await primary.isEnabled())) {
-        const l = (await primary.locator('.ab-btn-main').innerText()).trim();
+        const l = (await primary.innerText()).trim().replace(/\s+/g, ' ');
         await press(primary);
         did = `${l} (${mode})`;
       } else if (await enabled(ok)) {

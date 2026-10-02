@@ -7,6 +7,7 @@ import type { Card, GameStateBody, InputBody } from '../../protocol.ts';
 import { cardRole, describeInput, parsePay, playerClickable } from './inputView.ts';
 import { planPlayKey, type PlayKeyContext } from './playKeys.ts';
 import { liveDecision, liveKind, momentKey } from './liveDecision.ts';
+import { canPassAhead, PASS_EOT, passMenu, primaryView } from './actionWords.ts';
 import type { GameLog } from '../../log.ts';
 
 const ME = 0;
@@ -256,8 +257,34 @@ describe('planPlayKey', () => {
     expect(planPlayKey({ key: 'a' }, ctx({ view: attack }))).toMatchObject({ body: { action: 'alphaStrike' } });
     expect(planPlayKey({ key: 'a' }, ctx())).toMatchObject({ kind: 'inert' });
   });
+  it('L opens the log', () => {
+    expect(planPlayKey({ key: 'l' }, ctx())).toEqual({ kind: 'log' });
+  });
   it('an open ask owns the keyboard', () => {
     expect(planPlayKey({ key: ' ' }, ctx({ askOpen: true }))).toBeNull();
+  });
+});
+
+describe('action bar words', () => {
+  it('your main phase: the big button says what OK does, the engine label rides along', () => {
+    const v = describeInput(input(PRIORITY), state(), ME);
+    const p = primaryView(v);
+    expect(p.which).toBe('ok');
+    expect(p.enabled).toBe(true);
+    expect(p.engine).toBe('OK');
+    expect(p.words).not.toBe('OK');
+    expect(canPassAhead(v)).toBe(true);
+  });
+  it('declaring attackers offers no pass-ahead', () => {
+    const v = describeInput(input('Select creatures to attack Forge AI or select player/card you wish to attack.'), state(), ME);
+    expect(canPassAhead(v)).toBe(false);
+  });
+  it('To EOT is yieldTo endOfTurn; the menu has the turn markers on the right columns', () => {
+    expect(PASS_EOT.body).toEqual({ action: 'yieldTo', kind: 'endOfTurn' });
+    const menu = passMenu(describeInput(input(PRIORITY), state(), ME));
+    expect(menu.map((m) => m.body)).toContainEqual({ action: 'yieldTo', kind: 'marker', phase: 'UPKEEP', turn: 'own' });
+    expect(menu.map((m) => m.body)).toContainEqual({ action: 'yieldTo', kind: 'marker', phase: 'END_OF_TURN', turn: 'opp' });
+    expect(menu.some((m) => m.id === 'stack')).toBe(false);
   });
 });
 
