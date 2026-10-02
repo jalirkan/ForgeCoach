@@ -37,22 +37,22 @@
 @media (max-width: 560px) {
   /* Phones: rows scroll sideways rather than shrinking cards past legible. */
   .board {
-    --cw: 76px;
+    --cw: 86px;
   }
   .bf-row-lands {
-    --cw: 68px;
+    --cw: 70px;
   }
   .bf-row.is-dense,
   .bf-row.is-crowded {
-    --cw: 68px;
+    --cw: 78px;
   }
   .bf-row-lands.is-dense,
   .bf-row-lands.is-crowded {
-    --cw: 62px;
+    --cw: 64px;
   }
   .hand-dock-row,
   .hand-tiles {
-    --cw: 80px;
+    --cw: 84px;
   }
   .zone-grid {
     --cw: 96px;
