@@ -110,47 +110,67 @@
   }
 }
 
-/* Desktop play: height is what is scarce, so a side's rows sit next to each
-   other while they fit (lands at the outer edge), and wrap when they do not. */
+/* Desktop play, laid out like a table (endstep): each side is its lands row
+   and its permanents row, stacked (theirs: lands at the top edge; yours:
+   lands at the bottom edge). The card width follows the side's height (both
+   rows fit) and the widest row's width (--slots-row, card widths, set by
+   Board), between a legible floor and a comfortable ceiling; past the floor
+   a row scrolls sideways instead of shrinking further.
+   When a side is short (a big stack or combat panel between the sides), its
+   two rows sit side by side instead (lands at the outer edge), so the cards
+   keep their size. */
 @media (min-width: 1024px) {
-  /* One line per side when it fits: the card width follows the side's width
-     (--slots, card widths in a line, set by Board) and its height. */
+  .game.play.is-wide .play-board .player {
+    container: side / size;
+  }
   .game.play.is-wide .play-board .player .battlefield {
     container-type: size;
-  }
-  .game.play.is-wide .play-board .battlefield {
-    /* one line: every row side by side; two lines: the widest row, half the height */
-    --cw-one: min(calc((100cqw - 64px) / var(--slots, 8) - 9px), calc((100cqh - 22px - var(--attach-h, 0px)) * 63 / 88));
-    --cw-two: min(calc((100cqw - 32px) / var(--slots-row, 6) - 9px), calc((50cqh - 24px - var(--attach-h, 0px) / 2) * 63 / 88));
+    gap: 2px;
+    padding: 2px 10px;
+    justify-content: safe center;
   }
   .game.play.is-wide .play-board .bf-row {
-    --cw: clamp(60px, max(var(--cw-one), var(--cw-two)), 104px);
+    --rows-h: calc(var(--ch-lands, 0.86) + var(--ch-perm, 1));
+    --cw-h: calc((100cqh - 30px - var(--attach-h, 0px)) / var(--rows-h) * 63 / 88);
+    --cw-w: calc((100cqw - 40px) / var(--slots-row, 6) - 9px);
+    --cw-fit: clamp(58px, min(var(--cw-h), var(--cw-w)), 132px);
+    --cw: var(--cw-fit);
+    flex: none;
+    min-width: 0;
   }
   .game.play.is-wide .play-board .bf-row-lands {
-    --cw: clamp(56px, calc(0.9 * max(var(--cw-one), var(--cw-two))), 94px);
+    --cw: calc(var(--cw-fit) * 0.86);
   }
   .game.play.is-wide .play-board .bf-cards {
-    padding: 6px 4px 4px;
+    flex-wrap: nowrap;
+    justify-content: safe center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    padding: 6px 6px 4px;
   }
-  .game.play.is-wide .play-board .player .battlefield {
+  .game.play.is-wide .play-board .bf-row + .bf-row {
+    padding-top: 2px;
+  }
+  .game.play.is-wide .play-board .bf-empty {
+    flex-basis: 100%;
+  }
+}
+@container side (max-height: 330px) {
+  .game.play.is-wide .play-board .battlefield {
     flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-content: flex-start;
-    column-gap: 28px;
-    row-gap: 2px;
-    padding: 4px 10px;
+    align-items: center;
+    justify-content: safe center;
+    column-gap: 24px;
   }
   .game.play.is-wide .play-board .bf-row {
+    --rows-h: 1;
+    --cw-w: calc((100cqw - 64px) / var(--slots, 8) - 9px);
     flex: 0 1 auto;
-    max-width: 100%;
   }
   .game.play.is-wide .play-board .bf-row + .bf-row {
     border-top: 0;
     padding-top: 0;
-  }
-  .game.play.is-wide .play-board .bf-empty {
-    flex-basis: 100%;
   }
 }
 

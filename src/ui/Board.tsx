@@ -145,9 +145,12 @@ const PlayerArea = memo(function PlayerArea({
         className="battlefield"
         style={
           {
-            // Card widths per line, for desktop play's sizing (ui/cards.css): all rows in one line, or the widest row.
-            '--slots': Math.max(4, permWeight + landWeight * 0.9 + (permanents.length && lands.length ? 0.4 : 0)).toFixed(2),
-            '--slots-row': Math.max(4, permWeight, landWeight * 0.9).toFixed(2),
+            // Card widths in the widest row, and which rows there are (desktop play sizing, ui/cards.css).
+            '--slots-row': Math.max(5, permWeight, landWeight * 0.86).toFixed(2),
+            // Both rows side by side (a short side on desktop).
+            '--slots': Math.max(5, permWeight + landWeight * 0.86 + (permanents.length && lands.length ? 0.6 : 0)).toFixed(2),
+            '--ch-lands': lands.length ? 0.86 : 0,
+            '--ch-perm': permanents.length ? 1 : 0,
             '--attach-h': permanents.some((p) => p.att.length > 0) ? '34px' : '0px',
           } as CSSProperties
         }
