@@ -32,6 +32,7 @@ export const PlayCoach = memo(function PlayCoach({
   guideName,
   onOpenGuides,
   onOpenSettings,
+  onCollapse,
 }: {
   log: GameLog | null;
   state: GameStateBody | null;
@@ -43,6 +44,8 @@ export const PlayCoach = memo(function PlayCoach({
   guideName: string | null;
   onOpenGuides: () => void;
   onOpenSettings: () => void;
+  /** Desktop sidebar: fold the coach away (the phase steps stay). */
+  onCollapse?: () => void;
 }) {
   const [auto, setAuto] = useState(() => readLS(AUTO_KEY) === '1');
   // Auto-coach only asks when something can answer (Claude Code on the PC, or an API key).
@@ -103,6 +106,11 @@ export const PlayCoach = memo(function PlayCoach({
           <span className="switch-track" aria-hidden="true" />
           <span className="switch-label">Auto-coach</span>
         </label>
+        {onCollapse && (
+          <button className="icon-btn pc-collapse" onClick={onCollapse} aria-label="Hide the coach" title="Hide the coach">
+            <IconChevronDown size={16} />
+          </button>
+        )}
       </div>
       <button className="guide-btn" onClick={onOpenGuides}>
         <IconBook size={14} />

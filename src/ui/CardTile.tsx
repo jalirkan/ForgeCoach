@@ -192,7 +192,7 @@ function imageOf(card: Card, info: CardInfo | undefined): { src: string; srcSet?
  * The card face: a text face (name, cost, art crop, type) that is always there
  * and sized like a card, and the full card image on top of it once it loads.
  */
-function CardFace({ card, info, kind, eager }: { card: Card; info: CardInfo | undefined; kind: ReturnType<typeof typeKind>; eager?: boolean }) {
+export function CardFace({ card, info, kind, eager }: { card: Card; info: CardInfo | undefined; kind: ReturnType<typeof typeKind>; eager?: boolean }) {
   const img = imageOf(card, info);
   const [state, setState] = useState<{ src: string; ok: boolean | null } | null>(null);
   const status = state && img && state.src === img.src ? state.ok : null;
@@ -233,7 +233,7 @@ function CardFace({ card, info, kind, eager }: { card: Card; info: CardInfo | un
           className="tile-img"
           src={img.src}
           srcSet={img.srcSet}
-          sizes="(max-width: 560px) 80px, 120px"
+          sizes="(max-width: 560px) 90px, 170px"
           alt=""
           loading={eager ? 'eager' : 'lazy'}
           decoding="async"

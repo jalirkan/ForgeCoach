@@ -110,36 +110,33 @@
   }
 }
 
-/* Desktop play, laid out like a table (endstep): each side is its lands row
-   and its permanents row, stacked (theirs: lands at the top edge; yours:
-   lands at the bottom edge). The card width follows the side's height (both
-   rows fit) and the widest row's width (--slots-row, card widths, set by
-   Board), between a legible floor and a comfortable ceiling; past the floor
-   a row scrolls sideways instead of shrinking further.
+/* Desktop play, laid out like a table (endstep): each side is its permanents
+   row and its lands row, stacked (theirs: lands at the top edge; yours: lands
+   at the bottom edge). The card width follows the side's height (both rows
+   fit) and the widest row's width (--slots-row, in card widths, set by Board),
+   between a legible floor and a generous ceiling; past the floor a row scrolls
+   sideways instead of shrinking further. Lands are --land-k of a creature.
    When a side is short (a big stack or combat panel between the sides), its
-   two rows sit side by side instead (lands at the outer edge), so the cards
-   keep their size. */
+   two rows sit side by side instead (lands at the outer edge). */
 @media (min-width: 1024px) {
-  .game.play.is-wide .play-board .player {
+  .game.play.is-wide .play-board .battlefield {
     container: side / size;
-  }
-  .game.play.is-wide .play-board .player .battlefield {
-    container-type: size;
-    gap: 2px;
-    padding: 2px 10px;
+    --land-k: 0.76;
+    gap: 0;
+    padding: 0 8px;
     justify-content: safe center;
   }
   .game.play.is-wide .play-board .bf-row {
-    --rows-h: calc(var(--ch-lands, 0.86) + var(--ch-perm, 1));
-    --cw-h: calc((100cqh - 30px - var(--attach-h, 0px)) / var(--rows-h) * 63 / 88);
-    --cw-w: calc((100cqw - 40px) / var(--slots-row, 6) - 9px);
-    --cw-fit: clamp(58px, min(var(--cw-h), var(--cw-w)), 132px);
+    --rows-h: calc(var(--ch-lands, 1) * var(--land-k) + var(--ch-perm, 1));
+    --cw-h: calc((100cqh - 18px - var(--attach-h, 0px)) / var(--rows-h) * 63 / 88);
+    --cw-w: calc((100cqw - 24px) / var(--slots-row, 6) - 9px);
+    --cw-fit: clamp(58px, min(var(--cw-h), var(--cw-w)), 200px);
     --cw: var(--cw-fit);
     flex: none;
     min-width: 0;
   }
   .game.play.is-wide .play-board .bf-row-lands {
-    --cw: calc(var(--cw-fit) * 0.86);
+    --cw: calc(var(--cw-fit) * var(--land-k));
   }
   .game.play.is-wide .play-board .bf-cards {
     flex-wrap: nowrap;
@@ -147,16 +144,18 @@
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: thin;
-    padding: 6px 6px 4px;
+    gap: 8px 10px;
+    padding: 5px 6px 4px;
   }
   .game.play.is-wide .play-board .bf-row + .bf-row {
-    padding-top: 2px;
+    padding-top: 0;
   }
   .game.play.is-wide .play-board .bf-empty {
     flex-basis: 100%;
+    text-align: center;
   }
 }
-@container side (max-height: 330px) {
+@container side (max-height: 250px) {
   .game.play.is-wide .play-board .battlefield {
     flex-direction: row;
     align-items: center;
@@ -165,7 +164,7 @@
   }
   .game.play.is-wide .play-board .bf-row {
     --rows-h: 1;
-    --cw-w: calc((100cqw - 64px) / var(--slots, 8) - 9px);
+    --cw-w: calc((100cqw - 48px) / var(--slots, 8) - 9px);
     flex: 0 1 auto;
   }
   .game.play.is-wide .play-board .bf-row + .bf-row {

@@ -276,7 +276,10 @@ export function PlayView({
     () => view.mode === 'target' && !!state?.players.find((p) => p.id === seat)?.zones.hand.cards.some((c) => cardRole(c, ctx) === 'select'),
     [view.mode, state, seat, ctx],
   );
-  const autoFold = !wide && !sideDock && (boardMode || (view.mode === 'target' && !handTargets) || phoneCoach);
+  // Phones (portrait): the hand is open at your main phase and when the engine asks for a hand card;
+  // otherwise it folds to a peek strip so both battlefields fit on screen.
+  const handNeeded = view.mode === 'main' || view.mode === 'discard' || handTargets;
+  const autoFold = !wide && !sideDock && (!handNeeded || phoneCoach);
   const [handOverride, setHandOverride] = useState<boolean | null>(null);
   useEffect(() => setHandOverride(null), [view.mode, phoneCoach]);
   const handHidden = autoFold ? handOverride ?? true : handCollapsed;
@@ -400,16 +403,12 @@ export function PlayView({
 
   // Phase stops can be changed while this is a live seat with nothing else open (M33).
   const stripInteractive = connected && !!state && !ask && !over;
-  const strip = (variant: 'bar' | 'column') => (
-    <PhaseStrip
-      state={state}
-      seat={seat}
-      interactive={stripInteractive}
-      onAct={act}
-      variant={variant}
-      footer={variant === 'column' ? <LogTab variant="button" onClick={() => setLogOpen(true)} open={logOpen} /> : undefined}
-    />
-  );
+  const strip = (variant: 'bar' | 'side') => <PhaseStrip state={state} seat={seat} interactive={stripInteractive} onAct={act} variant={variant} />;
+  const toggleCoach = () =>
+    setCoachOpen((o) => {
+      writeLS(COACH_OPEN_KEY, o ? '0' : '1');
+      return !o;
+    });
 
   const coach = (
     <PlayCoach
@@ -422,6 +421,7 @@ export function PlayView({
       guideName={guideName}
       onOpenGuides={() => setGuidesOpen(true)}
       onOpenSettings={onSettings}
+      onCollapse={wide ? toggleCoach : undefined}
     />
   );
 
@@ -444,6 +444,76 @@ export function PlayView({
     </div>
   );
 
+  // The top bar: across the top on a phone; at the top of the sidebar on a desktop (the board keeps the height).
+  const header = (
+    <header className={cx('topbar', wide && 'play-side-top')}>
+      <button className="logo-btn" onClick={onLeave} aria-label="Back to start">
+        <Logo compact />
+      </button>
+      <div className="topbar-title">
+        <span className="topbar-game">You vs {opp?.name ?? 'Forge AI'}</span>
+        <span className="topbar-sub">{[gameNo, myDeck].filter(Boolean).join(' · ') || 'Playing live'}</span>
+      </div>
+      {wide && <span className="side-break" aria-hidden="true" />}
+      <span className={cx('live-pill', connected ? 'is-open' : status === 'connecting' ? 'is-connecting' : 'is-error')} title={snap.detail ?? undefined}>
+        <span className="live-dot" />
+        <span className="live-pill-text">{connected ? 'Connected' : status === 'connecting' ? 'Connecting' : status === 'refused' ? 'Seat taken' : 'Disconnected'}</span>
+      </span>
+      {!connected && status !== 'connecting' && (
+        <button className="btn btn-quiet btn-sm top-reconnect" onClick={() => session.reconnect()}>
+          Reconnect
+        </button>
+      )}
+      <span className="grow" />
+      {wide ? (
+        <>
+          <LogTab variant="button" onClick={() => setLogOpen(true)} open={logOpen} />
+          <button className="icon-btn" onClick={() => setConcede(true)} aria-label="Concede" title="Concede" disabled={!connected || !!over || !state}>
+            <IconFlag size={17} />
+          </button>
+          <button className="icon-btn" onClick={onSettings} aria-label="Settings">
+            <IconGear size={18} />
+          </button>
+          <button className="icon-btn" onClick={onLeave} aria-label="Leave game">
+            <IconX size={18} />
+          </button>
+        </>
+      ) : (
+        <>
+          <button className={cx('top-coach', phoneCoach && 'is-on')} onClick={() => setPhoneCoach((o) => !o)} aria-pressed={phoneCoach} aria-label={phoneCoach ? 'Back to the board' : 'Open the coach'}>
+            <span className="top-coach-pill">
+              {phoneCoach ? <IconX size={15} /> : <IconSpark size={15} />}
+              {phoneCoach ? 'Board' : 'Coach'}
+            </span>
+          </button>
+          <div className="top-menu-wrap" ref={menuRef}>
+            <button className="icon-btn top-more" onClick={() => setMenu((m) => !m)} aria-label="More" aria-expanded={menu} aria-haspopup="menu">
+              <IconMore size={20} />
+            </button>
+            {menu && (
+              <div className="top-menu" role="menu">
+                <button role="menuitem" onClick={() => { setMenu(false); setConcede(true); }} disabled={!connected || !!over || !state}>
+                  <IconFlag size={16} /> Concede
+                </button>
+                <button role="menuitem" onClick={() => { setMenu(false); onSettings(); }}>
+                  <IconGear size={16} /> Settings
+                </button>
+                {finePointer && (
+                  <button role="menuitem" onClick={() => { setMenu(false); setHelp(true); }}>
+                    <IconKeyboard size={16} /> Keyboard
+                  </button>
+                )}
+                <button role="menuitem" onClick={() => { setMenu(false); onLeave(); }}>
+                  <IconX size={16} /> Leave the table
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </header>
+  );
+
   return (
     <CardActionsContext.Provider value={actions}>
       <BoardStateRef.Provider value={boardStateRef}>
@@ -451,78 +521,7 @@ export function PlayView({
           <div className={cx('game', 'play', wide ? 'is-wide' : 'is-narrow', `mode-${view.mode}`)}>
             {/* Phones: the steps across the very top, above everything (endstep-style). */}
             {!wide && strip('bar')}
-            <header className="topbar">
-              <button className="logo-btn" onClick={onLeave} aria-label="Back to start">
-                <Logo compact={!wide} />
-              </button>
-              <div className="topbar-title">
-                <span className="topbar-game">You vs {opp?.name ?? 'Forge AI'}</span>
-                <span className="topbar-sub">{[gameNo, myDeck].filter(Boolean).join(' · ') || 'Playing live'}</span>
-              </div>
-              <span className={cx('live-pill', connected ? 'is-open' : status === 'connecting' ? 'is-connecting' : 'is-error')} title={snap.detail ?? undefined}>
-                <span className="live-dot" />
-                <span className="live-pill-text">{connected ? 'Connected' : status === 'connecting' ? 'Connecting' : status === 'refused' ? 'Seat taken' : 'Disconnected'}</span>
-              </span>
-              {!connected && status !== 'connecting' && (
-                <button className="btn btn-quiet btn-sm top-reconnect" onClick={() => session.reconnect()}>
-                  Reconnect
-                </button>
-              )}
-              <span className="grow" />
-              {wide ? (
-                <>
-                  <button className={cx('btn btn-sm', coachOpen ? 'btn-quiet is-on' : 'btn-quiet')} onClick={() => {
-                    setCoachOpen((o) => {
-                      writeLS(COACH_OPEN_KEY, o ? '0' : '1');
-                      return !o;
-                    });
-                  }} aria-pressed={coachOpen}>
-                    <IconSpark size={14} /> Coach
-                  </button>
-                  <button className="icon-btn" onClick={() => setConcede(true)} aria-label="Concede" title="Concede" disabled={!connected || !!over || !state}>
-                    <IconFlag size={17} />
-                  </button>
-                  <button className="icon-btn" onClick={onSettings} aria-label="Settings">
-                    <IconGear size={18} />
-                  </button>
-                  <button className="icon-btn" onClick={onLeave} aria-label="Leave game">
-                    <IconX size={18} />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button className={cx('top-coach', phoneCoach && 'is-on')} onClick={() => setPhoneCoach((o) => !o)} aria-pressed={phoneCoach} aria-label={phoneCoach ? 'Back to the board' : 'Open the coach'}>
-                    <span className="top-coach-pill">
-                      {phoneCoach ? <IconX size={15} /> : <IconSpark size={15} />}
-                      {phoneCoach ? 'Board' : 'Coach'}
-                    </span>
-                  </button>
-                  <div className="top-menu-wrap" ref={menuRef}>
-                    <button className="icon-btn top-more" onClick={() => setMenu((m) => !m)} aria-label="More" aria-expanded={menu} aria-haspopup="menu">
-                      <IconMore size={20} />
-                    </button>
-                    {menu && (
-                      <div className="top-menu" role="menu">
-                        <button role="menuitem" onClick={() => { setMenu(false); setConcede(true); }} disabled={!connected || !!over || !state}>
-                          <IconFlag size={16} /> Concede
-                        </button>
-                        <button role="menuitem" onClick={() => { setMenu(false); onSettings(); }}>
-                          <IconGear size={16} /> Settings
-                        </button>
-                        {finePointer && (
-                          <button role="menuitem" onClick={() => { setMenu(false); setHelp(true); }}>
-                            <IconKeyboard size={16} /> Keyboard
-                          </button>
-                        )}
-                        <button role="menuitem" onClick={() => { setMenu(false); onLeave(); }}>
-                          <IconX size={16} /> Leave the table
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </header>
+            {!wide && header}
             {!connected && snap.detail && status !== 'connecting' && <div className="live-banner play-banner">{snap.detail}</div>}
 
             {wide ? (
@@ -531,8 +530,18 @@ export function PlayView({
                   <div className="play-board">{board}</div>
                   {dock}
                 </main>
-                {strip('column')}
-                {coachOpen && <aside className="col col-coach">{coach}</aside>}
+                {/* One sidebar: the turn and its steps, then the coach (foldable). */}
+                <aside className="play-side">
+                  {header}
+                  {strip('side')}
+                  {coachOpen ? (
+                    <div className="play-side-coach">{coach}</div>
+                  ) : (
+                    <button className="play-side-coach-fold" onClick={toggleCoach} aria-expanded={false}>
+                      <IconSpark size={15} /> Coach <span className="muted tiny">— ask about this moment</span>
+                    </button>
+                  )}
+                </aside>
               </div>
             ) : (
               <>

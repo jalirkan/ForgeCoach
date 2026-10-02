@@ -137,9 +137,6 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
 }
-.play-cols.has-coach {
-  grid-template-columns: minmax(0, 1fr) 390px;
-}
 .play-main {
   min-height: 0;
   display: flex;
@@ -154,49 +151,52 @@
   max-width: 1180px;
   padding-bottom: 20px;
 }
-/* Desktop: both sides of the table stay on screen; each battlefield scrolls. */
-.game.play.is-wide .play-board {
-  overflow: hidden;
-  display: flex;
-}
-.game.play.is-wide .play-board .board {
-  flex: 1;
-  min-height: 0;
-  padding: 12px 16px;
-  gap: 10px;
-}
-.game.play.is-wide .play-board .player {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.game.play.is-wide .play-board .battlefield {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-}
-.game.play.is-wide .play-board .midline {
-  flex: none;
-  max-height: 34%;
-  overflow: auto;
-}
-.game.play.is-wide .play-board .phead {
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-.game.play.is-wide .play-board .battlefield {
-  gap: 8px;
-}
-.game.play.is-wide .play-board .player-top .battlefield {
-  padding-top: 8px;
-}
 .play-banner {
   flex: none;
 }
 .topbar .btn.is-on {
   border-color: rgba(227, 178, 95, 0.5);
   color: var(--accent-2);
+}
+
+/* Stack items: one line each (the source, who, then the text, cut short). */
+.game.play .stack-list,
+.game.play .combat-list {
+  gap: 4px;
+}
+.game.play .stack-item {
+  display: flex;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 4px 8px;
+  min-width: 0;
+}
+.game.play .stack-line {
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.game.play .stack-text,
+.game.play .stack-targets {
+  margin: 0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.game.play .stack-text {
+  flex: 1 1 auto;
+}
+.game.play .stack-targets {
+  flex: 0 1 auto;
+}
+
+/* Untapped mana is on the table already (the untapped lands); only a floating pool shows. */
+.game.play .mana-avail,
+.game.play .phead-mana:not(:has(.mana-pool)) {
+  display: none;
 }
 
 /* ------------------------------------------------------------------ */
@@ -209,18 +209,6 @@
   box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.35);
   z-index: 10;
   padding-bottom: env(safe-area-inset-bottom);
-}
-.actionbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 16px;
-  max-width: 1180px;
-  margin: 0 auto;
-}
-.ab-text {
-  flex: 1;
-  min-width: 0;
 }
 .ab-title {
   display: flex;
@@ -304,80 +292,10 @@
 .ab-mode-icon.is-stack {
   color: var(--violet);
 }
-.ab-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: none;
-}
-.ab-btn {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  min-width: 92px;
-  padding: 4px 18px;
-  border-radius: 12px;
-  font-weight: 650;
-  line-height: 1.15;
-  transition: background 0.15s, border-color 0.15s, transform 0.05s, opacity 0.15s;
-}
-.ab-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-.ab-btn-main {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 15px;
-}
-.ab-btn-sub {
-  font-size: 11px;
-  font-weight: 500;
-  opacity: 0.75;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-.ab-primary {
-  background: var(--accent);
-  color: var(--accent-ink);
-  min-width: 132px;
-  box-shadow: 0 6px 18px rgba(227, 178, 95, 0.22);
-}
-.ab-primary:hover:not(:disabled) {
-  background: var(--accent-2);
-}
-.ab-primary:disabled {
-  background: var(--surface-3);
-  color: var(--muted);
-  box-shadow: none;
-}
-.ab-secondary {
-  background: var(--surface-2);
-  border: 1px solid var(--line-2);
-  color: var(--text);
-}
-.ab-secondary:hover:not(:disabled) {
-  background: var(--surface-3);
-}
-.ab-secondary:disabled {
-  opacity: 0.45;
-}
-.ab-btn.is-busy {
-  opacity: 0.8;
-}
 .spinner-sm {
   width: 12px;
   height: 12px;
   border-width: 2px;
-}
-.ab-primary .spinner {
-  border-color: rgba(27, 20, 7, 0.25);
-  border-top-color: var(--accent-ink);
-}
-.ab-small {
-  height: 40px;
 }
 .ab-icon {
   width: 40px;
@@ -403,9 +321,6 @@
 }
 .ab-pool-pip:hover {
   background: var(--surface-3);
-}
-.ab-menu-wrap {
-  position: relative;
 }
 .ab-menu {
   position: absolute;
@@ -469,9 +384,6 @@ kbd {
   overscroll-behavior-x: contain;
 }
 
-.hand-dock.is-collapsed .hand-dock-head {
-  padding-bottom: 8px;
-}
 
 /* ------------------------------------------------------------------ */
 /* Click affordances on tiles, lands and players */
@@ -682,16 +594,6 @@ button.avatar.is-select {
 .keys-row dd {
   font-size: 13.5px;
   color: var(--text-2);
-}
-
-/* Desktop play: each side keeps room for its header and one row of cards;
-   the battlefield scrolls when it holds more (cards: ui/cards.css). */
-.game.play.is-wide .play-board .player-top {
-  min-height: min(240px, 44%);
-  flex-shrink: 0.4;
-}
-.game.play.is-wide .play-board .player {
-  min-height: 168px;
 }
 
 .play-status-more {
@@ -910,8 +812,8 @@ button.avatar.is-select {
 
   /* ---- board: dense but legible */
   .play-phone-main .board {
-    padding: 8px 8px 14px;
-    gap: 8px;
+    padding: 6px 6px 8px;
+    gap: 6px;
   }
   .play-phone-main .player {
     border-radius: 12px;
@@ -921,76 +823,101 @@ button.avatar.is-select {
   }
   .play-phone-main .battlefield,
   .play-phone-main .player-top .battlefield {
-    padding: 8px;
-    gap: 8px;
+    padding: 2px 8px;
+    gap: 0;
   }
   .play-phone-main .bf-empty {
     padding: 2px 2px 0;
     font-size: 12.5px;
   }
 
-  /* ---- player headers: one line of identity, one of zones */
+  /* stack / combat: the title beside the items */
+  .play-phone-main .mid-panel {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 4px 8px;
+    padding: 5px 8px;
+  }
+  .play-phone-main .mid-title {
+    margin: 0;
+  }
+  .play-phone-main .mid-hint {
+    display: none;
+  }
+  .play-phone-main .card-ref {
+    white-space: nowrap;
+  }
+  /* a zone with nothing in it says nothing */
+  .play-phone-main button.zone-pill:disabled {
+    display: none;
+  }
+
+  /* ---- player rails: one line — who, life, then hand / library / graveyard / exile */
   .play-phone-main .phead {
-    padding: 8px 10px;
-    gap: 6px 8px;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 5px 8px 5px 10px;
   }
   .play-phone-main .phead-id {
-    flex: 1 1 100%;
-    gap: 9px;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+  }
+  .play-phone-main .avatar {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  /* a 44px target for choosing a player */
+  .play-phone-main button.avatar::before {
+    content: '';
+    position: absolute;
+    inset: -7px;
+  }
+  .play-phone-main .phead-names {
+    flex: 0 1 auto;
+    min-width: 0;
   }
   .play-phone-main .phead-name {
     font-size: 14px;
   }
+  .play-phone-main .phead-real,
   .play-phone-main .phead-tags {
-    min-height: 0;
-  }
-  .play-phone-main .phead-tags:empty {
     display: none;
-  }
-  .play-phone-main .avatar {
-    width: 34px;
-    height: 34px;
   }
   .play-phone-main .life {
-    padding: 3px 9px 3px 8px;
-  }
-  .play-phone-main .life-n {
-    font-size: 20px;
-  }
-  .play-phone-main .phead-zones {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex: none;
+    margin-left: 2px;
+    padding: 2px 8px 2px 7px;
     gap: 4px;
   }
-  .play-phone-main .phead-zones::-webkit-scrollbar {
-    display: none;
+  .play-phone-main .life-n {
+    font-size: 19px;
+  }
+  .play-phone-main .phead-zones {
+    flex: none;
+    flex-wrap: nowrap;
+    gap: 3px;
   }
   .play-phone-main .zone-pill {
     flex: none;
-    height: 26px;
-    padding: 0 8px;
+    height: 30px;
+    padding: 0 6px;
     font-size: 11.5px;
-    gap: 5px;
-  }
-  /* zones and untapped mana share one line */
-  .play-phone-main .phead-zones {
-    flex: 0 1 auto;
-    min-width: 0;
+    gap: 3px;
   }
   .play-phone-main .phead-mana {
     flex: none;
     width: auto;
-    margin-left: auto;
     font-size: 11.5px;
-    gap: 4px 10px;
   }
-  .play-phone-main .phead-mana > span > .muted {
+  .play-phone-main .phead-mana .muted {
     display: none;
-  }
-  .play-phone-main .phead-mana .pip-row {
-    max-width: 96px;
-    overflow: hidden;
   }
   .play-phone-main .zl-long {
     position: absolute;
@@ -1004,15 +931,6 @@ button.avatar.is-select {
     display: inline;
   }
   .play-phone-main .opp-hand {
-    display: none;
-  }
-  .play-phone-main .phead-names {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: 8px;
-  }
-  .play-phone-main .phead-real {
     display: none;
   }
 
@@ -1072,12 +990,6 @@ button.avatar.is-select {
     background: var(--accent);
     box-shadow: none;
   }
-  .play-phone-main .mid-panel {
-    padding: 8px 10px;
-  }
-  .play-phone-main .mid-title {
-    margin-bottom: 6px;
-  }
   /* one combat band per line: attackers → defender · blockers */
   .play-phone-main .combat-band {
     display: flex;
@@ -1123,49 +1035,10 @@ button.avatar.is-select {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .ab-controls {
-    flex: 1;
-    min-width: 0;
-    justify-content: flex-end;
-    gap: 6px;
-  }
-  .ab-primary {
-    flex: 1 1 auto;
-    max-width: 280px;
-  }
-  .ab-btn {
-    min-height: 50px;
-    padding: 4px 12px;
-    min-width: 0;
-  }
-  .ab-secondary {
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-  .ab-btn-main,
-  .ab-btn-sub {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .ab-btn-main {
-    display: block;
-  }
-  .ab-btn-main .spinner {
-    display: inline-block;
-    vertical-align: -2px;
-    margin-right: 6px;
-  }
   .ab-icon {
     width: 44px;
     height: 50px;
     border-radius: 12px;
-  }
-  .ab-small {
-    height: 50px;
-    border-radius: 12px;
-    padding: 0 12px;
   }
   .ab-pool {
     align-self: stretch;
@@ -1220,13 +1093,74 @@ button.avatar.is-select {
   .hand-dock-row > .bf-empty {
     padding: 4px;
   }
+  /* folded: the header and the tops of the cards share one 52px strip */
+  .hand-dock.is-collapsed {
+    display: flex;
+    align-items: stretch;
+    height: 52px;
+  }
   .hand-dock.is-collapsed .hand-dock-head {
-    padding-bottom: 8px;
+    flex: none;
+    width: auto;
+    gap: 8px;
+    padding: 0 10px 0 14px;
+  }
+  .hand-dock.is-collapsed .hand-dock-head .tag,
+  .hand-dock.is-collapsed .hand-dock-head .grow {
+    display: none;
+  }
+  .hand-dock.is-collapsed .hand-dock-head::after {
+    inset: 0;
+  }
+  .hand-dock.is-collapsed .hand-dock-peek {
+    flex: 1;
+    height: 100%;
+    padding: 8px 10px 0 0;
   }
 }
-@media (max-width: 380px) {
-  .ab-btn {
-    padding: 4px 10px;
+
+/* ---- phones held upright: the board fills the height between the top bar
+   and the dock. Each side takes half and its cards size to fit their two rows,
+   so both battlefields are on screen; past the floor it scrolls instead. Rows
+   scroll sideways (cards.css). In landscape the board just scrolls (the dock
+   is a side column there). */
+@media (max-width: 1023px) and (orientation: portrait) {
+  .play-phone-main {
+    display: flex;
+    flex-direction: column;
+  }
+  .play-phone-main > .board {
+    flex: 1 0 auto;
+    min-height: 100%;
+    width: 100%;
+  }
+  .play-phone-main .player {
+    flex: 1 1 0;
+    min-height: 188px;
+    display: flex;
+    flex-direction: column;
+  }
+  .play-phone-main .player > .battlefield {
+    flex: 1 1 0;
+    min-height: 0;
+    container: side / size;
+    justify-content: safe center;
+  }
+  .play-phone-main .bf-row {
+    --land-k: 0.8;
+    --rows-h: calc(var(--ch-lands, 1) * var(--land-k) + var(--ch-perm, 1));
+    --cw-fit: clamp(54px, calc((100cqh - 26px - var(--attach-h, 0px)) / var(--rows-h) * 63 / 88), 104px);
+    --cw: var(--cw-fit);
+  }
+  .play-phone-main .bf-row-lands {
+    --cw: calc(var(--cw-fit) * var(--land-k));
+  }
+  .play-phone-main .bf-cards {
+    padding-top: 5px;
+    padding-bottom: 4px;
+  }
+  .play-phone-main .midline {
+    flex: none;
   }
 }
 
@@ -1283,13 +1217,6 @@ button.avatar.is-select {
   }
   .game.play.is-narrow .play-phone-main .board {
     padding: 6px 8px 10px;
-  }
-  .game.play.is-narrow .ab-primary {
-    flex: 1.5 1 0;
-    max-width: none;
-  }
-  .game.play.is-narrow .ab-secondary {
-    flex: 1 1 0;
   }
 }
 
@@ -1367,4 +1294,228 @@ button.avatar.is-select {
   gap: 4px;
   min-height: 44px;
   font-size: 13.5px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Desktop table (endstep-like): the height goes to the cards.
+ *
+ *   top bar (slim)                                   | sidebar:
+ *   [rail] their battlefield (lands at the top edge) |  turn · priority
+ *   stack / combat, when there is one                |  phase steps
+ *   [rail] your battlefield (lands at the bottom)    |  coach (foldable)
+ *   action bar: one slim row                         |
+ *   your hand: held like a hand, raised on hover     |
+ *
+ * Each player's header becomes a narrow rail at the left of their side.
+ * Card sizes: ui/cards.css.
+ */
+@media (min-width: 1024px) {
+  .game.play.is-wide {
+    /* no top bar: it sits at the top of the sidebar */
+    --top-h: 0px;
+    --rail-w: 148px;
+    --hand-h: clamp(100px, calc(40vh - 248px), 180px);
+  }
+  .game.play.is-wide .play-board {
+    overflow: hidden;
+    display: flex;
+  }
+  .game.play.is-wide .play-board .board {
+    flex: 1;
+    min-height: 0;
+    max-width: none;
+    padding: 6px 10px 4px;
+    gap: 6px;
+  }
+  .game.play.is-wide .play-board .player {
+    flex: 1 1 0;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: var(--rail-w) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    border-radius: 12px;
+  }
+  .game.play.is-wide .play-board .player > .battlefield {
+    grid-column: 2;
+    grid-row: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .game.play.is-wide .play-board .midline {
+    flex: none;
+    max-height: 30%;
+    overflow: auto;
+  }
+
+  /* Stack and combat: compact, one line per item, title at the left. */
+  .game.play.is-wide .play-board .mid-panel {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    align-items: start;
+    gap: 4px 10px;
+    padding: 6px 10px;
+  }
+  .game.play.is-wide .play-board .mid-title {
+    margin: 4px 0 0;
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .game.play.is-wide .play-board .mid-hint {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+  .game.play.is-wide .play-board .combat-band {
+    padding: 4px 8px;
+  }
+
+  /* ---- the rails: who, life, zones */
+  .game.play.is-wide .play-board .player > .phead {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 10px 10px 10px 12px;
+    border: 0;
+    border-right: 1px solid var(--line);
+    background: rgba(0, 0, 0, 0.18);
+    min-height: 0;
+    overflow: hidden;
+  }
+  .game.play.is-wide .play-board .player-me > .phead {
+    justify-content: flex-end;
+  }
+  .game.play.is-wide .play-board .phead.is-active::before {
+    top: 12px;
+    bottom: 12px;
+  }
+  .game.play.is-wide .play-board .phead-id {
+    flex: none;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 6px 8px;
+  }
+  .game.play.is-wide .play-board .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .game.play.is-wide .play-board .phead-name {
+    font-size: 13.5px;
+  }
+  .game.play.is-wide .play-board .phead-real {
+    display: none;
+  }
+  .game.play.is-wide .play-board .phead-tags {
+    min-height: 0;
+  }
+  .game.play.is-wide .play-board .phead-tags:empty {
+    display: none;
+  }
+  .game.play.is-wide .play-board .phead-tags .tag {
+    font-size: 10.5px;
+  }
+  .game.play.is-wide .play-board .life {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin: 0;
+    padding: 2px 10px 2px 8px;
+  }
+  .game.play.is-wide .play-board .life-n {
+    font-size: 26px;
+  }
+  .game.play.is-wide .play-board .phead-zones {
+    gap: 4px;
+  }
+  .game.play.is-wide .play-board .zone-pill {
+    height: 24px;
+    padding: 0 7px;
+    font-size: 11.5px;
+    gap: 4px;
+  }
+  .game.play.is-wide .play-board .zl-long {
+    display: none;
+  }
+  .game.play.is-wide .play-board .zl-short {
+    display: inline;
+  }
+  .game.play.is-wide .play-board .opp-hand {
+    display: none;
+  }
+  .game.play.is-wide .play-board .phead-mana {
+    width: auto;
+  }
+
+
+  /* ---- the dock: the action bar's one row, then the hand */
+  .game.play.is-wide .play-dock {
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
+  }
+  .game.play.is-wide .hand-dock {
+    max-width: none;
+    height: var(--hand-h);
+    border-top: 0;
+  }
+  .game.play.is-wide .hand-dock-head {
+    display: none;
+  }
+  .game.play.is-wide .hand-dock-row {
+    --cw: clamp(100px, calc(var(--hand-h) * 1.02), 180px);
+    container-type: inline-size;
+    height: 100%;
+    gap: 0;
+    padding: 10px 24px 0;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+  /* Overlap only when the hand would not fit side by side. */
+  .game.play.is-wide .hand-dock-row > * + * {
+    margin-left: clamp(calc(var(--cw) * -0.62), calc((100cqw - var(--n) * var(--cw)) / var(--n1)), 10px);
+  }
+  .game.play.is-wide .hand-dock-row > .tile {
+    transition: transform 0.16s ease;
+  }
+  /* Raised to show the whole card (its lower edge is tucked under the screen). */
+  .game.play.is-wide .hand-dock-row > .tile:hover,
+  .game.play.is-wide .hand-dock-row > .tile:focus-visible {
+    z-index: 5;
+    transform: translateY(min(-6px, calc(var(--hand-h) - var(--ch) - 22px)));
+  }
+}
+
+/* The hand's folded peek strip (phones): the tops of the cards. */
+.hand-dock-peek {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hand-dock-peek > * {
+  pointer-events: none;
+}
+.peek-card {
+  --cw: 64px;
+  --ch: calc(var(--cw) * 88 / 63);
+  --cr: calc(var(--cw) * 0.055);
+  position: relative;
+  flex: none;
+  width: var(--cw);
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--cr) var(--cr) 0 0;
+}
+.peek-card .tile-card {
+  top: 0;
+  transform: translateX(-50%);
+}
+.hand-dock-peek .card-back {
+  --cw: 64px;
 }

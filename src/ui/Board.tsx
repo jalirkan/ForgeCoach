@@ -145,11 +145,12 @@ const PlayerArea = memo(function PlayerArea({
         className="battlefield"
         style={
           {
-            // Card widths in the widest row, and which rows there are (desktop play sizing, ui/cards.css).
-            '--slots-row': Math.max(5, permWeight, landWeight * 0.86).toFixed(2),
+            // Card widths in the widest row (lands are ~0.8 of a card), and which rows there are
+            // (desktop play sizing, ui/cards.css).
+            '--slots-row': Math.max(5, permWeight, landWeight * 0.8).toFixed(2),
             // Both rows side by side (a short side on desktop).
-            '--slots': Math.max(5, permWeight + landWeight * 0.86 + (permanents.length && lands.length ? 0.6 : 0)).toFixed(2),
-            '--ch-lands': lands.length ? 0.86 : 0,
+            '--slots': Math.max(5, permWeight + landWeight * 0.8 + (permanents.length && lands.length ? 0.6 : 0)).toFixed(2),
+            '--ch-lands': lands.length ? 1 : 0,
             '--ch-perm': permanents.length ? 1 : 0,
             '--attach-h': permanents.some((p) => p.att.length > 0) ? '34px' : '0px',
           } as CSSProperties
@@ -281,7 +282,7 @@ function PlayerHeader({
         )}
         <ZonePill label="Library" short="Lib" n={z.library.count} />
         <ZonePill label="Graveyard" short="GY" n={z.graveyard.count} onClick={() => setZone('graveyard')} />
-        <ZonePill label="Exile" n={z.exile.count} onClick={() => setZone('exile')} />
+        <ZonePill label="Exile" short="Ex" n={z.exile.count} onClick={() => setZone('exile')} />
         {z.command.count > 0 && <ZonePill label="Command" n={z.command.count} onClick={() => setZone('command')} />}
         {otherCounters.map(([k, n]) => (
           <span key={k} className="zone-pill zone-static">

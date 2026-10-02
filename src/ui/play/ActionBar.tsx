@@ -2,11 +2,12 @@
  * ForgeCoach — ui/play/ActionBar.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The one place the game is driven from: what the engine wants (in plain
- * words, with its own prompt underneath), one big primary button that says
- * what it does (the engine's own label as its sub-line), "To EOT" and a ▲
- * menu of the other pass-ahead targets beside it, and the smaller tools
- * (floating mana, Undo, the engine's other button) above.
+ * The one place the game is driven from, one slim row: what the engine wants
+ * (in plain words, one line of detail under it) on the left; the smaller
+ * tools (floating mana, Undo, the engine's other button), then one big
+ * primary button that says what it does (the engine's own label as its
+ * sub-line), "To EOT" and a ▲ menu of the other pass-ahead targets on the
+ * right. Phones stack the words over the buttons.
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ActBody, ManaColor, ManaPool } from '../../protocol.ts';
@@ -66,7 +67,9 @@ export function ActionBar({
   // The engine's other button (End Turn, Alpha Strike, Call back, Cancel…) sits with the tools.
   const other: { b: ButtonView; which: 'ok' | 'cancel' } | null =
     primary.which === 'ok' ? { b: view.cancel, which: 'cancel' } : primary.which === 'cancel' ? { b: view.ok, which: 'ok' } : view.cancel.enabled ? { b: view.cancel, which: 'cancel' } : null;
-  const showOther = !!other && !!other.b.label && (other.b.enabled || other.which === 'ok');
+  // Forge's "End Turn" says what To EOT already says: phones keep the one button.
+  const duplicateEot = !wide && passAhead && !!other && /end turn/i.test(other.b.label);
+  const showOther = !!other && !!other.b.label && (other.b.enabled || other.which === 'ok') && !duplicateEot;
   const kbdOf = (which: 'ok' | 'cancel') => (which === 'ok' ? 'Space' : 'Esc');
   const hasTools = poolColors.length > 0 || canUndo || showOther;
 
@@ -81,13 +84,18 @@ export function ActionBar({
             <IconKeyboard size={15} />
           </button>
         </div>
-        {view.detail && <div className="ab-detail">{view.detail}</div>}
-        {showEngine && (
-          <div className="ab-engine" title={view.engineText}>
-            <span className="ab-engine-k">Forge</span> {engine}
-          </div>
+        {/* One line under the title: a passing notice, else what the mode means, else Forge's own prompt. */}
+        {flash ? (
+          <div className="ab-sub ab-flash">{flash}</div>
+        ) : view.detail ? (
+          <div className="ab-sub ab-detail">{view.detail}</div>
+        ) : (
+          showEngine && (
+            <div className="ab-sub ab-engine" title={view.engineText}>
+              <span className="ab-engine-k">Forge</span> {engine}
+            </div>
+          )
         )}
-        {flash && <div className="ab-flash">{flash}</div>}
       </div>
       {hasTools && (
         <div className="ab-tools">
