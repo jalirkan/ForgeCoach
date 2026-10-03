@@ -22,6 +22,9 @@ import { SEAT_TOKEN_KEY } from '../play/seatUrl.ts';
 import { usePlaySession } from './play/usePlaySession.ts';
 import { PlayView } from './play/PlayView.tsx';
 
+// #deck: Draft & build, the deck assistant (lazy: its own bundle).
+const DeckApp = lazy(() => import('./deck/DeckApp.tsx'));
+
 // #ask-gallery: every ask kind rendered from fixtures (a design/QA page); lazy so the fixtures stay out of the main bundle.
 const AskGallery = lazy(() => import('./play/AskGallery.tsx'));
 
@@ -125,6 +128,9 @@ function MainApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [lastSample, setLastSample] = useState<string | null>(() => readLS(LAST_SAMPLE_KEY));
+  const [deck, setDeck] = useState(() => /^#deck\b/.test(location.hash));
+  const deckRef = useRef(deck);
+  deckRef.current = deck;
   const liveRef = useRef<LiveHandle | null>(null);
   const loadSeq = useRef(0);
 
@@ -297,6 +303,12 @@ function MainApp() {
     };
     const drop = (e: DragEvent) => {
       if (!hasFiles(e)) return;
+      if (deckRef.current) {
+        // Draft & build takes its own drops (cube-lab meta files).
+        depth = 0;
+        setDragging(false);
+        return;
+      }
       e.preventDefault();
       depth = 0;
       setDragging(false);
@@ -318,7 +330,19 @@ function MainApp() {
   const showGame = log !== null || (live !== null && live.status !== 'error');
   const playing = playUrl !== null && playStarted && play.session && snap;
   let main: ReactNode;
-  if (playing && review) {
+  if (deck && !playing) {
+    main = (
+      <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>
+        <DeckApp
+          onExit={() => {
+            setDeck(false);
+            history.replaceState(null, '', location.pathname + location.search);
+          }}
+          onSettings={() => setSettingsOpen(true)}
+        />
+      </Suspense>
+    );
+  } else if (playing && review) {
     main = (
       <GameView
         key={`review:${review.header.gameId}@${review.header.startedAt}`}
@@ -356,6 +380,10 @@ function MainApp() {
         onFile={(f) => void loadFile(f)}
         onLive={startLive}
         onPlay={startPlay}
+        onDraft={() => {
+          setDeck(true);
+          history.replaceState(null, '', '#deck');
+        }}
         onCancelPlay={stopPlay}
         seatUrl={seatUrl}
         homeSeatUrl={HOME_SEAT_URL}
@@ -372,7 +400,7 @@ function MainApp() {
     <>
       {main}
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      {dragging && (
+      {dragging && !deck && (
         <div className="drop-overlay" aria-hidden="true">
           <div className="drop-overlay-inner">
             <IconUpload size={28} />

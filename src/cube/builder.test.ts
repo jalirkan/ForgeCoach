@@ -196,3 +196,23 @@ describe('thin pools', () => {
     expect(buildDecks(ctx, noDuals, {}, 20).some((b) => b.thin === 'three')).toBe(false);
   });
 });
+
+describe('meta tolerance', () => {
+  it('reads three-colour archetypes and 18-land rows without a schema bump', async () => {
+    const { parseMeta, findArchetype } = await import('./meta.ts');
+    const m = parseMeta({
+      schema: 1,
+      cube: { name: 'x' },
+      cards: {},
+      archetypes: [{ id: 'WUB-ETB', colors: 'WUB', primaryTheme: 'ETB', games: 12, winRate: 0.5 }],
+      pairs: [{ a: 'A', b: 'B', games: 10, lift: 1.1 }],
+      lands: { overall: { '17': { games: 40, winRate: 0.5 }, '18': { games: 60, winRate: 0.7 } } },
+    });
+    expect(findArchetype(m, 'BWU', 'ETB')?.id).toBe('WUB-ETB');
+    expect(m.pairs[0]?.gain).toBeCloseTo(0.1);
+    // A normal build never takes 18 lands from the meta.
+    const ctx = context('synergy', m);
+    const [b] = buildDecks(ctx, samplePool(ctx.cube, 'BR', 45, 3));
+    expect(b!.landCount).toBeLessThanOrEqual(17);
+  });
+});
