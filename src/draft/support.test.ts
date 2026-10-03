@@ -6,7 +6,8 @@ import { context, loadCube, loadRealMeta } from '../cube/testdata/load.ts';
 import { aiFlagsFromDoc, withMetaFlags } from './aiFlags.ts';
 import { labCards } from './cards.ts';
 import { aiStep, newDraft, selfPlay, toAct } from './draft.ts';
-import { checkRequest, deckSize, launcherStatus, launchMatch, matchDeck, matchSupported, safeDeckName, type MatchRequest } from './launch.ts';
+import { matchDeck } from './deck.ts';
+import { checkRequest, deckSize, engineHealth, ensureEngineAwake, launcherStatus, launchMatch, matchSupported, wakeEngine, safeDeckName, type MatchRequest } from './launch.ts';
 import { buildPickPrompt } from './pickPrompt.ts';
 import { clearDraft, DRAFT_KEY, loadDraft, saveDraft } from './store.ts';
 
@@ -127,6 +128,72 @@ describe('the match launcher client', () => {
     expect(await launchMatch(req, { fetch: () => json(503, { ok: false, type: 'error', message: 'no launcher' }), target })).toMatchObject({ status: 503, message: expect.stringMatching(/start ForgeCoach again/) });
     expect(await launchMatch(req, { fetch: () => json(409, {}), target })).toMatchObject({ status: 409, message: expect.stringMatching(/already/) });
     expect(await launchMatch(req, { fetch: () => Promise.reject(new TypeError('x')), target })).toMatchObject({ ok: false, status: 0 });
+  });
+});
+
+describe('a sleeping engine (D308)', () => {
+  const target = { baseUrl: 'http://127.0.0.1:8643', token: null };
+  const json = (status: number, body: unknown) => Promise.resolve({ ok: status < 300, status, json: () => Promise.resolve(body) });
+  const idle = { ok: true, helper: 1, match: 1, engine: 'idle', engine_start: 1, idleSince: 'x', exitsAt: null };
+  const started = { ok: true, already: false, yourDeck: { name: 'x', path: null, cards: 40 }, aiDeck: { name: 'y', cards: 40 }, aiProfile: 'Default', games: 3, ms: 12000, warnings: [] };
+
+  it('reads engine and engine_start from /health; no engine key is an older helper, running', async () => {
+    expect(await engineHealth({ fetch: () => json(200, idle), target })).toEqual({ status: 'asleep', canWake: true });
+    expect(await engineHealth({ fetch: () => json(200, { ...idle, engine: 'running' }), target })).toEqual({ status: 'ready', canWake: true });
+    expect(await engineHealth({ fetch: () => json(200, { ok: true, helper: 1, match: 1 }), target })).toEqual({ status: 'ready', canWake: false });
+    expect(await engineHealth({ fetch: () => json(200, { ok: false, helper: 1, match: 1, engine: 'idle' }), target })).toEqual({ status: 'asleep', canWake: false });
+    // The match set-up can still Begin: POST /match wakes the engine.
+    expect(await launcherStatus({ fetch: () => json(200, idle), target })).toBe('asleep');
+    expect(await matchSupported({ fetch: () => json(200, idle), target })).toBe(true);
+  });
+
+  it('wakes with POST /engine/start and no body', async () => {
+    const f = vi.fn((_u: string, _i?: RequestInit) => json(200, started));
+    expect(await wakeEngine({ fetch: f, target })).toMatchObject({ ok: true, already: false, ms: 12000, warnings: [] });
+    const [url, init] = f.mock.calls[0]!;
+    expect(url).toBe('http://127.0.0.1:8643/engine/start');
+    expect(init?.method).toBe('POST');
+    expect(init?.body).toBeUndefined();
+    expect(await wakeEngine({ fetch: () => json(200, { ok: true, already: true }), target })).toMatchObject({ ok: true, already: true });
+    expect(await wakeEngine({ fetch: () => json(502, { ok: false, type: 'error', message: 'engine log tail', restored: false }), target })).toMatchObject({ ok: false, status: 502, message: 'engine log tail', restored: false });
+    expect(await wakeEngine({ fetch: () => json(409, {}), target })).toMatchObject({ ok: false, status: 409 });
+  });
+
+  it('Play wakes an asleep engine first, and only then', async () => {
+    const calls: string[] = [];
+    const fake = (health: unknown) =>
+      vi.fn((u: string, _i?: RequestInit) => {
+        calls.push(u.replace(target.baseUrl, ''));
+        return u.endsWith('/health') ? json(200, health) : json(200, started);
+      });
+    const onWaking = vi.fn();
+    expect(await ensureEngineAwake({ fetch: fake(idle), target, onWaking })).toMatchObject({ ok: true, woke: true });
+    expect(onWaking).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(['/health', '/engine/start']);
+    calls.length = 0;
+    for (const h of [{ ...idle, engine: 'running' }, { ok: true, helper: 1, match: 1 }, { ok: true, helper: 1, match: 0 }, { ...idle, engine_start: undefined }]) {
+      expect(await ensureEngineAwake({ fetch: fake(h), target, onWaking })).toMatchObject({ ok: true, woke: false });
+    }
+    expect(await ensureEngineAwake({ fetch: () => Promise.reject(new TypeError('down')), target, onWaking })).toMatchObject({ ok: true, woke: false });
+    expect(calls.every((c) => c === '/health')).toBe(true);
+    expect(onWaking).toHaveBeenCalledTimes(1);
+  });
+
+  it('a wake that fails or is cancelled says so', async () => {
+    const f = (u: string) => (u.endsWith('/health') ? json(200, idle) : json(504, {}));
+    expect(await ensureEngineAwake({ fetch: f, target })).toMatchObject({ ok: false, status: 504, message: expect.stringMatching(/three minutes/) });
+    const c = new AbortController();
+    const hang = (u: string, i?: RequestInit) =>
+      u.endsWith('/health')
+        ? json(200, idle)
+        : new Promise<never>((_, rej) => {
+            const no = () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+            // As fetch does: an already-aborted signal rejects at once.
+            if (i?.signal?.aborted) no();
+            else i?.signal?.addEventListener('abort', no);
+          });
+    const p = ensureEngineAwake({ fetch: hang, target, signal: c.signal, onWaking: () => c.abort() });
+    expect(await p).toMatchObject({ ok: false, status: 0, message: 'Cancelled.' });
   });
 });
 

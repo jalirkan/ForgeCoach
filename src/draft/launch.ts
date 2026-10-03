@@ -13,13 +13,20 @@
  *                        aiProfile, games, ms, warnings[]}
  *                 → {ok:false, message, problems?[] (400), restored? (502)}
  *
+ *   POST /engine/start (D308) → the /match 200 shape + {already}, or a refusal
+ *
+ * Since D308 the engine can be asleep: play.sh and the helper stay up, nothing
+ * listens on the seat port, and /health says `engine: "idle"` (and
+ * `engine_start: 1` when /engine/start exists). POST /match wakes it by itself;
+ * plain Play vs Forge wakes it with /engine/start before taking the seat. A
+ * missing `engine` key is an older helper: running.
+ *
  * The engine restart closes the seat's /ws socket; after a 200 the page takes
  * the seat again and the next hello_ok is the new match. The AI's deck goes to
  * the engine and nowhere else: the page never shows it (hidden information),
  * and its name is its archetype, never a card in it. `fetch` is injected for
  * tests.
  */
-import { mainDeck, sideboard, type DeckBuild } from '../cube/builder.ts';
 import { pageHelperTarget, TOKEN_HEADER, type HelperTarget } from '../coachHelper.ts';
 
 export type DeckEntry = [count: number, cardName: string];
@@ -75,6 +82,8 @@ export interface LaunchOptions {
   fetch?: FetchFn;
   target?: HelperTarget;
   timeoutMs?: number;
+  /** Cancels the request (the user pressed Cancel). */
+  signal?: AbortSignal;
 }
 
 export const MIN_MAIN = 40;
@@ -99,17 +108,6 @@ export function safeDeckName(s: string, fallback = 'Cube draft'): string {
   return n;
 }
 
-function counted(names: string[]): DeckEntry[] {
-  const m = new Map<string, number>();
-  for (const n of names) m.set(n, (m.get(n) ?? 0) + 1);
-  return [...m.entries()].map(([n, c]) => [c, n]);
-}
-
-/** A build plus its pool as the launcher's deck shape (the AI's deck: named by its archetype). */
-export function matchDeck(name: string, b: DeckBuild, pool: string[]): MatchDeck {
-  return { name: safeDeckName(name), main: mainDeck(b), sideboard: counted(sideboard(b, pool)) };
-}
-
 export const deckSize = (d: Pick<MatchDeck, 'main'>) => d.main.reduce((s, [n]) => s + n, 0);
 
 function headers(t: HelperTarget, json: boolean): Record<string, string> {
@@ -119,40 +117,68 @@ function headers(t: HelperTarget, json: boolean): Record<string, string> {
   return h;
 }
 
-function withTimeout(ms: number): { signal: AbortSignal | undefined; done: () => void } {
-  if (typeof AbortController === 'undefined') return { signal: undefined, done: () => undefined };
+function withTimeout(ms: number, outer?: AbortSignal): { signal: AbortSignal | undefined; done: () => void } {
+  if (typeof AbortController === 'undefined') return { signal: outer, done: () => undefined };
   const c = new AbortController();
   const t = setTimeout(() => c.abort(), ms);
-  return { signal: c.signal, done: () => clearTimeout(t) };
+  const stop = () => c.abort();
+  if (outer) {
+    if (outer.aborted) c.abort();
+    else outer.addEventListener('abort', stop, { once: true });
+  }
+  return {
+    signal: c.signal,
+    done: () => {
+      clearTimeout(t);
+      outer?.removeEventListener('abort', stop);
+    },
+  };
 }
 
-/** What the helper on this machine says: running with a launcher, running without one, or not answering. */
-export type LauncherStatus = 'ready' | 'no-launcher' | 'down';
+/**
+ * What the helper on this machine says: running with a launcher and an engine,
+ * with a launcher and the engine asleep (D308), running without a launcher, or
+ * not answering.
+ */
+export type LauncherStatus = 'ready' | 'asleep' | 'no-launcher' | 'down';
 
-export async function launcherStatus(opts: LaunchOptions = {}): Promise<LauncherStatus> {
+export interface EngineHealth {
+  status: LauncherStatus;
+  /** POST /engine/start exists (`engine_start: 1`). */
+  canWake: boolean;
+}
+
+/** GET /health, read for the launcher and the engine (`match`, `engine`, `engine_start` are there whether `ok` is true or false). */
+export async function engineHealth(opts: LaunchOptions = {}): Promise<EngineHealth> {
   const f = opts.fetch ?? ((u, i) => fetch(u, i));
   const t = opts.target ?? pageHelperTarget();
   const to = withTimeout(opts.timeoutMs ?? 1500);
   try {
     const res = await f(`${t.baseUrl}/health`, { headers: headers(t, false), signal: to.signal });
-    let j: { match?: unknown } = {};
+    let j: { match?: unknown; engine?: unknown; engine_start?: unknown } = {};
     try {
-      j = ((await res.json()) ?? {}) as { match?: unknown };
+      j = ((await res.json()) ?? {}) as typeof j;
     } catch {
       /* no body */
     }
-    // `match` is there whether `ok` is true or false: read it on both.
-    return j.match === 1 ? 'ready' : 'no-launcher';
+    if (j.match !== 1) return { status: 'no-launcher', canWake: false };
+    // No `engine` key: an older helper, whose engine runs whenever the helper does.
+    return { status: j.engine === 'idle' ? 'asleep' : 'ready', canWake: j.engine_start === 1 };
   } catch {
-    return 'down';
+    return { status: 'down', canWake: false };
   } finally {
     to.done();
   }
 }
 
-/** Does the helper start matches? (GET /health says `match: 1`.) */
+export async function launcherStatus(opts: LaunchOptions = {}): Promise<LauncherStatus> {
+  return (await engineHealth(opts)).status;
+}
+
+/** Does the helper start matches? (GET /health says `match: 1`; an asleep engine counts, POST /match wakes it.) */
 export async function matchSupported(opts: LaunchOptions = {}): Promise<boolean> {
-  return (await launcherStatus(opts)) === 'ready';
+  const s = await launcherStatus(opts);
+  return s === 'ready' || s === 'asleep';
 }
 
 /** Checks a request before it goes out, with the launcher's own limits. */
@@ -179,38 +205,88 @@ const STATUS_WORDS: Record<number, string> = {
   504: 'The engine took more than three minutes to start.',
 };
 
-/** POST /match. Resolves to what happened (never throws). */
-export async function launchMatch(r: MatchRequest, opts: LaunchOptions = {}): Promise<LaunchResult> {
-  const bad = checkRequest(r);
-  if (bad) return { ok: false, status: 0, message: bad };
+type Parsed = { res: { ok: boolean; status: number }; body: Record<string, unknown> };
+
+async function post(path: string, body: string | undefined, opts: LaunchOptions): Promise<Parsed | MatchRefused> {
   const f = opts.fetch ?? ((u, i) => fetch(u, i));
   const t = opts.target ?? pageHelperTarget();
-  const to = withTimeout(opts.timeoutMs ?? LAUNCH_TIMEOUT_MS);
+  const to = withTimeout(opts.timeoutMs ?? LAUNCH_TIMEOUT_MS, opts.signal);
   try {
-    const res = await f(`${t.baseUrl}/match`, { method: 'POST', headers: headers(t, true), body: JSON.stringify(r), signal: to.signal });
-    let body: Record<string, unknown> = {};
+    const res = await f(`${t.baseUrl}${path}`, { method: 'POST', headers: headers(t, body !== undefined), body, signal: to.signal });
+    let parsed: Record<string, unknown> = {};
     try {
-      body = ((await res.json()) ?? {}) as Record<string, unknown>;
+      parsed = ((await res.json()) ?? {}) as Record<string, unknown>;
     } catch {
       /* no body */
     }
-    if (res.ok && body.ok === true) {
-      const b = body as unknown as MatchStarted;
-      return { ...b, warnings: Array.isArray(b.warnings) ? b.warnings.filter((w) => typeof w === 'string') : [] };
-    }
-    const message = typeof body.message === 'string' && body.message ? body.message : (STATUS_WORDS[res.status] ?? `The match didn’t start (HTTP ${res.status}).`);
-    const out: MatchRefused = { ok: false, status: res.status, message: res.status === 503 || res.status === 504 ? (STATUS_WORDS[res.status] ?? message) : message };
-    if (Array.isArray(body.problems)) out.problems = body.problems.filter((p): p is string => typeof p === 'string');
-    if (typeof body.restored === 'boolean') out.restored = body.restored;
-    return out;
+    return { res, body: parsed };
   } catch (e) {
     const aborted = e instanceof Error && e.name === 'AbortError';
     return {
       ok: false,
       status: 0,
-      message: aborted ? 'The helper didn’t answer within three minutes.' : 'Couldn’t reach the helper on this computer: start ForgeCoach again (the app-menu launcher, or ./scripts/play.sh).',
+      message: opts.signal?.aborted
+        ? 'Cancelled.'
+        : aborted
+          ? 'The helper didn’t answer within three minutes.'
+          : 'Couldn’t reach the helper on this computer: start ForgeCoach again (the app-menu launcher, or ./scripts/play.sh).',
     };
   } finally {
     to.done();
   }
+}
+
+function refused(status: number, body: Record<string, unknown>, fallback: string): MatchRefused {
+  const message = typeof body.message === 'string' && body.message ? body.message : (STATUS_WORDS[status] ?? fallback);
+  const out: MatchRefused = { ok: false, status, message: status === 503 || status === 504 ? (STATUS_WORDS[status] ?? message) : message };
+  if (Array.isArray(body.problems)) out.problems = body.problems.filter((p): p is string => typeof p === 'string');
+  if (typeof body.restored === 'boolean') out.restored = body.restored;
+  return out;
+}
+
+const warningsOf = (b: Record<string, unknown>): string[] => (Array.isArray(b.warnings) ? b.warnings.filter((w): w is string => typeof w === 'string') : []);
+
+/** POST /match. Resolves to what happened (never throws). */
+export async function launchMatch(r: MatchRequest, opts: LaunchOptions = {}): Promise<LaunchResult> {
+  const bad = checkRequest(r);
+  if (bad) return { ok: false, status: 0, message: bad };
+  const p = await post('/match', JSON.stringify(r), opts);
+  if ('ok' in p) return p;
+  const { res, body } = p;
+  if (res.ok && body.ok === true) return { ...(body as unknown as MatchStarted), warnings: warningsOf(body) };
+  return refused(res.status, body, `The match didn’t start (HTTP ${res.status}).`);
+}
+
+/** POST /engine/start's 200: the engine runs (woken now, or `already` running). */
+export interface EngineWoken {
+  ok: true;
+  already: boolean;
+  warnings: string[];
+  ms?: number;
+}
+
+export type WakeResult = EngineWoken | MatchRefused;
+
+/** POST /engine/start (D308): wake a sleeping engine on the last match setup. Never throws. */
+export async function wakeEngine(opts: LaunchOptions = {}): Promise<WakeResult> {
+  const p = await post('/engine/start', undefined, opts);
+  if ('ok' in p) return p;
+  const { res, body } = p;
+  if (res.ok && body.ok === true) return { ok: true, already: body.already === true, warnings: warningsOf(body), ms: typeof body.ms === 'number' ? body.ms : undefined };
+  return refused(res.status, body, `The engine didn’t start (HTTP ${res.status}).`);
+}
+
+/**
+ * Before Play vs Forge takes the seat: when the helper says the engine is
+ * asleep and can be woken, wake it (`onWaking` first, for a "Waking the
+ * engine…" state). Anything else — running, an older helper, no helper, no
+ * launcher — resolves `{ok: true, woke: false}` at once and the page simply
+ * connects, as before D308.
+ */
+export async function ensureEngineAwake(opts: LaunchOptions & { onWaking?: () => void } = {}): Promise<(EngineWoken & { woke: boolean }) | MatchRefused> {
+  const h = await engineHealth({ ...opts, timeoutMs: 1500 });
+  if (h.status !== 'asleep' || !h.canWake) return { ok: true, already: true, warnings: [], woke: false };
+  opts.onWaking?.();
+  const r = await wakeEngine(opts);
+  return r.ok ? { ...r, woke: !r.already } : r;
 }

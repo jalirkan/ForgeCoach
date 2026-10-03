@@ -29,9 +29,9 @@ const G = {
 
 const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-export function lobbyTiles(o: { onPlay: () => void; onDraftBuild: () => void; samples: number }): Tile[] {
+export function lobbyTiles(o: { onPlay: () => void; onDraftBuild: () => void; samples: number; playLine?: string }): Tile[] {
   return [
-    { id: 'play', title: 'Play vs Forge', line: 'A full game against the Forge AI, the coach beside the board.', glyph: G.play, onClick: o.onPlay, primary: true },
+    { id: 'play', title: 'Play vs Forge', line: o.playLine ?? 'A full game against the Forge AI, the coach beside the board.', glyph: G.play, onClick: o.onPlay, primary: true },
     { id: 'draft', title: 'Draft vs AI', line: 'Booster, Winston or Grid against the cube lab’s drafter.', glyph: G.draft, onClick: () => (location.hash = '#draft') },
     { id: 'build', title: 'Draft & build', line: 'Track a paper draft; the best 40 with its reasons.', glyph: G.build, onClick: o.onDraftBuild },
     { id: 'cube', title: 'The cubes', line: `${CUBES.length} cubes of 180, with the lab’s numbers.`, glyph: G.cube, onClick: () => (location.hash = `#cube/${CUBES[0]?.id ?? 'synergy'}`) },

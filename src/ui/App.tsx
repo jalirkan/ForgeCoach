@@ -20,6 +20,7 @@ import { readLS, writeLS } from './util.ts';
 import { defaultSeatUrl, servedByEngine, tokenFromSearch } from '../play/session.ts';
 import { SEAT_TOKEN_KEY } from '../play/seatUrl.ts';
 import { usePlaySession } from './play/usePlaySession.ts';
+import { ensureEngineAwake } from '../draft/launch.ts';
 import { PlayView } from './play/PlayView.tsx';
 
 // #deck: Draft & build, the deck assistant (lazy: its own bundle).
@@ -86,6 +87,16 @@ function initialSeatUrl(): string {
   // Served by the engine: its own seat, never one remembered from elsewhere.
   if (ENGINE_SERVED) return HOME_SEAT_URL;
   return readLS(SEAT_URL_KEY) || HOME_SEAT_URL;
+}
+
+/** Is `url` the seat of the engine the coach helper (and its launcher) runs? */
+function wakesHelperEngine(url: string): boolean {
+  if (url === HOME_SEAT_URL) return true;
+  try {
+    return !!new URLSearchParams(location.search).get('coach');
+  } catch {
+    return false;
+  }
 }
 
 function friendly(e: unknown): string {
@@ -169,7 +180,7 @@ function MainApp() {
   }, [playUrl, snap]);
   const playRef = useRef(play);
   playRef.current = play;
-  const startPlay = useCallback((url: string) => {
+  const connect = useCallback((url: string) => {
     // Same engine: retry now on the session we have (its URL is its identity).
     if (playRef.current.session && playRef.current.snapshot?.url === url) {
       playRef.current.session.reconnect();
@@ -182,7 +193,40 @@ function MainApp() {
     setReview(null);
     setPlayUrl(url);
   }, []);
+  // D308: the engine may be asleep behind a running play.sh; wake it (POST
+  // /engine/start) before taking the seat. Only for the engine the helper
+  // belongs to: this page's own seat, or one named with ?coach=.
+  const [waking, setWaking] = useState<{ url: string; error: string | null } | null>(null);
+  const wakeRef = useRef<AbortController | null>(null);
+  const startPlay = useCallback(
+    (url: string) => {
+      wakeRef.current?.abort();
+      wakeRef.current = null;
+      setWaking(null);
+      if (!wakesHelperEngine(url)) {
+        connect(url);
+        return;
+      }
+      const c = new AbortController();
+      wakeRef.current = c;
+      void ensureEngineAwake({ signal: c.signal, onWaking: () => !c.signal.aborted && setWaking({ url, error: null }) }).then((r) => {
+        if (c.signal.aborted) return;
+        wakeRef.current = null;
+        if (r.ok) {
+          setWaking(null);
+          connect(url);
+        } else {
+          setSeatUrl(url);
+          setWaking({ url, error: r.message });
+        }
+      });
+    },
+    [connect],
+  );
   const stopPlay = useCallback(() => {
+    wakeRef.current?.abort();
+    wakeRef.current = null;
+    setWaking(null);
     setPlayUrl(null);
     setPlayStarted(false);
     setReview(null);
@@ -411,7 +455,17 @@ function MainApp() {
         seatUrl={seatUrl}
         homeSeatUrl={HOME_SEAT_URL}
         engineServed={ENGINE_SERVED}
-        play={playUrl && snap ? { status: snap.status, detail: snap.detail, attempts: snap.attempts } : playUrl ? { status: 'connecting', detail: null, attempts: 0 } : null}
+        play={
+          waking
+            ? waking.error
+              ? { status: 'error', detail: `Couldn’t wake the engine: ${waking.error}`, attempts: 0 }
+              : { status: 'connecting', detail: 'The engine was asleep; it takes 10–20 seconds to start, longer on a busy machine.', attempts: 0, waking: true }
+            : playUrl && snap
+              ? { status: snap.status, detail: snap.detail, attempts: snap.attempts }
+              : playUrl
+                ? { status: 'connecting', detail: null, attempts: 0 }
+                : null
+        }
         onSettings={() => setSettingsOpen(true)}
         lastSample={lastSample}
         loading={loading}

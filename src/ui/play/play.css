@@ -7,7 +7,7 @@
  */
 
 /* ------------------------------------------------------------------ */
-/* Start page: the Play card */
+/* Start page: Play vs Forge's engine panel (under the lobby tiles) */
 
 .play-card {
   border: 1px solid rgba(227, 178, 95, 0.32);
@@ -21,30 +21,12 @@
   flex-direction: column;
   gap: 12px;
 }
-.play-card-main {
+.engine-panel-head {
   display: flex;
   align-items: center;
-  gap: 18px;
-}
-.play-card-text {
-  flex: 1;
-  min-width: 0;
-}
-.play-card-title {
-  margin: 0 0 4px;
-  font-size: 22px;
-  letter-spacing: -0.02em;
-}
-.play-card-text p {
-  margin: 0;
-  font-size: 14px;
-}
-.btn.play-go {
-  height: 52px;
-  min-width: 150px;
-  padding: 0 26px;
-  font-size: 16px;
-  border-radius: 12px;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 30px;
 }
 .play-status {
   font-size: 13px;
@@ -118,61 +100,8 @@
   white-space: nowrap;
 }
 @media (max-width: 560px) {
-  .play-card-main {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-  }
-  .play-go {
-    width: 100%;
-  }
   .play-url {
     flex-wrap: wrap;
-  }
-}
-
-/* Start page: the Draft & build card */
-.draft-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: -14px;
-  padding: 14px 18px;
-  border-radius: 16px;
-  border: 1px solid var(--line-2);
-  background: radial-gradient(500px 180px at 0% 0%, rgba(110, 169, 238, 0.08), transparent 70%), var(--surface);
-}
-.draft-card-icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--surface-3);
-  color: var(--info);
-}
-.draft-card-title {
-  margin: 0 0 2px;
-  font-size: 18px;
-  letter-spacing: -0.01em;
-}
-.btn.draft-go {
-  height: 44px;
-  min-width: 150px;
-  padding: 0 20px;
-  font-size: 15px;
-  border-radius: 12px;
-}
-@media (max-width: 560px) {
-  .draft-card {
-    flex-wrap: wrap;
-  }
-  .draft-card .play-card-text {
-    flex: 1 1 200px;
-  }
-  .btn.draft-go {
-    width: 100%;
   }
 }
 
