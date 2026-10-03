@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { Card, GameStateBody, InputBody } from '../../protocol.ts';
-import { cardRole, describeInput, noticeLine, parsePay, playerClickable } from './inputView.ts';
+import { cardRole, describeInput, handNeeded, noticeLine, parsePay, playerClickable } from './inputView.ts';
 import { planPlayKey, type PlayKeyContext } from './playKeys.ts';
 import { liveDecision, liveKind, momentKey } from './liveDecision.ts';
 import { canPassAhead, PASS_EOT, passMenu, primaryView } from './actionWords.ts';
@@ -334,5 +334,29 @@ describe('noticeLine', () => {
     const s = state();
     s.players[1]!.zones.hand = { count: 1, cards: [{ id: 42, hidden: true } as never] };
     expect(noticeLine('Not selectable', 'card 42 cannot be selected now', s)).toBe('Not selectable — card 42 cannot be selected now');
+  });
+});
+
+describe('handNeeded', () => {
+  const ctxFor = (i: InputBody, st = state()) => ({ view: describeInput(i, st, ME), input: i, state: st, seat: ME });
+  const pick = (prompt: string, ids: number[]) =>
+    input(prompt, { buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Auto', enabled: true } }, selectable: { cardIds: ids, min: 1, max: 1, mode: 'cards' } });
+
+  it('opens the hand at your main phase', () => {
+    expect(handNeeded(ctxFor(input(PRIORITY)))).toBe(true);
+  });
+  it('opens it for the London mulligan, whose picks are hand cards', () => {
+    const st = state({ turn: 0, round: 0, phase: null, activePlayer: null, priority: null });
+    expect(handNeeded(ctxFor(pick('Return 1 card(s) to the bottom of your library', [1, 2]), st))).toBe(true);
+    // As Forge 2.0.14 sends it: no selection set, only the prompt (mtg-table, a real draft match).
+    expect(handNeeded(ctxFor(pick('Return 1 card(s) to the bottom of your library', []), st))).toBe(true);
+  });
+  it('keeps it folded for an unscoped board target', () => {
+    expect(handNeeded(ctxFor(pick('Select any target', [])))).toBe(false);
+  });
+  it('keeps it folded when the selection is on the battlefield, and in combat', () => {
+    expect(handNeeded(ctxFor(pick('Select target creature', [5])))).toBe(false);
+    const st = state({ activePlayer: OPP });
+    expect(handNeeded(ctxFor(input('Select creatures to block Card 5 (5) or select another attacker to declare blockers for.'), st))).toBe(false);
   });
 });

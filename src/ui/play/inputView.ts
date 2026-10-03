@@ -407,6 +407,27 @@ export function cardRole(card: AnyCard, ctx: ClickContext): CardRole {
   return null;
 }
 
+/**
+ * Whether a phone should open the folded hand: at your main phase, a discard,
+ * or any prompt whose selection is a card in your hand (a hand target, the
+ * London mulligan's "put N on the bottom", a choose-from-hand), whether the
+ * engine lists the cards or only says so in the prompt. Combat and paying
+ * need the board instead.
+ */
+export function handNeeded(ctx: ClickContext): boolean {
+  const { view, state, seat } = ctx;
+  if (view.mode === 'main' || view.mode === 'discard') return true;
+  if (view.mode === 'attack' || view.mode === 'block' || view.mode === 'pay') return false;
+  const hand = state?.players.find((p) => p.id === seat)?.zones.hand.cards ?? [];
+  if (hand.some((c) => cardRole(c, ctx) === 'select')) return true;
+  // No explicit set (Forge often sends none): the prompt says where the pick is.
+  const open = ctx.input?.selectable.mode !== 'cards' || ctx.input.selectable.cardIds.length === 0;
+  return open && hand.length > 0 && HAND_PROMPT.test(ctx.input?.prompt ?? '');
+}
+
+/** A prompt whose cards come from your hand ("Return 1 card(s) to the bottom of your library", "Discard a card", "from your hand"). */
+const HAND_PROMPT = /\b(bottom of your library|from your hand|in your hand|discard)\b/i;
+
 /** Whether a player avatar should be outlined and send `clickPlayer`. */
 export function playerClickable(ctx: ClickContext): boolean {
   const { view, input } = ctx;
