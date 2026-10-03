@@ -96,6 +96,36 @@
   background: var(--lg-muted);
   box-shadow: none;
 }
+.lb-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--lg-text-2);
+}
+.lb-state-word {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.lb-state.is-running .lb-state-word {
+  color: var(--lg-win);
+  background: var(--lg-win-soft);
+}
+.lb-state.is-idle .lb-state-word {
+  color: var(--lg-gold-2);
+  background: var(--lg-gold-soft);
+}
+.lb-state.is-idle-red {
+  color: var(--lg-loss);
+}
+.lb-state.is-idle-red .lb-state-word {
+  background: var(--lg-loss-soft);
+}
 .lb-refresh {
   flex: none;
   min-height: 40px;
@@ -336,6 +366,98 @@
 .lb-stat.is-amber .lb-stat-v,
 .lb-stat.is-amber .lb-stat-sub {
   color: var(--lb-amber);
+}
+
+/* ---- a running job's live numbers and per-cube bars --------------------------- */
+.lb-live,
+.lb-cubes {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--lg-line);
+}
+.lb-live-h {
+  color: var(--lg-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.lb-live-h .lg-muted {
+  letter-spacing: normal;
+  text-transform: none;
+  font-weight: 400;
+}
+.lb-live-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+.lb-live-cell {
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--lg-line);
+  border-radius: 6px;
+  background: var(--lg-surface-2);
+}
+.lb-live-cell.is-headline {
+  border-color: var(--lg-line-2);
+}
+.lb-live-cell dt {
+  color: var(--lg-text-2);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lb-live-cell dt.lb-live-raw {
+  font-size: 10.5px;
+  color: var(--lg-muted);
+}
+.lb-live-cell dd {
+  margin: 2px 0 0;
+  color: var(--lg-text);
+  font-size: 14.5px;
+  overflow-wrap: anywhere;
+}
+.lb-live-cell.is-bad dd {
+  color: var(--lg-loss);
+}
+.lb-live-cell.is-amber dd {
+  color: var(--lb-amber);
+}
+.lb-cubes ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+.lb-cube {
+  display: grid;
+  grid-template-columns: minmax(0, 8.5em) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+}
+.lb-cube-id {
+  color: var(--lg-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-cube-n {
+  color: var(--lg-text-2);
+  font-size: 12px;
+  text-align: right;
+  min-width: 5.5em;
+}
+@media (max-width: 420px) {
+  .lb-cube {
+    grid-template-columns: minmax(0, 6em) minmax(0, 1fr) auto;
+    gap: 8px;
+  }
 }
 
 /* ---- lists: queue, waiting, finished ------------------------------------------ */

@@ -5,29 +5,33 @@
  * The lab progress page (#lab, #lab?src=sample, #lab?src=<http(s) URL>):
  * what the PC runner is doing — running jobs with progress, ETA and workers,
  * the queue, waiting and finished jobs, the machine's load and memory, and
- * how stale it all is. Reads the runner's status.json (lab/status.ts),
- * refreshes every minute while visible and keeps the last good data when a
- * refresh fails. Every string from the file is rendered as React text only.
+ * how stale it all is. Reads the runner's status.json (lab/status.ts): by
+ * default from the runner on this PC first, then GitHub's lab-status branch
+ * (lab/source.ts). Refreshes every 15 s while the PC answers and every minute
+ * otherwise, only while visible, and keeps the last good data when a refresh
+ * fails. Every string from the file is rendered as React text only.
  */
 import '../ledger/ledger.css';
 import './lab.css';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { HINT_KEYS, LOCAL_STATUS_URL, fetchPreferLocal, freshnessLine, refreshPeriod, sessionStore, type Origin } from '../../lab/source.ts';
 import {
   LabFetchError,
-  REFRESH_MS,
   fetchLabStatus,
   fmtNum,
   formatClock,
   formatDuration,
   formatRelative,
+  heartbeatStale,
   isEmptyStatus,
   jobEta,
   labSource,
+  liveCells,
   memFraction,
   pressureLevel,
   rebaseTimes,
+  runState,
   staleness,
-  updatedLine,
   type FinishedJob,
   type LabSource,
   type LabStatus,
@@ -43,6 +47,7 @@ const KNOWN_SCHEMA = 1;
 interface Good {
   status: LabStatus;
   fetchedAt: Date;
+  origin: Origin;
 }
 
 function currentSource(): LabSource {
@@ -77,7 +82,7 @@ export default function LabPage() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (manual = false) => {
     if (source.kind === 'invalid') return;
     ctrl.current?.abort();
     const c = new AbortController();
@@ -85,11 +90,27 @@ export default function LabPage() {
     lastFetch.current = Date.now();
     setBusy(true);
     try {
-      let status = await fetchLabStatus(source.url, { fetch: (u, i) => fetch(u, i), signal: c.signal });
+      const get = (url: string, signal: AbortSignal) => fetchLabStatus(url, { fetch: (u, i) => fetch(u, i), signal });
+      let status: LabStatus;
+      let origin: Origin;
+      if (source.kind === 'default') {
+        ({ value: status, origin } = await fetchPreferLocal({
+          localUrl: LOCAL_STATUS_URL,
+          remoteUrl: source.url,
+          get,
+          storage: sessionStore(),
+          hintKey: HINT_KEYS.status,
+          signal: c.signal,
+          manual,
+        }));
+      } else {
+        status = await get(source.url, c.signal);
+        origin = source.kind;
+      }
       const at = new Date();
       if (source.kind === 'sample') status = rebaseTimes(status, at);
       if (c.signal.aborted) return;
-      setGood({ status, fetchedAt: at });
+      setGood({ status, fetchedAt: at, origin });
       setError(null);
       setOffline(false);
     } catch (e) {
@@ -110,14 +131,16 @@ export default function LabPage() {
     return () => ctrl.current?.abort();
   }, [load]);
 
-  // Every minute while the page is visible; at once when it comes back after a minute away.
+  // Every 15 s while the PC answers, every minute otherwise, only while the page is visible;
+  // at once when it comes back after a period away.
+  const period = refreshPeriod(good?.origin ?? null);
   useEffect(() => {
     const tick = window.setInterval(() => {
       setNow(new Date());
-      if (document.visibilityState === 'visible' && Date.now() - lastFetch.current >= REFRESH_MS - 500) void load();
-    }, 15_000);
+      if (document.visibilityState === 'visible' && Date.now() - lastFetch.current >= period - 500) void load();
+    }, 5_000);
     const vis = () => {
-      if (document.visibilityState === 'visible' && Date.now() - lastFetch.current >= REFRESH_MS) void load();
+      if (document.visibilityState === 'visible' && Date.now() - lastFetch.current >= period) void load();
       setNow(new Date());
     };
     const online = () => {
@@ -134,10 +157,12 @@ export default function LabPage() {
       window.removeEventListener('online', online);
       window.removeEventListener('offline', offlineEv);
     };
-  }, [load]);
+  }, [load, period]);
 
   const s = good?.status ?? null;
   const stale = staleness(s?.updated ?? null, now);
+  const beat = s ? heartbeatStale(s, now) : { stale: false, ageS: null };
+  const run = s ? runState(s, now) : null;
   const failed = error !== null || offline;
 
   return (
@@ -151,12 +176,23 @@ export default function LabPage() {
             {s && (
               <div className={cx('lb-updated', 'lg-mono', `is-${failed ? (stale.level === 'fresh' ? 'amber' : stale.level) : stale.level}`)}>
                 <span className="lb-dot" aria-hidden="true" />
-                {updatedLine(s.updated, now)}
+                <Freshness updated={s.updated} origin={good!.origin} customUrl={source.kind === 'custom' ? source.url : undefined} />
                 {s.updated && <span className="lg-muted"> · {formatClock(s.updated, now)}</span>}
               </div>
             )}
+            {run && (
+              <div className={cx('lb-state', 'lg-mono', run.state === 'running' ? 'is-running' : run.red ? 'is-idle-red' : 'is-idle')}>
+                <span className="lb-state-word">{run.state === 'running' ? 'RUNNING' : 'IDLE'}</span>
+                {run.state === 'idle' && (
+                  <span>
+                    {run.reason ?? 'no reason given'}
+                    {run.idleS !== null && ` · for ${formatDuration(run.idleS)}`}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
-          <button type="button" className="lg-btn lb-refresh" onClick={() => void load()} disabled={busy || source.kind === 'invalid'} aria-label="Refresh now">
+          <button type="button" className="lg-btn lb-refresh" onClick={() => void load(true)} disabled={busy || source.kind === 'invalid'} aria-label="Refresh now">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={cx(busy && 'lb-spin')}>
               <path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" />
             </svg>
@@ -193,6 +229,11 @@ export default function LabPage() {
               <div className="lb-banner is-error" role="status">
                 <b>{offline ? 'Offline.' : 'Couldn’t refresh.'}</b> {offline ? 'It will try again when you are back online.' : errorText(error, false)} Showing the last good data,
                 fetched {formatClock(good!.fetchedAt, now)}.
+              </div>
+            )}
+            {beat.stale && stale.level === 'fresh' && (
+              <div className="lb-banner is-amber" role="status">
+                <b>No heartbeat for {formatDuration(beat.ageS)}.</b> The runner posts one every two minutes; it may be down.
               </div>
             )}
             {stale.level === 'red' && (
@@ -276,17 +317,29 @@ export default function LabPage() {
 
         <footer className="lb-foot lg-muted">
           {source.kind === 'default'
-            ? 'From the runner’s numbers-only status on the lab-status branch.'
+            ? good?.origin === 'local'
+              ? 'From the runner on this PC (the same numbers-only status it pushes to the lab-status branch).'
+              : 'From the runner’s numbers-only status on the lab-status branch.'
             : source.kind === 'custom'
               ? `From ${source.url}.`
               : source.kind === 'sample'
                 ? 'From the bundled sample.'
                 : null}{' '}
-          Refreshes every minute while this page is open.
+          Refreshes every {period === 60_000 ? 'minute' : `${Math.round(period / 1000)} s`} while this page is open.
         </footer>
       </div>
     </LedgerShell>
   );
+}
+
+/** "updated 12 s ago · from your PC": its own one-second clock, so only this line re-renders. */
+function Freshness({ updated, origin, customUrl }: { updated: Date | null; origin: Origin; customUrl?: string }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  return <span>{freshnessLine(updated, now, origin, customUrl)}</span>;
 }
 
 function Section({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
@@ -390,10 +443,52 @@ function RunningCard({ job: j, updated, now }: { job: RunningJob; updated: Date 
           sub={eta ? (eta.at.getTime() < now.getTime() - 60_000 ? `due ${formatRelative(eta.at, now)}` : formatRelative(eta.at, now)) : undefined}
         />
         <Stat label="Elapsed" value={j.elapsedS !== null ? formatDuration(j.elapsedS) : (j.elapsedText ?? '—')} sub={j.started ? `since ${formatClock(j.started, now)}` : undefined} />
-        <Stat label="Workers" value={fmtNum(j.workers)} />
+        <Stat label="Workers" value={j.workersMax !== null && j.workers !== null ? `${fmtNum(j.workers)} / ${fmtNum(j.workersMax)}` : fmtNum(j.workers)} sub={j.workersMax !== null && j.workers !== null ? 'in use / max' : undefined} />
         <Stat label="Errors" value={fmtNum(j.errors)} tone={j.errors ? 'bad' : undefined} />
       </dl>
+      <LiveGrid job={j} />
+      <CubeBars job={j} />
     </article>
+  );
+}
+
+/** The job's own numbers as of the runner's last minute read: friendly labels for known keys, raw names otherwise. */
+function LiveGrid({ job }: { job: RunningJob }) {
+  const cells = liveCells(job);
+  if (!cells.length) return null;
+  return (
+    <div className="lb-live">
+      <div className="lb-live-h">Live numbers <span className="lg-muted">· as of the runner’s last minute read</span></div>
+      <dl className="lb-live-grid">
+        {cells.map((c) => (
+          <div key={c.key} className={cx('lb-live-cell', c.tone && `is-${c.tone}`, c.headline && 'is-headline')} title={c.key}>
+            <dt className={cx(!c.known && 'lg-mono lb-live-raw')}>{c.label}</dt>
+            <dd className="lg-mono">{c.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+/** A cube-lab queue's drafts per cube, done of planned. */
+function CubeBars({ job }: { job: RunningJob }) {
+  if (!job.cubes.length) return null;
+  return (
+    <div className="lb-cubes">
+      <div className="lb-live-h">Per cube</div>
+      <ul>
+        {job.cubes.map((c, i) => (
+          <li key={`${c.id}-${i}`} className="lb-cube">
+            <span className="lb-cube-id">{c.id}</span>
+            <Bar fraction={c.fraction} label={`${c.id}: ${c.done} of ${c.planned} drafts`} tone={job.paused ? 'muted' : 'gold'} />
+            <span className="lb-cube-n lg-mono">
+              {fmtNum(c.done)} / {fmtNum(c.planned)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

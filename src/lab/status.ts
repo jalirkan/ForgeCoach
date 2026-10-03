@@ -20,10 +20,19 @@ export const REFRESH_MS = 60_000;
 /** Staleness thresholds for `updated`. */
 export const AMBER_AFTER_S = 10 * 60;
 export const RED_AFTER_S = 30 * 60;
+/** The runner's heartbeat reaches the public copy every two minutes; older than this, warn. */
+export const HEARTBEAT_STALE_S = 5 * 60;
+/** IDLE turns red after this long. */
+export const IDLE_RED_AFTER_S = 10 * 60;
 /** Larger than any plausible status.json; refuse bigger bodies. */
 export const MAX_BYTES = 512 * 1024;
 const MAX_LIST = 50;
 const MAX_TEXT = 200;
+/** The runner publishes at most 40 live metrics and 24 cubes. */
+export const MAX_LIVE = 40;
+export const MAX_CUBES = 24;
+/** A live metric key: lowercase segments of letters, digits and _, dot-joined (the runner's METRIC shape). */
+const LIVE_KEY = /^[a-z][a-z0-9_]{0,40}(\.[a-z0-9_]{1,40}){0,3}$/;
 
 // ---------------------------------------------------------------------------
 // View model
@@ -63,9 +72,33 @@ export interface RunningJob {
   /** The raw `elapsed` when it is neither seconds nor a duration we read. */
   elapsedText: string | null;
   workers: number | null;
+  /** The most workers the job may use (its sizing). */
+  workersMax: number | null;
+  /** The job's memory now, GB. */
+  memGb: number | null;
   errors: number | null;
   paused: boolean;
   /** done / total in 0..1, or null. */
+  fraction: number | null;
+  /** The job's metrics as of the runner's last minute read, in the runner's order (headline first). */
+  live: LiveMetric[];
+  /** A cube-lab queue's per-cube progress ("cube 1", … unless the job named them). */
+  cubes: CubeProgress[];
+}
+
+export interface LiveMetric {
+  /** The key as published, e.g. `q.engine_errors`. */
+  key: string;
+  value: number;
+  /** One of the job's `headline:` metrics. */
+  headline: boolean;
+}
+
+export interface CubeProgress {
+  id: string;
+  done: number;
+  planned: number;
+  /** done / planned in 0..1, or null when nothing is planned. */
   fraction: number | null;
 }
 
@@ -97,6 +130,14 @@ export interface FinishedJob {
 export interface LabStatus {
   schema: number | null;
   updated: Date | null;
+  /** When the runner's loop last ran (falls back to `updated` in older files). */
+  heartbeat: Date | null;
+  /** RUNNING or IDLE: the runner's word, else derived from `running`. */
+  state: 'running' | 'idle';
+  /** Since when nothing has run (idle only). */
+  idleSince: Date | null;
+  /** Why nothing runs (idle only), e.g. "queue empty", "blocked after J012". */
+  idleReason: string | null;
   /** The whole runner is paused. */
   paused: boolean;
   host: LabHost | null;
@@ -223,10 +264,46 @@ function parseRunning(v: unknown, updated: Date | null, allPaused: boolean): Run
     elapsedS,
     elapsedText,
     workers: int(v.workers, 0, 10_000),
+    workersMax: int(v.workersMax, 0, 10_000),
+    memGb: num(v.memGb, 0, 100_000),
     errors: int(v.errors, 0, 1e9),
     paused: allPaused || bool(v.paused),
     fraction: done !== null && total !== null && total > 0 ? Math.min(1, Math.max(0, done / total)) : null,
+    live: parseLive(v.live, v.liveHeadline),
+    cubes: parseCubes(v.cubes),
   };
+}
+
+/**
+ * `live: {key: number}`: keys in the runner's metric shape only, finite numbers in range
+ * (|x| ≤ 1e15), at most MAX_LIVE, in the file's order; never a per-cube key (cubes go in `cubes`).
+ */
+export function parseLive(v: unknown, headline?: unknown): LiveMetric[] {
+  if (!isObj(v)) return [];
+  const heads = new Set(Array.isArray(headline) ? headline.filter((k): k is string => typeof k === 'string') : []);
+  const out: LiveMetric[] = [];
+  for (const [key, x] of Object.entries(v)) {
+    if (out.length >= MAX_LIVE) break;
+    if (!LIVE_KEY.test(key) || /(^|\.)cubes\./.test(key)) continue;
+    const value = typeof x === 'number' ? num(x, -1e15, 1e15) : null;
+    if (value === null) continue;
+    out.push({ key, value, headline: heads.has(key) });
+  }
+  return out;
+}
+
+/** `cubes: [{id, done, planned}]`: id clipped text, counts whole and ≥ 0, done ≤ planned shown as is. */
+export function parseCubes(v: unknown): CubeProgress[] {
+  const out: CubeProgress[] = [];
+  for (const c of Array.isArray(v) ? v.slice(0, MAX_CUBES) : []) {
+    if (!isObj(c)) continue;
+    const id = cleanText(c.id, 40);
+    const done = int(c.done, 0, 1e9);
+    const planned = int(c.planned, 0, 1e9);
+    if (!id || done === null || planned === null) continue;
+    out.push({ id, done, planned, fraction: planned > 0 ? Math.min(1, done / planned) : null });
+  }
+  return out;
 }
 
 function finishedKind(s: string | null): FinishedKind {
@@ -291,9 +368,14 @@ export function parseLabStatus(json: unknown): LabStatus {
   const host = parseHost(json.host);
   const events = parsePressureEvents(json.pressureEvents ?? (isObj(json.host) ? json.host.pressureEvents : undefined));
 
+  const state = json.state === 'running' || json.state === 'idle' ? json.state : running.length ? 'running' : 'idle';
   return {
     schema: int(json.schema, 0, 1e6),
     updated,
+    heartbeat: parseTime(json.heartbeat) ?? updated,
+    state,
+    idleSince: state === 'idle' ? parseTime(json.idleSince) : null,
+    idleReason: state === 'idle' ? cleanText(json.idleReason, 60) : null,
     paused,
     host,
     running,
@@ -377,6 +459,132 @@ export function updatedLine(updated: Date | null, now: Date): string {
   return ageS < 60 ? 'updated just now' : `updated ${formatDuration(ageS)} ago`;
 }
 
+/** The heartbeat is older than HEARTBEAT_STALE_S: the runner may be down (a quiet job keeps it fresh). */
+export function heartbeatStale(s: LabStatus, now: Date): { stale: boolean; ageS: number | null } {
+  if (!s.heartbeat) return { stale: false, ageS: null };
+  const ageS = Math.max(0, (now.getTime() - s.heartbeat.getTime()) / 1000);
+  return { stale: ageS >= HEARTBEAT_STALE_S, ageS };
+}
+
+/** RUNNING / IDLE for the header: how long idle, why, and red after IDLE_RED_AFTER_S. */
+export function runState(s: LabStatus, now: Date): { state: 'running' | 'idle'; idleS: number | null; reason: string | null; red: boolean } {
+  if (s.state === 'running') return { state: 'running', idleS: null, reason: null, red: false };
+  const idleS = s.idleSince ? Math.max(0, (now.getTime() - s.idleSince.getTime()) / 1000) : null;
+  return { state: 'idle', idleS, reason: s.idleReason, red: idleS !== null && idleS >= IDLE_RED_AFTER_S };
+}
+
+// ---------------------------------------------------------------------------
+// Live metrics: friendly labels and formatting
+
+type Fmt = 'count' | 'rate' | 'pct' | 'bytes' | 'gb' | 'secs' | 'dec';
+
+/** Known metric names (the key's last segment): label, format, and when a value is a warning. */
+const KNOWN_LIVE: Record<string, { label: string; fmt: Fmt; warn?: 'bad' | 'amber' }> = {
+  drafts: { label: 'Drafts', fmt: 'count' },
+  night_drafts_done: { label: 'Drafts tonight', fmt: 'count' },
+  planned_drafts: { label: 'Drafts planned', fmt: 'count' },
+  games: { label: 'Games', fmt: 'count' },
+  drafts_per_h: { label: 'Drafts / h (all nights)', fmt: 'rate' },
+  night_drafts_done_per_h: { label: 'Drafts tonight / h', fmt: 'rate' },
+  games_per_h: { label: 'Games / h', fmt: 'rate' },
+  engine_errors: { label: 'Engine errors', fmt: 'count', warn: 'bad' },
+  engine_error_rate: { label: 'Engine error rate', fmt: 'pct', warn: 'bad' },
+  errors: { label: 'Errors', fmt: 'count', warn: 'bad' },
+  timeouts: { label: 'Timeouts', fmt: 'count', warn: 'amber' },
+  draws: { label: 'Draws', fmt: 'count' },
+  recorded_games: { label: 'Recordings', fmt: 'count' },
+  recorded_errors: { label: 'Recording errors', fmt: 'count', warn: 'amber' },
+  recorded_bytes_per_game: { label: 'Recording size', fmt: 'bytes' },
+  output_bytes: { label: 'Disk', fmt: 'bytes' },
+  disk_gb: { label: 'Disk', fmt: 'gb' },
+  disk_free_gb: { label: 'Disk free', fmt: 'gb' },
+  free_disk_gb: { label: 'Disk free', fmt: 'gb' },
+  bridge_drafts: { label: 'Bridge drafts', fmt: 'count' },
+  bridge_drafts_done: { label: 'Bridge drafts', fmt: 'count' },
+  bridge_drafts_planned: { label: 'Bridge planned', fmt: 'count' },
+  bridge_share: { label: 'Bridge share', fmt: 'pct' },
+  mean_turns: { label: 'Turns / game', fmt: 'dec' },
+  mean_game_s: { label: 'Game length', fmt: 'secs' },
+  median_game_s: { label: 'Median game', fmt: 'secs' },
+  workers: { label: 'Workers', fmt: 'count' },
+  peak_worker_rss_gb: { label: 'Peak worker', fmt: 'gb' },
+  mem_gb: { label: 'Memory', fmt: 'gb' },
+  memory_gb: { label: 'Memory', fmt: 'gb' },
+  pressure_events: { label: 'Pressure events', fmt: 'count', warn: 'amber' },
+  elapsed_s: { label: 'Elapsed', fmt: 'secs' },
+  runs: { label: 'Runs', fmt: 'count' },
+  nights: { label: 'Nights', fmt: 'count' },
+};
+/** The order known metrics take after the headline ones. */
+const KNOWN_ORDER = Object.keys(KNOWN_LIVE);
+
+export interface LiveCell {
+  key: string;
+  /** A friendly label for a known metric, else the raw key. */
+  label: string;
+  value: string;
+  tone?: 'bad' | 'amber';
+  headline: boolean;
+  known: boolean;
+}
+
+/** "1.2 MB", "840 KB", "3.4 GB". */
+export function formatBytes(n: number): string {
+  const a = Math.abs(n);
+  if (a >= 1e12) return `${fmtNum(n / 1e12, 1)} TB`;
+  if (a >= 1e9) return `${fmtNum(n / 1e9, 1)} GB`;
+  if (a >= 1e6) return `${fmtNum(n / 1e6, 1)} MB`;
+  if (a >= 1e3) return `${fmtNum(n / 1e3, 0)} KB`;
+  return `${fmtNum(n)} B`;
+}
+
+function fmtByName(name: string, v: number): Fmt {
+  if (/_bytes$/.test(name) || name === 'bytes') return 'bytes';
+  if (/_gb$/.test(name)) return 'gb';
+  if (/_s$/.test(name)) return 'secs';
+  if (/_per_h$/.test(name)) return 'rate';
+  if (/(_rate|_share)$/.test(name) && v >= 0 && v <= 1) return 'pct';
+  return Number.isInteger(v) ? 'count' : 'dec';
+}
+
+/** One metric value as text, by its format. */
+export function formatLive(v: number, fmt: Fmt): string {
+  switch (fmt) {
+    case 'count': return fmtNum(v, Number.isInteger(v) ? 0 : 1);
+    case 'rate': return `${fmtNum(v, Math.abs(v) < 10 ? 1 : 0)}`;
+    case 'pct': return `${fmtNum(v * 100, v * 100 < 10 ? 1 : 0)} %`;
+    case 'bytes': return formatBytes(v);
+    case 'gb': return `${fmtNum(v, 1)} GB`;
+    case 'secs': return formatDuration(v);
+    case 'dec': return fmtNum(v, Math.abs(v) < 10 ? 2 : 1);
+  }
+}
+
+/**
+ * The running job's live grid: memory first (from `memGb`), then the headline metrics in the
+ * runner's order, then the known ones in a fixed order, then any other key under its raw name.
+ * `workers` and `elapsed_s` are left out when the card already shows them; two cells that
+ * would share a label (two metric lines) carry their prefix.
+ */
+export function liveCells(j: RunningJob): LiveCell[] {
+  const cells: Array<LiveCell & { rank: number; order: number }> = [];
+  j.live.forEach((m, i) => {
+    const name = m.key.split('.').at(-1)!;
+    if ((name === 'workers' && j.workers !== null) || (name === 'elapsed_s' && j.elapsedS !== null)) return;
+    const k = KNOWN_LIVE[name];
+    const fmt = k?.fmt ?? fmtByName(name, m.value);
+    const tone = k?.warn && m.value > 0 ? k.warn : undefined;
+    const known = k !== undefined;
+    cells.push({ key: m.key, label: k?.label ?? m.key, value: formatLive(m.value, fmt), tone, headline: m.headline, known, rank: m.headline ? 0 : known ? 1 : 2, order: m.headline ? i : known ? KNOWN_ORDER.indexOf(name) : i });
+  });
+  cells.sort((a, b) => a.rank - b.rank || a.order - b.order);
+  const seen = new Map<string, number>();
+  for (const c of cells) seen.set(c.label, (seen.get(c.label) ?? 0) + 1);
+  const out: LiveCell[] = cells.map(({ rank: _r, order: _o, ...c }) => (c.known && (seen.get(c.label) ?? 0) > 1 && c.key.includes('.') ? { ...c, label: `${c.label} (${c.key.split('.')[0]})` } : c));
+  if (j.memGb !== null) out.unshift({ key: 'memGb', label: 'Memory', value: formatLive(j.memGb, 'gb'), headline: false, known: true });
+  return out;
+}
+
 export type PressureLevel = 'calm' | 'elevated' | 'high';
 
 /** Memory pressure (some avg10, %): calm under 1, elevated under 10, high after. */
@@ -402,6 +610,8 @@ export function rebaseTimes(s: LabStatus, now: Date, ageS = 90): LabStatus {
   return {
     ...s,
     updated: mv(s.updated),
+    heartbeat: mv(s.heartbeat),
+    idleSince: mv(s.idleSince),
     running: s.running.map((j) => ({ ...j, started: mv(j.started), eta: mv(j.eta) })),
     finished: s.finished.map((f) => ({ ...f, finished: mv(f.finished) })),
     pressureEvents: s.pressureEvents.map((e) => ({ ...e, at: mv(e.at) })),
