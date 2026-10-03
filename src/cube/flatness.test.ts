@@ -1,13 +1,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
-import { compareCubes, cubeSpread, FLAT_SD, normalTail, readSpread, spreadOf, type SpreadUnit } from './flatness.ts';
+import {
+  compareCubes,
+  cubeSpread,
+  DEFAULT_DESIGN_EFFECT,
+  designEffectOf,
+  FLAT_SD,
+  MATCH_ICC,
+  normalTail,
+  readSpread,
+  spreadOf,
+  type SpreadUnit,
+} from './flatness.ts';
 import { rng, loadRealMeta } from './testdata/load.ts';
 import { parseMeta, type CubeMeta } from './meta.ts';
 import { shrinkRate } from './metaView.ts';
 
 const K = 20;
 
-/** A synthetic meta: `n` cards of `games` games each, true rates θ_i + binomial noise (or exactly `wins` when given). */
+/**
+ * A synthetic meta: `n` cards of `games` games each, true rates θ_i + binomial noise (or exactly `wins` when given).
+ * Every game here is independent, so each is its own clump (inDecks = games, design effect 1).
+ */
 function synthMeta(opts: { n: number; games: number; truth: (i: number) => number; seed: number; noisy?: boolean; name?: string }): CubeMeta {
   const r = rng(opts.seed);
   const cards: Record<string, unknown> = {};
@@ -30,6 +44,7 @@ function synthMeta(opts: { n: number; games: number; truth: (i: number) => numbe
     void p;
     cards[c.name] = {
       games: c.games,
+      inDecks: c.games,
       wins: c.wins,
       winRate: wr,
       winRateShrunk: shrinkRate(wr, c.games, K, mean),
@@ -115,11 +130,23 @@ describe('the noise correction', () => {
     expect(s.trueSd).toBe(0);
     expect(s.verdict).toBe('flat');
   });
-  it('computes noise from the binomial at each card’s game count', () => {
-    const units: SpreadUnit[] = [{ name: 'A', games: 20, wins: 10, shrunk: 0.5, ci: null }, ...Array.from({ length: 19 }, (_, i) => ({ name: `B${i}`, games: 20, wins: 10, shrunk: 0.5, ci: null }))];
-    const s = spreadOf(units, { minGames: 1, priorMean: 0.5, priorStrength: K })!;
-    // sqrt(g·m(1−m)) / (g+k) = sqrt(5)/40
-    expect(s.noiseSd).toBeCloseTo(Math.sqrt(5) / 40, 10);
+  it('computes noise from the binomial at each card’s game count, times its design effect', () => {
+    const unit = (name: string, clumps: number | null): SpreadUnit => ({ name, games: 20, wins: 10, shrunk: 0.5, ci: null, clumps });
+    // Independent games (one game per clump): sqrt(g·m(1−m)) / (g+k) = sqrt(5)/40.
+    const indep = spreadOf(Array.from({ length: 20 }, (_, i) => unit(`A${i}`, 20)), { minGames: 1, priorMean: 0.5, priorStrength: K })!;
+    expect(indep.noiseSd).toBeCloseTo(Math.sqrt(5) / 40, 10);
+    expect(indep.binomialNoiseSd).toBeCloseTo(Math.sqrt(5) / 40, 10);
+    expect(indep.designEffect).toBeCloseTo(1, 10);
+    // 20 games in 8 matches: DE = 1 + (2.5 − 1)·ρ.
+    const clumped = spreadOf(Array.from({ length: 20 }, (_, i) => unit(`B${i}`, 8)), { minGames: 1, priorMean: 0.5, priorStrength: K })!;
+    expect(clumped.designEffect).toBeCloseTo(1 + 1.5 * MATCH_ICC, 10);
+    expect(clumped.noiseSd).toBeCloseTo((Math.sqrt(5) / 40) * Math.sqrt(1 + 1.5 * MATCH_ICC), 10);
+    expect(clumped.noiseSource).toBe('clumps');
+    // No clump counts: the documented default.
+    const unknown = spreadOf(Array.from({ length: 20 }, (_, i) => unit(`C${i}`, null)), { minGames: 1, priorMean: 0.5, priorStrength: K })!;
+    expect(unknown.designEffect).toBeCloseTo(DEFAULT_DESIGN_EFFECT, 10);
+    expect(unknown.noiseSource).toBe('default');
+    expect(readSpread(unknown).join(' ')).toMatch(/design effect 1\.50×/);
   });
 });
 
@@ -148,6 +175,89 @@ describe('inclusion and thin data', () => {
     const s = cubeSpread(synthMeta({ n: 60, games: 12, truth: (i) => 0.45 + (0.1 * i) / 59, seed: 5 })).cards!;
     expect(s.verdict).toBe('unclear');
     expect(readSpread(s).join(' ')).toMatch(/cannot tell this cube from a perfectly flat one/);
+  });
+});
+
+describe('design effect', () => {
+  it('is 1 + (games per match − 1)·ρ, and the default without a match count', () => {
+    expect(designEffectOf(24, 10)).toBeCloseTo(1 + 1.4 * MATCH_ICC, 12);
+    expect(designEffectOf(30, 30)).toBe(1);
+    expect(designEffectOf(30, null)).toBe(DEFAULT_DESIGN_EFFECT);
+    expect(designEffectOf(30, 0)).toBe(DEFAULT_DESIGN_EFFECT);
+    // ~2.4 games per match, as in the lab: about 1.5.
+    expect(designEffectOf(24, 10)).toBeGreaterThan(1.45);
+    expect(designEffectOf(24, 10)).toBeLessThan(1.55);
+  });
+
+  /** A flat cube whose games come in matches of 2–3 sharing one matchup p ∈ {0.5 ± a} (within-match correlation a²/0.25). */
+  function clumpedFlat(seed: number, a: number) {
+    const r = rng(seed);
+    const cards: Record<string, unknown> = {};
+    for (let i = 0; i < 180; i++) {
+      let games = 0;
+      let wins = 0;
+      const matches = 12;
+      for (let j = 0; j < matches; j++) {
+        const p = r() < 0.5 ? 0.5 - a : 0.5 + a;
+        const len = r() < 0.4 ? 3 : 2;
+        for (let g = 0; g < len; g++) if (r() < p) wins++;
+        games += len;
+      }
+      cards[`C${i}`] = { games, wins, inDecks: matches, winRate: wins / games, winRateShrunk: shrinkRate(wins / games, games, K, 0.5) };
+    }
+    return parseMeta({ schema: 1, cube: {}, sample: { shrinkage: { prior: 'beta', mean: 0.5, strength: K } }, cards, archetypes: [], pairs: [] });
+  }
+
+  it('a flat cube with clumped games looks uneven if games are taken as independent, and not with the clumps counted', () => {
+    // a = 0.296: correlation 0.35 = MATCH_ICC, so the clump model is right here.
+    const meta = clumpedFlat(31, 0.296);
+    const naive = cubeSpread(meta, { designEffect: 1 }).cards!;
+    const clumped = cubeSpread(meta).cards!;
+    expect(naive.verdict).toBe('uneven');
+    expect(clumped.noiseSource).toBe('clumps');
+    expect(clumped.designEffect).toBeGreaterThan(1.4);
+    expect(clumped.verdict).not.toBe('uneven');
+    expect(clumped.trueSdCi[0]).toBeLessThanOrEqual(FLAT_SD);
+    expect(clumped.sd / clumped.noiseSd).toBeGreaterThan(0.85);
+    expect(clumped.sd / clumped.noiseSd).toBeLessThan(1.15);
+  });
+
+  it('an assumed design effect widens the interval but cannot make a cube flat', () => {
+    // Observed spread a little above the independent-games noise but below the clumped noise.
+    const meta = synthMeta({ n: 120, games: 30, truth: (i) => 0.47 + (0.06 * i) / 119, seed: 13 });
+    for (const c of Object.values(meta.cards)) (c as { inDecks?: number }).inDecks = 12;
+    const s = cubeSpread(meta).cards!;
+    const indep = cubeSpread(meta, { designEffect: 1 }).cards!;
+    expect(s.trueSdCi[1]).toBeCloseTo(indep.trueSdCi[1], 12);
+    expect(s.trueSdCi[0]).toBeLessThanOrEqual(indep.trueSdCi[0]);
+    expect(s.verdict).not.toBe('flat');
+  });
+
+  it('uses the lab’s empirical noise SD when meta.json has one', () => {
+    const meta = synthMeta({ n: 120, games: 40, truth: () => 0.5, seed: 17 });
+    const plain = cubeSpread(meta).cards!;
+    const withNoise = parseMeta({ ...meta, noise: { sdEmpirical: plain.binomialNoiseSd * 1.3, permutations: 400 } });
+    const s = cubeSpread(withNoise).cards!;
+    expect(s.noiseSource).toBe('empirical');
+    expect(s.noiseSd).toBeCloseTo(plain.binomialNoiseSd * 1.3, 12);
+    expect(s.designEffect).toBeCloseTo(1.69, 6);
+    expect(readSpread(s).join(' ')).toMatch(/permutation null/);
+    // Measured, so it sets both ends of the interval.
+    expect(s.trueSd).toBeCloseTo(Math.sqrt(Math.max(0, s.sd ** 2 - s.noiseSd ** 2)) / (40 / 60), 9);
+    // Computed over a different inclusion rule: not used.
+    const other = cubeSpread(parseMeta({ ...meta, noise: { sdEmpirical: 0.2, minGames: 25 } })).cards!;
+    expect(other.noiseSource).not.toBe('empirical');
+    // A forced design effect overrides it.
+    expect(cubeSpread(withNoise, { designEffect: 1 }).cards!.noiseSource).toBe('default');
+  });
+
+  it('says “can’t tell” when the interval excludes zero but still holds flat values', () => {
+    const units: SpreadUnit[] = Array.from({ length: 200 }, (_, i) => ({ name: `C${i}`, games: 2000, wins: 1000, shrunk: 0.5 + 0.03 * ((i % 2) * 2 - 1), ci: null, clumps: 2000 }));
+    const s = spreadOf(units, { minGames: 10, priorMean: 0.5, priorStrength: K })!;
+    expect(s.trueSdCi[0]).toBeGreaterThan(0);
+    expect(s.trueSdCi[0]).toBeLessThanOrEqual(FLAT_SD);
+    expect(s.verdict).toBe('unclear');
+    expect(readSpread(s).join(' ')).toMatch(/Can’t tell: noise does not explain all/);
   });
 });
 
@@ -183,6 +293,20 @@ describe('comparing cubes', () => {
 });
 
 describe('the shipped data', () => {
+  it('cannot tell any of the four shipped cubes from flat once games are counted in their match clumps', () => {
+    // Before clumping was modelled, synergy and pauper read “uneven” (true SD 6.6 [4.4, 9.0] and 7.0 [3.5, 10.4]).
+    for (const id of ['synergy', 'modern-era', 'vintage', 'pauper'] as const) {
+      const s = cubeSpread(loadRealMeta(id)).cards!;
+      expect(s.noiseSource).toBe('clumps');
+      expect(s.designEffect).toBeGreaterThan(1.4);
+      expect(s.designEffect).toBeLessThan(1.6);
+      expect(s.verdict).toBe('unclear');
+      expect(s.trueSdCi[0]).toBe(0);
+      expect(readSpread(s).join(' ')).toMatch(/design effect 1\.\d\d×/);
+      // Taken as independent games, synergy still reads uneven: the clumping is what changes the verdict.
+      if (id === 'synergy') expect(cubeSpread(loadRealMeta(id), { designEffect: 1 }).cards!.verdict).toBe('uneven');
+    }
+  });
   it('is too thin to separate the cubes', () => {
     const rows = compareCubes(['synergy', 'modern-era', 'vintage', 'pauper'].map((id) => ({ id, title: id, meta: loadRealMeta(id as 'synergy'), source: 'shipped' as const })));
     for (const r of rows.rows) {

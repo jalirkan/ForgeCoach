@@ -16,7 +16,17 @@
  *                   "keyCards":[…],"avgLands","avgCurve":{"1":n,…,"6+":n},"sampleDecks":[[…]]}],
  *    "pairs":[{"a","b","games","winRateTogether","lift"}],
  *    "lands":{"overall":{"16":{"games","winRate"},…},"byArchetype":{"BR-SAC":{…}}},
- *    "splash":{"games","winRate","vsNoSplash"}}
+ *    "splash":{"games","winRate","vsNoSplash"},
+ *    "noise":{"sdEmpirical","archetypeSdEmpirical","minGames","archetypeMinGames","permutations","method"}}
+ *
+ * `noise` is optional (added under schema 1, no version bump) and not yet
+ * written by the lab: the spread of shrunk win rates that chance alone gives,
+ * measured by a permutation null — re-randomise every game's winner by a fair
+ * coin, keeping decks, pairings and match lengths, and take the mean SD of the
+ * included units' shrunk rates over a few hundred runs. `sdEmpirical` is for
+ * cards with `minGames`+ games (10 if absent), `archetypeSdEmpirical` for
+ * archetypes with `archetypeMinGames`+ (5). cube/flatness.ts uses it in place
+ * of its clumped-binomial noise formula when present.
  *
  * Rates are fractions (0.55 = 55 %). winRateShrunk is (wins + 20·mean) /
  * (games + 20), so a card seen in few games sits near the mean. A pair's lift
@@ -79,6 +89,16 @@ export interface LandStat {
   winRate: number;
 }
 
+/** The lab's permutation-null noise level (optional; see the header). */
+export interface MetaNoise {
+  sdEmpirical?: number;
+  archetypeSdEmpirical?: number;
+  minGames?: number;
+  archetypeMinGames?: number;
+  permutations?: number;
+  method?: string;
+}
+
 export interface CubeMeta {
   schema: 1;
   cube: { name?: string; file?: string; cards?: MetaCubeCard[] };
@@ -88,6 +108,7 @@ export interface CubeMeta {
   pairs: MetaPair[];
   lands?: { overall?: Record<string, LandStat>; byArchetype?: Record<string, Record<string, LandStat>> };
   splash?: { games?: number; winRate?: number; vsNoSplash?: number };
+  noise?: MetaNoise;
 }
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -118,6 +139,7 @@ export function parseMeta(raw: unknown): CubeMeta {
   if (isObj(raw.sample)) out.sample = raw.sample as CubeMeta['sample'];
   if (isObj(raw.lands)) out.lands = raw.lands as CubeMeta['lands'];
   if (isObj(raw.splash)) out.splash = raw.splash as CubeMeta['splash'];
+  if (isObj(raw.noise)) out.noise = raw.noise as MetaNoise;
   return out;
 }
 

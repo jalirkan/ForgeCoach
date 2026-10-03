@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
-import { buildDecks, checkBuild, dckText, deckText, evaluateBuild, mainDeck, sideboard, swapOptions, DECK_SIZE } from './builder.ts';
+import { allBuilds, buildDecks, checkBuild, dckText, deckText, evaluateBuild, mainDeck, sideboard, swapOptions, DECK_SIZE } from './builder.ts';
 import { castableIn } from './facts.ts';
 import { cardValue } from './score.ts';
 import { context, loadMeta, loadRealMeta, samplePool, type CubeId } from './testdata/load.ts';
@@ -35,6 +35,21 @@ describe('buildDecks', () => {
       });
     }
   }
+
+  it('ranks a legal 40 above a higher-scoring build that is short of spells', () => {
+    // This pool's best-scoring build is W/B one spell short (39 cards); a full B/G 40 exists.
+    const ctx = context('synergy', loadRealMeta('synergy'));
+    const pool = samplePool(ctx.cube, 'BG', 45, 7);
+    const all = allBuilds(ctx, pool);
+    const short = all.find((b) => b.missing > 0)!;
+    expect(short).toBeDefined();
+    expect(short.score).toBeGreaterThan(all[0]!.score);
+    expect(all[0]!.missing).toBe(0);
+    expect(buildDecks(ctx, pool)[0]!.missing).toBe(0);
+    // Every complete build comes before every short one.
+    const firstShort = all.findIndex((b) => b.missing > 0);
+    expect(all.slice(firstShort).every((b) => b.missing > 0)).toBe(true);
+  });
 
   it('returns up to three distinct builds, best first', () => {
     const ctx = context('synergy');
