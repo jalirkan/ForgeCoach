@@ -49,6 +49,7 @@ import type {
 import type { GameLog, LoggedFrame } from '../log.ts';
 import { LiveLogBuilder } from '../live.ts';
 import { whyNotAct, whyNotAnswer } from './acts.ts';
+import { recordFinishedGame } from '../history/record.ts';
 
 import { DEFAULT_SEAT_URL, redactSeatUrl } from './seatUrl.ts';
 
@@ -355,6 +356,8 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     // seq 0 (pong, refusal, dropped-frame notices) and verbatim re-deliveries
     // are skipped by the builder, exactly as live.ts follows a game.
     builder.add({ ...f, dir: 's2c' }, true);
+    // "Your record" (#history): the finished game, saved once per game id, never throwing.
+    if (f.type === 'over') void recordFinishedGame(builder.snapshot());
     changed();
   };
 
