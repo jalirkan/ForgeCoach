@@ -22,6 +22,7 @@ let root = '';
 let home = '';
 let mtg = '';
 let bin = '';
+const CUBES = ['synergy', 'modern-era', 'vintage', 'pauper', 'fair-fight', 'peasant', 'omega'];
 let log = '';
 
 const FAKE_CUBELAB = `#!/usr/bin/env bash
@@ -60,6 +61,7 @@ beforeAll(() => {
   fs.writeFileSync(path.join(mtg, 'config.json'), JSON.stringify({ forgeJar: path.join(forge, 'forge-gui-desktop-2.0.14-jar-with-dependencies.jar') }));
   fs.writeFileSync(path.join(mtg, 'tools', 'cubelab', 'cli.ts'), '// tools/cubelab.sh evolve ...\n// tools/cubelab.sh selfplay ...\n');
   sh(path.join(mtg, 'tools', 'cubelab.sh'), FAKE_CUBELAB);
+  for (const c of CUBES) fs.mkdirSync(path.join(mtg, 'cubes'), { recursive: true }), fs.writeFileSync(path.join(mtg, 'cubes', `${c}-cube-180.md`), '# cube\n');
   sh(path.join(bin, 'java'), '#!/usr/bin/env bash\ncase "$1" in --list-modules) echo jdk.compiler@21 ;; *) echo \'openjdk version "21.0.2" 2024-01-16\' >&2 ;; esac\n');
   sh(path.join(bin, 'notify-send'), '#!/usr/bin/env bash\necho "$*" >>"$FAKE_NOTIFY"\n');
 });
@@ -129,7 +131,7 @@ describe.skipIf(!hasBash)('forgecoach.sh', () => {
       expect(r.out).toContain(
         'tools/cubelab.sh evolve cubes/omega-cube-180.md --pool cubes/omega-seed-pool.tsv --generations 8 --drafts-per-gen 1200 --jobs 3 --seed 1 --out var/cubelab/evolve/omega-overnight-g8-d1200',
       );
-      for (const c of ['synergy', 'modern-era', 'vintage', 'pauper']) {
+      for (const c of CUBES) {
         expect(r.out).toContain(
           `tools/cubelab.sh run cubes/${c}-cube-180.md --format grid --drafts 2000 --jobs 3 --seed 1 --out var/cubelab/runs/${c}-cube-180-overnight-n2000`,
         );
@@ -138,6 +140,12 @@ describe.skipIf(!hasBash)('forgecoach.sh', () => {
       expect(r.out).toContain(
         'tools/cubelab.sh selfplay cubes/synergy-cube-180.md --from var/cubelab/runs/synergy-cube-180-overnight-n2000 --iterations 4 --drafts-per-iter 1000 --h2h 1000 --deck-h2h 500 --games 1 --deck-synergy on --jobs 3 --out var/cubelab/selfplay/synergy-overnight-i4-d1000-h1000-k500',
       );
+      // the job names, and the order: evolve, the seven meta runs, learn
+      const order = ['evolve cubes/omega', ...CUBES.map((c) => `cubes/${c}-cube-180.md --format`), 'selfplay'].map((k) => r.out.indexOf(k));
+      expect(order.every((i) => i >= 0)).toBe(true);
+      expect([...order].sort((a, b) => a - b)).toEqual(order);
+      for (const c of ['fair-fight', 'peasant', 'omega']) expect(r.out).toContain(`meta-${c}`);
+      expect(r.out).toMatch(/fair-fight, peasant, omega: <cube>\.meta\.json/);
       // evolve first, selfplay last
       expect(r.out.indexOf('omega-cube-180.md')).toBeLessThan(r.out.indexOf('synergy-cube-180.md --format'));
       expect(r.out.indexOf('pauper-cube-180.md --format')).toBeLessThan(r.out.indexOf('selfplay'));
@@ -155,6 +163,52 @@ describe.skipIf(!hasBash)('forgecoach.sh', () => {
       const bad = await run(['overnight', '--dry-run', '--only', 'bogus']);
       expect(bad.code).toBe(2);
       expect((await run(['overnight', '--jobs', '0', '--dry-run'])).code).toBe(2);
+    });
+
+    it('--only meta is all seven cubes; each new cube has its own keyword; omega alone stays evolve', async () => {
+      const m = await run(['overnight', '--dry-run', '--only', 'meta', '--jobs', '2']);
+      for (const c of CUBES) expect(m.out).toContain(`cubes/${c}-cube-180.md --format`);
+      expect(m.out).not.toContain('evolve cubes');
+      expect(m.out).not.toContain('selfplay cubes');
+      const k = await run(['overnight', '--dry-run', '--only', 'fair-fight,peasant,meta-omega', '--jobs', '2']);
+      for (const c of ['fair-fight', 'peasant', 'omega']) expect(k.out).toContain(`cubes/${c}-cube-180.md --format`);
+      expect(k.out).not.toContain('pauper-cube-180.md --format');
+      const o = await run(['overnight', '--dry-run', '--only', 'omega', '--jobs', '2']);
+      expect(o.out).toContain('evolve cubes/omega');
+      expect(o.out).not.toContain('omega-cube-180.md --format');
+    });
+
+    it('runs and collects the new cubes (run, report, meta.json under <cube>.meta.json)', async () => {
+      resetState();
+      const r = await run(['overnight', '--no-pull', '--jobs', '1', '--only', 'fair-fight,peasant,meta-omega']);
+      expect(r.code).toBe(0);
+      expect(calls().filter((c) => c.startsWith('mtg-table report'))).toEqual(
+        ['fair-fight', 'peasant', 'omega'].map((c) => `mtg-table report var/cubelab/runs/${c}-cube-180-overnight-n2000`),
+      );
+      for (const c of ['fair-fight', 'peasant', 'omega']) {
+        expect(fs.existsSync(path.join(home, `.local/share/forgecoach/meta/${c}.meta.json`))).toBe(true);
+      }
+    });
+
+    it('a cube file an older mtg-table lacks is skipped with a note, not a failure', async () => {
+      resetState();
+      const f = path.join(mtg, 'cubes', 'peasant-cube-180.md');
+      const keep = fs.readFileSync(f);
+      fs.rmSync(f);
+      try {
+        const r = await run(['overnight', '--no-pull', '--jobs', '1', '--only', 'pauper,peasant,fair-fight']);
+        expect(r.code).toBe(0);
+        expect(r.out).toContain('meta-peasant: skipped');
+        expect(r.out).toContain('Not a failure');
+        expect(calls().filter((c) => c.includes(' run '))).toHaveLength(2);
+        expect(calls().join('\n')).not.toContain('peasant');
+        expect(r.out).toContain('Overnight lab: 2 done, 0 already done, 0 failed');
+        const dry = await run(['overnight', '--dry-run', '--only', 'peasant', '--jobs', '2']);
+        expect(dry.code).toBe(0);
+        expect(dry.out).toContain('Nothing left to run');
+      } finally {
+        fs.writeFileSync(f, keep);
+      }
     });
 
     it('runs the queue one job at a time, copies the results, skips what is done, shows status', async () => {
@@ -275,9 +329,10 @@ describe.skipIf(!hasBash)('forgecoach.sh', () => {
 
       it('--budget-hours scales the drafts in proportion, never below the minimums', async () => {
         resetState();
-        const r = await run(['overnight', '--dry-run', '--jobs', '7', '--budget-hours', '7']);
+        const r = await run(['overnight', '--dry-run', '--jobs', '7', '--budget-hours', '9']);
         expect(r.code).toBe(0);
-        // at the defaults the queue is about 9 h of 10 core-seconds; about 80%
+        expect(r.out.match(/--format grid --drafts/g)).toHaveLength(7);
+        // evolve + 7 meta runs + learn: about 11 h of 10 core-seconds at 7 workers; a fraction of it fits
         const evo = /--drafts-per-gen (\d+)/.exec(r.out);
         const meta = /--drafts (\d+) --jobs 7/.exec(r.out);
         expect(Number(evo?.[1])).toBeGreaterThan(865);
@@ -285,8 +340,8 @@ describe.skipIf(!hasBash)('forgecoach.sh', () => {
         expect(Number(meta?.[1])).toBeGreaterThan(500);
         expect(Number(meta?.[1])).toBeLessThan(2000);
         expect(Number(evo?.[1]) / 1200).toBeCloseTo(Number(meta?.[1]) / 2000, 1);
-        expect(r.out).toContain('--budget-hours 7');
-        expect(r.out).toMatch(/In all, about (6\.\d|7) h at 7 workers/);
+        expect(r.out).toContain('--budget-hours 9');
+        expect(r.out).toMatch(/In all, about (8\.\d|9) h at 7 workers/);
 
         const tiny = await run(['overnight', '--dry-run', '--jobs', '7', '--budget-hours', '0.5']);
         expect(tiny.out).toContain('--drafts-per-gen 865 ');
