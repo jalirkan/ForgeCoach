@@ -18,6 +18,7 @@ import { isHidden } from './protocol.ts';
 import type { GameLog } from './log.ts';
 import type { CardInfo } from './cards.ts';
 import type { Prompt } from './prompt.ts';
+import { buildCubeContext, type CubeCoachInput } from './cube/coachContext.ts';
 
 // ---------------------------------------------------------------------------
 // Card helpers shared with prompt.ts
@@ -463,7 +464,7 @@ Write the review in this shape, short and concrete:
 
 Rules details to get right: summoning sickness stops attacking and {T} abilities but not blocking, sacrificing or equipping; {T} abilities are once per untap while abilities without {T} repeat; "whenever you cast an instant or sorcery" ignores creatures, artifacts and enchantments; equip is sorcery-speed; triggered abilities work whether the source is tapped or not; revolt counts any permanent of yours leaving play (fetchlands, sacrificed creatures, tokens).`;
 
-export function buildReviewPrompt(log: GameLog, cards: Map<string, CardInfo>, opts?: { guide?: string }): Prompt {
+export function buildReviewPrompt(log: GameLog, cards: Map<string, CardInfo>, opts?: { guide?: string; cube?: CubeCoachInput }): Prompt {
   const names = reviewCardNames(log);
   const seen = new Map<string, Card>();
   for (const fi of gameHistory(log).stateFrames) {
@@ -478,6 +479,8 @@ export function buildReviewPrompt(log: GameLog, cards: Map<string, CardInfo>, op
   const parts: string[] = [];
   parts.push('# Game summary', summarizeGame(log));
   parts.push('', '# Card text', names.length ? formatCardTexts(names, cards, seen) : '(none)');
+  const cubeSection = buildCubeContext(log, opts?.cube);
+  if (cubeSection) parts.push('', cubeSection);
   if (opts?.guide && opts.guide.trim()) parts.push('', '# My deck play guide', opts.guide.trim());
   parts.push('', '# Question', 'Review this game for me: what went well, and the (at most three) mistakes that cost the most, each tied to a general rule.');
   return { system: REVIEW_SYSTEM, user: parts.join('\n') };

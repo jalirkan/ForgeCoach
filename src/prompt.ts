@@ -18,6 +18,7 @@ import type { CardInfo } from './cards.ts';
 import type { ManaSource } from './state.ts';
 import { instantSpeedOptions, turnFacts, untappedManaSources } from './state.ts';
 import { formatCardTexts, isBasicLandName, visibleName } from './review.ts';
+import { buildCubeContext, type CubeCoachInput } from './cube/coachContext.ts';
 
 export interface Prompt {
   system: string;
@@ -427,7 +428,7 @@ function playerSection(
   return out;
 }
 
-export function buildCoachPrompt(log: GameLog, d: Decision, cards: Map<string, CardInfo>, opts?: { guide?: string }): Prompt {
+export function buildCoachPrompt(log: GameLog, d: Decision, cards: Map<string, CardInfo>, opts?: { guide?: string; cube?: CubeCoachInput }): Prompt {
   const s = d.state;
   const seat = log.seat;
   const byId = cardsById(s);
@@ -464,6 +465,9 @@ export function buildCoachPrompt(log: GameLog, d: Decision, cards: Map<string, C
   lines.push('');
   lines.push('# Card text');
   lines.push(names.length ? formatCardTexts(names, cards, seen) : '(no non-basic cards in view)');
+
+  const cubeSection = buildCubeContext(log, opts?.cube, d.frameIndex);
+  if (cubeSection) lines.push('', cubeSection);
 
   if (opts?.guide && opts.guide.trim()) {
     lines.push('');
