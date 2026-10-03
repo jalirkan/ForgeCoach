@@ -66,6 +66,7 @@ export function GameView({
   onClose,
   closeLabel,
   onSettings,
+  onEngineReview,
 }: {
   log: GameLog;
   title: string;
@@ -77,6 +78,8 @@ export function GameView({
   /** Shown as a labelled button instead of the bare ✕ (e.g. "Back to the table"). */
   closeLabel?: string;
   onSettings: () => void;
+  /** Opens the engine review screen for this game (ui/review). */
+  onEngineReview?: () => void;
 }) {
   const frames = useMemo(() => stateFrames(log), [log]);
   const names = useMemo(() => allCardNames(log), [log]);
@@ -276,6 +279,11 @@ export function GameView({
               </span>
             )}
             <span className="grow" />
+            {onEngineReview && !live && (
+              <button className="btn btn-quiet btn-sm" onClick={onEngineReview} title="The engine’s grade of every decision: what each option was worth">
+                Engine review
+              </button>
+            )}
             <LogTab variant="button" onClick={() => setLogOpen(true)} open={logOpen} />
             <button className="icon-btn" onClick={onSettings} aria-label="Settings">
               <IconGear size={18} />
