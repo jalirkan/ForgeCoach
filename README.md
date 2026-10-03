@@ -118,6 +118,22 @@ switch asks automatically at your main phases, attacks and blocks.
 For development, `?coach=http://127.0.0.1:<port>` points the page at a helper
 on another port.
 
+Claude Code answers one question at a time. With a current mtg-table (decision
+D325) the helper **queues** the others: a second question (auto-coach at your
+attacks while the main-phase answer is still coming, or an *Ask* during one)
+shows *Waiting for the coach…* until its turn instead of failing. When the game
+moves on to another decision, the play screen stops the question it no longer
+needs (a waiting one leaves the queue; a running one stops Claude Code), and a
+newer question from the same tab replaces an older one still in line. An older
+helper without a queue still answers *busy* to a second question.
+
+Each answer shows the coach's **confidence** and the **rule** (heuristic) its
+line follows, above the explanation. *Close call — think here* means the coach
+sees another line about as good, or the right play turns on something hidden:
+treat it as a moment to think, not a play to copy. Settings → **Answer first**
+(off by default) asks the coach to start with the play in one line, so it shows
+before the explanation has finished streaming.
+
 A **deck guide**, your notes on how a deck wants to play, is written in the page
 and included in every prompt for that deck.
 
@@ -354,8 +370,8 @@ rationale. Run it before and after a change to the coach prompt
 (`src/prompt.ts`) to see what the change did. Every case rebuilds the exact
 prompt the app would send (`buildCoachPrompt`, from the viewing seat's redacted
 view only). In bench mode one extra section is appended to the prompt; it lists
-the legal choices and asks for a final `ANSWER: <choice>` line. Normal prompts
-are unchanged. Scoring: acceptable answer +1, blunder −1, anything else 0
+the legal choices and asks for a final `ANSWER: <choice>` line (or, with
+`--prompt-format answer-first`, a first one). Normal prompts are unchanged. Scoring: acceptable answer +1, blunder −1, anything else 0
 (another answer, or a missing or illegal `ANSWER:` line). Cases marked
 `"confidence": "low"` are run but not scored. The report gives the score per
 decision type (mulligan, play/draw, spell, attack, block, target, pass, choice)
@@ -384,9 +400,11 @@ your key.
 
 **Repeats, because the coach is stochastic.** One answer per case cannot tell
 two prompts apart: 25 against 26 is noise. By default every case is asked
-`--repeat 3` times (any N), `--concurrency 2` calls at a time (raise it only if
-the helper keeps up). That is about 3x the calls of a single pass, so a full run
-takes about three times as long.
+`--repeat 3` times (any N). Calls go one at a time against the coach helper
+(it runs one Claude Code at a time; more in flight only wait in its queue) and
+two at a time against the API (`--concurrency K` overrides; asking for more
+than the helper advertises prints a warning). That is about 3x the calls of a
+single pass, so a full run takes about three times as long.
 
 ```bash
 npm run bench:coach -- --label before --repeat 3
@@ -397,10 +415,26 @@ npm run bench:coach -- --compare bench/coach/results/<…>-before.json bench/coa
 How to read a run: the quality score is the mean over cases of each case's mean
 answer score (acceptable +1, blunder −1, other legal answer 0), with a 95%
 interval from a bootstrap over cases, so repeats of one case are never counted
-as independent evidence. Missing, illegal and errored answers are format
-failures: reported separately (with a Wilson interval) and left out of the
-score. Each case also shows the answers seen and its agreement, the share equal
-to its most common answer; below 0.67 it is "unstable".
+as independent evidence. Missing, unparsable and illegal answers are format
+failures: the coach answered, badly. They are reported separately (with a
+Wilson interval) and left out of the score. A call that got no answer at all —
+the helper busy, a usage or rate limit, an overload, a network or server error
+— is first **retried with backoff** (busy, rate-limited and overloaded calls up
+to 4 times, network and 5xx errors twice); only a call that still fails is a
+**transport error**. Transport errors are counted apart from both, and a run
+with any prints a loud *TRANSPORT ERRORS* warning at the top of its report,
+exits with status 3, and makes any comparison with it untrustworthy: fix the
+cause and run again. Each case also shows the answers seen and its agreement,
+the share equal to its most common answer (transport errors left out); below
+0.67 it is "unstable".
+
+Latency is per answer, per type, without time spent in the helper's queue or
+between retries. The report also has a **calibration** table — the mean score
+of the answers the coach called high, medium and low confidence, with counts —
+which says plainly when there is too little data to tell (a level needs 10+
+answers from 4+ cases), and a **prompt size by section** table (system prompt,
+card text, each player's state, …) showing where the characters go. Nothing is
+trimmed; it is there to pick a target.
 
 How to read `--compare a.json b.json` (A is the baseline, B the change): it is
 paired over the cases both runs share, using each case's difference in mean
@@ -417,7 +451,15 @@ score.
   answers overlap is in the difference table, not the flips.
 - **Unstable** cases (agreement below 0.67 in either run) are listed; their
   differences mean little.
-- Format failure rates are compared separately from the score.
+- Format failure rates and transport errors are compared separately from the
+  score. A run with transport errors puts a warning above the verdict and the
+  verdict is marked not trustworthy (the CLI exits with status 3).
+- **Regret, when it exists.** An engine-graded bench is planned: each answer
+  scored by its win-rate gap to the best line, from playouts. Samples carry an
+  optional `regret` (value and interval); once both runs have it, mean regret
+  (lower is better) is the headline and the verdict, the pass rate becomes the
+  secondary view, and the calibration table reads regret instead of the score.
+  Until then nothing changes.
 - Result files from before repeats existed (one answer per case) still load, as
   N=1 with a warning; their cases cannot be checked for noise, so no flips are
   flagged against them.
@@ -425,7 +467,10 @@ score.
 Options: `--source helper|api` (by default the helper if it is up, otherwise the
 API when `ANTHROPIC_API_KEY` is set), `--model <m>` (an alias the helper
 accepts, or an API model id from `src/claude.ts`), `--only id1,id2`,
-`--type block`, `--helper-url <url>`, `--repeat N`, `--concurrency K`. A full
+`--type block`, `--helper-url <url>`, `--repeat N`, `--concurrency K`,
+`--model-by-type mulligan=claude-haiku-4-5,play_draw=claude-haiku-4-5` (a model
+per decision type, ids from `src/claude.ts`; the helper gets the family alias,
+`haiku`, `sonnet` or `opus`), `--prompt-format classic|answer-first`. A full
 run is 28 cases × N answers. Ctrl-C stops after the calls in flight and still
 writes the report (every case then has at least one answer first, as passes go
 over all cases in turn).

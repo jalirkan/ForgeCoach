@@ -20,8 +20,8 @@ import { extractDecisions } from '../../src/decisions.ts';
 import { getCards, isLookupName } from '../../src/cards.ts';
 import type { CardInfo } from '../../src/cards.ts';
 import { askClaude, DEFAULT_MODEL, isModelId, MODELS } from '../../src/claude.ts';
-import { askHelper, DEFAULT_HELPER_URL, detectHelper, type HelperTarget } from '../../src/coachHelper.ts';
-import { promptAsText } from '../../src/prompt.ts';
+import { askHelper, DEFAULT_HELPER_URL, detectHelper, helperModel, type HelperTarget } from '../../src/coachHelper.ts';
+import { PROMPT_FORMATS, promptAsText, type PromptFormat } from '../../src/prompt.ts';
 import { visibleName } from '../../src/review.ts';
 import type { AnyCard, AskBody, GameStateBody, InputBody } from '../../src/protocol.ts';
 import {
@@ -32,8 +32,10 @@ import {
   compareReports,
   missingCards,
   normalizeReport,
+  parseModelByType,
   reportMarkdown,
   runBench,
+  transportWarning,
   type AskCoach,
   type BenchCase,
   type BenchType,
@@ -57,7 +59,7 @@ function flags(argv: string[]): { pos: string[]; f: Map<string, string | true> }
   }
   return { pos, f };
 }
-const VALUED = new Set(['source', 'model', 'label', 'only', 'type', 'helper-url', 'show', 'log', 'decision', 'frame', 'id', 'kind', 'out', 'repeat', 'concurrency']);
+const VALUED = new Set(['source', 'model', 'label', 'only', 'type', 'helper-url', 'show', 'log', 'decision', 'frame', 'id', 'kind', 'out', 'repeat', 'concurrency', 'model-by-type', 'prompt-format']);
 const str = (f: Map<string, string | true>, k: string): string | undefined => {
   const v = f.get(k);
   return typeof v === 'string' ? v : undefined;
@@ -68,11 +70,20 @@ const USAGE = `Coach benchmark (bench/coach/). Usage: npm run bench:coach -- [op
   (no subcommand)        run every case against the coach and write a report
     --source helper|api  who answers (default: the coach helper if it is up, else the API
                          with ANTHROPIC_API_KEY)
-    --model <m>          helper: a model alias the helper accepts; api: a model id
+    --model <m>          helper: a model alias the helper accepts (opus, sonnet, haiku) or a
+                         model id (mapped to its alias); api: a model id
+    --model-by-type t=m,…  a model per decision type, e.g. mulligan=claude-haiku-4-5,
+                         play_draw=claude-haiku-4-5 (ids: ${MODELS.map((m) => m.id).join(', ')});
+                         types not listed use --model
+    --prompt-format f    classic (default) or answer-first: the ANSWER line first, then
+                         the reasoning
     --label <name>       report name (default: the source)
     --repeat N           answers per case (default 3); the coach is stochastic, so one
                          answer per case cannot tell two prompts apart
-    --concurrency K      calls in flight at once (default 2)
+    --concurrency K      calls in flight at once (default 1 for the helper, which answers
+                         one at a time; 2 for the API)
+    Busy, rate-limited, overloaded, network and 5xx calls are retried with backoff; a call
+    that still fails is a transport error, reported apart from format failures.
     --only a,b  --type t only these case ids / this decision type
     --helper-url <url>   default ${DEFAULT_HELPER_URL}
   --dry-run [--show <id>]  build every prompt and check every case; no model call
@@ -89,6 +100,12 @@ export async function main(argv: string[]): Promise<number> {
     console.log(USAGE);
     return 0;
   }
+  try {
+    promptFormat(f);
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : String(e));
+    return 2;
+  }
   if (f.has('compare')) return compare(pos);
   if (pos[0] === 'list') return list(f);
   if (pos[0] === 'add') return add(f);
@@ -102,6 +119,12 @@ export async function main(argv: string[]): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------
+
+function promptFormat(f: Map<string, string | true>): PromptFormat {
+  const v = str(f, 'prompt-format') ?? 'classic';
+  if (!PROMPT_FORMATS.includes(v as PromptFormat)) throw new Error(`--prompt-format: one of ${PROMPT_FORMATS.join(', ')}`);
+  return v as PromptFormat;
+}
 
 function loadBuilt(f: Map<string, string | true>): { built: BuiltCase[]; bad: number } {
   const loaded = readCases(ROOT);
@@ -118,7 +141,7 @@ function loadBuilt(f: Map<string, string | true>): { built: BuiltCase[]; bad: nu
     .map((l) => l.value!)
     .filter((c) => (!only || only.includes(c.id)) && (!type || c.type === type));
   const cards = readCards(ROOT);
-  const { built, errors } = buildAll(ROOT, cases, cards);
+  const { built, errors } = buildAll(ROOT, cases, cards, { format: promptFormat(f) });
   for (const e of errors) {
     bad++;
     console.error(`✗ ${e.id}: ${e.error}`);
@@ -171,6 +194,23 @@ async function run(f: Map<string, string | true>): Promise<number> {
       return 1;
     }
   }
+  const ids = MODELS.map((m) => m.id) as string[];
+  let modelByType: Partial<Record<BenchType, string>> = {};
+  try {
+    const spec = str(f, 'model-by-type');
+    if (spec) modelByType = parseModelByType(spec, source === 'helper' ? [...ids, 'opus', 'sonnet', 'haiku'] : ids);
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : String(e));
+    return 2;
+  }
+  const modelFor = (type: BenchType | undefined): string | undefined => (type && modelByType[type]) || model;
+
+  const intFlag = (k: string, dflt: number): number | null => {
+    const v = str(f, k);
+    if (v === undefined) return dflt;
+    return /^\d+$/.test(v) && Number(v) >= 1 ? Number(v) : null;
+  };
+  let helperConcurrency = 1;
   let ask: AskCoach;
   if (source === 'helper') {
     const st = await detectHelper({ target: helperTarget, force: true, timeoutMs: 3000 });
@@ -178,9 +218,29 @@ async function run(f: Map<string, string | true>): Promise<number> {
       console.error(`The coach helper at ${helperTarget.baseUrl} isn't ready: ${st.message}`);
       return 1;
     }
-    ask = async (p, signal) => {
-      const r = await askHelper(p, { onText: () => {} }, { target: helperTarget, ...(model ? { model: model as never } : {}), ...(signal ? { signal } : {}) });
-      return { text: r.text, model: r.model };
+    helperConcurrency = st.concurrency ?? 1;
+    if (!st.queue) console.error('Note: this coach helper has no queue (older than mtg-table D325): a second call in flight is refused as busy and retried here.');
+    ask = async (p, signal, ctx) => {
+      const m = modelFor(ctx?.type);
+      const t0 = Date.now();
+      let runningAt: number | null = null;
+      let queued = false;
+      const r = await askHelper(
+        p,
+        { onText: () => {} },
+        {
+          target: helperTarget,
+          ...(m ? { model: helperModel(m) } : {}),
+          ...(signal ? { signal } : {}),
+          onQueued: () => {
+            queued = true;
+          },
+          onRunning: () => {
+            runningAt = Date.now();
+          },
+        },
+      );
+      return { text: r.text, model: r.model, ...(queued && runningAt !== null ? { queuedMs: (runningAt as number) - t0 } : {}) };
     };
   } else if (source === 'api') {
     const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
@@ -192,8 +252,9 @@ async function run(f: Map<string, string | true>): Promise<number> {
       console.error(`--model: one of ${MODELS.map((m) => m.id).join(', ')}`);
       return 1;
     }
-    const settings = { apiKey, model: model && isModelId(model) ? model : DEFAULT_MODEL, coachSource: 'apiKey' as const };
-    ask = async (p, signal) => {
+    ask = async (p, signal, ctx) => {
+      const m = modelFor(ctx?.type);
+      const settings = { apiKey, model: m && isModelId(m) ? m : DEFAULT_MODEL, coachSource: 'apiKey' as const };
       const r = await askClaude(p, { onText: () => {} }, { settings, ...(signal ? { signal } : {}) });
       return { text: r.text, model: r.model };
     };
@@ -202,18 +263,23 @@ async function run(f: Map<string, string | true>): Promise<number> {
     return 1;
   }
 
-  const intFlag = (k: string, dflt: number): number | null => {
-    const v = str(f, k);
-    if (v === undefined) return dflt;
-    return /^\d+$/.test(v) && Number(v) >= 1 ? Number(v) : null;
-  };
   const repeat = intFlag('repeat', 3);
-  const concurrency = intFlag('concurrency', 2);
+  const concurrency = intFlag('concurrency', source === 'helper' ? 1 : 2);
   if (repeat === null || concurrency === null) {
     console.error('--repeat and --concurrency: a whole number, 1 or more.');
     return 2;
   }
-  console.log(`${built.length} cases × ${repeat} = ${built.length * repeat} calls, ${concurrency} at a time.`);
+  if (source === 'helper' && concurrency > helperConcurrency) {
+    console.error(
+      `Warning: --concurrency ${concurrency}, but the coach helper answers ${helperConcurrency} at a time. ` +
+        'The extra calls wait in its queue (or, with an older helper, are refused as busy and retried): no faster, and more chances of a transport error.',
+    );
+  }
+  const format = promptFormat(f);
+  console.log(
+    `${built.length} cases × ${repeat} = ${built.length * repeat} calls, ${concurrency} at a time · prompt ${format}` +
+      (Object.keys(modelByType).length ? ` · models by type: ${Object.entries(modelByType).map(([k, v]) => `${k}=${v}`).join(', ')}` : ''),
+  );
   const label = (str(f, 'label') ?? source).replace(/[^A-Za-z0-9._-]+/g, '-');
   const ctrl = new AbortController();
   process.once('SIGINT', () => {
@@ -227,9 +293,15 @@ async function run(f: Map<string, string | true>): Promise<number> {
     repeat,
     concurrency,
     signal: ctrl.signal,
+    promptFormat: format,
+    modelByType,
+    onRetry: ({ id, rep, attempt, kind, waitMs }) => {
+      console.error(`  ↻ ${id} #${rep + 1}: ${kind} on try ${attempt}; retrying in ${(waitMs / 1000).toFixed(0)} s`);
+    },
     onResult: ({ id, type, rep, sample: r }, done, n) => {
-      const mark = r.verdict === 'acceptable' ? '✓' : r.verdict === 'unacceptable' ? '✗' : '·';
-      console.log(`${mark} [${done}/${n}] ${id} #${rep + 1} (${type}) ${r.verdict}${r.canonical ? ` ${r.canonical}` : ''}${r.note ? ` — ${r.note.slice(0, 100)}` : ''} · ${(r.latencyMs / 1000).toFixed(1)} s`);
+      const mark = r.verdict === 'acceptable' ? '✓' : r.verdict === 'unacceptable' ? '✗' : r.verdict === 'error' ? '!' : '·';
+      const what = r.verdict === 'error' ? `TRANSPORT ERROR${r.errorKind ? ` (${r.errorKind})` : ''}` : r.verdict;
+      console.log(`${mark} [${done}/${n}] ${id} #${rep + 1} (${type}) ${what}${r.canonical ? ` ${r.canonical}` : ''}${r.note ? ` — ${r.note.slice(0, 100)}` : ''} · ${(r.latencyMs / 1000).toFixed(1)} s${r.attempts ? ` · ${r.attempts} tries` : ''}`);
     },
   });
   const md = reportMarkdown(report);
@@ -241,6 +313,11 @@ async function run(f: Map<string, string | true>): Promise<number> {
   writeFileSync(`${base}.md`, md);
   console.log(`\n${md}`);
   console.log(`Wrote ${relative(ROOT, base)}.json and .md`);
+  const warn = transportWarning(report);
+  if (warn) {
+    console.error(`\n${'!'.repeat(78)}\nWARNING — ${warn}\n${'!'.repeat(78)}`);
+    return 3;
+  }
   return 0;
 }
 
@@ -251,7 +328,12 @@ function compare(pos: string[]): number {
   }
   const loaded = pos.map((p) => normalizeReport(JSON.parse(readFileSync(resolve(p), 'utf8'))));
   for (const l of loaded) for (const w of l.warnings) console.error(`Warning: ${w}`);
-  console.log(compareReports(loaded[0]!.report, loaded[1]!.report).markdown);
+  const c = compareReports(loaded[0]!.report, loaded[1]!.report);
+  console.log(c.markdown);
+  if (c.untrustworthy) {
+    console.error('WARNING: a run in this comparison has transport errors; its verdict is not trustworthy.');
+    return 3;
+  }
   return 0;
 }
 

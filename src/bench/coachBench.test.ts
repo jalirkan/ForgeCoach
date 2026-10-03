@@ -4,9 +4,16 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { COACH_SYSTEM } from '../prompt.ts';
+import { coachSystem } from '../prompt.ts';
+import { CoachError } from '../claude.ts';
 import {
   BENCH_TYPES,
+  buildCase,
+  calibration,
   caseProblems,
+  parseModelByType,
+  promptSections,
+  transientKind,
   caseStats,
   compareReports,
   extractAnswer,
@@ -26,7 +33,7 @@ import {
   type Sample,
 } from './coachBench.ts';
 import { bootstrapMean, signTest, wilson } from './benchStats.ts';
-import { buildAll, readCards, readCases } from './benchFiles.ts';
+import { buildAll, readCards, readCases, readLogFile } from './benchFiles.ts';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const loaded = readCases(ROOT);
@@ -177,15 +184,19 @@ describe('runs and repeated sampling', () => {
     expect(block.stats).toMatchObject({ n: 3, valid: 3, meanScore: 1, acceptable: 3, agreement: 1 });
     expect(r.cases.find((c) => c.id === 'mulligan-trample7-curve')!.stats).toMatchObject({ meanScore: -1, unacceptable: 3 });
     const err = r.cases.find((c) => c.id === 'pass-auto2026-no-target-yet')!;
-    expect(err.samples[0]).toMatchObject({ verdict: 'error', note: 'helper busy' });
-    expect(err.stats).toMatchObject({ valid: 0, meanScore: null, unparsed: 3 });
+    // A plain error (no transient kind) is not retried: one call, one transport error.
+    expect(err.samples[0]).toMatchObject({ verdict: 'error', note: 'helper busy', attempts: 1 });
+    expect(err.stats).toMatchObject({ valid: 0, meanScore: null, unparsed: 0, errors: 3 });
     expect(r.model).toBe('test-model');
-    // Format failures are their own metric: 3 of 9 answers, and not part of the score.
-    expect(r.summary.total.formatFailure!.mean).toBeCloseTo(1 / 3);
+    // Transport errors are their own metric: not format failures, not in the score.
+    expect(r.summary.total.formatFailure!.mean).toBe(0);
+    expect(r.summary.total.errors).toBe(3);
+    expect(r.summary.total.transportError!.mean).toBeCloseTo(1 / 3);
     expect(r.summary.total.score!.mean).toBe(0);
     const md = reportMarkdown(r);
     expect(md).toContain('3 answers per case');
     expect(md).toMatch(/\| block \| 1 \|/);
+    expect(md).toMatch(/WARNING — TRANSPORT ERRORS: 3 of 9 calls/);
   });
 
   it('never has more calls in flight than the concurrency', async () => {
@@ -380,5 +391,274 @@ describe('old single-sample result files', () => {
     const r = fakeReport('r', [fake('x', 'aab')]);
     expect(normalizeReport(JSON.parse(JSON.stringify(r))).report.cases[0]!.stats).toEqual(r.cases[0]!.stats);
     expect(() => normalizeReport({ hello: 1 })).toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Retries, transport errors, latency, layouts, calibration, regret
+
+describe('retries and transport errors', () => {
+  const one = [byId('mulligan-trample7-curve')];
+  const fixedNow = () => 0;
+
+  it('retries busy and rate-limited calls with backoff, and only the answer is recorded', async () => {
+    const waits: number[] = [];
+    let calls = 0;
+    const r = await runBench(
+      one,
+      async () => {
+        calls++;
+        if (calls === 1) throw new CoachError('busy', 'helper_busy', 429);
+        if (calls === 2) throw new CoachError('rate', 'rate_limit', 429);
+        return { text: 'ANSWER: keep' };
+      },
+      { label: 'r', source: 't', now: fixedNow, sleep: async (ms) => void waits.push(ms) },
+    );
+    expect(calls).toBe(3);
+    expect(waits).toEqual([2000, 4000]);
+    expect(r.cases[0]!.samples).toHaveLength(1);
+    expect(r.cases[0]!.samples[0]).toMatchObject({ verdict: 'acceptable', attempts: 3 });
+    expect(r.summary.errors).toBe(0);
+    expect(reportMarkdown(r)).not.toContain('TRANSPORT ERRORS:');
+  });
+
+  it('gives network and 5xx errors two retries, then records a transport error with its kind', async () => {
+    let calls = 0;
+    const r = await runBench(
+      one,
+      async () => {
+        calls++;
+        throw new CoachError('broke', 'network');
+      },
+      { label: 'r', source: 't', now: fixedNow, sleep: async () => {} },
+    );
+    expect(calls).toBe(3);
+    expect(r.cases[0]!.samples[0]).toMatchObject({ verdict: 'error', errorKind: 'network', attempts: 3 });
+    expect(r.cases[0]!.stats).toMatchObject({ errors: 1, unparsed: 0, agreement: 1, answers: [] });
+  });
+
+  it('never retries a final error (a bad key, a refused page)', async () => {
+    let calls = 0;
+    await runBench(
+      one,
+      async () => {
+        calls++;
+        throw new CoachError('no', 'auth', 401);
+      },
+      { label: 'r', source: 't', now: fixedNow, sleep: async () => {} },
+    );
+    expect(calls).toBe(1);
+    expect(transientKind(new CoachError('x', 'overloaded', 529))).toEqual({ kind: 'overloaded', budget: 'busy' });
+    expect(transientKind({ status: 503 })).toEqual({ kind: '503', budget: 'network' });
+    expect(transientKind(new CoachError('x', 'not_logged_in'))).toBeNull();
+  });
+
+  it('honours abort: a call cut short while backing off is not a sample', async () => {
+    const ctrl = new AbortController();
+    const r = await runBench(
+      one,
+      async () => {
+        throw new CoachError('busy', 'helper_busy', 429);
+      },
+      {
+        label: 'r',
+        source: 't',
+        now: fixedNow,
+        signal: ctrl.signal,
+        sleep: async () => {
+          ctrl.abort();
+        },
+      },
+    );
+    expect(r.cases).toEqual([]);
+  });
+
+  it('leaves time in the helper queue out of the latency', async () => {
+    let t = 0;
+    const r = await runBench(
+      one,
+      async () => {
+        t += 9000;
+        return { text: 'ANSWER: keep', queuedMs: 6000 };
+      },
+      { label: 'r', source: 't', now: () => t },
+    );
+    expect(r.cases[0]!.samples[0]!.latencyMs).toBe(3000);
+    expect(r.summary.byType.mulligan!.latencyMs.median).toBe(3000);
+    expect(reportMarkdown(r)).toMatch(/\| mulligan \| 1 \|.*\| 3\.0 s \| 3\.0 s \|/);
+  });
+
+  it('tells each call which case it is for (a model per type)', async () => {
+    const types: string[] = [];
+    await runBench(pick2(), async (_p, _s, ctx) => {
+      types.push(ctx!.type);
+      return { text: 'ANSWER: keep' };
+    }, { label: 'r', source: 't', now: fixedNow });
+    expect(types.sort()).toEqual(['block', 'mulligan']);
+    expect(parseModelByType('mulligan=claude-haiku-4-5, play_draw=claude-haiku-4-5', ['claude-haiku-4-5'])).toEqual({ mulligan: 'claude-haiku-4-5', play_draw: 'claude-haiku-4-5' });
+    expect(() => parseModelByType('mulligan=gpt', ['claude-haiku-4-5'])).toThrow(/not one of/);
+    expect(() => parseModelByType('opening=claude-haiku-4-5', ['claude-haiku-4-5'])).toThrow(/not a decision type/);
+  });
+
+  it('an old file whose busy errors were format failures now reads them as transport errors', () => {
+    const r = fakeReport('old', [{ ...fake('x', 'aa'), samples: [...fake('x', 'aa').samples, { ...sample('acceptable'), verdict: 'error', score: 0, answer: null, canonical: null, text: 'busy' }] }]);
+    const n = normalizeReport(JSON.parse(JSON.stringify(r))).report;
+    expect(n.cases[0]!.stats).toMatchObject({ n: 3, errors: 1, unparsed: 0, agreement: 1 });
+    expect(n.summary.errors).toBe(1);
+  });
+});
+
+function pick2(): BuiltCase[] {
+  return [byId('mulligan-trample7-curve'), byId('block-comfort13-trade-fliers')];
+}
+
+describe('the answer-first layout', () => {
+  const c = byId('block-comfort13-trade-fliers').case;
+
+  it('asks for the ANSWER line first and uses the answer-first system prompt', () => {
+    const b = buildCase(c, readFullLog(c.log), cards, { format: 'answer-first' });
+    expect(b.prompt.system).toBe(coachSystem('answer-first'));
+    expect(b.prompt.user).toMatch(/# Bench answer[\s\S]*FIRST line[\s\S]*ANSWER:/);
+    expect(b.format).toBe('answer-first');
+  });
+
+  it('the scorer reads either layout', () => {
+    const b = buildCase(c, readFullLog(c.log), cards, { format: 'answer-first' });
+    expect(scoreReply(b, 'ANSWER: block:23>64\n**Answer:** block the Ant with the Drake\n**Play:** …')).toMatchObject({ verdict: 'acceptable' });
+    expect(scoreReply(b, '**Answer:** block the Ant\nANSWER: block:23>64\n**Play:** …')).toMatchObject({ verdict: 'acceptable' });
+    expect(extractAnswer('ANSWER: keep\nlater: ANSWER: mulligan', 'first')).toBe('keep');
+    expect(extractAnswer('**Answer:** keep it\nANSWER: mulligan', 'first')).toBe('mulligan');
+    // The classic layout still reads the last line.
+    expect(scoreReply(byId(c.id), '**Play:** …\nANSWER: block:23>64')).toMatchObject({ verdict: 'acceptable' });
+  });
+
+  it('records the stated confidence and rule of each reply', async () => {
+    const r = await runBench([byId(c.id)], async () => ({ text: '**Play:** …\n**Rule:** trade on your terms\n**Confidence:** medium — close\nANSWER: block:23>64' }), { label: 'r', source: 't', now: () => 0 });
+    expect(r.cases[0]!.samples[0]!.stated).toEqual({ confidence: 'medium', rule: 'trade on your terms' });
+  });
+});
+
+function readFullLog(path: string) {
+  return readLogFile(`${ROOT}/${path}`);
+}
+
+describe('prompt size by section', () => {
+  it('splits each prompt into its sections and ranks them by share', () => {
+    const rows = promptSections(built.map((b) => b.prompt));
+    const names = rows.map((r) => r.name);
+    for (const n of ['System prompt', 'Decision', 'You (state)', 'Opponent (state)', 'Card text', 'Question', 'Bench answer']) expect(names).toContain(n);
+    expect(rows.reduce((a, r) => a + r.share, 0)).toBeCloseTo(1, 5);
+    for (let i = 1; i < rows.length; i++) expect(rows[i]!.share).toBeLessThanOrEqual(rows[i - 1]!.share);
+  });
+});
+
+describe('calibration', () => {
+  /** A case whose answers state `conf` and score per `letters`. */
+  const stated = (id: string, letters: string, conf: 'high' | 'medium' | 'low' | null): CaseResult => {
+    const c = fake(id, letters);
+    const samples = c.samples.map((s) => (conf ? { ...s, stated: { confidence: conf } } : s));
+    return { ...c, samples, stats: caseStats(samples) };
+  };
+
+  it('says plainly when the data is too thin', () => {
+    const cal = calibration([stated('a', 'aaa', 'high'), stated('b', 'bbb', 'low')]);
+    expect(cal.thin).toBe(true);
+    expect(cal.text).toMatch(/Too little data/);
+    expect(cal.rows.map((r) => [r.level, r.samples, r.cases])).toEqual([
+      ['high', 3, 1],
+      ['low', 3, 1],
+    ]);
+    expect(calibration([fake('x', 'aaa')]).text).toMatch(/No answer stated a confidence/);
+  });
+
+  it('finds that confidence tracks the score when it does, and says so when it runs backwards', () => {
+    const cases = [
+      ...Array.from({ length: 6 }, (_, i) => stated(`h${i}`, i < 5 ? 'aaa' : 'aao', 'high')),
+      ...Array.from({ length: 6 }, (_, i) => stated(`l${i}`, i < 4 ? 'bbo' : 'oob', 'low')),
+    ];
+    const cal = calibration(cases);
+    expect(cal.thin).toBe(false);
+    expect(cal.gap!.from).toBe('high');
+    expect(cal.gap!.to).toBe('low');
+    expect(cal.gap!.diff.lo).toBeGreaterThan(0);
+    expect(cal.text).toMatch(/tracks the score/);
+    const flipped = cases.map((c) => ({ ...c, samples: c.samples.map((s) => ({ ...s, stated: { confidence: s.stated!.confidence === 'high' ? 'low' : 'high' } as const })) }));
+    expect(calibration(flipped).text).toMatch(/backwards/);
+    expect(reportMarkdown(fakeReport('r', cases))).toMatch(/## Calibration: stated confidence vs score[\s\S]*\| high \| 18 \| 6 \|/);
+  });
+
+  it('runs on regret instead of the score when samples carry it', () => {
+    const withRegret = (id: string, conf: 'high' | 'low', v: number): CaseResult => {
+      const c = fake(id, 'aaa');
+      const samples = c.samples.map((s) => ({ ...s, stated: { confidence: conf }, regret: { value: v, lo: v - 0.01, hi: v + 0.01 } }));
+      return { ...c, samples, stats: caseStats(samples) };
+    };
+    const cases = [...Array.from({ length: 5 }, (_, i) => withRegret(`h${i}`, 'high', 0.01 * i)), ...Array.from({ length: 5 }, (_, i) => withRegret(`l${i}`, 'low', 0.2 + 0.01 * i))];
+    const cal = calibration(cases, 'regret');
+    expect(cal.metric).toBe('regret');
+    expect(cal.gap!.diff.hi).toBeLessThan(0);
+    expect(cal.text).toMatch(/tracks regret/);
+    expect(reportMarkdown(fakeReport('r', cases))).toMatch(/Calibration: stated confidence vs regret/);
+  });
+});
+
+describe('regret as the headline (synthetic: the engine grader is not built yet)', () => {
+  const ids = Array.from({ length: 8 }, (_, i) => `c${i}`);
+  const graded = (label: string, regret: (i: number) => number, letters = 'aob') =>
+    fakeReport(
+      label,
+      ids.map((id, i) => {
+        const c = fake(id, letters);
+        const v = regret(i);
+        const samples = c.samples.map((s) => ({ ...s, regret: { value: v, lo: Math.max(0, v - 0.02), hi: v + 0.02 } }));
+        return { ...c, samples, stats: caseStats(samples) };
+      }),
+    );
+
+  it('makes mean regret the headline once both runs carry it, with the pass rate secondary', () => {
+    // Same pass rate; B's suggestions lose less win rate.
+    const c = compareReports(graded('A', (i) => 0.1 + 0.01 * i), graded('B', (i) => 0.02 + 0.005 * i));
+    expect(c.headline).toBe('regret');
+    expect(c.verdict).toBe('better');
+    expect(c.pairedRegret!.mean!.hi).toBeLessThan(0);
+    expect(c.paired.n).toBe(8);
+    expect(c.markdown).toMatch(/\*\*Verdict \(mean regret, lower is better\): B \(B\) is better/);
+    expect(c.markdown).toMatch(/Secondary: the pass rate/);
+    expect(c.markdown.indexOf('Mean regret A')).toBeLessThan(c.markdown.indexOf('Quality score A'));
+  });
+
+  it('calls B worse when its regret is higher, whatever the pass rate says', () => {
+    const c = compareReports(graded('A', () => 0.02, 'bbb'), graded('B', (i) => 0.2 + 0.01 * i, 'aaa'));
+    expect(c.headline).toBe('regret');
+    expect(c.verdict).toBe('worse');
+    expect(c.paired.mean!.lo).toBeGreaterThan(0); // the pass rate alone would have said better
+  });
+
+  it('keeps the score headline while samples carry no regret', () => {
+    const c = compareReports(fakeReport('A', ids.map((id) => fake(id, 'aob'))), fakeReport('B', ids.map((id) => fake(id, 'aaa'))));
+    expect(c.headline).toBe('score');
+    expect(c.pairedRegret).toBeNull();
+    expect(c.markdown).not.toMatch(/mean regret/);
+    expect(summarize([fake('x', 'aaa')]).total.regret).toBeNull();
+  });
+});
+
+describe('a comparison with transport errors', () => {
+  it('warns loudly that it is not trustworthy', () => {
+    const ids = Array.from({ length: 6 }, (_, i) => `c${i}`);
+    const withErrors = fakeReport(
+      'busy',
+      ids.map((id) => {
+        const c = fake(id, 'aa');
+        const samples = [...c.samples, { ...sample('acceptable'), verdict: 'error' as const, score: 0, answer: null, canonical: null, text: 'busy', errorKind: 'helper_busy' }];
+        return { ...c, samples, stats: caseStats(samples) };
+      }),
+    );
+    const c = compareReports(fakeReport('A', ids.map((id) => fake(id, 'aaa'))), withErrors);
+    expect(c.untrustworthy).toBe(true);
+    expect(c.markdown).toMatch(/WARNING — TRANSPORT ERRORS: 6 of 18 calls in B \(busy\).*helper_busy ×6/);
+    expect(c.markdown).toMatch(/This comparison is not trustworthy/);
+    expect(c.verdictText).toMatch(/Not trustworthy/);
+    expect(c.unstable).toEqual([]); // busy errors no longer fake an unstable case
   });
 });

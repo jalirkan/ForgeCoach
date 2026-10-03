@@ -16,7 +16,8 @@ import { loadShippedMeta } from '../cube/cubes.ts';
 import type { CubeMeta } from '../cube/meta.ts';
 import { getImportedMeta } from '../cube/metaStore.ts';
 import { activeGuideText as guideText } from '../guide.ts';
-import { MODELS } from '../claude.ts';
+import { loadSettings, MODELS } from '../claude.ts';
+import { parseCoachAnswer, type StatedConfidence } from '../coachAnswer.ts';
 import { SOURCE_LABEL } from '../coachHelper.ts';
 import { useCoachAvailability } from './hooks.ts';
 import { startAnswer, stopAnswer, useAnswer, type Answer } from './answers.ts';
@@ -77,7 +78,15 @@ export async function coachPrompt(log: GameLog, d: Decision): Promise<Prompt> {
   const cards = await cardsForPrompt(names);
   const guide = activeGuideText();
   const cube = await cubeFor(log);
-  return buildCoachPrompt(log, d, cards, { ...(guide ? { guide } : {}), ...(cube ? { cube } : {}) });
+  return buildCoachPrompt(log, d, cards, { ...(guide ? { guide } : {}), ...(cube ? { cube } : {}), format: answerFirstSetting() ? 'answer-first' : 'classic' });
+}
+
+function answerFirstSetting(): boolean {
+  try {
+    return loadSettings().answerFirst === true;
+  } catch {
+    return false;
+  }
 }
 
 async function reviewPrompt(log: GameLog): Promise<Prompt> {
@@ -209,6 +218,7 @@ const MomentView = memo(function MomentView({ log, d, onOpenSettings }: { log: G
         onStop={() => stopAnswer(key)}
         makePrompt={makePrompt}
         onOpenSettings={onOpenSettings}
+        structured
       />
     </div>
   );
@@ -283,6 +293,7 @@ export function AnswerBox({
   onStop,
   makePrompt,
   onOpenSettings,
+  structured = false,
 }: {
   answer: Answer | undefined;
   askLabel: string;
@@ -291,6 +302,8 @@ export function AnswerBox({
   onStop: () => void;
   makePrompt: () => Promise<Prompt>;
   onOpenSettings: () => void;
+  /** A decision answer (prompt.ts's format): show its one-line answer, rule and stated confidence as a header. */
+  structured?: boolean;
 }) {
   const [copyState, setCopyState] = useState<'idle' | 'busy' | 'ok' | 'err'>('idle');
   const copy = async () => {
@@ -304,7 +317,12 @@ export function AnswerBox({
     }
     setTimeout(() => setCopyState('idle'), 2200);
   };
-  const busy = answer?.status === 'preparing' || answer?.status === 'streaming';
+  const busy = answer?.status === 'preparing' || answer?.status === 'queued' || answer?.status === 'streaming';
+  const streaming = answer?.status === 'streaming';
+  const parts = useMemo(
+    () => (structured && answer?.text ? parseCoachAnswer(answer.text, { complete: !streaming }) : null),
+    [structured, answer?.text, streaming],
+  );
   const coach = useCoachAvailability();
   const needsSetup = answer?.status === 'error' && (SETUP_ERRORS.has(answer.errorKind ?? '') || /api key/i.test(answer.error ?? ''));
   const showSource = answer?.source && answer.status !== 'error';
@@ -332,12 +350,22 @@ export function AnswerBox({
       </div>
       {!answer && <p className="muted small">{idleText}</p>}
       {answer?.status === 'preparing' && <p className="muted small pulse">{answer.source ? 'Gathering exact card text…' : 'Looking for a coach…'}</p>}
-      {answer && answer.text && <Markdown text={answer.text} streaming={answer.status === 'streaming'} />}
+      {answer?.status === 'queued' && (
+        <p className="muted small pulse">
+          Waiting for the coach…{answer.queuePosition ? ` (${answer.queuePosition === 1 ? 'one question' : `${answer.queuePosition} questions`} ahead)` : ''}
+        </p>
+      )}
+      {parts && (parts.answer || parts.rule || parts.confidence) && <AnswerHead answer={parts.answer} rule={parts.rule} confidence={parts.confidence} why={parts.confidenceWhy} />}
+      {answer && answer.text && <Markdown text={parts ? parts.body : answer.text} streaming={streaming} />}
       {answer?.status === 'streaming' && !answer.text && (
         <p className="muted small pulse">{answer.thinking ? 'Thinking it through…' : answer.source === 'helper' ? 'Waiting for Claude Code on your PC…' : 'Waiting for Claude…'}</p>
       )}
       {answer?.refused && <div className="notice-inline warn">Claude declined to answer this one. Try rephrasing via “Copy prompt” in the Claude app.</div>}
-      {answer?.status === 'stopped' && <div className="notice-inline">Stopped.</div>}
+      {answer?.status === 'stopped' && (
+        <div className="notice-inline">
+          {answer.stopReasonNote === 'moved_on' ? 'Stopped — the game moved on.' : answer.stopReasonNote === 'superseded' ? 'Replaced by a newer question.' : 'Stopped.'}
+        </div>
+      )}
       {answer?.status === 'error' && (
         <div className="notice-inline bad">
           {withCode(answer.error ?? '')}
@@ -371,6 +399,40 @@ export function AnswerBox({
           </button>
         </p>
       )}
+    </div>
+  );
+}
+
+const CONFIDENCE_WORDS: Record<StatedConfidence, string> = {
+  high: 'Confident',
+  medium: 'Fairly sure',
+  low: 'Close call — think here',
+};
+
+/**
+ * The answer's head: the one-line play (answer-first layout), the rule it
+ * follows and the coach's stated confidence. Low confidence reads as a close
+ * call to think about, not a play to copy.
+ */
+export function AnswerHead({ answer, rule, confidence, why }: { answer: string | null; rule: string | null; confidence: StatedConfidence | null; why: string | null }) {
+  return (
+    <div className={cx('answer-head', confidence === 'low' && 'is-close')}>
+      {answer && <p className="answer-line">{answer}</p>}
+      {(rule || confidence) && (
+        <div className="answer-chips">
+          {confidence && (
+            <span className={cx('conf-chip', `conf-${confidence}`)} title={why ? `Coach’s confidence: ${confidence} — ${why}` : `Coach’s confidence: ${confidence}`}>
+              {CONFIDENCE_WORDS[confidence]}
+            </span>
+          )}
+          {rule && (
+            <span className="rule-chip" title="The heuristic this line follows">
+              <span className="rule-k">Rule</span> {rule}
+            </span>
+          )}
+        </div>
+      )}
+      {confidence === 'low' && why && <p className="tiny muted conf-why">{why}</p>}
     </div>
   );
 }

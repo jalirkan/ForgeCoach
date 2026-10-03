@@ -10,7 +10,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AskBody, GameStateBody, InputBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import type { Decision } from '../../decisions.ts';
-import { startAnswer, stopAnswer, useAnswer } from '../answers.ts';
+import { answerBusy, startAnswer, stopAnswer, useAnswer } from '../answers.ts';
 import { AnswerBox, coachPrompt } from '../CoachPanel.tsx';
 import { Markdown } from '../Markdown.tsx';
 import { IconBook, IconChevronDown, KindIcon, KIND_LABEL } from '../Icons.tsx';
@@ -21,6 +21,12 @@ import { detectHelper } from '../../coachHelper.ts';
 import { liveDecision, momentKey } from './liveDecision.ts';
 
 const AUTO_KEY = 'forgecoach.autoCoach';
+
+/**
+ * The live coach's supersede key (D325): one per tab, so a newer question from
+ * this board replaces an older one still waiting in the coach helper's queue.
+ */
+const LIVE_SUPERSEDE = `live-coach:${Math.random().toString(36).slice(2, 10)}`;
 
 export const PlayCoach = memo(function PlayCoach({
   log,
@@ -62,10 +68,19 @@ export const PlayCoach = memo(function PlayCoach({
       if (!log) return;
       asked.current.set(k, d);
       setLastAsked({ key: k, label: d.label });
-      void startAnswer(k, () => coachPrompt(log, d));
+      void startAnswer(k, () => coachPrompt(log, d), { supersedes: LIVE_SUPERSEDE });
     },
     [log],
   );
+
+  // The decision moved on: a question about an earlier moment is stale, so stop it
+  // (a waiting one leaves the helper's queue; a running one stops Claude Code).
+  const shownKey = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = shownKey.current;
+    shownKey.current = key;
+    if (prev && prev !== key && answerBusy(prev)) stopAnswer(prev, 'moved_on');
+  }, [key]);
   const current = useAnswer(key);
   const previous = useAnswer(lastAsked && lastAsked.key !== key ? lastAsked.key : null);
 
@@ -140,6 +155,7 @@ export const PlayCoach = memo(function PlayCoach({
             onStop={() => stopAnswer(key)}
             makePrompt={makePrompt}
             onOpenSettings={onOpenSettings}
+            structured
           />
         </div>
       ) : (
@@ -153,7 +169,8 @@ export const PlayCoach = memo(function PlayCoach({
             <span>Earlier advice · {stripRound(lastAsked.label)}</span>
             <IconChevronDown size={14} className={showPrev ? 'rot' : ''} />
           </button>
-          {showPrev && (previous.text ? <Markdown text={previous.text} streaming={previous.status === 'streaming'} /> : <p className="muted small">{previous.status === 'error' ? previous.error : 'Thinking…'}</p>)}
+          {showPrev && (previous.text ? <Markdown text={previous.text} streaming={previous.status === 'streaming'} /> : <p className="muted small">{previous.status === 'error' ? previous.error : previous.status === 'stopped' ? (previous.stopReasonNote === 'moved_on' ? 'Stopped — the game moved on before it answered.' : 'Stopped.') : 'Thinking…'}</p>)}
+          {showPrev && previous.text && previous.status === 'stopped' && previous.stopReasonNote === 'moved_on' && <p className="tiny muted">Stopped — the game moved on.</p>}
         </div>
       )}
       <p className="tiny muted pc-foot">The coach only advises — every move is yours.</p>

@@ -28,7 +28,16 @@ export interface Prompt {
 // ---------------------------------------------------------------------------
 // System prompt
 
-export const COACH_SYSTEM = `You are a Magic: The Gathering coach sitting next to a newer player (started a few months ago) who is playing against the Forge AI. At each decision you get the exact game state straight from the engine, the oracle text of the cards involved, and sometimes a play guide for the player's deck.
+/**
+ * How the coach lays out its answer:
+ * - 'classic' (default): **Play:** first, then why, the rule, the confidence and the rest;
+ * - 'answer-first': a one-line **Answer:**, its **Confidence:** and **Rule:** first, so the
+ *   play can be shown as soon as that line has streamed, then the explanation.
+ */
+export type PromptFormat = 'classic' | 'answer-first';
+export const PROMPT_FORMATS: readonly PromptFormat[] = ['classic', 'answer-first'];
+
+const COACH_INTRO = `You are a Magic: The Gathering coach sitting next to a newer player (started a few months ago) who is playing against the Forge AI. At each decision you get the exact game state straight from the engine, the oracle text of the cards involved, and sometimes a play guide for the player's deck.
 
 Trust the state, not intuition: TAPPED, SUMMONING SICK, counters, damage, P/T (already including pumps and counters), the mana pool, the untapped mana sources, the land drop and the spells cast this turn are exact. Use the given card text, never memory of a card; if a card's text is unavailable, say what you assume it does. Cards marked hidden are unknown — reason about what the opponent could have, never claim to know it.
 
@@ -45,13 +54,37 @@ Before recommending any attack, activation or spell, check:
 - Respond to removal by sacrificing its target for value when you have an outlet.
 - Count lethal both ways before every attack and every block: what you can push through against their life and untapped blockers, and what they can swing back with next turn against your life and blockers.
 
-Answer format — short, no preamble, no restating the state:
-**Play:** one recommended line as numbered steps in order. For every spell or ability give its cost and which sources pay it, and what mana is left at the end. For combat, name every attacker / blocker assignment.
-**Why:** two or three sentences. Name the heuristic the line follows ("count lethal", "hold the outlet", "fodder before payoffs", "trade on your terms", "use all your mana", "don't overextend") so the pattern transfers.
-**Trap:** the tempting wrong play here and why it's wrong.
-**Their turn:** what the opponent can do next (their untapped creatures, open mana, cards in hand) and what to keep back for it.
-**Alternative:** only if a second line is genuinely close; otherwise leave this out.
-**Assumptions:** only if something is ambiguous or a card's text is unavailable — state it rather than guessing.`;
+`;
+
+const F_PLAY = '**Play:** one recommended line as numbered steps in order. For every spell or ability give its cost and which sources pay it, and what mana is left at the end. For combat, name every attacker / blocker assignment.';
+const F_WHY = '**Why:** two or three sentences.';
+const F_RULE = '**Rule:** the heuristic the line follows, in a few words ("count lethal", "hold the outlet", "fodder before payoffs", "trade on your terms", "use all your mana", "don\'t overextend"), so the pattern transfers.';
+const F_CONFIDENCE = '**Confidence:** high, medium or low, then a few words why when it is not high. Low means a close call: another line is about as good, or the right play turns on something hidden.';
+const F_TAIL = [
+  "**Trap:** the tempting wrong play here and why it's wrong.",
+  '**Their turn:** what the opponent can do next (their untapped creatures, open mana, cards in hand) and what to keep back for it.',
+  '**Alternative:** only if a second line is genuinely close; otherwise leave this out.',
+  '**Assumptions:** only if something is ambiguous or a card\'s text is unavailable — state it rather than guessing.',
+];
+
+/** The coach's system prompt for a layout (`COACH_SYSTEM` is the classic one). */
+export function coachSystem(format: PromptFormat = 'classic'): string {
+  const lines =
+    format === 'answer-first'
+      ? [
+          'Answer format — answer first, short, no preamble, no restating the state. The first line is the answer, so the player can act on it before reading the rest:',
+          '**Answer:** the recommended play in one line (for example "Attack with both Bears, keep the Wall home").',
+          F_CONFIDENCE,
+          F_RULE,
+          F_PLAY,
+          F_WHY,
+          ...F_TAIL,
+        ]
+      : ['Answer format — short, no preamble, no restating the state:', F_PLAY, F_WHY, F_RULE, F_CONFIDENCE, ...F_TAIL];
+  return `${COACH_INTRO}${lines.join('\n')}`;
+}
+
+export const COACH_SYSTEM = coachSystem('classic');
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -565,7 +598,12 @@ function playerSection(
   return out;
 }
 
-export function buildCoachPrompt(log: GameLog, d: Decision, cards: Map<string, CardInfo>, opts?: { guide?: string; cube?: CubeCoachInput }): Prompt {
+export function buildCoachPrompt(
+  log: GameLog,
+  d: Decision,
+  cards: Map<string, CardInfo>,
+  opts?: { guide?: string; cube?: CubeCoachInput; format?: PromptFormat },
+): Prompt {
   const s = d.state;
   const seat = log.seat;
   const byId = cardsById(s);
@@ -624,7 +662,7 @@ export function buildCoachPrompt(log: GameLog, d: Decision, cards: Map<string, C
   lines.push('# Question');
   lines.push(questionFor(d, seat, byId));
 
-  return { system: COACH_SYSTEM, user: lines.join('\n') };
+  return { system: coachSystem(opts?.format ?? 'classic'), user: lines.join('\n') };
 }
 
 /** One paste-able block for the Claude app (system + user, clearly separated). */
