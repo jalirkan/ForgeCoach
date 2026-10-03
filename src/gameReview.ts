@@ -2,7 +2,7 @@
  * ForgeCoach — gameReview.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The engine's post-game review (mtg-table docs/game-review.md, D352): a JSON
+ * The engine's post-game review (mtg-table docs/game-review.md, D353): a JSON
  * report that says, for each decision the player made, what every option was
  * worth in playouts, what the player chose and what the engine thinks was
  * best, with intervals. This module reads that report and nothing else:

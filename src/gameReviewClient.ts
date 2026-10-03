@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The client for the coach helper's engine review (mtg-table
- * docs/game-review.md § "/review on the coach helper", D352):
+ * docs/game-review.md § "/review on the coach helper", D353):
  *
  *   GET  /health        → {…, review: 1} when the helper can run reviews
  *   POST /review        {gameId, seat?, oppPool?, oppKnown?, deepK?, triageS?, deepS?}
