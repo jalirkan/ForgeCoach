@@ -354,7 +354,7 @@ Options: `--source helper|api` (by default the helper if it is up, otherwise the
 API when `ANTHROPIC_API_KEY` is set), `--model <m>` (an alias the helper
 accepts, or an API model id from `src/claude.ts`), `--only id1,id2`,
 `--type block`, `--helper-url <url>`. Cases run one at a time (the helper
-answers one question at a time), so a full run takes about as long as 26 coach
+answers one question at a time), so a full run takes about as long as 28 coach
 answers. Ctrl-C stops after the current case and still writes the report.
 
 `npm run bench:coach -- --dry-run` builds every prompt and checks every case
