@@ -9,6 +9,9 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './deck.css';
+import '../forge-theme.css';
+import '../draft/draft.css';
+import './skin.css';
 import { CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';
 import { deletePool, listPools, newPool, savePool, type SavedPool } from '../../cube/pools.ts';
 import { parseMeta } from '../../cube/meta.ts';
@@ -103,7 +106,7 @@ function DeckHome({
 }) {
   const [confirm, setConfirm] = useState<string | null>(null);
   return (
-    <div className="load deck-home">
+    <div className="load deck-home fx">
       <header className="load-top">
         <button className="logo-btn" onClick={onExit} aria-label="ForgeCoach home">
           <Logo />
@@ -244,7 +247,7 @@ function Workspace({
   );
 
   return (
-    <div className="dw">
+    <div className="dw fx">
       <header className="dw-top">
         <button className="icon-btn" onClick={onBack} aria-label="All pools">
           <IconChevronLeft size={18} />

@@ -40,6 +40,8 @@ export interface CardInfo {
   scryfallUri?: string;
   /** Scryfall's canonical name, when it differs from (or matches) `name`. */
   scryfallName?: string;
+  /** Scryfall's rarity of the printing it returned (common, uncommon, rare, mythic…); absent in older cache entries. */
+  rarity?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +124,7 @@ export interface ScryfallCard extends SfFace {
   produced_mana?: string[];
   card_faces?: SfFace[];
   scryfall_uri?: string;
+  rarity?: string;
 }
 
 function mapImages(i: SfImages | undefined): CardImages | undefined {
@@ -188,6 +191,7 @@ export function mapScryfallCard(requestedName: string, c: ScryfallCard): CardInf
   if (multi) info.faces = faces;
   if (c.scryfall_uri) info.scryfallUri = c.scryfall_uri;
   if (c.name) info.scryfallName = c.name;
+  if (c.rarity) info.rarity = c.rarity;
   return info;
 }
 

@@ -19,15 +19,16 @@ import {
   deckSlug,
   deckText,
   evaluateBuild,
+  mainDeck,
   PART_LABEL,
+  sideboard,
   swapOptions,
-  bucketOf,
   type DeckBuild,
   type ScoreParts,
   type SpellCount,
 } from '../../cube/builder.ts';
 import { buildDeckPrompt } from '../../cube/deckPrompt.ts';
-import { BASIC_OF, COLOURS, type Colour } from '../../cube/colors.ts';
+import { BASIC_NAMES } from '../../cube/colors.ts';
 import { startAnswer, stopAnswer, useAnswer } from '../answers.ts';
 import { AnswerBox } from '../CoachPanel.tsx';
 import { cardsForPrompt, useCardInfo } from '../cardData.ts';
@@ -36,6 +37,10 @@ import { Sheet } from '../Sheet.tsx';
 import { IconCheck, IconChevronDown, IconCopy, IconFile, IconPlay, IconUndo } from '../Icons.tsx';
 import { copyText, cx } from '../util.ts';
 import { CubeCard } from './CubeCard.tsx';
+import { Collection, usePrefs, ViewBar } from '../draft/Collection.tsx';
+import { ColourDots, MiniCurve } from '../draft/Pool.tsx';
+import { useCubeMeta } from '../draft/useCubeMeta.ts';
+import { kindCounts } from '../../draft/poolView.ts';
 
 const SPELL_OPTS: SpellCount[] = ['auto', 22, 23, 24];
 
@@ -152,7 +157,7 @@ export function BuildView({
       )}
       <div className="bv-cols">
         <div className="bv-main">
-          <DeckList b={current} ctx={ctx} onCard={setSwapOut} onInfo={onInfo} />
+          <DeckStacks b={current} ctx={ctx} pool={cards} onCard={setSwapOut} onInfo={onInfo} />
           {edited && (
             <div className="bv-edited">
               <span className="small">
@@ -199,57 +204,36 @@ export function BuildView({
   );
 }
 
-function DeckList({ b, ctx, onCard, onInfo }: { b: DeckBuild; ctx: CubeContext; onCard: (n: string) => void; onInfo: (n: string) => void }) {
-  const rows = CURVE_LABELS.map((label, i) => ({ label, cards: b.spells.filter((s) => bucketOf(ctx.facts.get(s)?.mv ?? 0) === i) }));
+/** The 40 in the cube section's collection view: stacks by mana value (lands with the basics), the rest of the pool as the sideboard. */
+function DeckStacks({ b, ctx, pool, onCard, onInfo }: { b: DeckBuild; ctx: CubeContext; pool: string[]; onCard: (n: string) => void; onInfo: (n: string) => void }) {
+  const meta = useCubeMeta(ctx)!;
+  const [prefs, setPrefs] = usePrefs('deck-assistant', { layout: 'stacks', group: 'cmc', size: 86 });
+  const names = useMemo(() => mainDeck(b).flatMap(([n, name]) => Array.from({ length: n }, () => name)), [b]);
+  const side = useMemo(() => sideboard(b, pool), [b, pool]);
+  const kinds = kindCounts(names, meta);
   return (
-    <div className="dl">
-      {rows.map((r, i) =>
-        r.cards.length ? (
-          <section key={r.label} className="dl-row">
-            <div className="dl-label">
-              <span className="dl-mv">{r.label}</span>
-              <span className="dl-n">
-                {r.cards.length}
-                <span className="muted">/{Math.round(b.curveTarget[i] ?? 0)}</span>
-              </span>
-            </div>
-            <div className="dl-cards">
-              {r.cards.map((s) => (
-                <CubeCard
-                  key={s}
-                  name={s}
-                  colors={ctx.facts.get(s)?.colors}
-                  chip={Math.round(cardValue(s, ctx))}
-                  chipTone={b.splashCards.includes(s) ? 'mid' : null}
-                  onClick={() => onCard(s)}
-                  onInfo={() => onInfo(s)}
-                  label={`${s} — tap to swap`}
-                />
-              ))}
-            </div>
-          </section>
-        ) : null,
-      )}
-      <section className="dl-row dl-lands">
-        <div className="dl-label">
-          <span className="dl-mv">Lands</span>
-          <span className="dl-n">{b.landCount}</span>
-        </div>
-        <div className="dl-cards">
-          {b.nonbasics.map((l) => (
-            <CubeCard key={l} name={l} onInfo={() => onInfo(l)} />
-          ))}
-          <div className="dl-basics">
-            {COLOURS.filter((c) => (b.basics[c] ?? 0) > 0).map((c) => (
-              <div key={c} className={cx('basic', `c-${c}`)}>
-                <PipRow colors={[c]} size="md" />
-                <b>{b.basics[c as Colour]}</b>
-                <span className="muted small">{BASIC_OF[c]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+    <div className="bv-deck">
+      <div className="bv-deck-sum">
+        <span className="bv-deck-n">
+          <b>{names.length}</b> cards
+        </span>
+        <span className="bv-deck-kinds">
+          {kinds.creatures} creatures · {kinds.spells} spells · {kinds.lands} lands
+        </span>
+        <MiniCurve names={names} meta={meta} />
+        <ColourDots names={names} meta={meta} />
+      </div>
+      <ViewBar prefs={prefs} onChange={setPrefs} compact />
+      <Collection
+        names={names}
+        side={side}
+        sideLabel="Sideboard"
+        meta={meta}
+        prefs={prefs}
+        onCard={(n, zone) => (zone === 'main' && !BASIC_NAMES.has(n) ? onCard(n) : onInfo(n))}
+        onInfo={onInfo}
+      />
+      <p className="tiny muted bv-deck-help">Tap a spell to see what swapping it does to the score.</p>
     </div>
   );
 }

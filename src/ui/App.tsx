@@ -25,6 +25,11 @@ import { PlayView } from './play/PlayView.tsx';
 // #deck: Draft & build, the deck assistant (lazy: its own bundle).
 const DeckApp = lazy(() => import('./deck/DeckApp.tsx'));
 
+// #draft: a cube draft against the AI (lazy: its own bundle, with the deck assistant's builder).
+const DraftApp = lazy(() => import('./draft/DraftApp.tsx'));
+// #cube/<id>: a cube's own page (its cards in the cube section's collection view).
+const CubePage = lazy(() => import('./draft/CubePage.tsx'));
+
 // #ask-gallery: every ask kind rendered from fixtures (a design/QA page); lazy so the fixtures stay out of the main bundle.
 const AskGallery = lazy(() => import('./play/AskGallery.tsx'));
 
@@ -113,7 +118,22 @@ export function App() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
   const page =
-    hash === '#ask-gallery' ? <AskGallery /> : /^#meta\b/.test(hash) ? <MetaApp /> : /^#history\b/.test(hash) ? <HistoryApp /> : null;
+    hash === '#ask-gallery' ? (
+      <AskGallery />
+    ) : /^#meta\b/.test(hash) ? (
+      <MetaApp />
+    ) : /^#history\b/.test(hash) ? (
+      <HistoryApp />
+    ) : /^#cube\/[\w-]+/.test(hash) ? (
+      <CubePage id={hash.slice(6)} onExit={() => (history.length > 1 ? history.back() : (location.hash = '#draft/setup'))} />
+    ) : /^#draft\b/.test(hash) ? (
+      <DraftApp
+        onExit={() => {
+          history.replaceState(null, '', location.pathname + location.search);
+          setHash('');
+        }}
+      />
+    ) : null;
   if (page) {
     return <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>{page}</Suspense>;
   }

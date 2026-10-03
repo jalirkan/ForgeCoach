@@ -1,0 +1,182 @@
+/*
+ * ForgeCoach — ui/lobby.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The start page in the cube section's language (forge-theme.css), after the
+ * board game's lobby: a gold kicker over a serif hero, an "Open a table"
+ * grid of mode tiles, ruled section heads. Scoped to .lobby; the page's
+ * structure and behaviour are LoadScreen's own.
+ */
+
+.lobby.fx {
+  background: radial-gradient(1200px 520px at 50% -14%, rgba(201, 164, 92, 0.09), transparent 62%), var(--bg);
+}
+.lobby .load-top {
+  border-bottom: 1px solid var(--hair);
+}
+.lobby .logo-text b,
+.lobby .logo svg {
+  color: var(--gold-hi);
+}
+.lobby .load-link {
+  font: 600 10.5px/1 var(--font);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.lobby .load-link:hover {
+  color: var(--gold-hi);
+}
+.lobby-kicker {
+  margin-bottom: 10px;
+  letter-spacing: 0.32em;
+}
+.lobby .hero h1 {
+  font: italic 500 52px/1.02 var(--serif);
+  letter-spacing: -0.01em;
+}
+.lobby .hero h1 .accent {
+  color: var(--gold-hi);
+}
+.lobby .hero-sub {
+  font: 18px/1.45 var(--serif);
+  color: var(--text-2);
+}
+
+/* Open a table */
+.lobby-tiles {
+  margin: 4px 0 6px;
+}
+.lobby-h {
+  margin: 0 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid;
+  border-image: linear-gradient(90deg, var(--line-2), transparent) 1;
+  color: var(--text-2);
+}
+.lobby-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.lobby-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 96px;
+  padding: 14px 34px 14px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: rgba(23, 19, 13, 0.85);
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.2s;
+}
+.lobby-tile:hover {
+  border-color: rgba(201, 164, 92, 0.6);
+  background: rgba(40, 32, 20, 0.6);
+}
+.lobby-tile.is-primary {
+  border-color: rgba(201, 164, 92, 0.55);
+  background: linear-gradient(180deg, rgba(58, 44, 23, 0.6), rgba(23, 19, 13, 0.85));
+  box-shadow: 0 0 26px rgba(201, 164, 92, 0.1);
+}
+.lobby-tile-t {
+  font: 500 20px/1.1 var(--serif);
+  color: var(--text);
+}
+.lobby-tile-l {
+  font: 14px/1.35 var(--serif);
+  color: var(--muted);
+}
+.lobby-tile-g {
+  position: absolute;
+  top: 14px;
+  right: 12px;
+  color: var(--gold);
+  opacity: 0.8;
+}
+
+/* The existing cards, in the same hand */
+.lobby .play-card,
+.lobby .draft-card {
+  border-radius: 4px;
+  border-color: rgba(201, 164, 92, 0.32);
+  background: linear-gradient(180deg, rgba(40, 32, 20, 0.5), rgba(23, 19, 13, 0.9));
+  box-shadow: none;
+}
+.lobby .play-card h2,
+.lobby .draft-card-title {
+  font: 500 24px/1.1 var(--serif);
+}
+.lobby .draft-card-icon {
+  border-radius: 50%;
+  border: 1px solid var(--gold-lo);
+  background: transparent;
+  color: var(--gold);
+}
+.lobby .btn {
+  border-radius: 6px;
+}
+.lobby .btn-primary {
+  color: #24180a;
+  background: linear-gradient(180deg, #e2b754, #c8942f);
+}
+.lobby .section-h {
+  font: 600 10.5px/1 var(--font);
+  letter-spacing: 0.26em;
+  color: var(--text-2);
+  padding-bottom: 10px;
+  border-bottom: 1px solid;
+  border-image: linear-gradient(90deg, var(--line-2), transparent) 1;
+}
+.lobby .sample {
+  border-radius: 4px;
+  border-color: var(--line);
+  background: rgba(23, 19, 13, 0.85);
+}
+.lobby .sample-title,
+.lobby .sample b {
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 500;
+}
+.lobby .load-foot {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+}
+
+@media (min-width: 900px) {
+  .lobby-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .lobby .hero h1 {
+    font-size: 64px;
+  }
+}
+@media (max-width: 420px) {
+  .lobby .hero h1 {
+    font-size: 40px;
+  }
+  .lobby-tile {
+    min-height: 88px;
+    padding: 12px 30px 12px 12px;
+  }
+  .lobby-tile-t {
+    font-size: 18px;
+  }
+  .lobby-tile-l {
+    font-size: 13px;
+  }
+}
+.lobby .load-link {
+  white-space: nowrap;
+}
+@media (max-width: 420px) {
+  .lobby .load-link {
+    padding: 6px 6px;
+    letter-spacing: 0.14em;
+    font-size: 9.5px;
+  }
+}

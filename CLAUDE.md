@@ -48,6 +48,22 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   `DeckApp` (home, pools, workspace, meta import), `PoolView`, `BuildView`
   (builds, score, swaps, export, coach via `answers.ts` `startAnswer`),
   `GridView`, `WinstonView`, `CubeCard`, `sheets` (card picker, card info).
+- `draft/` — Draft vs AI (pure, tested in node): `rng.ts`, `weights.ts`,
+  `pick.ts`, `draft.ts` are mtg-table's cube-lab drafting AI (`tools/cubelab`)
+  stepped one decision at a time, plus Booster (2–8 seats); `cards.ts` (the
+  AI's card view from `cube/` facts, meta ratings); `deck.ts` (the post-draft
+  deck: main, side, basics); `poolView.ts` (collection grouping, curve, colour
+  counts); `aiFlags.ts` (AI:RemoveDeck from the cube docs); `pickPrompt.ts`;
+  `store.ts` (the draft in localStorage); `launch.ts` (mtg-table's match
+  launcher, `POST /match`, docs/match-launcher.md there). Hidden information:
+  the player only ever sees `knownAiCards`, never the AI's list.
+- `ui/draft/` — Draft vs AI screens (lazy, `#draft`, `#draft/build`,
+  `#draft/match`) and the cube pages (`#cube/<id>`): `PickScreen`,
+  `DeckEditor`, `Setup` (table and match set-up), `Collection` (the shared
+  Stacks / Gallery / List view, also used by the deck assistant), `DCard`.
+  `ui/forge-theme.css` holds the `.fx` tokens and type the cube section,
+  the deck assistant (`ui/deck/skin.css`) and the start page (`ui/lobby.css`)
+  share.
 - `public/cubes/` — the four cube documents (Justin's) and the cube lab's
   `<cube>.meta.json` beside each.
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.
