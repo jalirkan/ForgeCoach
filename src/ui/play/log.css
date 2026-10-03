@@ -88,6 +88,11 @@
   color: var(--muted);
 }
 
+.log-drawer-wrap,
+.log-float-wrap {
+  --you: var(--accent);
+  --opp: #6f9fe0;
+}
 .log-drawer-wrap {
   position: fixed;
   inset: 0;
@@ -104,52 +109,98 @@
     opacity: 0;
   }
 }
+/* The floating panel (desktop): no backdrop, the board stays live underneath. */
+.log-float-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+}
 .log-drawer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(440px, 88vw);
   display: flex;
   flex-direction: column;
-  background: var(--bg-2);
-  border-left: 1px solid var(--line-2);
-  box-shadow: -20px 0 40px rgba(0, 0, 0, 0.45);
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  animation: log-in 0.2s ease-out;
+  background: #15130f;
+  background: linear-gradient(180deg, #1b1913, #13120f);
+  border: 1px solid rgba(227, 178, 95, 0.32);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+  color: var(--text-2);
 }
-@keyframes log-in {
+.log-drawer.is-floating {
+  position: absolute;
+  top: 72px;
+  right: 380px;
+  width: 360px;
+  max-height: min(64vh, 620px);
+  border-radius: 10px;
+  pointer-events: auto;
+  animation: log-pop 0.16s ease-out;
+}
+@keyframes log-pop {
   from {
-    transform: translateX(40px);
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+}
+/* The sheet (phones): up from the bottom, over the board. */
+.log-drawer.is-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 72dvh;
+  border-radius: 16px 16px 0 0;
+  border-bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: log-rise 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes log-rise {
+  from {
+    transform: translateY(40px);
     opacity: 0;
   }
 }
 .log-drawer-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 8px 8px 16px;
-  border-bottom: 1px solid var(--line-2);
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  border-bottom: 1px solid rgba(227, 178, 95, 0.18);
+  touch-action: none;
+  user-select: none;
+}
+.log-drawer.is-floating .log-drawer-head {
+  cursor: grab;
+}
+.log-drawer.is-floating .log-drawer-head:active {
+  cursor: grabbing;
+}
+.log-grip {
+  color: var(--faint);
+  font-size: 13px;
+  letter-spacing: -1px;
 }
 .log-drawer-title {
+  font-family: var(--serif);
+  font-style: italic;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 13px;
+  font-size: 19px;
+  color: var(--text);
+}
+.log-drawer-n {
+  margin-left: 2px;
 }
 .log-drawer-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 4px 0 18px;
+  padding: 0 0 12px;
 }
 .log-empty {
   padding: 16px;
 }
 .log-turn {
-  padding: 0 0 6px;
+  padding: 0;
 }
 .log-turn-head {
   position: sticky;
@@ -159,14 +210,10 @@
   align-items: baseline;
   gap: 10px;
   margin: 0;
-  padding: 8px 16px 6px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  background: var(--bg-2);
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
+  padding: 7px 14px 5px;
+  background: #1a1813;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 .log-turn.is-you .log-turn-head {
   box-shadow: inset 3px 0 0 var(--you);
@@ -175,7 +222,20 @@
   box-shadow: inset 3px 0 0 var(--opp);
 }
 .log-turn-no {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 21px;
+  line-height: 1;
   color: var(--text);
+  min-width: 26px;
+}
+.log-turn-who {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .log-turn.is-you .log-turn-who {
   color: var(--you);
@@ -183,35 +243,72 @@
 .log-turn.is-opp .log-turn-who {
   color: var(--opp);
 }
+.log-turn-name {
+  margin-left: auto;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.log-section-head {
+  margin: 6px 0 1px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
 .log-lines {
   list-style: none;
   margin: 0;
-  padding: 4px 0 0;
+  padding: 0;
 }
 .log-line {
-  padding: 3px 16px 3px 26px;
-  font-size: 13.5px;
+  display: flex;
+  gap: 8px;
+  padding: 2px 14px 2px 12px;
+  font-size: 13px;
   line-height: 1.45;
   color: var(--text-2);
-  position: relative;
+  border-left: 2px solid transparent;
 }
-.log-line::before {
-  content: '';
-  position: absolute;
-  left: 15px;
-  top: 0.75em;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--line-2);
+.log-line.w-you {
+  border-left-color: rgba(227, 178, 95, 0.35);
 }
-.log-line.w-you::before {
-  background: var(--you);
+.log-line.w-opp {
+  border-left-color: rgba(111, 159, 224, 0.35);
 }
-.log-line.w-opp::before {
-  background: var(--opp);
+.log-glyph {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.75;
+  color: var(--faint);
+  font-variant-emoji: text;
+}
+.log-line.k-attack .log-glyph,
+.log-line.k-damage .log-glyph,
+.log-line.k-died .log-glyph {
+  color: #e2706c;
+}
+.log-line.k-block .log-glyph {
+  color: #6f9fe0;
+}
+.log-line.k-land .log-glyph,
+.log-line.k-cast .log-glyph,
+.log-line.k-outcome .log-glyph {
+  color: var(--accent);
+}
+.log-line.k-life .log-glyph {
+  color: #ff8f8c;
+}
+.log-text {
+  min-width: 0;
 }
 .log-line.is-quiet {
+  padding-left: 36px;
   color: var(--faint);
   font-style: italic;
 }
