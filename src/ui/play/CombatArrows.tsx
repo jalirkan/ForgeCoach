@@ -44,6 +44,9 @@ export function CombatArrows({ links, version }: { links: CombatLink[]; version:
       const hr = host.getBoundingClientRect();
       const tile = (id: number) => host.querySelector(`.tile[data-card-id="${id}"] .tile-slot`) ?? host.querySelector(`[data-card-id="${id}"]`);
       const ln = lanes(links);
+      // Phones: the life total is a one-line bar under the cards; stop just above it so the
+      // arrowheads do not cover the number. The desktop rail keeps the line meeting the total.
+      const lifeInset = host.closest('.play-phone-main') ? -5 : 10;
       const lines: Drawn[] = [];
       links.forEach((link, i) => {
         const a = boxOf(tile(link.from.card), hr);
@@ -52,7 +55,7 @@ export function CombatArrows({ links, version }: { links: CombatLink[]; version:
             ? boxOf(tile(link.to.card), hr)
             : boxOf(host.querySelector(`[data-phead-player="${link.to.player}"] .life`) ?? host.querySelector(`[data-phead-player="${link.to.player}"]`), hr);
         if (!a || !b) return;
-        lines.push({ key: `${link.kind}-${link.from.card}-${'card' in link.to ? `c${link.to.card}` : `p${link.to.player}`}`, link, curve: curveBetween(a, b, ln[i]) });
+        lines.push({ key: `${link.kind}-${link.from.card}-${'card' in link.to ? `c${link.to.card}` : `p${link.to.player}`}`, link, curve: curveBetween(a, b, ln[i], 'card' in link.to ? 10 : lifeInset) });
       });
       setDrawn({ w: host.scrollWidth, h: host.scrollHeight, lines });
     };

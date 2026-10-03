@@ -1107,10 +1107,13 @@ button.avatar.is-select {
 }
 
 /* ---- phones held upright: the board fills the height between the top bar
-   and the dock. Each side takes half and its cards size to fit their two rows,
-   so both battlefields are on screen; past the floor it scrolls instead. Rows
-   scroll sideways (cards.css). In landscape the board just scrolls (the dock
-   is a side column there). */
+   and the dock. Each side takes half and its cards size to fit their rows
+   (lands are --land-k of a creature), so both battlefields are on screen.
+   A side never shrinks below its rows at the floor size (--side-min, from
+   ui/boardFit.ts, which mirrors the paddings here): past that the board
+   scrolls, so cards never slide under a life bar. Rows scroll sideways inside
+   their own lane (cards.css). In landscape the board just scrolls (the dock is
+   a side column there). */
 @media (max-width: 1023px) and (orientation: portrait) {
   .play-phone-main {
     display: flex;
@@ -1123,21 +1126,38 @@ button.avatar.is-select {
   }
   .play-phone-main .player {
     flex: 1 1 0;
-    min-height: 188px;
+    /* clip, not hidden: the side keeps its content's minimum height */
+    overflow: clip;
+    min-height: auto;
     display: flex;
     flex-direction: column;
   }
+  .play-phone-main .player > .phead {
+    flex: none;
+  }
+  .play-phone-main .board {
+    --fit-floor: 54px;
+  }
   .play-phone-main .player > .battlefield {
     flex: 1 1 0;
-    min-height: 0;
+    /* every row at the floor size, plus the paddings (ui/boardFit.ts phoneSideFit) */
+    min-height: var(--side-min, calc(var(--fit-pad, 26px) + var(--fit-rows, 1.8) * var(--fit-floor) * 88 / 63));
     container: side / size;
     justify-content: safe center;
   }
+  .play-phone-main .battlefield,
+  .play-phone-main .player-top .battlefield {
+    padding: 2px 8px;
+  }
   .play-phone-main .bf-row {
     --land-k: 0.8;
-    --rows-h: calc(var(--ch-lands, 1) * var(--land-k) + var(--ch-perm, 1));
-    --cw-fit: clamp(54px, calc((100cqh - 26px - var(--attach-h, 0px)) / var(--rows-h) * 63 / 88), 104px);
+    --cw-fit: clamp(var(--fit-floor), calc((100cqh - var(--fit-pad, 26px)) / var(--fit-rows, 1.8) * 63 / 88), 104px);
     --cw: var(--cw-fit);
+    flex: none;
+    gap: 0;
+  }
+  .play-phone-main .bf-row + .bf-row {
+    padding-top: 4px;
   }
   .play-phone-main .bf-row-lands {
     --cw: calc(var(--cw-fit) * var(--land-k));
@@ -1148,6 +1168,41 @@ button.avatar.is-select {
   }
   .play-phone-main .midline {
     flex: none;
+  }
+  /* short phones (an SE): a smaller floor, so more of both sides fits before the board scrolls */
+  @media (max-height: 740px) {
+    .play-phone-main .board {
+      --fit-floor: 48px;
+    }
+    .game.play .play-phone-main .stack-list {
+      max-height: 78px;
+    }
+  }
+  /* auras and equipment: one line each under the host (boardFit attachPx) */
+  .play-phone-main .tile-attach {
+    gap: 1px;
+  }
+  .play-phone-main .attach-chip {
+    height: 18px;
+    padding: 2px 5px 1px;
+    font-size: 10px;
+    line-height: 14px;
+  }
+  .play-phone-main .attach-effect {
+    display: none;
+  }
+  /* a long stack scrolls in its own box (the top item is first) */
+  .play-phone-main .stack-list {
+    max-height: 104px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* the open hand is a fixed strip: shorter cards on short phones */
+  .hand-dock:not(.is-collapsed) .hand-dock-row {
+    --cw: clamp(62px, 10vh, 84px);
+    height: calc(var(--cw) * 88 / 63 + 14px);
+    padding-top: 6px;
+    align-items: flex-start;
   }
 }
 
