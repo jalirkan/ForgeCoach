@@ -207,7 +207,7 @@ export function BuildView({
 /** The 40 in the cube section's collection view: stacks by mana value (lands with the basics), the rest of the pool as the sideboard. */
 function DeckStacks({ b, ctx, pool, onCard, onInfo }: { b: DeckBuild; ctx: CubeContext; pool: string[]; onCard: (n: string) => void; onInfo: (n: string) => void }) {
   const meta = useCubeMeta(ctx)!;
-  const [prefs, setPrefs] = usePrefs('deck-assistant', { layout: 'stacks', group: 'cmc', size: 100 });
+  const [prefs, setPrefs] = usePrefs('deck-assistant', { layout: 'stacks', group: 'cmc', size: 86 });
   const names = useMemo(() => mainDeck(b).flatMap(([n, name]) => Array.from({ length: n }, () => name)), [b]);
   const side = useMemo(() => sideboard(b, pool), [b, pool]);
   const kinds = kindCounts(names, meta);
