@@ -7,7 +7,7 @@
  *
  *   (run)      ask the coach every case and write results/<time>-<label>.{json,md}
  *   --dry-run  build every prompt and check every case; no model call
- *   --compare  a.json b.json: which cases flipped between two runs
+ *   --compare  a.json b.json: paired, statistical comparison of two runs
  *   list       the decisions (or --live moments) of a log, to pick a case from
  *   add        write a case skeleton for one decision of a log
  *   cards      fetch card text the snapshot lacks (Scryfall)
@@ -31,11 +31,11 @@ import {
   choiceSet,
   compareReports,
   missingCards,
+  normalizeReport,
   reportMarkdown,
   runBench,
   type AskCoach,
   type BenchCase,
-  type BenchReport,
   type BenchType,
   type BuiltCase,
 } from '../../src/bench/coachBench.ts';
@@ -57,7 +57,7 @@ function flags(argv: string[]): { pos: string[]; f: Map<string, string | true> }
   }
   return { pos, f };
 }
-const VALUED = new Set(['source', 'model', 'label', 'only', 'type', 'helper-url', 'show', 'log', 'decision', 'frame', 'id', 'kind', 'out']);
+const VALUED = new Set(['source', 'model', 'label', 'only', 'type', 'helper-url', 'show', 'log', 'decision', 'frame', 'id', 'kind', 'out', 'repeat', 'concurrency']);
 const str = (f: Map<string, string | true>, k: string): string | undefined => {
   const v = f.get(k);
   return typeof v === 'string' ? v : undefined;
@@ -70,10 +70,14 @@ const USAGE = `Coach benchmark (bench/coach/). Usage: npm run bench:coach -- [op
                          with ANTHROPIC_API_KEY)
     --model <m>          helper: a model alias the helper accepts; api: a model id
     --label <name>       report name (default: the source)
+    --repeat N           answers per case (default 3); the coach is stochastic, so one
+                         answer per case cannot tell two prompts apart
+    --concurrency K      calls in flight at once (default 2)
     --only a,b  --type t only these case ids / this decision type
     --helper-url <url>   default ${DEFAULT_HELPER_URL}
   --dry-run [--show <id>]  build every prompt and check every case; no model call
-  --compare a.json b.json  which cases flipped between two runs
+  --compare a.json b.json  paired comparison: per-case difference, 95% interval, verdict,
+                         flips beyond noise, unstable cases (old single-sample files load as N=1)
   list --log <file> [--live]   the decisions (or live moments) of a log
   add --log <file> (--decision <n> | --frame <n> --live) --type <t> --id <id>
                          write a case skeleton (copies the log, fetches card text)
@@ -198,20 +202,34 @@ async function run(f: Map<string, string | true>): Promise<number> {
     return 1;
   }
 
+  const intFlag = (k: string, dflt: number): number | null => {
+    const v = str(f, k);
+    if (v === undefined) return dflt;
+    return /^\d+$/.test(v) && Number(v) >= 1 ? Number(v) : null;
+  };
+  const repeat = intFlag('repeat', 3);
+  const concurrency = intFlag('concurrency', 2);
+  if (repeat === null || concurrency === null) {
+    console.error('--repeat and --concurrency: a whole number, 1 or more.');
+    return 2;
+  }
+  console.log(`${built.length} cases × ${repeat} = ${built.length * repeat} calls, ${concurrency} at a time.`);
   const label = (str(f, 'label') ?? source).replace(/[^A-Za-z0-9._-]+/g, '-');
   const ctrl = new AbortController();
   process.once('SIGINT', () => {
-    console.error('\nStopping after this case…');
+    console.error('\nStopping after the calls in flight…');
     ctrl.abort();
   });
   const report = await runBench(built, ask, {
     label,
     source,
     model: model ?? null,
+    repeat,
+    concurrency,
     signal: ctrl.signal,
-    onResult: (r, i, n) => {
+    onResult: ({ id, type, rep, sample: r }, done, n) => {
       const mark = r.verdict === 'acceptable' ? '✓' : r.verdict === 'unacceptable' ? '✗' : '·';
-      console.log(`${mark} [${i + 1}/${n}] ${r.id} (${r.type}) ${r.verdict}${r.canonical ? ` ${r.canonical}` : ''}${r.note ? ` — ${r.note.slice(0, 100)}` : ''} · ${(r.latencyMs / 1000).toFixed(1)} s`);
+      console.log(`${mark} [${done}/${n}] ${id} #${rep + 1} (${type}) ${r.verdict}${r.canonical ? ` ${r.canonical}` : ''}${r.note ? ` — ${r.note.slice(0, 100)}` : ''} · ${(r.latencyMs / 1000).toFixed(1)} s`);
     },
   });
   const md = reportMarkdown(report);
@@ -231,8 +249,9 @@ function compare(pos: string[]): number {
     console.error('--compare a.json b.json');
     return 2;
   }
-  const [a, b] = pos.map((p) => JSON.parse(readFileSync(resolve(p), 'utf8')) as BenchReport) as [BenchReport, BenchReport];
-  console.log(compareReports(a, b).markdown);
+  const loaded = pos.map((p) => normalizeReport(JSON.parse(readFileSync(resolve(p), 'utf8'))));
+  for (const l of loaded) for (const w of l.warnings) console.error(`Warning: ${w}`);
+  console.log(compareReports(loaded[0]!.report, loaded[1]!.report).markdown);
   return 0;
 }
 

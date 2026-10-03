@@ -39,6 +39,7 @@ import { extractDecisions, type Decision, type DecisionKind } from '../decisions
 import { buildCoachPrompt, coachCardNames, type Prompt } from '../prompt.ts';
 import { canPay, chosenColors, infoFor, instantSpeedOptions, manaColorsOf, turnFacts, untappedManaSources, type ManaSource } from '../state.ts';
 import { liveDecision } from '../ui/play/liveDecision.ts';
+import { bootstrapMean, mean, signTest, wilson, type Interval } from './benchStats.ts';
 
 // ---------------------------------------------------------------------------
 // Cases
@@ -572,6 +573,12 @@ export function scoreReply(b: BuiltCase, text: string): Scored {
 
 // ---------------------------------------------------------------------------
 // Running and reports
+//
+// The coach is stochastic, so each case is asked `repeat` times and every
+// answer is kept. A case's quality score is the mean score of its *valid*
+// answers (acceptable +1, blunder −1, any other legal answer 0). Answers that
+// are missing, unparsable, illegal or errored are format failures: they are
+// counted on their own and never enter the quality score.
 
 export interface CoachReply {
   text: string;
@@ -580,11 +587,10 @@ export interface CoachReply {
 }
 export type AskCoach = (prompt: Prompt, signal?: AbortSignal) => Promise<CoachReply>;
 
-export interface CaseResult {
-  id: string;
-  type: BenchType;
-  confidence: 'high' | 'low';
+/** One answer to one case. */
+export interface Sample {
   verdict: Verdict | 'error';
+  /** 1, 0 or −1; meaningful only when the answer is valid (see `isValid`). */
   score: number;
   answer: string | null;
   canonical: string | null;
@@ -595,26 +601,92 @@ export interface CaseResult {
   text: string;
 }
 
-export interface TypeSummary {
+/** A parsed, legal answer (acceptable, blunder or other): the quality score only looks at these. */
+export const isValid = (s: Pick<Sample, 'verdict'>): boolean => s.verdict === 'acceptable' || s.verdict === 'unacceptable' || s.verdict === 'other';
+
+export interface CaseStats {
+  /** Answers recorded. */
   n: number;
-  score: number;
+  /** Answers that were valid (not a format failure). */
+  valid: number;
+  /** Mean score of the valid answers; null when none was valid. */
+  meanScore: number | null;
+  /** Counts; `unparsed` is every format failure (missing, illegal, error). They add up to `n`. */
   acceptable: number;
   unacceptable: number;
   other: number;
-  /** Missing, illegal and errored answers. */
-  invalid: number;
+  unparsed: number;
+  /** The share of answers equal to the most common one (1 = always the same answer). */
+  agreement: number;
+  /** The distinct answers seen, most common first (format failures as "(missing)" etc.). */
+  answers: { answer: string; count: number }[];
 }
 
+export interface CaseResult {
+  id: string;
+  type: BenchType;
+  confidence: 'high' | 'low';
+  samples: Sample[];
+  stats: CaseStats;
+}
+
+export function caseStats(samples: Sample[]): CaseStats {
+  const counts = { acceptable: 0, unacceptable: 0, other: 0, unparsed: 0 };
+  const seen = new Map<string, number>();
+  const scores: number[] = [];
+  for (const s of samples) {
+    if (s.verdict === 'acceptable') counts.acceptable++;
+    else if (s.verdict === 'unacceptable') counts.unacceptable++;
+    else if (s.verdict === 'other') counts.other++;
+    else counts.unparsed++;
+    if (isValid(s)) scores.push(s.score);
+    const key = isValid(s) ? (s.canonical ?? s.answer ?? '?') : `(${s.verdict})`;
+    seen.set(key, (seen.get(key) ?? 0) + 1);
+  }
+  const answers = [...seen].map(([answer, count]) => ({ answer, count })).sort((a, b) => b.count - a.count || a.answer.localeCompare(b.answer));
+  return {
+    n: samples.length,
+    valid: scores.length,
+    meanScore: scores.length ? mean(scores) : null,
+    ...counts,
+    agreement: samples.length ? answers[0]!.count / samples.length : 1,
+    answers,
+  };
+}
+
+export type { Interval } from './benchStats.ts';
+
+export interface GroupSummary {
+  /** High-confidence cases in the group. */
+  cases: number;
+  /** Answers recorded for them. */
+  samples: number;
+  /** Mean over cases of each case's mean valid score, −1…1; bootstrap over cases. */
+  score: Interval | null;
+  /** Mean over cases of the share of valid answers that were acceptable / blunders. */
+  acceptable: Interval | null;
+  blunder: Interval | null;
+  /** Share of all answers that were format failures; Wilson interval over answers. */
+  formatFailure: Interval | null;
+  /** Cases whose agreement is below UNSTABLE_BELOW. */
+  unstable: number;
+}
+
+/** A case is unstable when fewer than two thirds of its answers equal the modal one. */
+export const UNSTABLE_BELOW = 0.67;
+
 export interface BenchReport {
-  bench: 1;
+  bench: 2;
   label: string;
   startedAt: string;
   source: string;
   model: string | null;
+  /** Answers asked per case. */
+  repeat: number;
   cases: CaseResult[];
   summary: {
-    byType: Partial<Record<BenchType, TypeSummary>>;
-    total: TypeSummary;
+    byType: Partial<Record<BenchType, GroupSummary>>;
+    total: GroupSummary;
     /** Low-confidence cases run but not scored. */
     lowConfidence: number;
     latencyMs: { mean: number; median: number; p90: number; max: number };
@@ -625,144 +697,315 @@ export interface RunOptions {
   label: string;
   source: string;
   model?: string | null;
+  /** Answers per case (default 1). */
+  repeat?: number;
+  /** Calls in flight at once (default 1). */
+  concurrency?: number;
   now?: () => number;
-  /** Called after each case. */
-  onResult?: (r: CaseResult, i: number, n: number) => void;
+  /** Called after each answer; `done` of `total` answers are in. */
+  onResult?: (r: { id: string; type: BenchType; rep: number; sample: Sample }, done: number, total: number) => void;
   signal?: AbortSignal;
 }
 
-/** Asks the coach every case, one at a time, and scores the replies. */
+async function askOnce(b: BuiltCase, ask: AskCoach, now: () => number, signal?: AbortSignal): Promise<Sample> {
+  const t0 = now();
+  try {
+    const reply = await ask(b.prompt, signal);
+    const s = scoreReply(b, reply.text);
+    const out: Sample = { ...s, latencyMs: now() - t0, text: reply.text };
+    if (reply.model) out.model = reply.model;
+    if (out.note === undefined) delete out.note;
+    return out;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { verdict: 'error', score: 0, answer: null, canonical: null, note: msg, latencyMs: now() - t0, text: msg };
+  }
+}
+
+/** Asks the coach every case `repeat` times (`concurrency` calls at once) and scores the replies. */
 export async function runBench(built: BuiltCase[], ask: AskCoach, o: RunOptions): Promise<BenchReport> {
   const now = o.now ?? Date.now;
   const startedAt = new Date(now()).toISOString();
-  const results: CaseResult[] = [];
-  for (let i = 0; i < built.length; i++) {
-    if (o.signal?.aborted) break;
-    const b = built[i]!;
-    const t0 = now();
-    let r: CaseResult;
-    try {
-      const reply = await ask(b.prompt, o.signal);
-      const s = scoreReply(b, reply.text);
-      r = { id: b.case.id, type: b.case.type, confidence: b.case.confidence, ...s, latencyMs: now() - t0, text: reply.text };
-      if (reply.model) r.model = reply.model;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      r = { id: b.case.id, type: b.case.type, confidence: b.case.confidence, verdict: 'error', score: 0, answer: null, canonical: null, note: msg, latencyMs: now() - t0, text: msg };
+  const repeat = Math.max(1, Math.floor(o.repeat ?? 1));
+  const workers = Math.max(1, Math.floor(o.concurrency ?? 1));
+  // One pass over all cases, then the next: an interrupted run still has a sample of every case.
+  const tasks: { bi: number; rep: number }[] = [];
+  for (let rep = 0; rep < repeat; rep++) for (let bi = 0; bi < built.length; bi++) tasks.push({ bi, rep });
+  const samples: (Sample | undefined)[][] = built.map(() => new Array(repeat).fill(undefined));
+  let next = 0;
+  let done = 0;
+  const worker = async () => {
+    while (next < tasks.length && !o.signal?.aborted) {
+      const t = tasks[next++]!;
+      const b = built[t.bi]!;
+      const sample = await askOnce(b, ask, now, o.signal);
+      samples[t.bi]![t.rep] = sample;
+      o.onResult?.({ id: b.case.id, type: b.case.type, rep: t.rep, sample }, ++done, tasks.length);
     }
-    if (r.note === undefined) delete r.note;
-    results.push(r);
-    o.onResult?.(r, i, built.length);
-  }
-  return { bench: 1, label: o.label, startedAt, source: o.source, model: o.model ?? results.find((r) => r.model)?.model ?? null, cases: results, summary: summarize(results) };
+  };
+  await Promise.all(Array.from({ length: Math.min(workers, tasks.length) }, worker));
+  const cases: CaseResult[] = [];
+  built.forEach((b, i) => {
+    const got = samples[i]!.filter((s): s is Sample => !!s);
+    if (got.length) cases.push({ id: b.case.id, type: b.case.type, confidence: b.case.confidence, samples: got, stats: caseStats(got) });
+  });
+  const model = o.model ?? cases.flatMap((c) => c.samples).find((s) => s.model)?.model ?? null;
+  return { bench: 2, label: o.label, startedAt, source: o.source, model, repeat, cases, summary: summarize(cases) };
 }
 
-function blank(): TypeSummary {
-  return { n: 0, score: 0, acceptable: 0, unacceptable: 0, other: 0, invalid: 0 };
-}
-
-export function summarize(results: CaseResult[]): BenchReport['summary'] {
-  const byType: Partial<Record<BenchType, TypeSummary>> = {};
-  const total = blank();
-  let low = 0;
-  for (const r of results) {
-    if (r.confidence === 'low') {
-      low++;
-      continue;
-    }
-    const t = (byType[r.type] ??= blank());
-    for (const s of [t, total]) {
-      s.n++;
-      s.score += r.score;
-      if (r.verdict === 'acceptable') s.acceptable++;
-      else if (r.verdict === 'unacceptable') s.unacceptable++;
-      else if (r.verdict === 'other') s.other++;
-      else s.invalid++;
-    }
-  }
-  const lat = results.map((r) => r.latencyMs).sort((a, b) => a - b);
-  const at = (q: number) => (lat.length ? lat[Math.min(lat.length - 1, Math.floor(q * lat.length))]! : 0);
+function groupSummary(cases: CaseResult[]): GroupSummary {
+  const withValid = cases.filter((c) => c.stats.valid > 0);
+  const failures = cases.reduce((a, c) => a + c.stats.unparsed, 0);
+  const samples = cases.reduce((a, c) => a + c.stats.n, 0);
   return {
-    byType,
-    total,
-    lowConfidence: low,
-    latencyMs: {
-      mean: lat.length ? Math.round(lat.reduce((a, b) => a + b, 0) / lat.length) : 0,
-      median: at(0.5),
-      p90: at(0.9),
-      max: lat.length ? lat[lat.length - 1]! : 0,
-    },
+    cases: cases.length,
+    samples,
+    score: bootstrapMean(withValid.map((c) => c.stats.meanScore!)),
+    acceptable: bootstrapMean(withValid.map((c) => c.stats.acceptable / c.stats.valid)),
+    blunder: bootstrapMean(withValid.map((c) => c.stats.unacceptable / c.stats.valid)),
+    formatFailure: wilson(failures, samples),
+    unstable: cases.filter((c) => c.stats.agreement < UNSTABLE_BELOW).length,
   };
 }
 
+export function summarize(cases: CaseResult[]): BenchReport['summary'] {
+  const scored = cases.filter((c) => c.confidence !== 'low');
+  const byType: Partial<Record<BenchType, GroupSummary>> = {};
+  for (const t of BENCH_TYPES) {
+    const of = scored.filter((c) => c.type === t);
+    if (of.length) byType[t] = groupSummary(of);
+  }
+  const lat = cases.flatMap((c) => c.samples.map((s) => s.latencyMs)).sort((a, b) => a - b);
+  const at = (q: number) => (lat.length ? lat[Math.min(lat.length - 1, Math.floor(q * lat.length))]! : 0);
+  return {
+    byType,
+    total: groupSummary(scored),
+    lowConfidence: cases.length - scored.length,
+    latencyMs: { mean: Math.round(mean(lat)), median: at(0.5), p90: at(0.9), max: lat.length ? lat[lat.length - 1]! : 0 },
+  };
+}
+
+/**
+ * Reads a results file of either format. A single-sample file (`bench: 1`, one
+ * reply per case) becomes N=1 and carries a warning; stats and the summary are
+ * always recomputed from the samples.
+ */
+export function normalizeReport(raw: unknown): { report: BenchReport; warnings: string[] } {
+  const o = raw as { bench?: number; cases?: unknown[]; label?: string; startedAt?: string; source?: string; model?: string | null; repeat?: number };
+  if (!o || (o.bench !== 1 && o.bench !== 2) || !Array.isArray(o.cases)) throw new Error('not a coach bench results file');
+  const warnings: string[] = [];
+  let cases: CaseResult[];
+  if (o.bench === 1) {
+    warnings.push(`${o.label ?? 'results'}: an old single-sample file; treated as N=1 (no repeats, so its noise cannot be measured).`);
+    cases = (o.cases as (Sample & { id: string; type: BenchType; confidence: 'high' | 'low' })[]).map((c) => {
+      const { id, type, confidence, ...sample } = c;
+      return { id, type, confidence, samples: [sample], stats: caseStats([sample]) };
+    });
+  } else {
+    cases = (o.cases as CaseResult[]).map((c) => ({ id: c.id, type: c.type, confidence: c.confidence, samples: c.samples, stats: caseStats(c.samples) }));
+  }
+  const report: BenchReport = {
+    bench: 2,
+    label: o.label ?? '?',
+    startedAt: o.startedAt ?? '',
+    source: o.source ?? '',
+    model: o.model ?? null,
+    repeat: o.bench === 1 ? 1 : (o.repeat ?? Math.max(1, ...cases.map((c) => c.stats.n))),
+    cases,
+    summary: summarize(cases),
+  };
+  return { report, warnings };
+}
+
+// ---------------------------------------------------------------------------
+// Markdown
+
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+const num = (x: number) => (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(2);
+const ci = (i: Interval | null, f: (x: number) => string = (x) => x.toFixed(2)) => (i ? `${f(i.mean)} [${f(i.lo)}, ${f(i.hi)}]` : '—');
+const esc = (s: string) => s.replace(/\|/g, '\\|');
 
 export function reportMarkdown(r: BenchReport): string {
   const s = r.summary;
+  const t = s.total;
   const lines = [
     `# Coach bench — ${r.label}`,
     '',
-    `${r.startedAt} · source: ${r.source}${r.model ? ` · model: ${r.model}` : ''}`,
+    `${r.startedAt} · source: ${r.source}${r.model ? ` · model: ${r.model}` : ''} · ${r.repeat} answer${r.repeat === 1 ? '' : 's'} per case`,
     '',
-    `**Score ${s.total.score} / ${s.total.n}** (acceptable ${s.total.acceptable}, blunder ${s.total.unacceptable}, other ${s.total.other}, missing/illegal/error ${s.total.invalid})` +
+    `**Quality score ${ci(t.score)}** (mean over ${t.cases} cases, −1 to +1, 95% interval by bootstrap over cases) · ` +
+      `acceptable ${ci(t.acceptable, pct)} · blunder ${ci(t.blunder, pct)}`,
+    '',
+    `Format failures (missing, illegal or errored answers; not in the score): ${ci(t.formatFailure, pct)} of ${t.samples} answers (Wilson interval)` +
       (s.lowConfidence ? ` · ${s.lowConfidence} low-confidence case${s.lowConfidence > 1 ? 's' : ''} not scored` : ''),
     '',
-    `Latency: mean ${secs(s.latencyMs.mean)}, median ${secs(s.latencyMs.median)}, p90 ${secs(s.latencyMs.p90)}, max ${secs(s.latencyMs.max)}`,
+    `Unstable cases (agreement below ${UNSTABLE_BELOW}): ${t.unstable} of ${t.cases}`,
     '',
-    '| type | cases | score | acceptable | blunder | other | invalid |',
-    '|---|---:|---:|---:|---:|---:|---:|',
+    `Latency per answer: mean ${secs(s.latencyMs.mean)}, median ${secs(s.latencyMs.median)}, p90 ${secs(s.latencyMs.p90)}, max ${secs(s.latencyMs.max)}`,
+    '',
+    r.repeat < 2 ? '_One answer per case: intervals only reflect which cases were picked. Use --repeat 3 or more to see the coach\'s own noise._\n' : '',
+    '| type | cases | score (95%) | acceptable | blunder | format fail | unstable |',
+    '|---|---:|---|---:|---:|---:|---:|',
   ];
-  for (const t of BENCH_TYPES) {
-    const x = s.byType[t];
-    if (x) lines.push(`| ${t} | ${x.n} | ${x.score} | ${x.acceptable} | ${x.unacceptable} | ${x.other} | ${x.invalid} |`);
+  for (const ty of BENCH_TYPES) {
+    const x = s.byType[ty];
+    if (x) lines.push(`| ${ty} | ${x.cases} | ${ci(x.score)} | ${x.acceptable ? pct(x.acceptable.mean) : '—'} | ${x.blunder ? pct(x.blunder.mean) : '—'} | ${x.formatFailure ? pct(x.formatFailure.mean) : '—'} | ${x.unstable} |`);
   }
-  lines.push('', '| case | type | verdict | answer | latency |', '|---|---|---|---|---:|');
+  lines.push('', '| case | type | mean | ok / blunder / other / format | agree | answers seen |', '|---|---|---:|---|---:|---|');
   for (const c of r.cases) {
-    const v = c.confidence === 'low' ? `${c.verdict} (low, unscored)` : c.verdict;
-    lines.push(`| ${c.id} | ${c.type} | ${v} | ${(c.canonical ?? c.answer ?? '—').replace(/\|/g, '\\|')}${c.note ? ` — ${c.note.replace(/\|/g, '\\|').slice(0, 80)}` : ''} | ${secs(c.latencyMs)} |`);
+    const k = c.stats;
+    const low = c.confidence === 'low' ? ' (low, unscored)' : '';
+    const answers = k.answers.map((a) => `${a.answer}×${a.count}`).join(', ');
+    lines.push(`| ${c.id}${low} | ${c.type} | ${k.meanScore === null ? '—' : num(k.meanScore)} | ${k.acceptable} / ${k.unacceptable} / ${k.other} / ${k.unparsed} | ${pct(k.agreement)} | ${esc(answers)} |`);
   }
   return lines.join('\n') + '\n';
 }
 
-export interface Flip {
+// ---------------------------------------------------------------------------
+// Comparing two runs
+
+export interface CaseDiff {
   id: string;
   type: BenchType;
-  from: { verdict: string; score: number; answer: string | null };
-  to: { verdict: string; score: number; answer: string | null };
+  a: CaseStats;
+  b: CaseStats;
+  /** B's mean score minus A's, or null when either had no valid answer. */
+  diff: number | null;
+  /** Set only when every valid answer of one run beats every valid answer of the other (both runs with 2+ answers). */
+  flip: 'better' | 'worse' | null;
+  /** Which runs have agreement below UNSTABLE_BELOW on this case. */
+  unstable: ('A' | 'B')[];
 }
 
-/** Cases whose verdict changed between two runs, plus the score change. */
-export function compareReports(a: BenchReport, b: BenchReport): { flips: Flip[]; onlyA: string[]; onlyB: string[]; delta: number; markdown: string } {
+export type Verdict3 = 'better' | 'worse' | 'none';
+
+export interface Comparison {
+  cases: CaseDiff[];
+  flips: CaseDiff[];
+  unstable: CaseDiff[];
+  onlyA: string[];
+  onlyB: string[];
+  paired: {
+    /** Cases that entered the paired test (high confidence in both, valid answers in both). */
+    n: number;
+    up: number;
+    down: number;
+    ties: number;
+    /** Mean of per-case differences (B − A) with a 95% paired-bootstrap interval. */
+    mean: Interval | null;
+    /** Sum of the differences, with the interval scaled to match. */
+    total: Interval | null;
+    /** Exact two-sided sign test p-value. */
+    signP: number;
+  };
+  verdict: Verdict3;
+  verdictText: string;
+  warnings: string[];
+  /** Total difference in the quality score (kept for callers that want one number). */
+  delta: number;
+  markdown: string;
+}
+
+/** The fewest paired cases for which the verdict will call a difference. */
+export const MIN_PAIRED_CASES = 5;
+
+/**
+ * Paired comparison of two runs over the cases they share. Each case's
+ * difference is its mean score in B minus its mean score in A; the verdict
+ * says B is better or worse only when the 95% bootstrap interval of the mean
+ * difference (resampling cases) excludes zero.
+ */
+export function compareReports(a: BenchReport, b: BenchReport): Comparison {
   const bi = new Map(b.cases.map((c) => [c.id, c]));
   const ai = new Map(a.cases.map((c) => [c.id, c]));
-  const flips: Flip[] = [];
-  for (const x of a.cases) {
-    const y = bi.get(x.id);
-    if (!y || (x.verdict === y.verdict && x.canonical === y.canonical)) continue;
-    flips.push({
-      id: x.id,
-      type: x.type,
-      from: { verdict: x.verdict, score: x.score, answer: x.canonical ?? x.answer },
-      to: { verdict: y.verdict, score: y.score, answer: y.canonical ?? y.answer },
-    });
-  }
   const onlyA = a.cases.filter((c) => !bi.has(c.id)).map((c) => c.id);
   const onlyB = b.cases.filter((c) => !ai.has(c.id)).map((c) => c.id);
-  const delta = b.summary.total.score - a.summary.total.score;
-  const lines = [
-    `# Coach bench — ${a.label} → ${b.label}`,
+  const warnings: string[] = [];
+  for (const [name, r] of [['A', a], ['B', b]] as const) {
+    if (Math.max(0, ...r.cases.map((c) => c.stats.n)) < 2) warnings.push(`${name} (${r.label}) has one answer per case: a case difference cannot be told from noise, so no flips are flagged and the interval below is the only guide.`);
+  }
+  const cases: CaseDiff[] = [];
+  const diffs: number[] = [];
+  for (const x of a.cases) {
+    const y = bi.get(x.id);
+    if (!y) continue;
+    const both = x.confidence !== 'low' && y.confidence !== 'low';
+    const diff = both && x.stats.meanScore !== null && y.stats.meanScore !== null ? y.stats.meanScore - x.stats.meanScore : null;
+    if (diff !== null) diffs.push(diff);
+    const sa = x.samples.filter(isValid).map((s) => s.score);
+    const sb = y.samples.filter(isValid).map((s) => s.score);
+    let flip: CaseDiff['flip'] = null;
+    if (both && sa.length >= 2 && sb.length >= 2) {
+      if (Math.min(...sb) > Math.max(...sa)) flip = 'better';
+      else if (Math.max(...sb) < Math.min(...sa)) flip = 'worse';
+    }
+    const unstable: CaseDiff['unstable'] = [];
+    if (both && x.stats.agreement < UNSTABLE_BELOW) unstable.push('A');
+    if (both && y.stats.agreement < UNSTABLE_BELOW) unstable.push('B');
+    cases.push({ id: x.id, type: x.type, a: x.stats, b: y.stats, diff, flip, unstable });
+  }
+  const up = diffs.filter((d) => d > 1e-9).length;
+  const down = diffs.filter((d) => d < -1e-9).length;
+  const m = bootstrapMean(diffs);
+  const n = diffs.length;
+  const total = m ? { mean: m.mean * n, lo: m.lo * n, hi: m.hi * n } : null;
+  const signP = signTest(up, down);
+  let verdict: Verdict3 = 'none';
+  let why = '';
+  if (n < MIN_PAIRED_CASES) why = ` (only ${n} paired case${n === 1 ? '' : 's'}; need ${MIN_PAIRED_CASES})`;
+  else if (m && m.lo > 0) verdict = 'better';
+  else if (m && m.hi < 0) verdict = 'worse';
+  const bName = `B (${b.label})`;
+  const verdictText =
+    verdict === 'better'
+      ? `${bName} is better than A (${a.label}): the 95% interval of the mean difference excludes zero.`
+      : verdict === 'worse'
+        ? `${bName} is worse than A (${a.label}): the 95% interval of the mean difference excludes zero.`
+        : `No detectable difference between A (${a.label}) and ${bName}${why || ': the 95% interval of the mean difference includes zero'}.`;
+
+  const flips = cases.filter((c) => c.flip);
+  const unstable = cases.filter((c) => c.unstable.length);
+  const lines = [`# Coach bench — A ${a.label} → B ${b.label}`, '', `**Verdict: ${verdictText}**`, ''];
+  for (const w of warnings) lines.push(`> Warning: ${w}`);
+  if (warnings.length) lines.push('');
+  lines.push(
+    `Paired over ${n} cases (${a.repeat} vs ${b.repeat} answers per case). Mean score difference (B − A) ${m ? ci(m, num) : '—'}; ` +
+      `total ${total ? ci(total, num) : '—'}. Cases better ${up}, worse ${down}, unchanged ${n - up - down}; sign test p = ${signP.toFixed(3)}.`,
     '',
-    `Score ${a.summary.total.score}/${a.summary.total.n} → ${b.summary.total.score}/${b.summary.total.n} (${delta >= 0 ? '+' : ''}${delta})`,
-    `Median latency ${secs(a.summary.latencyMs.median)} → ${secs(b.summary.latencyMs.median)}`,
+    `Quality score A ${ci(a.summary.total.score)} · B ${ci(b.summary.total.score)}`,
+    `Acceptable A ${ci(a.summary.total.acceptable, pct)} · B ${ci(b.summary.total.acceptable, pct)}`,
+    `Blunder A ${ci(a.summary.total.blunder, pct)} · B ${ci(b.summary.total.blunder, pct)}`,
+    `Format failures A ${ci(a.summary.total.formatFailure, pct)} · B ${ci(b.summary.total.formatFailure, pct)} (separate from the score)`,
+    `Median latency per answer ${secs(a.summary.latencyMs.median)} → ${secs(b.summary.latencyMs.median)}`,
     '',
-  ];
-  const better = flips.filter((f) => f.to.score > f.from.score);
-  const worse = flips.filter((f) => f.to.score < f.from.score);
-  const same = flips.filter((f) => f.to.score === f.from.score);
-  const row = (f: Flip) => `- ${f.id} (${f.type}): ${f.from.verdict} \`${f.from.answer ?? '—'}\` → ${f.to.verdict} \`${f.to.answer ?? '—'}\``;
-  lines.push(`## Better (${better.length})`, ...better.map(row), '', `## Worse (${worse.length})`, ...worse.map(row), '');
-  if (same.length) lines.push(`## Changed answer, same score (${same.length})`, ...same.map(row), '');
-  if (onlyA.length) lines.push(`Only in ${a.label}: ${onlyA.join(', ')}`);
-  if (onlyB.length) lines.push(`Only in ${b.label}: ${onlyB.join(', ')}`);
-  return { flips, onlyA, onlyB, delta, markdown: lines.join('\n') + '\n' };
+  );
+  const row = (c: CaseDiff) =>
+    `- ${c.id} (${c.type}): ${c.a.meanScore === null ? '—' : num(c.a.meanScore)} → ${c.b.meanScore === null ? '—' : num(c.b.meanScore)}` +
+    ` · A: ${c.a.answers.map((x) => `${x.answer}×${x.count}`).join(', ')} · B: ${c.b.answers.map((x) => `${x.answer}×${x.count}`).join(', ')}`;
+  const fb = flips.filter((c) => c.flip === 'better');
+  const fw = flips.filter((c) => c.flip === 'worse');
+  lines.push(`## Flips beyond noise: better (${fb.length})`, ...fb.map(row), '', `## Flips beyond noise: worse (${fw.length})`, ...fw.map(row), '');
+  lines.push(`_A flip is flagged only when every valid answer of one run scores above every valid answer of the other, with 2+ answers in each._`, '');
+  lines.push(`## Unstable cases (agreement below ${UNSTABLE_BELOW}) (${unstable.length})`);
+  for (const c of unstable) lines.push(`- ${c.id} (${c.type}): ${c.unstable.map((u) => `${u} ${pct((u === 'A' ? c.a : c.b).agreement)}`).join(', ')}`);
+  lines.push('', '## Per-case difference (B − A), cases that differ', '', '| case | type | A mean | B mean | diff |', '|---|---|---:|---:|---:|');
+  for (const c of cases.filter((x) => x.diff !== null && Math.abs(x.diff) > 1e-9).sort((p, q) => q.diff! - p.diff!)) {
+    lines.push(`| ${c.id}${c.flip ? ` (flip ${c.flip})` : ''} | ${c.type} | ${num(c.a.meanScore!)} | ${num(c.b.meanScore!)} | ${num(c.diff!)} |`);
+  }
+  if (onlyA.length) lines.push('', `Only in A (${a.label}): ${onlyA.join(', ')}`);
+  if (onlyB.length) lines.push('', `Only in B (${b.label}): ${onlyB.join(', ')}`);
+  return {
+    cases,
+    flips,
+    unstable,
+    onlyA,
+    onlyB,
+    paired: { n, up, down, ties: n - up - down, mean: m, total, signP },
+    verdict,
+    verdictText,
+    warnings,
+    delta: total?.mean ?? 0,
+    markdown: lines.join('\n') + '\n',
+  };
 }
