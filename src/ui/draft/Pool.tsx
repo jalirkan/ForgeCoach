@@ -13,7 +13,7 @@ import { Sheet } from '../Sheet.tsx';
 import { cx } from '../util.ts';
 import { Collection, usePrefs, ViewBar, type Zone } from './Collection.tsx';
 
-const DOT: Record<string, string> = { W: '#f3e6c0', U: '#3d8fe0', B: '#2a2433', R: '#e2453a', G: '#3ea85a' };
+const DOT: Record<string, string> = { W: '#f3ead0', U: '#3d8be0', B: '#2d2740', R: '#e0473b', G: '#3fa45d' };
 
 /** Colour dots with counts: ● 9 ● 11 ● 7 … */
 export function ColourDots({ names, meta, className }: { names: string[]; meta: MetaOf; className?: string }) {

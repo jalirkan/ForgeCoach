@@ -99,7 +99,7 @@
   height: 11px;
   border-radius: 50%;
   background: var(--gold-hi);
-  box-shadow: 0 0 6px rgba(242, 207, 122, 0.6);
+  box-shadow: 0 0 6px rgba(226, 194, 127, 0.6);
 }
 .vsize input::-moz-range-thumb {
   width: 11px;
@@ -189,7 +189,7 @@
   transition: background 0.15s;
 }
 .szone.is-over {
-  background: rgba(217, 168, 67, 0.05);
+  background: rgba(201, 164, 92, 0.05);
 }
 .scol {
   flex: none;
@@ -230,12 +230,12 @@
 }
 .scol.is-side .sstack {
   border-radius: calc(var(--cw) * 0.05);
-  outline: 1px dashed rgba(217, 168, 67, 0.28);
+  outline: 1px dashed rgba(201, 164, 92, 0.28);
   outline-offset: 4px;
 }
 .scol.is-side.is-over .sstack {
   outline-color: var(--gold);
-  background: rgba(217, 168, 67, 0.06);
+  background: rgba(201, 164, 92, 0.06);
 }
 .sdrop {
   display: block;
@@ -261,7 +261,7 @@
   min-height: 60px;
   padding: 8px;
   border-radius: 6px;
-  outline: 1px dashed rgba(217, 168, 67, 0.28);
+  outline: 1px dashed rgba(201, 164, 92, 0.28);
 }
 .ggroup.is-over .gcards {
   outline-color: var(--gold);
@@ -325,7 +325,7 @@
   color: var(--muted);
 }
 .lgroup.is-side.is-over {
-  background: rgba(217, 168, 67, 0.05);
+  background: rgba(201, 164, 92, 0.05);
 }
 
 @media (max-width: 640px) {

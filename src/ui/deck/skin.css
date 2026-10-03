@@ -1,0 +1,358 @@
+/*
+ * ForgeCoach — ui/deck/skin.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The deck assistant in the cube section's design language (ui/draft/
+ * draft.css, matching the ledger pages): warm near-black, gold letter-spaced
+ * labels and hairlines, serif display type, gold for what you act on. It
+ * layers over deck.css and only reaches inside .fx (DeckApp's roots) and the
+ * deck assistant's own sheets, so the rest of the app is untouched.
+ */
+
+/* Surfaces */
+.dw.fx,
+.deck-home.fx {
+  background: radial-gradient(1100px 420px at 50% -12%, rgba(201, 164, 92, 0.08), transparent 65%), var(--bg);
+}
+.dw.fx .dw-top,
+.dw.fx .dw-tabs {
+  background: rgba(13, 11, 8, 0.92);
+}
+.dw.fx .dw-top {
+  border-bottom: 1px solid var(--hair);
+}
+.dw.fx .dw-name {
+  font: italic 500 22px/1.15 var(--serif);
+}
+.dw.fx .dw-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+.dw.fx .dw-tabs {
+  border-bottom-color: var(--line);
+}
+.dw.fx .dw-tab {
+  font: 600 11.5px/1 var(--font);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.dw.fx .dw-tab.is-on {
+  color: var(--gold-hi);
+}
+.dw.fx .dw-tab.is-on::after {
+  background: var(--gold);
+  border-radius: 0;
+  height: 1px;
+}
+.dw.fx .dw-tab-n {
+  background: transparent;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0;
+  color: var(--gold);
+}
+.fx .meta-chip {
+  border-radius: 4px;
+  background: transparent;
+  font: 500 11px/1 var(--mono);
+}
+.fx .meta-chip.is-on {
+  color: var(--gold-hi);
+  border-color: rgba(201, 164, 92, 0.45);
+}
+
+/* Home: a lobby — gold kicker, serif hero, cube tiles, ruled pool rows */
+.deck-home.fx .hero h1 {
+  font: 500 44px/1.05 var(--serif);
+  letter-spacing: -0.01em;
+}
+.deck-home.fx .hero h1 .accent {
+  display: block;
+  font-style: italic;
+  color: var(--gold-hi);
+}
+.deck-home.fx .hero-sub {
+  font: 18px/1.45 var(--serif);
+  color: var(--text-2);
+}
+.deck-home.fx .section-h {
+  font: 600 11px/1 var(--font);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--gold);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hair);
+}
+.deck-home.fx .cube-tile {
+  border-radius: 4px;
+  border-color: var(--line);
+  background: rgba(23, 19, 13, 0.85);
+}
+.deck-home.fx .cube-tile:hover {
+  border-color: rgba(201, 164, 92, 0.6);
+  background: rgba(40, 32, 20, 0.6);
+}
+.deck-home.fx .cube-title {
+  font: 500 20px/1.15 var(--serif);
+}
+.deck-home.fx .cube-blurb {
+  font: 15px/1.35 var(--serif);
+  color: var(--text-2);
+}
+.deck-home.fx .cube-meta {
+  font: 11px/1.2 var(--mono);
+}
+.deck-home.fx .cube-art {
+  border-radius: 3px;
+}
+.deck-home.fx .pool-row {
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+}
+.deck-home.fx .pool-name {
+  font: 500 18px/1.2 var(--serif);
+}
+.deck-home.fx .pool-sub {
+  font: 11.5px/1.3 var(--mono);
+}
+.deck-home.fx .load-top {
+  border-bottom: 1px solid var(--hair);
+}
+
+/* Buttons, segments, chips */
+.fx .btn {
+  border-radius: 6px;
+}
+.fx .btn-primary {
+  color: #24180a;
+  background: linear-gradient(180deg, #e2b754, #c8942f);
+  border-color: transparent;
+}
+.fx .btn-quiet {
+  border-color: var(--line-2);
+  background: rgba(255, 240, 210, 0.03);
+}
+.fx .btn-quiet:hover:not(:disabled) {
+  border-color: var(--gold);
+  color: var(--gold-hi);
+}
+.fx .seg {
+  border-radius: 4px;
+  border: 1px solid var(--line-2);
+  background: transparent;
+  padding: 3px;
+}
+.fx .seg button {
+  border-radius: 3px;
+  font-size: 12.5px;
+}
+.fx .seg button.is-on {
+  background: #3a2c17;
+  color: var(--gold-hi);
+  box-shadow: none;
+}
+.fx .fchip {
+  border-radius: 3px;
+  font: 600 10.5px/1 var(--font);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.fx .fchip.is-on {
+  border-color: var(--gold);
+  background: rgba(58, 44, 23, 0.8);
+  color: var(--gold-hi);
+}
+.fx .fchip-n {
+  font-family: var(--mono);
+  letter-spacing: 0;
+  color: var(--gold);
+}
+.fx .pv-search input,
+.fx .dc-q,
+.fx .paste-text {
+  border-radius: 4px;
+  border-color: var(--line-2);
+  background: rgba(23, 19, 13, 0.9);
+}
+.fx .pv-search input:focus,
+.fx .dc-q:focus {
+  border-color: var(--gold);
+}
+.fx .pv-count b {
+  font: 500 28px/1 var(--serif);
+  color: var(--gold-hi);
+}
+
+/* Boxes */
+.fx .card-box {
+  border-radius: 4px;
+  border-color: var(--line);
+  background: rgba(23, 19, 13, 0.88);
+}
+.fx .box-h {
+  font: 600 10.5px/1 var(--font);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* Cards from the cube (CubeCard) */
+.fx .cc {
+  border-radius: 5px;
+}
+.fx .cc.is-hl,
+.fx .cc.is-mine {
+  box-shadow: 0 0 0 2px var(--gold-hi), 0 0 18px 3px rgba(226, 194, 127, 0.35);
+}
+.fx .cc.is-opp {
+  box-shadow: 0 0 0 2px var(--crimson-hi), 0 0 16px 2px rgba(210, 72, 61, 0.3);
+}
+.fx .cc-chip {
+  border-radius: 4px;
+  font-family: var(--mono);
+  background: rgba(12, 10, 7, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.fx .cc-chip.is-good {
+  color: var(--gold-hi);
+}
+.fx .cc-mark {
+  background: var(--gold);
+  color: #24180a;
+}
+.fx .cc-mark-opp {
+  background: var(--crimson);
+  color: #fbe9e2;
+}
+
+/* The builder */
+.fx .bv-build {
+  border-radius: 4px;
+  border-color: var(--line-2);
+  background: rgba(23, 19, 13, 0.85);
+}
+.fx .bv-build.is-on {
+  border-color: var(--gold);
+  background: rgba(58, 44, 23, 0.55);
+  box-shadow: 0 0 22px rgba(201, 164, 92, 0.12);
+}
+.fx .bv-build-name {
+  font: italic 500 17px/1.2 var(--serif);
+}
+.fx .bv-build-score,
+.fx .sc-score {
+  font-family: var(--serif);
+  color: var(--gold-hi);
+}
+.fx .sc-score {
+  font-size: 44px;
+  font-weight: 500;
+}
+.fx .bv-build-tag {
+  border-radius: 3px;
+  font: 600 9.5px/1 var(--font);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: var(--gold);
+  color: #24180a;
+}
+.fx .sc-fill.is-q,
+.fx .sc-fill.is-pos,
+.fx .sc-have {
+  background: linear-gradient(90deg, var(--gold-lo), var(--gold-hi));
+}
+.fx .sc-have {
+  background: linear-gradient(180deg, var(--gold-hi), var(--gold-lo));
+}
+.fx .bv-reasons li,
+.fx .adv-reasons li {
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.bv-deck {
+  margin-bottom: 8px;
+}
+.bv-deck-sum {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  padding: 10px 0 12px;
+}
+.bv-deck-n {
+  font: 12px/1 var(--mono);
+  color: var(--muted);
+}
+.bv-deck-n b {
+  font: 400 26px/1 var(--font);
+  color: var(--text);
+  margin-right: 4px;
+}
+.bv-deck-kinds {
+  font: 12px/1 var(--mono);
+  color: var(--text-2);
+}
+.bv-deck-help {
+  margin: 4px 0 0;
+}
+
+/* Grid and Winston helpers */
+.fx .gl-btn {
+  border-radius: 5px;
+  border-color: var(--line-2);
+  color: var(--gold);
+}
+.fx .gl-btn.is-best {
+  border-color: var(--gold-hi);
+  background: linear-gradient(180deg, #e2b754, #c8942f);
+  color: #24180a;
+  box-shadow: 0 0 16px rgba(226, 194, 127, 0.4);
+}
+.fx .gv-empty {
+  border-radius: 5px;
+  border: 1px dashed rgba(201, 164, 92, 0.3);
+  background: rgba(255, 240, 210, 0.015);
+}
+.fx .adv {
+  border-color: rgba(201, 164, 92, 0.45);
+  background: linear-gradient(180deg, #2b2215, #1b160f);
+}
+.fx .adv-kicker {
+  font: 600 10.5px/1 var(--font);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.fx .adv-title {
+  font: italic 500 26px/1.15 var(--serif);
+}
+.fx .adv-nums {
+  font-family: var(--mono);
+}
+.fx .wv-pile {
+  border-radius: 4px;
+}
+.fx .wv-pile.is-on {
+  border-color: var(--gold);
+  box-shadow: 0 0 18px rgba(201, 164, 92, 0.2);
+}
+.fx .wv-pile-n {
+  font: 600 11px/1 var(--font);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* The deck assistant's sheets (portalled out of .fx): card info, picker, swaps, paste */
+.cardinfo-sheet.sheet,
+.fx-sheet.sheet {
+  --serif: 'EB Garamond', 'Cormorant Garamond', Garamond, 'Times New Roman', serif;
+}
+.cardinfo-sheet .sheet-title {
+  font: italic 500 24px/1.2 var(--serif);
+}
+.cardinfo-sheet .ci-text {
+  font: 16px/1.45 var(--serif);
+}
