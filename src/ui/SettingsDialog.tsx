@@ -98,6 +98,15 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           </div>
           <span className="field-help">Claude Code uses the same choice (opus, sonnet or haiku).</span>
         </fieldset>
+        <label className="field check-row">
+          <input type="checkbox" checked={s.answerFirst === true} onChange={(e) => setS({ ...s, answerFirst: e.target.checked })} />
+          <span>
+            <span className="field-label">Answer first</span>
+            <span className="field-help">
+              The coach starts with the play in one line, then explains — so you see what to do sooner. Off: the classic layout.
+            </span>
+          </span>
+        </label>
         {s.apiKey && (
           <button
             type="button"
@@ -187,6 +196,6 @@ function safeLoad(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE };
+    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false };
   }
 }

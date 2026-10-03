@@ -11,6 +11,7 @@ import { join, resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import { parseLog, type GameLog } from '../log.ts';
 import type { CardInfo } from '../cards.ts';
+import type { PromptFormat } from '../prompt.ts';
 import { buildCase, validateCase, type BenchCase, type BuiltCase } from './coachBench.ts';
 
 export const BENCH_DIR = 'bench/coach';
@@ -82,13 +83,18 @@ export class LogCache {
 }
 
 /** Builds every valid case; collects per-case errors instead of throwing. */
-export function buildAll(root: string, cases: BenchCase[], cards: Map<string, CardInfo>): { built: BuiltCase[]; errors: { id: string; error: string }[] } {
+export function buildAll(
+  root: string,
+  cases: BenchCase[],
+  cards: Map<string, CardInfo>,
+  opts: { format?: PromptFormat } = {},
+): { built: BuiltCase[]; errors: { id: string; error: string }[] } {
   const logs = new LogCache(root);
   const built: BuiltCase[] = [];
   const errors: { id: string; error: string }[] = [];
   for (const c of cases) {
     try {
-      built.push(buildCase(c, logs.get(c.log), cards));
+      built.push(buildCase(c, logs.get(c.log), cards, opts));
     } catch (e) {
       errors.push({ id: c.id, error: e instanceof Error ? e.message : String(e) });
     }

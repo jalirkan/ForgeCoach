@@ -216,6 +216,43 @@ describe('askHelper', () => {
   });
 });
 
+describe('the D325 queue', () => {
+  it('reads the queue, concurrency and supersede support from /health, and defaults for an older helper', async () => {
+    forgetHelper();
+    const { f } = fakeFetch(() => json({ ok: true, helper: 1, claude: '2', models: [], concurrency: 1, queue: { max: 4, length: 2 }, running: 1, supersedes: 1 }));
+    expect(await detectHelper({ fetch: f, target, force: true })).toMatchObject({ state: 'ok', concurrency: 1, queue: { max: 4, length: 2 }, supersedes: true });
+    const { f: old } = fakeFetch(() => json({ ok: true, helper: 1, claude: '2', models: [] }));
+    expect(await detectHelper({ fetch: old, target, force: true })).toMatchObject({ state: 'ok', concurrency: 1, queue: null, supersedes: false });
+  });
+
+  it('reports queued positions and the turn coming, then streams as before', async () => {
+    const { f, calls } = fakeFetch(() =>
+      chunked([line({ type: 'queued', position: 2 }), line({ type: 'queued', position: 1 }), line({ type: 'running' }), line({ type: 'text', text: 'Hold.' }), line({ type: 'done', stopReason: 'end_turn', model: 'sonnet' })]),
+    );
+    const seen: string[] = [];
+    const r = await askHelper(prompt, { onText: (d) => seen.push(`text ${d}`) }, { fetch: f, target, supersedes: 'tab-1', onQueued: (n) => seen.push(`queued ${n}`), onRunning: () => seen.push('running') });
+    expect(seen).toEqual(['queued 2', 'queued 1', 'running', 'text Hold.']);
+    expect(r.text).toBe('Hold.');
+    expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ system: prompt.system, user: prompt.user, supersedes: 'tab-1' });
+  });
+
+  it('sends no supersede key unless given one', async () => {
+    const { f, calls } = fakeFetch(() => chunked([line({ type: 'done', stopReason: 'end_turn', model: 'sonnet' })]));
+    await askHelper(prompt, { onText() {} }, { fetch: f, target });
+    expect(JSON.parse(String(calls[0]!.init?.body))).not.toHaveProperty('supersedes');
+  });
+
+  it('a superseded question ends with its own error kind', async () => {
+    const { f } = fakeFetch(() => chunked([line({ type: 'queued', position: 1 }), line({ type: 'error', code: 'superseded', message: 'superseded by a newer question' })]));
+    await expect(askHelper(prompt, { onText() {} }, { fetch: f, target })).rejects.toMatchObject({ kind: 'superseded' });
+  });
+
+  it('a full queue (or an older helper) is still the friendly busy message on 429', async () => {
+    const { f } = fakeFetch(() => json({ type: 'error', message: 'the coach is busy with other questions' }, 429));
+    await expect(askHelper(prompt, { onText() {} }, { fetch: f, target })).rejects.toMatchObject({ kind: 'helper_busy', status: 429, message: expect.stringMatching(/busy with another answer/) });
+  });
+});
+
 describe('chooseSource', () => {
   const ok: HelperStatus = { state: 'ok', baseUrl: target.baseUrl, claude: '2', models: [], checkedAt: 0 };
   const down: HelperStatus = { state: 'down', baseUrl: target.baseUrl, reason: 'not_running', message: '', checkedAt: 0 };

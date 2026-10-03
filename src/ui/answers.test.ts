@@ -31,7 +31,7 @@ vi.mock('../coachHelper.ts', async (orig) => {
   };
 });
 
-import { getAnswer, startAnswer } from './answers.ts';
+import { answerBusy, getAnswer, startAnswer, stopAnswer } from './answers.ts';
 import { askClaude } from '../claude.ts';
 import { askHelper, detectHelper } from '../coachHelper.ts';
 
@@ -122,5 +122,66 @@ describe('startAnswer source selection', () => {
     vi.mocked(askHelper).mockRejectedValueOnce(Object.assign(new Error('Claude Code on your PC is busy'), { kind: 'helper_busy' }));
     await startAnswer('a5', async () => ({ system: 's', user: 'u' }));
     expect(getAnswer('a5')).toMatchObject({ status: 'error', errorKind: 'helper_busy', source: 'helper' });
+  });
+});
+
+describe('the coach helper queue (D325)', () => {
+  const QOK: HelperStatus = { ...OK, state: 'ok', queue: { max: 4, length: 0 }, concurrency: 1, supersedes: true } as HelperStatus;
+
+  it('shows a queued question as waiting, with its position, until its turn comes', async () => {
+    h.helper = QOK;
+    h.fresh = true;
+    const seen: (string | null)[] = [];
+    vi.mocked(askHelper).mockImplementationOnce(async (_p, hs, opts) => {
+      opts!.onQueued!(2);
+      seen.push(`${getAnswer('q1')?.status} ${getAnswer('q1')?.queuePosition}`);
+      opts!.onRunning!();
+      seen.push(`${getAnswer('q1')?.status} ${getAnswer('q1')?.queuePosition}`);
+      hs.onText('Hold.');
+      return { text: 'Hold.', stopReason: 'end_turn', refused: false, model: 'sonnet' };
+    });
+    await startAnswer('q1', async () => ({ system: 's', user: 'u' }));
+    expect(seen).toEqual(['queued 2', 'streaming null']);
+    expect(getAnswer('q1')).toMatchObject({ status: 'done', text: 'Hold.' });
+  });
+
+  it('sends the supersede key only to a helper that supports it', async () => {
+    h.helper = QOK;
+    h.fresh = true;
+    await startAnswer('q2', async () => ({ system: 's', user: 'u' }), { supersedes: 'live-coach:x' });
+    expect(vi.mocked(askHelper).mock.calls[0]![2]).toMatchObject({ supersedes: 'live-coach:x' });
+    h.helper = OK;
+    await startAnswer('q3', async () => ({ system: 's', user: 'u' }), { supersedes: 'live-coach:x' });
+    expect(vi.mocked(askHelper).mock.calls[1]![2]).not.toHaveProperty('supersedes');
+  });
+
+  it('a superseded question reads as stopped, not as an error', async () => {
+    h.helper = QOK;
+    h.fresh = true;
+    vi.mocked(askHelper).mockRejectedValueOnce(Object.assign(new Error('A newer question took this one’s place.'), { kind: 'superseded' }));
+    await startAnswer('q4', async () => ({ system: 's', user: 'u' }));
+    expect(getAnswer('q4')).toMatchObject({ status: 'stopped', stopReasonNote: 'superseded' });
+  });
+
+  it('a stale question is stopped with its reason, and is no longer busy', async () => {
+    h.helper = QOK;
+    h.fresh = true;
+    let signal: AbortSignal | undefined;
+    vi.mocked(askHelper).mockImplementationOnce(
+      (_p, _hs, opts) =>
+        new Promise((_res, rej) => {
+          signal = opts!.signal;
+          opts!.onQueued!(1);
+          signal!.addEventListener('abort', () => rej(Object.assign(new Error('Request cancelled.'), { kind: 'aborted' })));
+        }),
+    );
+    const run = startAnswer('q5', async () => ({ system: 's', user: 'u' }));
+    await vi.waitFor(() => expect(getAnswer('q5')?.status).toBe('queued'));
+    expect(answerBusy('q5')).toBe(true);
+    stopAnswer('q5', 'moved_on');
+    await run;
+    expect(signal!.aborted).toBe(true);
+    expect(answerBusy('q5')).toBe(false);
+    expect(getAnswer('q5')).toMatchObject({ status: 'stopped', stopReasonNote: 'moved_on', queuePosition: null });
   });
 });

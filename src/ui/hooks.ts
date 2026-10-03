@@ -53,7 +53,7 @@ export function useCoachAvailability(pollMs?: number): { settings: Settings; hel
     try {
       settings = loadSettings();
     } catch {
-      settings = { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto' };
+      settings = { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false };
     }
     return { settings, helper: peekHelper() };
   };

@@ -43,6 +43,12 @@ export interface Settings {
   apiKey: string;
   model: ModelId;
   coachSource: CoachSource;
+  /**
+   * Answer first: the coach starts with a one-line **Answer:** (and its
+   * confidence and rule) before the explanation, so the play shows as soon as
+   * that line has streamed. Off by default (absent = off).
+   */
+  answerFirst?: boolean;
 }
 
 function storage(): Storage | null {
@@ -55,7 +61,7 @@ function storage(): Storage | null {
 
 export function loadSettings(): Settings {
   // Settings saved before the coach helper existed have no coachSource → 'auto'.
-  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE };
+  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false };
   try {
     const raw = storage()?.getItem(SETTINGS_KEY);
     if (!raw) return out;
@@ -63,6 +69,7 @@ export function loadSettings(): Settings {
     if (typeof v.apiKey === 'string') out.apiKey = v.apiKey;
     if (isModelId(v.model)) out.model = v.model;
     if (isCoachSource(v.coachSource)) out.coachSource = v.coachSource;
+    if (v.answerFirst === true) out.answerFirst = true;
   } catch {
     /* corrupt or unavailable storage → defaults */
   }
@@ -85,6 +92,7 @@ export function saveSettings(s: Settings): void {
         apiKey: s.apiKey.trim(),
         model: isModelId(s.model) ? s.model : DEFAULT_MODEL,
         coachSource: isCoachSource(s.coachSource) ? s.coachSource : DEFAULT_COACH_SOURCE,
+        answerFirst: s.answerFirst === true,
       }),
     );
   } catch {
@@ -164,8 +172,10 @@ export type CoachErrorKind =
   | 'no_key'
   /** The coach helper (Claude Code on the player's PC) isn't reachable. */
   | 'helper_down'
-  /** The coach helper is already answering something else (429). */
+  /** The coach helper is already answering something else and has no room to queue this (429). */
   | 'helper_busy'
+  /** A newer question with the same supersede key took this one's place in the helper's queue. */
+  | 'superseded'
   /** Claude Code on the player's PC isn't logged in. */
   | 'not_logged_in'
   | 'auth'

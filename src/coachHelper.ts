@@ -6,13 +6,19 @@
  * `./scripts/play.sh`) runs the Claude Code CLI that is logged in on the
  * player's PC and streams its answer back.
  *
- * Contract (mtg-table tools/coach-helper.mjs):
+ * Contract (mtg-table tools/coach-helper.mjs, D292 and D325):
  *   GET  /health → {"ok":true,"helper":1,"claude":"<version>","models":[…]}
  *                | {"ok":false,"helper":1,"error":"…"}
- *   POST /coach  {"system","user","model"?:"opus"|"sonnet"|"haiku"}
+ *                  D325 adds "concurrency":1, "queue":{"max","length"}, "running":0|1,
+ *                  "supersedes":1. A helper without "queue" refuses a second question (429).
+ *   POST /coach  {"system","user","model"?:"opus"|"sonnet"|"haiku","supersedes"?:"<key>"}
  *        → application/x-ndjson: {"type":"text","text"} / {"type":"thinking","text"} lines,
  *          ending with one {"type":"done","stopReason","model"} or {"type":"error","message"}.
- *          Aborting the request cancels the run; 429 when it is busy.
+ *          D325: a question that waits first gets {"type":"queued","position":n} (n ahead
+ *          of it, again as it moves up) and {"type":"running"} when its turn comes; a newer
+ *          question with the same "supersedes" key ends a queued one with
+ *          {"type":"error","code":"superseded"}. Aborting the request cancels the run or
+ *          leaves the queue; 429 when the queue is full (or, before D325, when busy).
  * Default base http://127.0.0.1:8643. When the engine serves this page on the
  * LAN (phone play) the helper is on the page's host, port 8643, and the
  * pairing token goes along as `X-ForgeCoach-Token`.
@@ -100,8 +106,25 @@ function headers(t: HelperTarget, json: boolean): Record<string, string> {
 // ---------------------------------------------------------------------------
 // Detection
 
+/** What a D325 helper says about its queue; null from an older helper (one question, the rest 429). */
+export interface HelperQueue {
+  max: number;
+  length: number;
+}
+
 export type HelperStatus =
-  | { state: 'ok'; baseUrl: string; claude: string; models: string[]; checkedAt: number }
+  | {
+      state: 'ok';
+      baseUrl: string;
+      claude: string;
+      models: string[];
+      checkedAt: number;
+      /** Questions it answers at once (1 when it doesn't say). */
+      concurrency?: number;
+      queue?: HelperQueue | null;
+      /** It honours a "supersedes" key on /coach. */
+      supersedes?: boolean;
+    }
   | { state: 'down'; baseUrl: string; reason: 'not_running' | 'not_ready' | 'unauthorized'; message: string; checkedAt: number };
 
 type FetchFn = (input: string, init?: RequestInit) => Promise<Response>;
@@ -187,7 +210,17 @@ async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: (
     } catch {
       /* not JSON */
     }
-    const b = (body ?? {}) as { ok?: unknown; helper?: unknown; claude?: unknown; models?: unknown; error?: unknown; message?: unknown };
+    const b = (body ?? {}) as {
+      ok?: unknown;
+      helper?: unknown;
+      claude?: unknown;
+      models?: unknown;
+      error?: unknown;
+      message?: unknown;
+      concurrency?: unknown;
+      queue?: unknown;
+      supersedes?: unknown;
+    };
     if (res.status === 401 || res.status === 403) return down('unauthorized', refusedMessage(String(b.message ?? b.error ?? '')));
     if (b.helper === undefined && !res.ok) return down('not_running', NOT_RUNNING);
     if (b.ok === true) {
@@ -197,6 +230,9 @@ async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: (
         claude: typeof b.claude === 'string' ? b.claude : '',
         models: Array.isArray(b.models) ? b.models.filter((m): m is string => typeof m === 'string') : [],
         checkedAt: now(),
+        concurrency: typeof b.concurrency === 'number' && b.concurrency >= 1 ? Math.floor(b.concurrency) : 1,
+        queue: helperQueue(b.queue),
+        supersedes: b.supersedes === 1 || b.supersedes === true,
       };
     }
     if (b.helper !== undefined) return down('not_ready', helperProblem(typeof b.error === 'string' ? b.error : ''));
@@ -206,6 +242,12 @@ async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: (
   } finally {
     clearTimeout(timer);
   }
+}
+
+function helperQueue(q: unknown): HelperQueue | null {
+  const o = q as { max?: unknown; length?: unknown } | null;
+  if (!o || typeof o !== 'object' || typeof o.max !== 'number') return null;
+  return { max: o.max, length: typeof o.length === 'number' ? o.length : 0 };
 }
 
 /** Why the helper turned this page away (403): its address (Origin) or the pairing token. */
@@ -232,11 +274,24 @@ export function helperProblem(raw: string): string {
 // ---------------------------------------------------------------------------
 // Asking
 
+/** A 429: an older helper answers one question at a time; a D325 helper's queue is full. */
+const BUSY = 'Claude Code on your PC is busy with another answer. Wait for it to finish (or stop it), then ask again.';
+
 export interface AskHelperOptions {
   signal?: AbortSignal;
   model?: ModelId | HelperModel;
   fetch?: FetchFn;
   target?: HelperTarget;
+  /**
+   * D325: a newer question with the same key replaces this one while it waits in
+   * the helper's queue. Send it only to a helper whose /health has `supersedes`
+   * (an older one ignores unknown fields, so it is harmless either way).
+   */
+  supersedes?: string;
+  /** D325: the question is waiting; `position` questions are ahead of it. */
+  onQueued?(position: number): void;
+  /** D325: a queued question's turn has come. */
+  onRunning?(): void;
 }
 
 /** Streams the coach's answer from Claude Code on the player's PC. Rejects with a CoachError. */
@@ -252,7 +307,12 @@ export async function askHelper(prompt: Prompt, h: StreamHandlers, opts: AskHelp
     res = await f(`${target.baseUrl}/coach`, {
       method: 'POST',
       headers: headers(target, true),
-      body: JSON.stringify(model ? { system: prompt.system, user: prompt.user, model } : { system: prompt.system, user: prompt.user }),
+      body: JSON.stringify({
+        system: prompt.system,
+        user: prompt.user,
+        ...(model ? { model } : {}),
+        ...(opts.supersedes ? { supersedes: opts.supersedes } : {}),
+      }),
       signal: opts.signal,
     });
   } catch (e) {
@@ -274,7 +334,7 @@ export async function askHelper(prompt: Prompt, h: StreamHandlers, opts: AskHelp
     } catch {
       /* no body */
     }
-    if (res.status === 429) throw new CoachError('Claude Code on your PC is busy with another answer. Wait for it to finish (or stop it), then ask again.', 'helper_busy', 429);
+    if (res.status === 429) throw new CoachError(BUSY, 'helper_busy', 429);
     if (res.status === 401 || res.status === 403) throw new CoachError(refusedMessage(msg), 'auth', res.status);
     throw new CoachError(helperProblem(msg || `HTTP ${res.status}`), res.status >= 500 ? 'server' : 'unknown', res.status);
   }
@@ -285,7 +345,7 @@ export async function askHelper(prompt: Prompt, h: StreamHandlers, opts: AskHelp
   const handle = (line: string) => {
     const s = line.trim();
     if (!s || end) return;
-    let ev: { type?: unknown; text?: unknown; stopReason?: unknown; model?: unknown; message?: unknown };
+    let ev: { type?: unknown; text?: unknown; stopReason?: unknown; model?: unknown; message?: unknown; code?: unknown; position?: unknown };
     try {
       ev = JSON.parse(s);
     } catch {
@@ -296,9 +356,14 @@ export async function askHelper(prompt: Prompt, h: StreamHandlers, opts: AskHelp
       h.onText(ev.text);
     } else if (ev.type === 'thinking' && typeof ev.text === 'string') {
       h.onThinking?.(ev.text);
+    } else if (ev.type === 'queued') {
+      opts.onQueued?.(typeof ev.position === 'number' ? ev.position : 1);
+    } else if (ev.type === 'running') {
+      opts.onRunning?.();
     } else if (ev.type === 'done') {
       end = { stopReason: typeof ev.stopReason === 'string' ? ev.stopReason : null, model: typeof ev.model === 'string' && ev.model ? ev.model : (model ?? '') };
     } else if (ev.type === 'error') {
+      if (ev.code === 'superseded') throw new CoachError('A newer question took this one’s place.', 'superseded');
       throw new CoachError(helperProblem(typeof ev.message === 'string' ? ev.message : ''), /logged\s*in|log\s*in|login|authenticat/i.test(String(ev.message ?? '')) ? 'not_logged_in' : 'server');
     }
   };

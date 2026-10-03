@@ -11,7 +11,8 @@ import type { Prompt } from '../prompt.ts';
 import { askClaude, loadSettings, type CoachResult, type Settings, type StreamHandlers } from '../claude.ts';
 import { askHelper, chooseSource, detectHelper, helperFresh, pageHelperTarget, peekHelper, type ActiveSource } from '../coachHelper.ts';
 
-export type AnswerStatus = 'preparing' | 'streaming' | 'done' | 'stopped' | 'error';
+/** 'queued': the coach helper has it in line behind another question (D325). */
+export type AnswerStatus = 'preparing' | 'queued' | 'streaming' | 'done' | 'stopped' | 'error';
 
 export interface Answer {
   status: AnswerStatus;
@@ -27,6 +28,10 @@ export interface Answer {
   fallbackFrom: string | null;
   /** Who is answering: Claude Code on the player's PC (the coach helper) or the API key. */
   source: ActiveSource | null;
+  /** While queued: how many questions are ahead of this one. */
+  queuePosition: number | null;
+  /** Why it stopped, when it was not the player's Stop ('superseded', 'moved_on'). */
+  stopReasonNote?: string | null;
 }
 
 const answers = new Map<string, Answer>();
@@ -55,6 +60,7 @@ function set(key: string, patch: Partial<Answer>) {
     errorKind: null,
     fallbackFrom: null,
     source: null,
+    queuePosition: null,
   };
   answers.set(key, { ...prev, ...patch });
   notify();
@@ -99,7 +105,16 @@ export function clearAnswers(): void {
   notify();
 }
 
-export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>): Promise<void> {
+export interface StartOptions {
+  /**
+   * A key shared by the questions that replace each other (the live coach of
+   * one tab): sent to a coach helper that supports it, so a stale question still
+   * waiting in its queue is dropped there too (D325).
+   */
+  supersedes?: string;
+}
+
+export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>, opts: StartOptions = {}): Promise<void> {
   controllers.get(key)?.abort();
   const ctrl = new AbortController();
   controllers.set(key, ctrl);
@@ -126,12 +141,24 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
     if (ctrl.signal.aborted) return;
     set(key, { status: 'streaming' });
     const handlers: StreamHandlers = {
-      onText: (d) => set(key, { text: (answers.get(key)?.text ?? '') + d }),
-      onThinking: (d) => set(key, { thinking: (answers.get(key)?.thinking ?? '') + d }),
+      onText: (d) => set(key, { status: 'streaming', queuePosition: null, text: (answers.get(key)?.text ?? '') + d }),
+      onThinking: (d) => set(key, { status: 'streaming', queuePosition: null, thinking: (answers.get(key)?.thinking ?? '') + d }),
     };
+    const supersedes = opts.supersedes && helper?.state === 'ok' && helper.supersedes ? opts.supersedes : undefined;
     const res: CoachResult =
       source === 'helper'
-        ? await askHelper(prompt, handlers, { signal: ctrl.signal, model: settings.model, target: pageHelperTarget() })
+        ? await askHelper(prompt, handlers, {
+            signal: ctrl.signal,
+            model: settings.model,
+            target: pageHelperTarget(),
+            ...(supersedes ? { supersedes } : {}),
+            onQueued: (n) => {
+              if (!ctrl.signal.aborted) set(key, { status: 'queued', queuePosition: n });
+            },
+            onRunning: () => {
+              if (!ctrl.signal.aborted) set(key, { status: 'streaming', queuePosition: null });
+            },
+          })
         : await askClaude(prompt, handlers, { signal: ctrl.signal, settings });
     set(key, {
       status: 'done',
@@ -143,10 +170,11 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
     });
   } catch (e) {
     if (ctrl.signal.aborted) {
-      set(key, { status: 'stopped' });
+      set(key, { status: 'stopped', queuePosition: null });
     } else {
       const kind = e && typeof e === 'object' && 'kind' in e ? String((e as { kind: unknown }).kind) : null;
-      if (kind === 'aborted') set(key, { status: 'stopped' });
+      if (kind === 'aborted') set(key, { status: 'stopped', queuePosition: null });
+      else if (kind === 'superseded') set(key, { status: 'stopped', queuePosition: null, stopReasonNote: 'superseded' });
       else set(key, { status: 'error', error: e instanceof Error ? e.message : String(e), errorKind: kind });
     }
   } finally {
@@ -158,7 +186,7 @@ function safeSettings(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto' };
+    return { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false };
   }
 }
 
@@ -168,10 +196,15 @@ export function noCoachMessage(s: Pick<Settings, 'coachSource'>): string {
   return 'No coach connected. Start `./scripts/play.sh` in mtg-table to coach with Claude Code on your PC, or add an Anthropic API key in Settings — or copy the prompt and paste it into the Claude app.';
 }
 
-export function stopAnswer(key: string): void {
+export function stopAnswer(key: string, note: string | null = null): void {
   const c = controllers.get(key);
   if (c) {
     c.abort();
-    set(key, { status: 'stopped' });
+    set(key, { status: 'stopped', queuePosition: null, stopReasonNote: note });
   }
+}
+
+/** True while a question for `key` is being prepared, waits in a queue or streams. */
+export function answerBusy(key: string): boolean {
+  return controllers.has(key);
 }
