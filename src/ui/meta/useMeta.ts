@@ -6,7 +6,7 @@
  * imported file from the deck assistant wins over the one shipped beside the
  * cube) and the cube document's theme names.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { cubeInfo, loadCubeDoc, loadShippedMeta } from '../../cube/cubes.ts';
 import type { CubeMeta } from '../../cube/meta.ts';
 import { getImportedMeta } from '../../cube/metaStore.ts';
@@ -17,12 +17,16 @@ export interface MetaState {
   source: 'imported' | 'shipped' | null;
   /** Theme code → name, from the cube document's theme table. */
   themes: Record<string, string>;
+  /** Re-read the imported file (after an import or removal). */
+  reload: () => void;
 }
 
 const BASE = import.meta.env.BASE_URL;
 
 export function useMeta(cubeId: string): MetaState {
-  const [state, setState] = useState<MetaState>({ loading: true, meta: null, source: null, themes: {} });
+  const [state, setState] = useState<Omit<MetaState, 'reload'>>({ loading: true, meta: null, source: null, themes: {} });
+  const [tick, setTick] = useState(0);
+  const reload = useCallback(() => setTick((n) => n + 1), []);
   useEffect(() => {
     const info = cubeInfo(cubeId);
     setState({ loading: true, meta: null, source: null, themes: {} });
@@ -43,6 +47,6 @@ export function useMeta(cubeId: string): MetaState {
     return () => {
       live = false;
     };
-  }, [cubeId]);
-  return state;
+  }, [cubeId, tick]);
+  return { ...state, reload };
 }

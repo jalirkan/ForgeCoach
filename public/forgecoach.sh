@@ -9,7 +9,8 @@
 #   curl -fsSL https://jalirkan.github.io/ForgeCoach/forgecoach.sh | bash -s install
 #
 # Then click ForgeCoach in the app menu.  Right-click it for "ForgeCoach (phone)",
-# "ForgeCoach (away from home)" and "Stop ForgeCoach" (all menu entries of their own).
+# "ForgeCoach (away from home)" and "Stop ForgeCoach" (all menu entries of their own);
+# "ForgeCoach overnight lab" is an entry of its own too.
 #
 # Commands (`forgecoach <command>`; ~/.local/bin/forgecoach after install):
 #
@@ -26,26 +27,44 @@
 #                          devices).  Starts the engine like --lan, shows the phone
 #                          link with your Tailscale address, and keeps this PC from
 #                          sleeping while the engine runs.  The PC must stay on.
+#   overnight [options]    run the cube lab's AI-vs-AI jobs on this PC while you sleep
+#                          (CPU only, no tokens): pulls mtg-table, then one job after
+#                          another, each resumable: Omega evolve, meta runs of the four
+#                          cubes, the learned drafter.  Holds off sleep, logs to
+#                          ~/.cache/forgecoach/overnight.log, shows a notification at the
+#                          end and copies the results to ~/.local/share/forgecoach/
+#                          (meta/<cube>.meta.json: import it on ForgeCoach's Metagame
+#                          page).  Everything runs under nice.  Options:
+#                            --jobs N       workers per job (default: cores - 1)
+#                            --only a,b     evolve, meta | synergy | modern-era |
+#                                           vintage | pauper, learn
+#                            --hours N      start no new job after N hours
+#                            --dry-run      print the plan and commands, run nothing
+#                            --yes          run even while the engine is up (nice 19)
+#                            --redo         run jobs again that finished before
+#                            --no-pull      do not update mtg-table first
 #   remote-setup           one-time help: install Tailscale, log in, set up the phone
 #   stop                   stop the engine this launcher started
-#   status                 is it running, where is everything
+#   status                 is it running, where is everything (and the overnight lab's progress)
 #   install                put this script in ~/.local/bin/forgecoach and add the
 #                          app-menu entries (safe to re-run)
 #   update                 re-download this script and re-install it
 #   setup                  find/fetch mtg-table and check what it needs; no start
 #   get-forge              download Forge 2.0.14 (about 300 MB) into ~/forge
 #   launch [flags]         what the menu icon runs: `start` in a terminal window
+#   launch-overnight       what the overnight menu entry runs: `overnight` in a window
 #
 # Launcher flags: --remote (same as the remote command), --no-open (do not open the browser), --no-pull (do not update
 # mtg-table), --window (pause before the window closes), --notify (desktop pop-up).
 #
 # Environment: FORGECOACH_MTG=<mtg-table checkout>, FORGE_JAR=<Forge jar>,
 # FORGECOACH_NO_UPDATE=1 (do not self-update), FORGECOACH_NO_KDECONNECT=1,
-# FORGECOACH_NO_INHIBIT=1 (do not hold off sleep during `remote`).
+# FORGECOACH_NO_INHIBIT=1 (do not hold off sleep during `remote` or `overnight`).
 #
 # What it touches: ~/.local/bin/forgecoach, ~/.local/share/applications/
 # forgecoach*.desktop, ~/.local/share/icons/forgecoach.png, ~/.config/forgecoach/,
-# ~/.cache/forgecoach/ (engine log), a fresh clone in ~/mtg-table when there is
+# ~/.cache/forgecoach/ (engine log, overnight log), ~/.local/share/forgecoach/ (overnight
+# results), mtg-table's var/cubelab/ (the lab's own runs), a fresh clone in ~/mtg-table when there is
 # no checkout, and with `get-forge` a fresh ~/forge.  It never uses sudo on its own
 # (it prints the command for you; `remote-setup` runs one only after you say yes at
 # a terminal prompt) and never deletes your files.
@@ -886,6 +905,7 @@ install_desktop() {
   write_desktop forgecoach.desktop "ForgeCoach" "Play Magic against the Forge AI, with a coach" "launch" actions
   write_desktop forgecoach-phone.desktop "ForgeCoach (phone)" "Play ForgeCoach on your phone (same Wi-Fi)" "launch --lan"
   write_desktop forgecoach-remote.desktop "ForgeCoach (away from home)" "Play ForgeCoach on your phone from anywhere, over Tailscale (keep this PC on)" "launch --remote"
+  write_desktop forgecoach-overnight.desktop "ForgeCoach overnight lab" "Run Forge AI-vs-AI cube-lab jobs on this PC unattended (CPU only, no tokens)" "launch-overnight"
   write_desktop forgecoach-stop.desktop "Stop ForgeCoach" "Stop ForgeCoach's Forge engine" "stop --notify"
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true
   for k in kbuildsycoca6 kbuildsycoca5; do
@@ -1023,23 +1043,38 @@ cmd_start() {
   finish 0
 }
 
-cmd_launch() {   # the menu icon: `start` in a terminal window, so he can see what happens
-  local self t
+# launch_term <command> [flags] -- `forgecoach <command> --window [flags]` in a terminal
+# window (so he can see what happens).  Returns 1 when there is no terminal program.
+launch_term() {
+  local self t cmd="$1"; shift
   self="$(self_file)"; [ -n "$self" ] || self="$BIN"
-  if [ -t 1 ]; then cmd_start --window "$@"; return; fi
   for t in konsole x-terminal-emulator gnome-terminal xfce4-terminal kitty alacritty xterm; do
     command -v "$t" >/dev/null 2>&1 || continue
     case "$t" in
-      konsole)        exec konsole --hide-menubar -p tabtitle=ForgeCoach -e "$self" start --window "$@" ;;
-      gnome-terminal) exec gnome-terminal --title=ForgeCoach -- "$self" start --window "$@" ;;
-      xfce4-terminal) exec xfce4-terminal --title=ForgeCoach -x "$self" start --window "$@" ;;
-      kitty)          exec kitty --title ForgeCoach "$self" start --window "$@" ;;
-      *)              exec "$t" -e "$self" start --window "$@" ;;
+      konsole)        exec konsole --hide-menubar -p tabtitle=ForgeCoach -e "$self" "$cmd" --window "$@" ;;
+      gnome-terminal) exec gnome-terminal --title=ForgeCoach -- "$self" "$cmd" --window "$@" ;;
+      xfce4-terminal) exec xfce4-terminal --title=ForgeCoach -x "$self" "$cmd" --window "$@" ;;
+      kitty)          exec kitty --title ForgeCoach "$self" "$cmd" --window "$@" ;;
+      *)              exec "$t" -e "$self" "$cmd" --window "$@" ;;
     esac
   done
+  return 1
+}
+
+cmd_launch() {   # the menu icon: `start` in a terminal window, so he can see what happens
+  if [ -t 1 ]; then cmd_start --window "$@"; return; fi
+  launch_term start "$@" || true
   # No terminal program: run without a window and say how it went in pop-ups.
   mkdir -p "$CACHE_DIR"
   cmd_start --notify "$@" >"$CACHE_DIR/launch.log" 2>&1
+}
+
+cmd_launch_overnight() {   # the "ForgeCoach overnight lab" menu entry
+  if [ -t 1 ]; then cmd_overnight --window "$@"; return; fi
+  launch_term overnight "$@" || true
+  # No terminal program: it asks nothing and says how it went in pop-ups and its log.
+  mkdir -p "$CACHE_DIR"
+  cmd_overnight --notify "$@" >"$CACHE_DIR/launch.log" 2>&1
 }
 
 cmd_remote() {   # play away from home: the phone mode over Tailscale
@@ -1133,6 +1168,413 @@ cmd_status() {
   info "Forge jar: $(conf_get FORGE_JAR | grep . || echo "(from mtg-table's config.json)")"
   info "Launcher:  $( [ -x "$BIN" ] && echo "$BIN" || echo "not installed ($ONE_LINER)")"
   info "Log:       $ENGINE_LOG"
+  ovn_status
+}
+
+# ---------------------------------------------------------------------------
+# overnight: the cube lab's AI-vs-AI jobs, one after another, on this PC
+# ---------------------------------------------------------------------------
+# CPU only: no tokens, no network (after the mtg-table update).  Each job is
+# mtg-table's own resumable `tools/cubelab.sh` command, so running `overnight`
+# again continues where it stopped; a finished job is skipped (`--redo` runs it
+# again).  Results are copied to ~/.local/share/forgecoach/ for ForgeCoach.
+
+OVN_DIR="$CACHE_DIR/overnight"
+OVN_STATE="$OVN_DIR/state"
+OVN_LOG="$CACHE_DIR/overnight.log"
+OVN_INHIBIT_FILE="$CACHE_DIR/overnight-inhibit.pid"
+RESULTS_DIR="$DATA_DIR/forgecoach"
+
+# the jobs, in order: evolve, then the four meta runs, then the learned drafter
+OVN_ALL="evolve meta-synergy meta-modern-era meta-vintage meta-pauper learn"
+OVN_EVOLVE_GENS=8; OVN_EVOLVE_DRAFTS=200
+OVN_META_DRAFTS=300
+OVN_LEARN_ITERS=4; OVN_LEARN_DRAFTS=300; OVN_LEARN_H2H=400; OVN_LEARN_DECKH2H=200
+OVN_EVOLVE_OUT="var/cubelab/evolve/omega-overnight"
+OVN_LEARN_OUT="var/cubelab/selfplay/synergy-overnight"
+
+ovn_cube_file() {   # ovn_cube_file <id> -- the cube's file name in mtg-table's cubes/
+  case "$1" in
+    synergy) echo synergy-cube-180 ;;   modern-era) echo modern-era-cube-180 ;;
+    vintage) echo vintage-cube-180 ;;   pauper) echo pauper-cube-180 ;;
+  esac
+}
+ovn_meta_out() { echo "var/cubelab/runs/$(ovn_cube_file "$1")-overnight"; }
+
+ovn_label() {
+  case "$1" in
+    evolve)   echo "Omega evolve: $OVN_EVOLVE_GENS generations x $OVN_EVOLVE_DRAFTS drafts (the cube changes by simulation)" ;;
+    meta-*)   echo "Meta run: ${1#meta-} cube, $OVN_META_DRAFTS drafts, then its meta.json" ;;
+    learn)    echo "Learned drafter: synergy self-play, $OVN_LEARN_ITERS iterations" ;;
+  esac
+}
+
+# Rough single-core seconds, from the guide's "about 25 s of one core a draft"
+# (best of three; a best of one is about half).  Divide by --jobs.
+ovn_core_secs() {
+  case "$1" in
+    evolve)  echo $((OVN_EVOLVE_GENS * OVN_EVOLVE_DRAFTS * 25)) ;;
+    meta-*)  echo $((OVN_META_DRAFTS * 25)) ;;
+    learn)   echo $(( (OVN_LEARN_H2H + OVN_LEARN_ITERS * (OVN_LEARN_DRAFTS + OVN_LEARN_H2H) + OVN_LEARN_DECKH2H) * 12 )) ;;
+  esac
+}
+
+# The commands of one job, one per line, relative to the mtg-table checkout.
+# Plain words (no spaces inside an argument): they are split, never evaluated.
+ovn_cmds() {   # ovn_cmds <job> <jobs>
+  local id file out
+  case "$1" in
+    evolve)
+      echo "tools/cubelab.sh evolve cubes/omega-cube-180.md --pool cubes/omega-seed-pool.tsv --generations $OVN_EVOLVE_GENS --drafts-per-gen $OVN_EVOLVE_DRAFTS --jobs $2 --seed 1 --out $OVN_EVOLVE_OUT" ;;
+    meta-*)
+      id="${1#meta-}"; file="$(ovn_cube_file "$id")"; out="$(ovn_meta_out "$id")"
+      echo "tools/cubelab.sh run cubes/$file.md --format grid --drafts $OVN_META_DRAFTS --jobs $2 --seed 1 --out $out"
+      echo "tools/cubelab.sh report $out" ;;
+    learn)
+      # --from: the synergy run of the meta job, when there is one (the learner starts from its games)
+      echo "tools/cubelab.sh selfplay cubes/synergy-cube-180.md ${OVN_FROM:+--from $OVN_FROM }--iterations $OVN_LEARN_ITERS --drafts-per-iter $OVN_LEARN_DRAFTS --h2h $OVN_LEARN_H2H --deck-h2h $OVN_LEARN_DECKH2H --games 1 --deck-synergy on --jobs $2 --out $OVN_LEARN_OUT" ;;
+  esac
+}
+
+ovn_hours() {   # ovn_hours <seconds> -- "about 3 h", "about 40 min"
+  local s="$1"
+  if [ "$s" -ge 5400 ]; then printf 'about %s h' "$(awk -v s="$s" 'BEGIN { printf "%.1f", s / 3600 }' | sed 's/\.0$//')"
+  else printf 'about %s min' "$(( (s + 59) / 60 ))"; fi
+}
+ovn_dur() {   # ovn_dur <seconds> -- 2h 05m
+  local s="$1"; printf '%dh %02dm' $((s / 3600)) $(((s % 3600) / 60))
+}
+
+# Copy a finished job's results to $RESULTS_DIR (the folder ForgeCoach's import dialogs are pointed at).
+ovn_collect() {   # ovn_collect <job>
+  local id out dest v
+  case "$1" in
+    meta-*)
+      id="${1#meta-}"; out="$MTG/$(ovn_meta_out "$id")"
+      if [ ! -f "$out/meta.json" ]; then bad "$out/meta.json was not written."; return 1; fi
+      mkdir -p "$RESULTS_DIR/meta" "$RESULTS_DIR/reports"
+      cp -f "$out/meta.json" "$RESULTS_DIR/meta/$id.meta.json"
+      [ -f "$out/report.html" ] && cp -f "$out/report.html" "$RESULTS_DIR/reports/$id-report.html"
+      ok "meta.json -> $RESULTS_DIR/meta/$id.meta.json" ;;
+    evolve)
+      out="$MTG/$OVN_EVOLVE_OUT"; dest="$RESULTS_DIR/omega"
+      mkdir -p "$dest"
+      for v in omega-cube-180.md changelog.md index.html; do [ -f "$out/$v" ] && cp -f "$out/$v" "$dest/$v"; done
+      ok "evolved Omega cube, changelog and report -> $dest/" ;;
+    learn)
+      out="$MTG/$OVN_LEARN_OUT"; dest="$RESULTS_DIR/learned/synergy"
+      mkdir -p "$dest"
+      v="$(find "$out" -maxdepth 1 -name 'values-*.ratings.tsv' 2>/dev/null | sort -V | tail -n 1)"
+      v="${v##*/values-}"; v="${v%.ratings.tsv}"
+      if [ -n "$v" ]; then for f in ratings.tsv synergy.tsv learn.md; do [ -f "$out/values-$v.$f" ] && cp -f "$out/values-$v.$f" "$dest/values.$f"; done; fi
+      for f in summary.md summary.html summary.json; do [ -f "$out/$f" ] && cp -f "$out/$f" "$dest/$f"; done
+      ok "learned values and summary -> $dest/" ;;
+  esac
+}
+
+# "123 of 300 drafts" for a job that is running or was stopped.
+ovn_progress() {   # ovn_progress <job> <mtg>
+  local out n
+  case "$1" in
+    meta-*)
+      out="$2/$(ovn_meta_out "${1#meta-}")/drafts.jsonl"
+      n="$(wc -l <"$out" 2>/dev/null || echo 0)"; echo "$((n + 0)) of $OVN_META_DRAFTS drafts" ;;
+    evolve)
+      n="$(find "$2/$OVN_EVOLVE_OUT" -maxdepth 2 -path '*/gen-*/result.json' 2>/dev/null | wc -l)"
+      echo "$n of $OVN_EVOLVE_GENS generations" ;;
+    learn)
+      n="$(find "$2/$OVN_LEARN_OUT" -maxdepth 1 -name 'values-*.ratings.tsv' ! -name 'values-0.*' 2>/dev/null | wc -l)"
+      echo "$n of $OVN_LEARN_ITERS iterations" ;;
+  esac
+}
+
+# --only: evolve | meta | synergy | modern-era | vintage | pauper | learn (or meta-<cube>, selfplay, omega)
+ovn_expand_only() {   # ovn_expand_only <a,b,c> -- jobs in queue order, or return 2
+  local tok want=" " j
+  for tok in $(printf '%s' "$1" | tr ',' ' '); do
+    case "$tok" in
+      evolve|omega)                   want="$want evolve " ;;
+      meta)                           want="$want meta-synergy meta-modern-era meta-vintage meta-pauper " ;;
+      synergy|modern-era|vintage|pauper) want="$want meta-$tok " ;;
+      meta-synergy|meta-modern-era|meta-vintage|meta-pauper) want="$want $tok " ;;
+      learn|selfplay)                 want="$want learn " ;;
+      *) bad "Unknown job '$tok'.  Jobs: evolve, meta (or synergy, modern-era, vintage, pauper), learn." >&2; return 2 ;;
+    esac
+  done
+  for j in $OVN_ALL; do case "$want" in *" $j "*) printf '%s\n' "$j" ;; esac; done
+}
+
+ovn_state_write() {   # the status file: one key=value per line, replaced whole
+  local tmp
+  mkdir -p "$OVN_DIR"
+  tmp="$(mktemp "$OVN_DIR/.state.XXXXXX")"
+  {
+    printf 'pid=%s\nstatus=%s\nmtg=%s\njobs=%s\nstarted=%s\nended=%s\nqueue=%s\nrunning=%s\nrunning_since=%s\nfailed=%s\ndeadline=%s\n' \
+      "$$" "$OVN_STATUS" "$MTG" "$OVN_J" "$OVN_START" "${OVN_END:-}" "${OVN_QUEUE_STR:-}" "${OVN_RUNNING:-}" "${OVN_RUN_SINCE:-}" "${OVN_FAILED:-}" "${OVN_DEADLINE:-}"
+  } >"$tmp"
+  mv -f "$tmp" "$OVN_STATE"
+}
+ovn_get() { sed -n "s/^$1=//p" "$OVN_STATE" 2>/dev/null | tail -n 1; }
+
+ovn_cores() { nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2; }
+
+# Hold off sleep while this script runs: a systemd inhibitor held by a watcher
+# that ends when we do (like keep_awake, which watches the engine).
+ovn_keep_awake() {
+  if [ -n "${FORGECOACH_NO_INHIBIT:-}" ]; then info "(Sleep is not held off: FORGECOACH_NO_INHIBIT is set.)"; return 0; fi
+  if ! command -v systemd-inhibit >/dev/null 2>&1 || ! systemd-inhibit --what=sleep:idle --who=ForgeCoach --why=probe --mode=block true >/dev/null 2>&1 </dev/null; then
+    warn "Could not stop this PC from sleeping: turn off automatic sleep yourself for tonight"
+    info "     (System Settings > Power Management > Energy Saving: no suspend).  A sleeping PC runs nothing."
+    return 0
+  fi
+  mkdir -p "$CACHE_DIR"
+  (
+    exec setsid nohup systemd-inhibit --what=sleep:idle --who=ForgeCoach \
+      --why="ForgeCoach overnight lab is running" --mode=block \
+      bash -c 'while kill -0 "$1" 2>/dev/null; do sleep 15; done' _ "$$" >/dev/null 2>&1 </dev/null
+  ) &
+  echo "$!" >"$OVN_INHIBIT_FILE"
+  ok "This PC will not sleep while the overnight lab runs."
+}
+
+ovn_import_help() {
+  say "Use the results in ForgeCoach"
+  info "Meta files are in: $RESULTS_DIR/meta/   (synergy, modern-era, vintage, pauper: <cube>.meta.json)"
+  info "1. Open ${FC_SITE}#meta  (the Metagame page), pick the cube's tab, click \"Import from file\""
+  info "   and choose <cube>.meta.json.  Or drag the file onto the page: it finds its cube itself."
+  info "2. The deck assistant takes the same files: ${FC_SITE}#deck > open a cube > the \"Lab\" chip in the"
+  info "   header (\"No lab data\" before) > Import meta.json, or drop the file on the page."
+  info "Imports stay in that browser; repeat them in another browser or on your phone."
+}
+
+# --window (the app-menu entry): keep the terminal open until Enter.
+ovn_pause() {
+  [ "$WINDOW" = "1" ] && [ "$1" = "1" ] || return 0
+  printf '\nPress Enter to close this window.' >/dev/tty; read -r _ </dev/tty || true
+}
+
+OVN_CHILD=""
+ovn_on_signal() {
+  trap - INT TERM HUP
+  printf '\n'; warn "Stopping the overnight lab (what is done is kept; run 'forgecoach overnight' again to continue)..."
+  if [ -n "$OVN_CHILD" ]; then
+    kill -TERM -- "-$OVN_CHILD" 2>/dev/null || kill -TERM "$OVN_CHILD" 2>/dev/null || true
+    for _ in $(seq 1 20); do pid_alive "$OVN_CHILD" || break; sleep 0.5; done
+    kill -KILL -- "-$OVN_CHILD" 2>/dev/null || true
+  fi
+  OVN_STATUS=stopped; OVN_END="$(date +%s)"; OVN_RUNNING=""
+  ovn_state_write
+  exit 130
+}
+
+# ovn_run_cmd <niceness> <command line> -- one cubelab command in its own session
+# (so the whole tree can be stopped), at low priority, in the mtg-table checkout.
+ovn_run_cmd() {
+  local nice_n="$1" line="$2" argv rc=0
+  read -r -a argv <<<"$line"
+  info "\$ $line"
+  (
+    cd "$MTG"
+    exec setsid nice -n "$nice_n" "${argv[@]}" </dev/null
+  ) &
+  OVN_CHILD=$!
+  wait "$OVN_CHILD" || rc=$?
+  OVN_CHILD=""
+  return "$rc"
+}
+
+cmd_overnight() {
+  local J="" only="" hours="" dry=0 yes=0 redo=0 a nice_n=10 ncores mem
+  local jobs=() j n i line rc tty=0 t0 now engine=0 port
+  OPEN=0
+  while [ $# -gt 0 ]; do
+    a="$1"
+    case "$a" in
+      --jobs)    [ $# -ge 2 ] || { echo "--jobs needs a number" >&2; return 2; }; J="$2"; shift ;;
+      --only)    [ $# -ge 2 ] || { echo "--only needs a list, e.g. --only evolve,synergy" >&2; return 2; }; only="$2"; shift ;;
+      --hours)   [ $# -ge 2 ] || { echo "--hours needs a number" >&2; return 2; }; hours="$2"; shift ;;
+      --dry-run) dry=1 ;;
+      --yes|-y)  yes=1 ;;
+      --redo)    redo=1 ;;
+      --no-pull) PULL=0 ;;
+      --window)  WINDOW=1 ;;
+      --notify)  NOTIFY=1 ;;
+      --no-open) ;;
+      *) echo "forgecoach overnight: unknown option '$a'  (options: --jobs N, --only a,b, --hours N, --dry-run, --yes, --redo, --no-pull)" >&2; return 2 ;;
+    esac
+    shift
+  done
+  ncores="$(ovn_cores)"
+  if [ -z "$J" ]; then J=$((ncores - 1)); [ "$J" -ge 1 ] || J=1; fi
+  case "$J" in ''|*[!0-9]*|0) echo "forgecoach overnight: --jobs wants a whole number of at least 1, got '$J'" >&2; return 2 ;; esac
+  case "${hours:-0}" in *[!0-9.]*|.|*.*.*) echo "forgecoach overnight: --hours wants a number, got '$hours'" >&2; return 2 ;; esac
+  if [ -n "$only" ]; then
+    a="$(ovn_expand_only "$only")" || return 2
+    mapfile -t jobs <<<"$a"
+  else read -r -a jobs <<<"$OVN_ALL"; fi
+  has_tty && tty=1
+  augment_path
+  OVN_J="$J"
+
+  # --- the mtg-table checkout ------------------------------------------------
+  if [ "$dry" = "1" ]; then
+    MTG="$(conf_get MTG_DIR)"; [ -n "${FORGECOACH_MTG:-}" ] && MTG="${FORGECOACH_MTG%/}"
+    is_mtg "$MTG" || MTG="$(search_mtg | head -n 1 || true)"
+    [ -n "$MTG" ] || MTG="<your mtg-table folder>"
+    say "Overnight lab: the plan (nothing is run)"
+  else
+    say "ForgeCoach overnight lab"
+    if [ -s "$OVN_STATE" ] && [ "$(ovn_get status)" = "running" ] && pid_alive "$(ovn_get pid)"; then
+      bad "An overnight lab is already running (pid $(ovn_get pid)).  See: forgecoach status"; return 1
+    fi
+    find_mtg || return 1
+    [ "$PULL" = "1" ] && update_mtg      # first: pull mtg-table, so the tools are the newest
+    check_prereqs || return 1
+    [ -f "$MTG/tools/cubelab.sh" ] || { bad "tools/cubelab.sh is not in $MTG: update mtg-table."; return 1; }
+    for j in "${jobs[@]}"; do
+      case "$j" in
+        evolve) grep -q 'cubelab.sh evolve' "$MTG/tools/cubelab/cli.ts" 2>/dev/null || { bad "This mtg-table has no 'evolve' yet: update it."; return 1; } ;;
+        learn)  grep -q 'cubelab.sh selfplay' "$MTG/tools/cubelab/cli.ts" 2>/dev/null || { bad "This mtg-table has no 'selfplay' yet: update it."; return 1; } ;;
+      esac
+    done
+  fi
+
+  # --- one at a time: the plan -----------------------------------------------
+  mem="$(awk '/^MemTotal:/ { printf "%d", $2 / 1048576 }' /proc/meminfo 2>/dev/null || echo 0)"
+  info "Cores: $ncores.  Jobs in parallel inside a job: $J (--jobs).  Each is a Forge JVM of up to 4 GB; this PC has about ${mem:-?} GB."
+  if [ "${mem:-0}" -gt 0 ] && [ $((J * 4)) -gt "$mem" ]; then warn "$J workers may not fit in ${mem} GB of memory: try --jobs $(( mem / 4 > 0 ? mem / 4 : 1 ))."; fi
+  OVN_FROM=""
+  local tot=0 s
+  say "The queue (one job at a time, in this order, under nice)"
+  i=0
+  for j in "${jobs[@]}"; do
+    i=$((i + 1))
+    s=$(( $(ovn_core_secs "$j") / J ))
+    tot=$((tot + s))
+    printf '  %s%d.%s %s  (%s at %s workers)\n' "$B" "$i" "$N" "$(ovn_label "$j")" "$(ovn_hours "$s")" "$J"
+    [ "$dry" = "1" ] && [ -f "$OVN_DIR/done/$j" ] && [ "$redo" = "0" ] && info "   (done already: would be skipped; --redo runs it again)"
+    # selfplay starts from the synergy run when that job is ahead of it in this queue or already left its run
+    if [ "$j" = "learn" ]; then
+      case " ${jobs[*]} " in *" meta-synergy "*) OVN_FROM="$(ovn_meta_out synergy)" ;; esac
+      [ -n "$OVN_FROM" ] || { [ -f "$MTG/$(ovn_meta_out synergy)/meta.json" ] && OVN_FROM="$(ovn_meta_out synergy)"; }
+    fi
+    while IFS= read -r line; do info "   $line"; done < <(ovn_cmds "$j" "$J")
+  done
+  info "In all, $(ovn_hours "$tot") (the guide's ~25 s of one core per draft; a guess, not a promise)."
+  [ -n "$hours" ] && info "--hours $hours: no new job starts after $hours h (a job that has started finishes)."
+  info "Results are copied to: $RESULTS_DIR/{meta,omega,learned,reports}/"
+  info "Log: $OVN_LOG   Progress: forgecoach status"
+  if [ "$dry" = "1" ]; then
+    ovn_import_help
+    say "That was a dry run: nothing was started."
+    return 0
+  fi
+
+  # --- not alongside a live game ---------------------------------------------
+  port="$(cat "$PORT_FILE" 2>/dev/null || echo "$PORT")"
+  if health "$port" || [ -n "$(engine_pid)" ]; then engine=1; fi
+  if [ "$engine" = "1" ]; then
+    warn "The Forge engine is running (a game may be open).  The lab is heavy: it will slow the game down."
+    if [ "$yes" = "1" ]; then
+      nice_n=19
+      info "--yes: going ahead at the lowest priority (nice 19)."
+    elif ask "  Run the overnight lab anyway, at the lowest priority?" n; then nice_n=19
+    else
+      info "Left alone.  Stop the engine (forgecoach stop) and run this again, or add --yes to run alongside it."
+      ovn_pause "$tty"; return 1
+    fi
+  fi
+
+  # --- go --------------------------------------------------------------------
+  mkdir -p "$OVN_DIR/done" "$RESULTS_DIR"
+  [ "$redo" = "1" ] && rm -f "$OVN_DIR"/done/*
+  chmod 700 "$CACHE_DIR" 2>/dev/null || true
+  exec > >(tee -a "$OVN_LOG") 2>&1          # everything below is on screen and in the log
+  printf '\n===== overnight lab %s  jobs=%s workers=%s nice=%s =====\n' "$(date '+%F %T')" "${jobs[*]}" "$J" "$nice_n"
+  ovn_keep_awake
+  OVN_START="$(date +%s)"; OVN_END=""; OVN_STATUS=running; OVN_FAILED=""
+  OVN_QUEUE_STR="${jobs[*]}"; OVN_RUNNING=""; OVN_RUN_SINCE=""; OVN_DEADLINE=""
+  [ -n "$hours" ] && OVN_DEADLINE="$(awk -v s="$OVN_START" -v h="$hours" 'BEGIN { printf "%d", s + h * 3600 }')"
+  ovn_state_write
+  trap ovn_on_signal INT TERM HUP
+
+  local ndone=0 nfail=0 nskip=0 nlate=0 summary=""
+  for j in "${jobs[@]}"; do
+    if [ -f "$OVN_DIR/done/$j" ]; then
+      ok "$j: already done ($(cat "$OVN_DIR/done/$j")); skipped"; nskip=$((nskip + 1)); continue
+    fi
+    now="$(date +%s)"
+    if [ -n "$OVN_DEADLINE" ] && [ "$now" -ge "$OVN_DEADLINE" ]; then
+      warn "$j: not started: the --hours $hours limit is up.  Run it again to continue."; nlate=$((nlate + 1)); continue
+    fi
+    say "$(ovn_label "$j")"
+    OVN_RUNNING="$j"; OVN_RUN_SINCE="$now"; ovn_state_write
+    [ "$j" = "learn" ] && { OVN_FROM=""; [ -f "$MTG/$(ovn_meta_out synergy)/meta.json" ] && OVN_FROM="$(ovn_meta_out synergy)"; }
+    rc=0
+    while IFS= read -r line; do
+      ovn_run_cmd "$nice_n" "$line" || { rc=$?; break; }
+    done < <(ovn_cmds "$j" "$J")
+    t0=$(( $(date +%s) - now ))
+    if [ "$rc" = "0" ] && ovn_collect "$j"; then
+      date '+%F %T' >"$OVN_DIR/done/$j"
+      ok "$j: done in $(ovn_dur "$t0")"; ndone=$((ndone + 1))
+    else
+      bad "$j: failed (exit $rc) after $(ovn_dur "$t0").  Run it again to resume it.  Log: $OVN_LOG"
+      nfail=$((nfail + 1)); OVN_FAILED="${OVN_FAILED:+$OVN_FAILED }$j"
+    fi
+    OVN_RUNNING=""; OVN_RUN_SINCE=""; ovn_state_write
+  done
+  trap - INT TERM HUP
+
+  OVN_END="$(date +%s)"; OVN_RUNNING=""
+  if [ "$nfail" -gt 0 ]; then OVN_STATUS=failed; elif [ "$nlate" -gt 0 ]; then OVN_STATUS=partial; else OVN_STATUS=finished; fi
+  ovn_state_write
+  summary="Overnight lab: $ndone done, $nskip already done, $nfail failed$([ "$nlate" -gt 0 ] && echo ", $nlate not started"), in $(ovn_dur $((OVN_END - OVN_START)))."
+  say "$summary"
+  if [ -n "$(find "$RESULTS_DIR/meta" -name '*.meta.json' 2>/dev/null | head -n 1)" ]; then ovn_import_help; fi
+  [ "$nlate" -gt 0 ] && info "Some jobs were not started (--hours).  Run 'forgecoach overnight' again to continue."
+  NOTIFY=1; popup "$summary  Results: $RESULTS_DIR"
+  sleep 0.5      # let the log's tee drain
+  ovn_pause "$tty"
+  [ "$nfail" = "0" ]
+}
+
+# Called by `status`: the overnight lab's progress, if there is one.
+ovn_status() {
+  local st pid mtg q j running since started ended failed done_n=0 line
+  [ -s "$OVN_STATE" ] || return 0
+  st="$(ovn_get status)"; pid="$(ovn_get pid)"; mtg="$(ovn_get mtg)"
+  started="$(ovn_get started)"; ended="$(ovn_get ended)"; q="$(ovn_get queue)"
+  running="$(ovn_get running)"; since="$(ovn_get running_since)"; failed="$(ovn_get failed)"
+  say "Overnight lab"
+  if [ "$st" = "running" ] && pid_alive "$pid"; then
+    ok "Running (pid $pid), $(ovn_dur $(( $(date +%s) - ${started:-0} ))) so far; $(ovn_get jobs) workers"
+    if [ -n "$running" ]; then
+      info "Now: $(ovn_label "$running")"
+      info "     $(ovn_progress "$running" "$mtg"), $(ovn_dur $(( $(date +%s) - ${since:-0} ))) on this job"
+    fi
+    [ -n "$(ovn_get deadline)" ] && info "No new job starts after $(date -d "@$(ovn_get deadline)" '+%a %H:%M' 2>/dev/null || ovn_get deadline)."
+  elif [ "$st" = "running" ]; then
+    warn "It stopped before it finished (the window was closed, or the PC restarted).  Run 'forgecoach overnight' to continue."
+  else
+    info "Last run: $st, ended $(date -d "@${ended:-0}" '+%a %d %b %H:%M' 2>/dev/null || echo "${ended:-?}")"
+  fi
+  for j in $q; do
+    if [ -f "$OVN_DIR/done/$j" ]; then line="done"; done_n=$((done_n + 1))
+    elif [ "$j" = "$running" ] && [ "$st" = "running" ] && pid_alive "$pid"; then line="running: $(ovn_progress "$j" "$mtg")"
+    else case " $failed " in *" $j "*) line="failed" ;; *) line="waiting: $(ovn_progress "$j" "$mtg")" ;; esac; fi
+    info "  [$line] $j"
+  done
+  info "Finished jobs: $done_n of $(printf '%s\n' $q | wc -l).  Results: $RESULTS_DIR/"
+  if [ -d "$RESULTS_DIR/meta" ]; then
+    info "Meta files: $(find "$RESULTS_DIR/meta" -name '*.meta.json' -printf '%f ' 2>/dev/null)"
+    info "Import: ${FC_SITE}#meta > Import from file"
+  fi
+  info "Log: $OVN_LOG"
+  if [ -f "$OVN_LOG" ]; then
+    info "Last lines:"
+    sed 's/\x1b\[[0-9;]*m//g' "$OVN_LOG" | tail -n 3 | cut -c1-150 | sed 's/^/    /'
+  fi
 }
 
 cmd_install() {
@@ -1140,7 +1582,7 @@ cmd_install() {
   say "Installing ForgeCoach"
   install_self || return 1
   ok "Launcher: $BIN"
-  ok "App menu: ForgeCoach, ForgeCoach (phone), ForgeCoach (away from home), Stop ForgeCoach"
+  ok "App menu: ForgeCoach, ForgeCoach (phone), ForgeCoach (away from home), ForgeCoach overnight lab, Stop ForgeCoach"
   # Do the slow, interactive part now, while there is a terminal to answer in.
   if setup; then
     say "All set."
@@ -1163,6 +1605,8 @@ main() {
   case "$cmd" in
     start)     cmd_start "$@" ;;
     launch)    cmd_launch "$@" ;;
+    launch-overnight) cmd_launch_overnight "$@" ;;
+    overnight) cmd_overnight "$@" ;;
     stop)      parse_flags "$@"; stop_engine ;;
     remote)    cmd_remote "$@" ;;
     remote-setup) cmd_remote_setup "$@" ;;
