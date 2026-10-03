@@ -19,14 +19,19 @@ and gives you the exact command to paste.
 - **ForgeCoach (phone)** (also on right-click): play from your phone on the
   same Wi-Fi. It shows the link and a QR code, and sends the link to your
   phone with KDE Connect if you use it.
+- **ForgeCoach (away from home)**: play from your phone on any network (mobile
+  data, a cafe, work), over [Tailscale](https://tailscale.com), a free private
+  network between your own devices. Set it up once with
+  `forgecoach remote-setup` (see *Play away from home* below).
 - **Stop ForgeCoach**: stops the engine.
 - No Forge yet? `~/.local/bin/forgecoach get-forge` downloads Forge 2.0.14
   from its official release into `~/forge` (the first start offers to do it).
 - `forgecoach status` shows what is running and where everything is.
   `forgecoach help` lists the rest.
 
-The launcher is [`public/forgecoach.sh`](public/forgecoach.sh). It never uses
-`sudo` and updates itself once a day.
+The launcher is [`public/forgecoach.sh`](public/forgecoach.sh). It never runs
+`sudo` on its own (`remote-setup` runs one only after you answer yes at a
+terminal prompt) and updates itself once a day.
 
 ForgeCoach is a 2D client for playing *Magic: The Gathering* against the Forge
 AI, with a coach beside the board. You play from the web page; the Forge engine
@@ -128,8 +133,44 @@ On the desktop, in your mtg-table checkout, run `./scripts/play.sh --engine-only
 It prints an address like `http://192.168.1.20:8642/?token=...`; open that on
 your phone (same Wi-Fi), or scan the QR code if one is shown. The bridge serves
 ForgeCoach itself, so the seat socket is on the same origin and no
-https-to-ws mixed content is involved. This is for your home network only. The
-token is the key to your seat: don't share the link or post screenshots of it.
+https-to-ws mixed content is involved. This is for your home network only (away
+from home, see below). The token is the key to your seat: don't share the link or post screenshots of it.
+
+## Play away from home (Tailscale)
+
+The phone mode above only works on your home Wi-Fi. To play from anywhere, the
+phone and the PC join a free Tailscale network (only devices logged in to your
+own account can see each other; nothing is opened on your router).
+
+**Once, on the PC** (a terminal; each step asks before it uses `sudo`):
+
+```bash
+forgecoach remote-setup
+```
+
+It installs Tailscale if it is missing (Tailscale's official installer,
+`curl -fsSL https://tailscale.com/install.sh | sh`; it prints the command and
+asks first), runs `sudo tailscale up` (it prints a web address: log in there),
+and can run `sudo tailscale set --operator=$USER` so later commands need no
+password. Safe to repeat.
+
+**Once, on the phone:** install the Tailscale app (Google Play or App Store) and
+log in with the same account as on the PC.
+
+**Each time:** start **ForgeCoach (away from home)** from the app menu (or
+`forgecoach remote`). It starts the engine like the phone mode, then shows a link
+with the PC's Tailscale address (`http://100.x.y.z:8642/?token=...`), a QR code
+and a page with both, and sends the link to your phone with KDE Connect when it
+is connected. On the phone, with the Tailscale app on, open the link. If
+Tailscale is not connected on the PC it says so, and the link only works at home.
+
+**The PC has to stay on, awake and online while you are away.** While the engine
+runs, `forgecoach remote` holds a `systemd-inhibit` lock so the PC does not
+suspend by itself (it is released when you stop ForgeCoach; set
+`FORGECOACH_NO_INHIBIT=1` to skip it). If it cannot, it tells you to turn off
+sleep in System Settings > Power Management. Start it before you leave (or have
+someone at home click it), and remember: closing a laptop lid may still suspend it.
+The link carries a secret token: do not share it.
 
 ## Replay and review a recorded game
 
