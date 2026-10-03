@@ -373,15 +373,56 @@ your key.
    ```
 
    Each run writes `bench/coach/results/<time>-<label>.json` (every reply in
-   full) and a `.md` summary. `--compare` lists the cases that got better or
-   worse. Reports are git-ignored; `git add -f` one to keep it as a baseline.
+   full) and a `.md` summary. Reports are git-ignored; `git add -f` one to keep
+   it as a baseline.
+
+**Repeats, because the coach is stochastic.** One answer per case cannot tell
+two prompts apart: 25 against 26 is noise. By default every case is asked
+`--repeat 3` times (any N), `--concurrency 2` calls at a time (raise it only if
+the helper keeps up). That is about 3x the calls of a single pass, so a full run
+takes about three times as long.
+
+```bash
+npm run bench:coach -- --label before --repeat 3
+npm run bench:coach -- --label after  --repeat 3
+npm run bench:coach -- --compare bench/coach/results/<…>-before.json bench/coach/results/<…>-after.json
+```
+
+How to read a run: the quality score is the mean over cases of each case's mean
+answer score (acceptable +1, blunder −1, other legal answer 0), with a 95%
+interval from a bootstrap over cases, so repeats of one case are never counted
+as independent evidence. Missing, illegal and errored answers are format
+failures: reported separately (with a Wilson interval) and left out of the
+score. Each case also shows the answers seen and its agreement, the share equal
+to its most common answer; below 0.67 it is "unstable".
+
+How to read `--compare a.json b.json` (A is the baseline, B the change): it is
+paired over the cases both runs share, using each case's difference in mean
+score.
+
+- The verdict line says "B is better", "B is worse" or "no detectable
+  difference". It calls a difference only when the 95% interval of the mean
+  difference (paired bootstrap over cases) excludes zero, and needs at least 5
+  paired cases. Treat "no detectable difference" as "not shown", not as "equal".
+- The total difference (sum over cases) and its interval, the cases better /
+  worse, and an exact sign test are printed with it.
+- A **flip** is listed only when every valid answer of one run beats every valid
+  answer of the other (2+ answers each). A case whose mean moved but whose
+  answers overlap is in the difference table, not the flips.
+- **Unstable** cases (agreement below 0.67 in either run) are listed; their
+  differences mean little.
+- Format failure rates are compared separately from the score.
+- Result files from before repeats existed (one answer per case) still load, as
+  N=1 with a warning; their cases cannot be checked for noise, so no flips are
+  flagged against them.
 
 Options: `--source helper|api` (by default the helper if it is up, otherwise the
 API when `ANTHROPIC_API_KEY` is set), `--model <m>` (an alias the helper
 accepts, or an API model id from `src/claude.ts`), `--only id1,id2`,
-`--type block`, `--helper-url <url>`. Cases run one at a time (the helper
-answers one question at a time), so a full run takes about as long as 28 coach
-answers. Ctrl-C stops after the current case and still writes the report.
+`--type block`, `--helper-url <url>`, `--repeat N`, `--concurrency K`. A full
+run is 28 cases × N answers. Ctrl-C stops after the calls in flight and still
+writes the report (every case then has at least one answer first, as passes go
+over all cases in turn).
 
 `npm run bench:coach -- --dry-run` builds every prompt and checks every case
 without calling a model. Add `--show <case-id>` to print that case's full
