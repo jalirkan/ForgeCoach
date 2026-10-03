@@ -20,6 +20,7 @@ import { ZoneViewer, type ViewableZone } from './ZoneViewer.tsx';
 import { groupLands, pileWeight } from './landPiles.ts';
 import { edgeFade, phoneSideFit } from './boardFit.ts';
 import { cx, stateCardNames, typeKind } from './util.ts';
+import { seatDisplayName } from '../play/aiName.ts';
 
 interface BoardProps {
   log: GameLog;
@@ -290,7 +291,7 @@ function PlayerHeader({
         )}
         <div className="phead-names">
           <div className="phead-name">
-            {mine ? 'You' : player.name}
+            {mine ? 'You' : seatDisplayName(log.hello, player, player.name)}
             {mine && <span className="muted phead-real"> · {player.name}</span>}
           </div>
           <div className="phead-tags">

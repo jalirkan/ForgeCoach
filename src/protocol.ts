@@ -58,6 +58,13 @@
  *       `seatMatchOf` still reads the block; `matchupOf` composes it for the
  *       arena's "watching" line.
  *
+ * 2026-10-03 — **the AI's policy** (`docs/protocol.md` §2.1):
+ *   M56 `hello_ok.match.aiPolicy` — who answers for the AI seat, MtgTable's
+ *       `--ai-policy` (`plain` | `outlets` | `search`), so a client can name
+ *       the AI the player chose. Optional: written by `mtgtable.MtgTable` only,
+ *       absent from every older stream and from AI-vs-AI recordings.
+ *       `aiPolicyOf` is its one reader.
+ *
  * **Every M6 field is declared optional here**, and that is not defensiveness
  * for its own sake: fifteen committed recordings predate them,
  * `web/test/render.test.tsx` folds every frame of all of them, and a required
@@ -186,6 +193,32 @@ export interface MatchSetup {
    * lacks it. Read it through {@link seatMatchOf}.
    */
   yourProfile?: string;
+  /**
+   * §2.1, amendment **M56** — who answers for the AI seat: MtgTable's
+   * `--ai-policy`, `plain` (Forge's own AI), `outlets` (with the
+   * sacrifice-outlet policy) or `search` (the look-ahead search). Optional:
+   * absent from every stream before 2026-10-03 and from `RecordMatch`'s. Read
+   * it through {@link aiPolicyOf}.
+   */
+  aiPolicy?: string;
+}
+
+/** §2.1 (M56) — the AI seat's controller, as `--ai-policy` names it. */
+export type AiPolicy = 'plain' | 'outlets' | 'search';
+
+/** The three {@link AiPolicy} values, in `--ai-policy`'s order. */
+export const AI_POLICY_IDS: readonly AiPolicy[] = ['plain', 'outlets', 'search'];
+
+/**
+ * §2.1, amendment **M56** — **the one reader of `hello_ok.match.aiPolicy`.**
+ * Returns the policy when the handshake names one of the three, and `null`
+ * otherwise: a stream from before M56 (or an AI-vs-AI recording) does not say
+ * which AI played, so a caller keeps whatever it said before rather than
+ * guessing `plain`. An unknown word is `null` too, never echoed.
+ */
+export function aiPolicyOf(hello: HelloOkBody | null | undefined): AiPolicy | null {
+  const p = hello?.match?.aiPolicy;
+  return typeof p === 'string' && (AI_POLICY_IDS as readonly string[]).includes(p) ? (p as AiPolicy) : null;
 }
 
 /** What one seat's plate says about the match (M44). */
