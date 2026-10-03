@@ -1,0 +1,193 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+import { describe, expect, it } from 'vitest';
+import { context, loadRealMeta } from '../cube/testdata/load.ts';
+import { rng, shuffle } from './rng.ts';
+import { labCards, ratingOf } from './cards.ts';
+import { committed, scoreCard, setValue, topPair, type DrafterState } from './pick.ts';
+import { DEFAULT_WEIGHTS as W } from './weights.ts';
+import {
+  aiAction,
+  aiStep,
+  apply,
+  canPass,
+  isLegal,
+  knownAiCards,
+  legalLines,
+  newDraft,
+  selfPlay,
+  toAct,
+  type Draft,
+  type GridDraft,
+  type WinstonDraft,
+} from './draft.ts';
+
+const ctx = context('synergy', loadRealMeta('synergy'));
+const cards = labCards(ctx);
+const names = ctx.cube.cards.map((c) => c.name);
+
+describe('rng', () => {
+  it('is a pure function of the seed and stream', () => {
+    const a = rng(42, 'x');
+    const b = rng(42, 'x');
+    const c = rng(42, 'y');
+    const sa = [a.next(), a.next(), a.next()];
+    expect([b.next(), b.next(), b.next()]).toEqual(sa);
+    expect(c.next()).not.toBe(sa[0]);
+    for (let i = 0; i < 200; i++) {
+      const n = a.int(7);
+      expect(n).toBeGreaterThanOrEqual(0);
+      expect(n).toBeLessThan(7);
+    }
+  });
+  it('shuffles to a permutation', () => {
+    const arr = Array.from({ length: 50 }, (_, i) => i);
+    const s = shuffle([...arr], rng(1));
+    expect([...s].sort((x, y) => x - y)).toEqual(arr);
+    expect(s).not.toEqual(arr);
+  });
+});
+
+describe('ratings and the pick scorer', () => {
+  it('uses the meta where it has games, the no-meta estimate otherwise', () => {
+    const noMeta = context('synergy');
+    expect(ratingOf('Lightning Bolt', ctx)).not.toBe(ratingOf('Lightning Bolt', noMeta));
+    expect(ratingOf('Not A Cube Card', ctx)).toBe(W.unrated);
+    for (const c of cards.values()) {
+      expect(c.rating).toBeGreaterThan(0);
+      expect(c.rating).toBeLessThanOrEqual(100);
+    }
+  });
+  it('commits after a third of the picks and punishes off-colour cards after that', () => {
+    const rakdos = ['Blood Artist', 'Viscera Seer', 'Goblin Bombardment', 'Bloodghast', 'Fatal Push', 'Lightning Bolt', 'Mayhem Devil', 'Young Pyromancer', 'Zulaport Cutthroat', 'Bone Shards', 'Village Rites', 'Carrion Feeder', 'Gravecrawler', 'Deadly Dispute', 'Legion Warboss', 'Hordeling Outburst'].map((n) => cards.get(n)!);
+    const early: DrafterState = { picks: rakdos.slice(0, 3), expected: 45 };
+    const late: DrafterState = { picks: rakdos, expected: 45 };
+    expect(committed(early, W)).toBe(false);
+    expect(committed(late, W)).toBe(true);
+    expect(topPair(rakdos)).toBe('BR');
+    const elves = cards.get('Wood Elves')!;
+    expect(scoreCard(elves, late, W).colour).toBe(-W.offColour);
+    expect(scoreCard(cards.get('Blood Crypt')!, late, W).fixing).toBe(W.fixing);
+    // A sacrifice payoff gains synergy from a sacrifice pool.
+    expect(scoreCard(cards.get('Priest of Forgotten Gods')!, late, W).synergy).toBeGreaterThan(0);
+  });
+  it('a set is its best card plus 0.6 of the rest', () => {
+    const st: DrafterState = { picks: [], expected: 45 };
+    const a = cards.get('Lightning Bolt')!;
+    const b = cards.get('Opt')!;
+    const va = scoreCard(a, st, W).total;
+    const vb = scoreCard(b, st, W).total;
+    expect(setValue([a, b], st, W)).toBeCloseTo(Math.max(va, vb) + 0.6 * Math.min(va, vb));
+  });
+});
+
+describe('grid', () => {
+  const g0 = newDraft({ cubeId: 'synergy', format: 'grid', cube: names, seed: 7, youFirst: true, now: 1 }) as GridDraft;
+
+  it('deals 18 grids of nine from the cube, the same for the same seed', () => {
+    expect(g0.grids).toBe(18);
+    expect(g0.dealt).toHaveLength(162);
+    expect(new Set(g0.dealt).size).toBe(162);
+    const again = newDraft({ cubeId: 'synergy', format: 'grid', cube: names, seed: 7, youFirst: true, now: 1 });
+    expect(again.dealt).toEqual(g0.dealt);
+    expect(newDraft({ cubeId: 'synergy', format: 'grid', cube: names, seed: 8, youFirst: true, now: 1 }).dealt).not.toEqual(g0.dealt);
+  });
+
+  it('first pick alternates, the second drafter cannot take the same line, crossing lines take two', () => {
+    expect(toAct(g0)).toBe('you');
+    expect(legalLines(g0)).toEqual([0, 1, 2, 3, 4, 5]);
+    const g1 = apply(g0, { kind: 'line', line: 0 }) as GridDraft; // top row
+    expect(g1.picks.you).toHaveLength(3);
+    expect(toAct(g1)).toBe('ai');
+    expect(isLegal(g1, { kind: 'line', line: 0 })).toBe(false);
+    const g2 = apply(g1, { kind: 'line', line: 3 }) as GridDraft; // left column crosses: two cards
+    expect(g2.picks.ai).toHaveLength(2);
+    expect(g2.g).toBe(1);
+    expect(toAct(g2)).toBe('ai'); // grid 2: the AI opens
+    expect(() => apply(g2, { kind: 'line', line: 9 })).toThrow();
+  });
+
+  it('runs to the end with the AI in both seats: 45ish cards each, all public', () => {
+    const end = selfPlay(g0, cards) as GridDraft;
+    expect(end.done).toBe(true);
+    expect(end.log.filter((e) => e.kind === 'line')).toHaveLength(36);
+    const total = end.picks.you.length + end.picks.ai.length;
+    expect(total).toBeGreaterThanOrEqual(18 * 5);
+    expect(total).toBeLessThanOrEqual(18 * 6);
+    expect(new Set([...end.picks.you, ...end.picks.ai]).size).toBe(total);
+    expect(knownAiCards(end)).toEqual(end.picks.ai);
+    expect(selfPlay(g0, cards).picks).toEqual(end.picks);
+  });
+
+  it('the AI takes the line with the best set value', () => {
+    const a = aiAction(g0, cards);
+    expect(a.kind).toBe('line');
+  });
+});
+
+describe('winston', () => {
+  const w0 = newDraft({ cubeId: 'synergy', format: 'winston', cube: names, seed: 3, youFirst: true, now: 1 }) as WinstonDraft;
+
+  it('deals a 90-card stack and three one-card piles', () => {
+    expect(w0.dealt).toHaveLength(90);
+    expect(w0.stack).toHaveLength(87);
+    expect(w0.piles.map((p) => p.length)).toEqual([1, 1, 1]);
+    expect(toAct(w0)).toBe('you');
+    expect(w0.look).toBe(0);
+  });
+
+  it('passing grows the pile and moves on; taking ends the turn and refills', () => {
+    const p1 = apply(w0, { kind: 'pass' }) as WinstonDraft;
+    expect(p1.piles[0]).toHaveLength(2);
+    expect(p1.look).toBe(1);
+    expect(p1.turn).toBe('you');
+    const t = apply(p1, { kind: 'take' }) as WinstonDraft;
+    expect(t.picks.you).toHaveLength(1);
+    expect(t.piles[1]).toHaveLength(1);
+    expect(t.turn).toBe('ai');
+    expect(t.look).toBe(0);
+  });
+
+  it('passing all three takes the top card blind', () => {
+    let d: Draft = w0;
+    for (let i = 0; i < 3; i++) d = apply(d, { kind: 'pass' });
+    const wd = d as WinstonDraft;
+    expect(wd.picks.you).toHaveLength(1);
+    expect(wd.log.at(-1)?.kind).toBe('blind');
+    expect(wd.turn).toBe('ai');
+    expect(wd.stack).toHaveLength(87 - 4);
+  });
+
+  it('hides the AI’s takes except cards the player saw', () => {
+    // You pass pile 1 (seeing its card); the AI takes it or not, but anything it takes from pile 1 you know.
+    let d: Draft = apply(w0, { kind: 'pass' });
+    d = apply(d, { kind: 'take' });
+    const seenPile1 = (w0.piles[0] ?? [])[0]!;
+    while (toAct(d) === 'ai') d = aiStep(d, cards);
+    const ai = d.log.filter((e) => e.who === 'ai' && e.kind !== 'pass');
+    expect(ai.length).toBe(1);
+    const known = knownAiCards(d);
+    for (const k of known) expect(d.seen.you).toContain(k);
+    if (ai[0]?.cards.includes(seenPile1)) expect(known).toContain(seenPile1);
+  });
+
+  it('runs to the end: every dealt card drafted exactly once, about half each', () => {
+    const end = selfPlay(w0, cards) as WinstonDraft;
+    expect(end.done).toBe(true);
+    expect(end.stack).toHaveLength(0);
+    const all = [...end.picks.you, ...end.picks.ai];
+    expect(all).toHaveLength(90);
+    expect(new Set(all)).toEqual(new Set(end.dealt));
+    expect(Math.abs(end.picks.you.length - end.picks.ai.length)).toBeLessThan(30);
+    expect(canPass(end)).toBe(false);
+  });
+
+  it('when the stack is empty the last pile must be taken', () => {
+    let d: Draft = w0;
+    while (!d.done && (d as WinstonDraft).stack.length > 0) d = aiStep(d, cards);
+    if (!d.done) {
+      const wd = d as WinstonDraft;
+      const later = wd.piles.slice(wd.look + 1).every((p) => p.length === 0);
+      expect(canPass(wd)).toBe(!later);
+    }
+  });
+});

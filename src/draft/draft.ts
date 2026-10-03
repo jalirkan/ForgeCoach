@@ -1,0 +1,408 @@
+/*
+ * ForgeCoach — draft/draft.ts
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The two two-player drafts, one decision at a time, so a person can sit in
+ * one seat and the cube lab's drafting AI in the other. The rules and the AI
+ * are ported from mtg-table's cube lab (tools/cubelab/draft.ts,
+ * GPL-3.0-or-later, Copyright (C) 2026 mtg-table contributors; see NOTICE);
+ * the lab runs a whole draft in one call, this module steps it so the page can
+ * show each pick, save after each one and resume after a refresh.
+ *
+ * GRID: shuffle the cube, deal 162 cards into 18 grids of 3x3, face up. For
+ * each grid the first drafter takes a row or a column, the second takes a
+ * remaining row or column (3 cards if parallel to the first, 2 if it crosses
+ * it), and the rest is discarded. The first pick alternates grid by grid.
+ *
+ * WINSTON: shuffle the cube and take 90 cards as a face-down stack; deal three
+ * one-card piles. On a turn the drafter looks at pile 1 and takes it or passes
+ * it; passing adds the stack's top card to that pile, and the drafter looks at
+ * pile 2, then pile 3. A taken pile is replaced by one card from the stack.
+ * Passing all three takes the stack's top card blind. When the stack is empty
+ * the last non-empty pile looked at must be taken (and if every pile was
+ * passed once the stack ran out mid-turn, the biggest is taken).
+ *
+ * State is plain JSON (card names, not objects) so it can live in
+ * localStorage. It holds everything, the AI's picks included; what the PLAYER
+ * may see is the page's job: `knownAiCards` is the hidden-information rule.
+ */
+import { rng, shuffle } from './rng.ts';
+import type { LabCard } from './cards.ts';
+import { scoreCard, setValue, type DrafterState } from './pick.ts';
+import { DEFAULT_WEIGHTS, type Weights } from './weights.ts';
+
+export type Side = 'you' | 'ai';
+export type Format = 'grid' | 'winston';
+
+export const GRID_ROUNDS = 18;
+export const WINSTON_CARDS = 90;
+
+/** Rows 0-2, columns 3-5 (the lab's numbering); src/cube/pick.ts GRID_LINES uses the same order. */
+export const LINES: number[][] = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+];
+export const lineName = (l: number): string => (l < 3 ? ['top row', 'middle row', 'bottom row'][l]! : ['left column', 'middle column', 'right column'][l - 3]!);
+
+export interface DraftEvent {
+  /** 1-based, over the whole draft. */
+  n: number;
+  who: Side;
+  kind: 'line' | 'take' | 'pass' | 'blind' | 'forced';
+  /** Grid: which grid (1-based). Winston: which pile (1-3), 0 for the blind card. */
+  at: number;
+  /** Grid: the line taken (0-5). */
+  line?: number;
+  /** Cards taken (empty for a pass). The AI's Winston takes are secret: read `known`. */
+  cards: string[];
+  /** For an AI take: the cards of it the player had seen (in a pile they looked at). */
+  known?: string[];
+  /** Winston pass: the pile's size after the stack's card was added. */
+  size?: number;
+}
+
+interface Base {
+  v: 1;
+  id: string;
+  cubeId: string;
+  seed: number;
+  /** The player opens (picks first in grid 1, takes the first Winston turn). */
+  youFirst: boolean;
+  /** Every card in play (dealt to grids, or the Winston stack). */
+  dealt: string[];
+  picks: Record<Side, string[]>;
+  /** Cards each drafter has looked at. */
+  seen: Record<Side, string[]>;
+  log: DraftEvent[];
+  done: boolean;
+  startedAt: number;
+  updatedAt: number;
+}
+
+export interface GridDraft extends Base {
+  format: 'grid';
+  grids: number;
+  /** The grid being drafted, 0-based. */
+  g: number;
+  slots: Array<string | null>;
+  /** The line the first drafter took in this grid, once taken. */
+  firstLine: number | null;
+}
+
+export interface WinstonDraft extends Base {
+  format: 'winston';
+  /** Face down; the last element is the top. */
+  stack: string[];
+  piles: [string[], string[], string[]];
+  turn: Side;
+  /** The pile being looked at (0-2). */
+  look: number;
+  /** The AI's expectation of a blind card, fixed at the start of its turn (as in the lab). */
+  aiBlind: number | null;
+}
+
+export type Draft = GridDraft | WinstonDraft;
+
+export type DraftAction = { kind: 'line'; line: number } | { kind: 'take' } | { kind: 'pass' };
+
+export interface NewDraft {
+  cubeId: string;
+  format: Format;
+  /** The cube's card names, in document order. */
+  cube: string[];
+  seed: number;
+  youFirst: boolean;
+  /** Grid rounds (18) or Winston stack size (90). */
+  size?: number;
+  now?: number;
+}
+
+const other = (s: Side): Side => (s === 'you' ? 'ai' : 'you');
+
+export function newDraft(o: NewDraft): Draft {
+  const names = [...new Set(o.cube)];
+  const r = rng(o.seed, o.format);
+  const deck = shuffle(names, r);
+  const now = o.now ?? Date.now();
+  const base = {
+    v: 1 as const,
+    id: `draft-${o.seed.toString(36)}-${now.toString(36)}`,
+    cubeId: o.cubeId,
+    seed: o.seed,
+    youFirst: o.youFirst,
+    picks: { you: [], ai: [] },
+    seen: { you: [], ai: [] },
+    log: [],
+    done: false,
+    startedAt: now,
+    updatedAt: now,
+  };
+  if (o.format === 'grid') {
+    const grids = Math.min(o.size ?? GRID_ROUNDS, Math.floor(deck.length / 9));
+    const dealt = deck.slice(0, grids * 9);
+    return { ...base, format: 'grid', dealt, grids, g: 0, slots: dealt.slice(0, 9), firstLine: null, done: grids === 0 };
+  }
+  const dealt = deck.slice(0, Math.min(o.size ?? WINSTON_CARDS, deck.length));
+  const stack = [...dealt].reverse();
+  const piles: [string[], string[], string[]] = [[], [], []];
+  for (const p of piles) {
+    const c = stack.pop();
+    if (c) p.push(c);
+  }
+  const d: WinstonDraft = { ...base, format: 'winston', dealt, stack, piles, turn: o.youFirst ? 'you' : 'ai', look: 0, aiBlind: null };
+  return settleWinston(d);
+}
+
+// ---------------------------------------------------------------------------
+// Whose move, what is legal
+
+export function gridFirst(d: GridDraft): Side {
+  return (d.g % 2 === 0) === d.youFirst ? 'you' : 'ai';
+}
+
+/** Who decides next (null when the draft is over). */
+export function toAct(d: Draft): Side | null {
+  if (d.done) return null;
+  if (d.format === 'grid') return d.firstLine === null ? gridFirst(d) : other(gridFirst(d));
+  return d.turn;
+}
+
+export function lineCards(slots: Array<string | null>, l: number): string[] {
+  return (LINES[l] ?? []).map((i) => slots[i]).filter((c): c is string => c != null);
+}
+
+/** Grid lines that may be taken now. */
+export function legalLines(d: GridDraft): number[] {
+  const out: number[] = [];
+  for (let l = 0; l < 6; l++) if (l !== d.firstLine && lineCards(d.slots, l).length > 0) out.push(l);
+  return out;
+}
+
+/** Winston: may the drafter pass the pile in front of them? Not when the stack is empty and no later pile has cards. */
+export function canPass(d: WinstonDraft): boolean {
+  if (d.done) return false;
+  const laterEmpty = d.piles.slice(d.look + 1).every((p) => p.length === 0);
+  return !(d.stack.length === 0 && laterEmpty);
+}
+
+export function isLegal(d: Draft, a: DraftAction): boolean {
+  if (d.done) return false;
+  if (d.format === 'grid') return a.kind === 'line' && legalLines(d).includes(a.line);
+  if (a.kind === 'take') return (d.piles[d.look]?.length ?? 0) > 0;
+  if (a.kind === 'pass') return canPass(d);
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Applying a decision
+
+function clone(d: Draft): Draft {
+  return JSON.parse(JSON.stringify(d)) as Draft;
+}
+
+function addSeen(d: Draft, who: Side, cards: string[]) {
+  const s = new Set(d.seen[who]);
+  for (const c of cards) if (!s.has(c)) d.seen[who].push(c);
+}
+
+function push(d: Draft, e: Omit<DraftEvent, 'n'>) {
+  d.log.push({ n: d.log.length + 1, ...e });
+}
+
+/** The draft after `a` by whoever is to act. Throws on an illegal action. */
+export function apply(d0: Draft, a: DraftAction, now = Date.now()): Draft {
+  if (!isLegal(d0, a)) throw new Error(`illegal ${a.kind}${a.kind === 'line' ? ` ${a.line}` : ''} in this ${d0.format} draft`);
+  const d = clone(d0);
+  d.updatedAt = now;
+  const who = toAct(d) as Side;
+  if (d.format === 'grid' && a.kind === 'line') {
+    addSeen(d, who, d.slots.filter((c): c is string => c != null));
+    const cards = lineCards(d.slots, a.line);
+    d.picks[who].push(...cards);
+    for (const i of LINES[a.line] ?? []) d.slots[i] = null;
+    push(d, { who, kind: 'line', at: d.g + 1, line: a.line, cards });
+    if (d.firstLine === null) d.firstLine = a.line;
+    else {
+      d.g++;
+      d.firstLine = null;
+      if (d.g >= d.grids) {
+        d.done = true;
+        d.slots = Array(9).fill(null);
+      } else d.slots = d.dealt.slice(d.g * 9, d.g * 9 + 9);
+    }
+    return d;
+  }
+  if (d.format !== 'winston') return d;
+  const i = d.look;
+  const pile = d.piles[i] as string[];
+  addSeen(d, who, pile);
+  if (a.kind === 'take') {
+    takePile(d, who, i, 'take');
+    return endTurn(d);
+  }
+  // pass
+  const c = d.stack.pop();
+  if (c) pile.push(c);
+  push(d, { who, kind: 'pass', at: i + 1, cards: [], size: pile.length });
+  const next = d.piles.findIndex((p, k) => k > i && p.length > 0);
+  if (next >= 0) {
+    d.look = next;
+    return d;
+  }
+  // Every pile passed.
+  const top = d.stack.pop();
+  if (top) {
+    addSeen(d, who, [top]);
+    d.picks[who].push(top);
+    push(d, { who, kind: 'blind', at: 0, cards: [top], known: who === 'ai' ? [] : undefined });
+  } else {
+    let bi = i;
+    for (let k = 0; k < 3; k++) if ((d.piles[k]?.length ?? 0) > (d.piles[bi]?.length ?? 0)) bi = k;
+    if ((d.piles[bi]?.length ?? 0) > 0) takePile(d, who, bi, 'forced');
+  }
+  return endTurn(d);
+}
+
+function takePile(d: WinstonDraft, who: Side, i: number, kind: 'take' | 'forced') {
+  const pile = d.piles[i] as string[];
+  const youSaw = new Set(d.seen.you);
+  d.picks[who].push(...pile);
+  push(d, { who, kind, at: i + 1, cards: [...pile], known: who === 'ai' ? pile.filter((c) => youSaw.has(c)) : undefined });
+  const c = d.stack.pop();
+  d.piles[i] = c ? [c] : [];
+}
+
+function endTurn(d: WinstonDraft): WinstonDraft {
+  d.turn = other(d.turn);
+  d.aiBlind = null;
+  return settleWinston(d);
+}
+
+/** Point `look` at the first pile with cards; finish the draft, or take a blind card when no pile has any. */
+function settleWinston(d: WinstonDraft): WinstonDraft {
+  for (let guard = 0; guard < 4; guard++) {
+    if (d.stack.length === 0 && d.piles.every((p) => p.length === 0)) {
+      d.done = true;
+      return d;
+    }
+    const first = d.piles.findIndex((p) => p.length > 0);
+    if (first >= 0) {
+      d.look = first;
+      return d;
+    }
+    // No pile to look at: the turn is the blind top card.
+    const top = d.stack.pop() as string;
+    addSeen(d, d.turn, [top]);
+    d.picks[d.turn].push(top);
+    push(d, { who: d.turn, kind: 'blind', at: 0, cards: [top], known: d.turn === 'ai' ? [] : undefined });
+    d.turn = other(d.turn);
+  }
+  return d;
+}
+
+// ---------------------------------------------------------------------------
+// The AI
+
+export function expectedPicks(d: Draft): number {
+  return d.format === 'grid' ? d.grids * 2.5 : d.dealt.length / 2;
+}
+
+export function drafterState(d: Draft, side: Side, cards: Map<string, LabCard>): DrafterState {
+  return { picks: d.picks[side].map((n) => cards.get(n)).filter((c): c is LabCard => !!c), expected: expectedPicks(d) };
+}
+
+/** The drafter's expected value of a blind card: the mean score of the dealt cards it has not seen. */
+export function blindExpectation(d: Draft, side: Side, cards: Map<string, LabCard>, w: Weights = DEFAULT_WEIGHTS): number {
+  const seen = new Set(d.seen[side]);
+  const st = drafterState(d, side, cards);
+  let sum = 0;
+  let n = 0;
+  for (const name of d.dealt) {
+    if (seen.has(name)) continue;
+    const c = cards.get(name);
+    if (!c) continue;
+    sum += Math.max(0, scoreCard(c, st, w).total);
+    n++;
+  }
+  return n === 0 ? 0 : sum / n;
+}
+
+const lc = (names: string[], cards: Map<string, LabCard>) => names.map((n) => cards.get(n)).filter((c): c is LabCard => !!c);
+
+/** The lab's chooser for whoever is to act (normally the AI; the tests run it for both seats). */
+export function aiAction(d: Draft, cards: Map<string, LabCard>, w: Weights = DEFAULT_WEIGHTS): DraftAction {
+  const who = toAct(d);
+  if (!who) throw new Error('the draft is over');
+  const st = drafterState(d, who, cards);
+  if (d.format === 'grid') {
+    let best = -1;
+    let bv = -Infinity;
+    for (const l of legalLines(d)) {
+      const v = setValue(lc(lineCards(d.slots, l), cards), st, w);
+      if (v > bv) {
+        bv = v;
+        best = l;
+      }
+    }
+    return { kind: 'line', line: best };
+  }
+  if (!canPass(d)) return { kind: 'take' };
+  const blind = d.aiBlind ?? blindExpectation(d, who, cards, w);
+  const margin = [w.winstonMargin1, w.winstonMargin2, w.winstonMargin3][d.look] ?? 0;
+  return setValue(lc(d.piles[d.look] ?? [], cards), st, w) >= blind + margin ? { kind: 'take' } : { kind: 'pass' };
+}
+
+/**
+ * One AI decision, applied. Winston's blind-card value is fixed when the AI's
+ * turn starts (the lab computes it once per turn), so it is stored on the
+ * state before the first look.
+ */
+export function aiStep(d: Draft, cards: Map<string, LabCard>, w: Weights = DEFAULT_WEIGHTS, now = Date.now()): Draft {
+  let cur = d;
+  if (cur.format === 'winston' && cur.aiBlind === null) cur = { ...cur, aiBlind: blindExpectation(cur, cur.turn, cards, w) };
+  const next = apply(cur, aiAction(cur, cards, w), now);
+  return next;
+}
+
+/** Run a whole draft with the lab's AI in both seats (the lab's own mode; tests and self-checks). */
+export function selfPlay(d: Draft, cards: Map<string, LabCard>, w: Weights = DEFAULT_WEIGHTS): Draft {
+  let cur = d;
+  for (let guard = 0; !cur.done; guard++) {
+    if (guard > 10_000) throw new Error('draft: no progress');
+    cur = aiStep(cur, cards, w, cur.updatedAt);
+  }
+  return cur;
+}
+
+// ---------------------------------------------------------------------------
+// What the player may know
+
+/** The AI's cards the player knows about: every Grid pick (public), Winston takes only as far as the player saw them. */
+export function knownAiCards(d: Draft): string[] {
+  if (d.format === 'grid') return [...d.picks.ai];
+  const out: string[] = [];
+  for (const e of d.log) if (e.who === 'ai' && e.known) out.push(...e.known);
+  return out;
+}
+
+/** How many cards the AI holds (always public: you watch it take piles). */
+export const aiCount = (d: Draft) => d.picks.ai.length;
+
+/** Progress for headers: grid "Grid 4 of 18"; Winston cards left in the stack. */
+export function progress(d: Draft): { step: number; of: number; label: string } {
+  if (d.format === 'grid') {
+    const step = Math.min(d.grids, d.g + 1);
+    return { step, of: d.grids, label: `Grid ${step} of ${d.grids}` };
+  }
+  const left = d.stack.length;
+  return { step: d.dealt.length - left, of: d.dealt.length, label: `${left} card${left === 1 ? '' : 's'} in the stack` };
+}
+
+/** The AI events since event number `after`, for the page to play back one beat at a time. */
+export function eventsAfter(d: Draft, after: number): DraftEvent[] {
+  return d.log.filter((e) => e.n > after);
+}
