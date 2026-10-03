@@ -59,6 +59,6 @@ describe('the deck after a draft', () => {
     expect(d.suggestion?.score).toBe(b.score);
     const m = toMatchDeck('Mine', d);
     expect(m.main.reduce((s, [n]) => s + n, 0)).toBe(40);
-    expect(m.sideboard.reduce((s, [n]) => s + n, 0)).toBe(d.side.length);
+    expect(m.sideboard!.reduce((s, [n]) => s + n, 0)).toBe(d.side.length);
   });
 });

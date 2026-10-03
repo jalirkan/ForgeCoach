@@ -1830,6 +1830,31 @@ button.seat-chip:hover {
   font: italic 15px/1.4 var(--serif);
   color: var(--muted);
 }
+.launch-result {
+  margin: 18px auto 0;
+  max-width: 720px;
+  padding: 14px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--line-2);
+  text-align: center;
+}
+.launch-result.is-ok {
+  border-color: var(--gold);
+}
+.launch-result.is-bad {
+  border-color: rgba(196, 64, 54, 0.6);
+}
+.launch-result p {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+.launch-result ul {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  font: 12px/1.5 var(--mono);
+  color: var(--text-2);
+}
 .setup-note.is-ok {
   color: var(--ok);
 }

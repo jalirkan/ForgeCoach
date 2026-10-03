@@ -20,7 +20,7 @@ import type { CubeMeta } from '../../cube/meta.ts';
 import { aiFlagsFromDoc, noFlags, withMetaFlags, type AiFlags } from '../../draft/aiFlags.ts';
 import { deckCount, mainNames, toMatchDeck, type DeckState } from '../../draft/deck.ts';
 import { boosterPackSize, BOOSTER_PACKS, progress, SEAT_OPTIONS, type Draft, type Format } from '../../draft/draft.ts';
-import { AI_PROFILES, deckSize, launchMatch, matchSupported, type AiProfile } from '../../draft/launch.ts';
+import { AI_PROFILES, deckSize, launcherStatus, launchMatch, safeDeckName, type AiProfile, type LaunchResult, type LauncherStatus } from '../../draft/launch.ts';
 import type { DraftAfter } from '../../draft/store.ts';
 import { colourLabel, wubrg } from '../../cube/colors.ts';
 import { prefetchCards, useCardInfo } from '../cardData.ts';
@@ -371,9 +371,10 @@ export function MatchSetup({
 }) {
   const [profile, setProfile] = useState<AiProfile>('Default');
   const [games, setGames] = useState<1 | 3>(3);
-  const [supported, setSupported] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<LauncherStatus | null>(null);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [result, setResult] = useState<LaunchResult | null>(null);
+  const supported = status === null ? null : status === 'ready';
   const flags = useAiFlags(draft.cubeId, meta, cubeNames);
   const cube = cubeInfo(draft.cubeId);
   const deckName = `${title} — ${deckColours ? colourLabel(wubrg(deckColours)) : 'my deck'}`;
@@ -382,7 +383,7 @@ export function MatchSetup({
 
   useEffect(() => {
     let live = true;
-    const check = () => matchSupported().then((ok) => live && setSupported(ok));
+    const check = () => launcherStatus().then((st) => live && setStatus(st));
     void check();
     const t = setInterval(check, 8000);
     return () => {
@@ -402,18 +403,20 @@ export function MatchSetup({
 
   const ready = !!yours && !!ai && deckSize(yours) >= 40;
   const canBegin = ready && supported === true && !busy;
+  const takeSeat = () => {
+    // The engine restarted on the new decks: take the seat again; the next hello_ok is this match.
+    const q = new URLSearchParams(location.search);
+    q.set('play', '1');
+    location.href = `${location.pathname}?${q.toString()}`;
+  };
   const begin = async () => {
     if (!yours || !ai || !canBegin) return;
     setBusy(true);
-    setMsg(null);
-    const r = await launchMatch({ deck: yours, aiDeck: ai, aiProfile: profile, games });
+    setResult(null);
+    const r = await launchMatch({ deck: yours, aiDeck: { ...ai, name: safeDeckName(ai.name, 'AI Drafter') }, aiProfile: profile, games });
     setBusy(false);
-    if (r.ok) {
-      setMsg({ ok: true, text: r.detail ?? 'The engine is dealing your match. Taking your seat…' });
-      setTimeout(() => {
-        location.href = `${location.pathname}${location.search ? `${location.search}&` : '?'}play=1`;
-      }, 1200);
-    } else setMsg({ ok: false, text: r.message });
+    setResult(r);
+    if (r.ok && r.warnings.length === 0) setTimeout(takeSeat, 900);
   };
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -423,13 +426,17 @@ export function MatchSetup({
     return () => window.removeEventListener('keydown', k);
   });
 
-  const note = !ready
-    ? 'Your deck needs at least 40 cards.'
-    : supported === null
-      ? 'Looking for the match launcher on this computer…'
-      : supported
-        ? `Best of ${games === 3 ? 'three' : 'one'} against the AI’s draft. Its list stays hidden, as at a real table.`
-        : 'The match launcher isn’t running yet: it comes with an mtg-table update (./scripts/play.sh). Begin unlocks when it answers.';
+  const note = busy
+    ? 'Starting the engine on both decks… this takes 10–20 seconds, longer on a busy machine.'
+    : !ready
+      ? 'Your deck needs at least 40 cards.'
+      : status === null
+        ? 'Looking for the match launcher on this computer…'
+        : status === 'ready'
+          ? `Best of ${games === 3 ? 'three' : 'one'} against the AI’s draft. Its list stays hidden, as at a real table.`
+          : status === 'down'
+            ? 'ForgeCoach’s engine isn’t running (it stops an hour after the last game). Start ForgeCoach again — the app-menu launcher, or ./scripts/play.sh — and Begin unlocks.'
+            : 'This engine has no match launcher: update mtg-table and start it again with ./scripts/play.sh.';
 
   return (
     <div className="fx setup match">
@@ -525,14 +532,52 @@ export function MatchSetup({
         </section>
       </div>
 
-      <p className={cx('setup-note', msg && (msg.ok ? 'is-ok' : 'is-bad'))}>{msg?.text ?? note}</p>
+      {result ? (
+        <div className={cx('launch-result', result.ok ? 'is-ok' : 'is-bad')} role="status">
+          {result.ok ? (
+            <>
+              <p className="serif-i">
+                The engine is dealing your match: {result.yourDeck.name} ({result.yourDeck.cards}) against the AI’s deck ({result.aiDeck.cards}), best of {result.games}.
+              </p>
+              {result.warnings.length > 0 && (
+                <ul>
+                  {result.warnings.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              )}
+              <button className="btn-gold" onClick={takeSeat}>
+                Take your seat
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="serif-i">{result.message}</p>
+              {result.problems && result.problems.length > 0 && (
+                <ul>
+                  {result.problems.map((p, i) => (
+                    <li key={i}>{p}</li>
+                  ))}
+                </ul>
+              )}
+              {result.restored && (
+                <button className="btn-line" onClick={takeSeat}>
+                  Reconnect to the previous match
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        <p className="setup-note">{note}</p>
+      )}
       <footer className="setup-foot match-foot">
         <button className="btn-close" onClick={onAbandon}>
           New draft
           <small>this pool stays in Draft &amp; build</small>
         </button>
         <button className="btn-begin" onClick={() => void begin()} disabled={!canBegin} title={supported ? undefined : 'Needs the match launcher (mtg-table)'}>
-          {busy ? 'Dealing…' : 'Begin the duel'} <kbd>⏎</kbd>
+          {busy ? 'Starting the engine…' : 'Begin the duel'} <kbd>⏎</kbd>
         </button>
       </footer>
     </div>

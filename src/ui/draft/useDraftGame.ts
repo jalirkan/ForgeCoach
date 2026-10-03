@@ -143,7 +143,7 @@ export function useDraftGame(): DraftGame {
     commit({
       ...saved,
       deck: saved.deck ?? deck,
-      after: { poolId: pool.id, aiDeck: ai ? matchDeck(`AI · ${info?.title ?? 'cube'} draft`, ai, draft.picks.ai) : undefined },
+      after: { poolId: pool.id, aiDeck: ai ? matchDeck(`AI Drafter - ${ai.name}`, ai, draft.picks.ai) : undefined },
     });
   }, [saved, draft, ctx, commit]);
 

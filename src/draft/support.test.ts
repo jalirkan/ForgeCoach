@@ -6,7 +6,7 @@ import { context, loadCube, loadRealMeta } from '../cube/testdata/load.ts';
 import { aiFlagsFromDoc, withMetaFlags } from './aiFlags.ts';
 import { labCards } from './cards.ts';
 import { aiStep, newDraft, selfPlay, toAct } from './draft.ts';
-import { checkRequest, deckSize, launchMatch, matchDeck, matchSupported, type MatchRequest } from './launch.ts';
+import { checkRequest, deckSize, launcherStatus, launchMatch, matchDeck, matchSupported, safeDeckName, type MatchRequest } from './launch.ts';
 import { buildPickPrompt } from './pickPrompt.ts';
 import { clearDraft, DRAFT_KEY, loadDraft, saveDraft } from './store.ts';
 
@@ -67,43 +67,66 @@ describe('the match launcher client', () => {
   const you = buildDecks(ctx, draft.picks.you)[0]!;
   const ai = buildDecks(ctx, draft.picks.ai)[0]!;
   const req: MatchRequest = {
-    deck: matchDeck('My draft', you, draft.picks.you),
-    aiDeck: matchDeck('AI draft', ai, draft.picks.ai),
+    deck: matchDeck('Practice draft — Golgari', you, draft.picks.you),
+    aiDeck: matchDeck(`AI Drafter - ${ai.name}`, ai, draft.picks.ai),
     aiProfile: 'Default',
     games: 3,
   };
   const target = { baseUrl: 'http://127.0.0.1:8643', token: 'tok' };
   const json = (status: number, body: unknown) => Promise.resolve({ ok: status < 300, status, json: () => Promise.resolve(body) });
 
-  it('builds 40-card decks with counted sideboards', () => {
+  it('builds 40-card decks with counted sideboards and names the launcher accepts', () => {
     expect(deckSize(req.deck)).toBe(40);
     expect(deckSize(req.aiDeck)).toBe(40);
-    expect(req.deck.sideboard.every(([n, s]) => n >= 1 && typeof s === 'string')).toBe(true);
+    expect(req.deck.name).toBe('Practice draft - Golgari');
+    expect(req.aiDeck.name).toMatch(/^AI Drafter - /);
+    expect(req.deck.sideboard?.every(([n, s]) => n >= 1 && typeof s === 'string')).toBe(true);
     expect(checkRequest(req)).toBeNull();
-    expect(checkRequest({ ...req, games: 2 as 3 })).toMatch(/best of three/);
+    expect(checkRequest({ ...req, games: 10 })).toMatch(/1 to 9/);
+    expect(checkRequest({ ...req, deck: { ...req.deck, main: req.deck.main.slice(0, 3) } })).toMatch(/needs 40/);
+    expect(checkRequest({ ...req, deck: { ...req.deck, name: 'Bad — name' } })).toMatch(/characters/);
   });
 
-  it('reads match: 1 from /health, with the token', async () => {
+  it('safeDeckName keeps what the launcher allows', () => {
+    expect(safeDeckName('Gruul · Artifacts')).toBe('Gruul - Artifacts');
+    expect(safeDeckName('  —  ')).toBe('Cube draft');
+    expect(safeDeckName('x'.repeat(100))).toHaveLength(80);
+  });
+
+  it('reads match from /health, on ok true or false, with the token', async () => {
     const f = vi.fn((_u: string, _i?: RequestInit) => json(200, { ok: true, helper: 1, match: 1 }));
-    expect(await matchSupported({ fetch: f, target })).toBe(true);
+    expect(await launcherStatus({ fetch: f, target })).toBe('ready');
     expect(f.mock.calls[0]?.[0]).toBe('http://127.0.0.1:8643/health');
     expect((f.mock.calls[0]?.[1]?.headers as Record<string, string>)['X-ForgeCoach-Token']).toBe('tok');
+    expect(await launcherStatus({ fetch: () => json(200, { ok: false, helper: 1, error: 'no claude', match: 1 }), target })).toBe('ready');
+    expect(await launcherStatus({ fetch: () => json(200, { ok: true, helper: 1, match: 0 }), target })).toBe('no-launcher');
+    expect(await launcherStatus({ fetch: () => Promise.reject(new Error('down')), target })).toBe('down');
     expect(await matchSupported({ fetch: () => json(200, { ok: true, helper: 1 }), target })).toBe(false);
-    expect(await matchSupported({ fetch: () => Promise.reject(new Error('down')), target })).toBe(false);
   });
 
-  it('posts the request shape and reports errors in words', async () => {
-    const f = vi.fn((_u: string, _i?: RequestInit) => json(200, { ok: true, detail: 'Engine restarting' }));
-    expect(await launchMatch(req, { fetch: f, target })).toEqual({ ok: true, detail: 'Engine restarting' });
+  it('posts the request and returns the started match with its warnings', async () => {
+    const started = { ok: true, yourDeck: { name: 'x', path: 'var/match/m1/you.dck', cards: 39 }, aiDeck: { name: 'y', cards: 40 }, aiProfile: 'Default', games: 3, ms: 14000, warnings: ['the engine loaded 39 of the 40 main-deck cards'] };
+    const f = vi.fn((_u: string, _i?: RequestInit) => json(200, started));
+    const r = await launchMatch(req, { fetch: f, target });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.warnings).toHaveLength(1);
     const [url, init] = f.mock.calls[0]!;
     expect(url).toBe('http://127.0.0.1:8643/match');
     expect(init?.method).toBe('POST');
+    expect((init?.headers as Record<string, string>)['Content-Type']).toBe('application/json');
     const body = JSON.parse(String(init?.body)) as MatchRequest;
     expect(Object.keys(body).sort()).toEqual(['aiDeck', 'aiProfile', 'deck', 'games']);
     expect(body.deck.main[0]).toHaveLength(2);
-    expect(await launchMatch(req, { fetch: () => json(404, {}), target })).toMatchObject({ ok: false, message: expect.stringMatching(/no match launcher/) });
-    expect(await launchMatch(req, { fetch: () => json(500, { message: 'engine busy' }), target })).toMatchObject({ ok: false, message: expect.stringMatching(/engine busy/) });
-    expect(await launchMatch(req, { fetch: () => Promise.reject(new TypeError('x')), target })).toMatchObject({ ok: false });
+  });
+
+  it('reports refusals: problems on 400, restored on 502, words for the rest', async () => {
+    const r400 = await launchMatch(req, { fetch: () => json(400, { ok: false, type: 'error', message: 'bad deck', problems: ['aiDeck: 1 card name the engine does not know: X'] }), target });
+    expect(r400).toMatchObject({ ok: false, status: 400, message: 'bad deck', problems: [expect.stringMatching(/does not know/)] });
+    const r502 = await launchMatch(req, { fetch: () => json(502, { ok: false, type: 'error', message: 'engine log tail', restored: true }), target });
+    expect(r502).toMatchObject({ ok: false, status: 502, restored: true });
+    expect(await launchMatch(req, { fetch: () => json(503, { ok: false, type: 'error', message: 'no launcher' }), target })).toMatchObject({ status: 503, message: expect.stringMatching(/start ForgeCoach again/) });
+    expect(await launchMatch(req, { fetch: () => json(409, {}), target })).toMatchObject({ status: 409, message: expect.stringMatching(/already/) });
+    expect(await launchMatch(req, { fetch: () => Promise.reject(new TypeError('x')), target })).toMatchObject({ ok: false, status: 0 });
   });
 });
 

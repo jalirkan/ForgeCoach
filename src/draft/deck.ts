@@ -10,7 +10,7 @@
  */
 import { BASIC_OF, BASIC_NAMES } from '../cube/colors.ts';
 import type { DeckBuild } from '../cube/builder.ts';
-import type { MatchDeck } from './launch.ts';
+import { safeDeckName, type MatchDeck } from './launch.ts';
 
 export const BASIC_KEYS = ['W', 'U', 'B', 'R', 'G', 'C'] as const;
 export type BasicKey = (typeof BASIC_KEYS)[number];
@@ -77,5 +77,5 @@ function counted(names: string[]): Array<[number, string]> {
 
 /** The match launcher's deck shape. */
 export function toMatchDeck(name: string, d: DeckState): MatchDeck {
-  return { name, main: counted(mainNames(d)), sideboard: counted(d.side) };
+  return { name: safeDeckName(name), main: counted(mainNames(d)), sideboard: counted(d.side) };
 }

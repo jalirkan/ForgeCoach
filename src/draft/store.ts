@@ -8,6 +8,7 @@
  * in private mode (the draft still works, it just doesn't survive a refresh).
  */
 import type { DeckState } from './deck.ts';
+import type { MatchDeck } from './launch.ts';
 import type { Draft } from './draft.ts';
 
 export const DRAFT_KEY = 'forgecoach.draft.v1';
@@ -17,7 +18,7 @@ export interface DraftAfter {
   /** The SavedPool (cube/pools.ts) made from your picks. */
   poolId?: string;
   /** The AI's deck: never shown on the page (hidden information), sent to the match launcher. */
-  aiDeck?: { name: string; main: Array<[number, string]>; sideboard: Array<[number, string]> };
+  aiDeck?: MatchDeck;
 }
 
 export interface SavedDraft {
