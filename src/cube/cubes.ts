@@ -1,0 +1,50 @@
+/*
+ * ForgeCoach — cube/cubes.ts
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The cubes this page knows (public/cubes/<file>.md, with an optional
+ * <file>.meta.json from mtg-table's cube lab beside it), and loading them.
+ * `fetch` is injected so tests run in node.
+ */
+import { parseCube, type Cube } from './parseCube.ts';
+import { parseMeta, type CubeMeta } from './meta.ts';
+
+export interface CubeInfo {
+  id: string;
+  /** File stem under public/cubes/. */
+  file: string;
+  title: string;
+  blurb: string;
+  /** Mana colours for the tile art. */
+  accent: string;
+}
+
+export const CUBES: CubeInfo[] = [
+  { id: 'synergy', file: 'synergy-cube-180', title: 'Synergy Cube', blurb: 'Nine overlapping themes, tight power band, no combos.', accent: 'BR' },
+  { id: 'modern-era', file: 'modern-era-cube-180', title: 'Modern-Era Cube', blurb: 'Ten guild archetypes with a few famous bombs.', accent: 'UG' },
+  { id: 'vintage', file: 'vintage-cube-180', title: 'Vintage Cube', blurb: 'Power, Moxen and cheat decks, cut to 180 for two.', accent: 'UR' },
+  { id: 'pauper', file: 'pauper-cube-180', title: 'Pauper Cube', blurb: 'All commons: blink, ninjas, tokens, sacrifice.', accent: 'WG' },
+];
+
+export function cubeInfo(id: string): CubeInfo | undefined {
+  return CUBES.find((c) => c.id === id);
+}
+
+type Fetch = (url: string) => Promise<Pick<Response, 'ok' | 'status' | 'text' | 'json'>>;
+
+export async function loadCubeDoc(info: CubeInfo, base: string, fetcher: Fetch = (u) => fetch(u)): Promise<Cube> {
+  const res = await fetcher(`${base}cubes/${info.file}.md`);
+  if (!res.ok) throw new Error(`The cube list couldn’t be downloaded (HTTP ${res.status}).`);
+  return parseCube(await res.text());
+}
+
+/** The shipped meta for a cube, or null when there is none (or it is unreadable). */
+export async function loadShippedMeta(info: CubeInfo, base: string, fetcher: Fetch = (u) => fetch(u)): Promise<CubeMeta | null> {
+  try {
+    const res = await fetcher(`${base}cubes/${info.file}.meta.json`);
+    if (!res.ok) return null;
+    return parseMeta(await res.json());
+  } catch {
+    return null;
+  }
+}

@@ -172,6 +172,47 @@ sleep in System Settings > Power Management. Start it before you leave (or have
 someone at home click it), and remember: closing a laptop lid may still suspend it.
 The link carries a secret token: do not share it.
 
+## Draft & build (paper cube drafts)
+
+**Draft & build** on the start page is a deck assistant for two-player Grid
+and Winston drafts of Justin's four cubes (Synergy, Modern-era, Vintage,
+Pauper; the lists are in `public/cubes/`). Everything runs in the browser;
+pools are saved in it (several at once).
+
+- **Pool**: the whole cube as cards. Tap what you take (switch to *They took*
+  for the opponent's picks, which sharpens the pick helper), search, filter by
+  colour, or paste a list (counts, set codes and `.dck` lines are fine). The
+  number on each card is its pick value for your pool.
+- **Build**: the best 40, three distinct builds, each with a score breakdown
+  (card quality, synergy, curve, weak cards, creature count, interaction,
+  splash, archetype) and plain reasons ("Skullclamp + Young Pyromancer: +6%
+  together", "cut X: off-theme 5-drop"). Every colour pair is tried, with a
+  splash where the pool has fixing; 22–24 spells (Auto picks); lands from the
+  cube lab or 17 (16 with a low curve); basics by pips, early drops weighted.
+  Thin pools (no pair reaches 23 playables) also get 18-land and three-colour
+  builds, flagged. Tap a card to swap it and watch the score move. Export as a
+  text list or a Forge `.dck`.
+- **Grid**: enter the nine cards; it calls the row or column, counting what
+  the opponent can take after you. **Winston**: enter the pile; take or pass.
+- **Ask the coach** (Build tab): the pool, the build, its score, the lab's
+  numbers and every card's text go to the coach (Claude Code via the coach
+  helper, or your API key) with a deckbuilding prompt. It explains and
+  suggests swaps; it never edits the deck.
+
+**Cube lab data.** Each cube ships with a `meta.json` from mtg-table's cube
+lab (`tools/cubelab.sh`: Forge AIs drafting and playing the cube): card win
+rates, archetypes, card pairs, land counts, splash results. Samples are small,
+so everything weighs the lab by its games (a card's win rate counts
+games ÷ (games + 40) against the page's own estimate). Import a newer
+`meta.json` from the chip in the header (or drop it on the page); it is kept in
+this browser. Without any meta the assistant works from card text, mana value
+and the cube's themes.
+
+**Play the deck vs Forge.** Download the `.dck`, save it in mtg-table's
+`decks/` folder, start the engine with it —
+`./scripts/play.sh --engine-only --deck decks/<name>.dck --mirror` (or
+`--ai-deck decks/<other>.dck`) — and press **Play vs Forge**.
+
 ## Replay and review a recorded game
 
 mtg-table writes a log per game and seat at
@@ -218,6 +259,8 @@ second and reads only new bytes. Each game of a match is a new file. Any
   on your own PC. Copy prompt sends nothing anywhere.
 - **Card data and images** come from [Scryfall](https://scryfall.com), fetched
   by your browser and cached in it (IndexedDB).
+- **Draft pools** and imported cube-lab files stay in this browser
+  (localStorage, IndexedDB).
 
 ## Development
 

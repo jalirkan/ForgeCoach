@@ -31,6 +31,25 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   `AskDialog` + `askModel` (engine questions), `PlayCoach` + `liveDecision`
   (coach for the current decision), `playKeys` (hotkeys), `usePlaySession`
   (hook over `play/session.ts`).
+- `cube/` — Draft & build, the deck assistant for two-player paper cube drafts
+  (pure, tested in node): `parseCube.ts` (Justin's cube markdown: sections,
+  theme codes, lowercase tags, prices, lands groups, archetypes), `colors.ts`,
+  `facts.ts` (what a card is: Scryfall → lab meta → document), `meta.ts` (the
+  cube lab's `meta.json`, schema 1; pair `gain` = lift − 1; tolerates 3-colour
+  archetypes and 18-land rows), `score.ts` (card value = lab win rate blended
+  with a no-meta prior by games; synergy), `builder.ts` (best 40s, reasons,
+  cuts, swaps, thin-pool 18-land / three-colour builds, text and `.dck`
+  export), `pick.ts` (Grid / Winston advice), `deckPrompt.ts` (deterministic
+  deckbuilding coach prompt), `pools.ts` (saved pools, paste parser),
+  `cubes.ts` (registry + loading), `metaStore.ts` (imported meta, IndexedDB).
+  Test data: `cube/testdata/` (Scryfall snapshots of the four cubes, a fake
+  meta fixture, helpers).
+- `ui/deck/` — the Draft & build screens (lazy-loaded from `#deck`):
+  `DeckApp` (home, pools, workspace, meta import), `PoolView`, `BuildView`
+  (builds, score, swaps, export, coach via `answers.ts` `startAnswer`),
+  `GridView`, `WinstonView`, `CubeCard`, `sheets` (card picker, card info).
+- `public/cubes/` — the four cube documents (Justin's) and the cube lab's
+  `<cube>.meta.json` beside each.
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.
 
 ## Seat rule
@@ -58,6 +77,10 @@ Keep typecheck, test and build green before handing work back; CI
   changes, re-copy it from `jalirkan/mtg-table` `web/src/protocol.ts`.
 - Modules other than `ui/` stay DOM-free where possible and are tested with
   vitest in node; inject `fetch` / `WebSocket` / storage for tests.
+- Deck assistant: the coach explains and suggests; only the player's taps
+  change a pool or a deck. Normal builds are two colours (+ a splash of at
+  most three one-pip cards) on 16–17 lands; 18 lands or three full colours
+  only for thin pools (Justin's rule).
 - Only read what the log says: never infer hidden information (the opponent's
   hand, library order) beyond the viewing seat's redacted view.
 - The API key lives in localStorage and goes only to api.anthropic.com.

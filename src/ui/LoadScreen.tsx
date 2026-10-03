@@ -2,15 +2,16 @@
  * ForgeCoach — ui/LoadScreen.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The start page. The primary action is playing against Forge (ForgeCoach
- * takes the player's seat on a running mtg-table engine); reviewing a
- * recorded game (sample or file) and following a live game are secondary.
+ * The start page. The primary actions are playing against Forge (ForgeCoach
+ * takes the player's seat on a running mtg-table engine) and Draft & build
+ * (the deck assistant for paper cube drafts); reviewing a recorded game
+ * (sample or file) and following a live game are secondary.
  */
 import { useEffect, useRef, useState } from 'react';
 import './play/play.css';
 import { DEFAULT_LIVE_URL, FALLBACK_LIVE_URL } from '../live.ts';
 import { redactSeatUrl, type SeatStatus } from '../play/session.ts';
-import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconPlay, IconUpload } from './Icons.tsx';
+import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconLayers, IconPlay, IconUpload } from './Icons.tsx';
 import { copyText, cx } from './util.ts';
 import { Logo } from './Logo.tsx';
 
@@ -205,6 +206,24 @@ function PlayCard({
   );
 }
 
+/** The third primary option: the deck assistant for paper cube drafts. */
+function DraftCard({ onDraft }: { onDraft: () => void }) {
+  return (
+    <section className="draft-card" aria-label="Draft and build">
+      <div className="draft-card-icon" aria-hidden="true">
+        <IconLayers size={22} />
+      </div>
+      <div className="play-card-text">
+        <h2 className="draft-card-title">Draft &amp; build</h2>
+        <p className="muted">Two-player cube drafts on paper: track your pool, get Grid and Winston picks called, and the best 40 with its reasons.</p>
+      </div>
+      <button className="btn btn-quiet draft-go" onClick={onDraft}>
+        Open <IconArrowRight size={16} />
+      </button>
+    </section>
+  );
+}
+
 /**
  * The page the engine served to a phone: no landing choices, just the
  * connection to this table (with a way to the other options).
@@ -269,6 +288,7 @@ export function LoadScreen({
   onFile,
   onLive,
   onPlay,
+  onDraft,
   onCancelPlay,
   seatUrl,
   homeSeatUrl,
@@ -283,6 +303,8 @@ export function LoadScreen({
   onFile: (f: File) => void;
   onLive: (url: string) => void;
   onPlay: (url: string) => void;
+  /** Open the deck assistant (Draft & build). */
+  onDraft: () => void;
   onCancelPlay: () => void;
   seatUrl: string;
   /** Where Play connects by default (this origin's seat when the engine served the page). */
@@ -323,6 +345,7 @@ export function LoadScreen({
         </section>
 
         <PlayCard seatUrl={seatUrl} homeSeatUrl={homeSeatUrl} engineServed={engineServed} play={play} onPlay={onPlay} onCancel={onCancelPlay} />
+        <DraftCard onDraft={onDraft} />
 
         {error && (
           <div className="banner banner-bad" role="alert">
