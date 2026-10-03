@@ -86,8 +86,21 @@
 .play-help[open] > summary svg {
   transform: rotate(180deg);
 }
+.play-launcher {
+  margin: 10px 0 4px;
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+.play-launcher p {
+  margin: 0 0 6px;
+}
+.play-steps-lead {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
 .play-steps {
-  margin: 10px 0 12px;
+  margin: 6px 0 12px;
   padding-left: 20px;
   display: flex;
   flex-direction: column;

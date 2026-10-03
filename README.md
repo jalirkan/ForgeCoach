@@ -2,6 +2,32 @@
 
 **https://jalirkan.github.io/ForgeCoach/**
 
+## Easiest way to start (Linux)
+
+Open a terminal, paste this line and press Enter. You only do this once:
+
+```bash
+curl -fsSL https://jalirkan.github.io/ForgeCoach/forgecoach.sh | bash -s install
+```
+
+After that, **click ForgeCoach in your app menu**. It finds your mtg-table
+folder (or downloads it), updates it, checks Java, Node, Forge and Claude Code,
+starts the engine and opens ForgeCoach with Play already started. A small
+window shows what it is doing; if something is missing it says what to install
+and gives you the exact command to paste.
+
+- **ForgeCoach (phone)** (also on right-click): play from your phone on the
+  same Wi-Fi. It shows the link and a QR code, and sends the link to your
+  phone with KDE Connect if you use it.
+- **Stop ForgeCoach**: stops the engine.
+- No Forge yet? `~/.local/bin/forgecoach get-forge` downloads Forge 2.0.14
+  from its official release into `~/forge` (the first start offers to do it).
+- `forgecoach status` shows what is running and where everything is.
+  `forgecoach help` lists the rest.
+
+The launcher is [`public/forgecoach.sh`](public/forgecoach.sh). It never uses
+`sudo` and updates itself once a day.
+
 ForgeCoach is a 2D client for playing *Magic: The Gathering* against the Forge
 AI, with a coach beside the board. You play from the web page; the Forge engine
 runs on your own computer via [mtg-table](https://github.com/jalirkan/mtg-table).
