@@ -20,6 +20,7 @@ import type { PlaySession, PlaySnapshot } from '../../play/session.ts';
 import { activeGuideId, listGuides } from '../../guide.ts';
 import { canPay, chosenColors, turnFacts, untappedManaSources } from '../../state.ts';
 import { cardIndex } from '../../decisions.ts';
+import { seatDisplayName } from '../../play/aiName.ts';
 import { Board } from '../Board.tsx';
 import { CardDetail, HoverPreview } from '../CardDetail.tsx';
 import { BoardStateRef, CardActionsContext, PlayContext, type CardActions, type PlayInteraction } from '../cardContext.ts';
@@ -396,6 +397,8 @@ export function PlayView({
   const players = log?.hello?.players ?? state?.players ?? [];
   const opp = players.find((p) => p.id !== seat);
   const hello = log?.hello ?? null;
+  // M56: the AI the player chose in match setup, by the picker's name; "Forge AI" (the engine's) before it.
+  const oppName = seatDisplayName(hello, opp, 'Forge AI');
   const gameNo = hello?.gameNumber && (hello.gameCount ?? hello.match?.games) ? `Game ${hello.gameNumber} of ${hello.gameCount ?? hello.match?.games}` : null;
   const myDeck = hello?.match?.yourDeck?.name ?? null;
   const myMove = !!(ask || (input && view.mode !== 'waiting' && view.mode !== 'yield' && !over));
@@ -472,7 +475,7 @@ export function PlayView({
         <Logo compact />
       </button>
       <div className="topbar-title">
-        <span className="topbar-game">You vs {opp?.name ?? 'Forge AI'}</span>
+        <span className="topbar-game">You vs {oppName}</span>
         <span className="topbar-sub">
           {!wide && match ? <MatchScore match={match} inline /> : null}
           {[match ? null : gameNo, myDeck].filter(Boolean).join(' · ') || (match ? '' : 'Playing live')}
@@ -589,7 +592,7 @@ export function PlayView({
               <GameOverCard
                 over={over}
                 seat={seat}
-                oppName={opp?.name ?? 'Forge AI'}
+                oppName={oppName}
                 connected={connected}
                 waitingNext={waitingNext}
                 onReview={() => log && onReview(log)}
