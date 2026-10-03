@@ -23,6 +23,13 @@
  *      deck that isn't also in yours, and that the engine hasn't shown, is in
  *      the page's HTML.
  *
+ * With a helper that can wake a sleeping engine (D308: /health `engine_start:
+ * 1`), and an engine it started itself, it also lets the engine fall asleep
+ * twice (the bridge's --idle-timeout, IDLE_TIMEOUT seconds with no seat):
+ * before Play vs Forge, which must POST /engine/start and reach the table,
+ * and before Begin the duel, whose set-up must say the engine sleeps and
+ * whose POST /match must wake it.
+ *
  * Environment:
  *   MTG_TABLE      the mtg-table checkout          (default ../mtg-table)
  *   FORGE_JAR      Forge's fat jar, passed to play.sh (default: mtg-table's config.json)
@@ -32,6 +39,8 @@
  *                  (its helper must be at COACH_URL, default http://127.0.0.1:8643)
  *   APP_URL        a running ForgeCoach to test    (default: build + vite preview)
  *   SEED           the draft's seed                (default 7)
+ *   WAKE           0 to skip the sleeping-engine checks (default: on when the helper has engine_start)
+ *   IDLE_TIMEOUT   seconds with no seat before the engine sleeps, for those checks (default 40)
  *   HEADLESS       0 to watch                      (default 1)
  *   OUT            screenshots and logs            (default e2e/out/)
  *
@@ -56,6 +65,8 @@ const OWN_ENGINE = !env.SEAT_URL;
 const SEAT_URL = env.SEAT_URL || `ws://127.0.0.1:${WS_PORT}/ws`;
 const COACH_URL = env.COACH_URL || `http://127.0.0.1:${COACH_PORT}`;
 const MTG_TABLE = path.resolve(env.MTG_TABLE || path.join(ROOT, '..', 'mtg-table'));
+const WAKE_WANTED = OWN_ENGINE && !/^(0|false|no)$/i.test(env.WAKE ?? '1');
+const IDLE_TIMEOUT = Number(env.IDLE_TIMEOUT || 40);
 const BASICS = new Set(['Plains', 'Island', 'Swamp', 'Mountain', 'Forest', 'Wastes']);
 
 class Fail extends Error {}
@@ -117,6 +128,8 @@ async function startEngine() {
     }
   }
   const args = ['--engine-only', '--no-open', '--port', String(WS_PORT), '--coach-port', String(COACH_PORT)];
+  // D286's no-seat limit, short, so the engine falls asleep (D308) within the test.
+  if (WAKE_WANTED) args.push('--', '--idle-timeout', String(IDLE_TIMEOUT));
   log(`starting ${MTG_TABLE}/scripts/play.sh ${args.join(' ')}`);
   const child = track(
     'play.sh',
@@ -200,9 +213,11 @@ async function main() {
   try {
     if (OWN_ENGINE) await startEngine();
     else if (!(await waitHttp(healthUrl(SEAT_URL), 5000))) throw new Error(`no engine at ${SEAT_URL}`);
-    const health = await (await fetch(`${COACH_URL}/health`)).json().catch(() => ({}));
+    const health = await helperHealth();
     if (health.match !== 1) throw new Fail(`the helper at ${COACH_URL} has no match launcher (/health: ${JSON.stringify(health)})`);
 
+    const wake = WAKE_WANTED && health.engine_start === 1;
+    log(wake ? `the helper can wake a sleeping engine: checking both wake paths (idle after ${IDLE_TIMEOUT} s)` : 'no engine_start on this helper (or WAKE=0): no sleeping-engine checks');
     const appUrl = env.APP_URL || (await startPreview());
     browser = await launchBrowser(pw, { headless: HEADLESS });
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
@@ -248,6 +263,22 @@ async function main() {
     u.searchParams.set('seat', SEAT_URL);
     u.searchParams.set('coach', COACH_URL);
     log(`app ${u}  seed ${SEED}`);
+    // ---- D308: Play vs Forge wakes a sleeping engine, then takes the seat
+    if (wake) {
+      await waitAsleep();
+      await page.goto(u.toString());
+      const wakeReq = page.waitForResponse((r) => r.url() === `${COACH_URL}/engine/start` && r.request().method() === 'POST', { timeout: 240_000 });
+      await page.locator('.lobby-tile', { hasText: 'Play vs Forge' }).click();
+      await page.getByText('Waking the engine…').first().waitFor({ timeout: 15_000 });
+      await page.screenshot({ path: path.join(OUT, 'draft-0-waking.png') });
+      const wr = await wakeReq;
+      const wb = await wr.json().catch(() => ({}));
+      if (wr.status() !== 200 || wb.ok !== true) throw new Fail(`POST /engine/start → ${wr.status()}: ${JSON.stringify(wb)}`);
+      log(`Play vs Forge: POST /engine/start → 200 (already ${wb.already}, ${wb.ms ?? '?'} ms)`);
+      const h0 = await waitFrame(frames, 0, (f) => f.type === 'hello_ok', 120_000);
+      if (!h0) throw new Fail('no hello_ok after waking the engine for Play vs Forge');
+      log(`Play vs Forge took the seat: gameId ${h0.body.gameId}`);
+    }
     await page.goto(u.toString());
 
     // ---- the lobby → Draft vs AI
@@ -311,10 +342,17 @@ async function main() {
     // ---- the match set-up: Bo1, Begin
     await page.locator('.setup.match').waitFor();
     await page.getByRole('radiogroup', { name: 'Match' }).getByRole('radio', { name: 'Bo1' }).click();
+    if (wake) {
+      // No seat since the reload: the engine falls asleep; the set-up says Begin wakes it.
+      await waitAsleep();
+      await page.getByText('The engine is sleeping; it starts when you press Begin.', { exact: false }).waitFor({ timeout: 30_000 });
+      log('match set-up: the engine is asleep and the page says Begin starts it');
+    }
     await page.waitForFunction(() => !document.querySelector('.match .btn-begin')?.hasAttribute('disabled'), null, { timeout: 30_000 });
     await page.screenshot({ path: path.join(OUT, 'draft-2-match.png') });
     const matchReq = page.waitForRequest((r) => r.url() === `${COACH_URL}/match` && r.method() === 'POST', { timeout: 30_000 });
     const matchRes = page.waitForResponse((r) => r.url() === `${COACH_URL}/match` && r.request().method() === 'POST', { timeout: 240_000 });
+    const mark = frames.length;
     await page.locator('.match .btn-begin').click();
     const sent = JSON.parse((await matchReq).postData() ?? '{}');
     log(`POST /match: you "${sent.deck?.name}" (${sum(sent.deck?.main)}), AI "${sent.aiDeck?.name}" (${sum(sent.aiDeck?.main)}), games ${sent.games}`);
@@ -326,12 +364,7 @@ async function main() {
     if (!id) throw new Fail(`no match id in yourDeck.path ${body.yourDeck?.path}`);
 
     // ---- the board takes the seat again: the next hello_ok is the new match
-    const helloDeadline = Date.now() + 120_000;
-    let hello = null;
-    while (!hello && Date.now() < helloDeadline) {
-      hello = frames.find((f) => f.type === 'hello_ok')?.body ?? null;
-      if (!hello) await sleep(250);
-    }
+    const hello = (await waitFrame(frames, mark, (f) => f.type === 'hello_ok', 120_000))?.body ?? null;
     if (!hello) {
       if (body.warnings?.length) await page.getByRole('button', { name: 'Take your seat' }).click();
       throw new Fail('no hello_ok within 2 minutes of the 200');
@@ -400,6 +433,40 @@ async function main() {
     await cleanup();
   }
   process.exit(code);
+}
+
+async function helperHealth() {
+  try {
+    return await (await fetch(`${COACH_URL}/health`, { signal: AbortSignal.timeout(5000) })).json();
+  } catch {
+    return {};
+  }
+}
+
+/** Until the helper says the engine is asleep (D308). */
+async function waitAsleep(ms = 6 * 60_000) {
+  log(`waiting for the engine to fall asleep (no seat for ${IDLE_TIMEOUT} s)…`);
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    const h = await helperHealth();
+    if (h.engine === 'idle') {
+      log(`the engine is asleep (idle since ${h.idleSince})`);
+      return;
+    }
+    await sleep(2000);
+  }
+  throw new Fail(`the engine did not fall asleep within ${ms / 1000} s`);
+}
+
+/** The first frame at or after index `from` that `pred` accepts, waiting up to `ms`. */
+async function waitFrame(frames, from, pred, ms) {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    const f = frames.slice(from).find(pred);
+    if (f) return f;
+    await sleep(250);
+  }
+  return null;
 }
 
 function sum(entries) {

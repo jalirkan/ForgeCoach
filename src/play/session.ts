@@ -178,6 +178,18 @@ function portOf(url: string): string {
   }
 }
 
+export const AI_DECK_WARNING_REDACTED = 'The AI’s deck has cards it can’t play well (hidden by ForgeCoach: they are the AI’s cards).';
+
+/**
+ * Forge's start-of-match warning about the AI's deck (Match.prepareAllZones →
+ * GameAction.revealUnplayableByAI, `lblAICantPlayCards`): a reveal listing the
+ * AI deck's AI:RemAIDeck cards to the human seat. It names cards of a hidden
+ * decklist, so ForgeCoach neither shows nor keeps it.
+ */
+export function isAiDeckWarning(a: AskBody): boolean {
+  return a.kind === 'choose_list' && a.reveal === true && /^AI can'?’?t play these cards well/i.test(a.prompt.trim());
+}
+
 function defaultSchedule(fn: () => void): void {
   const raf = (globalThis as { requestAnimationFrame?: (cb: () => void) => unknown }).requestAnimationFrame;
   if (typeof raf === 'function') raf(fn);
@@ -335,6 +347,17 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
         const body = f.body as AskBody;
         // A re-delivery of a question we already answered is not a new question.
         if (answered.has(body.askId)) return;
+        if (isAiDeckWarning(body)) {
+          // Forge's pre-game "AI can't play these cards well" reveal lists cards
+          // of the AI's deck: hidden information. Never shown, never logged by
+          // name; acknowledged at once, as its OK would.
+          const hidden = { ...body, prompt: AI_DECK_WARNING_REDACTED, options: [] } as AskBody;
+          builder.add({ ...f, body: hidden, dir: 's2c' } as LoggedFrame, true);
+          ask = hidden;
+          answer(body.askId, []);
+          changed();
+          return;
+        }
         ask = body;
         break;
       }
