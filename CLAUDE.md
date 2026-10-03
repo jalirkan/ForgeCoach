@@ -78,6 +78,8 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   honesty (`rankRange`, `relation`, `anchorSummary`), `LADDER_FIELDS` (the
   allowlist the runner publishes); shares `hashSource` / `fetchLabJson` with
   `status.ts`. UI: `ui/lab/LadderPage.tsx` (lazy), `LabTabs` switches the two.
+- `gameReview.ts` — mtg-table's engine review report (`docs/game-review.md` there, D353): strict validator to a view model (honesty enforced: an interval including zero is never a mistake; a zero-regret close call is a tie; leaf = short-horizon, not a win rate; `knowledge.opponentModel` basic-lands → warning), log matching, option labels from the redacted state, timeline, and the deterministic `reviewExplainPrompt`. `gameReviewClient.ts` — the helper's `/health` `review: 1`, `POST /review`, `GET /review/<id>`, `runReview` polling (injected fetch). `draft/reviewInput.ts` — `oppPool` / `oppKnown` only for the Draft vs AI match the saved draft launched.
+- `ui/review/` — the engine review screen (lazy `ReviewApp`, opened from GameView's top bar, the game-over card, or `#sample=<id>&review=1`): timeline, `OptionBars`, the replay `Board` at `stateFrame`, the coach via `startAnswer`. Sample report: `public/samples/human-auto-42.review.json` (engine-made); tests also use the hand-made `src/testdata/human-auto-42.review.handmade.json`.
 - `public/cubes/` — the four cube documents (Justin's) and the cube lab's
   `<cube>.meta.json` beside each.
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.

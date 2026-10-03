@@ -1,0 +1,521 @@
+/*
+ * ForgeCoach — ui/review/review.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The engine review screen. Verdict colours repeat what the text says
+ * (mistake / close call / best / not graded); they never carry it alone.
+ */
+.rv {
+  --v-mistake: var(--bad);
+  --v-mistake-soft: var(--bad-soft);
+  --v-close: var(--accent);
+  --v-close-soft: var(--accent-soft);
+  --v-best: var(--ok);
+  --v-best-soft: var(--ok-soft);
+  --v-ng: var(--muted);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+}
+.rv .grow {
+  flex: 1;
+}
+.rv-main {
+  padding: 16px max(16px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  max-width: 1440px;
+  margin: 0 auto;
+}
+.rv.is-narrow .topbar {
+  height: calc(52px + env(safe-area-inset-top));
+  gap: 6px;
+}
+.rv.is-narrow .topbar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: 8px;
+}
+.rv.is-narrow .topbar-sub {
+  overflow: hidden;
+}
+
+/* ---- loading a report ---- */
+.rv-load {
+  max-width: 680px;
+}
+.rv-load-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rv-load-card p {
+  margin: 0;
+  line-height: 1.5;
+}
+.rv-h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+}
+.rv-load-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0;
+}
+.rv-run {
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--surface-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.rv-run p {
+  margin: 0;
+  flex: 1 1 220px;
+}
+.rv-run.is-failed {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+}
+
+/* ---- layout ---- */
+.rv-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rv.is-wide .rv-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+.rv-side,
+.rv-moment-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.rv.is-wide .rv-side {
+  position: sticky;
+  top: 72px;
+  max-height: calc(100dvh - 88px);
+  overflow: auto;
+  padding-right: 2px;
+}
+.rv .card-box {
+  margin: 0;
+}
+
+/* ---- summary ---- */
+.rv-summary p {
+  margin: 6px 0 0;
+  line-height: 1.45;
+}
+.rv-counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.rv-counts li {
+  border-radius: var(--radius-sm);
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.2;
+  background: var(--surface-2);
+  border-top: 3px solid var(--v-ng);
+}
+.rv-counts li b {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+}
+.rv-counts .v-mistake {
+  border-top-color: var(--v-mistake);
+}
+.rv-counts .v-close {
+  border-top-color: var(--v-close);
+}
+.rv-counts .v-best {
+  border-top-color: var(--v-best);
+}
+.rv-summary-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 8px;
+}
+.rv-problems {
+  margin-top: 6px;
+}
+.rv-problems ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+/* ---- timeline ---- */
+.rv-legend {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.rv-legend .v-mistake {
+  color: var(--v-mistake);
+}
+.rv-legend .v-close {
+  color: var(--v-close);
+}
+.rv-legend .v-best {
+  color: var(--v-best);
+}
+.rv-tl {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rv-tl-turn {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+.rv-tl-head {
+  display: flex;
+  flex-direction: column;
+  font-size: 12.5px;
+  padding-top: 5px;
+}
+.rv-tl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.rv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 3px 9px 3px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  max-width: 100%;
+}
+.rv-chip:hover {
+  border-color: var(--muted);
+}
+.rv-chip.is-on {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+  color: var(--text);
+}
+.rv-chip-glyph {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 12px;
+  background: var(--surface-3);
+  color: var(--v-ng);
+  flex: none;
+}
+.rv-chip-type {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rv-chip-verdict {
+  white-space: nowrap;
+}
+.rv-chip-key {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--text);
+  color: var(--bg);
+}
+.rv-chip.v-mistake .rv-chip-glyph {
+  background: var(--v-mistake);
+  color: #1d0b0a;
+}
+.rv-chip.v-close .rv-chip-glyph {
+  background: var(--v-close);
+  color: var(--accent-ink);
+}
+.rv-chip.v-best .rv-chip-glyph {
+  background: var(--v-best-soft);
+  color: var(--v-best);
+}
+.rv-chip.v-mistake {
+  border-color: color-mix(in srgb, var(--v-mistake) 55%, var(--line-2));
+}
+.rv-chip.v-close {
+  border-color: color-mix(in srgb, var(--v-close) 45%, var(--line-2));
+}
+.rv-chip.v-not-graded {
+  opacity: 0.8;
+}
+
+/* ---- a moment ---- */
+.rv-moment {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.rv-moment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.rv-moment-title {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+}
+.rv-verdict {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--text);
+}
+.rv-verdict.v-mistake {
+  background: var(--v-mistake-soft);
+  color: #ffaaa7;
+  box-shadow: inset 0 0 0 1px var(--v-mistake);
+}
+.rv-verdict.v-close {
+  background: var(--v-close-soft);
+  color: var(--accent-2);
+  box-shadow: inset 0 0 0 1px var(--v-close);
+}
+.rv-verdict.v-best {
+  background: var(--v-best-soft);
+  color: #8fe0bd;
+  box-shadow: inset 0 0 0 1px var(--v-best);
+}
+.rv-keytag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.rv-facts dl {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.rv-facts dl > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.rv-facts dt {
+  color: var(--muted);
+}
+.rv-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.rv-facts p {
+  margin: 8px 0 0;
+}
+.rv-caveat {
+  color: var(--accent-2);
+}
+.rv-notes {
+  margin: 0;
+  padding-left: 18px;
+}
+.rv-board {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 14px;
+}
+.rv-board .board {
+  padding: 0;
+  max-width: none;
+}
+
+/* ---- option bars ---- */
+.rv-bars {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 10px 12px 12px;
+  min-width: 0;
+}
+.rv-bars-axis {
+  font-size: 11px;
+  color: var(--faint);
+  margin-bottom: 4px;
+}
+.rv-axis-scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rv-axis-pad {
+  display: none;
+}
+.rv-bars-axis-name {
+  text-align: center;
+}
+.rv-bars-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rv-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: var(--radius-sm);
+}
+.rv-bar.is-played {
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--info);
+}
+.rv-bar-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 13.5px;
+}
+.rv-bar-label {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.rv-bar-marks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.rv-mark {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.rv-mark-played {
+  background: var(--info-soft);
+  color: var(--info);
+}
+.rv-mark-best {
+  background: var(--v-best-soft);
+  color: var(--v-best);
+}
+.rv-mark-forge {
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+.rv-bar-track {
+  position: relative;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--surface-3);
+}
+.rv-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text-2) 30%, transparent);
+}
+.rv-bar.is-best .rv-bar-fill {
+  background: color-mix(in srgb, var(--v-best) 45%, transparent);
+}
+.rv-bar.is-played .rv-bar-fill {
+  background: color-mix(in srgb, var(--info) 45%, transparent);
+}
+.rv-bar.is-played.is-best .rv-bar-fill {
+  background: color-mix(in srgb, var(--v-best) 55%, transparent);
+}
+.rv-bar-whisker {
+  position: absolute;
+  top: 50%;
+  height: 0;
+  border-top: 2px solid var(--text);
+  transform: translateY(-1px);
+  opacity: 0.85;
+}
+.rv-bar-whisker::before,
+.rv-bar-whisker::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  height: 10px;
+  border-left: 2px solid var(--text);
+}
+.rv-bar-whisker::before {
+  left: -1px;
+}
+.rv-bar-whisker::after {
+  right: -1px;
+}
+.rv-bar-dot {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 2px solid var(--bg);
+}
+.rv-bar-nums {
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.rv-bar-regret {
+  color: var(--text-2);
+}
+
+/* Wide: one line per option (label · bar · numbers), so the board comes up. */
+@media (min-width: 1024px) {
+  .rv-bars-axis,
+  .rv-bar {
+    display: grid;
+    grid-template-columns: minmax(180px, 32%) minmax(0, 1fr) minmax(200px, 26%);
+    align-items: center;
+    gap: 6px 14px;
+  }
+  .rv-axis-pad {
+    display: block;
+  }
+  .rv-bars-list {
+    gap: 4px;
+  }
+}

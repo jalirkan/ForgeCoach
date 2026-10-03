@@ -23,6 +23,7 @@ export function GameOverCard({
   connected,
   waitingNext,
   onReview,
+  onEngineReview,
   onNext,
   onRestart,
   onLeave,
@@ -33,6 +34,8 @@ export function GameOverCard({
   connected: boolean;
   waitingNext: boolean;
   onReview: () => void;
+  /** The engine's grade of every decision (ui/review). */
+  onEngineReview?: () => void;
   onNext: () => void;
   onRestart: () => void;
   onLeave: () => void;
@@ -61,6 +64,11 @@ export function GameOverCard({
           <button className="btn btn-primary over-main" onClick={onReview}>
             Review this game with the coach
           </button>
+          {onEngineReview && (
+            <button className="btn btn-quiet" onClick={onEngineReview} title="The engine grades every decision you made: what each option was worth">
+              Engine review: grade every decision
+            </button>
+          )}
           <div className="over-row">
             <button className="btn btn-quiet" onClick={onNext} disabled={!connected || over.matchOver || waitingNext} title={over.matchOver ? 'The match is over — start a new match instead' : 'The next game of this match'}>
               {waitingNext ? <span className="spinner spinner-sm" /> : null} Next game
