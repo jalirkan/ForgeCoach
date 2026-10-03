@@ -1,0 +1,20 @@
+{
+  "id": "mulligan-number7-four-lands",
+  "log": "bench/coach/logs/human-number-7.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-number-7.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 4
+  },
+  "seat": 0,
+  "type": "mulligan",
+  "label": "Pre-game · keep or mulligan",
+  "acceptable": [
+    "keep"
+  ],
+  "unacceptable": [
+    "mulligan"
+  ],
+  "rationale": "Four lands and three castable 4-drops (Volcano Hellion, a 6/5) on the draw: enough lands, all one colour, nothing uncastable. A mulligan to six can't make the deck better; keep.",
+  "confidence": "high"
+}

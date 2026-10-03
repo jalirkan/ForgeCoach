@@ -55,6 +55,10 @@ For the test suite only, src/cube/testdata/scryfall-*.json hold a trimmed
 snapshot (name, cost, type, oracle text, colours, produced mana, P/T) of the
 cards of the four cubes in public/cubes/, so the deck-assistant tests run
 offline; the app itself fetches card data live as described above.
+The coach benchmark (bench/coach/) likewise keeps a trimmed snapshot of the
+card text its cases need in bench/coach/cards.json (name, cost, type, oracle
+text, colours, produced mana, P/T, rarity; no images), fetched once from the
+Scryfall API so the benchmark builds the same prompts offline.
 
 The cube documents in public/cubes/*.md are Justin's (the project owner's)
 cube designs. The public/cubes/*.meta.json files are output of mtg-table's
@@ -91,3 +95,9 @@ with their copyright lines kept. The phase strip (src/ui/play/PhaseStrip.tsx,
 phaseStrip.ts), the log drawer (src/ui/play/LogDrawer.tsx) and the game log's
 choice of events (src/eventLog.ts) follow those files. src/ui/play/askFixtures.json and src/play/testdata/ hold
 asks and frames recorded by mtg-table's fixture corpus.
+
+The coach benchmark's game logs (bench/coach/logs/*.jsonl.gz) are recordings
+from mtg-table's fixture corpus (fixtures/games/human-auto-2026, human-auto-7,
+human-number-7, human-scry-7, human-sideboard-7, human-trample-7 and
+human-yield-13), gzipped and otherwise unchanged; its cases also use the
+public/samples/ and src/play/testdata/ recordings above.

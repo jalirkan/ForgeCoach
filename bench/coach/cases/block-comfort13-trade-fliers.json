@@ -1,0 +1,20 @@
+{
+  "id": "block-comfort13-trade-fliers",
+  "log": "public/samples/human-comfort-13.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-comfort-13.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 959
+  },
+  "seat": 0,
+  "type": "block",
+  "label": "R6 · Your blocks",
+  "acceptable": [
+    "block:23>64"
+  ],
+  "unacceptable": [
+    "block:23>42"
+  ],
+  "rationale": "Ant-Man's Air Force (2/1 flier) can block either attacker. On Giant-Sized Flying Ant (3/2 flier) it trades your 2-drop for their 4-drop and saves 3. On A.I.M. Scientists (3/3) it dies without killing anything. At 17 life not blocking is also playable, but the chump block on the 3/3 is a clear blunder.",
+  "confidence": "high"
+}

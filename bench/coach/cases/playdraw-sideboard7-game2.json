@@ -1,0 +1,18 @@
+{
+  "id": "playdraw-sideboard7-game2",
+  "log": "bench/coach/logs/human-sideboard-7.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-sideboard-7.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 7
+  },
+  "seat": 0,
+  "type": "play_draw",
+  "label": "Pre-game · keep or mulligan",
+  "acceptable": [
+    "play"
+  ],
+  "unacceptable": [],
+  "rationale": "Two-player game with 40-card decks: going first is worth a full turn of tempo, and the default for almost every deck is to play. Nothing visible argues for drawing (the hand isn't dealt yet), so choose play; draw is not a blunder, only worse.",
+  "confidence": "high"
+}

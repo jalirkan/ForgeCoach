@@ -1,0 +1,24 @@
+{
+  "id": "block-comfort13-must-block",
+  "log": "public/samples/human-comfort-13.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-comfort-13.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 1297
+  },
+  "seat": 0,
+  "type": "block",
+  "label": "R8 · Your blocks",
+  "acceptable": [
+    "block:23>64,31>71,30>70",
+    "block:23>64,31>70,30>71"
+  ],
+  "unacceptable": [
+    "block:none",
+    "block:23>64",
+    "block:31>71",
+    "block:30>70"
+  ],
+  "rationale": "You are at 6 facing 10 power: Ant 3 (flying), Quake 3, Agents 2, Coulson 2. Air Force must take the flying Ant, and both ground blockers must block too, so only 2 gets through (you go to 4) and every block trades or wins. With no blocks, or a single blocker, at least 7 damage gets through: lethal.",
+  "confidence": "high"
+}

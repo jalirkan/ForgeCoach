@@ -1,0 +1,18 @@
+{
+  "id": "mulligan-yield13-five-lands",
+  "log": "bench/coach/logs/human-yield-13.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-yield-13.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 11
+  },
+  "seat": 0,
+  "type": "mulligan",
+  "label": "Pre-game · keep or mulligan",
+  "acceptable": [
+    "keep"
+  ],
+  "unacceptable": [],
+  "rationale": "Five Forests and two Thallids on the draw is land-heavy but fully functional: plays on turn one and two, and every card castable. Going to six costs a card to fix mild flood, so keep (mulligan is not a blunder, just worse).",
+  "confidence": "high"
+}

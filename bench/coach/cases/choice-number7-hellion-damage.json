@@ -1,0 +1,26 @@
+{
+  "id": "choice-number7-hellion-damage",
+  "log": "bench/coach/logs/human-number-7.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-number-7.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 575
+  },
+  "seat": 0,
+  "type": "choice",
+  "label": "R4 · Your main 1",
+  "question": "Volcano Hellion's trigger asks how much damage to deal (to you and to its target, shown on the stack). Which amount?",
+  "acceptable": [
+    "option:0"
+  ],
+  "unacceptable": [
+    "option:5",
+    "option:6",
+    "option:7",
+    "option:8",
+    "option:9",
+    "option:10"
+  ],
+  "rationale": "Volcano Hellion's enter trigger is targeting your own Hellion (see the stack), and the chosen amount is dealt both to you and to that creature. Choose 0: any damage only costs you life and wounds your own creature; 5 or more also kills your 6/5.",
+  "confidence": "high"
+}

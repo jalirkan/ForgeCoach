@@ -1,0 +1,4 @@
+# Bench reports (npm run bench:coach). Not committed by default;
+# `git add -f` one to keep it as a baseline.
+*
+!.gitignore

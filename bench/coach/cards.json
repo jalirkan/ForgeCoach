@@ -1,0 +1,515 @@
+{
+ "A.I.M. Scientists": {
+  "name": "A.I.M. Scientists",
+  "found": true,
+  "manaCost": "{3}{U}",
+  "typeLine": "Creature — Human Scientist Villain",
+  "oracleText": "When this creature enters, it connives. (Draw a card, then discard a card. If you discarded a nonland card, put a +1/+1 counter on this creature.)\nBasic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "power": "3",
+  "toughness": "3",
+  "scryfallName": "A.I.M. Scientists",
+  "rarity": "common"
+ },
+ "Aerial Doombot": {
+  "name": "Aerial Doombot",
+  "found": true,
+  "manaCost": "{U}",
+  "typeLine": "Artifact Creature — Robot Villain",
+  "oracleText": "Flying\nPower-up — {5}{U}: Put three +1/+1 counters on this creature. (Activate each power-up ability only once. Reduce the cost by its mana cost if it entered this turn.)",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "power": "1",
+  "toughness": "1",
+  "scryfallName": "Aerial Doombot",
+  "rarity": "common"
+ },
+ "Agent 13, Sharon Carter": {
+  "name": "Agent 13, Sharon Carter",
+  "found": true,
+  "manaCost": "{2}{W}",
+  "typeLine": "Legendary Creature — Human Spy Hero",
+  "oracleText": "Whenever a creature you control attacks alone, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+  "producedMana": [],
+  "colors": [
+   "W"
+  ],
+  "power": "3",
+  "toughness": "2",
+  "scryfallName": "Agent 13, Sharon Carter",
+  "rarity": "uncommon"
+ },
+ "Agent Phil Coulson": {
+  "name": "Agent Phil Coulson",
+  "found": true,
+  "manaCost": "{1}{W}",
+  "typeLine": "Legendary Creature — Human Spy Hero",
+  "oracleText": "Vigilance\n{T}: Put a +1/+1 counter on each other Hero you control.",
+  "producedMana": [],
+  "colors": [
+   "W"
+  ],
+  "power": "2",
+  "toughness": "2",
+  "scryfallName": "Agent Phil Coulson",
+  "rarity": "rare"
+ },
+ "Agents of S.H.I.E.L.D.": {
+  "name": "Agents of S.H.I.E.L.D.",
+  "found": true,
+  "manaCost": "{2}{W}",
+  "typeLine": "Creature — Human Spy Hero",
+  "oracleText": "Whenever a creature you control attacks alone, that creature gets +1/+1 until end of turn.",
+  "producedMana": [],
+  "colors": [
+   "W"
+  ],
+  "power": "2",
+  "toughness": "4",
+  "scryfallName": "Agents of S.H.I.E.L.D.",
+  "rarity": "common"
+ },
+ "Ainok Tracker": {
+  "name": "Ainok Tracker",
+  "found": true,
+  "manaCost": "{5}{R}",
+  "typeLine": "Creature — Dog Scout",
+  "oracleText": "First strike\nMorph {4}{R} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)",
+  "producedMana": [],
+  "colors": [
+   "R"
+  ],
+  "power": "3",
+  "toughness": "3",
+  "scryfallName": "Ainok Tracker",
+  "rarity": "common"
+ },
+ "Ant-Man, Reformed Rogue": {
+  "name": "Ant-Man, Reformed Rogue",
+  "found": true,
+  "manaCost": "{2}{G/U}",
+  "typeLine": "Legendary Creature — Human Rogue Hero",
+  "oracleText": "Whenever you cast a green spell, Ant-Man gets +1/+0 and gains trample until end of turn.\nWhenever you cast a blue spell, Ant-Man gets -1/-0 until end of turn and can't be blocked this turn.\nWhenever Ant-Man deals combat damage to a player, draw a card.",
+  "producedMana": [],
+  "colors": [
+   "G",
+   "U"
+  ],
+  "power": "2",
+  "toughness": "3",
+  "scryfallName": "Ant-Man, Reformed Rogue",
+  "rarity": "uncommon"
+ },
+ "Ant-Man's Air Force": {
+  "name": "Ant-Man's Air Force",
+  "found": true,
+  "manaCost": "{1}{U}",
+  "typeLine": "Creature — Insect",
+  "oracleText": "Flying (This creature can't be blocked except by creatures with flying or reach.)\nWhenever this creature attacks, up to one target creature gets -1/-0 until end of turn.",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "power": "2",
+  "toughness": "1",
+  "scryfallName": "Ant-Man's Air Force",
+  "rarity": "uncommon"
+ },
+ "Ashcloud Phoenix": {
+  "name": "Ashcloud Phoenix",
+  "found": true,
+  "manaCost": "{2}{R}{R}",
+  "typeLine": "Creature — Phoenix",
+  "oracleText": "Flying\nWhen this creature dies, return it to the battlefield face down under your control.\nMorph {4}{R}{R} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)\nWhen this creature is turned face up, it deals 2 damage to each player.",
+  "producedMana": [],
+  "colors": [
+   "R"
+  ],
+  "power": "4",
+  "toughness": "1",
+  "scryfallName": "Ashcloud Phoenix",
+  "rarity": "mythic"
+ },
+ "Battering Craghorn": {
+  "name": "Battering Craghorn",
+  "found": true,
+  "manaCost": "{2}{R}{R}",
+  "typeLine": "Creature — Goat Beast",
+  "oracleText": "First strike\nMorph {1}{R}{R} (You may cast this card face down as a 2/2 creature for {3}. Turn it face up any time for its morph cost.)",
+  "producedMana": [],
+  "colors": [
+   "R"
+  ],
+  "power": "3",
+  "toughness": "1",
+  "scryfallName": "Battering Craghorn",
+  "rarity": "common"
+ },
+ "Bold Biochemist": {
+  "name": "Bold Biochemist",
+  "found": true,
+  "manaCost": "{1}{U}",
+  "typeLine": "Creature — Human Scientist",
+  "oracleText": "Power-up — {5}{U}: Put a +1/+1 counter on this creature and draw two cards. (Activate each power-up ability only once. Reduce the cost by its mana cost if it entered this turn.)",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "power": "1",
+  "toughness": "3",
+  "scryfallName": "Bold Biochemist",
+  "rarity": "common"
+ },
+ "Borough Backup": {
+  "name": "Borough Backup",
+  "found": true,
+  "manaCost": "{4}{W}",
+  "typeLine": "Sorcery",
+  "oracleText": "Create two 3/2 white Hero creature tokens with vigilance.\nBasic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)",
+  "producedMana": [],
+  "colors": [
+   "W"
+  ],
+  "scryfallName": "Borough Backup",
+  "rarity": "common"
+ },
+ "Depower": {
+  "name": "Depower",
+  "found": true,
+  "manaCost": "{2}{U}",
+  "typeLine": "Instant",
+  "oracleText": "This spell costs {2} less to cast if it targets an attacking creature.\nTarget creature gets -4/-0 until end of turn.\nDraw a card.",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "scryfallName": "Depower",
+  "rarity": "common"
+ },
+ "Forest": {
+  "name": "Forest",
+  "found": true,
+  "manaCost": "",
+  "typeLine": "Basic Land — Forest",
+  "oracleText": "({T}: Add {G}.)",
+  "producedMana": [
+   "G"
+  ],
+  "colors": [],
+  "scryfallName": "Forest",
+  "rarity": "common"
+ },
+ "Garruk's Companion": {
+  "name": "Garruk's Companion",
+  "found": true,
+  "manaCost": "{G}{G}",
+  "typeLine": "Creature — Beast",
+  "oracleText": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)",
+  "producedMana": [],
+  "colors": [
+   "G"
+  ],
+  "power": "3",
+  "toughness": "2",
+  "scryfallName": "Garruk's Companion",
+  "rarity": "common"
+ },
+ "Giant-Sized Flying Ant": {
+  "name": "Giant-Sized Flying Ant",
+  "found": true,
+  "manaCost": "{3}{U}",
+  "typeLine": "Creature — Insect",
+  "oracleText": "Flash\nFlying\nWhen this creature enters, choose one —\n• Tap target nonland permanent.\n• Untap target nonland permanent.",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "power": "3",
+  "toughness": "2",
+  "scryfallName": "Giant-Sized Flying Ant",
+  "rarity": "common"
+ },
+ "Helicarrier Strike": {
+  "name": "Helicarrier Strike",
+  "found": true,
+  "manaCost": "{W}",
+  "typeLine": "Instant",
+  "oracleText": "Teamwork 2 (As an additional cost to cast this spell, you may tap any number of creatures you control with total power 2 or more.)\nHelicarrier Strike deals 2 damage to target attacking or blocking creature. If this spell was cast using teamwork, it deals 4 damage to that creature instead.",
+  "producedMana": [],
+  "colors": [
+   "W"
+  ],
+  "scryfallName": "Helicarrier Strike",
+  "rarity": "common"
+ },
+ "Island": {
+  "name": "Island",
+  "found": true,
+  "manaCost": "",
+  "typeLine": "Basic Land — Island",
+  "oracleText": "({T}: Add {U}.)",
+  "producedMana": [
+   "U"
+  ],
+  "colors": [],
+  "scryfallName": "Island",
+  "rarity": "common"
+ },
+ "Mountain": {
+  "name": "Mountain",
+  "found": true,
+  "manaCost": "",
+  "typeLine": "Basic Land — Mountain",
+  "oracleText": "({T}: Add {R}.)",
+  "producedMana": [
+   "R"
+  ],
+  "colors": [],
+  "scryfallName": "Mountain",
+  "rarity": "common"
+ },
+ "Opt": {
+  "name": "Opt",
+  "found": true,
+  "manaCost": "{U}",
+  "typeLine": "Instant",
+  "oracleText": "Scry 1. (Look at the top card of your library. You may put that card on the bottom.)\nDraw a card.",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "scryfallName": "Opt",
+  "rarity": "common"
+ },
+ "Peggy Carter, Secret Agent": {
+  "name": "Peggy Carter, Secret Agent",
+  "found": true,
+  "manaCost": "{1}{W}",
+  "typeLine": "Legendary Creature — Human Spy Hero",
+  "oracleText": "Whenever a creature you control attacks alone, it gains indestructible until end of turn. (Damage and effects that say \"destroy\" don't destroy it.)",
+  "producedMana": [],
+  "colors": [
+   "W"
+  ],
+  "power": "2",
+  "toughness": "1",
+  "scryfallName": "Peggy Carter, Secret Agent",
+  "rarity": "uncommon"
+ },
+ "Plains": {
+  "name": "Plains",
+  "found": true,
+  "manaCost": "",
+  "typeLine": "Basic Land — Plains",
+  "oracleText": "({T}: Add {W}.)",
+  "producedMana": [
+   "W"
+  ],
+  "colors": [],
+  "scryfallName": "Plains",
+  "rarity": "common"
+ },
+ "Pym Particles": {
+  "name": "Pym Particles",
+  "found": true,
+  "manaCost": "{U}",
+  "typeLine": "Sorcery",
+  "oracleText": "Target creature gains vigilance until end of turn and can't be blocked this turn.\nDraw a card.",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "scryfallName": "Pym Particles",
+  "rarity": "uncommon"
+ },
+ "Quake, Agent of S.H.I.E.L.D.": {
+  "name": "Quake, Agent of S.H.I.E.L.D.",
+  "found": true,
+  "manaCost": "{2}{W}",
+  "typeLine": "Legendary Creature — Inhuman Spy Hero",
+  "oracleText": "Seismic Takedown — Whenever you cast a noncreature spell, tap target creature or land.",
+  "producedMana": [],
+  "colors": [
+   "W"
+  ],
+  "power": "3",
+  "toughness": "3",
+  "scryfallName": "Quake, Agent of S.H.I.E.L.D.",
+  "rarity": "uncommon"
+ },
+ "Quantum Reduction": {
+  "name": "Quantum Reduction",
+  "found": true,
+  "manaCost": "{1}{U}",
+  "typeLine": "Enchantment — Aura",
+  "oracleText": "Teamwork 2 (As an additional cost to cast this spell, you may tap any number of creatures you control with total power 2 or more.)\nYou may cast this spell as though it had flash if it's cast using teamwork.\nEnchant creature\nEnchanted creature gets -5/-0 and loses all abilities.",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "scryfallName": "Quantum Reduction",
+  "rarity": "common"
+ },
+ "Robotics Mastery": {
+  "name": "Robotics Mastery",
+  "found": true,
+  "manaCost": "{4}{U}",
+  "typeLine": "Enchantment — Aura",
+  "oracleText": "Flash\nEnchant creature\nWhen this Aura enters, create two 1/1 colorless Robot artifact creature tokens with flying.\nEnchanted creature gets +2/+2.",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "scryfallName": "Robotics Mastery",
+  "rarity": "uncommon"
+ },
+ "S.H.I.E.L.D. Helicarrier": {
+  "name": "S.H.I.E.L.D. Helicarrier",
+  "found": true,
+  "manaCost": "{4}",
+  "typeLine": "Artifact — Vehicle",
+  "oracleText": "Flying\nWhen this Vehicle enters, create two 1/1 white Soldier creature tokens.\nCrew 6 (Tap any number of creatures you control with total power 6 or more: This Vehicle becomes an artifact creature until end of turn.)",
+  "producedMana": [],
+  "colors": [],
+  "power": "4",
+  "toughness": "5",
+  "scryfallName": "S.H.I.E.L.D. Helicarrier",
+  "rarity": "uncommon"
+ },
+ "S.H.I.E.L.D. Spy Kit": {
+  "name": "S.H.I.E.L.D. Spy Kit",
+  "found": true,
+  "manaCost": "{W}",
+  "typeLine": "Artifact — Equipment",
+  "oracleText": "Equipped creature gets +1/+1.\nWhenever equipped creature attacks alone, untap it and scry 1. (Look at the top card of your library. You may put that card on the bottom.)\nEquip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)",
+  "producedMana": [],
+  "colors": [
+   "W"
+  ],
+  "scryfallName": "S.H.I.E.L.D. Spy Kit",
+  "rarity": "common"
+ },
+ "Strategic Intervention": {
+  "name": "Strategic Intervention",
+  "found": true,
+  "manaCost": "{1}{W}",
+  "typeLine": "Enchantment",
+  "oracleText": "Whenever a creature you control attacks alone, it gets +1/+1 until end of turn. Tap up to one target creature defending player controls.",
+  "producedMana": [],
+  "colors": [
+   "W"
+  ],
+  "scryfallName": "Strategic Intervention",
+  "rarity": "uncommon"
+ },
+ "Super Suit": {
+  "name": "Super Suit",
+  "found": true,
+  "manaCost": "{1}{U}",
+  "typeLine": "Artifact — Equipment",
+  "oracleText": "Flash\nWhen this Equipment enters, attach it to target creature you control. Untap that creature.\nEquipped creature gets +1/+2.\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "scryfallName": "Super Suit",
+  "rarity": "common"
+ },
+ "Thallid": {
+  "name": "Thallid",
+  "found": true,
+  "manaCost": "{G}",
+  "typeLine": "Creature — Fungus",
+  "oracleText": "At the beginning of your upkeep, put a spore counter on this creature.\nRemove three spore counters from this creature: Create a 1/1 green Saproling creature token.",
+  "producedMana": [],
+  "colors": [
+   "G"
+  ],
+  "power": "1",
+  "toughness": "1",
+  "scryfallName": "Thallid",
+  "rarity": "common"
+ },
+ "Thriving Heath": {
+  "name": "Thriving Heath",
+  "found": true,
+  "manaCost": "",
+  "typeLine": "Land",
+  "oracleText": "This land enters tapped. As it enters, choose a color other than white.\n{T}: Add {W} or one mana of the chosen color.",
+  "producedMana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "colors": [],
+  "scryfallName": "Thriving Heath",
+  "rarity": "common"
+ },
+ "Thriving Isle": {
+  "name": "Thriving Isle",
+  "found": true,
+  "manaCost": "",
+  "typeLine": "Land",
+  "oracleText": "This land enters tapped. As it enters, choose a color other than blue.\n{T}: Add {U} or one mana of the chosen color.",
+  "producedMana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "colors": [],
+  "scryfallName": "Thriving Isle",
+  "rarity": "common"
+ },
+ "Volcano Hellion": {
+  "name": "Volcano Hellion",
+  "found": true,
+  "manaCost": "{2}{R}{R}",
+  "typeLine": "Creature — Hellion",
+  "oracleText": "This creature has echo {X}, where X is your life total. (At the beginning of your upkeep, if this came under your control since the beginning of your last upkeep, sacrifice it unless you pay its echo cost.)\nWhen this creature enters, it deals an amount of damage of your choice to you and target creature. The damage can't be prevented.",
+  "producedMana": [],
+  "colors": [
+   "R"
+  ],
+  "power": "6",
+  "toughness": "5",
+  "scryfallName": "Volcano Hellion",
+  "rarity": "rare"
+ },
+ "Wasp, Shrinking Savior": {
+  "name": "Wasp, Shrinking Savior",
+  "found": true,
+  "manaCost": "{2}{U}",
+  "typeLine": "Legendary Creature — Human Hero",
+  "oracleText": "Flying\nWhenever Wasp attacks, up to one other target creature gets -3/-0 until your next turn. Then draw a card for each creature with power less than 0 on the battlefield.",
+  "producedMana": [],
+  "colors": [
+   "U"
+  ],
+  "power": "1",
+  "toughness": "3",
+  "scryfallName": "Wasp, Shrinking Savior",
+  "rarity": "rare"
+ },
+ "Web Up": {
+  "name": "Web Up",
+  "found": true,
+  "manaCost": "{2}{W}",
+  "typeLine": "Enchantment",
+  "oracleText": "When this enchantment enters, exile target nonland permanent an opponent controls until this enchantment leaves the battlefield.",
+  "producedMana": [],
+  "colors": [
+   "W"
+  ],
+  "scryfallName": "Web Up",
+  "rarity": "common"
+ }
+}

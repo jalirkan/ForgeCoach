@@ -1,0 +1,24 @@
+{
+  "id": "target-auto2026-seismic-takedown",
+  "log": "bench/coach/logs/human-auto-2026.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-auto-2026.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 617
+  },
+  "seat": 0,
+  "type": "target",
+  "label": "R5 · Your main 1",
+  "acceptable": [
+    "target:64"
+  ],
+  "unacceptable": [
+    "target:31",
+    "target:12",
+    "target:15",
+    "target:19",
+    "target:9"
+  ],
+  "rationale": "Quake's trigger taps a creature or land. The opponent's only untapped permanent is Giant-Sized Flying Ant (3/2 flier); tapping it keeps it from blocking this turn. Every other opponent permanent is already tapped (no effect). Tapping your own untapped creature or land throws away a blocker or the mana for Helicarrier Strike.",
+  "confidence": "high"
+}

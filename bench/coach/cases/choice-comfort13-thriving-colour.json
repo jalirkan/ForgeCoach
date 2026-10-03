@@ -1,0 +1,23 @@
+{
+  "id": "choice-comfort13-thriving-colour",
+  "log": "public/samples/human-comfort-13.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-comfort-13.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 103
+  },
+  "seat": 0,
+  "type": "choice",
+  "label": "R2 · Your main 1",
+  "question": "You are playing Thriving Isle. Which colour do you choose for it?",
+  "acceptable": [
+    "option:3"
+  ],
+  "unacceptable": [
+    "option:0",
+    "option:1",
+    "option:2"
+  ],
+  "rationale": "Thriving Isle makes blue or the chosen colour. Your hand's other colour is white (Spy Kit, Web Up, Quake); there are no black, red or green cards. Choose white; any other colour leaves the white cards uncastable from this land.",
+  "confidence": "high"
+}

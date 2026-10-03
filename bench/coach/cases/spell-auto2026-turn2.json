@@ -1,0 +1,21 @@
+{
+  "id": "spell-auto2026-turn2",
+  "log": "bench/coach/logs/human-auto-2026.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-auto-2026.jsonl",
+  "moment": {
+    "mode": "review",
+    "frame": 129,
+    "kind": "main"
+  },
+  "seat": 0,
+  "type": "spell",
+  "label": "R2 · Your main 1",
+  "acceptable": [
+    "cast:12"
+  ],
+  "unacceptable": [
+    "pass"
+  ],
+  "rationale": "Turn 2 on the play with Plains in play and Island in hand: play Island and cast Bold Biochemist ({1}{U}), the on-curve creature. Quantum Reduction on a 1/1 Aerial Doombot spends the removal on a weak target (not a blunder); playing the tapped Thriving Isle and passing wastes the turn.",
+  "confidence": "high"
+}

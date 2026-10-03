@@ -1,0 +1,21 @@
+{
+  "id": "target-auto2026-quantum-reduction",
+  "log": "bench/coach/logs/human-auto-2026.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-auto-2026.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 318
+  },
+  "seat": 0,
+  "type": "target",
+  "label": "R3 · Your main 1",
+  "acceptable": [
+    "target:63",
+    "target:65"
+  ],
+  "unacceptable": [
+    "target:12"
+  ],
+  "rationale": "Quantum Reduction gives -5/-0 and removes all abilities: it is removal for an opponent's creature. Ant-Man's Air Force (2/1 flier with an attack trigger) and Aerial Doombot (flier with a power-up) are both fine targets. Putting it on your own Bold Biochemist cripples your creature.",
+  "confidence": "high"
+}

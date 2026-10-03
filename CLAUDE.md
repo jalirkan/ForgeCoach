@@ -67,6 +67,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 - `public/cubes/` — the four cube documents (Justin's) and the cube lab's
   `<cube>.meta.json` beside each.
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.
+- `bench/` — `src/bench/coachBench.ts` (cases, legal choices, scoring, reports) and `bench/coach/` (cases, logs, card snapshot, the `npm run bench:coach` CLI): the coach benchmark. CI runs its dry run in `npm test`; real runs need the helper or a key (README § Coach benchmark).
 
 ## Seat rule
 
@@ -82,6 +83,7 @@ npm run dev        # local dev server
 npm run typecheck  # tsc --noEmit
 npm test           # vitest run
 npm run build      # tsc + vite build → dist/
+npm run bench:coach -- --dry-run   # coach benchmark, no model calls
 ```
 
 Keep typecheck, test and build green before handing work back; CI
