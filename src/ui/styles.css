@@ -2726,3 +2726,18 @@ textarea:focus {
 .source-badge b {
   font-weight: 650;
 }
+
+/* Start page: links to the ledger pages (Cube metagame, Your record). */
+.load-link {
+  margin-left: auto;
+  padding: 6px 10px;
+  color: var(--text-2);
+  font-size: 13.5px;
+  text-decoration: none;
+}
+.load-link + .load-link {
+  margin-left: 0;
+}
+.load-link:hover {
+  color: var(--accent-2);
+}
