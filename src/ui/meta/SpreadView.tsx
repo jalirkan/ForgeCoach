@@ -10,11 +10,14 @@
 import { useMemo } from 'react';
 import {
   ABOVE_MARGIN,
+  DEFAULT_DESIGN_EFFECT,
   FLAT_SD,
+  MATCH_ICC,
   VERDICT_LABEL,
   compareCubes,
   cubeSpread,
   histogram,
+  noiseBasis,
   readSpread,
   type Outlier,
   type SpreadStats,
@@ -27,6 +30,8 @@ import { useAllMetas } from './useAllMetas.ts';
 
 const pts = (x: number, d = 1) => (x * 100).toFixed(d);
 const range = (ci: [number, number]) => `${pts(ci[0])}–${pts(ci[1])}`;
+const deNote = (s: SpreadStats) =>
+  s.noiseSource === 'empirical' ? 'lab permutation null' : `×${s.designEffect.toFixed(2)} design effect (clumped games)`;
 
 export function SpreadView({ cubeId, meta, reloadKey }: { cubeId: string; meta: CubeMeta; reloadKey: unknown }) {
   const spread = useMemo(() => cubeSpread(meta), [meta]);
@@ -68,7 +73,7 @@ function CardSpread({ stats }: { stats: SpreadStats | null }) {
           <p className="sp-read">{readSpread(stats).join(' ')}</p>
           <div className="sp-nums">
             <Num label="Observed SD" value={`${pts(stats.sd)} pts`} note={`IQR ${pts(stats.iqr)} pts`} />
-            <Num label="Noise alone" value={`${pts(stats.noiseSd)} pts`} note="SD if every card were average" />
+            <Num label="Noise alone" value={`${pts(stats.noiseSd)} pts`} note={`SD if every card were average · ${deNote(stats)}`} />
             <Num label="True spread" value={`${pts(stats.trueSd)} pts`} note={`95%: ${range(stats.trueSdCi)}`} />
             <Num
               label={`Above mean +${pts(ABOVE_MARGIN, 0)}`}
@@ -115,8 +120,8 @@ function Histogram({ stats }: { stats: SpreadStats }) {
         ))}
       </div>
       <figcaption className="mt-chart-note">
-        Bars: cards by shrunk win rate (2-point bands) · line: what sampling noise alone would give if every card were average · dashed: the mean ({pct(stats.meanRate)}).
-        Bars hugging the line mean the spread is noise.
+        Bars: cards by shrunk win rate (2-point bands) · line: what sampling noise alone would give if every card were average ({noiseBasis(stats)}) · dashed:
+        the mean ({pct(stats.meanRate)}). Bars hugging the line mean the spread is noise.
       </figcaption>
     </figure>
   );
@@ -212,7 +217,7 @@ function ArchetypeSpread({ stats }: { stats: SpreadStats }) {
           <p className="sp-read">{readSpread(stats, 'archetype').join(' ')}</p>
           <div className="sp-nums">
             <Num label="Observed SD" value={`${pts(stats.sd)} pts`} note={`IQR ${pts(stats.iqr)} pts`} />
-            <Num label="Noise alone" value={`${pts(stats.noiseSd)} pts`} />
+            <Num label="Noise alone" value={`${pts(stats.noiseSd)} pts`} note={deNote(stats)} />
             <Num label="True spread" value={`${pts(stats.trueSd)} pts`} note={`95%: ${range(stats.trueSdCi)}`} />
           </div>
         </>
@@ -291,8 +296,11 @@ function CompareCubes({ currentId, reloadKey }: { currentId: string; reloadKey: 
             {cmp.caveat && <p>{cmp.caveat}</p>}
             <p className="mt-chart-note">
               “Flatter” is said only when one cube’s 95% interval lies wholly below the other’s. A true spread of {pts(FLAT_SD, 0)} points or less counts as flat. The
-              estimate is the observed SD of shrunk win rates with the sampling noise taken out; a card’s games come in clusters of one deck, so noise is, if anything,
-              under-counted and real spread over-stated.
+              estimate is the observed SD of shrunk win rates with the sampling noise taken out. A card’s games come in clumps of about 2.4 against one opponent, so
+              the noise is the binomial times a design effect of 1 + (games per match − 1) × {MATCH_ICC} (about 1.5; {DEFAULT_DESIGN_EFFECT} when the lab gives no
+              match counts), an assumed within-match correlation. The interval’s low end takes out that clumped noise and its high end only the independent-games
+              noise, so the assumption cannot make a verdict by itself. When the lab exports a measured noise level (a permutation null), it is used instead. The 23
+              cards of a deck share every result, so even these intervals are too narrow.
             </p>
           </div>
         </>
