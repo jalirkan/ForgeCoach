@@ -473,7 +473,7 @@ export function PlayView({
         <span className="topbar-game">You vs {opp?.name ?? 'Forge AI'}</span>
         <span className="topbar-sub">
           {!wide && match ? <MatchScore match={match} inline /> : null}
-          {[!wide && match ? null : gameNo, myDeck].filter(Boolean).join(' · ') || (!wide && match ? '' : 'Playing live')}
+          {[match ? null : gameNo, myDeck].filter(Boolean).join(' · ') || (match ? '' : 'Playing live')}
         </span>
       </div>
       {wide && <span className="side-break" aria-hidden="true" />}

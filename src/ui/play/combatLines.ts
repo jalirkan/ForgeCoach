@@ -116,17 +116,23 @@ export interface Curve {
  * sides of the table), bowing sideways a little so stacked lines separate.
  * `lane` (0, 1, 2…) fans out several lines that share an end.
  */
+/** Where along a card's width a vertical line meets it. */
+const ANCHOR = 0.625;
+
 export function curveBetween(a: Box, b: Box, lane = 0): Curve {
   const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 };
   const bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
   const vertical = Math.abs(bc.y - ac.y) >= Math.abs(bc.x - ac.x) * 0.5;
+  // Stacked: meet the cards right of centre, clear of the P/T box (bottom left) and the name (top left).
+  const ax = a.x + a.w * ANCHOR;
+  const bx = b.x + b.w * ANCHOR;
   const fan = lane === 0 ? 0 : (lane % 2 ? 1 : -1) * Math.ceil(lane / 2) * Math.min(14, a.w / 6);
   let start: Pt;
   let end: Pt;
   if (vertical) {
     const down = bc.y > ac.y;
-    start = { x: ac.x + fan, y: down ? a.y + a.h : a.y };
-    end = { x: bc.x + fan, y: down ? b.y : b.y + b.h };
+    start = { x: ax + fan, y: down ? a.y + a.h : a.y };
+    end = { x: bx + fan, y: down ? b.y : b.y + b.h };
     // Badges sit just inside the cards' edges.
     start = { x: start.x, y: start.y + (down ? -10 : 10) };
     end = { x: end.x, y: end.y + (down ? 10 : -10) };

@@ -81,3 +81,7 @@
     font-size: 23px;
   }
 }
+/* The printed card says its P/T; outside play the live badge is noise. */
+.zv-grid .tile-pt {
+  display: none;
+}

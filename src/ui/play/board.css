@@ -303,7 +303,7 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Tokens: a token frame (name, a big glyph, the type) with a "Token" ribbon */
+/* Tokens: a token frame (a serif name, a big glyph, the type) */
 
 .tile.is-token .tile-face {
   border-color: #2a2d36;
@@ -324,22 +324,21 @@
   font-size: clamp(10px, calc(var(--cw) * 0.13), 15px);
   letter-spacing: 0;
 }
-.tile-token {
-  position: absolute;
-  left: 50%;
-  bottom: 3px;
-  transform: translateX(-50%);
-  z-index: 1;
-  padding: 0 6px;
-  border-radius: 3px;
-  font-size: clamp(7px, calc(var(--cw) * 0.075), 9px);
-  font-weight: 750;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(232, 234, 238, 0.7);
-  background: rgba(10, 11, 14, 0.75);
-  pointer-events: none;
+
+/* Cormorant's figures are old-style by default: lining figures for numbers. */
+.game.play .board .life-n,
+.match-score,
+.log-turn-no,
+.tile-zz {
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
 }
-.tile.is-tapped .tile-token {
-  display: none;
+.match-inline {
+  margin-right: 6px;
+}
+@media (max-width: 1023px) {
+  /* Phones: before the first pick the count says enough. */
+  .game.play .ab-select-line.is-hint {
+    display: none;
+  }
 }

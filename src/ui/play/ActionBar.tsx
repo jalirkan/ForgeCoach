@@ -69,7 +69,13 @@ export function ActionBar({
   const showEngine = engine && !waiting && view.mode !== 'ask' && engine.toLowerCase() !== view.title.toLowerCase();
   const base = primaryView(view);
   // "No blocks" / "Done blocking" / "Attack with 2": the moment's words on the engine's OK.
-  const primary = selection?.confirm && base.which === 'ok' ? { ...base, words: selection.confirm, engine: base.engine ?? view.ok.label } : base;
+  const primary =
+    selection?.confirm && base.which === 'ok'
+      ? { ...base, words: selection.confirm, engine: base.engine ?? view.ok.label }
+      : selection?.active && base.which === null && view.ok.label && (view.mode === 'attack' || view.mode === 'block')
+        ? // Nothing picked yet and the engine's OK is off: show it, disabled, in the moment's words.
+          { which: 'ok' as const, words: view.mode === 'attack' ? 'Attack' : 'Done blocking', engine: view.ok.label, enabled: false }
+        : base;
   // The engine's other button (End Turn, Alpha Strike, Call back, Cancel…) sits with the tools.
   const other: { b: ButtonView; which: 'ok' | 'cancel' } | null =
     primary.which === 'ok' ? { b: view.cancel, which: 'cancel' } : primary.which === 'cancel' ? { b: view.ok, which: 'ok' } : view.cancel.enabled ? { b: view.cancel, which: 'cancel' } : null;
@@ -99,7 +105,7 @@ export function ActionBar({
               <span className="ab-select-dot" aria-hidden="true" />
               {selection.count ? `${selection.count} selected` : 'Click to select'}
             </span>
-            {(selection.count || !/^click to select$/i.test(selection.line)) && <span className="ab-select-line">{selection.line}</span>}
+            {(selection.count || !/^click to select$/i.test(selection.line)) && <span className={cx('ab-select-line', !selection.count && 'is-hint')}>{selection.line}</span>}
           </div>
         ) : view.detail ? (
           <div className="ab-sub ab-detail">{view.detail}</div>

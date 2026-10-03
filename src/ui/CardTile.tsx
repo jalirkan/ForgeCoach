@@ -347,11 +347,6 @@ function TileInner({ card, attachments, inHand, side }: TileProps) {
               Zz
             </span>
           )}
-          {card.token && (
-            <span className="tile-token" title="Token" aria-hidden="true">
-              Token
-            </span>
-          )}
           {showLoyalty ? (
             <span className="tile-pt pt-loyalty" title="Loyalty">
               {card.loyalty}

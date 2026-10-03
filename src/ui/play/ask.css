@@ -1078,3 +1078,53 @@ button.ask-card.is-previewable:hover {
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+
+/* ------------------------------------------------------------------ */
+/* The opening hand (endstep-style): a serif title, a red Keep [1] and an
+   outlined Mulligan [2]. */
+
+.ask-title-serif {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.45em;
+  letter-spacing: 0;
+}
+.ask-kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  font: 600 11px/1 var(--mono);
+  opacity: 0.8;
+}
+@media (hover: none) {
+  .ask-kbd {
+    display: none;
+  }
+}
+.btn.btn-keep {
+  color: #fff3ea;
+  background: linear-gradient(180deg, #a3302c, #7d1f1d);
+  border: 1px solid #c4473f;
+  box-shadow: 0 2px 10px rgba(163, 48, 44, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.btn.btn-keep:hover:not(:disabled) {
+  background: linear-gradient(180deg, #b53833, #8a2421);
+}
+.btn.btn-keep:focus-visible {
+  outline: 2px solid #f0c77f;
+  outline-offset: 2px;
+}
+.btn.btn-outline {
+  color: var(--text);
+  background: transparent;
+  border: 1px solid rgba(227, 178, 95, 0.55);
+}
+.btn.btn-outline:hover:not(:disabled) {
+  background: rgba(227, 178, 95, 0.1);
+}

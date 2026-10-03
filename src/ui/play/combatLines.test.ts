@@ -124,16 +124,16 @@ describe('curveBetween', () => {
   it('leaves the facing edges of stacked boxes', () => {
     const c = curveBetween({ x: 100, y: 400, w: 80, h: 110 }, { x: 300, y: 50, w: 80, h: 110 });
     // From the top of the lower box to the bottom of the upper one (badges 10px inside).
-    expect(c.start).toEqual({ x: 140, y: 410 });
-    expect(c.end).toEqual({ x: 340, y: 150 });
-    expect(c.d.startsWith('M 140 410 C')).toBe(true);
+    expect(c.start).toEqual({ x: 150, y: 410 });
+    expect(c.end).toEqual({ x: 350, y: 150 });
+    expect(c.d.startsWith('M 150 410 C')).toBe(true);
   });
 
   it('fans lanes apart', () => {
     const a = { x: 0, y: 300, w: 90, h: 120 };
     const b = { x: 0, y: 0, w: 90, h: 120 };
     expect(curveBetween(a, b, 1).start.x).not.toBe(curveBetween(a, b, 2).start.x);
-    expect(curveBetween(a, b, 0).start.x).toBe(45);
+    expect(curveBetween(a, b, 0).start.x).toBe(56.3);
   });
 
   it('runs sideways between boxes side by side', () => {
