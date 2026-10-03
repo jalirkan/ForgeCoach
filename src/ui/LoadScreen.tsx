@@ -39,6 +39,11 @@ export const SAMPLES: SampleInfo[] = [
 const LIVE_CMD = 'npx http-server var/games/<gameId> -p 8650 --cors -c-1';
 /** Run in an mtg-table checkout: the engine only (mtg-table's own board would take the seat). */
 export const ENGINE_CMD = './scripts/play.sh --engine-only';
+/**
+ * Linux: installs the ForgeCoach launcher (public/forgecoach.sh) and its app-menu
+ * entries; the menu icon then finds mtg-table, starts the engine and opens Play.
+ */
+export const LAUNCHER_CMD = 'curl -fsSL https://jalirkan.github.io/ForgeCoach/forgecoach.sh | bash -s install';
 
 export interface PlayStatus {
   status: SeatStatus;
@@ -157,6 +162,14 @@ function PlayCard({
           <summary>
             <span>Start the engine first</span> <IconChevronDown size={14} />
           </summary>
+          <div className="play-launcher">
+            <p>
+              <b>Easiest on Linux:</b> paste this into a terminal once. After that, click <b>ForgeCoach</b> in your app menu:
+              it starts the engine and opens this page.
+            </p>
+            <CopyCmd cmd={LAUNCHER_CMD} />
+          </div>
+          <p className="play-steps-lead">Or by hand:</p>
           <ol className="play-steps">
             <li>
               In your <b>mtg-table</b> checkout, start the engine:
