@@ -5,7 +5,9 @@ import { buildDecks } from '../cube/builder.ts';
 import { context, loadCube, loadRealMeta } from '../cube/testdata/load.ts';
 import { aiFlagsFromDoc, withMetaFlags } from './aiFlags.ts';
 import { labCards } from './cards.ts';
-import { aiStep, newDraft, selfPlay, toAct } from './draft.ts';
+import { aiStep, apply, newDraft, selfPlay, toAct } from './draft.ts';
+import { poolColours } from '../cube/pick.ts';
+import { guideFor, guidePromptSection } from '../cube/guides/index.ts';
 import { matchDeck } from './deck.ts';
 import { checkRequest, deckSize, engineHealth, ensureEngineAwake, launcherStatus, launchMatch, matchSupported, wakeEngine, safeDeckName, type MatchRequest } from './launch.ts';
 import { buildPickPrompt } from './pickPrompt.ts';
@@ -198,15 +200,40 @@ describe('a sleeping engine (D308)', () => {
 });
 
 describe('pick prompt', () => {
+  /** The prompt without its cube-guide section (static advice that names fixed cube cards). */
+  const withoutGuide = (text: string) => text.replace(/\n## Cube guide[^]*?(?=\n## (?!#)|$)/, '');
+  const guideOf = (text: string) => (/\n## Cube guide[^]*?(?=\n## (?!#)|$)/.exec(text)?.[0] ?? '').trim();
+
   it('shows the choice and what the player knows, never the AI’s hidden Winston picks', () => {
-    let d = newDraft({ cubeId: 'synergy', format: 'winston', cube: names, seed: 9, youFirst: false, now: 1 });
     const cards = labCards(ctx);
-    // Let the AI play its first turn.
-    while (toAct(d) === 'ai') d = aiStep(d, cards);
-    const p = buildPickPrompt({ ctx, draft: d, infos: new Map(), question: 'Is this pile good?' });
-    expect(p.user).toMatch(/Pile \d of 3/);
-    expect(p.user).toMatch(/Is this pile good\?/);
-    const hidden = d.picks.ai.filter((n) => !d.seen.you.includes(n));
-    for (const n of hidden) expect(p.user).not.toContain(n);
+    for (const seed of [9, 1, 2, 3, 4, 5]) {
+      let d = newDraft({ cubeId: 'synergy', format: 'winston', cube: names, seed, youFirst: false, now: 1 });
+      // Let the AI play its first turn.
+      while (toAct(d) === 'ai') d = aiStep(d, cards, undefined, 1);
+      const p = buildPickPrompt({ ctx, draft: d, infos: new Map(), question: 'Is this pile good?' });
+      expect(p.user).toMatch(/Pile \d of 3/);
+      expect(p.user).toMatch(/Is this pile good\?/);
+      expect(guideOf(p.user)).toMatch(/^## Cube guide/);
+      // The guide section is checked below: it can't depend on the AI's picks at all.
+      const rest = withoutGuide(p.user);
+      expect(rest).toContain('## Card text');
+      const hidden = d.picks.ai.filter((n) => !d.seen.you.includes(n));
+      for (const n of hidden) expect(rest, `seed ${seed}: ${n}`).not.toContain(n);
+    }
+  });
+
+  it('the guide section is the same whatever the AI picked, so it can’t carry hidden information', () => {
+    const cards = labCards(ctx);
+    let d = newDraft({ cubeId: 'synergy', format: 'winston', cube: names, seed: 9, youFirst: false, now: 1 });
+    for (let i = 0; i < 40 && !d.done && d.picks.you.length < 6; i++) d = toAct(d) === 'ai' ? aiStep(d, cards, undefined, 1) : apply(d, { kind: 'take' }, 1);
+    expect(d.picks.you.length).toBeGreaterThan(0);
+    const section = guideOf(buildPickPrompt({ ctx, draft: d, infos: new Map() }).user);
+    expect(section).toBe(guidePromptSection(guideFor('synergy'), poolColours(d.picks.you, ctx)));
+    // Swap in entirely different AI picks (and what the player saw of them): same section, byte for byte.
+    const others = names.filter((n) => !d.picks.you.includes(n) && !d.picks.ai.includes(n));
+    for (const ai of [[], others.slice(0, 12), others.slice(-20)]) {
+      const alt = { ...d, picks: { ...d.picks, ai }, seen: { ...d.seen, you: [...d.picks.you, ...ai.slice(0, 3)] } };
+      expect(guideOf(buildPickPrompt({ ctx, draft: alt, infos: new Map() }).user)).toBe(section);
+    }
   });
 });

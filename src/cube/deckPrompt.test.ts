@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { buildDecks } from './builder.ts';
 import { buildDeckPrompt, DECK_SYSTEM } from './deckPrompt.ts';
 import { context, loadCube, loadInfos, loadMeta, samplePool } from './testdata/load.ts';
@@ -57,6 +57,9 @@ describe('pools', () => {
     }
   }
   it('saves several pools, newest first, and deletes', () => {
+    // newPool's id carries a random suffix: pin it so the test is deterministic.
+    const rand = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    onTestFinished(() => rand.mockRestore());
     const s = new Mem();
     const a = savePool({ ...newPool('synergy', 'Friday', 1), cards: ['Opt'], updatedAt: 1 }, s);
     savePool({ ...newPool('pauper', 'Saturday', 2), updatedAt: 2 }, s);
