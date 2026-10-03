@@ -20,6 +20,7 @@ vi.mock('../coachHelper.ts', async (orig) => {
   const real = await orig<typeof import('../coachHelper.ts')>();
   return {
     chooseSource: real.chooseSource,
+    helperThinking: real.helperThinking,
     pageHelperTarget: () => ({ baseUrl: 'http://127.0.0.1:8643', token: null }),
     peekHelper: () => h.helper,
     helperFresh: () => h.fresh,
@@ -183,5 +184,78 @@ describe('the coach helper queue (D325)', () => {
     expect(signal!.aborted).toBe(true);
     expect(answerBusy('q5')).toBe(false);
     expect(getAnswer('q5')).toMatchObject({ status: 'stopped', stopReasonNote: 'moved_on', queuePosition: null });
+  });
+});
+
+describe('the "thinking…" state and the thinking cap (D346)', () => {
+  const TOK: HelperStatus = { ...OK, thinking: ['off', 'low', 'default'] };
+
+  it('times the helper from the request, pauses while queued, restarts at running, ends at the first word', async () => {
+    h.helper = TOK;
+    h.fresh = true;
+    let t = 100;
+    const seen: (number | null | undefined)[] = [];
+    vi.mocked(askHelper).mockImplementationOnce(async (_p, hs, opts) => {
+      seen.push(getAnswer('t1')?.thinkingSince);
+      opts!.onQueued!(1);
+      seen.push(getAnswer('t1')?.thinkingSince);
+      t = 250;
+      opts!.onRunning!();
+      seen.push(getAnswer('t1')?.thinkingSince);
+      hs.onThinking?.('');
+      seen.push(getAnswer('t1')?.thinkingSince);
+      hs.onText('Keep.');
+      seen.push(getAnswer('t1')?.thinkingSince);
+      return { text: 'Keep.', stopReason: 'end_turn', refused: false, model: 'haiku' };
+    });
+    await startAnswer('t1', async () => ({ system: 's', user: 'u' }), { now: () => t });
+    expect(seen).toEqual([100, null, 250, 250, null]);
+    expect(getAnswer('t1')).toMatchObject({ status: 'done', thinkingSince: null });
+  });
+
+  it('a helper error or a stop clears it', async () => {
+    h.helper = TOK;
+    h.fresh = true;
+    vi.mocked(askHelper).mockRejectedValueOnce(Object.assign(new Error('Claude Code failed'), { kind: 'server' }));
+    await startAnswer('t2', async () => ({ system: 's', user: 'u' }));
+    expect(getAnswer('t2')).toMatchObject({ status: 'error', thinkingSince: null });
+  });
+
+  it('is never set for the API key', async () => {
+    h.helper = DOWN;
+    h.fresh = true;
+    h.settings = { apiKey: 'sk-ant-x', model: 'claude-opus-5-5', coachSource: 'auto' };
+    let during: number | null | undefined;
+    vi.mocked(askClaude).mockImplementationOnce(async (_p, hs) => {
+      during = getAnswer('t3')?.thinkingSince;
+      hs.onText('x');
+      return { text: 'x', stopReason: 'end_turn', refused: false, model: 'claude-opus-5-5' };
+    });
+    await startAnswer('t3', async () => ({ system: 's', user: 'u' }));
+    expect(during).toBeNull();
+  });
+
+  it('sends the Coach thinking setting only to a helper that offers it, and never "default"', async () => {
+    h.fresh = true;
+    h.helper = TOK;
+    h.settings = { apiKey: '', model: 'claude-haiku-4-5', coachSource: 'auto', coachThinking: 'off' };
+    await startAnswer('t4', async () => ({ system: 's', user: 'u' }));
+    expect(vi.mocked(askHelper).mock.calls[0]![2]).toMatchObject({ thinking: 'off' });
+    h.helper = OK; // an older helper
+    await startAnswer('t5', async () => ({ system: 's', user: 'u' }));
+    expect(vi.mocked(askHelper).mock.calls[1]![2]).not.toHaveProperty('thinking');
+    h.helper = TOK;
+    h.settings = { ...h.settings, coachThinking: 'default' };
+    await startAnswer('t6', async () => ({ system: 's', user: 'u' }));
+    expect(vi.mocked(askHelper).mock.calls[2]![2]).not.toHaveProperty('thinking');
+  });
+
+  it('with the helper source and nothing known, it asks /health first so the cap can go along', async () => {
+    h.fresh = false;
+    h.helper = TOK; // what detection finds
+    h.settings = { apiKey: '', model: 'claude-haiku-4-5', coachSource: 'helper', coachThinking: 'low' };
+    await startAnswer('t7', async () => ({ system: 's', user: 'u' }));
+    expect(detectHelper).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(askHelper).mock.calls[0]![2]).toMatchObject({ thinking: 'low' });
   });
 });

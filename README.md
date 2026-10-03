@@ -127,6 +127,15 @@ needs (a waiting one leaves the queue; a running one stops Claude Code), and a
 newer question from the same tab replaces an older one still in line. An older
 helper without a queue still answers *busy* to a second question.
 
+Settings → **Coach thinking** (*Default*, *Low*, *Off*) caps how long Claude
+Code thinks before its first word (mtg-table decision D346; the helper sets
+Claude Code's documented `MAX_THINKING_TOKENS` and `CLAUDE_CODE_EFFORT_LEVEL`
+for that one answer). It matters most for Haiku, which otherwise thinks for
+15–40 s before answering; Sonnet and Opus always think a little. It is sent only
+to a helper that offers it, and the API key ignores it. While Claude Code has the
+question and no word has come yet, the coach panel says *Claude Code is
+thinking…* with the seconds so far.
+
 Each answer shows the coach's **confidence** and the **rule** (heuristic) its
 line follows, above the explanation. *Close call — think here* means the coach
 sees another line about as good, or the right play turns on something hidden:
@@ -526,7 +535,9 @@ accepts, or an API model id from `src/claude.ts`), `--only id1,id2`,
 `--type block`, `--helper-url <url>`, `--repeat N`, `--concurrency K`,
 `--model-by-type mulligan=claude-haiku-4-5,play_draw=claude-haiku-4-5` (a model
 per decision type, ids from `src/claude.ts`; the helper gets the family alias,
-`haiku`, `sonnet` or `opus`), `--prompt-format classic|answer-first`. A full
+`haiku`, `sonnet` or `opus`), `--prompt-format classic|answer-first`,
+`--thinking off|low|default` (the helper only, and sent only when its `/health`
+offers it, mtg-table D346; the report header and `--compare` show it). A full
 run is 28 cases × N answers. Ctrl-C stops after the calls in flight and still
 writes the report (every case then has at least one answer first, as passes go
 over all cases in turn).

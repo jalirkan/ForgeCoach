@@ -6,12 +6,15 @@
  * `./scripts/play.sh`) runs the Claude Code CLI that is logged in on the
  * player's PC and streams its answer back.
  *
- * Contract (mtg-table tools/coach-helper.mjs, D292 and D325):
+ * Contract (mtg-table tools/coach-helper.mjs, D292, D325 and D346):
  *   GET  /health → {"ok":true,"helper":1,"claude":"<version>","models":[…]}
  *                | {"ok":false,"helper":1,"error":"…"}
  *                  D325 adds "concurrency":1, "queue":{"max","length"}, "running":0|1,
  *                  "supersedes":1. A helper without "queue" refuses a second question (429).
- *   POST /coach  {"system","user","model"?:"opus"|"sonnet"|"haiku","supersedes"?:"<key>"}
+ *                  D346 adds "thinking":["off","low","default"].
+ *   POST /coach  {"system","user","model"?:"opus"|"sonnet"|"haiku","supersedes"?:"<key>",
+ *                 "thinking"?:"off"|"low"|"default"}   (D346: send "thinking" only to a
+ *                 helper whose /health lists it; absent = "default", anything else is 400)
  *        → application/x-ndjson: {"type":"text","text"} / {"type":"thinking","text"} lines,
  *          ending with one {"type":"done","stopReason","model"} or {"type":"error","message"}.
  *          D325: a question that waits first gets {"type":"queued","position":n} (n ahead
@@ -34,6 +37,15 @@ export const DEFAULT_HELPER_URL = `http://127.0.0.1:${HELPER_PORT}`;
 export const TOKEN_HEADER = 'X-ForgeCoach-Token';
 
 export type HelperModel = 'opus' | 'sonnet' | 'haiku';
+/** D346: how much Claude Code may think before it answers. */
+export type HelperThinking = 'off' | 'low' | 'default';
+const HELPER_THINKING: readonly HelperThinking[] = ['off', 'low', 'default'];
+
+/** The "thinking" to send for `want`: only a value this helper's /health lists, and never 'default' (the same as none). */
+export function helperThinking(helper: HelperStatus | null, want: HelperThinking | undefined): HelperThinking | undefined {
+  if (!want || want === 'default' || helper?.state !== 'ok') return undefined;
+  return helper.thinking?.includes(want) ? want : undefined;
+}
 
 /** The helper's alias for a ForgeCoach model choice. */
 export function helperModel(id: ModelId | string): HelperModel {
@@ -124,6 +136,8 @@ export type HelperStatus =
       queue?: HelperQueue | null;
       /** It honours a "supersedes" key on /coach. */
       supersedes?: boolean;
+      /** D346: the "thinking" values /coach accepts; [] from an older helper (send none). */
+      thinking?: HelperThinking[];
     }
   | { state: 'down'; baseUrl: string; reason: 'not_running' | 'not_ready' | 'unauthorized'; message: string; checkedAt: number };
 
@@ -220,6 +234,7 @@ async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: (
       concurrency?: unknown;
       queue?: unknown;
       supersedes?: unknown;
+      thinking?: unknown;
     };
     if (res.status === 401 || res.status === 403) return down('unauthorized', refusedMessage(String(b.message ?? b.error ?? '')));
     if (b.helper === undefined && !res.ok) return down('not_running', NOT_RUNNING);
@@ -233,6 +248,7 @@ async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: (
         concurrency: typeof b.concurrency === 'number' && b.concurrency >= 1 ? Math.floor(b.concurrency) : 1,
         queue: helperQueue(b.queue),
         supersedes: b.supersedes === 1 || b.supersedes === true,
+        thinking: Array.isArray(b.thinking) ? HELPER_THINKING.filter((t) => (b.thinking as unknown[]).includes(t)) : [],
       };
     }
     if (b.helper !== undefined) return down('not_ready', helperProblem(typeof b.error === 'string' ? b.error : ''));
@@ -288,6 +304,8 @@ export interface AskHelperOptions {
    * (an older one ignores unknown fields, so it is harmless either way).
    */
   supersedes?: string;
+  /** D346: cap Claude Code's thinking. Send it only to a helper whose /health lists the value (`helperThinking`). */
+  thinking?: HelperThinking;
   /** D325: the question is waiting; `position` questions are ahead of it. */
   onQueued?(position: number): void;
   /** D325: a queued question's turn has come. */
@@ -312,6 +330,7 @@ export async function askHelper(prompt: Prompt, h: StreamHandlers, opts: AskHelp
         user: prompt.user,
         ...(model ? { model } : {}),
         ...(opts.supersedes ? { supersedes: opts.supersedes } : {}),
+        ...(opts.thinking ? { thinking: opts.thinking } : {}),
       }),
       signal: opts.signal,
     });

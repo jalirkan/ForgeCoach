@@ -8,6 +8,7 @@ import { coachSystem } from '../prompt.ts';
 import { CoachError } from '../claude.ts';
 import {
   BENCH_TYPES,
+  benchThinking,
   buildCase,
   calibration,
   caseProblems,
@@ -660,5 +661,31 @@ describe('a comparison with transport errors', () => {
     expect(c.markdown).toMatch(/This comparison is not trustworthy/);
     expect(c.verdictText).toMatch(/Not trustworthy/);
     expect(c.unstable).toEqual([]); // busy errors no longer fake an unstable case
+  });
+});
+
+describe('--thinking (mtg-table D346)', () => {
+  const ok = (thinking?: ('off' | 'low' | 'default')[]) => ({ state: 'ok' as const, baseUrl: 'http://127.0.0.1:8643', claude: '2', models: [], checkedAt: 0, ...(thinking ? { thinking } : {}) });
+  it('sends the value only when the helper offers it', () => {
+    expect(benchThinking(undefined, 'helper', ok(['off', 'low', 'default']))).toEqual({});
+    expect(benchThinking('off', 'helper', ok(['off', 'low', 'default']))).toEqual({ send: 'off' });
+    expect(benchThinking('low', 'helper', ok(['off', 'low', 'default']))).toEqual({ send: 'low' });
+    expect(benchThinking('default', 'helper', ok(['off', 'low', 'default']))).toEqual({ send: 'default' });
+    const old = benchThinking('off', 'helper', ok());
+    expect(old.send).toBeUndefined();
+    expect(old.note).toMatch(/does not offer "thinking"/);
+  });
+  it('refuses a bad value and the API source', () => {
+    expect(benchThinking('none', 'helper', ok(['off']))).toMatchObject({ error: expect.stringMatching(/off, low or default/) });
+    expect(benchThinking('off', 'api', null)).toMatchObject({ error: expect.stringMatching(/helper only/) });
+  });
+  it('is recorded in the report, its header and a comparison warning', () => {
+    const a = fakeReport('A', [fake('x', 'aaa')]);
+    const b: BenchReport = { ...fakeReport('B', [fake('x', 'aaa')]), thinking: 'off' };
+    expect(reportMarkdown(b)).toContain('· thinking: off');
+    expect(reportMarkdown(a)).not.toContain('thinking:');
+    expect(normalizeReport(JSON.parse(JSON.stringify(b))).report.thinking).toBe('off');
+    expect(compareReports(a, b).markdown).toMatch(/cap the coach's thinking differently \(A default, B off\)/);
+    expect(compareReports(a, { ...a, label: 'A2' }).markdown).not.toMatch(/thinking differently/);
   });
 });

@@ -3,12 +3,19 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import { useEffect, useState } from 'react';
-import { DEFAULT_COACH_SOURCE, MODELS, loadSettings, saveSettings, type CoachSource, type ModelId, type Settings } from '../claude.ts';
+import { DEFAULT_COACH_SOURCE, MODELS, loadSettings, saveSettings, type CoachSource, type CoachThinking, type ModelId, type Settings } from '../claude.ts';
 import { chooseSource, pageHelperTarget, type HelperStatus } from '../coachHelper.ts';
 import { useCoachAvailability } from './hooks.ts';
 import { IconExternal } from './Icons.tsx';
 import { Sheet } from './Sheet.tsx';
 import { cx } from './util.ts';
+
+/** Coach thinking (D346): how long Claude Code on the PC may think before it answers. */
+const THINKING: Array<{ id: CoachThinking; label: string; hint: string }> = [
+  { id: 'default', label: 'Default', hint: 'As Claude Code chooses' },
+  { id: 'low', label: 'Low', hint: 'A short think first' },
+  { id: 'off', label: 'Off', hint: 'Answers soonest' },
+];
 
 const SOURCES: Array<{ id: CoachSource; label: string; hint: string }> = [
   { id: 'auto', label: 'Automatic', hint: 'Claude Code if found, else the key' },
@@ -97,6 +104,25 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             ))}
           </div>
           <span className="field-help">Claude Code uses the same choice (opus, sonnet or haiku).</span>
+        </fieldset>
+        <fieldset className="field">
+          <legend className="field-label">Coach thinking</legend>
+          <div className="model-grid" role="radiogroup" aria-label="Coach thinking">
+            {THINKING.map((o) => {
+              const on = (s.coachThinking ?? 'default') === o.id;
+              return (
+                <label key={o.id} className={cx('model-opt', on && 'is-on')}>
+                  <input type="radio" name="coachThinking" value={o.id} checked={on} onChange={() => setS({ ...s, coachThinking: o.id })} />
+                  <span className="model-name">{o.label}</span>
+                  <span className="model-hint">{o.hint}</span>
+                </label>
+              );
+            })}
+          </div>
+          <span className="field-help">
+            For Claude Code on your PC. Haiku thinks at length before its first word; Off or Low gets it answering in seconds. Sonnet
+            and Opus always think a little. Needs an mtg-table helper that offers it; the API key ignores it.
+          </span>
         </fieldset>
         <label className="field check-row">
           <input type="checkbox" checked={s.answerFirst === true} onChange={(e) => setS({ ...s, answerFirst: e.target.checked })} />
@@ -196,6 +222,6 @@ function safeLoad(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false };
+    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default' };
   }
 }
