@@ -7,6 +7,7 @@ import {
   forgetHelper,
   helperFresh,
   helperModel,
+  helperPortFromSearch,
   helperTarget,
   helperThinking,
   peekHelper,
@@ -81,6 +82,21 @@ describe('helperTarget', () => {
   it('is the page host on 8643 with the pairing token when the engine serves the page', () => {
     expect(helperTarget(loc('http:', '192.168.1.20:8642', '?token=abc'))).toEqual({ baseUrl: 'http://192.168.1.20:8643', token: 'abc' });
     expect(helperTarget(loc('http:', '192.168.1.20:8642'), 'stored')).toEqual({ baseUrl: 'http://192.168.1.20:8643', token: 'stored' });
+  });
+  it('uses the coachPort play.sh --lan --coach-port adds to the phone link', () => {
+    expect(helperTarget(loc('http:', '192.168.1.20:8642', '?token=abc&coachPort=8653'))).toEqual({ baseUrl: 'http://192.168.1.20:8653', token: 'abc' });
+    // A malformed or out-of-range port is ignored: the default, never a URL built from it.
+    for (const bad of ['0', '70000', '86x3', '-1', '8653/evil', '']) {
+      expect(helperTarget(loc('http:', '192.168.1.20:8642', `?token=abc&coachPort=${encodeURIComponent(bad)}`)).baseUrl).toBe('http://192.168.1.20:8643');
+    }
+    // Only an engine-served page reads it: Pages and the dev server keep localhost:8643.
+    expect(helperTarget(loc('https:', 'jalirkan.github.io', '?coachPort=8653')).baseUrl).toBe('http://127.0.0.1:8643');
+  });
+  it('helperPortFromSearch reads a port and nothing else', () => {
+    expect(helperPortFromSearch('?coachPort=8653')).toBe(8653);
+    expect(helperPortFromSearch('coachPort=1')).toBe(1);
+    expect(helperPortFromSearch('?token=x')).toBeNull();
+    expect(helperPortFromSearch('?coachPort=65536')).toBeNull();
   });
   it('?coach= overrides the base URL', () => {
     expect(helperTarget(loc('http:', 'localhost:5173', '?coach=http://127.0.0.1:8653/'))).toEqual({ baseUrl: 'http://127.0.0.1:8653', token: null });

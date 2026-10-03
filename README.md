@@ -103,7 +103,9 @@ blocks, responses, engine questions). The coach can answer three ways:
   on that machine. ForgeCoach finds it on its own; answers come from your
   Claude Code login and are marked *via Claude Code on your PC*. On a phone
   (the engine-served page, below) the helper is on the desktop's address,
-  port 8643, and the page's pairing token goes along with each request.
+  port 8643, and the page's pairing token goes along with each request. With
+  `play.sh --lan --coach-port <n>` the phone link carries `&coachPort=<n>`
+  and the page asks the helper there instead.
 - **Your own API key.** Paste an Anthropic API key in Settings. ForgeCoach
   sends the request straight to Anthropic; answers are marked *via API key*.
 - **Copy prompt.** Nothing needed: copy the full prompt (state, card text,

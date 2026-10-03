@@ -23,8 +23,10 @@
  *          {"type":"error","code":"superseded"}. Aborting the request cancels the run or
  *          leaves the queue; 429 when the queue is full (or, before D325, when busy).
  * Default base http://127.0.0.1:8643. When the engine serves this page on the
- * LAN (phone play) the helper is on the page's host, port 8643, and the
- * pairing token goes along as `X-ForgeCoach-Token`.
+ * LAN (phone play) the helper is on the page's host, port 8643 -- or the port
+ * in the page URL's `coachPort` parameter, which mtg-table's `play.sh --lan`
+ * adds to the phone link when it runs the helper elsewhere (`--coach-port`) --
+ * and the pairing token goes along as `X-ForgeCoach-Token`.
  *
  * DOM-light: `fetch` and the page location are injectable for tests.
  */
@@ -71,9 +73,28 @@ export interface HelperLocation {
 }
 
 /**
+ * The helper's port from the page URL's `coachPort` parameter, or null when it
+ * is absent or not a port. mtg-table's `play.sh --lan` adds it to the phone
+ * link only when the helper is not on 8643 (`--coach-port`, config.json
+ * `coachPort`), so a link without it means the default.
+ */
+export function helperPortFromSearch(search: string): number | null {
+  let raw: string | null = null;
+  try {
+    raw = new URLSearchParams(search).get('coachPort');
+  } catch {
+    return null;
+  }
+  if (raw === null || !/^\d{1,5}$/.test(raw)) return null;
+  const n = Number(raw);
+  return n >= 1 && n <= 65535 ? n : null;
+}
+
+/**
  * Where the helper lives for a page at `loc`. `?coach=http://…` overrides the
  * base URL (a development aid). Served by the engine (phone/LAN): the page's
- * host on port 8643, with the pairing token (from the URL, else `storedToken`).
+ * host on port 8643, or on `?coachPort=` when the link names one, with the
+ * pairing token (from the URL, else `storedToken`).
  */
 export function helperTarget(loc: HelperLocation, storedToken: string | null = null): HelperTarget {
   let override: string | null = null;
@@ -87,7 +108,7 @@ export function helperTarget(loc: HelperLocation, storedToken: string | null = n
   if (override && /^https?:\/\/[^\s]+$/i.test(override)) return { baseUrl: override.replace(/\/+$/, ''), token };
   if (engine) {
     const name = loc.hostname.includes(':') && !loc.hostname.startsWith('[') ? `[${loc.hostname}]` : loc.hostname;
-    return { baseUrl: `http://${name}:${HELPER_PORT}`, token };
+    return { baseUrl: `http://${name}:${helperPortFromSearch(loc.search) ?? HELPER_PORT}`, token };
   }
   return { baseUrl: DEFAULT_HELPER_URL, token: null };
 }
