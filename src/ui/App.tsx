@@ -336,10 +336,13 @@ function MainApp() {
   }, [stopLive]);
 
   // ?play=1 connects to the engine straight away (bookmarkable), and so does a
-  // page the engine served (there is nothing else to choose there).
+  // page the engine served (there is nothing else to choose there) — but not
+  // when that page was opened for the deck assistant or a review link: those
+  // never take the seat (it admits one client) unless asked to.
   useEffect(() => {
     try {
-      if (ENGINE_SERVED || new URLSearchParams(location.search).get('play') === '1') startPlay(initialSeatUrl());
+      const elsewhere = /^#deck\b/.test(location.hash) || parseHash().sample !== null;
+      if ((ENGINE_SERVED && !elsewhere) || new URLSearchParams(location.search).get('play') === '1') startPlay(initialSeatUrl());
     } catch {
       /* ignore */
     }

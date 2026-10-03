@@ -7,7 +7,7 @@
  * mono numerals. Everything is scoped under .ledger (and .ledger-sheet for
  * the portalled detail sheets) so the rest of the app is untouched.
  */
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Its fonts (EB Garamond, JetBrains Mono) are linked from index.html. */
 
 .ledger,
 .ledger-sheet {
@@ -304,6 +304,11 @@
   margin-top: 26px;
   padding: 18px 16px 18px;
 }
+/* A field never outgrows the panel: a long segmented control wraps (phone width). */
+.lg-filters > div {
+  min-width: 0;
+  max-width: 100%;
+}
 @media (min-width: 900px) {
   .lg-filters {
     padding: 20px 18px 22px;
@@ -325,6 +330,8 @@
 }
 .lg-seg {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   padding: 3px;
   gap: 2px;
   border: 1px solid var(--lg-line-2);
