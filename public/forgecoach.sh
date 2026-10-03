@@ -35,10 +35,17 @@
 #                          end and copies the results to ~/.local/share/forgecoach/
 #                          (meta/<cube>.meta.json: import it on ForgeCoach's Metagame
 #                          page).  Everything runs under nice.  Options:
-#                            --jobs N       workers per job (default: cores - 1)
+#                            --jobs N       workers per job (default: physical cores - 1,
+#                                           at most RAM / 4 GB)
 #                            --only a,b     evolve, meta | synergy | modern-era |
 #                                           vintage | pauper, learn
 #                            --hours N      start no new job after N hours
+#                            --budget-hours H  scale the draft counts to fit about H hours
+#                            --evolve-gens N --evolve-drafts N --meta-drafts N
+#                            --learn-iters N --learn-drafts N --learn-h2h N
+#                            --learn-deck-h2h N   override the sizes (output folders carry them)
+#                            --stop         stop a running lab (sends TERM; INT is ignored
+#                                           by a background job)
 #                            --dry-run      print the plan and commands, run nothing
 #                            --yes          run even while the engine is up (nice 19)
 #                            --redo         run jobs again that finished before
@@ -1187,11 +1194,31 @@ RESULTS_DIR="$DATA_DIR/forgecoach"
 
 # the jobs, in order: evolve, then the four meta runs, then the learned drafter
 OVN_ALL="evolve meta-synergy meta-modern-era meta-vintage meta-pauper learn"
-OVN_EVOLVE_GENS=8; OVN_EVOLVE_DRAFTS=200
-OVN_META_DRAFTS=300
-OVN_LEARN_ITERS=4; OVN_LEARN_DRAFTS=300; OVN_LEARN_H2H=400; OVN_LEARN_DECKH2H=200
-OVN_EVOLVE_OUT="var/cubelab/evolve/omega-overnight"
-OVN_LEARN_OUT="var/cubelab/selfplay/synergy-overnight"
+# Sizes (flags override).  Measured on a Ryzen 7 9700X: a draft with its best of
+# three costs 8-10 core-seconds, and the evolve step wants 865+ drafts a generation.
+OVN_EVOLVE_GENS=8; OVN_EVOLVE_DRAFTS=1200
+OVN_META_DRAFTS=2000
+OVN_LEARN_ITERS=4; OVN_LEARN_DRAFTS=1000; OVN_LEARN_H2H=1000; OVN_LEARN_DECKH2H=500
+# Core-seconds per draft when this PC has not measured it yet; replaced by the
+# measured value (config key OVN_SEC_PER_DRAFT) after a job has run.
+OVN_DEFAULT_SPD=10
+# Smallest sizes --budget-hours scales down to (below these the data is not worth having).
+OVN_MIN_EVOLVE_DRAFTS=865; OVN_MIN_META_DRAFTS=500
+OVN_MIN_LEARN_DRAFTS=300; OVN_MIN_LEARN_H2H=400; OVN_MIN_LEARN_DECKH2H=200
+OVN_BUDGET=""
+OVN_SPD=""; OVN_SPD_MEASURED=0
+# The output folders carry their sizes, so a changed size never resumes into
+# (and mixes with) a folder made with other sizes; the same sizes resume safely.
+ovn_tag() {   # ovn_tag <job>
+  case "$1" in
+    evolve)  echo "g$OVN_EVOLVE_GENS-d$OVN_EVOLVE_DRAFTS" ;;
+    meta-*)  echo "n$OVN_META_DRAFTS" ;;
+    learn)   echo "i$OVN_LEARN_ITERS-d$OVN_LEARN_DRAFTS-h$OVN_LEARN_H2H-k$OVN_LEARN_DECKH2H" ;;
+  esac
+}
+ovn_evolve_out() { echo "var/cubelab/evolve/omega-overnight-$(ovn_tag evolve)"; }
+ovn_learn_out() { echo "var/cubelab/selfplay/synergy-overnight-$(ovn_tag learn)"; }
+ovn_done_file() { echo "$OVN_DIR/done/$1@$(ovn_tag "$1")"; }
 
 ovn_cube_file() {   # ovn_cube_file <id> -- the cube's file name in mtg-table's cubes/
   case "$1" in
@@ -1199,24 +1226,116 @@ ovn_cube_file() {   # ovn_cube_file <id> -- the cube's file name in mtg-table's 
     vintage) echo vintage-cube-180 ;;   pauper) echo pauper-cube-180 ;;
   esac
 }
-ovn_meta_out() { echo "var/cubelab/runs/$(ovn_cube_file "$1")-overnight"; }
+ovn_meta_out() { echo "var/cubelab/runs/$(ovn_cube_file "$1")-overnight-n$OVN_META_DRAFTS"; }
 
 ovn_label() {
   case "$1" in
     evolve)   echo "Omega evolve: $OVN_EVOLVE_GENS generations x $OVN_EVOLVE_DRAFTS drafts (the cube changes by simulation)" ;;
     meta-*)   echo "Meta run: ${1#meta-} cube, $OVN_META_DRAFTS drafts, then its meta.json" ;;
-    learn)    echo "Learned drafter: synergy self-play, $OVN_LEARN_ITERS iterations" ;;
+    learn)    echo "Learned drafter: synergy self-play, $OVN_LEARN_ITERS iterations x $OVN_LEARN_DRAFTS drafts (h2h $OVN_LEARN_H2H, deck h2h $OVN_LEARN_DECKH2H)" ;;
   esac
 }
 
-# Rough single-core seconds, from the guide's "about 25 s of one core a draft"
-# (best of three; a best of one is about half).  Divide by --jobs.
+# Single-core seconds per job: drafts x $OVN_SPD (the measured, or the default,
+# core-seconds a draft costs, best of three included).  Selfplay's head-to-heads
+# play a game or two a draft, so they count half.  Divide by --jobs.
 ovn_core_secs() {
+  awk -v spd="$OVN_SPD" -v eg="$OVN_EVOLVE_GENS" -v ed="$OVN_EVOLVE_DRAFTS" -v md="$OVN_META_DRAFTS" \
+      -v li="$OVN_LEARN_ITERS" -v ld="$OVN_LEARN_DRAFTS" -v lh="$OVN_LEARN_H2H" -v lk="$OVN_LEARN_DECKH2H" -v job="$1" '
+    BEGIN {
+      if (job == "evolve") v = eg * ed * spd
+      else if (job ~ /^meta-/) v = md * spd
+      else v = (lh + li * (ld + lh) + lk) * spd / 2
+      printf "%d", v + 0.5
+    }'
+}
+
+# The measured seconds per draft: the config's value, else the default.
+ovn_load_spd() {
+  local v; v="$(conf_get OVN_SEC_PER_DRAFT)"
+  case "$v" in ''|*[!0-9.]*|.|*.*.*) OVN_SPD="$OVN_DEFAULT_SPD"; OVN_SPD_MEASURED=0 ;; *) OVN_SPD="$v"; OVN_SPD_MEASURED=1 ;; esac
+}
+ovn_spd_note() {
+  if [ "$OVN_SPD_MEASURED" = "1" ]; then printf 'measured on this PC: %s s/draft' "$OVN_SPD"
+  else printf 'assumed %s s/draft: not measured on this PC yet, it is after a run' "$OVN_SPD"; fi
+}
+
+# Learn the seconds per draft from a finished job's drafts.jsonl: each line has
+# "ms":{"draft":..,"build":..,"match":..}; their sum is one draft's core time
+# (one worker does a draft from start to finish).  Stored in the config.
+ovn_measure() {   # ovn_measure <job>
+  local out files v
   case "$1" in
-    evolve)  echo $((OVN_EVOLVE_GENS * OVN_EVOLVE_DRAFTS * 25)) ;;
-    meta-*)  echo $((OVN_META_DRAFTS * 25)) ;;
-    learn)   echo $(( (OVN_LEARN_H2H + OVN_LEARN_ITERS * (OVN_LEARN_DRAFTS + OVN_LEARN_H2H) + OVN_LEARN_DECKH2H) * 12 )) ;;
+    meta-*) out="$MTG/$(ovn_meta_out "${1#meta-}")" ;;
+    evolve) out="$MTG/$(ovn_evolve_out)" ;;
+    *) return 0 ;;
   esac
+  files="$(find "$out" -name drafts.jsonl 2>/dev/null)"
+  [ -n "$files" ] || return 0
+  # shellcheck disable=SC2086
+  v="$(cat $files 2>/dev/null | awk '
+    function num(s, k,   r) { if (match(s, "\"" k "\":[0-9.]+")) { r = substr(s, RSTART, RLENGTH); sub(/.*:/, "", r); return r + 0 } return -1 }
+    match($0, /"ms":\{[^}]*"match":[0-9.]+[^}]*\}/) {
+      m = substr($0, RSTART, RLENGTH); d = num(m, "draft"); b = num(m, "build"); x = num(m, "match")
+      if (d >= 0 && b >= 0 && x >= 0) { t += d + b + x; n++ }
+    }
+    END { if (n >= 20 && t > 0) printf "%.1f", t / n / 1000 }')"
+  case "$v" in ''|*[!0-9.]*) return 0 ;; esac
+  if awk -v v="$v" 'BEGIN { exit !(v >= 0.5 && v <= 600) }'; then
+    conf_set OVN_SEC_PER_DRAFT "$v"; OVN_SPD="$v"; OVN_SPD_MEASURED=1
+    info "Measured on this PC: $v s per draft (used for the next estimates)."
+  fi
+}
+
+# --budget-hours H: scale the draft counts so the queue fits about H hours.
+# One factor for all jobs, except a job never goes below its minimum (and one
+# whose size is already under it is left as it is); the rest shares what remains.
+ovn_apply_budget() {   # ovn_apply_budget <hours> <workers> <job>...
+  local hrs="$1" w="$2" j spec="" f scaled_meta=0
+  shift 2
+  for j in "$@"; do
+    case "$j" in
+      evolve)  spec="$spec evolve:$(ovn_core_secs evolve):$(awk -v b="$OVN_EVOLVE_DRAFTS" -v m="$OVN_MIN_EVOLVE_DRAFTS" 'BEGIN { print (b < m ? 1 : m / b) }')" ;;
+      meta-*)  spec="$spec $j:$(ovn_core_secs "$j"):$(awk -v b="$OVN_META_DRAFTS" -v m="$OVN_MIN_META_DRAFTS" 'BEGIN { print (b < m ? 1 : m / b) }')" ;;
+      learn)   spec="$spec learn:$(ovn_core_secs learn):$(awk -v d="$OVN_LEARN_DRAFTS" -v h="$OVN_LEARN_H2H" -v k="$OVN_LEARN_DECKH2H" -v md="$OVN_MIN_LEARN_DRAFTS" -v mh="$OVN_MIN_LEARN_H2H" -v mk="$OVN_MIN_LEARN_DECKH2H" \
+                 'function r(b, m) { return b < m ? 1 : m / b } BEGIN { x = r(d, md); if (r(h, mh) > x) x = r(h, mh); if (r(k, mk) > x) x = r(k, mk); print x }')" ;;
+    esac
+  done
+  # f = the factor on the sizes; jobs pinned at their minimum keep their share fixed
+  f="$(awk -v budget="$(awk -v h="$hrs" -v w="$w" 'BEGIN { print h * 3600 * w }')" -v spec="$spec" '
+    BEGIN {
+      n = split(spec, a, " ")
+      for (i = 1; i <= n; i++) { split(a[i], p, ":"); c[i] = p[2]; m[i] = p[3]; pin[i] = 0 }
+      f = 1
+      for (it = 0; it <= n; it++) {
+        fixed = 0; free = 0
+        for (i = 1; i <= n; i++) { if (pin[i]) fixed += c[i] * m[i]; else free += c[i] }
+        f = free > 0 ? (budget - fixed) / free : 0
+        changed = 0
+        for (i = 1; i <= n; i++) if (!pin[i] && f < m[i]) { pin[i] = 1; changed = 1 }
+        if (!changed) break
+      }
+      printf "%.6f", f
+    }')"
+  OVN_BUDGET_F="$f"
+  for j in "$@"; do
+    case "$j" in
+      evolve)  OVN_EVOLVE_DRAFTS="$(ovn_scale "$OVN_EVOLVE_DRAFTS" "$f" "$OVN_MIN_EVOLVE_DRAFTS")" ;;
+      meta-*)  [ "$scaled_meta" = "1" ] || OVN_META_DRAFTS="$(ovn_scale "$OVN_META_DRAFTS" "$f" "$OVN_MIN_META_DRAFTS")"
+               scaled_meta=1 ;;
+      learn)   OVN_LEARN_DRAFTS="$(ovn_scale "$OVN_LEARN_DRAFTS" "$f" "$OVN_MIN_LEARN_DRAFTS")"
+               OVN_LEARN_H2H="$(ovn_scale "$OVN_LEARN_H2H" "$f" "$OVN_MIN_LEARN_H2H")"
+               OVN_LEARN_DECKH2H="$(ovn_scale "$OVN_LEARN_DECKH2H" "$f" "$OVN_MIN_LEARN_DECKH2H")" ;;
+    esac
+  done
+}
+# ovn_scale <base> <factor> <min> -- round(base x factor) to 10 (at least the min; a base already under it stays)
+ovn_scale() {
+  awk -v b="$1" -v f="$2" -v m="$3" 'BEGIN {
+    if (b < m) m = b
+    v = int(b * f / 10 + 0.5) * 10
+    if (v < m) v = m
+    print v }'
 }
 
 # The commands of one job, one per line, relative to the mtg-table checkout.
@@ -1225,14 +1344,14 @@ ovn_cmds() {   # ovn_cmds <job> <jobs>
   local id file out
   case "$1" in
     evolve)
-      echo "tools/cubelab.sh evolve cubes/omega-cube-180.md --pool cubes/omega-seed-pool.tsv --generations $OVN_EVOLVE_GENS --drafts-per-gen $OVN_EVOLVE_DRAFTS --jobs $2 --seed 1 --out $OVN_EVOLVE_OUT" ;;
+      echo "tools/cubelab.sh evolve cubes/omega-cube-180.md --pool cubes/omega-seed-pool.tsv --generations $OVN_EVOLVE_GENS --drafts-per-gen $OVN_EVOLVE_DRAFTS --jobs $2 --seed 1 --out $(ovn_evolve_out)" ;;
     meta-*)
       id="${1#meta-}"; file="$(ovn_cube_file "$id")"; out="$(ovn_meta_out "$id")"
       echo "tools/cubelab.sh run cubes/$file.md --format grid --drafts $OVN_META_DRAFTS --jobs $2 --seed 1 --out $out"
       echo "tools/cubelab.sh report $out" ;;
     learn)
       # --from: the synergy run of the meta job, when there is one (the learner starts from its games)
-      echo "tools/cubelab.sh selfplay cubes/synergy-cube-180.md ${OVN_FROM:+--from $OVN_FROM }--iterations $OVN_LEARN_ITERS --drafts-per-iter $OVN_LEARN_DRAFTS --h2h $OVN_LEARN_H2H --deck-h2h $OVN_LEARN_DECKH2H --games 1 --deck-synergy on --jobs $2 --out $OVN_LEARN_OUT" ;;
+      echo "tools/cubelab.sh selfplay cubes/synergy-cube-180.md ${OVN_FROM:+--from $OVN_FROM }--iterations $OVN_LEARN_ITERS --drafts-per-iter $OVN_LEARN_DRAFTS --h2h $OVN_LEARN_H2H --deck-h2h $OVN_LEARN_DECKH2H --games 1 --deck-synergy on --jobs $2 --out $(ovn_learn_out)" ;;
   esac
 }
 
@@ -1257,12 +1376,12 @@ ovn_collect() {   # ovn_collect <job>
       [ -f "$out/report.html" ] && cp -f "$out/report.html" "$RESULTS_DIR/reports/$id-report.html"
       ok "meta.json -> $RESULTS_DIR/meta/$id.meta.json" ;;
     evolve)
-      out="$MTG/$OVN_EVOLVE_OUT"; dest="$RESULTS_DIR/omega"
+      out="$MTG/$(ovn_evolve_out)"; dest="$RESULTS_DIR/omega"
       mkdir -p "$dest"
       for v in omega-cube-180.md changelog.md index.html; do [ -f "$out/$v" ] && cp -f "$out/$v" "$dest/$v"; done
       ok "evolved Omega cube, changelog and report -> $dest/" ;;
     learn)
-      out="$MTG/$OVN_LEARN_OUT"; dest="$RESULTS_DIR/learned/synergy"
+      out="$MTG/$(ovn_learn_out)"; dest="$RESULTS_DIR/learned/synergy"
       mkdir -p "$dest"
       v="$(find "$out" -maxdepth 1 -name 'values-*.ratings.tsv' 2>/dev/null | sort -V | tail -n 1)"
       v="${v##*/values-}"; v="${v%.ratings.tsv}"
@@ -1278,12 +1397,13 @@ ovn_progress() {   # ovn_progress <job> <mtg>
   case "$1" in
     meta-*)
       out="$2/$(ovn_meta_out "${1#meta-}")/drafts.jsonl"
-      n="$(wc -l <"$out" 2>/dev/null || echo 0)"; echo "$((n + 0)) of $OVN_META_DRAFTS drafts" ;;
+      n=0; [ -f "$out" ] && n="$(wc -l <"$out" 2>/dev/null || echo 0)"
+      echo "$((n + 0)) of $OVN_META_DRAFTS drafts" ;;
     evolve)
-      n="$(find "$2/$OVN_EVOLVE_OUT" -maxdepth 2 -path '*/gen-*/result.json' 2>/dev/null | wc -l)"
+      n="$(find "$2/$(ovn_evolve_out)" -maxdepth 2 -path '*/gen-*/result.json' 2>/dev/null | wc -l)"
       echo "$n of $OVN_EVOLVE_GENS generations" ;;
     learn)
-      n="$(find "$2/$OVN_LEARN_OUT" -maxdepth 1 -name 'values-*.ratings.tsv' ! -name 'values-0.*' 2>/dev/null | wc -l)"
+      n="$(find "$2/$(ovn_learn_out)" -maxdepth 1 -name 'values-*.ratings.tsv' ! -name 'values-0.*' 2>/dev/null | wc -l)"
       echo "$n of $OVN_LEARN_ITERS iterations" ;;
   esac
 }
@@ -1311,12 +1431,52 @@ ovn_state_write() {   # the status file: one key=value per line, replaced whole
   {
     printf 'pid=%s\nstatus=%s\nmtg=%s\njobs=%s\nstarted=%s\nended=%s\nqueue=%s\nrunning=%s\nrunning_since=%s\nfailed=%s\ndeadline=%s\n' \
       "$$" "$OVN_STATUS" "$MTG" "$OVN_J" "$OVN_START" "${OVN_END:-}" "${OVN_QUEUE_STR:-}" "${OVN_RUNNING:-}" "${OVN_RUN_SINCE:-}" "${OVN_FAILED:-}" "${OVN_DEADLINE:-}"
+    printf 'evolve_gens=%s\nevolve_drafts=%s\nmeta_drafts=%s\nlearn_iters=%s\nlearn_drafts=%s\nlearn_h2h=%s\nlearn_deck_h2h=%s\nspd=%s\n' \
+      "$OVN_EVOLVE_GENS" "$OVN_EVOLVE_DRAFTS" "$OVN_META_DRAFTS" "$OVN_LEARN_ITERS" "$OVN_LEARN_DRAFTS" "$OVN_LEARN_H2H" "$OVN_LEARN_DECKH2H" "${OVN_SPD:-}"
   } >"$tmp"
   mv -f "$tmp" "$OVN_STATE"
 }
-ovn_get() { sed -n "s/^$1=//p" "$OVN_STATE" 2>/dev/null | tail -n 1; }
+ovn_get() { sed -n "s/^$1=//p" "$OVN_STATE" 2>/dev/null | tail -n 1 || true; }
 
 ovn_cores() { nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2; }
+
+# Physical cores (not hardware threads: the lab is limited by cores).  lscpu,
+# else the unique "physical id"+"core id" pairs of /proc/cpuinfo
+# (FORGECOACH_CPUINFO overrides the file, for tests), else threads / 2.
+ovn_phys_cores() {
+  local n=""
+  n="$(lscpu -p=core,socket 2>/dev/null | grep -v '^#' | sort -u | grep -c .)" || n=""
+  case "$n" in ''|0|*[!0-9]*) n="" ;; esac
+  if [ -z "$n" ]; then
+    n="$(awk -F: '/^physical id/ { p = $2 + 0 } /^core id/ { seen[p "/" ($2 + 0)] = 1 } END { c = 0; for (k in seen) c++; print c }' "${FORGECOACH_CPUINFO:-/proc/cpuinfo}" 2>/dev/null)" || n=""
+    case "$n" in ''|0|*[!0-9]*) n="" ;; esac
+  fi
+  if [ -z "$n" ]; then n=$(( $(ovn_cores) / 2 )); [ "$n" -ge 1 ] || n=1; fi
+  echo "$n"
+}
+
+# Stop the sleep lock held for this run.
+ovn_release_awake() {
+  local p; p="$(cat "$OVN_INHIBIT_FILE" 2>/dev/null || true)"
+  [ -n "$p" ] && kill -TERM "$p" 2>/dev/null || true
+  rm -f "$OVN_INHIBIT_FILE"
+}
+
+# `overnight --stop`: TERM to the recorded launcher; its trap stops the running
+# cubelab, releases the sleep lock and writes the state.  (INT is ignored by a
+# background job of a non-interactive shell; TERM is not.)
+ovn_stop() {
+  local pid i
+  pid="$(ovn_get pid)"
+  if [ ! -s "$OVN_STATE" ] || [ "$(ovn_get status)" != "running" ] || ! pid_alive "$pid"; then
+    info "No overnight lab is running."; return 0
+  fi
+  info "Stopping the overnight lab (pid $pid)..."
+  kill -TERM "$pid" 2>/dev/null || true
+  for i in $(seq 1 80); do pid_alive "$pid" || break; sleep 0.5; done
+  if pid_alive "$pid"; then bad "It is still running after 40 s (pid $pid)."; return 1; fi
+  ok "Stopped.  What is done is kept; run 'forgecoach overnight' to continue."
+}
 
 # Hold off sleep while this script runs: a systemd inhibitor held by a watcher
 # that ends when we do (like keep_awake, which watches the engine).
@@ -1364,6 +1524,7 @@ ovn_on_signal() {
   fi
   OVN_STATUS=stopped; OVN_END="$(date +%s)"; OVN_RUNNING=""
   ovn_state_write
+  ovn_release_awake
   exit 130
 }
 
@@ -1383,8 +1544,25 @@ ovn_run_cmd() {
   return "$rc"
 }
 
+ovn_mem_gb() {   # FORGECOACH_MEM_GB overrides (tests)
+  [ -n "${FORGECOACH_MEM_GB:-}" ] && { echo "$FORGECOACH_MEM_GB"; return; }
+  awk '/^MemTotal:/ { printf "%d", $2 / 1048576 }' /proc/meminfo 2>/dev/null || echo 0
+}
+
+# ovn_flag <VAR> <option> <value> -- set a size from a flag: a whole number of at least 1
+ovn_flag() {
+  case "${3:-}" in
+    ''|*[!0-9]*|0) echo "forgecoach overnight: $2 wants a whole number of at least 1, got '${3:-}'" >&2; return 2 ;;
+  esac
+  [ "${#3}" -le 7 ] || { echo "forgecoach overnight: $2 is too large: '$3'" >&2; return 2; }
+  printf -v "$1" '%s' "$((10#$3))"
+  if [ "$2" = "--evolve-drafts" ] && [ "$((10#$3))" -lt "$OVN_MIN_EVOLVE_DRAFTS" ]; then
+    warn "--evolve-drafts $3 is under $OVN_MIN_EVOLVE_DRAFTS: the evolve step will likely end each generation with 'insufficient data'." >&2
+  fi
+}
+
 cmd_overnight() {
-  local J="" only="" hours="" dry=0 yes=0 redo=0 a nice_n=10 ncores mem
+  local J="" only="" hours="" budget="" stop=0 dry=0 yes=0 redo=0 a nice_n=10 ncores pcores mem
   local jobs=() j n i line rc tty=0 t0 now engine=0 port
   OPEN=0
   while [ $# -gt 0 ]; do
@@ -1393,6 +1571,15 @@ cmd_overnight() {
       --jobs)    [ $# -ge 2 ] || { echo "--jobs needs a number" >&2; return 2; }; J="$2"; shift ;;
       --only)    [ $# -ge 2 ] || { echo "--only needs a list, e.g. --only evolve,synergy" >&2; return 2; }; only="$2"; shift ;;
       --hours)   [ $# -ge 2 ] || { echo "--hours needs a number" >&2; return 2; }; hours="$2"; shift ;;
+      --budget-hours) [ $# -ge 2 ] || { echo "--budget-hours needs a number" >&2; return 2; }; budget="$2"; shift ;;
+      --evolve-gens)    ovn_flag OVN_EVOLVE_GENS "$a" "${2:-}" || return 2; shift ;;
+      --evolve-drafts)  ovn_flag OVN_EVOLVE_DRAFTS "$a" "${2:-}" || return 2; shift ;;
+      --meta-drafts)    ovn_flag OVN_META_DRAFTS "$a" "${2:-}" || return 2; shift ;;
+      --learn-iters)    ovn_flag OVN_LEARN_ITERS "$a" "${2:-}" || return 2; shift ;;
+      --learn-drafts)   ovn_flag OVN_LEARN_DRAFTS "$a" "${2:-}" || return 2; shift ;;
+      --learn-h2h)      ovn_flag OVN_LEARN_H2H "$a" "${2:-}" || return 2; shift ;;
+      --learn-deck-h2h) ovn_flag OVN_LEARN_DECKH2H "$a" "${2:-}" || return 2; shift ;;
+      --stop)    stop=1 ;;
       --dry-run) dry=1 ;;
       --yes|-y)  yes=1 ;;
       --redo)    redo=1 ;;
@@ -1400,14 +1587,23 @@ cmd_overnight() {
       --window)  WINDOW=1 ;;
       --notify)  NOTIFY=1 ;;
       --no-open) ;;
-      *) echo "forgecoach overnight: unknown option '$a'  (options: --jobs N, --only a,b, --hours N, --dry-run, --yes, --redo, --no-pull)" >&2; return 2 ;;
+      *) echo "forgecoach overnight: unknown option '$a'  (options: --jobs N, --only a,b, --hours N, --budget-hours H, --evolve-gens/-drafts N, --meta-drafts N, --learn-iters/-drafts/-h2h/-deck-h2h N, --dry-run, --yes, --redo, --stop, --no-pull)" >&2; return 2 ;;
     esac
     shift
   done
-  ncores="$(ovn_cores)"
-  if [ -z "$J" ]; then J=$((ncores - 1)); [ "$J" -ge 1 ] || J=1; fi
+  [ "$stop" = "1" ] && { ovn_stop; return; }
+  ncores="$(ovn_cores)"; pcores="$(ovn_phys_cores)"
+  mem="$(ovn_mem_gb)"
+  if [ -z "$J" ]; then
+    J=$((pcores - 1)); [ "$J" -ge 1 ] || J=1
+    if [ "${mem:-0}" -gt 0 ] && [ "$J" -gt $((mem / 4)) ]; then J=$((mem / 4)); [ "$J" -ge 1 ] || J=1; fi   # about 4 GB a JVM
+  fi
   case "$J" in ''|*[!0-9]*|0) echo "forgecoach overnight: --jobs wants a whole number of at least 1, got '$J'" >&2; return 2 ;; esac
   case "${hours:-0}" in *[!0-9.]*|.|*.*.*) echo "forgecoach overnight: --hours wants a number, got '$hours'" >&2; return 2 ;; esac
+  if [ -n "$budget" ]; then
+    case "$budget" in *[!0-9.]*|.|*.*.*) echo "forgecoach overnight: --budget-hours wants a number, got '$budget'" >&2; return 2 ;; esac
+    awk -v b="$budget" 'BEGIN { exit !(b > 0) }' || { echo "forgecoach overnight: --budget-hours must be above 0, got '$budget'" >&2; return 2; }
+  fi
   if [ -n "$only" ]; then
     a="$(ovn_expand_only "$only")" || return 2
     mapfile -t jobs <<<"$a"
@@ -1440,11 +1636,17 @@ cmd_overnight() {
   fi
 
   # --- one at a time: the plan -----------------------------------------------
-  mem="$(awk '/^MemTotal:/ { printf "%d", $2 / 1048576 }' /proc/meminfo 2>/dev/null || echo 0)"
-  info "Cores: $ncores.  Jobs in parallel inside a job: $J (--jobs).  Each is a Forge JVM of up to 4 GB; this PC has about ${mem:-?} GB."
+  ovn_load_spd
+  if [ -n "$budget" ]; then
+    local before="$OVN_EVOLVE_DRAFTS/$OVN_META_DRAFTS/$OVN_LEARN_DRAFTS"
+    ovn_apply_budget "$budget" "$J" "${jobs[@]}"
+  fi
+  info "Cores: $pcores physical ($ncores threads).  Jobs in parallel inside a job: $J (--jobs, default: physical cores - 1).  Each is a Forge JVM of up to 4 GB; this PC has about ${mem:-?} GB."
   if [ "${mem:-0}" -gt 0 ] && [ $((J * 4)) -gt "$mem" ]; then warn "$J workers may not fit in ${mem} GB of memory: try --jobs $(( mem / 4 > 0 ? mem / 4 : 1 ))."; fi
   OVN_FROM=""
   local tot=0 s
+  info "Sizes: evolve $OVN_EVOLVE_GENS generations x $OVN_EVOLVE_DRAFTS drafts; meta $OVN_META_DRAFTS drafts per cube; learn $OVN_LEARN_ITERS iterations x $OVN_LEARN_DRAFTS drafts, h2h $OVN_LEARN_H2H, deck h2h $OVN_LEARN_DECKH2H."
+  [ -n "$budget" ] && info "--budget-hours $budget: draft counts scaled by $(awk -v f="$OVN_BUDGET_F" 'BEGIN { printf "%.2f", f }') (from $before evolve/meta/learn drafts), not below the minimums (evolve $OVN_MIN_EVOLVE_DRAFTS, meta $OVN_MIN_META_DRAFTS, learn $OVN_MIN_LEARN_DRAFTS/$OVN_MIN_LEARN_H2H/$OVN_MIN_LEARN_DECKH2H)."
   say "The queue (one job at a time, in this order, under nice)"
   i=0
   for j in "${jobs[@]}"; do
@@ -1452,7 +1654,7 @@ cmd_overnight() {
     s=$(( $(ovn_core_secs "$j") / J ))
     tot=$((tot + s))
     printf '  %s%d.%s %s  (%s at %s workers)\n' "$B" "$i" "$N" "$(ovn_label "$j")" "$(ovn_hours "$s")" "$J"
-    [ "$dry" = "1" ] && [ -f "$OVN_DIR/done/$j" ] && [ "$redo" = "0" ] && info "   (done already: would be skipped; --redo runs it again)"
+    [ "$dry" = "1" ] && [ -f "$(ovn_done_file "$j")" ] && [ "$redo" = "0" ] && info "   (done already: would be skipped; --redo runs it again)"
     # selfplay starts from the synergy run when that job is ahead of it in this queue or already left its run
     if [ "$j" = "learn" ]; then
       case " ${jobs[*]} " in *" meta-synergy "*) OVN_FROM="$(ovn_meta_out synergy)" ;; esac
@@ -1460,7 +1662,10 @@ cmd_overnight() {
     fi
     while IFS= read -r line; do info "   $line"; done < <(ovn_cmds "$j" "$J")
   done
-  info "In all, $(ovn_hours "$tot") (the guide's ~25 s of one core per draft; a guess, not a promise)."
+  info "In all, $(ovn_hours "$tot") at $J workers ($(ovn_spd_note); an estimate, not a promise)."
+  if [ -n "$budget" ] && awk -v t="$tot" -v b="$budget" 'BEGIN { exit !(t > b * 3600 * 1.05) }'; then
+    warn "Even at the minimum sizes the queue is longer than --budget-hours $budget; trim it with --only."
+  fi
   [ -n "$hours" ] && info "--hours $hours: no new job starts after $hours h (a job that has started finishes)."
   info "Results are copied to: $RESULTS_DIR/{meta,omega,learned,reports}/"
   info "Log: $OVN_LOG   Progress: forgecoach status"
@@ -1487,7 +1692,7 @@ cmd_overnight() {
 
   # --- go --------------------------------------------------------------------
   mkdir -p "$OVN_DIR/done" "$RESULTS_DIR"
-  [ "$redo" = "1" ] && rm -f "$OVN_DIR"/done/*
+  if [ "$redo" = "1" ]; then for j in "${jobs[@]}"; do rm -f "$(ovn_done_file "$j")"; done; fi
   chmod 700 "$CACHE_DIR" 2>/dev/null || true
   exec > >(tee -a "$OVN_LOG") 2>&1          # everything below is on screen and in the log
   printf '\n===== overnight lab %s  jobs=%s workers=%s nice=%s =====\n' "$(date '+%F %T')" "${jobs[*]}" "$J" "$nice_n"
@@ -1500,8 +1705,8 @@ cmd_overnight() {
 
   local ndone=0 nfail=0 nskip=0 nlate=0 summary=""
   for j in "${jobs[@]}"; do
-    if [ -f "$OVN_DIR/done/$j" ]; then
-      ok "$j: already done ($(cat "$OVN_DIR/done/$j")); skipped"; nskip=$((nskip + 1)); continue
+    if [ -f "$(ovn_done_file "$j")" ]; then
+      ok "$j: already done ($(cat "$(ovn_done_file "$j")")); skipped"; nskip=$((nskip + 1)); continue
     fi
     now="$(date +%s)"
     if [ -n "$OVN_DEADLINE" ] && [ "$now" -ge "$OVN_DEADLINE" ]; then
@@ -1516,7 +1721,8 @@ cmd_overnight() {
     done < <(ovn_cmds "$j" "$J")
     t0=$(( $(date +%s) - now ))
     if [ "$rc" = "0" ] && ovn_collect "$j"; then
-      date '+%F %T' >"$OVN_DIR/done/$j"
+      date '+%F %T' >"$(ovn_done_file "$j")"
+      ovn_measure "$j"
       ok "$j: done in $(ovn_dur "$t0")"; ndone=$((ndone + 1))
     else
       bad "$j: failed (exit $rc) after $(ovn_dur "$t0").  Run it again to resume it.  Log: $OVN_LOG"
@@ -1527,6 +1733,7 @@ cmd_overnight() {
   trap - INT TERM HUP
 
   OVN_END="$(date +%s)"; OVN_RUNNING=""
+  ovn_release_awake
   if [ "$nfail" -gt 0 ]; then OVN_STATUS=failed; elif [ "$nlate" -gt 0 ]; then OVN_STATUS=partial; else OVN_STATUS=finished; fi
   ovn_state_write
   summary="Overnight lab: $ndone done, $nskip already done, $nfail failed$([ "$nlate" -gt 0 ] && echo ", $nlate not started"), in $(ovn_dur $((OVN_END - OVN_START)))."
@@ -1546,13 +1753,22 @@ ovn_status() {
   st="$(ovn_get status)"; pid="$(ovn_get pid)"; mtg="$(ovn_get mtg)"
   started="$(ovn_get started)"; ended="$(ovn_get ended)"; q="$(ovn_get queue)"
   running="$(ovn_get running)"; since="$(ovn_get running_since)"; failed="$(ovn_get failed)"
+  # the sizes this run was started with (its output folders carry them)
+  local v
+  for v in evolve_gens:OVN_EVOLVE_GENS evolve_drafts:OVN_EVOLVE_DRAFTS meta_drafts:OVN_META_DRAFTS learn_iters:OVN_LEARN_ITERS \
+           learn_drafts:OVN_LEARN_DRAFTS learn_h2h:OVN_LEARN_H2H learn_deck_h2h:OVN_LEARN_DECKH2H; do
+    [ -n "$(ovn_get "${v%%:*}")" ] && printf -v "${v##*:}" '%s' "$(ovn_get "${v%%:*}")"
+  done
   say "Overnight lab"
+  info "Sizes: evolve $OVN_EVOLVE_GENS x $OVN_EVOLVE_DRAFTS drafts; meta $OVN_META_DRAFTS per cube; learn $OVN_LEARN_ITERS x $OVN_LEARN_DRAFTS drafts, h2h $OVN_LEARN_H2H, deck h2h $OVN_LEARN_DECKH2H"
+  ovn_load_spd; info "Speed: $(ovn_spd_note)"
   if [ "$st" = "running" ] && pid_alive "$pid"; then
     ok "Running (pid $pid), $(ovn_dur $(( $(date +%s) - ${started:-0} ))) so far; $(ovn_get jobs) workers"
     if [ -n "$running" ]; then
       info "Now: $(ovn_label "$running")"
       info "     $(ovn_progress "$running" "$mtg"), $(ovn_dur $(( $(date +%s) - ${since:-0} ))) on this job"
     fi
+    info "Stop it: forgecoach overnight --stop   (or: kill -TERM $pid; INT is ignored by a background job)"
     [ -n "$(ovn_get deadline)" ] && info "No new job starts after $(date -d "@$(ovn_get deadline)" '+%a %H:%M' 2>/dev/null || ovn_get deadline)."
   elif [ "$st" = "running" ]; then
     warn "It stopped before it finished (the window was closed, or the PC restarted).  Run 'forgecoach overnight' to continue."
@@ -1560,7 +1776,7 @@ ovn_status() {
     info "Last run: $st, ended $(date -d "@${ended:-0}" '+%a %d %b %H:%M' 2>/dev/null || echo "${ended:-?}")"
   fi
   for j in $q; do
-    if [ -f "$OVN_DIR/done/$j" ]; then line="done"; done_n=$((done_n + 1))
+    if [ -f "$(ovn_done_file "$j")" ]; then line="done"; done_n=$((done_n + 1))
     elif [ "$j" = "$running" ] && [ "$st" = "running" ] && pid_alive "$pid"; then line="running: $(ovn_progress "$j" "$mtg")"
     else case " $failed " in *" $j "*) line="failed" ;; *) line="waiting: $(ovn_progress "$j" "$mtg")" ;; esac; fi
     info "  [$line] $j"

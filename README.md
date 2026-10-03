@@ -228,21 +228,47 @@ forgecoach overnight          # or: app menu > "ForgeCoach overnight lab"
 It updates mtg-table first, then runs these **one after another** (never in
 parallel; each is resumable, so run it again and it continues where it stopped):
 
-1. **Omega evolve**: 8 generations x 200 drafts that swap dead and dominant
-   cards out of the Omega cube (about 3 to 4 hours).
-2. **Meta runs** of the synergy, modern-era, vintage and pauper cubes: 300
-   drafts each, then the report that writes `meta.json` (about 40 minutes each).
-3. **Learned drafter**: synergy self-play, 4 iterations, learned card values
-   and synergy against the baseline drafter (about 4 hours).
+1. **Omega evolve**: 8 generations x 1200 drafts that swap dead and dominant
+   cards out of the Omega cube (about 3.8 hours on an 8-core PC).
+2. **Meta runs** of the synergy, modern-era, vintage and pauper cubes: 2000
+   drafts each, then the report that writes `meta.json` (about 50 minutes each).
+3. **Learned drafter**: synergy self-play, 4 iterations x 1000 drafts, head-to-head
+   1000, deck head-to-head 500 (about 2 hours).
 
-The times are estimates for 3 workers from the lab guide's "about 25 s of one
-core per draft"; more cores shorten them. Options: `--jobs N` (workers per job;
-default cores - 1), `--only evolve,synergy,learn`, `--hours N` (start no new job
-after N hours), `--dry-run` (print the plan and the exact commands), `--yes`
-(run even while the engine is up, at the lowest priority), `--redo`. Everything
-runs under `nice`, holds off sleep with `systemd-inhibit` and logs to
+The sizes come from measurements: a draft with its best of three costs 8 to 10
+seconds of one core, and the evolve step needs 865 or more drafts a generation
+to have enough data. The launcher assumes 10 s a draft, then **measures your PC**
+from the drafts' own timings after the first finished job, keeps the figure in
+`~/.config/forgecoach/config` and uses it for the estimates (`--dry-run` says
+"about X h at Y workers (measured on this PC: Z s/draft)").
+
+Options:
+
+- `--jobs N`: workers per job. Default: **physical cores - 1** (the lab is limited
+  by cores, not hardware threads), at most one per 4 GB of RAM (a Forge JVM).
+- `--only evolve,synergy,learn`, `--hours N` (start no new job after N hours),
+  `--dry-run` (print the plan and the exact commands), `--yes` (run even while the
+  engine is up, at the lowest priority), `--redo`.
+- Sizes: `--evolve-gens N`, `--evolve-drafts N`, `--meta-drafts N`,
+  `--learn-iters N`, `--learn-drafts N`, `--learn-h2h N`, `--learn-deck-h2h N`
+  (whole numbers, 1 or more). The output folders carry the sizes
+  (`omega-overnight-g8-d1200`, `<cube>-overnight-n2000`,
+  `synergy-overnight-i4-d1000-h1000-k500`), so a changed size starts a fresh
+  folder and a finished job counts as done only for the sizes it was run with;
+  the same sizes resume where they stopped.
+- `--budget-hours H`: scale every job's draft counts so the whole queue fits about
+  H hours at the measured speed. Proportions are kept; nothing goes below the
+  minimums (evolve 865 a generation, meta 500, learn 300 / 400 / 200), and the
+  resulting sizes are printed. Combine it with `--only` or the size flags (which
+  then set the proportions).
+- `--stop`: stop a running lab. It sends `TERM` to the launcher, which stops the
+  running cubelab and releases the sleep lock. Use `TERM`
+  (`kill -TERM <pid>`), not `INT`: a background job of a non-interactive shell
+  ignores `INT`. `forgecoach status` shows the stop command.
+
+Everything runs under `nice`, holds off sleep with `systemd-inhibit` and logs to
 `~/.cache/forgecoach/overnight.log`; a desktop notification says when it is
-done. `forgecoach status` shows the running job and its progress.
+done. `forgecoach status` shows the sizes, the running job and its progress.
 
 **Where the results land**, in `~/.local/share/forgecoach/`: `meta/<cube>.meta.json`
 (also `reports/`), `omega/` (the evolved cube and its changelog) and
