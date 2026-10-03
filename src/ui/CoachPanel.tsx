@@ -11,6 +11,10 @@ import type { GameLog } from '../log.ts';
 import type { Decision } from '../decisions.ts';
 import { buildCoachPrompt, coachCardNames, promptAsText, type Prompt } from '../prompt.ts';
 import { buildReviewPrompt, reviewCardNames, summarizeGame } from '../review.ts';
+import { loadCubeCoachInput, type CubeCoachInput, type MetaLookups } from '../cube/coachContext.ts';
+import { loadShippedMeta } from '../cube/cubes.ts';
+import type { CubeMeta } from '../cube/meta.ts';
+import { getImportedMeta } from '../cube/metaStore.ts';
 import { activeGuideText as guideText } from '../guide.ts';
 import { MODELS } from '../claude.ts';
 import { SOURCE_LABEL } from '../coachHelper.ts';
@@ -48,18 +52,40 @@ function safe<T>(f: () => T, fallback: T): T {
   }
 }
 
+const BASE = import.meta.env.BASE_URL;
+const shippedCache = new Map<string, Promise<CubeMeta | null>>();
+const cachedLookups: MetaLookups = {
+  imported: getImportedMeta,
+  shipped: (info) => {
+    let p = shippedCache.get(info.id);
+    if (!p) shippedCache.set(info.id, (p = loadShippedMeta(info, BASE)));
+    return p;
+  },
+};
+
+/** The cube context input for a game, or undefined when it isn't a cube game (never throws). */
+async function cubeFor(log: GameLog): Promise<CubeCoachInput | undefined> {
+  try {
+    return await loadCubeCoachInput(log, cachedLookups);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function coachPrompt(log: GameLog, d: Decision): Promise<Prompt> {
   const names = safe(() => coachCardNames(log, d), [] as string[]);
   const cards = await cardsForPrompt(names);
   const guide = activeGuideText();
-  return buildCoachPrompt(log, d, cards, guide ? { guide } : undefined);
+  const cube = await cubeFor(log);
+  return buildCoachPrompt(log, d, cards, { ...(guide ? { guide } : {}), ...(cube ? { cube } : {}) });
 }
 
 async function reviewPrompt(log: GameLog): Promise<Prompt> {
   const names = safe(() => reviewCardNames(log), [] as string[]);
   const cards = await cardsForPrompt(names);
   const guide = activeGuideText();
-  return buildReviewPrompt(log, cards, guide ? { guide } : undefined);
+  const cube = await cubeFor(log);
+  return buildReviewPrompt(log, cards, { ...(guide ? { guide } : {}), ...(cube ? { cube } : {}) });
 }
 
 export type CoachTab = 'moment' | 'review';
