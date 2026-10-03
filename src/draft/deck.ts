@@ -1,0 +1,81 @@
+/*
+ * ForgeCoach — draft/deck.ts
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The deck you build after a draft: the pool split into mainboard and
+ * sideboard, plus basic lands (free, any number). It starts with the whole
+ * pool in the mainboard, as at a real table; "Suggest a build" fills it from
+ * the deck assistant's best build (src/cube/builder.ts). Pure and plain JSON,
+ * so it is saved with the draft.
+ */
+import { BASIC_OF, BASIC_NAMES } from '../cube/colors.ts';
+import type { DeckBuild } from '../cube/builder.ts';
+import type { MatchDeck } from './launch.ts';
+
+export const BASIC_KEYS = ['W', 'U', 'B', 'R', 'G', 'C'] as const;
+export type BasicKey = (typeof BASIC_KEYS)[number];
+export const BASIC_NAME: Record<BasicKey, string> = { ...BASIC_OF, C: 'Wastes' };
+export const MIN_DECK = 40;
+
+export interface DeckState {
+  main: string[];
+  side: string[];
+  basics: Record<BasicKey, number>;
+  /** The suggestion last applied, for the side note. */
+  suggestion?: { name: string; score: number; reasons: string[] };
+}
+
+export const noBasics = (): Record<BasicKey, number> => ({ W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 });
+
+export function initialDeck(pool: string[]): DeckState {
+  return { main: pool.filter((n) => !BASIC_NAMES.has(n)), side: [], basics: noBasics() };
+}
+
+/** The deck assistant's build, as a deck: its spells and nonbasic lands main, the rest of the pool on the side. */
+export function deckFromBuild(b: DeckBuild, pool: string[]): DeckState {
+  const main = [...b.spells, ...b.nonbasics];
+  const side = [...pool].filter((n) => !BASIC_NAMES.has(n));
+  for (const n of main) {
+    const i = side.indexOf(n);
+    if (i >= 0) side.splice(i, 1);
+  }
+  const basics = noBasics();
+  for (const k of BASIC_KEYS) if (k !== 'C') basics[k] = b.basics[k] ?? 0;
+  return { main, side, basics, suggestion: { name: b.name, score: b.score, reasons: b.reasons } };
+}
+
+export const basicCount = (d: DeckState) => BASIC_KEYS.reduce((s, k) => s + (d.basics[k] ?? 0), 0);
+export const deckCount = (d: DeckState) => d.main.length + basicCount(d);
+
+/** The mainboard as names, basics expanded (for the stacks' LAND column and the stats). */
+export function mainNames(d: DeckState): string[] {
+  const out = [...d.main];
+  for (const k of BASIC_KEYS) for (let i = 0; i < (d.basics[k] ?? 0); i++) out.push(BASIC_NAME[k]);
+  return out;
+}
+
+/** Move one copy of `name` to the other board. Basics leave the deck instead of going to the side. */
+export function moveCard(d: DeckState, name: string, to: 'main' | 'side'): DeckState {
+  const basic = (Object.entries(BASIC_NAME) as Array<[BasicKey, string]>).find(([, n]) => n === name)?.[0];
+  if (basic) return to === 'side' ? setBasic(d, basic, (d.basics[basic] ?? 0) - 1) : d;
+  const from = to === 'main' ? d.side : d.main;
+  const i = from.indexOf(name);
+  if (i < 0) return d;
+  const rest = [...from.slice(0, i), ...from.slice(i + 1)];
+  return to === 'main' ? { ...d, side: rest, main: [...d.main, name] } : { ...d, main: rest, side: [...d.side, name] };
+}
+
+export function setBasic(d: DeckState, k: BasicKey, n: number): DeckState {
+  return { ...d, basics: { ...d.basics, [k]: Math.max(0, Math.min(40, Math.round(n))) } };
+}
+
+function counted(names: string[]): Array<[number, string]> {
+  const m = new Map<string, number>();
+  for (const n of names) m.set(n, (m.get(n) ?? 0) + 1);
+  return [...m.entries()].map(([n, c]) => [c, n]);
+}
+
+/** The match launcher's deck shape. */
+export function toMatchDeck(name: string, d: DeckState): MatchDeck {
+  return { name, main: counted(mainNames(d)), sideboard: counted(d.side) };
+}

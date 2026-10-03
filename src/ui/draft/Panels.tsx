@@ -2,18 +2,14 @@
  * ForgeCoach — ui/draft/Panels.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The pieces around the draft board: the DECISION panel (desktop, left
- * column) and the thumb dock (phone, bottom) that carry the one big gold
- * action; the opponent's panel (the AI's public picks in Grid, only what you
- * saw in Winston); the AI's banner; and the quiet pick help.
+ * Small pieces around the pick screen: the phone's thumb dock with the one
+ * big gold action, the AI's banner, seat chips, the kebab menu and the pick
+ * timer.
  */
-import type { ReactNode } from 'react';
-import type { CubeContext } from '../../cube/score.ts';
-import { describeEvent, type Draft, type DraftEvent } from '../../draft/draft.ts';
-import { IconSpark } from '../Icons.tsx';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { describeEvent, type DraftEvent } from '../../draft/draft.ts';
+import { IconMore } from '../Icons.tsx';
 import { cx } from '../util.ts';
-import { BackStack } from './DCard.tsx';
-import { PoolSummary } from './Pool.tsx';
 
 export interface Action {
   label: string;
@@ -23,88 +19,26 @@ export interface Action {
   kbd?: string;
 }
 
-export interface DecisionModel {
-  kicker: string;
-  title: string;
-  sub?: string;
-  status?: string | null;
-  primary?: Action;
-  secondary?: Action;
-  waiting?: boolean;
-}
-
-export function DecisionPanel({ m }: { m: DecisionModel }) {
-  return (
-    <section className={cx('decision', m.waiting && 'is-waiting')} aria-live="polite">
-      <div className="ribbon">
-        <span>{m.waiting ? 'Opponent' : 'Decision'}</span>
-      </div>
-      <div className="decision-body">
-        <div className="fx-label decision-kicker">{m.kicker}</div>
-        <h2 className="decision-title">{m.title}</h2>
-        {m.sub && <p className="decision-sub">{m.sub}</p>}
-        {m.status && (
-          <p className="decision-status">
-            <span className="dot" /> {m.status}
-          </p>
-        )}
-        {(m.primary || m.secondary) && (
-          <div className="decision-btns">
-            {m.primary && (
-              <button className="btn-gold" onClick={m.primary.onClick} disabled={m.primary.disabled}>
-                {m.primary.label}
-                {m.primary.kbd && <kbd>{m.primary.kbd}</kbd>}
-              </button>
-            )}
-            {m.secondary && (
-              <button className="btn-line" onClick={m.secondary.onClick} disabled={m.secondary.disabled}>
-                {m.secondary.label}
-                {m.secondary.kbd && <kbd>{m.secondary.kbd}</kbd>}
-              </button>
-            )}
-          </div>
-        )}
-        {m.waiting && (
-          <p className="decision-wait">
-            <span className="wwait-dot" /> The AI is thinking…
-          </p>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/** Phone: the action at the bottom, under the thumb. */
-export function Dock({ m, pool, onPool, extra }: { m: DecisionModel; pool: number; onPool: () => void; extra?: ReactNode }) {
+/** Phone: the action under the thumb. */
+export function Dock({ primary, secondary, status, waiting, pool, onPool }: { primary?: Action; secondary?: Action; status?: ReactNode; waiting?: string | null; pool: number; onPool: () => void }) {
   return (
     <div className="dock">
-      <div className="dock-line">
-        <span className="dock-title">
-          {m.status ? (
-            <>
-              <span className="dot" /> {m.status}
-            </>
-          ) : (
-            m.title
-          )}
-        </span>
-        {extra}
-      </div>
+      {status && <div className="dock-line">{status}</div>}
       <div className="dock-row">
-        {m.waiting ? (
+        {waiting ? (
           <div className="dock-wait">
-            <span className="wwait-dot" /> The AI is deciding…
+            <span className="wwait-dot" /> {waiting}
           </div>
         ) : (
           <>
-            {m.primary && (
-              <button className="btn-gold dock-main" onClick={m.primary.onClick} disabled={m.primary.disabled}>
-                {m.primary.label}
+            {primary && (
+              <button className="btn-gold dock-main" onClick={primary.onClick} disabled={primary.disabled}>
+                {primary.label}
               </button>
             )}
-            {m.secondary && (
-              <button className="btn-line dock-second" onClick={m.secondary.onClick} disabled={m.secondary.disabled}>
-                {m.secondary.label}
+            {secondary && (
+              <button className="btn-line dock-second" onClick={secondary.onClick} disabled={secondary.disabled}>
+                {secondary.label}
               </button>
             )}
           </>
@@ -128,105 +62,121 @@ export function AiBanner({ e }: { e: DraftEvent | null }) {
   );
 }
 
-export function OppPanel({
-  d,
-  ctx,
-  known,
-  onInfo,
-  onOpen,
-  compact,
-}: {
-  d: Draft;
-  ctx: CubeContext;
-  known: string[];
-  onInfo: (n: string) => void;
-  onOpen: () => void;
-  compact?: boolean;
-}) {
-  const total = d.picks.ai.length;
-  const unseen = total - known.length;
-  const feed = d.log.filter((e) => e.who === 'ai' && (d.format === 'grid' || e.kind !== 'pass')).slice(-4).reverse();
-  if (compact) {
-    return (
-      <button className="opp-strip" onClick={onOpen} aria-label={`The AI: ${total} cards, ${known.length} known`}>
-        <span className="avatar is-bot sm">
-          <span>AI</span>
-        </span>
-        <span className="opp-strip-name">Forge AI</span>
-        <span className="opp-strip-stat">
-          <b>{total}</b> cards
-        </span>
-        {d.format === 'winston' && (
-          <span className="opp-strip-stat">
-            <b>{known.length}</b> known
-          </span>
-        )}
-      </button>
-    );
-  }
+export interface Seat {
+  id: string;
+  label: string;
+  bot?: boolean;
+  active?: boolean;
+  onClick?: () => void;
+}
+
+export function SeatChips({ seats }: { seats: Seat[] }) {
   return (
-    <section className="opp">
-      <div className="opp-head">
-        <span className="avatar is-bot">
-          <span>AI</span>
-        </span>
-        <div>
-          <div className="fx-label">Opponent · Bot</div>
-          <div className="opp-name">Forge AI</div>
-        </div>
-        <div className="opp-count">
-          <b>{total}</b>
-          <span className="fx-label">cards</span>
-        </div>
-      </div>
-      {d.format === 'winston' && (
-        <div className="opp-known">
-          <BackStack n={unseen} className="sm" />
-          <p className="small">
-            You’ve seen <b>{known.length}</b> of its {total} cards. The rest it took blind or from piles you never looked at.
-          </p>
-        </div>
-      )}
-      {feed.length > 0 && (
-        <ul className="opp-feed">
-          {feed.map((e) => (
-            <li key={e.n}>{describeEvent(e)}</li>
-          ))}
-        </ul>
-      )}
-      <PoolSummary pool={known} ctx={ctx} onOpen={onOpen} onInfo={onInfo} title={d.format === 'grid' ? 'Its picks' : 'Known cards'} />
-    </section>
+    <div className="seats">
+      {seats.map((s) => {
+        const Tag = s.onClick ? 'button' : 'span';
+        return (
+          <Tag key={s.id} className={cx('seat-chip', s.active && 'is-active', s.bot && 'is-bot')} onClick={s.onClick}>
+            {s.bot && (
+              <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+                <rect x="2.5" y="4.5" width="11" height="8" rx="2" fill="none" stroke="currentColor" />
+                <path d="M8 2v2.5M6 8h.01M10 8h.01" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6" />
+              </svg>
+            )}
+            {s.label}
+          </Tag>
+        );
+      })}
+    </div>
   );
 }
 
-export function PickHelp({ title, lines, onCoach }: { title: string | null; lines: string[]; onCoach: () => void }) {
+export interface MenuItem {
+  label: string;
+  onClick: () => void;
+  hint?: string;
+  checked?: boolean;
+  danger?: boolean;
+  disabled?: boolean;
+}
+
+export function Kebab({ items, label = 'More' }: { items: MenuItem[]; label?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const off = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('pointerdown', off);
+    window.addEventListener('keydown', key);
+    return () => {
+      window.removeEventListener('pointerdown', off);
+      window.removeEventListener('keydown', key);
+    };
+  }, [open]);
   return (
-    <section className="phelp">
-      <div className="phelp-h">
-        <span className="fx-label">
-          <IconSpark size={12} /> Pick help
-        </span>
-        <button className="pill is-gold" onClick={onCoach}>
-          Ask the coach
-        </button>
-      </div>
-      {title ? (
-        <>
-          <p className="phelp-call">{title}</p>
-          {lines.length > 0 && (
-            <details className="phelp-why">
-              <summary>Why</summary>
-              <ul>
-                {lines.map((l, i) => (
-                  <li key={i}>{l}</li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </>
-      ) : (
-        <p className="quiet-italic">Turn on hints for the pick helper’s call.</p>
+    <div className="kebab" ref={ref}>
+      <button className="kebab-btn" aria-label={label} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>
+        <IconMore size={18} />
+      </button>
+      {open && (
+        <div className="kebab-menu" role="menu">
+          {items.map((it) => (
+            <button
+              key={it.label}
+              role={it.checked !== undefined ? 'menuitemcheckbox' : 'menuitem'}
+              aria-checked={it.checked}
+              className={cx('kebab-item', it.danger && 'is-danger')}
+              disabled={it.disabled}
+              onClick={() => {
+                setOpen(false);
+                it.onClick();
+              }}
+            >
+              <span>{it.label}</span>
+              {it.checked !== undefined ? <span className={cx('kebab-check', it.checked && 'is-on')}>{it.checked ? 'On' : 'Off'}</span> : it.hint ? <kbd>{it.hint}</kbd> : null}
+            </button>
+          ))}
+        </div>
       )}
-    </section>
+    </div>
+  );
+}
+
+/** Seconds left on the pick timer; calls `onExpire` once at zero. `key` resets it. */
+export function useCountdown(seconds: number, running: boolean, resetKey: string, onExpire: () => void): number | null {
+  const [left, setLeft] = useState(seconds);
+  const cb = useRef(onExpire);
+  cb.current = onExpire;
+  useEffect(() => setLeft(seconds), [resetKey, seconds]);
+  useEffect(() => {
+    if (!running || seconds <= 0) return;
+    const t = setInterval(() => {
+      setLeft((l) => {
+        if (l <= 1) {
+          clearInterval(t);
+          setTimeout(() => cb.current(), 0);
+          return 0;
+        }
+        return l - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [running, seconds, resetKey]);
+  return seconds > 0 ? left : null;
+}
+
+export function Timer({ left, total }: { left: number; total: number }) {
+  const p = total > 0 ? left / total : 0;
+  return (
+    <span className={cx('ptimer', left <= 10 && 'is-low')} aria-label={`${left} seconds left`}>
+      <svg viewBox="0 0 36 36" width="36" height="36" aria-hidden="true">
+        <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" strokeOpacity="0.18" strokeWidth="2.5" />
+        <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray={`${p * 97.4} 97.4`} transform="rotate(-90 18 18)" strokeLinecap="round" />
+      </svg>
+      <b>{left}</b>
+    </span>
   );
 }

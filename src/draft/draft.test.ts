@@ -8,6 +8,10 @@ import { DEFAULT_WEIGHTS as W } from './weights.ts';
 import {
   aiAction,
   aiStep,
+  boosterPackSize,
+  botPick,
+  progress,
+  type BoosterDraft,
   apply,
   canPass,
   isLegal,
@@ -189,5 +193,52 @@ describe('winston', () => {
       const later = wd.piles.slice(wd.look + 1).every((p) => p.length === 0);
       expect(canPass(wd)).toBe(!later);
     }
+  });
+});
+
+describe('booster', () => {
+  it('sizes packs to the cube: 15 for 2 or 4 seats, fewer for 6 or 8', () => {
+    expect(boosterPackSize(2, 180)).toBe(15);
+    expect(boosterPackSize(4, 180)).toBe(15);
+    expect(boosterPackSize(6, 180)).toBe(10);
+    expect(boosterPackSize(8, 180)).toBe(7);
+  });
+
+  it('two seats: you and the AI pick at once and the pack goes back and forth', () => {
+    const b0 = newDraft({ cubeId: 'synergy', format: 'booster', cube: names, seed: 4, youFirst: true, seats: 2, now: 1 }) as BoosterDraft;
+    expect(b0.table.map((p) => p.length)).toEqual([15, 15]);
+    expect(toAct(b0)).toBe('you');
+    expect(() => apply(b0, { kind: 'pick', card: b0.table[0]![0]! })).toThrow(/card data/);
+    const first = b0.table[0]![0]!;
+    const b1 = apply(b0, { kind: 'pick', card: first }, 2, cards) as BoosterDraft;
+    expect(b1.picks.you).toEqual([first]);
+    expect(b1.picks.ai).toHaveLength(1);
+    expect(b1.table.map((p) => p.length)).toEqual([14, 14]);
+    // The pack you hold now is the AI's first pack, minus its pick (which you never saw).
+    expect(knownAiCards(b1)).toEqual([]);
+    const b2 = apply(b1, { kind: 'pick', card: b1.table[0]![0]! }, 3, cards) as BoosterDraft;
+    // Its second pick came from the pack you passed: you saw it.
+    expect(knownAiCards(b2)).toHaveLength(1);
+    expect(b0.table[0]).toContain(knownAiCards(b2)[0]);
+  });
+
+  it('runs three packs to 45 cards each, every dealt card once', () => {
+    for (const seats of [2, 4, 8]) {
+      const d0 = newDraft({ cubeId: 'synergy', format: 'booster', cube: names, seed: 9, youFirst: true, seats, now: 1 }) as BoosterDraft;
+      const end = selfPlay(d0, cards) as BoosterDraft;
+      expect(end.done).toBe(true);
+      const per = 3 * end.packSize;
+      expect(end.picks.you).toHaveLength(per);
+      expect(end.picks.ai).toHaveLength(per);
+      for (const b of end.bots) expect(b).toHaveLength(per);
+      const all = [...end.picks.you, ...end.picks.ai, ...end.bots.flat()];
+      expect(new Set(all)).toEqual(new Set(end.dealt));
+      expect(progress(end).label).toBe('Draft complete');
+    }
+  });
+
+  it('the bot takes its best-scoring card', () => {
+    const pack = ['Lightning Bolt', 'Opt', 'Plains'].filter((n) => cards.has(n));
+    expect(botPick(pack, [], 45, cards)).toBe('Lightning Bolt');
   });
 });

@@ -22,6 +22,13 @@
  * the last non-empty pile looked at must be taken (and if every pile was
  * passed once the stack ran out mid-turn, the biggest is taken).
  *
+ * BOOSTER: three packs of 15 per seat from the shuffled cube (smaller packs
+ * when the cube can't fill them for 6 or 8 seats); everyone takes one card
+ * at once and passes the rest, left for packs 1 and 3, right for pack 2. You
+ * sit at seat 0, the AI you will play at seat 1, and any extra seats are more
+ * of the same AI. The lab has no booster mode; its pick scorer works per pick,
+ * so each bot takes the card it scores highest.
+ *
  * State is plain JSON (card names, not objects) so it can live in
  * localStorage. It holds everything, the AI's picks included; what the PLAYER
  * may see is the page's job: `knownAiCards` is the hidden-information rule.
@@ -32,10 +39,18 @@ import { scoreCard, setValue, type DrafterState } from './pick.ts';
 import { DEFAULT_WEIGHTS, type Weights } from './weights.ts';
 
 export type Side = 'you' | 'ai';
-export type Format = 'grid' | 'winston';
+export type Format = 'grid' | 'winston' | 'booster';
 
 export const GRID_ROUNDS = 18;
 export const WINSTON_CARDS = 90;
+export const BOOSTER_PACKS = 3;
+export const BOOSTER_SIZE = 15;
+export const SEAT_OPTIONS = [2, 4, 6, 8] as const;
+
+/** Cards per pack for `seats` drafters from a cube of `cubeSize` (15, or fewer when the cube runs short). */
+export function boosterPackSize(seats: number, cubeSize: number, packs = BOOSTER_PACKS, size = BOOSTER_SIZE): number {
+  return Math.max(1, Math.min(size, Math.floor(cubeSize / (seats * packs))));
+}
 
 /** Rows 0-2, columns 3-5 (the lab's numbering); src/cube/pick.ts GRID_LINES uses the same order. */
 export const LINES: number[][] = [
@@ -52,8 +67,8 @@ export interface DraftEvent {
   /** 1-based, over the whole draft. */
   n: number;
   who: Side;
-  kind: 'line' | 'take' | 'pass' | 'blind' | 'forced';
-  /** Grid: which grid (1-based). Winston: which pile (1-3), 0 for the blind card. */
+  kind: 'line' | 'take' | 'pass' | 'blind' | 'forced' | 'pick';
+  /** Grid: which grid (1-based). Winston: which pile (1-3), 0 for the blind card. Booster: the pick number (1-based, whole draft). */
   at: number;
   /** Grid: the line taken (0-5). */
   line?: number;
@@ -105,9 +120,23 @@ export interface WinstonDraft extends Base {
   aiBlind: number | null;
 }
 
-export type Draft = GridDraft | WinstonDraft;
+export interface BoosterDraft extends Base {
+  format: 'booster';
+  seats: number;
+  packs: number;
+  packSize: number;
+  /** The pack being drafted (0-based) and the pick within it (0-based). */
+  round: number;
+  pick: number;
+  /** The pack in front of each seat (seat 0 is you, seat 1 the AI). */
+  table: string[][];
+  /** Picks of seats 2 and up (more bots); seats 0 and 1 are `picks.you` / `picks.ai`. */
+  bots: string[][];
+}
 
-export type DraftAction = { kind: 'line'; line: number } | { kind: 'take' } | { kind: 'pass' };
+export type Draft = GridDraft | WinstonDraft | BoosterDraft;
+
+export type DraftAction = { kind: 'line'; line: number } | { kind: 'take' } | { kind: 'pass' } | { kind: 'pick'; card: string };
 
 export interface NewDraft {
   cubeId: string;
@@ -118,6 +147,8 @@ export interface NewDraft {
   youFirst: boolean;
   /** Grid rounds (18) or Winston stack size (90). */
   size?: number;
+  /** Booster: drafters at the table (2, 4, 6 or 8). */
+  seats?: number;
   now?: number;
 }
 
@@ -141,6 +172,14 @@ export function newDraft(o: NewDraft): Draft {
     startedAt: now,
     updatedAt: now,
   };
+  if (o.format === 'booster') {
+    const seats = Math.max(2, Math.min(8, o.seats ?? 2));
+    const packSize = boosterPackSize(seats, deck.length);
+    const dealt = deck.slice(0, seats * BOOSTER_PACKS * packSize);
+    const d: BoosterDraft = { ...base, format: 'booster', dealt, seats, packs: BOOSTER_PACKS, packSize, round: 0, pick: 0, table: [], bots: Array.from({ length: seats - 2 }, () => []) };
+    d.table = dealRound(d, 0);
+    return d;
+  }
   if (o.format === 'grid') {
     const grids = Math.min(o.size ?? GRID_ROUNDS, Math.floor(deck.length / 9));
     const dealt = deck.slice(0, grids * 9);
@@ -164,9 +203,19 @@ export function gridFirst(d: GridDraft): Side {
   return (d.g % 2 === 0) === d.youFirst ? 'you' : 'ai';
 }
 
-/** Who decides next (null when the draft is over). */
+function dealRound(d: BoosterDraft, round: number): string[][] {
+  const per = d.packSize;
+  const start = round * d.seats * per;
+  return Array.from({ length: d.seats }, (_, s) => d.dealt.slice(start + s * per, start + (s + 1) * per));
+}
+
+/** Booster: the pack in front of you. */
+export const yourPack = (d: BoosterDraft): string[] => d.table[0] ?? [];
+
+/** Who decides next (null when the draft is over). Booster: always you (the bots pick with you). */
 export function toAct(d: Draft): Side | null {
   if (d.done) return null;
+  if (d.format === 'booster') return 'you';
   if (d.format === 'grid') return d.firstLine === null ? gridFirst(d) : other(gridFirst(d));
   return d.turn;
 }
@@ -192,6 +241,7 @@ export function canPass(d: WinstonDraft): boolean {
 export function isLegal(d: Draft, a: DraftAction): boolean {
   if (d.done) return false;
   if (d.format === 'grid') return a.kind === 'line' && legalLines(d).includes(a.line);
+  if (d.format === 'booster') return a.kind === 'pick' && yourPack(d).includes(a.card);
   if (a.kind === 'take') return (d.piles[d.look]?.length ?? 0) > 0;
   if (a.kind === 'pass') return canPass(d);
   return false;
@@ -213,8 +263,13 @@ function push(d: Draft, e: Omit<DraftEvent, 'n'>) {
   d.log.push({ n: d.log.length + 1, ...e });
 }
 
-/** The draft after `a` by whoever is to act. Throws on an illegal action. */
-export function apply(d0: Draft, a: DraftAction, now = Date.now()): Draft {
+/**
+ * The draft after `a` by whoever is to act. Throws on an illegal action.
+ * Booster needs `botCards` (the AI's view of the cube): the bots pick with you.
+ */
+export function apply(d0: Draft, a: DraftAction, now = Date.now(), botCards?: Map<string, LabCard>, w: Weights = DEFAULT_WEIGHTS): Draft {
+  if (d0.format === 'booster' && !botCards) throw new Error('a booster pick needs the AI’s card data');
+  bw = w;
   if (!isLegal(d0, a)) throw new Error(`illegal ${a.kind}${a.kind === 'line' ? ` ${a.line}` : ''} in this ${d0.format} draft`);
   const d = clone(d0);
   d.updatedAt = now;
@@ -236,6 +291,7 @@ export function apply(d0: Draft, a: DraftAction, now = Date.now()): Draft {
     }
     return d;
   }
+  if (d.format === 'booster' && a.kind === 'pick') return boosterPick(d, a.card, botCards);
   if (d.format !== 'winston') return d;
   const i = d.look;
   const pile = d.piles[i] as string[];
@@ -265,6 +321,65 @@ export function apply(d0: Draft, a: DraftAction, now = Date.now()): Draft {
     if ((d.piles[bi]?.length ?? 0) > 0) takePile(d, who, bi, 'forced');
   }
   return endTurn(d);
+}
+
+let bw: Weights = DEFAULT_WEIGHTS;
+
+/** The card a bot takes from `pack`: the one the lab's scorer rates highest for its picks. */
+export function botPick(pack: string[], picks: string[], expected: number, cards: Map<string, LabCard>, w: Weights = DEFAULT_WEIGHTS): string {
+  const st: DrafterState = { picks: picks.map((n) => cards.get(n)).filter((c): c is LabCard => !!c), expected };
+  let best = pack[0] as string;
+  let bv = -Infinity;
+  for (const n of pack) {
+    const c = cards.get(n);
+    const v = c ? scoreCard(c, st, w).total : -Infinity;
+    if (v > bv || (v === bv && n < best)) {
+      bv = v;
+      best = n;
+    }
+  }
+  return best;
+}
+
+function boosterPick(d: BoosterDraft, card: string, cards: Map<string, LabCard> | undefined): BoosterDraft {
+  const n = d.round * d.packSize + d.pick + 1;
+  const expected = d.packs * d.packSize;
+  const pack0 = d.table[0] as string[];
+  addSeen(d, 'you', pack0);
+  const youSaw = new Set(d.seen.you);
+  // Everyone picks at once.
+  for (let s = 0; s < d.seats; s++) {
+    const pack = d.table[s] as string[];
+    if (!pack.length) continue;
+    let c: string;
+    if (s === 0) c = card;
+    else {
+      const picks = s === 1 ? d.picks.ai : (d.bots[s - 2] as string[]);
+      c = botPick(pack, picks, expected, cards as Map<string, LabCard>, bw);
+      if (s === 1) addSeen(d, 'ai', pack);
+    }
+    pack.splice(pack.indexOf(c), 1);
+    if (s === 0) {
+      d.picks.you.push(c);
+      push(d, { who: 'you', kind: 'pick', at: n, cards: [c] });
+    } else if (s === 1) {
+      d.picks.ai.push(c);
+      push(d, { who: 'ai', kind: 'pick', at: n, cards: [c], known: youSaw.has(c) ? [c] : [] });
+    } else (d.bots[s - 2] as string[]).push(c);
+  }
+  // Pass: left (to the next seat) in packs 1 and 3, right in pack 2.
+  const left = d.round % 2 === 0;
+  const next: string[][] = Array.from({ length: d.seats }, () => []);
+  for (let s = 0; s < d.seats; s++) next[left ? (s + 1) % d.seats : (s - 1 + d.seats) % d.seats] = d.table[s] as string[];
+  d.table = next;
+  d.pick++;
+  if (d.table.every((p) => p.length === 0)) {
+    d.round++;
+    d.pick = 0;
+    if (d.round >= d.packs) d.done = true;
+    else d.table = dealRound(d, d.round);
+  }
+  return d;
 }
 
 function takePile(d: WinstonDraft, who: Side, i: number, kind: 'take' | 'forced') {
@@ -308,6 +423,7 @@ function settleWinston(d: WinstonDraft): WinstonDraft {
 // The AI
 
 export function expectedPicks(d: Draft): number {
+  if (d.format === 'booster') return d.packs * d.packSize;
   return d.format === 'grid' ? d.grids * 2.5 : d.dealt.length / 2;
 }
 
@@ -350,6 +466,7 @@ export function aiAction(d: Draft, cards: Map<string, LabCard>, w: Weights = DEF
     }
     return { kind: 'line', line: best };
   }
+  if (d.format === 'booster') return { kind: 'pick', card: botPick(yourPack(d), d.picks.you, expectedPicks(d), cards, w) };
   if (!canPass(d)) return { kind: 'take' };
   const blind = d.aiBlind ?? blindExpectation(d, who, cards, w);
   const margin = [w.winstonMargin1, w.winstonMargin2, w.winstonMargin3][d.look] ?? 0;
@@ -364,7 +481,7 @@ export function aiAction(d: Draft, cards: Map<string, LabCard>, w: Weights = DEF
 export function aiStep(d: Draft, cards: Map<string, LabCard>, w: Weights = DEFAULT_WEIGHTS, now = Date.now()): Draft {
   let cur = d;
   if (cur.format === 'winston' && cur.aiBlind === null) cur = { ...cur, aiBlind: blindExpectation(cur, cur.turn, cards, w) };
-  const next = apply(cur, aiAction(cur, cards, w), now);
+  const next = apply(cur, aiAction(cur, cards, w), now, cards, w);
   return next;
 }
 
@@ -381,7 +498,10 @@ export function selfPlay(d: Draft, cards: Map<string, LabCard>, w: Weights = DEF
 // ---------------------------------------------------------------------------
 // What the player may know
 
-/** The AI's cards the player knows about: every Grid pick (public), Winston takes only as far as the player saw them. */
+/**
+ * The AI's cards the player knows about: every Grid pick (public); Winston
+ * takes and Booster picks only as far as the player had seen the card.
+ */
 export function knownAiCards(d: Draft): string[] {
   if (d.format === 'grid') return [...d.picks.ai];
   const out: string[] = [];
@@ -392,8 +512,13 @@ export function knownAiCards(d: Draft): string[] {
 /** How many cards the AI holds (always public: you watch it take piles). */
 export const aiCount = (d: Draft) => d.picks.ai.length;
 
-/** Progress for headers: grid "Grid 4 of 18"; Winston cards left in the stack. */
+/** Progress for headers: "Grid 4 of 18", "Pack 1 · Pick 3", or the cards left in the Winston stack. */
 export function progress(d: Draft): { step: number; of: number; label: string } {
+  if (d.format === 'booster') {
+    const of = d.packs * d.packSize;
+    const step = Math.min(of, d.round * d.packSize + d.pick + 1);
+    return { step, of, label: d.done ? 'Draft complete' : `Pack ${d.round + 1} · Pick ${d.pick + 1}` };
+  }
   if (d.format === 'grid') {
     const step = Math.min(d.grids, d.g + 1);
     return { step, of: d.grids, label: `Grid ${step} of ${d.grids}` };
@@ -418,6 +543,8 @@ export function describeEvent(e: DraftEvent): string {
   switch (e.kind) {
     case 'line':
       return `${who} took the ${lineName(e.line ?? 0)} (${cards})`;
+    case 'pick':
+      return e.who === 'you' ? `You picked ${e.cards[0] ?? ''}` : e.known?.length ? `AI picked ${e.known[0]}` : 'AI picked a card you haven’t seen';
     case 'pass':
       return `${who} passed pile ${e.at}`;
     case 'blind':

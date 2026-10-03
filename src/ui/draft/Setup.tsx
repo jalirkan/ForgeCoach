@@ -3,32 +3,36 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The two set-up screens of a draft against the AI, after the board game's
- * match setup: options as small labelled segmented toggles on the left, the
- * two seats facing each other with an italic "vs", and one big gold button.
+ * table set-up: a gold kicker over an italic serif title, a GAME panel and a
+ * RULES panel of small labelled toggles on the left, the seats on the right,
+ * a muted red way out and one big gold button.
  *
- *   DraftSetup — choose the cube, Grid or Winston, who opens, hints.
+ *   DraftSetup — variant (Booster, Winston, Grid), the cube, players and bot
+ *                seats (Booster), who opens, the pick timer, hints.
  *   MatchSetup — after the build: your deck vs the AI's (name and count only:
  *                its list stays hidden), the cards the AI can't pilot well,
- *                the AI profile, Bo1/Bo3, and Begin, which asks mtg-table's
- *                match launcher to deal the match.
+ *                AI profile, Bo1/Bo3, and Begin, which asks mtg-table's match
+ *                launcher to deal the match.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';
-import { colourLabel } from '../../cube/colors.ts';
-import type { DeckBuild } from '../../cube/builder.ts';
 import type { CubeMeta } from '../../cube/meta.ts';
 import { aiFlagsFromDoc, noFlags, withMetaFlags, type AiFlags } from '../../draft/aiFlags.ts';
-import { progress, type Draft, type Format } from '../../draft/draft.ts';
-import { AI_PROFILES, deckSize, launchMatch, matchDeck, matchSupported, type AiProfile } from '../../draft/launch.ts';
+import { deckCount, mainNames, toMatchDeck, type DeckState } from '../../draft/deck.ts';
+import { boosterPackSize, BOOSTER_PACKS, progress, SEAT_OPTIONS, type Draft, type Format } from '../../draft/draft.ts';
+import { AI_PROFILES, deckSize, launchMatch, matchSupported, type AiProfile } from '../../draft/launch.ts';
 import type { DraftAfter } from '../../draft/store.ts';
+import { colourLabel, wubrg } from '../../cube/colors.ts';
 import { prefetchCards, useCardInfo } from '../cardData.ts';
-import { IconChevronLeft } from '../Icons.tsx';
+import { IconChevronLeft, IconChevronRight } from '../Icons.tsx';
 import { PipRow } from '../Mana.tsx';
+import { Sheet } from '../Sheet.tsx';
 import { cx } from '../util.ts';
+import type { StartOptions } from './useDraftGame.ts';
 
 const BASE = import.meta.env.BASE_URL;
 
-/** A signature card per cube, for the tile's art. */
+/** A signature card per cube, for its art. */
 export const CUBE_ART: Record<string, string> = {
   synergy: 'Mayhem Devil',
   'modern-era': 'Snapcaster Mage',
@@ -36,7 +40,7 @@ export const CUBE_ART: Record<string, string> = {
   pauper: 'Ninja of the Deep Hours',
 };
 
-function Seg<T extends string | number | boolean>({ value, options, onChange, label }: { value: T; options: Array<[T, string]>; onChange: (v: T) => void; label: string }) {
+export function Seg<T extends string | number | boolean>({ value, options, onChange, label }: { value: T; options: Array<[T, string]>; onChange: (v: T) => void; label: string }) {
   return (
     <div className="seg2" role="radiogroup" aria-label={label}>
       {options.map(([v, l]) => (
@@ -57,18 +61,31 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-function CubeArt({ cube }: { cube: CubeInfo }) {
+export function CubeArt({ cube, className }: { cube: CubeInfo; className?: string }) {
   const info = useCardInfo(CUBE_ART[cube.id]);
   const art = info?.image?.artCrop ?? info?.faces?.[0]?.image?.artCrop;
   return (
-    <span className={cx('ctile-art', `art-${cube.accent}`)} aria-hidden="true">
+    <span className={cx('cube-art2', className)} aria-hidden="true">
       {art && <img src={art} alt="" loading="lazy" draggable={false} />}
-      <span className="ctile-pips">
+      <span className="cube-art2-pips">
         <PipRow colors={[...cube.accent]} />
       </span>
     </span>
   );
 }
+
+const VARIANTS: Array<[Format, string, string]> = [
+  ['booster', 'Booster', 'Open packs, pick a card, pass the rest.'],
+  ['winston', 'Winston', 'Three face-down piles. Take a pile or pass it on.'],
+  ['grid', 'Grid', 'Nine cards face up. Take a row or a column.'],
+];
+
+const TIMERS: Array<[number, string]> = [
+  [0, 'Off'],
+  [45, '45 s'],
+  [75, '75 s'],
+  [120, '120 s'],
+];
 
 export function DraftSetup({
   resume,
@@ -82,47 +99,69 @@ export function DraftSetup({
   resume: Draft | null;
   onResume: () => void;
   onAbandon: () => void;
-  onBegin: (o: { cubeId: string; format: Format; youFirst: boolean; hints: boolean }) => void;
+  onBegin: (o: StartOptions) => void;
   onExit: () => void;
   onPaper: () => void;
   hints: boolean;
 }) {
   const [cubeId, setCubeId] = useState(CUBES[0]?.id ?? 'synergy');
-  const [format, setFormat] = useState<Format>('winston');
+  const [format, setFormat] = useState<Format>('booster');
+  const [players, setPlayers] = useState(2);
   const [first, setFirst] = useState<'you' | 'ai' | 'toss'>('toss');
+  const [timer, setTimer] = useState(0);
   const [hintsOn, setHintsOn] = useState(hints);
+  const [title, setTitle] = useState('Practice draft');
+  const [advanced, setAdvanced] = useState(false);
+  const [picker, setPicker] = useState(false);
   useEffect(() => prefetchCards(Object.values(CUBE_ART)), []);
-  const begin = () => onBegin({ cubeId, format, youFirst: first === 'toss' ? Math.random() < 0.5 : first === 'you', hints: hintsOn });
+  const cube = cubeInfo(cubeId) ?? CUBES[0]!;
+  const seats = format === 'booster' ? players : 2;
+  const packSize = boosterPackSize(seats, 180);
+  const begin = () => onBegin({ cubeId, format, youFirst: first === 'toss' ? Math.random() < 0.5 : first === 'you', hints: hintsOn, seats, timer, title: title.trim() || 'Practice draft' });
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement) && !(e.target instanceof HTMLInputElement)) begin();
+      if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement) && !(e.target instanceof HTMLInputElement) && !document.querySelector('.sheet-backdrop')) begin();
     };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
   });
-  const cube = cubeInfo(cubeId);
+  const variant = VARIANTS.find(([v]) => v === format)!;
+  const shape =
+    format === 'booster'
+      ? `${BOOSTER_PACKS} packs · ${packSize} cards each · 1 card before passing`
+      : format === 'winston'
+        ? '90 cards · 3 piles · take a pile or pass'
+        : '18 grids of 9 · first pick alternates';
+
   return (
     <div className="fx setup">
       <header className="setup-top">
         <button className="link-back" onClick={onExit}>
-          <IconChevronLeft size={14} /> Home
+          <IconChevronLeft size={14} /> Back to the start
         </button>
-        <div className="fx-label setup-kicker">Draft vs AI</div>
+        <span />
         <button className="link-back is-right" onClick={onPaper}>
           Paper draft helper
         </button>
       </header>
-      <h1 className="setup-hero">
-        Draft a cube <em>against the AI.</em>
-      </h1>
-      <p className="setup-sub">Two seats, one cube. The cube lab’s drafter takes the other seat; then you both build forty and play it out.</p>
+      <div className="setup-head">
+        <div className="fx-label setup-kicker">
+          Draft · {seats}/{seats} seated
+        </div>
+        <label className="setup-title">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Table name" maxLength={48} />
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path d="M4 20h4L19 9l-4-4L4 16v4Zm11-15 4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+          </svg>
+        </label>
+      </div>
 
       {resume && !resume.done && (
         <div className="resume">
           <div>
             <div className="fx-label">Draft in progress</div>
             <div className="resume-t">
-              <i>{cubeInfo(resume.cubeId)?.title}</i> · {resume.format === 'grid' ? 'Grid' : 'Winston'} · {progress(resume).label} · {resume.picks.you.length} cards
+              <i>{cubeInfo(resume.cubeId)?.title}</i> · {resume.format === 'grid' ? 'Grid' : resume.format === 'winston' ? 'Winston' : 'Booster'} · {progress(resume).label} · {resume.picks.you.length} cards
             </div>
           </div>
           <div className="resume-btns">
@@ -137,97 +176,152 @@ export function DraftSetup({
       )}
 
       <div className="setup-grid">
-        <aside className="panel setup-opts">
-          <div className="fx-label panel-h">Draft</div>
-          <Field label="Format">
-            <div className="opt-tiles">
-              {(
-                [
-                  ['winston', 'Winston', '90 cards, three face-down piles. Take a pile or pass it on.'],
-                  ['grid', 'Grid', '18 grids of nine, face up. Take a row or a column.'],
-                ] as Array<[Format, string, string]>
-              ).map(([f, t, d]) => (
-                <button key={f} className={cx('opt-tile', format === f && 'is-on')} onClick={() => setFormat(f)} aria-pressed={format === f}>
-                  <span className="opt-t">{t}</span>
-                  <span className="opt-d">{d}</span>
-                </button>
-              ))}
+        <div className="setup-col">
+          <section className="panel">
+            <div className="fx-label panel-h">Game</div>
+            <div className="opt-tile is-on is-static">
+              <span className="opt-t">Draft</span>
+              <span className="opt-d">{variant[2]}</span>
             </div>
-          </Field>
-          <Field label="First pick">
-            <Seg
-              label="First pick"
-              value={first}
-              onChange={setFirst}
-              options={[
-                ['you', 'You'],
-                ['toss', 'Coin toss'],
-                ['ai', 'AI'],
-              ]}
-            />
-          </Field>
-          <Field label="Hints">
-            <Seg
-              label="Hints"
-              value={hintsOn}
-              onChange={setHintsOn}
-              options={[
-                [false, 'Off'],
-                [true, 'On'],
-              ]}
-            />
-          </Field>
-          <p className="quiet-italic small">Hints mark the pick helper’s choice with a soft glow. The coach is one tap away either way.</p>
-        </aside>
-
-        <section className="panel setup-cubes">
-          <div className="fx-label panel-h">The cube</div>
-          <div className="ctiles">
-            {CUBES.map((c) => (
-              <button key={c.id} className={cx('ctile', cubeId === c.id && 'is-on')} onClick={() => setCubeId(c.id)} aria-pressed={cubeId === c.id}>
-                <CubeArt cube={c} />
-                <span className="ctile-body">
-                  <span className="ctile-t">{c.title}</span>
-                  <span className="ctile-d">{c.blurb}</span>
-                  <span className="ctile-m">180 cards · lab data</span>
-                </span>
+            <Field label="Variant">
+              <Seg label="Variant" value={format} onChange={setFormat} options={VARIANTS.map(([v, l]) => [v, l] as [Format, string])} />
+            </Field>
+            <div className="src-tiles">
+              <button className="src-tile is-on" aria-pressed="true">
+                Cube
               </button>
-            ))}
-          </div>
-        </section>
+              <button className="src-tile" disabled title="Not yet: cubes only">
+                Official set
+              </button>
+              <button className="src-tile" disabled title="Not yet: cubes only">
+                Chaos
+              </button>
+            </div>
+            <button className="cube-pick" onClick={() => setPicker(true)}>
+              <span>
+                {cube.title} · 180 cards
+              </span>
+              <IconChevronRight size={16} />
+            </button>
+            <p className="setup-small">Packs and piles are built from this cube, with its lab data.</p>
+            <p className="setup-shape">{shape}</p>
+            <button className={cx('adv-toggle', advanced && 'is-open')} onClick={() => setAdvanced(!advanced)} aria-expanded={advanced}>
+              Advanced <span aria-hidden="true">⌄</span>
+            </button>
+            {advanced && (
+              <div className="adv">
+                {format !== 'booster' && (
+                  <Field label="First pick">
+                    <Seg
+                      label="First pick"
+                      value={first}
+                      onChange={setFirst}
+                      options={[
+                        ['you', 'You'],
+                        ['toss', 'Coin toss'],
+                        ['ai', 'AI'],
+                      ]}
+                    />
+                  </Field>
+                )}
+                <Field label="Hints">
+                  <Seg
+                    label="Hints"
+                    value={hintsOn}
+                    onChange={setHintsOn}
+                    options={[
+                      [false, 'Off'],
+                      [true, 'On'],
+                    ]}
+                  />
+                </Field>
+                <p className="setup-small">Hints give the pick helper’s choice a soft glow. The coach is in the pick screen’s menu either way.</p>
+              </div>
+            )}
+          </section>
+          <section className="panel">
+            <div className="fx-label panel-h">Rules</div>
+            <Field label="Players">
+              {format === 'booster' ? (
+                <Seg label="Players" value={players} onChange={setPlayers} options={SEAT_OPTIONS.map((n) => [n, String(n)] as [number, string])} />
+              ) : (
+                <div className="seg2 is-static">
+                  <button className="is-on" disabled>
+                    2
+                  </button>
+                </div>
+              )}
+            </Field>
+            <Field label="Pick timer">
+              <Seg label="Pick timer" value={timer} onChange={setTimer} options={TIMERS} />
+            </Field>
+          </section>
+        </div>
 
-        <aside className="panel setup-opp">
-          <div className="fx-label panel-h center">Opponent · Bot</div>
-          <span className="avatar is-bot lg">
-            <span>AI</span>
-          </span>
-          <div className="seat-name">Forge AI</div>
-          <p className="setup-oppd">
-            The cube lab’s drafter: it rates cards from the lab’s games, follows the cube’s themes, commits to two colours a third of the way in, and splashes only with fixing.
+        <div className="setup-seats">
+          <div className="seat-row">
+            <span className="avatar sm">
+              <span>Y</span>
+            </span>
+            <span className="seat-row-name">You</span>
+            <span className="tag-host">Host</span>
+            <span className="seat-dot" aria-label="Ready" />
+          </div>
+          {Array.from({ length: seats - 1 }, (_, i) => (
+            <div key={i} className="seat-row is-bot">
+              <span className="bot-glyph" aria-hidden="true">
+                <svg viewBox="0 0 16 16" width="15" height="15">
+                  <rect x="2.5" y="4.5" width="11" height="8" rx="2" fill="none" stroke="currentColor" />
+                  <path d="M8 2v2.5M6 8h.01M10 8h.01" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6" />
+                </svg>
+              </span>
+              <span className="seat-row-name">{i === 0 ? 'Forge AI' : `Bot ${i + 1}`}</span>
+              <span className="tag-plain">{i === 0 ? 'Your opponent' : 'Forge AI'}</span>
+              {i > 0 && (
+                <button className="seat-remove" onClick={() => setPlayers(Math.max(2, players - 2))}>
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+          <p className="setup-small">
+            {seats > 2 ? 'Every seat is the cube lab’s drafter. You play the match against Forge AI, the seat on your left.' : 'The cube lab’s drafter: lab ratings, the cube’s themes, two colours a third of the way in.'}
           </p>
-          <ul className="setup-facts">
-            <li>
-              <span className="fx-label">Cube</span> <i>{cube?.title}</i>
-            </li>
-            <li>
-              <span className="fx-label">Format</span> {format === 'grid' ? 'Grid · 18 rounds' : 'Winston · 90 cards'}
-            </li>
-            <li>
-              <span className="fx-label">Opens</span> {first === 'toss' ? 'coin toss' : first === 'you' ? 'you' : 'the AI'}
-            </li>
-          </ul>
-        </aside>
+          <p className="setup-line">Open packs, draft cards, build a 40-card deck.</p>
+          <footer className="setup-foot">
+            <button className="btn-close" onClick={onExit}>
+              Close table
+              <small>nothing is lost</small>
+            </button>
+            <button className="btn-begin" onClick={begin}>
+              Begin the draft <kbd>⏎</kbd>
+            </button>
+          </footer>
+        </div>
       </div>
 
-      <footer className="setup-foot">
-        <button className="btn-close" onClick={onExit}>
-          Leave
-          <small>back to the start page</small>
-        </button>
-        <button className="btn-begin" onClick={begin}>
-          Begin the draft <kbd>⏎</kbd>
-        </button>
-      </footer>
+      <Sheet open={picker} onClose={() => setPicker(false)} width={720} className="fx fx-sheet" title={<span className="serif-title">Choose a cube</span>}>
+        <div className="ctiles">
+          {CUBES.map((c) => (
+            <button
+              key={c.id}
+              className={cx('ctile', cubeId === c.id && 'is-on')}
+              onClick={() => {
+                setCubeId(c.id);
+                setPicker(false);
+              }}
+              aria-pressed={cubeId === c.id}
+            >
+              <CubeArt cube={c} className="ctile-art" />
+              <span className="ctile-body">
+                <span className="ctile-t">{c.title}</span>
+                <span className="ctile-d">{c.blurb}</span>
+                <span className="ctile-m">180 cards · lab data</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Sheet>
     </div>
   );
 }
@@ -253,20 +347,25 @@ function useAiFlags(cubeId: string, meta: CubeMeta | null, names: string[]): AiF
 
 export function MatchSetup({
   draft,
-  build,
+  deck,
+  deckColours,
   after,
   known,
   meta,
   cubeNames,
+  title,
   onBack,
   onAbandon,
 }: {
   draft: Draft;
-  build: DeckBuild | null;
+  deck: DeckState | null;
+  /** Your deck's colours (WUBRG letters), for the tile. */
+  deckColours: string;
   after: DraftAfter | undefined;
   known: string[];
   meta: CubeMeta | null;
   cubeNames: string[];
+  title: string;
   onBack: () => void;
   onAbandon: () => void;
 }) {
@@ -277,7 +376,8 @@ export function MatchSetup({
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const flags = useAiFlags(draft.cubeId, meta, cubeNames);
   const cube = cubeInfo(draft.cubeId);
-  const yours = useMemo(() => (build ? matchDeck(`My ${cube?.title ?? 'cube'} draft — ${build.name}`, build, draft.picks.you) : null), [build, draft, cube]);
+  const deckName = `${title} — ${deckColours ? colourLabel(wubrg(deckColours)) : 'my deck'}`;
+  const yours = useMemo(() => (deck ? toMatchDeck(deckName, deck) : null), [deck, deckName]);
   const ai = after?.aiDeck ?? null;
 
   useEffect(() => {
@@ -291,7 +391,7 @@ export function MatchSetup({
     };
   }, []);
 
-  // The AI's cards it can't pilot well: named only when you know it holds them.
+  // Cards the AI can't pilot well: named only when you know it holds them.
   const weak = useMemo(() => {
     const inDeck = new Set((ai?.main ?? []).map(([, n]) => n));
     const flagged = [...flags.all].filter((n) => inDeck.has(n));
@@ -300,10 +400,10 @@ export function MatchSetup({
   }, [ai, flags, known]);
   const weakTotal = weak.named.length + weak.unnamed;
 
-  const ready = !!yours && !!ai && deckSize(yours) === 40;
+  const ready = !!yours && !!ai && deckSize(yours) >= 40;
   const canBegin = ready && supported === true && !busy;
   const begin = async () => {
-    if (!yours || !ai) return;
+    if (!yours || !ai || !canBegin) return;
     setBusy(true);
     setMsg(null);
     const r = await launchMatch({ deck: yours, aiDeck: ai, aiProfile: profile, games });
@@ -311,18 +411,25 @@ export function MatchSetup({
     if (r.ok) {
       setMsg({ ok: true, text: r.detail ?? 'The engine is dealing your match. Taking your seat…' });
       setTimeout(() => {
-        location.href = `${location.pathname}?play=1`;
+        location.href = `${location.pathname}${location.search ? `${location.search}&` : '?'}play=1`;
       }, 1200);
     } else setMsg({ ok: false, text: r.message });
   };
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !(e.target instanceof HTMLButtonElement)) void begin();
+    };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  });
 
   const note = !ready
-    ? 'Finish your deck first: the builder needs a legal 40.'
+    ? 'Your deck needs at least 40 cards.'
     : supported === null
       ? 'Looking for the match launcher on this computer…'
       : supported
         ? `Best of ${games === 3 ? 'three' : 'one'} against the AI’s draft. Its list stays hidden, as at a real table.`
-        : 'The match launcher isn’t running yet: it comes with an mtg-table update (./scripts/play.sh). Your deck exports from the builder meanwhile.';
+        : 'The match launcher isn’t running yet: it comes with an mtg-table update (./scripts/play.sh). Begin unlocks when it answers.';
 
   return (
     <div className="fx setup match">
@@ -330,16 +437,22 @@ export function MatchSetup({
         <button className="link-back" onClick={onBack}>
           <IconChevronLeft size={14} /> Back to your deck
         </button>
-        <div className="fx-label setup-kicker">The match</div>
+        <div className="fx-label setup-kicker">Draft match</div>
         <span />
       </header>
 
-      <div className="setup-grid">
-        <aside className="panel setup-opts">
-          <div className="fx-label panel-h">Match</div>
-          <Field label="Games">
+      <div className="match-grid">
+        <section className="panel match-opts">
+          <div className="fx-label panel-h">Game</div>
+          <div className="opt-tile is-on is-static">
+            <span className="opt-t">Draft match</span>
+            <span className="opt-d">
+              {cube?.title} · {draft.format === 'grid' ? 'Grid' : draft.format === 'winston' ? 'Winston' : 'Booster'}
+            </span>
+          </div>
+          <Field label="Match">
             <Seg
-              label="Games"
+              label="Match"
               value={games}
               onChange={setGames}
               options={[
@@ -348,15 +461,7 @@ export function MatchSetup({
               ]}
             />
           </Field>
-          <Field label="Draft">
-            <div className="opt-tile is-static">
-              <span className="opt-t">{cube?.title}</span>
-              <span className="opt-d">
-                {draft.format === 'grid' ? 'Grid' : 'Winston'} · you {draft.picks.you.length} cards, the AI {draft.picks.ai.length}
-              </span>
-            </div>
-          </Field>
-        </aside>
+        </section>
 
         <section className="panel seat">
           <div className="fx-label panel-h center">You</div>
@@ -364,12 +469,11 @@ export function MatchSetup({
             <span>Y</span>
           </span>
           <div className="seat-name">You</div>
+          <span className="tag-host">Host</span>
           <div className={cx('deck-tile', yours && 'is-on')}>
             <div>
-              <div className="deck-tile-name">{build ? build.name : 'No deck yet'}</div>
-              <div className="deck-tile-meta">
-                {yours ? `${deckSize(yours)} cards · ${colourLabel(build?.colors ?? '')}${build?.splash ? ` + ${build.splash}` : ''}` : 'build it first'}
-              </div>
+              <div className="deck-tile-name">{deckName}</div>
+              <div className="deck-tile-meta">{deck ? `${deckCount(deck)} cards · cube draft` : 'build it first'}</div>
               <div className="fx-label deck-tile-k">{yours ? 'Deck selected' : ''}</div>
             </div>
             <button className="deck-tile-swap" onClick={onBack}>
@@ -422,15 +526,28 @@ export function MatchSetup({
       </div>
 
       <p className={cx('setup-note', msg && (msg.ok ? 'is-ok' : 'is-bad'))}>{msg?.text ?? note}</p>
-      <footer className="setup-foot">
+      <footer className="setup-foot match-foot">
         <button className="btn-close" onClick={onAbandon}>
           New draft
-          <small>this one stays in your pools</small>
+          <small>this pool stays in Draft &amp; build</small>
         </button>
         <button className="btn-begin" onClick={() => void begin()} disabled={!canBegin} title={supported ? undefined : 'Needs the match launcher (mtg-table)'}>
-          {busy ? 'Dealing…' : 'Begin the match'} <kbd>⏎</kbd>
+          {busy ? 'Dealing…' : 'Begin the duel'} <kbd>⏎</kbd>
         </button>
       </footer>
     </div>
   );
+}
+
+/** Your deck's main colours, from its spells. */
+export function deckColoursOf(deck: DeckState | null, colorsOf: (n: string) => string): string {
+  if (!deck) return '';
+  const counts: Record<string, number> = {};
+  for (const n of mainNames(deck)) for (const c of colorsOf(n)) counts[c] = (counts[c] ?? 0) + 1;
+  return Object.entries(counts)
+    .filter(([, v]) => v >= 3)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([c]) => c)
+    .join('');
 }

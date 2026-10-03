@@ -2,46 +2,95 @@
  * ForgeCoach — draft/poolView.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * A drafted pool laid out for the eye: columns by mana value (lands last) or
- * by colour, each sorted by colour then mana value then name, with duplicates
- * stacked as one entry and a count. Also the curve, the colour pip counts and
- * the one-line type summary ("9 creatures · 4 instants · 2 lands").
+ * A collection of cards laid out for the eye (a pool, a deck, a cube): groups
+ * by mana value (lands last), type, colour, rarity or none; each group sorted
+ * by colour, then mana value, then name; duplicates stacked as one entry with
+ * a count. Also the curve, colour counts and the one-line type summary
+ * ("9 creatures · 4 instants · 2 lands"). Pure: what a card is comes from a
+ * lookup the caller provides (cube facts, Scryfall data).
  */
 import { BASIC_NAMES } from '../cube/colors.ts';
 import type { CubeContext } from '../cube/score.ts';
 
-export type PoolSort = 'curve' | 'colour' | 'picks';
+export type GroupBy = 'cmc' | 'type' | 'color' | 'rarity' | 'none';
+export type Layout = 'stacks' | 'gallery' | 'list';
 
-export interface PoolEntry {
+export interface CardMeta {
+  mv: number;
+  /** WUBRG letters; '' for colourless and lands. */
+  colors: string;
+  land: boolean;
+  typeLine: string;
+  rarity?: string;
+}
+
+export type MetaOf = (name: string) => CardMeta;
+
+/** What a card is, from the cube's facts (and Scryfall's rarity when known). */
+export function metaFromCube(ctx: CubeContext, rarityOf?: (name: string) => string | undefined): MetaOf {
+  return (name) => {
+    const f = ctx.facts.get(name);
+    const basic = BASIC_NAMES.has(name);
+    return {
+      mv: f?.mv ?? 0,
+      colors: f?.colors ?? ctx.byName.get(name)?.colorHint ?? '',
+      land: basic || (f?.land ?? ctx.byName.get(name)?.land ?? false),
+      typeLine: f?.typeLine || (basic ? 'Basic Land' : f?.land ? 'Land' : ''),
+      rarity: basic ? 'basic' : rarityOf?.(name),
+    };
+  };
+}
+
+export interface Entry {
   name: string;
   count: number;
 }
 
-export interface PoolColumn {
+export interface Group {
   key: string;
   label: string;
-  entries: PoolEntry[];
-  /** Cards in the column, duplicates counted. */
+  entries: Entry[];
+  /** Cards in the group, duplicates counted. */
   size: number;
 }
 
-const COLOUR_ORDER = ['W', 'U', 'B', 'R', 'G', 'M', 'C', 'L'];
-const COLOUR_LABEL: Record<string, string> = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green', M: 'Gold', C: 'Colourless', L: 'Lands' };
+const COLOUR_KEYS = ['W', 'U', 'B', 'R', 'G', 'M', 'C', 'L'];
+const COLOUR_LABEL: Record<string, string> = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green', M: 'Multicolour', C: 'Colourless', L: 'Land' };
+const TYPE_KEYS: Array<[string, string, RegExp]> = [
+  ['creature', 'Creature', /\bCreature\b/],
+  ['planeswalker', 'Planeswalker', /\bPlaneswalker\b/],
+  ['instant', 'Instant', /\bInstant\b/],
+  ['sorcery', 'Sorcery', /\bSorcery\b/],
+  ['artifact', 'Artifact', /\bArtifact\b/],
+  ['enchantment', 'Enchantment', /\bEnchantment\b/],
+  ['battle', 'Battle', /\bBattle\b/],
+  ['land', 'Land', /\bLand\b/],
+];
+const RARITY_KEYS: Array<[string, string]> = [
+  ['mythic', 'Mythic'],
+  ['rare', 'Rare'],
+  ['uncommon', 'Uncommon'],
+  ['common', 'Common'],
+  ['special', 'Special'],
+  ['basic', 'Basic'],
+  ['unknown', 'Unknown'],
+];
 
-/** W, U, B, R, G; M for gold; C for colourless; L for lands. */
-export function colourKey(name: string, ctx: CubeContext): string {
-  const f = ctx.facts.get(name);
-  if (f?.land || BASIC_NAMES.has(name)) return 'L';
-  const c = f?.colors ?? ctx.byName.get(name)?.colorHint ?? '';
-  if (c.length > 1) return 'M';
-  return c || 'C';
+/** W, U, B, R, G; M for multicolour; C for colourless; L for lands. */
+export function colourKeyOf(m: CardMeta): string {
+  if (m.land) return 'L';
+  if (m.colors.length > 1) return 'M';
+  return m.colors || 'C';
 }
 
-const mvOf = (n: string, ctx: CubeContext) => ctx.facts.get(n)?.mv ?? 0;
+export function typeKeyOf(m: CardMeta): string {
+  const first = (m.typeLine.split(' // ')[0] ?? '') || (m.land ? 'Land' : '');
+  return TYPE_KEYS.find(([, , re]) => re.test(first))?.[0] ?? 'other';
+}
 
-function stack(names: string[]): PoolEntry[] {
-  const out: PoolEntry[] = [];
-  const at = new Map<string, PoolEntry>();
+function stack(names: string[]): Entry[] {
+  const out: Entry[] = [];
+  const at = new Map<string, Entry>();
   for (const n of names) {
     const e = at.get(n);
     if (e) e.count++;
@@ -54,81 +103,106 @@ function stack(names: string[]): PoolEntry[] {
   return out;
 }
 
-function byColourThenMv(ctx: CubeContext) {
-  return (a: string, b: string) =>
-    COLOUR_ORDER.indexOf(colourKey(a, ctx)) - COLOUR_ORDER.indexOf(colourKey(b, ctx)) || mvOf(a, ctx) - mvOf(b, ctx) || (a < b ? -1 : a > b ? 1 : 0);
+/** Colour, then mana value, then name. */
+export function sortCards(names: string[], meta: MetaOf): string[] {
+  return [...names].sort((a, b) => {
+    const ma = meta(a);
+    const mb = meta(b);
+    return COLOUR_KEYS.indexOf(colourKeyOf(ma)) - COLOUR_KEYS.indexOf(colourKeyOf(mb)) || ma.mv - mb.mv || (a < b ? -1 : a > b ? 1 : 0);
+  });
 }
 
-export function poolColumns(pool: string[], ctx: CubeContext, sort: PoolSort): PoolColumn[] {
-  const cols: PoolColumn[] = [];
-  const add = (key: string, label: string, names: string[]) => {
-    if (names.length) cols.push({ key, label, entries: stack(names), size: names.length });
+/**
+ * The groups of a collection. `cmc`: 0 … 5+ for spells, then LAND; `type`,
+ * `color`, `rarity`: the usual order; `none`: one group. Empty groups are left
+ * out unless `keepEmpty` (stacks keep their columns steady while drafting).
+ */
+export function groupCards(names: string[], meta: MetaOf, by: GroupBy, keepEmpty = false): Group[] {
+  const sorted = sortCards(names, meta);
+  const out: Group[] = [];
+  const add = (key: string, label: string, list: string[]) => {
+    if (list.length || keepEmpty) out.push({ key, label, entries: stack(list), size: list.length });
   };
-  if (sort === 'picks') {
-    // Pick order, in rows of eight.
-    for (let i = 0; i < pool.length; i += 8) add(`p${i}`, `Picks ${i + 1}–${Math.min(pool.length, i + 8)}`, pool.slice(i, i + 8));
-    return cols;
+  if (by === 'none') {
+    add('all', 'All', sorted);
+    return out;
   }
-  const sorted = [...pool].sort(byColourThenMv(ctx));
-  if (sort === 'colour') {
-    for (const k of COLOUR_ORDER) add(k, COLOUR_LABEL[k] ?? k, sorted.filter((n) => colourKey(n, ctx) === k));
-    return cols;
+  if (by === 'cmc') {
+    const spells = sorted.filter((n) => !meta(n).land);
+    for (let mv = 0; mv <= 5; mv++) add(`mv${mv}`, mv === 5 ? '5+' : String(mv), spells.filter((n) => (mv === 5 ? meta(n).mv >= 5 : meta(n).mv === mv)));
+    add('land', 'Land', sorted.filter((n) => meta(n).land));
+    return out;
   }
-  const spells = sorted.filter((n) => colourKey(n, ctx) !== 'L');
-  for (let mv = 0; mv <= 6; mv++) {
-    const names = spells.filter((n) => (mv === 6 ? mvOf(n, ctx) >= 6 : mvOf(n, ctx) === mv));
-    add(`mv${mv}`, mv === 6 ? '6+' : String(mv), names);
+  if (by === 'color') {
+    for (const k of COLOUR_KEYS) add(k, COLOUR_LABEL[k] ?? k, sorted.filter((n) => colourKeyOf(meta(n)) === k));
+    return out;
   }
-  add('L', 'Lands', sorted.filter((n) => colourKey(n, ctx) === 'L'));
-  return cols;
+  if (by === 'type') {
+    for (const [k, label] of [...TYPE_KEYS.map(([k, l]) => [k, l] as [string, string]), ['other', 'Other'] as [string, string]]) add(k, label, sorted.filter((n) => typeKeyOf(meta(n)) === k));
+    return out;
+  }
+  for (const [k, label] of RARITY_KEYS) {
+    add(
+      k,
+      label,
+      sorted.filter((n) => {
+        const r = meta(n).rarity ?? 'unknown';
+        return (RARITY_KEYS.some(([x]) => x === r) ? r : 'special') === k;
+      }),
+    );
+  }
+  return out;
 }
 
-/** Spells by mana value buckets 1, 2, 3, 4, 5, 6+ (0 counts as 1). */
-export function curveOf(pool: string[], ctx: CubeContext): number[] {
-  const c = [0, 0, 0, 0, 0, 0];
-  for (const n of pool) {
-    if (colourKey(n, ctx) === 'L') continue;
-    const i = Math.min(5, Math.max(0, mvOf(n, ctx) - 1));
+/** Spells by mana value 0, 1, … 5, 6+ (seven buckets). */
+export function curveOf(names: string[], meta: MetaOf): number[] {
+  const c = [0, 0, 0, 0, 0, 0, 0];
+  for (const n of names) {
+    const m = meta(n);
+    if (m.land) continue;
+    const i = Math.min(6, Math.max(0, m.mv));
     c[i] = (c[i] ?? 0) + 1;
   }
   return c;
 }
 
 /** Cards of each colour (a gold card counts for each of its colours). */
-export function colourCounts(pool: string[], ctx: CubeContext): Record<string, number> {
+export function colourCounts(names: string[], meta: MetaOf): Record<string, number> {
   const out: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0 };
-  for (const n of pool) {
-    const f = ctx.facts.get(n);
-    if (!f || f.land) continue;
-    for (const c of f.colors) if (c in out) out[c] = (out[c] ?? 0) + 1;
+  for (const n of names) {
+    const m = meta(n);
+    if (m.land) continue;
+    for (const c of m.colors) if (c in out) out[c] = (out[c] ?? 0) + 1;
   }
   return out;
 }
 
-const TYPES: Array<[string, string, (t: string) => boolean]> = [
-  ['creature', 'creatures', (t) => /\bCreature\b/.test(t)],
-  ['planeswalker', 'planeswalkers', (t) => /\bPlaneswalker\b/.test(t)],
-  ['instant', 'instants', (t) => /\bInstant\b/.test(t)],
-  ['sorcery', 'sorceries', (t) => /\bSorcery\b/.test(t)],
-  ['artifact', 'artifacts', (t) => /\bArtifact\b/.test(t)],
-  ['enchantment', 'enchantments', (t) => /\bEnchantment\b/.test(t)],
-  ['land', 'lands', (t) => /\bLand\b/.test(t)],
-];
-
-/** "9 creatures · 4 instants · 2 lands" — each card counted once, by its first matching type. */
-export function typeSummary(pool: string[], ctx: CubeContext): string {
-  const counts = new Map<string, number>();
-  let other = 0;
-  for (const n of pool) {
-    const f = ctx.facts.get(n);
-    const t = f?.typeLine ?? (f?.land ? 'Land' : '');
-    const hit = TYPES.find(([, , test]) => test(t));
-    if (hit) counts.set(hit[0], (counts.get(hit[0]) ?? 0) + 1);
-    else other++;
+/** Creatures, other spells and lands: the stat bar's three numbers. */
+export function kindCounts(names: string[], meta: MetaOf): { creatures: number; spells: number; lands: number } {
+  let creatures = 0;
+  let spells = 0;
+  let lands = 0;
+  for (const n of names) {
+    const m = meta(n);
+    if (m.land) lands++;
+    else if (/\bCreature\b/.test(m.typeLine.split(' // ')[0] ?? '')) creatures++;
+    else spells++;
   }
-  const parts = TYPES.filter(([k]) => counts.get(k)).map(([k, pl]) => `${counts.get(k)} ${counts.get(k) === 1 ? k : pl}`);
-  if (other) parts.push(`${other} other`);
-  return parts.join(' · ');
+  return { creatures, spells, lands };
 }
 
-
+/** "9 creatures · 4 instants · 2 lands" — each card counted once, by its first matching type. */
+export function typeSummary(names: string[], meta: MetaOf): string {
+  const counts = new Map<string, number>();
+  for (const n of names) {
+    const k = typeKeyOf(meta(n));
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  const plural: Record<string, string> = { sorcery: 'sorceries', other: 'other' };
+  const parts: string[] = [];
+  for (const [k] of [...TYPE_KEYS, ['other'] as unknown as [string, string, RegExp]]) {
+    const c = counts.get(k);
+    if (c) parts.push(`${c} ${c === 1 ? k : (plural[k] ?? `${k}s`)}`);
+  }
+  return parts.join(' · ');
+}

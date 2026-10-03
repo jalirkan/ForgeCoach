@@ -1,0 +1,360 @@
+/*
+ * ForgeCoach — ui/draft/collection.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The shared card collection (Collection.tsx): the LAYOUT / GROUP / SIZE bar,
+ * stacks, gallery and list. Uses the cube section's tokens (draft.css .fx).
+ */
+
+/* The bar */
+.vbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.vbar-set {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.vbar-l,
+.vsize span {
+  font: 600 10.5px/1 var(--font);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.vseg {
+  display: inline-flex;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.vseg button {
+  height: 30px;
+  padding: 0 12px;
+  font: 600 11px/1 var(--font);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.vseg button + button {
+  border-left: 1px solid transparent;
+}
+.vseg button:hover {
+  color: var(--text);
+}
+.vseg button.is-on {
+  background: #3a2c17;
+  color: var(--gold-hi);
+}
+.vseg sup {
+  margin-left: 3px;
+  font-size: 8px;
+  letter-spacing: 0;
+  color: var(--muted);
+  vertical-align: 1px;
+}
+.vbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.vsize {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.vsize span {
+  font-size: 9px;
+  color: var(--muted);
+}
+.vsize b {
+  min-width: 26px;
+  text-align: right;
+  font: 500 11px/1 var(--mono);
+  color: var(--text-2);
+}
+.vsize input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 92px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold) var(--p), var(--line-2) var(--p));
+}
+.vsize input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--gold-hi);
+  box-shadow: 0 0 6px rgba(242, 207, 122, 0.6);
+}
+.vsize input::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--gold-hi);
+}
+.vbar.is-compact .vseg button {
+  padding: 0 9px;
+  letter-spacing: 0.14em;
+}
+
+/* Cards in a collection */
+.coll {
+  --cw: 110px;
+  padding-top: 14px;
+}
+.cwrap {
+  position: relative;
+}
+.cwrap .dc {
+  --w: var(--cw);
+}
+.cwrap[draggable='true'] {
+  cursor: grab;
+}
+.cwrap-i {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(10, 8, 5, 0.85);
+  color: var(--text-2);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.cwrap:hover .cwrap-i,
+.cwrap-i:focus-visible {
+  opacity: 1;
+}
+.ghead,
+.shead {
+  margin: 0;
+  font: 600 12px/1 var(--font);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.ghead span,
+.shead span {
+  margin-left: 4px;
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0;
+  color: var(--gold);
+}
+.ghead.is-gold,
+.shead.is-gold {
+  color: var(--gold);
+}
+
+/* Stacks */
+.scols {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+.szone {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.szone.is-over {
+  background: rgba(217, 168, 67, 0.05);
+}
+.scol {
+  flex: none;
+  width: var(--cw);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.shead {
+  text-align: center;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line-2);
+}
+.scol.is-side .shead {
+  border-bottom-color: var(--gold);
+}
+.sstack {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(var(--cw) * 88 / 63);
+}
+/* Overlapped so each card shows its title bar; the last one whole. */
+.cwrap.is-stack + .cwrap.is-stack {
+  margin-top: calc(var(--cw) * -88 / 63 + var(--cw) * 0.168);
+}
+.cwrap.is-stack:hover {
+  z-index: 3;
+}
+.cwrap.is-stack:hover + .cwrap.is-stack {
+  transform: translateY(calc(var(--cw) * 0.5));
+}
+.cwrap.is-stack + .cwrap.is-stack,
+.cwrap.is-stack {
+  transition: transform 0.18s ease;
+}
+.cwrap.is-stack .dc:hover {
+  transform: none;
+}
+.scol.is-side .sstack {
+  border-radius: calc(var(--cw) * 0.05);
+  outline: 1px dashed rgba(217, 168, 67, 0.28);
+  outline-offset: 4px;
+}
+.scol.is-side.is-over .sstack {
+  outline-color: var(--gold);
+  background: rgba(217, 168, 67, 0.06);
+}
+.sdrop {
+  display: block;
+  width: var(--cw);
+  aspect-ratio: 63 / 88;
+}
+
+/* Gallery */
+.ggroup + .ggroup {
+  margin-top: 18px;
+}
+.ggroup .ghead {
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.gcards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ggroup.is-side .gcards {
+  min-height: 60px;
+  padding: 8px;
+  border-radius: 6px;
+  outline: 1px dashed rgba(217, 168, 67, 0.28);
+}
+.ggroup.is-over .gcards {
+  outline-color: var(--gold);
+}
+.gcards .sdrop {
+  width: auto;
+  aspect-ratio: auto;
+  font: italic 15px/1.2 var(--serif);
+  color: var(--muted);
+  padding: 8px;
+}
+
+/* List */
+.lgroup + .lgroup {
+  margin-top: 18px;
+}
+.lgroup .ghead {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.lrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  padding: 0 4px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+.lrow:hover {
+  background: rgba(255, 240, 210, 0.03);
+}
+.lrow.is-hint .lrow-name {
+  color: var(--gold-hi);
+}
+.lrow-n {
+  min-width: 14px;
+  font: 500 11px/1 var(--mono);
+  color: var(--gold);
+}
+.lrow-name {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  text-align: left;
+  font: 15px/1.2 var(--font);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lrow-cost {
+  display: flex;
+}
+.lrow-i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  border: 1px solid var(--line-2);
+  color: var(--muted);
+}
+.lgroup.is-side.is-over {
+  background: rgba(217, 168, 67, 0.05);
+}
+
+@media (max-width: 640px) {
+  .vbar {
+    gap: 10px 14px;
+  }
+  .vbar-set {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .vbar-l {
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+  }
+  .vseg button {
+    padding: 0 8px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+  .vseg sup {
+    display: none;
+  }
+  .vbar-right {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .scols {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  .szone {
+    gap: 8px;
+  }
+  .lrow-name {
+    font-size: 14px;
+  }
+}

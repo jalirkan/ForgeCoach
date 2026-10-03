@@ -52,7 +52,6 @@ export function BuildView({
   onInfo,
   onSettings,
   metaChip,
-  onCurrent,
 }: {
   ctx: CubeContext;
   pool: SavedPool;
@@ -60,8 +59,6 @@ export function BuildView({
   onInfo: (name: string) => void;
   onSettings: () => void;
   metaChip: React.ReactNode;
-  /** Told the build on screen (the chosen one, with the player's swaps) whenever it changes. */
-  onCurrent?: (b: DeckBuild | null) => void;
 }) {
   const [spells, setSpells] = useState<SpellCount>('auto');
   const [builds, setBuilds] = useState<DeckBuild[] | null>(null);
@@ -90,7 +87,6 @@ export function BuildView({
     [base, edited, ctx, cards],
   );
   const problems = useMemo(() => (current ? checkBuild(current, cards, ctx) : []), [current, cards, ctx]);
-  useEffect(() => onCurrent?.(current), [current, onCurrent]);
 
   if (!cards.length) {
     return (

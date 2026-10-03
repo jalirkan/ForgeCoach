@@ -11,7 +11,7 @@
 import type { CardInfo } from '../cards.ts';
 import type { Prompt } from '../prompt.ts';
 import { colourLabel } from '../cube/colors.ts';
-import { GRID_LINES, poolColours, recommendGrid, recommendWinston } from '../cube/pick.ts';
+import { GRID_LINES, pickValue, poolColours, poolProfile, recommendGrid, recommendWinston } from '../cube/pick.ts';
 import { cardValue, metaValue, pct, type CubeContext } from '../cube/score.ts';
 import { knownAiCards, progress, type Draft } from './draft.ts';
 
@@ -54,7 +54,7 @@ export interface PickPromptInput {
 
 /** The cards a pick prompt needs text for: the choice and the player's pool. */
 export function pickPromptCards(d: Draft): string[] {
-  const choice = d.format === 'grid' ? d.slots.filter((s): s is string => !!s) : (d.piles[d.look] ?? []);
+  const choice = d.format === 'grid' ? d.slots.filter((s): s is string => !!s) : d.format === 'booster' ? (d.table[0] ?? []) : (d.piles[d.look] ?? []);
   return [...new Set([...choice, ...d.picks.you])];
 }
 
@@ -76,6 +76,12 @@ export function buildPickPrompt({ ctx, draft: d, infos, question }: PickPromptIn
       lines.push('', `Pick helper: take the ${adv.best.line.label.toLowerCase()} (score ${adv.best.total}).`);
       for (const o of adv.options.slice(0, 4)) lines.push(`- ${o.line.label}: ${o.cards.join(', ')} — ${o.total}${o.reply ? `; AI's likely answer ${o.reply.line.label.toLowerCase()} worth ${o.reply.value}` : ''}`);
     }
+  } else if (d.format === 'booster') {
+    const pack = d.table[0] ?? [];
+    lines.push(`## ${progress(d).label}: the pack (${pack.length} cards, ${d.seats} drafters)`);
+    for (const n of [...pack].sort((a, b) => cardValue(b, ctx) - cardValue(a, ctx))) lines.push(`- ${cardLine(n, ctx)}`);
+    const best = bestBoosterPick(pack, you, ctx, aiKnown);
+    if (best) lines.push('', `Pick helper: ${best.name} (${best.value}).`);
   } else {
     const i = d.look as 0 | 1 | 2;
     const pile = d.piles[i] ?? [];
@@ -97,3 +103,12 @@ export function buildPickPrompt({ ctx, draft: d, infos, question }: PickPromptIn
 
 /** Grid line ids of src/cube/pick.ts in this module's numbering (rows 0-2, columns 3-5). */
 export const LINE_IDS = GRID_LINES.map((l) => l.id);
+
+/** The pick helper's choice from a booster pack (src/cube/pick.ts values for your pool). */
+export function bestBoosterPick(pack: string[], pool: string[], ctx: CubeContext, _opp: string[] = []): { name: string; value: number; ranked: Array<{ name: string; value: number }> } | null {
+  if (!pack.length) return null;
+  const prof = poolProfile(pool, ctx);
+  const ranked = pack.map((n) => ({ name: n, value: pickValue(n, pool, ctx, prof).total })).sort((a, b) => b.value - a.value || (a.name < b.name ? -1 : 1));
+  const top = ranked[0]!;
+  return { name: top.name, value: top.value, ranked };
+}
