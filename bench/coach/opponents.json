@@ -1,0 +1,12 @@
+{
+  "_": "The opponent's deck list of each bench log, as a path in mtg-table (the grader resolves it there). The player may know it: the AI decks of a recorded game are listed in mtg-table's tools/ten-games.sh rows (probes play decks/morph-probe.dck; pacho-shield and yield-probe games are mirrors). Checked: every opponent card these logs show is in the list.",
+  "human-auto-2026.jsonl.gz": "decks/pacho-shield.dck",
+  "human-auto-7.jsonl.gz": "decks/pacho-shield.dck",
+  "human-number-7.jsonl.gz": "decks/morph-probe.dck",
+  "human-trample-7.jsonl.gz": "decks/morph-probe.dck",
+  "human-yield-13.jsonl.gz": "decks/yield-probe.dck",
+  "human-comfort-13.jsonl.gz": "decks/pacho-shield.dck",
+  "human-ability-42.jsonl.gz": "decks/pacho-shield.dck",
+  "human-scry-7.jsonl.gz": "decks/morph-probe.dck",
+  "human-sideboard-7.jsonl.gz": "decks/sideboard-probe.dck"
+}

@@ -42,11 +42,16 @@ import { statedOf, STATED_CONFIDENCES, type StatedConfidence } from '../coachAns
 import { canPay, chosenColors, infoFor, instantSpeedOptions, manaColorsOf, turnFacts, untappedManaSources, type ManaSource } from '../state.ts';
 import { liveDecision } from '../ui/play/liveDecision.ts';
 import { bootstrapMean, mean, rng, signTest, wilson, type Interval } from './benchStats.ts';
+import { gradeProblems, halfWidth, isLowInfo, LOW_INFO_HALF_WIDTH, type CaseGrade } from './grade.ts';
 
 // ---------------------------------------------------------------------------
 // Cases
 
 export const BENCH_TYPES = ['mulligan', 'play_draw', 'spell', 'attack', 'block', 'target', 'pass', 'choice'] as const;
+/** dev: every case not held out (the default, the set a prompt is tuned on); holdout: only the held-out cases; all. */
+export const BENCH_SPLITS = ['dev', 'holdout', 'all'] as const;
+export type BenchSplit = (typeof BENCH_SPLITS)[number];
+export const inSplit = (c: Pick<BenchCase, 'holdout'>, split: BenchSplit): boolean => split === 'all' || (split === 'holdout' ? !!c.holdout : !c.holdout);
 export type BenchType = (typeof BENCH_TYPES)[number];
 
 /**
@@ -83,6 +88,14 @@ export interface BenchCase {
   /** "low" cases run but stay out of the score. */
   confidence: 'high' | 'low';
   tags?: string[];
+  /**
+   * The engine-graded regret table (mtg-table `tools/coach-grade.sh`, imported
+   * with `bench:coach -- import-graded`): each option's win rate against Forge
+   * Default and its regret. When present, every answer gets a regret.
+   */
+  grade?: CaseGrade;
+  /** Held out: never run while tuning the prompt (`--split holdout` runs only these). */
+  holdout?: boolean;
 }
 
 const DECISION_KINDS: readonly DecisionKind[] = ['main', 'attack', 'block', 'priority', 'choice'];
@@ -110,6 +123,8 @@ export function validateCase(raw: unknown): { ok: true; value: BenchCase } | { o
   list('unacceptable', 0, 12);
   for (const k of ['question', 'label', 'source'] as const) if (o[k] !== undefined && typeof o[k] !== 'string') errors.push(`${k}: a string`);
   if (o.lands !== undefined && typeof o.lands !== 'boolean') errors.push('lands: true or false');
+  if (o.holdout !== undefined && typeof o.holdout !== 'boolean') errors.push('holdout: true or false');
+  if (o.grade !== undefined) errors.push(...gradeProblems(o.grade));
   if (errors.length) return { ok: false, errors };
   return { ok: true, value: o as unknown as BenchCase };
 }
@@ -563,6 +578,27 @@ export interface Scored {
   verdict: Verdict;
   score: -1 | 0 | 1;
   note?: string;
+  /** The answer's regret from the case's table (graded cases, legal answers the table has). */
+  regret?: Regret;
+}
+
+/**
+ * The regret of a parsed, legal answer from the case's table, or null when
+ * the case has no table or the table has no option equal to the answer
+ * (compared by creature class, like the acceptable lists).
+ */
+export function gradeRegret(b: Pick<BuiltCase, 'case' | 'choices'>, p: Parsed): Regret | null {
+  const g = b.case.grade;
+  if (!g) return null;
+  const k = matchKey(p, b.choices);
+  for (const o of g.options) {
+    const q = parseAnswer(o.token);
+    if (!q || matchKey(q, b.choices) !== k) continue;
+    const r: Regret = { value: o.regret, lo: o.regretLo, hi: o.regretHi, option: o.token };
+    if (isLowInfo(o)) r.lowInfo = true;
+    return r;
+  }
+  return null;
 }
 
 /** acceptable = 1, blunder = −1, anything else (incl. a missing or illegal answer) = 0. */
@@ -579,9 +615,11 @@ export function scoreReply(b: BuiltCase, text: string): Scored {
     const q = parseAnswer(a);
     return q ? matchKey(q, b.choices) : null;
   };
-  if (b.case.acceptable.some((a) => keyOf(a) === k)) return { answer, canonical, verdict: 'acceptable', score: 1 };
-  if (b.case.unacceptable.some((a) => keyOf(a) === k)) return { answer, canonical, verdict: 'unacceptable', score: -1 };
-  return { answer, canonical, verdict: 'other', score: 0 };
+  const regret = gradeRegret(b, p);
+  const withRegret = (x: Scored): Scored => (regret ? { ...x, regret } : x);
+  if (b.case.acceptable.some((a) => keyOf(a) === k)) return withRegret({ answer, canonical, verdict: 'acceptable', score: 1 });
+  if (b.case.unacceptable.some((a) => keyOf(a) === k)) return withRegret({ answer, canonical, verdict: 'unacceptable', score: -1 });
+  return withRegret({ answer, canonical, verdict: 'other', score: 0 });
 }
 
 // ---------------------------------------------------------------------------
@@ -607,15 +645,19 @@ export interface CoachReply {
 export type AskCoach = (prompt: Prompt, signal?: AbortSignal, ctx?: { id: string; type: BenchType }) => Promise<CoachReply>;
 
 /**
- * An engine-graded regret for one answer (planned, not built): the win-rate gap
- * between the suggested line and the best line, from playouts, 0 = best, with
- * the grader's own interval. When samples carry it, it is the comparison's
- * headline and the calibration's measure.
+ * An engine-graded regret for one answer: the win-rate gap between the
+ * suggested option and the best option against Forge Default, from playouts
+ * (mtg-table's coach grader), 0 = best, with the grader's own paired interval.
+ * When samples carry it, it is the comparison's headline and the calibration's
+ * measure. `lowInfo` marks an interval wider than ±LOW_INFO_HALF_WIDTH.
  */
 export interface Regret {
   value: number;
   lo: number;
   hi: number;
+  /** The table's option the answer matched. */
+  option?: string;
+  lowInfo?: boolean;
 }
 
 /** One answer to one case. */
@@ -665,17 +707,27 @@ export interface CaseStats {
   answers: { answer: string; count: number }[];
   /** Mean regret of the samples that carry one; null when none does. */
   meanRegret: number | null;
+  /** Answers with a regret; valid answers of a graded case the table had no option for; low-information regrets. */
+  graded: number;
+  ungraded: number;
+  lowInfo: number;
+  /** Mean half-width of the answers' regret intervals (the grading noise), null without regret. */
+  regretNoise: number | null;
 }
 
 export interface CaseResult {
   id: string;
   type: BenchType;
   confidence: 'high' | 'low';
+  /** The case carried a regret table when it was run. */
+  graded?: boolean;
+  /** The case is in the held-out set. */
+  holdout?: boolean;
   samples: Sample[];
   stats: CaseStats;
 }
 
-export function caseStats(samples: Sample[]): CaseStats {
+export function caseStats(samples: Sample[], graded = false): CaseStats {
   const counts = { acceptable: 0, unacceptable: 0, other: 0, unparsed: 0, errors: 0 };
   const seen = new Map<string, number>();
   const scores: number[] = [];
@@ -696,6 +748,7 @@ export function caseStats(samples: Sample[]): CaseStats {
   }
   const answered = samples.length - counts.errors;
   const answers = [...seen].map(([answer, count]) => ({ answer, count })).sort((a, b) => b.count - a.count || a.answer.localeCompare(b.answer));
+  const withRegret = samples.filter((s) => s.regret && Number.isFinite(s.regret.value));
   return {
     n: samples.length,
     valid: scores.length,
@@ -704,6 +757,10 @@ export function caseStats(samples: Sample[]): CaseStats {
     agreement: answered ? answers[0]!.count / answered : 1,
     answers,
     meanRegret: regrets.length ? mean(regrets) : null,
+    graded: withRegret.length,
+    ungraded: graded ? samples.filter((s) => isValid(s) && !s.regret).length : 0,
+    lowInfo: withRegret.filter((s) => s.regret!.lowInfo).length,
+    regretNoise: withRegret.length ? mean(withRegret.map((s) => halfWidth({ regretLo: s.regret!.lo, regretHi: s.regret!.hi }))) : null,
   };
 }
 
@@ -740,6 +797,15 @@ export interface GroupSummary {
   models: string[];
   /** Mean over cases of each case's mean regret; bootstrap over cases. Null without regret. */
   regret: Interval | null;
+  /** The same over the informative regrets only (low-information ones left out). */
+  regretInformative: Interval | null;
+  /** Mean half-width of the answers' regret intervals: the grading noise under each regret. */
+  regretNoise: number | null;
+  /** Cases with a regret table; answers with a regret; valid answers the table had no option for; low-information regrets. */
+  gradedCases: number;
+  gradedAnswers: number;
+  ungradedAnswers: number;
+  lowInfoAnswers: number;
 }
 
 /** A case is unstable when fewer than two thirds of its answers equal the modal one. */
@@ -771,6 +837,8 @@ export interface BenchReport {
   modelByType?: Partial<Record<BenchType, string>>;
   /** Prompt size by section, largest first. */
   promptSections?: PromptSection[];
+  /** Which cases ran: the development set (default), the held-out set, or all. */
+  split?: BenchSplit;
   cases: CaseResult[];
   summary: {
     byType: Partial<Record<BenchType, GroupSummary>>;
@@ -815,6 +883,7 @@ export interface RunOptions {
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   promptFormat?: PromptFormat;
   modelByType?: Partial<Record<BenchType, string>>;
+  split?: BenchSplit;
 }
 
 /** Which retry budget an error falls under, or null when it is final. */
@@ -918,13 +987,19 @@ export async function runBench(built: BuiltCase[], ask: AskCoach, o: RunOptions)
   const cases: CaseResult[] = [];
   built.forEach((b, i) => {
     const got = samples[i]!.filter((s): s is Sample => !!s);
-    if (got.length) cases.push({ id: b.case.id, type: b.case.type, confidence: b.case.confidence, samples: got, stats: caseStats(got) });
+    if (got.length) {
+      const r: CaseResult = { id: b.case.id, type: b.case.type, confidence: b.case.confidence, samples: got, stats: caseStats(got, !!b.case.grade) };
+      if (b.case.grade) r.graded = true;
+      if (b.case.holdout) r.holdout = true;
+      cases.push(r);
+    }
   });
   const model = o.model ?? cases.flatMap((c) => c.samples).find((s) => s.model)?.model ?? null;
   const report: BenchReport = { bench: 2, label: o.label, startedAt, source: o.source, model, repeat, cases, summary: summarize(cases) };
   report.promptFormat = o.promptFormat ?? built[0]?.format ?? 'classic';
   if (o.modelByType && Object.keys(o.modelByType).length) report.modelByType = o.modelByType;
   if (built.length) report.promptSections = promptSections(built.map((b) => b.prompt));
+  if (o.split) report.split = o.split;
   return report;
 }
 
@@ -955,6 +1030,20 @@ function groupSummary(cases: CaseResult[]): GroupSummary {
     latencyMs: latencyOf(all),
     models: [...models].sort((a, b) => b[1] - a[1]).map(([m]) => m),
     regret: bootstrapMean(cases.filter((c) => c.stats.meanRegret !== null).map((c) => c.stats.meanRegret!)),
+    regretInformative: bootstrapMean(
+      cases
+        .map((c) => c.samples.filter((s) => s.regret && Number.isFinite(s.regret.value) && !s.regret.lowInfo).map((s) => s.regret!.value))
+        .filter((xs) => xs.length)
+        .map(mean),
+    ),
+    regretNoise: (() => {
+      const ns = cases.map((c) => c.stats.regretNoise).filter((x): x is number => x !== null);
+      return ns.length ? mean(ns) : null;
+    })(),
+    gradedCases: cases.filter((c) => c.graded || c.stats.graded > 0).length,
+    gradedAnswers: cases.reduce((a, c) => a + c.stats.graded, 0),
+    ungradedAnswers: cases.reduce((a, c) => a + c.stats.ungraded, 0),
+    lowInfoAnswers: cases.reduce((a, c) => a + c.stats.lowInfo, 0),
   };
 }
 
@@ -993,7 +1082,12 @@ export function normalizeReport(raw: unknown): { report: BenchReport; warnings: 
       return { id, type, confidence, samples: [sample], stats: caseStats([sample]) };
     });
   } else {
-    cases = (o.cases as CaseResult[]).map((c) => ({ id: c.id, type: c.type, confidence: c.confidence, samples: c.samples, stats: caseStats(c.samples) }));
+    cases = (o.cases as CaseResult[]).map((c) => {
+      const r: CaseResult = { id: c.id, type: c.type, confidence: c.confidence, samples: c.samples, stats: caseStats(c.samples, !!c.graded) };
+      if (c.graded) r.graded = true;
+      if (c.holdout) r.holdout = true;
+      return r;
+    });
   }
   const report: BenchReport = {
     bench: 2,
@@ -1008,7 +1102,38 @@ export function normalizeReport(raw: unknown): { report: BenchReport; warnings: 
   if (o.promptFormat) report.promptFormat = o.promptFormat;
   if (o.modelByType) report.modelByType = o.modelByType;
   if (Array.isArray(o.promptSections)) report.promptSections = o.promptSections;
+  if (o.split) report.split = o.split;
   return { report, warnings };
+}
+
+/**
+ * Fills (or refreshes) every valid answer's regret from the current case
+ * tables, for a run made before its cases were graded (`bench:coach --
+ * regrade`). Answers are matched to options exactly as a live run matches
+ * them; a case with no table loses any regret it had.
+ */
+export function regradeReport(r: BenchReport, built: BuiltCase[]): { report: BenchReport; graded: number; cases: number } {
+  const by = new Map(built.map((b) => [b.case.id, b]));
+  let graded = 0;
+  let nCases = 0;
+  const cases = r.cases.map((c) => {
+    const b = by.get(c.id);
+    const samples = c.samples.map((s) => {
+      const { regret: _old, ...rest } = s;
+      if (!b?.case.grade || !isValid(s) || !s.canonical) return rest as Sample;
+      const p = parseAnswer(s.canonical);
+      const reg = p ? gradeRegret(b, p) : null;
+      if (!reg) return rest as Sample;
+      graded++;
+      return { ...rest, regret: reg } as Sample;
+    });
+    if (b?.case.grade) nCases++;
+    const out: CaseResult = { ...c, samples, stats: caseStats(samples, !!b?.case.grade) };
+    if (b?.case.grade) out.graded = true;
+    else delete out.graded;
+    return out;
+  });
+  return { report: { ...r, cases, summary: summarize(cases) }, graded, cases: nCases };
 }
 
 // ---------------------------------------------------------------------------
@@ -1213,9 +1338,19 @@ export function reportMarkdown(r: BenchReport): string {
     `${r.startedAt} · source: ${r.source}${r.model ? ` · model: ${r.model}` : ''}${byType} · prompt: ${r.promptFormat ?? 'classic'} · ${r.repeat} answer${r.repeat === 1 ? '' : 's'} per case`,
     '',
   );
-  const regretHead = t.regret ? `**Mean regret ${ci(t.regret)}** (lower is better; mean over cases, 95% bootstrap) · ` : '';
+  if (t.regret) {
+    lines.push(
+      `**Mean regret ${ci(t.regret)}** — win rate lost against the best option, against Forge Default (0 = always the best option; lower is better; mean over ${t.gradedCases} graded cases, 95% bootstrap over cases) · ` +
+        `grading noise ±${t.regretNoise === null ? '—' : t.regretNoise.toFixed(2)} per answer (mean half-width of the grader's intervals)`,
+      '',
+      `Graded answers: ${t.gradedAnswers}; valid answers the table has no option for: ${t.ungradedAnswers}; ` +
+        `low-information (interval wider than ±${LOW_INFO_HALF_WIDTH}): ${t.lowInfoAnswers}` +
+        (t.lowInfoAnswers ? ` — mean regret without them ${ci(t.regretInformative)}; treat the headline with care` : ''),
+      '',
+    );
+  }
   lines.push(
-    `${regretHead}${t.regret ? 'Quality score' : '**Quality score'} ${ci(t.score)}${t.regret ? '' : '**'} (mean over ${t.cases} cases, −1 to +1, 95% interval by bootstrap over cases) · ` +
+    `${t.regret ? 'Quality score' : '**Quality score'} ${ci(t.score)}${t.regret ? '' : '**'} (mean over ${t.cases} cases, −1 to +1, 95% interval by bootstrap over cases) · ` +
       `acceptable ${ci(t.acceptable, pct)} · blunder ${ci(t.blunder, pct)}`,
     '',
     `Format failures (the coach answered, but missing, unparsable or illegal; not in the score): ${ci(t.formatFailure, pct)} of ${t.samples - t.errors} answers (Wilson interval)` +
@@ -1228,14 +1363,15 @@ export function reportMarkdown(r: BenchReport): string {
     `Latency per answer (no queue wait, no retries): mean ${secs(s.latencyMs.mean)}, median ${secs(s.latencyMs.median)}, p90 ${secs(s.latencyMs.p90)}, max ${secs(s.latencyMs.max)}`,
     '',
     r.repeat < 2 ? "_One answer per case: intervals only reflect which cases were picked. Use --repeat 3 or more to see the coach's own noise._\n" : '',
-    '| type | cases | score (95%) | acceptable | blunder | format fail | transport err | median latency | p90 latency | model |',
-    '|---|---:|---|---:|---:|---:|---:|---:|---:|---|',
+    r.split && r.split !== 'dev' ? `_Cases: ${r.split === 'holdout' ? 'the HELD-OUT set only' : 'all, held-out included'}._\n` : '',
+    '| type | cases | regret (95%) | score (95%) | acceptable | blunder | format fail | transport err | median latency | p90 latency | model |',
+    '|---|---:|---|---|---:|---:|---:|---:|---:|---:|---|',
   );
   for (const ty of BENCH_TYPES) {
     const x = s.byType[ty];
     if (x)
       lines.push(
-        `| ${ty} | ${x.cases} | ${ci(x.score)} | ${x.acceptable ? pct(x.acceptable.mean) : '—'} | ${x.blunder ? pct(x.blunder.mean) : '—'} | ${x.formatFailure ? pct(x.formatFailure.mean) : '—'} | ${x.errors} | ${secs(x.latencyMs.median)} | ${secs(x.latencyMs.p90)} | ${esc(x.models.join(', ') || r.modelByType?.[ty] || '—')} |`,
+        `| ${ty} | ${x.cases} | ${ci(x.regret)} | ${ci(x.score)} | ${x.acceptable ? pct(x.acceptable.mean) : '—'} | ${x.blunder ? pct(x.blunder.mean) : '—'} | ${x.formatFailure ? pct(x.formatFailure.mean) : '—'} | ${x.errors} | ${secs(x.latencyMs.median)} | ${secs(x.latencyMs.p90)} | ${esc(x.models.join(', ') || r.modelByType?.[ty] || '—')} |`,
       );
   }
   lines.push('', ...calibrationMarkdown(calibration(r.cases, calibrationMetricFor(r.cases))));
@@ -1243,13 +1379,19 @@ export function reportMarkdown(r: BenchReport): string {
     lines.push('', '## Prompt size by section', '', '_Not trimmed — this only shows where the characters are (largest share first)._', '', '| section | mean chars | max chars | cases | share |', '|---|---:|---:|---:|---:|');
     for (const p of r.promptSections) lines.push(`| ${esc(p.name)} | ${p.meanChars} | ${p.maxChars} | ${p.cases} | ${pct(p.share)} |`);
   }
-  lines.push('', '| case | type | mean | ok / blunder / other / format / transport | agree | answers seen |', '|---|---|---:|---|---:|---|');
+  lines.push('', '| case | type | mean | regret (noise) | ok / blunder / other / format / transport | agree | answers seen |', '|---|---|---:|---|---|---:|---|');
   for (const c of r.cases) {
     const k = c.stats;
     const low = c.confidence === 'low' ? ' (low, unscored)' : '';
     const answers = k.answers.map((a) => `${a.answer}×${a.count}`).join(', ');
-    lines.push(`| ${c.id}${low} | ${c.type} | ${k.meanScore === null ? '—' : num(k.meanScore)} | ${k.acceptable} / ${k.unacceptable} / ${k.other} / ${k.unparsed} / ${k.errors} | ${pct(k.agreement)} | ${esc(answers)} |`);
+    const reg = k.meanRegret === null ? (c.graded ? 'ungraded answers' : '—') : `${k.meanRegret.toFixed(2)} (±${(k.regretNoise ?? 0).toFixed(2)})${k.lowInfo ? ` · ${k.lowInfo} low-info` : ''}${k.ungraded ? ` · ${k.ungraded} not in table` : ''}`;
+    lines.push(`| ${c.id}${low}${c.holdout ? ' (held out)' : ''} | ${c.type} | ${k.meanScore === null ? '—' : num(k.meanScore)} | ${reg} | ${k.acceptable} / ${k.unacceptable} / ${k.other} / ${k.unparsed} / ${k.errors} | ${pct(k.agreement)} | ${esc(answers)} |`);
   }
+  if (t.regret)
+    lines.push(
+      '',
+      "_Regret's yardstick is Forge Default: each option's win rate when the coach's seat takes it and Forge's Default AI plays both seats to the end, the hidden cards redealt from what the player could know. It measures play against the opponent ForgeCoach actually seats, not perfect play. Format failures (missing, unparsable, illegal answers) have no regret and are counted above, apart from quality._",
+    );
   return lines.join('\n') + '\n';
 }
 
@@ -1356,6 +1498,7 @@ export function compareReports(a: BenchReport, b: BenchReport): Comparison {
   ] as const) {
     if (Math.max(0, ...r.cases.map((c) => c.stats.n)) < 2) warnings.push(`${name} (${r.label}) has one answer per case: a case difference cannot be told from noise, so no flips are flagged and the interval below is the only guide.`);
   }
+  if ((a.split ?? 'dev') !== (b.split ?? 'dev')) warnings.push(`The runs used different case sets (A ${a.split ?? 'dev'}, B ${b.split ?? 'dev'}).`);
   if ((a.promptFormat ?? 'classic') !== (b.promptFormat ?? 'classic')) warnings.push(`The runs ask for different answer layouts (A ${a.promptFormat ?? 'classic'}, B ${b.promptFormat ?? 'classic'}): that is the change being measured, or a mistake.`);
   const cases: CaseDiff[] = [];
   const diffs: number[] = [];
@@ -1420,7 +1563,7 @@ export function compareReports(a: BenchReport, b: BenchReport): Comparison {
     lines.push(
       `Paired over ${r.n} graded cases. Mean regret difference (B − A, negative = B better) ${ci(r.mean, num)}; ` +
         `cases better ${r.down}, worse ${r.up}, unchanged ${r.ties}; sign test p = ${r.signP.toFixed(3)}.`,
-      `Mean regret A ${ci(a.summary.total.regret)} · B ${ci(b.summary.total.regret)}`,
+      `Mean regret A ${ci(a.summary.total.regret)} · B ${ci(b.summary.total.regret)} (grading noise ±${(a.summary.total.regretNoise ?? 0).toFixed(2)} / ±${(b.summary.total.regretNoise ?? 0).toFixed(2)} per answer; both runs read the same tables, so where they gave the same answer the table's noise cancels)`,
       '',
       '_Secondary: the pass rate (acceptable / blunder lists)._',
     );

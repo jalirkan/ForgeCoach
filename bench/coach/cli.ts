@@ -25,8 +25,15 @@ import { PROMPT_FORMATS, promptAsText, type PromptFormat } from '../../src/promp
 import { visibleName } from '../../src/review.ts';
 import type { AnyCard, AskBody, GameStateBody, InputBody } from '../../src/protocol.ts';
 import {
+  BENCH_SPLITS,
   BENCH_TYPES,
+  buildCase,
   buildMoment,
+  illegalReason,
+  inSplit,
+  parseAnswer,
+  regradeReport,
+  type BenchSplit,
   caseProblems,
   choiceSet,
   compareReports,
@@ -42,6 +49,18 @@ import {
   type BuiltCase,
 } from '../../src/bench/coachBench.ts';
 import { buildAll, CARDS_FILE, CASES_DIR, LOGS_DIR, readCards, readCases, readLogFile, RESULTS_DIR, writeCards } from '../../src/bench/benchFiles.ts';
+import {
+  answerLists,
+  caseGradeOf,
+  chooseHoldout,
+  gradeRationale,
+  GRADED_TYPES,
+  LOW_INFO_HALF_WIDTH,
+  seriousFidelity,
+  type GradedLine,
+  type GradedType,
+  type MomentLine,
+} from '../../src/bench/grade.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
@@ -59,7 +78,10 @@ function flags(argv: string[]): { pos: string[]; f: Map<string, string | true> }
   }
   return { pos, f };
 }
-const VALUED = new Set(['source', 'model', 'label', 'only', 'type', 'helper-url', 'show', 'log', 'decision', 'frame', 'id', 'kind', 'out', 'repeat', 'concurrency', 'model-by-type', 'prompt-format']);
+const VALUED = new Set([
+  'source', 'model', 'label', 'only', 'type', 'helper-url', 'show', 'log', 'decision', 'frame', 'id', 'kind', 'out', 'repeat', 'concurrency', 'model-by-type', 'prompt-format',
+  'split', 'holdout', 'grader',
+]);
 const str = (f: Map<string, string | true>, k: string): string | undefined => {
   const v = f.get(k);
   return typeof v === 'string' ? v : undefined;
@@ -86,7 +108,15 @@ const USAGE = `Coach benchmark (bench/coach/). Usage: npm run bench:coach -- [op
     that still fails is a transport error, reported apart from format failures.
     --only a,b  --type t only these case ids / this decision type
     --helper-url <url>   default ${DEFAULT_HELPER_URL}
-  --dry-run [--show <id>]  build every prompt and check every case; no model call
+    --split dev|holdout|all  which cases (default dev: every case not held out; the held-out
+                         set is run only to confirm a finished change, never while tuning)
+  --dry-run [--show <id>]  build every prompt and check every case (all splits); no model call
+  regrade <results.json>   fill each answer's regret from the cases' current regret tables
+  moments --cases --out m.jsonl [--only ids]   the bench's spell/attack/block/target cases as
+                         moments for mtg-table's tools/coach-grade.sh batch
+  import-graded <graded.jsonl> --write [--holdout N] [--grader "mtg-table <sha>"]
+                         write each graded decision's regret table into its case (a new case
+                         when no case has its id), then hold out N graded cases
   --compare a.json b.json  paired comparison: per-case difference, 95% interval, verdict,
                          flips beyond noise, unstable cases (old single-sample files load as N=1)
   list --log <file> [--live]   the decisions (or live moments) of a log
@@ -110,6 +140,9 @@ export async function main(argv: string[]): Promise<number> {
   if (pos[0] === 'list') return list(f);
   if (pos[0] === 'add') return add(f);
   if (pos[0] === 'cards') return refreshCards();
+  if (pos[0] === 'moments') return moments(f);
+  if (pos[0] === 'import-graded') return importGraded(pos.slice(1), f);
+  if (pos[0] === 'regrade') return regrade(pos.slice(1));
   if (f.has('dry-run')) return dryRun(f);
   if (pos.length) {
     console.error(`Unknown command: ${pos.join(' ')}\n\n${USAGE}`);
@@ -126,7 +159,13 @@ function promptFormat(f: Map<string, string | true>): PromptFormat {
   return v as PromptFormat;
 }
 
-function loadBuilt(f: Map<string, string | true>): { built: BuiltCase[]; bad: number } {
+function splitOf(f: Map<string, string | true>): BenchSplit {
+  const v = str(f, 'split') ?? 'dev';
+  if (!BENCH_SPLITS.includes(v as BenchSplit)) throw new Error(`--split: one of ${BENCH_SPLITS.join(', ')}`);
+  return v as BenchSplit;
+}
+
+function loadBuilt(f: Map<string, string | true>, split: BenchSplit = 'all'): { built: BuiltCase[]; bad: number } {
   const loaded = readCases(ROOT);
   let bad = 0;
   for (const l of loaded) if (l.errors.length) {
@@ -139,7 +178,7 @@ function loadBuilt(f: Map<string, string | true>): { built: BuiltCase[]; bad: nu
   const cases = loaded
     .filter((l) => l.value && !l.errors.length)
     .map((l) => l.value!)
-    .filter((c) => (!only || only.includes(c.id)) && (!type || c.type === type));
+    .filter((c) => (!only || only.includes(c.id)) && (!type || c.type === type) && (only !== undefined || inSplit(c, split)));
   const cards = readCards(ROOT);
   const { built, errors } = buildAll(ROOT, cases, cards, { format: promptFormat(f) });
   for (const e of errors) {
@@ -177,7 +216,15 @@ function dryRun(f: Map<string, string | true>): number {
 }
 
 async function run(f: Map<string, string | true>): Promise<number> {
-  const { built, bad } = loadBuilt(f);
+  let split: BenchSplit;
+  try {
+    split = splitOf(f);
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : String(e));
+    return 2;
+  }
+  const { built, bad } = loadBuilt(f, split);
+  if (split !== 'dev') console.error(`Note: --split ${split} runs held-out cases. Do not tune the prompt on what they show.`);
   if (bad) console.error(`(${bad} case problem${bad === 1 ? '' : 's'} above; those cases are skipped)`);
   if (!built.length) {
     console.error('No cases to run.');
@@ -295,6 +342,7 @@ async function run(f: Map<string, string | true>): Promise<number> {
     signal: ctrl.signal,
     promptFormat: format,
     modelByType,
+    split,
     onRetry: ({ id, rep, attempt, kind, waitMs }) => {
       console.error(`  ↻ ${id} #${rep + 1}: ${kind} on try ${attempt}; retrying in ${(waitMs / 1000).toFixed(0)} s`);
     },
@@ -503,5 +551,183 @@ async function refreshCards(): Promise<number> {
   }
   writeCards(ROOT, await fetchMissing(cards, [...need]));
   console.log(`Updated ${CARDS_FILE}.`);
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// The engine-graded bench: moments for the grader, its results back as cases
+
+/** The bench's own graded-type cases as moments, with their answers as extra options and their logs' opponents. */
+function caseMoments(f: Map<string, string | true>, out: string): number {
+  const opp = JSON.parse(readFileSync(join(ROOT, BENCH_DIR_OPPONENTS), 'utf8')) as Record<string, string>;
+  const only = str(f, 'only')?.split(',').map((x) => x.trim());
+  const lines: string[] = [];
+  for (const l of readCases(ROOT)) {
+    const c = l.value;
+    if (!c || !(GRADED_TYPES as readonly string[]).includes(c.type) || (only && !only.includes(c.id))) continue;
+    const m: MomentLine & { lands?: boolean } = {
+      log: join(ROOT, c.log),
+      frame: c.moment.frame,
+      mode: c.moment.mode,
+      type: c.type as GradedType,
+      id: c.id,
+      extra: [...c.acceptable, ...c.unacceptable],
+    };
+    if (c.moment.mode === 'review') m.kind = c.moment.kind;
+    if (c.label) m.label = c.label;
+    if (c.lands) m.lands = true;
+    const o = opp[basename(c.log)];
+    if (o) m.oppDeck = o;
+    else console.error(`${c.id}: no opponent deck for ${basename(c.log)} in ${BENCH_DIR_OPPONENTS}`);
+    lines.push(JSON.stringify(m));
+  }
+  writeFileSync(resolve(out), lines.join('\n') + (lines.length ? '\n' : ''));
+  console.log(`${lines.length} case moments → ${out}`);
+  return 0;
+}
+
+const BENCH_DIR_OPPONENTS = 'bench/coach/opponents.json';
+
+function moments(f: Map<string, string | true>): number {
+  const o = str(f, 'out');
+  if (!f.has('cases') || !o) {
+    console.error('moments --cases --out m.jsonl [--only ids]');
+    return 2;
+  }
+  return caseMoments(f, o);
+}
+
+function readGraded(path: string): GradedLine[] {
+  return readFileSync(resolve(path), 'utf8')
+    .split('\n')
+    .filter((l) => l.trim())
+    .map((l) => JSON.parse(l) as GradedLine);
+}
+
+/** The log's path inside the repository, copying (gzipped) into bench/coach/logs when it is outside. */
+function repoLog(abs: string): string {
+  let rel = relative(ROOT, abs);
+  if (!rel.startsWith('..')) return rel;
+  const log0 = readLogFile(abs);
+  const name = `${(log0.header.gameId || basename(abs).replace(/\.jsonl(\.gz)?$/, '')).replace(/[^A-Za-z0-9._-]+/g, '-')}.jsonl.gz`;
+  const dest = join(ROOT, LOGS_DIR, name);
+  mkdirSync(join(ROOT, LOGS_DIR), { recursive: true });
+  if (!existsSync(dest)) {
+    const bytes = readFileSync(abs);
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) copyFileSync(abs, dest);
+    else writeFileSync(dest, gzipSync(bytes, { level: 9 }));
+  }
+  rel = relative(ROOT, dest);
+  return rel;
+}
+
+async function importGraded(pos: string[], f: Map<string, string | true>): Promise<number> {
+  if (pos.length !== 1) {
+    console.error('import-graded <graded.jsonl> --write [--holdout N]');
+    return 2;
+  }
+  const lines = readGraded(pos[0]!);
+  if (!f.has('write')) {
+    console.error('import-graded: --write');
+    return 2;
+  }
+  const meta = { grader: str(f, 'grader') ?? 'mtg-table tools/coach-grade.sh', gradedAt: new Date().toISOString() };
+  const loaded = readCases(ROOT);
+  const existing = new Map(loaded.filter((l) => l.value).map((l) => [l.value!.id, l.value!]));
+  let cards = readCards(ROOT);
+  let wrote = 0;
+  const skipped: string[] = [];
+  for (const line of lines) {
+    const grade = caseGradeOf(line.grade, meta);
+    const label = line.id ?? line.momentKey;
+    if (!grade) {
+      skipped.push(`${label}: ${line.grade.status}${line.grade.error ? ` (${line.grade.error})` : ''}`);
+      continue;
+    }
+    const old = line.id ? existing.get(line.id) : undefined;
+    try {
+      let c: BenchCase;
+      if (old) {
+        if (old.moment.frame !== line.frame || old.type !== line.type) throw new Error(`case ${old.id} is a different moment (frame ${old.moment.frame} ${old.type})`);
+        c = { ...old, grade };
+      } else {
+        const logRel = repoLog(resolve(line.log));
+        const log = readLogFile(join(ROOT, logRel));
+        const moment: BenchCase['moment'] = line.mode === 'review' ? { mode: 'review', frame: line.frame, kind: (line.kind ?? { spell: 'main', attack: 'attack', block: 'block' }[line.type as 'spell']) as 'main' } : { mode: 'live', frame: line.frame };
+        c = {
+          id: line.id ?? `mined-${line.type}-${basename(logRel).replace(/\.jsonl(\.gz)?$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${line.frame}`,
+          log: logRel,
+          source: `engine-graded: ${basename(line.log)} frame ${line.frame} (${line.mode})`,
+          moment,
+          seat: log.seat,
+          type: line.type,
+          acceptable: ['pass'],
+          unacceptable: [],
+          rationale: gradeRationale(grade),
+          confidence: 'high',
+          tags: ['engine-graded', 'mined'],
+          grade,
+        };
+        const m = buildMoment(c, log, cards);
+        c.label = m.decision.label;
+        const miss = missingCards(m.log, m.decision, cards);
+        if (miss.length) {
+          cards = await fetchMissing(cards, miss);
+          writeCards(ROOT, cards);
+        }
+        const cs = choiceSet(c.type, m.log, m.decision, cards, {});
+        const legal = (t: string) => {
+          const p = parseAnswer(t);
+          return !!p && illegalReason(p, cs) === null;
+        };
+        const lists = answerLists(grade, legal);
+        if (!lists.acceptable.length) throw new Error('no graded option is legal by the bench’s own check');
+        c.acceptable = lists.acceptable;
+        c.unacceptable = lists.unacceptable;
+        const informative = grade.noise <= LOW_INFO_HALF_WIDTH && seriousFidelity(grade.fidelity).length === 0;
+        if (!informative) c.confidence = 'low';
+      }
+      const b = buildCase(c, readLogFile(join(ROOT, c.log)), cards);
+      const problems = caseProblems(b);
+      if (problems.length) throw new Error(problems.join('; '));
+      writeFileSync(join(ROOT, CASES_DIR, `${c.id}.json`), JSON.stringify(c, null, 2) + '\n');
+      existing.set(c.id, c);
+      wrote++;
+      console.log(`${old ? 'graded' : 'new   '} ${c.id}: noise ±${grade.noise.toFixed(2)}, best ${grade.options.find((o) => o.best)?.token ?? '?'}${c.confidence === 'low' ? ' (low confidence: noisy or a serious fidelity warning)' : ''}`);
+    } catch (e) {
+      skipped.push(`${label}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  for (const s of skipped) console.error(`skipped ${s}`);
+  const n = Number(str(f, 'holdout') ?? 0);
+  if (n > 0) {
+    const graded = [...existing.values()].filter((c) => c.grade);
+    const hold = new Set(chooseHoldout(graded, n));
+    for (const c of graded) {
+      if (hold.has(c.id) && !c.holdout) {
+        c.holdout = true;
+        writeFileSync(join(ROOT, CASES_DIR, `${c.id}.json`), JSON.stringify(c, null, 2) + '\n');
+      }
+    }
+    console.log(`held out (${hold.size}): ${[...hold].join(', ')}`);
+  }
+  console.log(`${wrote} case${wrote === 1 ? '' : 's'} written, ${skipped.length} skipped. Check them: npm run bench:coach -- --dry-run`);
+  return skipped.length && !wrote ? 1 : 0;
+}
+
+function regrade(pos: string[]): number {
+  if (pos.length !== 1) {
+    console.error('regrade <results.json>');
+    return 2;
+  }
+  const { report, warnings } = normalizeReport(JSON.parse(readFileSync(resolve(pos[0]!), 'utf8')));
+  for (const w of warnings) console.error(`Warning: ${w}`);
+  const cases = readCases(ROOT).filter((l) => l.value).map((l) => l.value!);
+  const { built } = buildAll(ROOT, cases, readCards(ROOT), { format: report.promptFormat ?? 'classic' });
+  const r = regradeReport(report, built);
+  const base = resolve(pos[0]!).replace(/\.json$/, '') + '-regraded';
+  writeFileSync(`${base}.json`, JSON.stringify(r.report, null, 1) + '\n');
+  writeFileSync(`${base}.md`, reportMarkdown(r.report));
+  console.log(`${r.graded} answers in ${r.cases} graded cases → ${relative(process.cwd(), base)}.json and .md`);
   return 0;
 }

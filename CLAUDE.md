@@ -81,7 +81,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 - `public/cubes/` — the four cube documents (Justin's) and the cube lab's
   `<cube>.meta.json` beside each.
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.
-- `bench/` — `src/bench/coachBench.ts` (cases, legal choices, scoring, reports) and `bench/coach/` (cases, logs, card snapshot, the `npm run bench:coach` CLI): the coach benchmark. CI runs its dry run in `npm test`; real runs need the helper or a key (README § Coach benchmark). Transient failures are retried; a call that still fails is a transport error, reported apart from format failures, and a run with any is not to be compared.
+- `bench/` — `src/bench/coachBench.ts` (cases, legal choices, scoring, reports), `src/bench/grade.ts` (engine-graded regret tables, low-information rule, held-out set) and `bench/coach/` (cases, logs, card snapshot, the `npm run bench:coach` CLI): the coach benchmark. CI runs its dry run in `npm test`; real runs need the helper or a key; regret tables come from mtg-table's `tools/coach-grade.sh` (README § Coach benchmark, *Engine-graded regret*). Regret's yardstick is "best against Forge Default"; held-out cases (`holdout: true`) are never used to tune the prompt. Transient failures are retried; a call that still fails is a transport error, reported apart from format failures, and a run with any is not to be compared.
 
 ## Seat rule
 
