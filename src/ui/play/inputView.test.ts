@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { Card, GameStateBody, InputBody } from '../../protocol.ts';
-import { cardRole, describeInput, parsePay, playerClickable } from './inputView.ts';
+import { cardRole, describeInput, noticeLine, parsePay, playerClickable } from './inputView.ts';
 import { planPlayKey, type PlayKeyContext } from './playKeys.ts';
 import { liveDecision, liveKind, momentKey } from './liveDecision.ts';
 import { canPassAhead, PASS_EOT, passMenu, primaryView } from './actionWords.ts';
@@ -318,5 +318,21 @@ describe('liveDecision', () => {
     const c = momentKey({ log, state: state({ phase: 'MAIN2' }), input: input(PRIORITY), ask: null, seat: ME });
     expect(a).toBe(b);
     expect(a).not.toBe(c);
+  });
+});
+
+describe('noticeLine', () => {
+  it('names a card the engine refers to by id, when the board shows it', () => {
+    expect(noticeLine('Not selectable', 'card 3 cannot be selected now', state())).toBe('Not selectable — Card 3 cannot be selected now');
+  });
+  it('leaves an id the board does not show, and a title alone', () => {
+    expect(noticeLine('Not selectable', 'card 99 cannot be selected now', state())).toBe('Not selectable — card 99 cannot be selected now');
+    expect(noticeLine('Not selectable', 'card 3 cannot be selected now', null)).toBe('Not selectable — card 3 cannot be selected now');
+    expect(noticeLine('Reconnected', '', state())).toBe('Reconnected');
+  });
+  it('never names a hidden card', () => {
+    const s = state();
+    s.players[1]!.zones.hand = { count: 1, cards: [{ id: 42, hidden: true } as never] };
+    expect(noticeLine('Not selectable', 'card 42 cannot be selected now', s)).toBe('Not selectable — card 42 cannot be selected now');
   });
 });

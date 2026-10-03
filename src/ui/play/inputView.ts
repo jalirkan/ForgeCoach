@@ -124,6 +124,21 @@ function firstLine(s: string): string {
 }
 
 /** The whole prompt as one line, for the engine-text row. */
+/**
+ * A notice for the action bar, with the engine's internal card ids ("card 31
+ * cannot be selected now") read as the card's name from the visible state.
+ * An id the state doesn't show, or a hidden card, stays as it was: the notice
+ * never names more than the board does.
+ */
+export function noticeLine(title: string, text: string | null | undefined, state: GameStateBody | null): string {
+  const cards = state ? cardIndex(state) : null;
+  const named = (text ?? '').replace(/\bcard (\d+)\b/g, (whole, id: string) => {
+    const c = cards?.get(Number(id));
+    return c && !isHidden(c) && c.name ? cardName(c) : whole;
+  });
+  return named ? `${title} — ${named}` : title;
+}
+
 export function oneLine(s: string): string {
   return s
     .split('\n')

@@ -36,7 +36,7 @@ import { GameOverCard } from './GameOverCard.tsx';
 import { HandDock } from './HandDock.tsx';
 import { LogDrawer, LogTab } from './LogDrawer.tsx';
 import { PhaseStrip } from './PhaseStrip.tsx';
-import { cardRole, describeInput, playerClickable, type ClickContext } from './inputView.ts';
+import { cardRole, describeInput, noticeLine, playerClickable, type ClickContext } from './inputView.ts';
 import { lastStateFrame } from './liveDecision.ts';
 import { PlayCoach } from './PlayCoach.tsx';
 import { CombatArrows } from './CombatArrows.tsx';
@@ -114,7 +114,9 @@ export function PlayView({
     if (seenNotice.current === id) return;
     seenNotice.current = id;
     if (lastNotice.level === 'info' && lastNotice.source === 'engine') return;
-    setFlash(`${lastNotice.title}${lastNotice.text ? ` — ${lastNotice.text}` : ''}`);
+    setFlash(noticeLine(lastNotice.title, lastNotice.text, snap.state));
+    // Only a new notice flashes; the state it names cards from is read as of then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastNotice]);
   const act = useCallback((body: ActBody) => void session.act(body), [session]);
   const pressOk = useCallback(() => {
