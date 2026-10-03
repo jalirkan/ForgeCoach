@@ -61,7 +61,8 @@ function behaves(label: string, setup: () => void) {
       const id = g.newGuideId();
       g.saveGuide({ id, name: 'Boros', text: 'attack' });
       g.saveGuide({ id, name: 'Boros', text: 'attack more' });
-      expect(g.listGuides().map((x) => x.name)).toEqual(['Rakdos sacrifice (cube)', 'Boros']);
+      expect(g.listGuides().map((x) => x.name)).toContain('Boros');
+      expect(g.listGuides().filter((x) => !g.isBuiltinGuide(x.id)).map((x) => x.name)).toEqual(['Boros']);
       expect(g.getGuide(id)!.text).toBe('attack more');
       expect(g.activeGuideId()).toBeNull();
       g.setActiveGuideId(id);
@@ -74,6 +75,31 @@ function behaves(label: string, setup: () => void) {
       g.deleteGuide(g.RAKDOS_GUIDE_ID);
       expect(g.activeGuideId()).toBe(g.RAKDOS_GUIDE_ID);
       g.setActiveGuideId(null);
+    });
+
+    it('ships every built-in with text and a unique id; edit then reset restores each', async () => {
+      const g = await fresh();
+      const builtins = g.listGuides().filter((x) => g.isBuiltinGuide(x.id));
+      expect(builtins.length).toBeGreaterThanOrEqual(9);
+      expect(new Set(builtins.map((x) => x.id)).size).toBe(builtins.length);
+      expect(new Set(builtins.map((x) => x.name)).size).toBe(builtins.length);
+      for (const b of builtins) {
+        expect(b.id.startsWith('builtin:')).toBe(true);
+        expect(b.name.trim()).not.toBe('');
+        expect(b.text.trim().length).toBeGreaterThan(200);
+        expect(g.defaultGuide(b.id)).toEqual(b);
+        g.saveGuide({ id: b.id, name: b.name, text: 'mine' });
+        expect(g.getGuide(b.id)!.text).toBe('mine');
+        g.deleteGuide(b.id);
+        expect(g.getGuide(b.id)).toEqual(b);
+      }
+    });
+
+    it('seeds the S.H.I.E.L.D. guide', async () => {
+      const g = await fresh();
+      const sg = g.getGuide(g.SHIELD_GUIDE_ID)!;
+      expect(sg.text).toContain('attacks alone');
+      expect(sg.text).toContain('Nick Fury');
     });
 
     it('rejects a guide without an id', async () => {
@@ -105,7 +131,7 @@ describe('persistence', () => {
     expect(g.getGuide('user:1')?.name).toBe('Kept');
     expect(g.activeGuideId()).toBe('user:1');
     ls.setItem('forgecoach.guides.v1', '{not json');
-    expect(g.listGuides()).toHaveLength(1);
+    expect(g.listGuides().filter((x) => !g.isBuiltinGuide(x.id))).toHaveLength(0);
     expect(g.activeGuideId()).toBeNull();
   });
   it('falls back to memory when localStorage throws', async () => {
