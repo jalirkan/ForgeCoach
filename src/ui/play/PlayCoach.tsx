@@ -11,7 +11,8 @@ import type { AskBody, GameStateBody, InputBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import type { Decision } from '../../decisions.ts';
 import { answerBusy, startAnswer, stopAnswer, useAnswer } from '../answers.ts';
-import { AnswerBox, coachPrompt } from '../CoachPanel.tsx';
+import { AnswerBox, AnswerHead, coachPrompt } from '../CoachPanel.tsx';
+import { parseCoachAnswer } from '../../coachAnswer.ts';
 import { Markdown } from '../Markdown.tsx';
 import { IconBook, IconChevronDown, KindIcon, KIND_LABEL } from '../Icons.tsx';
 import { stripRound } from '../Timeline.tsx';
@@ -100,6 +101,10 @@ export const PlayCoach = memo(function PlayCoach({
   }, [auto, key, decision, current, ask_, coachReady]);
 
   const [showPrev, setShowPrev] = useState(true);
+  // The earlier answer reads like the current one: its play, rule and confidence as the head, not raw lines.
+  const prevText = previous?.text ?? '';
+  const prevDone = previous?.status !== 'streaming';
+  const prevParts = useMemo(() => (prevText ? parseCoachAnswer(prevText, { complete: prevDone }) : null), [prevText, prevDone]);
   const makePrompt = useCallback(async () => {
     if (!log || !decision) throw new Error('Nothing to ask about yet.');
     return coachPrompt(log, decision);
@@ -169,7 +174,10 @@ export const PlayCoach = memo(function PlayCoach({
             <span>Earlier advice · {stripRound(lastAsked.label)}</span>
             <IconChevronDown size={14} className={showPrev ? 'rot' : ''} />
           </button>
-          {showPrev && (previous.text ? <Markdown text={previous.text} streaming={previous.status === 'streaming'} /> : <p className="muted small">{previous.status === 'error' ? previous.error : previous.status === 'stopped' ? (previous.stopReasonNote === 'moved_on' ? 'Stopped — the game moved on before it answered.' : 'Stopped.') : 'Thinking…'}</p>)}
+          {showPrev && prevParts && (prevParts.answer || prevParts.rule || prevParts.confidence) && (
+            <AnswerHead answer={prevParts.answer} rule={prevParts.rule} confidence={prevParts.confidence} why={prevParts.confidenceWhy} />
+          )}
+          {showPrev && (previous.text ? <Markdown text={prevParts ? prevParts.body : previous.text} streaming={previous.status === 'streaming'} /> : <p className="muted small">{previous.status === 'error' ? previous.error : previous.status === 'stopped' ? (previous.stopReasonNote === 'moved_on' ? 'Stopped — the game moved on before it answered.' : 'Stopped.') : 'Thinking…'}</p>)}
           {showPrev && previous.text && previous.status === 'stopped' && previous.stopReasonNote === 'moved_on' && <p className="tiny muted">Stopped — the game moved on.</p>}
         </div>
       )}
