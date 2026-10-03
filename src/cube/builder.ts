@@ -631,9 +631,11 @@ export function allBuilds(ctx: CubeContext, pool: string[], opts: BuildOptions =
   }
   // A splash that does not beat its own unsplashed build is noise.
   const plain = new Map(builds.filter((b) => !b.splash).map((b) => [`${b.colors}/${b.landCount}`, b.score]));
+  // A legal 40 ranks above any build short of spells: a short build only leads
+  // when no colours make a full deck yet (an early pool).
   return builds
     .filter((b) => !b.splash || b.score > (plain.get(`${b.colors}/${b.landCount}`) ?? -Infinity))
-    .sort((a, b) => b.score - a.score || (a.key < b.key ? -1 : 1));
+    .sort((a, b) => Number(a.missing > 0) - Number(b.missing > 0) || b.score - a.score || (a.key < b.key ? -1 : 1));
 }
 
 /** The top `k` distinct builds: different colours (or splash), and not the same spells. */
