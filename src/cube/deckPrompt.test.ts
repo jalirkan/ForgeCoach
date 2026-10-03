@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { buildDecks } from './builder.ts';
 import { buildDeckPrompt, DECK_SYSTEM } from './deckPrompt.ts';
 import { context, loadCube, loadInfos, loadMeta, samplePool } from './testdata/load.ts';
@@ -57,6 +57,9 @@ describe('pools', () => {
     }
   }
   it('saves several pools, newest first, and deletes', () => {
+    // newPool's id carries a random suffix: pin it so the test is deterministic.
+    const rand = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    onTestFinished(() => rand.mockRestore());
     const s = new Mem();
     const a = savePool({ ...newPool('synergy', 'Friday', 1), cards: ['Opt'], updatedAt: 1 }, s);
     savePool({ ...newPool('pauper', 'Saturday', 2), updatedAt: 2 }, s);
@@ -90,11 +93,15 @@ describe('cubes', () => {
       return Promise.resolve({ ok: false, status: 404, text: async () => '', json: async () => null });
     }
   };
-  it('every listed cube loads with 180 cards and its shipped lab meta', async () => {
+  it('every listed cube loads with 180 cards and its shipped lab meta (when it has one)', async () => {
     for (const c of CUBES) {
       const cube = await loadCubeDoc(c, '/', fake);
       expect(cube.cards).toHaveLength(180);
       const meta = await loadShippedMeta(c, '/', fake);
+      if (c.labData === false) {
+        expect(meta).toBeNull();
+        continue;
+      }
       expect(meta?.schema).toBe(1);
       expect(Object.keys(meta?.cards ?? {})).toHaveLength(180);
       expect(meta?.pairs[0]?.gain).toBeCloseTo((meta?.pairs[0]?.lift ?? 0) - 1);

@@ -5,8 +5,9 @@
  * The Cube metagame page (#meta, #meta/<cube>): what the cube lab's AI-vs-AI
  * drafts say about each cube's archetypes and cards, laid out like a
  * metagame page — archetype cards with art, a table view, the per-card table
- * and a win-rate chart with its intervals. Data shaping is in
- * cube/metaView.ts; this file only lays it out.
+ * and a win-rate chart with its intervals, and the cube's "How to draft"
+ * guide (#meta/<cube>/guide). Data shaping is in cube/metaView.ts; this
+ * file only lays it out.
  */
 import './meta.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -34,6 +35,7 @@ import { Dots, IntervalStrip, LedgerShell, SearchIcon, Segmented, SortTh, useTip
 import { useMeta } from './useMeta.ts';
 import { ArchetypeSheet } from './ArchetypeSheet.tsx';
 import { ColourShareChart, WinChart } from './charts.tsx';
+import { CubeGuideView } from '../guide/CubeGuide.tsx';
 
 const PAGE = 12;
 const CARD_PAGE = 40;
@@ -44,7 +46,7 @@ export function cubeFromHash(hash: string): string {
   return id && cubeInfo(id) ? id : CUBES[0]!.id;
 }
 
-type View = 'archetypes' | 'cards';
+type View = 'archetypes' | 'cards' | 'guide';
 type Layout = 'grid' | 'table';
 type ColourFilter = 'all' | 'W' | 'U' | 'B' | 'R' | 'G';
 type MinGames = '0' | '5' | '10';
@@ -60,7 +62,7 @@ export default function MetaApp() {
   }, []);
   const pick = (id: string) => {
     setCubeId(id);
-    history.replaceState(null, '', `#meta/${id}`);
+    history.replaceState(null, '', `#meta/${id}${view === 'guide' ? '/guide' : ''}`);
   };
   const info = cubeInfo(cubeId)!;
   const { loading, meta, source, themes, reload } = useMeta(cubeId);
@@ -106,7 +108,11 @@ export default function MetaApp() {
     };
   }, [importFile]);
 
-  const [view, setView] = useState<View>('archetypes');
+  const [view, setViewState] = useState<View>(() => (/^#meta\/[\w-]+\/guide\b/.test(location.hash) ? 'guide' : 'archetypes'));
+  const setView = (v: View) => {
+    setViewState(v);
+    history.replaceState(null, '', `#meta/${cubeId}${v === 'guide' ? '/guide' : ''}`);
+  };
   const [layout, setLayout] = useState<Layout>('grid');
   const [sort, setSort] = useState<ArchetypeSort>('share');
   const [desc, setDesc] = useState(true);
@@ -235,7 +241,12 @@ export default function MetaApp() {
           <span className="spinner spinner-lg" />
         </div>
       ) : !meta ? (
-        <EmptyMeta file={info.file} title={info.title} />
+        <>
+          <EmptyMeta file={info.file} title={info.title} />
+          <section className="lg-panel mt-guide">
+            <CubeGuideView cubeId={cubeId} meta={null} />
+          </section>
+        </>
       ) : (
         <>
           <section className="lg-panel lg-filters" aria-label="Filters">
@@ -248,128 +259,139 @@ export default function MetaApp() {
                 options={[
                   { value: 'archetypes', label: 'Archetypes' },
                   { value: 'cards', label: 'Cards' },
+                  { value: 'guide', label: 'How to draft' },
                 ]}
               />
             </div>
-            <div>
-              <span className="lg-field-label">Colour</span>
-              <Segmented<ColourFilter>
-                label="Colour"
-                value={colour}
-                onChange={setColour}
-                options={[
-                  { value: 'all', label: 'All' },
-                  ...(['W', 'U', 'B', 'R', 'G'] as const).map((c) => ({
-                    value: c,
-                    title: { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' }[c],
-                    label: <span className={cx('lg-seg-dot', `lg-dot-${c}`)} aria-label={c} />,
-                  })),
-                ]}
-              />
-            </div>
-            <div>
-              <span className="lg-field-label">Minimum games</span>
-              <Segmented<MinGames>
-                label="Minimum games"
-                value={minGames}
-                onChange={setMinGames}
-                options={[
-                  { value: '0', label: 'Any' },
-                  { value: '5', label: '5+' },
-                  { value: '10', label: '10+' },
-                ]}
-              />
-              <div className="lg-field-note">
-                {sample?.games ?? '—'} games{sample?.seedRange && Array.isArray(sample.seedRange) ? ` · seeds ${(sample.seedRange as number[]).join('–')}` : ''}
-                {(sample as { format?: string } | undefined)?.format ? ` · ${(sample as { format?: string }).format} draft` : ''}
-              </div>
-            </div>
-          </section>
-
-          <div className="lg-toolbar">
-            <label className="lg-search">
-              <SearchIcon />
-              <input
-                className="lg-input"
-                type="search"
-                placeholder={view === 'archetypes' ? 'Search archetypes or cards' : 'Search cards'}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Search"
-              />
-            </label>
-            {view === 'archetypes' ? (
+            {view !== 'guide' && (
               <>
-                <span className="lg-label-inline">Sort by</span>
-                <select className="lg-select" value={sort} onChange={(e) => onSortArch(e.target.value as ArchetypeSort)} aria-label="Sort by">
-                  <option value="share">Meta share</option>
-                  <option value="win">Win rate</option>
-                  <option value="games">Games</option>
-                  <option value="name">Name</option>
-                </select>
-                <select className="lg-select" value={desc ? 'desc' : 'asc'} onChange={(e) => setDesc(e.target.value === 'desc')} aria-label="Order">
-                  <option value="desc">{sort === 'name' ? 'Z to A' : 'Highest first'}</option>
-                  <option value="asc">{sort === 'name' ? 'A to Z' : 'Lowest first'}</option>
-                </select>
-                <Segmented<Layout>
-                  label="Layout"
-                  value={layout}
-                  onChange={setLayout}
-                  options={[
-                    { value: 'grid', label: 'Grid' },
-                    { value: 'table', label: 'Table' },
-                  ]}
-                />
-                <span className="lg-count">
-                  Showing {Math.min(shown, visible.length)} of {visible.length} archetypes
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="lg-label-inline">Sort by</span>
-                <select className="lg-select" value={cardSort} onChange={(e) => onSortCard(e.target.value as CardSort)} aria-label="Sort by">
-                  <option value="shrunk">Win rate (shrunk)</option>
-                  <option value="games">Games</option>
-                  <option value="pickRate">Pick rate</option>
-                  <option value="inclusion">Made the deck</option>
-                  <option value="name">Name</option>
-                </select>
-                <span className="lg-count">
-                  Showing {Math.min(cardsShown, visibleCards.length)} of {visibleCards.length} cards
-                </span>
+                <div>
+                  <span className="lg-field-label">Colour</span>
+                  <Segmented<ColourFilter>
+                    label="Colour"
+                    value={colour}
+                    onChange={setColour}
+                    options={[
+                      { value: 'all', label: 'All' },
+                      ...(['W', 'U', 'B', 'R', 'G'] as const).map((c) => ({
+                        value: c,
+                        title: { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' }[c],
+                        label: <span className={cx('lg-seg-dot', `lg-dot-${c}`)} aria-label={c} />,
+                      })),
+                    ]}
+                  />
+                </div>
+                <div>
+                  <span className="lg-field-label">Minimum games</span>
+                  <Segmented<MinGames>
+                    label="Minimum games"
+                    value={minGames}
+                    onChange={setMinGames}
+                    options={[
+                      { value: '0', label: 'Any' },
+                      { value: '5', label: '5+' },
+                      { value: '10', label: '10+' },
+                    ]}
+                  />
+                  <div className="lg-field-note">
+                    {sample?.games ?? '—'} games{sample?.seedRange && Array.isArray(sample.seedRange) ? ` · seeds ${(sample.seedRange as number[]).join('–')}` : ''}
+                    {(sample as { format?: string } | undefined)?.format ? ` · ${(sample as { format?: string }).format} draft` : ''}
+                  </div>
+                </div>
               </>
             )}
-          </div>
+          </section>
 
-          {view === 'archetypes' ? (
-            <div className="mt-main">
-              <div className="mt-content">
-                {visible.length === 0 ? (
-                  <p className="lg-muted mt-none">No archetype matches.</p>
-                ) : layout === 'grid' ? (
-                  <div className="mt-grid">
-                    {visible.slice(0, shown).map((r) => (
-                      <ArchetypeCard key={r.id} row={r} onOpen={() => setOpen(r)} />
-                    ))}
-                  </div>
+          {view === 'guide' ? (
+            <CubeGuideView cubeId={cubeId} meta={meta} headless />
+          ) : (
+            <>
+              <div className="lg-toolbar">
+                <label className="lg-search">
+                  <SearchIcon />
+                  <input
+                    className="lg-input"
+                    type="search"
+                    placeholder={view === 'archetypes' ? 'Search archetypes or cards' : 'Search cards'}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    aria-label="Search"
+                  />
+                </label>
+                {view === 'archetypes' ? (
+                  <>
+                    <span className="lg-label-inline">Sort by</span>
+                    <select className="lg-select" value={sort} onChange={(e) => onSortArch(e.target.value as ArchetypeSort)} aria-label="Sort by">
+                      <option value="share">Meta share</option>
+                      <option value="win">Win rate</option>
+                      <option value="games">Games</option>
+                      <option value="name">Name</option>
+                    </select>
+                    <select className="lg-select" value={desc ? 'desc' : 'asc'} onChange={(e) => setDesc(e.target.value === 'desc')} aria-label="Order">
+                      <option value="desc">{sort === 'name' ? 'Z to A' : 'Highest first'}</option>
+                      <option value="asc">{sort === 'name' ? 'A to Z' : 'Lowest first'}</option>
+                    </select>
+                    <Segmented<Layout>
+                      label="Layout"
+                      value={layout}
+                      onChange={setLayout}
+                      options={[
+                        { value: 'grid', label: 'Grid' },
+                        { value: 'table', label: 'Table' },
+                      ]}
+                    />
+                    <span className="lg-count">
+                      Showing {Math.min(shown, visible.length)} of {visible.length} archetypes
+                    </span>
+                  </>
                 ) : (
-                  <ArchetypeTable rows={visible.slice(0, shown)} sort={sort} desc={desc} onSort={onSortArch} onOpen={setOpen} />
-                )}
-                {visible.length > shown && (
-                  <div className="lg-more">
-                    <button type="button" className="lg-btn" onClick={() => setShown(shown + PAGE)}>
-                      Show {Math.min(PAGE, visible.length - shown)} more
-                    </button>
-                  </div>
+                  <>
+                    <span className="lg-label-inline">Sort by</span>
+                    <select className="lg-select" value={cardSort} onChange={(e) => onSortCard(e.target.value as CardSort)} aria-label="Sort by">
+                      <option value="shrunk">Win rate (shrunk)</option>
+                      <option value="games">Games</option>
+                      <option value="pickRate">Pick rate</option>
+                      <option value="inclusion">Made the deck</option>
+                      <option value="name">Name</option>
+                    </select>
+                    <span className="lg-count">
+                      Showing {Math.min(cardsShown, visibleCards.length)} of {visibleCards.length} cards
+                    </span>
+                  </>
                 )}
               </div>
-              <aside className="mt-aside">
-                <WinChart rows={rows} mean={prior.mean} onOpen={setOpen} />
-                <ColourShareChart rows={rows} />
-              </aside>
-            </div>
-          ) : (
-            <CardTable rows={visibleCards} shown={cardsShown} sort={cardSort} desc={cardDesc} onSort={onSortCard} onMore={() => setCardsShown(cardsShown + CARD_PAGE)} />
+
+              {view === 'archetypes' ? (
+                <div className="mt-main">
+                  <div className="mt-content">
+                    {visible.length === 0 ? (
+                      <p className="lg-muted mt-none">No archetype matches.</p>
+                    ) : layout === 'grid' ? (
+                      <div className="mt-grid">
+                        {visible.slice(0, shown).map((r) => (
+                          <ArchetypeCard key={r.id} row={r} onOpen={() => setOpen(r)} />
+                        ))}
+                      </div>
+                    ) : (
+                      <ArchetypeTable rows={visible.slice(0, shown)} sort={sort} desc={desc} onSort={onSortArch} onOpen={setOpen} />
+                    )}
+                    {visible.length > shown && (
+                      <div className="lg-more">
+                        <button type="button" className="lg-btn" onClick={() => setShown(shown + PAGE)}>
+                          Show {Math.min(PAGE, visible.length - shown)} more
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <aside className="mt-aside">
+                    <WinChart rows={rows} mean={prior.mean} onOpen={setOpen} />
+                    <ColourShareChart rows={rows} />
+                  </aside>
+                </div>
+              ) : (
+                <CardTable rows={visibleCards} shown={cardsShown} sort={cardSort} desc={cardDesc} onSort={onSortCard} onMore={() => setCardsShown(cardsShown + CARD_PAGE)} />
+              )}
+            </>
           )}
         </>
       )}

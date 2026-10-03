@@ -13,6 +13,7 @@ import type { Prompt } from '../prompt.ts';
 import { BASIC_NAMES, COLOURS, BASIC_OF, colourLabel } from './colors.ts';
 import { CURVE_LABELS, PART_LABEL, sideboard, type DeckBuild, type ScoreParts } from './builder.ts';
 import { findArchetype } from './meta.ts';
+import { guideForTitle, guidePromptSection } from './guides/index.ts';
 import { cardValue, metaValue, pairsAmong, pairWeight, pct, type CubeContext } from './score.ts';
 
 export const DECK_SYSTEM = `You are a Magic: The Gathering deckbuilding coach for a two-player cube draft (Grid or Winston), 40-card decks, best of three. The player drafted the pool below; the page proposed a build with a score and its reasons. Help them end up with the strongest deck for real games.
@@ -140,6 +141,10 @@ export function buildDeckPrompt(input: DeckPromptInput): Prompt {
     }
     if (meta.splash && typeof meta.splash.vsNoSplash === 'number') out.push(`- Splashing decks: ${pct(meta.splash.vsNoSplash, true)} win rate vs not splashing, over ${meta.splash.games ?? '?'} games.`);
   }
+
+  // The cube's guide for this build's archetype (static advice, capped).
+  const guide = guidePromptSection(guideForTitle(ctx.cube.title), b.colors);
+  if (guide) out.push('', guide);
 
   out.push('', '## Card text (pool)');
   for (const s of [...new Set(pool)].filter((p) => !BASIC_NAMES.has(p)).sort(byName)) out.push(oracleBlock(s, infos.get(s)));

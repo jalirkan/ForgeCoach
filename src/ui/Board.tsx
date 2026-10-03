@@ -5,7 +5,7 @@
  * The table at one state: opponent on top, you at the bottom, with the turn
  * header, stack and combat between them.
  */
-import { memo, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { AnyCard, Card, GameStateBody, PlayerState } from '../protocol.ts';
 import { isHidden, MANA_COLORS } from '../protocol.ts';
 import type { GameLog } from '../log.ts';
@@ -18,6 +18,7 @@ import { IconHeart, IconLayers, IconShield, IconSword } from './Icons.tsx';
 import { Pip } from './Mana.tsx';
 import { ZoneViewer, type ViewableZone } from './ZoneViewer.tsx';
 import { groupLands, pileWeight } from './landPiles.ts';
+import { edgeFade, phoneSideFit } from './boardFit.ts';
 import { cx, stateCardNames, typeKind } from './util.ts';
 
 interface BoardProps {
@@ -141,8 +142,14 @@ const PlayerArea = memo(function PlayerArea({
   ].filter(Boolean);
   if (top) rows.reverse();
   const empty = rows.length === 0;
+  // Portrait phones: the rows' height and the side's floor (ui/boardFit.ts, play.css).
+  const fit = phoneSideFit({ permanents: permanents.length > 0, lands: lands.length > 0, maxAttach: Math.max(0, ...permanents.map((p) => p.att.length)) });
   return (
-    <section className={cx('player', top ? 'player-top' : 'player-me', mine && 'is-me')} aria-label={`${player.name}'s side`}>
+    <section
+      className={cx('player', top ? 'player-top' : 'player-me', mine && 'is-me')}
+      aria-label={`${player.name}'s side`}
+      style={{ '--fit-rows': fit.rowsH.toFixed(2), '--fit-pad': `${fit.padPx}px` } as CSSProperties}
+    >
       {top && <PlayerHeader player={player} state={state} log={log} frameIndex={frameIndex} seat={seat} />}
       <div
         className="battlefield"
@@ -168,17 +175,42 @@ const PlayerArea = memo(function PlayerArea({
 });
 
 function Row({ kind, label, count, dense, children }: { kind: 'permanents' | 'lands'; label: string; count: number; dense?: string; children: React.ReactNode }) {
+  const fade = useEdgeFade();
   return (
     <div className={cx('bf-row', `bf-row-${kind}`, dense)}>
       <div className="bf-label">
         {label} <span className="bf-count">{count}</span>
       </div>
       {/* bf-chips / bf-tiles: kept class names (the play screen scrolls to the lands row by it). */}
-      <div className={cx('bf-cards', kind === 'lands' ? 'bf-chips' : 'bf-tiles')} role="group" aria-label={`${label}: ${count}`}>
+      <div ref={fade.ref} data-fade={fade.edges || undefined} className={cx('bf-cards', kind === 'lands' ? 'bf-chips' : 'bf-tiles')} role="group" aria-label={`${label}: ${count}`}>
         {children}
       </div>
     </div>
   );
+}
+
+/** A row that scrolls sideways fades at the edge(s) with more cards past them. */
+function useEdgeFade() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState<ReturnType<typeof edgeFade>>('');
+  const update = useRef(() => {
+    const el = ref.current;
+    if (el) setEdges(edgeFade(el.scrollLeft, el.clientWidth, el.scrollWidth));
+  }).current;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro?.disconnect();
+    };
+  }, [update]);
+  // The cards change with every state (a tap lays a card down): measure again after each render.
+  useEffect(update);
+  return { ref, edges };
 }
 
 function Hand({ player }: { player: PlayerState }) {

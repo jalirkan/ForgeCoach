@@ -119,7 +119,11 @@ export interface Curve {
 /** Where along a card's width a vertical line meets it. */
 const ANCHOR = 0.625;
 
-export function curveBetween(a: Box, b: Box, lane = 0): Curve {
+/**
+ * `endInset`: how far inside `b`'s edge the line ends (a badge sits there);
+ * negative stops short of it (a phone's line to a player's life total).
+ */
+export function curveBetween(a: Box, b: Box, lane = 0, endInset = 10): Curve {
   const ac = { x: a.x + a.w / 2, y: a.y + a.h / 2 };
   const bc = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
   const vertical = Math.abs(bc.y - ac.y) >= Math.abs(bc.x - ac.x) * 0.5;
@@ -135,11 +139,11 @@ export function curveBetween(a: Box, b: Box, lane = 0): Curve {
     end = { x: bx + fan, y: down ? b.y : b.y + b.h };
     // Badges sit just inside the cards' edges.
     start = { x: start.x, y: start.y + (down ? -10 : 10) };
-    end = { x: end.x, y: end.y + (down ? 10 : -10) };
+    end = { x: end.x, y: end.y + (down ? endInset : -endInset) };
   } else {
     const right = bc.x > ac.x;
     start = { x: right ? a.x + a.w - 10 : a.x + 10, y: ac.y + fan };
-    end = { x: right ? b.x + 10 : b.x + b.w - 10, y: bc.y + fan };
+    end = { x: right ? b.x + endInset : b.x + b.w - endInset, y: bc.y + fan };
   }
   const dx = end.x - start.x;
   const dy = end.y - start.y;

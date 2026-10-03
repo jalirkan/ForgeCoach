@@ -5,19 +5,20 @@
  * The pick screen, the same for all three variants: a header (gold kicker,
  * serif "Pack 1 · Pick 3" / "Grid 4 of 18" / "Pile 2", a mono line with the
  * offer and the pool count, seat chips), the big gold action top right with
- * a kebab menu (the coach, hints, what you know of the AI), the offer as
+ * a kebab menu (the coach, hints, what you know of the AI, the cube's guide), the offer as
  * large card images, and the pool panel underneath. Phones get the action in
  * a dock under the thumb.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { cubeInfo } from '../../cube/cubes.ts';
-import { GRID_LINES, recommendGrid, recommendWinston } from '../../cube/pick.ts';
+import { GRID_LINES, poolColours, recommendGrid, recommendWinston } from '../../cube/pick.ts';
 import { canPass, expectedPicks, knownAiCards, lineName, progress, toAct, yourPack, type BoosterDraft, type Draft, type GridDraft, type WinstonDraft } from '../../draft/draft.ts';
 import { bestBoosterPick, buildPickPrompt, pickPromptCards } from '../../draft/pickPrompt.ts';
 import { startAnswer, stopAnswer, useAnswer } from '../answers.ts';
 import { cardsForPrompt, prefetchCards } from '../cardData.ts';
 import { AnswerBox } from '../CoachPanel.tsx';
 import { IconChevronLeft } from '../Icons.tsx';
+import { CubeGuideSheet } from '../guide/CubeGuide.tsx';
 import { Sheet } from '../Sheet.tsx';
 import { cx } from '../util.ts';
 import { CardInfoSheet } from '../deck/sheets.tsx';
@@ -49,6 +50,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
   const [poolOpen, setPoolOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [coach, setCoach] = useState(false);
+  const [guide, setGuide] = useState(false);
   const [sel, setSel] = useState<number | null>(null);
   const [preview, setPreview] = useState<number | null>(null);
   const [pick, setPick] = useState<string | null>(null);
@@ -190,6 +192,10 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
           <div className="pk-mono">{mono}</div>
           <SeatChips seats={seats} />
         </div>
+        {/* Phones have no kebab: the guide gets a quiet link of its own. */}
+        <button type="button" className="pk-guide" onClick={() => setGuide(true)}>
+          Guide
+        </button>
         <div className="pk-actions">
           {left !== null && mine && <Timer left={left} total={timerTotal} />}
           {secondary && (
@@ -207,6 +213,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
               { label: 'Ask the coach', onClick: () => setCoach(true), disabled: !mine },
               { label: 'Hints', checked: hints, onClick: () => game.update({ hints: !hints }) },
               { label: d.format === 'grid' ? 'The AI’s picks' : 'What you know the AI has', onClick: () => setAiOpen(true) },
+              { label: 'Guide', onClick: () => setGuide(true) },
               { label: 'Coach settings', onClick: onSettings },
               { label: 'Leave the table', onClick: onLeave, danger: true },
             ]}
@@ -262,6 +269,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
         onInfo={setInfo}
         prefsKey="ai-sheet"
       />
+      <CubeGuideSheet open={guide} onClose={() => setGuide(false)} cubeId={d.cubeId} meta={game.data.meta} colors={guide ? poolColours(d.picks.you, ctx) : ''} onInfo={setInfo} />
       <PickCoach open={coach} onClose={() => setCoach(false)} game={game} d={d} advice={advice} onSettings={onSettings} />
       <CardInfoSheet name={info} ctx={ctx} pool={d.picks.you} onClose={() => setInfo(null)} />
     </div>

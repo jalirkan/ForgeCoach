@@ -136,6 +136,12 @@ describe('curveBetween', () => {
     expect(curveBetween(a, b, 0).start.x).toBe(56.3);
   });
 
+  it('stops a line to a player short of the life total', () => {
+    // An attacker above, the defending player's life box below: the end sits 5px above the box.
+    const c = curveBetween({ x: 100, y: 50, w: 80, h: 110 }, { x: 300, y: 400, w: 60, h: 30 }, 0, -5);
+    expect(c.end.y).toBe(395);
+  });
+
   it('runs sideways between boxes side by side', () => {
     const c = curveBetween({ x: 0, y: 0, w: 100, h: 100 }, { x: 400, y: 20, w: 100, h: 100 });
     expect(c.start).toEqual({ x: 90, y: 50 });
