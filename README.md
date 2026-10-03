@@ -299,6 +299,30 @@ seven cubes, including Fair Fight, Peasant and Omega), pick the cube and
 click **Import from file** (or drop the file on the page); the deck assistant's
 **Lab** chip takes the same files. Imports are kept in that browser only.
 
+## Lab progress (`#lab`)
+
+[`#lab`](https://jalirkan.github.io/ForgeCoach/#lab) shows what the PC lab's
+runner is doing, sized for a phone: the running job(s) with a progress bar,
+done / total, rate, ETA (local time and "in 2 h 10 min"), elapsed, workers and
+errors; the queue with estimates; waiting jobs with their reasons; finished
+jobs (done, failed, skipped) with their headline numbers, newest first; and the
+machine's load, memory, swap, memory pressure and recent pressure events.
+
+- **Source**: the runner pushes a numbers-only `status.json` to this repo's
+  orphan `lab-status` branch; the page reads
+  `https://raw.githubusercontent.com/jalirkan/ForgeCoach/lab-status/status.json`
+  (with a cache-buster). `#lab?src=<http(s) URL>` reads another copy instead,
+  e.g. the PC over Tailscale (that server must send
+  `Access-Control-Allow-Origin`); `#lab?src=sample` shows the bundled
+  `public/lab-sample.json` with its times moved to now.
+- **Staleness**: "updated 3 min ago" turns amber after 10 minutes without an
+  update and red after 30 ("the runner may be down"). A failed refresh keeps
+  the last good data, dimmed, with the reason.
+- It refreshes every minute while the page is visible, and on **Refresh**.
+- The file's format is in mtg-table's `RUNNER-SPEC.md` ("status.json");
+  `src/lab/status.ts` validates it: unknown fields are ignored, missing ones
+  show as "—", every string is shown as plain text.
+
 ## Replay and review a recorded game
 
 mtg-table writes a log per game and seat at
@@ -347,6 +371,8 @@ second and reads only new bytes. Each game of a match is a new file. Any
   by your browser and cached in it (IndexedDB).
 - **Draft pools** and imported cube-lab files stay in this browser
   (localStorage, IndexedDB).
+- The **Lab** page only downloads the runner's public status file (or the
+  `src` you give it); it sends nothing.
 
 ## Development
 
