@@ -329,6 +329,7 @@
 .game.play .board .life-n,
 .match-score,
 .log-turn-no,
+.ab-select-line,
 .tile-zz {
   font-variant-numeric: lining-nums tabular-nums;
   font-feature-settings: 'lnum' 1, 'tnum' 1;
@@ -341,4 +342,10 @@
   .game.play .ab-select-line.is-hint {
     display: none;
   }
+}
+
+/* Phones: the combat lines and frames say what the combat strip says, and the
+   strip would sit under the lines; the desktop keeps it as a slim summary. */
+.game.play.is-narrow .midline .combat-panel {
+  display: none;
 }
