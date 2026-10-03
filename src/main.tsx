@@ -6,6 +6,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './ui/App.tsx';
 import './ui/styles.css';
+import './ui/skins.css';
+import { initSkin } from './ui/skin.ts';
+
+// The skin (Settings → Look, or a ?skin= preview) goes on <html> before the first paint.
+initSkin();
 
 // A lazy page whose stylesheet failed to preload (offline, a blocked font
 // server behind it) still renders, unstyled, rather than leaving a blank page:

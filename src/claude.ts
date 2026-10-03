@@ -53,6 +53,20 @@ export function isCoachThinking(x: unknown): x is CoachThinking {
   return COACH_THINKING.includes(x as CoachThinking);
 }
 
+/**
+ * The site's look: 'classic' (default, the original dark look), 'stack' (a dark
+ * table with cream game objects and amber for priority and the coach's call) or
+ * 'felt' (green baize, calm; the only warm colour is win chance on option bars).
+ * Applied as `data-skin` on the root element (ui/skin.ts, ui/skins.css).
+ */
+export type Skin = 'classic' | 'stack' | 'felt';
+export const SKINS: readonly Skin[] = ['classic', 'stack', 'felt'];
+export const DEFAULT_SKIN: Skin = 'classic';
+
+export function isSkin(x: unknown): x is Skin {
+  return SKINS.includes(x as Skin);
+}
+
 export interface Settings {
   apiKey: string;
   model: ModelId;
@@ -65,6 +79,8 @@ export interface Settings {
    * that line has streamed. Off by default (absent = off).
    */
   answerFirst?: boolean;
+  /** The site's look (absent = 'classic'). */
+  skin?: Skin;
 }
 
 function storage(): Storage | null {
@@ -77,7 +93,7 @@ function storage(): Storage | null {
 
 export function loadSettings(): Settings {
   // Settings saved before the coach helper existed have no coachSource → 'auto'.
-  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: DEFAULT_COACH_THINKING };
+  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: DEFAULT_COACH_THINKING, skin: DEFAULT_SKIN };
   try {
     const raw = storage()?.getItem(SETTINGS_KEY);
     if (!raw) return out;
@@ -87,6 +103,7 @@ export function loadSettings(): Settings {
     if (isCoachSource(v.coachSource)) out.coachSource = v.coachSource;
     if (v.answerFirst === true) out.answerFirst = true;
     if (isCoachThinking(v.coachThinking)) out.coachThinking = v.coachThinking;
+    if (isSkin(v.skin)) out.skin = v.skin;
   } catch {
     /* corrupt or unavailable storage → defaults */
   }
@@ -111,6 +128,7 @@ export function saveSettings(s: Settings): void {
         coachSource: isCoachSource(s.coachSource) ? s.coachSource : DEFAULT_COACH_SOURCE,
         answerFirst: s.answerFirst === true,
         coachThinking: isCoachThinking(s.coachThinking) ? s.coachThinking : DEFAULT_COACH_THINKING,
+        skin: isSkin(s.skin) ? s.skin : DEFAULT_SKIN,
       }),
     );
   } catch {

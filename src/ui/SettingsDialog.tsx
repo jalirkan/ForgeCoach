@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import { useEffect, useState } from 'react';
-import { DEFAULT_COACH_SOURCE, MODELS, loadSettings, saveSettings, type CoachSource, type CoachThinking, type ModelId, type Settings } from '../claude.ts';
+import { DEFAULT_COACH_SOURCE, DEFAULT_SKIN, MODELS, loadSettings, saveSettings, type CoachSource, type CoachThinking, type ModelId, type Settings, type Skin } from '../claude.ts';
 import { chooseSource, pageHelperTarget, type HelperStatus } from '../coachHelper.ts';
 import { useCoachAvailability } from './hooks.ts';
 import { IconExternal } from './Icons.tsx';
@@ -22,6 +22,12 @@ const SOURCES: Array<{ id: CoachSource; label: string; hint: string }> = [
   { id: 'auto', label: 'Automatic', hint: 'Claude Code if found, else the key' },
   { id: 'helper', label: 'Claude Code', hint: 'On your PC, no key needed' },
   { id: 'apiKey', label: 'API key', hint: 'Your own Anthropic key' },
+];
+
+const LOOKS: Array<{ id: Skin; label: string; hint: string }> = [
+  { id: 'classic', label: 'Classic', hint: 'The original dark look' },
+  { id: 'stack', label: 'Stack', hint: 'Dark table, cream stack, amber calls' },
+  { id: 'felt', label: 'Hot Felt', hint: 'Green baize; heat shows win chance' },
 ];
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -134,6 +140,22 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             </span>
           </span>
         </label>
+        <fieldset className="field">
+          <legend className="field-label">Look</legend>
+          <div className="model-grid" role="radiogroup" aria-label="Look">
+            {LOOKS.map((o) => {
+              const on = (s.skin ?? DEFAULT_SKIN) === o.id;
+              return (
+                <label key={o.id} className={cx('model-opt', on && 'is-on')}>
+                  <input type="radio" name="skin" value={o.id} checked={on} onChange={() => setS({ ...s, skin: o.id })} />
+                  <span className="model-name">{o.label}</span>
+                  <span className="model-hint">{o.hint}</span>
+                </label>
+              );
+            })}
+          </div>
+          <span className="field-help">The table, panels and type around the cards. Card images stay the real cards in every look.</span>
+        </fieldset>
         <ScenerySettings />
         {s.apiKey && (
           <button
@@ -224,6 +246,6 @@ function safeLoad(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default' };
+    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default', skin: DEFAULT_SKIN };
   }
 }

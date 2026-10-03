@@ -29,6 +29,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 - `play/seatUrl.ts` — `defaultSeatUrl(location)` / `servedByEngine(location)`: when the mtg-table bridge serves this site itself (`--lan`, phone play), the seat is same-origin `ws://<host>/ws?token=<T>`; the token is redacted from on-screen text. Site builds with `FORGECOACH_BASE=./` for any path.
 - `play/aiName.ts` — what the board calls the AI seat: the opponent-AI picker's name for `hello_ok.match.aiPolicy` (mtg-table amendment M56, read with `aiPolicyOf`), else the engine's own name (older engines).
 - `ui/` — React components; `main.tsx` mounts the app.
+- `ui/skin.ts` + `ui/skins.css` — the skins (Settings → Look, `claude.ts` `skin`: `classic` | `stack` | `felt`; `?skin=` previews): `data-skin` on `<html>`, tokens plus a few skin-scoped rules. Classic has no rules (renders as before); never redraw cards in a skin.
 - `ui/play/` — the play screen: `PlayView` (board), `ActionBar`, `HandDock`,
   `AskDialog` + `askModel` (engine questions), `PlayCoach` + `liveDecision`
   (coach for the current decision), `playKeys` (hotkeys), `usePlaySession`
