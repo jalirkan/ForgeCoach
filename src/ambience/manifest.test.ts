@@ -125,6 +125,48 @@ describe('validateManifest', () => {
   });
 });
 
+describe('fit, anchor and the moving-layer budget', () => {
+  it('reads anchor, defaulting to center, and warns on a bad one', () => {
+    const m = good();
+    const layers = m.biomes.island.stages[1]!.layers as Record<string, unknown>[];
+    layers[1]!.fit = 'contain';
+    layers[1]!.anchor = 'bottom';
+    layers[2]!.anchor = 'bottom-right';
+    layers[0]!.anchor = 'south';
+    const r = validateManifest(m, BASE);
+    const st = r.pack!.biomes.island!.stages[1]!.layers;
+    expect(st.map((l) => l.anchor)).toEqual(['center', 'bottom', 'bottom-right']);
+    expect(st[1]!.fit).toBe('contain');
+    expect(r.pack!.biomes.island!.stages[0]!.layers[0]!.anchor).toBe('center');
+    expect(r.warnings).toEqual(['biomes.island.stages[1].layers[0].anchor: "south" is not one of center, top, bottom, left, right, top-left, top-right, bottom-left, bottom-right; using center']);
+  });
+
+  it('accepts every anchor name and warns on non-strings', () => {
+    for (const a of ['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right']) {
+      const m = good();
+      (m.biomes.island.stages[0]!.layers[0] as Record<string, unknown>).anchor = a;
+      const r = validateManifest(m, BASE);
+      expect(r.warnings).toEqual([]);
+      expect(r.pack!.biomes.island!.stages[0]!.layers[0]!.anchor).toBe(a);
+    }
+    const m = good();
+    (m.biomes.island.stages[0]!.layers[0] as Record<string, unknown>).anchor = 3;
+    expect(validateManifest(m, BASE).warnings[0]).toMatch(/anchor.*using center/);
+    (m.biomes.island.stages[0]!.layers[0] as Record<string, unknown>).fit = 'stretch';
+    expect(validateManifest(m, BASE).warnings.some((w) => /\.fit: "stretch" is not one of cover, contain, fill; using cover/.test(w))).toBe(true);
+  });
+
+  it('warns, but keeps the layers, when a stage has more than 2 moving layers', () => {
+    const m = good();
+    const layers = m.biomes.island.stages[1]!.layers as Record<string, unknown>[];
+    expect(validateManifest(m, BASE).warnings).toEqual([]);
+    layers.push({ id: 'gulls', kind: 'video', src: 'island/gulls.webm', z: 4 });
+    const r = validateManifest(m, BASE);
+    expect(r.pack!.biomes.island!.stages[1]!.layers.map((l) => l.id)).toEqual(['sky', 'waves', 'surf', 'gulls']);
+    expect(r.warnings).toEqual(['biomes.island.stages[1]: 3 moving layers (sprite or video); the budget is 2 per stage, so a phone may stutter (layers kept)']);
+  });
+});
+
 describe('URLs', () => {
   it('assetUrl allows http(s) and relative only', () => {
     expect(assetUrl('a/b.webp', 'https://x.test/pack/')).toEqual({ url: 'https://x.test/pack/a/b.webp' });

@@ -15,7 +15,7 @@
 import { createContext, memo, useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Biome, SlotState } from '../../ambience/model.ts';
 import { DEFAULT_STRIP, layersAt, type PackBiome, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
-import { slotLayout } from '../../ambience/layout.ts';
+import { frameAspect, objectPosition, slotLayout, spriteFrameCss } from '../../ambience/layout.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import './scenery.css';
 
@@ -147,6 +147,7 @@ function Layer({ z, depth, blend, opacity, bloom, order, reduced, children }: { 
 
 function PackLayerView({ layer: l, idle, reduced, paused }: { layer: PackLayer; idle: PackBiome['idle']; reduced: boolean; paused: boolean }) {
   const amp = idle.kind !== 'none' && l.idle ? idle.amplitude * l.depth : 0;
+  const fitStyle = fitCss(l);
   const style = {
     left: `${l.x * 100}%`,
     bottom: `${l.y * 100}%`,
@@ -158,15 +159,15 @@ function PackLayerView({ layer: l, idle, reduced, paused }: { layer: PackLayer; 
   return (
     <div className={['scn-box', amp > 0 && `scn-idle-${idle.kind}`].filter(Boolean).join(' ')} style={style}>
       {l.kind === 'image' ? (
-        <img src={l.src} srcSet={l.src2x ? `${l.src} 1x, ${l.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} style={{ objectFit: l.fit }} />
+        <img src={l.src} srcSet={l.src2x ? `${l.src} 1x, ${l.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} style={fitStyle} />
       ) : l.kind === 'sprite' ? (
         reduced && l.poster ? (
-          <img src={l.poster} alt="" decoding="async" draggable={false} style={{ objectFit: l.fit }} />
+          <img src={l.poster} alt="" decoding="async" draggable={false} style={fitStyle} />
         ) : (
           <Sprite layer={l} />
         )
       ) : reduced && l.poster ? (
-        <img src={l.poster} alt="" decoding="async" draggable={false} style={{ objectFit: l.fit }} />
+        <img src={l.poster} alt="" decoding="async" draggable={false} style={fitStyle} />
       ) : (
         <Loop layer={l} reduced={reduced} paused={paused} />
       )}
@@ -176,25 +177,47 @@ function PackLayerView({ layer: l, idle, reduced, paused }: { layer: PackLayer; 
 
 /**
  * A sprite sheet stepped with two composited transforms: the inner strip
- * steps across a row (cols frames), the outer one down the rows.
+ * steps across a row (cols frames), the outer one down the rows. The frame
+ * window keeps the frame's natural aspect and honours `fit` and `anchor`
+ * (layout.ts `spriteFrameCss`, sized in the box's container-query units);
+ * the sheet inside it is cols × rows windows, so stepping stays exact.
  */
 function Sprite({ layer: l }: { layer: PackLayer }) {
+  const [aspect, setAspect] = useState<number | null>(null);
+  const img = useRef<HTMLImageElement>(null);
+  const measure = () => {
+    const el = img.current;
+    if (el && el.naturalWidth) setAspect(frameAspect(el.naturalWidth, el.naturalHeight, l.cols, l.rows));
+  };
+  // A cached sheet may have loaded before React attached onLoad.
+  useEffect(measure, [l.src, l.cols, l.rows]); // eslint-disable-line react-hooks/exhaustive-deps
   const frameS = 1 / l.fps;
+  // Until the sheet's size is known, a contain / cover window would be a guess: keep it hidden.
+  const waiting = l.fit !== 'fill' && aspect === null;
   const style = {
+    ...spriteFrameCss(aspect, l.fit, l.anchor),
+    visibility: waiting ? 'hidden' : undefined,
     '--scn-cols': l.cols,
     '--scn-rows': l.rows,
     '--scn-row-s': `${l.cols * frameS}s`,
     '--scn-sheet-s': `${l.cols * l.rows * frameS}s`,
   } as CSSProperties;
   return (
-    <div className="scn-sprite" style={style}>
-      <div className="scn-sprite-y" style={{ height: `${l.rows * 100}%` }}>
-        <div className="scn-sprite-x" style={{ width: `${l.cols * 100}%`, height: `${100 / l.rows}%` }}>
-          <img src={l.src} alt="" decoding="async" draggable={false} style={{ height: `${l.rows * 100}%` }} />
+    <div className="scn-sprite-box">
+      <div className="scn-sprite" style={style}>
+        <div className="scn-sprite-y" style={{ height: `${l.rows * 100}%` }}>
+          <div className="scn-sprite-x" style={{ width: `${l.cols * 100}%`, height: `${100 / l.rows}%` }}>
+            <img ref={img} src={l.src} alt="" decoding="async" draggable={false} style={{ height: `${l.rows * 100}%` }} onLoad={measure} />
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+/** object-fit / object-position for an image, poster or video. */
+function fitCss(l: PackLayer): CSSProperties {
+  return { objectFit: l.fit, objectPosition: l.anchor === 'center' ? undefined : objectPosition(l.anchor) };
 }
 
 function Loop({ layer: l, reduced, paused }: { layer: PackLayer; reduced: boolean; paused: boolean }) {
@@ -206,7 +229,7 @@ function Loop({ layer: l, reduced, paused }: { layer: PackLayer; reduced: boolea
     else void v.play().catch(() => {});
   }, [reduced, paused]);
   return (
-    <video ref={ref} muted loop playsInline autoPlay={!reduced} preload={reduced ? 'metadata' : 'auto'} poster={l.poster ?? undefined} style={{ objectFit: l.fit }} disablePictureInPicture>
+    <video ref={ref} muted loop playsInline autoPlay={!reduced} preload={reduced ? 'metadata' : 'auto'} poster={l.poster ?? undefined} style={fitCss(l)} disablePictureInPicture>
       <source src={l.src} type={/\.mp4$/i.test(l.src) ? 'video/mp4' : 'video/webm'} />
       {l.fallback && <source src={l.fallback} type="video/mp4" />}
     </video>
