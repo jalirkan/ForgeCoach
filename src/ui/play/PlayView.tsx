@@ -45,6 +45,7 @@ import { combatLinks } from './combatLines.ts';
 import { selectionSummary } from './selection.ts';
 import { matchBox, type MatchBox } from '../../play/match.ts';
 import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
+import { BoardScenery } from '../ambience/BoardScenery.tsx';
 
 import './play.css';
 import './controls.css';
@@ -412,7 +413,7 @@ export function PlayView({
         frameIndex={Math.max(0, frameIndex)}
         seat={seat}
         hideHand
-        overlay={<CombatArrows links={links} version={state} />}
+        overlay={<><CombatArrows links={links} version={state} /><BoardScenery log={log} frameIndex={Math.max(0, frameIndex)} seat={seat} /></>}
       />
     ) : (
       <div className="board board-empty">

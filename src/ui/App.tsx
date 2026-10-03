@@ -45,6 +45,8 @@ const LabPage = lazy(() => import('./lab/LabPage.tsx'));
 const LadderPage = lazy(() => import('./lab/LadderPage.tsx'));
 // The engine review of a loaded game (lazy; opened from the replay or the game-over card, or #sample=<id>&review=1).
 const ReviewApp = lazy(() => import('./review/ReviewApp.tsx'));
+// #ambience: the board scenery preview (lazy; no engine).
+const AmbiencePage = lazy(() => import('./ambience/AmbiencePage.tsx'));
 
 const LAST_SAMPLE_KEY = 'forgecoach.lastSample';
 const SEAT_URL_KEY = 'forgecoach.seatUrl';
@@ -138,6 +140,8 @@ export function App() {
   const page =
     hash === '#ask-gallery' ? (
       <AskGallery />
+    ) : /^#ambience\b/.test(hash) ? (
+      <AmbiencePage />
     ) : /^#meta\b/.test(hash) ? (
       <MetaApp />
     ) : /^#history\b/.test(hash) ? (
