@@ -160,3 +160,39 @@ describe('editing and export', () => {
     expect(sideboard(b!, pool).length).toBe(pool.length - b!.spells.length - b!.nonbasics.length);
   });
 });
+
+describe('thin pools', () => {
+  const ctx = context('synergy');
+  const by = (colour: string, n: number) => ctx.cube.cards.filter((c) => c.colorHint === colour).slice(0, n).map((c) => c.name);
+  const pool = [...by('W', 8), ...by('U', 8), ...by('B', 8), "Mishra's Bauble", 'Mind Stone', 'Hallowed Fountain', 'Watery Grave', 'Godless Shrine', 'Polluted Delta'];
+
+  it('offers 18-land and three-colour builds when no pair reaches 23 spells, flagged thin', () => {
+    const all = buildDecks(ctx, pool, {}, 10);
+    const thin = all.filter((b) => b.thin);
+    expect(thin.length).toBeGreaterThan(0);
+    const best = all[0]!;
+    expect(best.thin).not.toBeNull();
+    expect(checkBuild(best, pool, ctx)).toEqual([]);
+    if (best.thin === 'three') {
+      expect(best.colors).toHaveLength(3);
+      expect([17, 18]).toContain(best.landCount);
+    } else {
+      expect(best.landCount).toBe(18);
+      expect(best.spells).toHaveLength(22);
+    }
+    expect(best.reasons.join(' ')).toMatch(/Thin pool/);
+    const three = all.find((b) => b.thin === 'three');
+    expect(three?.colors).toBe('WUB');
+  });
+
+  it('a normal pool never gets thin builds', () => {
+    const p = samplePool(ctx.cube, 'BR', 45, 3);
+    expect(buildDecks(ctx, p, {}, 10).every((b) => b.thin === null && b.landCount <= 17)).toBe(true);
+  });
+
+  it('three colours need a dual or fixer for the third colour', () => {
+    // No duals, and no fixer (Deadly Dispute's Treasure counts as one).
+    const noDuals = pool.filter((n) => !ctx.facts.get(n)?.land && !ctx.facts.get(n)?.fixer);
+    expect(buildDecks(ctx, noDuals, {}, 20).some((b) => b.thin === 'three')).toBe(false);
+  });
+});

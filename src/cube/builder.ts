@@ -16,9 +16,16 @@
  *   splash       −2.5 per splash card (more when the meta says splashes lose)
  *   archetype    the meta archetype's win rate, ±6 at most
  *
- * Lands: the meta's best land count for the archetype (else 17, or 16 with a
- * low curve); on-colour duals and fetches from the pool; basics split by
- * colour pips, early drops weighted double. Deterministic: ties break by name.
+ * Lands: the meta's best land count for the archetype (16 or 17; else 17, or
+ * 16 with a low curve); on-colour duals and fetches from the pool; basics
+ * split by colour pips, early drops weighted double.
+ *
+ * Thin pools (Justin's rule): when no colour pair reaches 23 castable spells
+ * (a splash included), two more kinds of build compete with the short ones —
+ * 22 spells and 18 lands in two colours, or three full colours (17 or 18
+ * lands; the third colour needs at least one dual or fixer in the pool, and
+ * each card of it costs 1 point). Such builds carry `thin`.
+ * Deterministic: ties break by name.
  */
 import { BASIC_OF, BASIC_NAMES, COLOURS, colourLabel, colourPairs, type Colour } from './colors.ts';
 import { castableIn, splashColourOf } from './facts.ts';
@@ -64,8 +71,10 @@ export const PART_LABEL: Record<keyof ScoreParts, string> = {
   missing: 'Missing spells',
 };
 
+export type ThinKind = 'eighteen' | 'three';
+
 export interface DeckBuild {
-  /** colors + ('+' splash): identifies the build's colours. */
+  /** colors + ('+' splash) + ('/18' for 18 lands): identifies the build. */
   key: string;
   colors: string;
   splash: string | null;
@@ -92,6 +101,8 @@ export interface DeckBuild {
   reasons: string[];
   cuts: Array<{ name: string; reason: string }>;
   landNote: string;
+  /** A thin-pool build: 22 spells with 18 lands, or three full colours. */
+  thin: ThinKind | null;
 }
 
 interface Env {
@@ -101,6 +112,8 @@ interface Env {
   target: number[];
   splashPenalty: number;
   arch: MetaArchetype | null;
+  /** Three-colour builds: the third colour (each of its cards costs a point). */
+  third?: string | null;
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
@@ -174,6 +187,7 @@ export function scoreSpells(spells: string[], env: Env, ctx: CubeContext): { sco
   parts.creatures = -1.2 * Math.max(0, minCreatures(themes) - creatures);
   parts.interaction = 1.2 * Math.min(6, inter);
   parts.splash = -env.splashPenalty * splashN;
+  if (env.third) parts.splash -= spells.filter((x) => (ctx.facts.get(x)?.colors ?? '').includes(env.third as string)).length;
   const at = env.arch?.primaryTheme;
   if (env.arch && typeof env.arch.winRate === 'number' && (!at || at === 'none' || top.has(at))) {
     // Weighted by the evidence: 20 games count for a third.
@@ -270,7 +284,7 @@ export function metaLandCount(ctx: CubeContext, arch: MetaArchetype | null): { l
     if (!table) return null;
     const rows = Object.entries(table)
       .map(([k, s]) => [Number(k), s] as const)
-      .filter(([k, s]) => k >= 15 && k <= 18 && s && s.games >= minGames && typeof s.winRate === 'number')
+      .filter(([k, s]) => k >= 16 && k <= 17 && s && s.games >= minGames && typeof s.winRate === 'number')
       .sort((a, b) => shrunk(b[1]) - shrunk(a[1]) || a[0] - b[0]);
     return rows.length ? rows : null;
   };
@@ -375,7 +389,7 @@ export function evaluateBuild(
   colors: string,
   splash: string | null,
   spells: string[],
-  opts: { landCount?: number; n?: number } = {},
+  opts: { landCount?: number; n?: number; thin?: ThinKind | null; third?: string | null } = {},
 ): DeckBuild {
   const arch = findArchetype(ctx.meta?.meta ?? null, colors, topThemes(spells, ctx, 1)[0]?.[0]);
   const ml = metaLandCount(ctx, arch);
@@ -384,7 +398,9 @@ export function evaluateBuild(
   const n = opts.n ?? DECK_SIZE - landCount;
   const target = curveTarget(n, arch);
   const splashPenalty = splashPenaltyOf(ctx);
-  const env: Env = { colors, splash, n, target, splashPenalty, arch };
+  const thin = opts.thin ?? null;
+  const third = thin === 'three' ? (opts.third ?? thirdColour(colors, spells, ctx)) : null;
+  const env: Env = { colors, splash, n, target, splashPenalty, arch, third };
   const sorted = [...spells].sort((a, b) => (ctx.facts.get(a)?.mv ?? 0) - (ctx.facts.get(b)?.mv ?? 0) || byName(a, b));
   const { score, parts, themes } = scoreSpells(sorted, env, ctx);
   const nonbasics = chooseNonbasics(pool, colors, splash, landCount, ctx);
@@ -392,7 +408,7 @@ export function evaluateBuild(
   const curve = curveOf(sorted, ctx);
   const splashCards = sorted.filter((s) => !castableIn(ctx.facts.get(s) ?? { colors: '' }, colors));
   const build: DeckBuild = {
-    key: colors + (splash ? `+${splash}` : ''),
+    key: colors + (splash ? `+${splash}` : '') + (landCount === 18 ? '/18' : ''),
     colors,
     splash,
     name: archetypeName(colors, splash, sorted, themes, arch, ctx),
@@ -414,7 +430,8 @@ export function evaluateBuild(
     pairs: pairsAmong(sorted, ctx).slice(0, 6).map((p) => ({ a: p.a, b: p.b, lift: p.gain, games: p.games ?? 0 })),
     reasons: [],
     cuts: [],
-    landNote: ml && ml.lands === landCount ? ml.note : landCount === 16 && !ml ? `16 lands: the curve is low (average mana value ${round1(avgMv)}).` : `${landCount} lands.`,
+    thin,
+    landNote: thin === 'eighteen' ? '18 lands: a thin pool, so 22 spells.' : thin === 'three' ? `${landCount} lands for three colours.` : ml && ml.lands === landCount ? ml.note : landCount === 16 && !ml ? `16 lands: the curve is low (average mana value ${round1(avgMv)}).` : `${landCount} lands.`,
   };
   build.reasons = reasonsFor(build, env, ctx, arch);
   build.cuts = cutsFor(build, pool, env, ctx);
@@ -452,6 +469,8 @@ function reasonsFor(b: DeckBuild, env: Env, ctx: CubeContext, arch: MetaArchetyp
     const basics = b.basics[b.splash as Colour] ?? 0;
     r.push(`Splashes ${b.splash} for ${b.splashCards.join(', ')} off ${[...src, ...(basics ? [`${basics} ${BASIC_OF[b.splash as Colour]}`] : [])].join(', ')}.`);
   }
+  if (b.thin === 'eighteen') r.push('Thin pool: no colour pair has 23 playable spells, so this plays 22 spells and 18 lands.');
+  if (b.thin === 'three') r.push(`Thin pool: no colour pair has 23 playable spells, so this plays three full colours (${b.colors}) on ${b.landCount} lands.`);
   if (b.missing > 0) r.push(`${b.missing} playable${b.missing === 1 ? '' : 's'} short of a full deck in these colours.`);
   r.push(b.landNote);
   void env;
@@ -489,7 +508,57 @@ function cutsFor(b: DeckBuild, pool: string[], env: Env, ctx: CubeContext): Arra
   });
 }
 
-function buildOne(ctx: CubeContext, pool: string[], colors: string, splash: string | null, opts: BuildOptions): DeckBuild | null {
+/** The colour of a three-colour deck its spells need least (the one that must be fixed for). */
+export function thirdColour(colors: string, spells: string[], ctx: CubeContext): string {
+  const w: Record<string, number> = {};
+  for (const c of colors) w[c] = 0;
+  for (const s of spells) for (const c of ctx.facts.get(s)?.colors ?? '') if (c in w) w[c] = (w[c] ?? 0) + 1;
+  return [...colors].sort((a, b) => (w[a] ?? 0) - (w[b] ?? 0) || 'WUBRG'.indexOf(b) - 'WUBRG'.indexOf(a))[0] ?? '';
+}
+
+/** Castable nonland spells for a pair: on-colour ones, plus up to `maxSplash` splashable ones of one colour. */
+export function pairReaches(ctx: CubeContext, pool: string[], pair: string, need = 23, maxSplash = 3): boolean {
+  let on = 0;
+  const splash: Record<string, number> = {};
+  for (const s of pool) {
+    const f = ctx.facts.get(s);
+    if (!f || f.land || BASIC_NAMES.has(s)) continue;
+    if (castableIn(f, pair)) on++;
+    else {
+      const c = splashColourOf(f, pair);
+      if (c && cardValue(s, ctx) >= SPLASH_MIN) splash[c] = (splash[c] ?? 0) + 1;
+    }
+  }
+  const sources = (c: string) => pool.some((s) => {
+    const f = ctx.facts.get(s);
+    return f && f.produces.includes(c) && (f.fixer || [...pair].some((k) => f.produces.includes(k)));
+  });
+  const bestSplash = Math.max(0, ...Object.entries(splash).filter(([c]) => sources(c)).map(([, n]) => Math.min(maxSplash, n)));
+  return on + bestSplash >= need;
+}
+
+/** A three-colour build of `n` spells, or null when the pool has no dual or fixer for its third colour. */
+function buildThree(ctx: CubeContext, pool: string[], colors: string, n: number): DeckBuild | null {
+  const cands = pool.filter((s) => {
+    const f = ctx.facts.get(s);
+    return f && !f.land && !BASIC_NAMES.has(s) && castableIn(f, colors);
+  });
+  const third = thirdColour(colors, cands, ctx);
+  const others = [...colors].filter((c) => c !== third);
+  // Every colour must matter: the third colour needs real cards and a real source.
+  if (!cands.some((s) => (ctx.facts.get(s)?.colors ?? '').includes(third))) return null;
+  const fixed = pool.some((s) => {
+    const f = ctx.facts.get(s);
+    return f && f.produces.includes(third) && (f.fixer || others.some((k) => f.produces.includes(k)));
+  });
+  if (!fixed) return null;
+  const arch = findArchetype(ctx.meta?.meta ?? null, colors, topThemes(cands, ctx, 1)[0]?.[0]);
+  const env: Env = { colors, splash: null, n, target: curveTarget(n, arch), splashPenalty: splashPenaltyOf(ctx), arch, third };
+  const spells = choose(cands, n, env, ctx, 0);
+  return evaluateBuild(ctx, pool, colors, null, spells, { landCount: DECK_SIZE - n, n, thin: 'three', third });
+}
+
+function buildOne(ctx: CubeContext, pool: string[], colors: string, splash: string | null, opts: BuildOptions, thinN?: number): DeckBuild | null {
   const maxSplash = opts.maxSplash ?? 3;
   const cands: string[] = [];
   for (const s of pool) {
@@ -516,9 +585,9 @@ function buildOne(ctx: CubeContext, pool: string[], colors: string, splash: stri
     const env: Env = { colors, splash, n, target: curveTarget(n, arch0), splashPenalty, arch: arch0 };
     return choose(cands, n, env, ctx, maxSplash);
   };
-  let n = spellsOpt === 'auto' ? (ml ? DECK_SIZE - ml.lands : 23) : spellsOpt;
+  let n = thinN ?? (spellsOpt === 'auto' ? (ml ? DECK_SIZE - ml.lands : 23) : spellsOpt);
   let spells = run(n);
-  if (spellsOpt === 'auto' && !ml && spells.length === 23) {
+  if (thinN === undefined && spellsOpt === 'auto' && !ml && spells.length === 23) {
     const avg = spells.reduce((s, x) => s + (ctx.facts.get(x)?.mv ?? 3), 0) / spells.length;
     if (avg <= 2.4) {
       const more = run(24);
@@ -529,8 +598,10 @@ function buildOne(ctx: CubeContext, pool: string[], colors: string, splash: stri
     }
   }
   if (splash && !spells.some((s) => !castableIn(ctx.facts.get(s) ?? { colors: '' }, colors))) return null;
-  return evaluateBuild(ctx, pool, colors, splash, spells, { landCount: DECK_SIZE - n, n });
+  return evaluateBuild(ctx, pool, colors, splash, spells, { landCount: DECK_SIZE - n, n, thin: thinN !== undefined ? 'eighteen' : null });
 }
+
+const TRIPLES = ['WUB', 'WUR', 'WUG', 'WBR', 'WBG', 'WRG', 'UBR', 'UBG', 'URG', 'BRG'];
 
 /** Every build worth showing, best first. */
 export function allBuilds(ctx: CubeContext, pool: string[], opts: BuildOptions = {}): DeckBuild[] {
@@ -543,10 +614,25 @@ export function allBuilds(ctx: CubeContext, pool: string[], opts: BuildOptions =
       if (b) builds.push(b);
     }
   }
+  // Thin pool: no pair reaches 23 castable spells — 18 lands, or three full colours, compete too.
+  if (!colourPairs().some((p) => pairReaches(ctx, pool, p, 23, opts.maxSplash ?? 3))) {
+    for (const pair of colourPairs()) {
+      for (const s of [null, ...COLOURS.filter((c) => !pair.includes(c))]) {
+        const b = buildOne(ctx, pool, pair, s, opts, 22);
+        if (b) builds.push(b);
+      }
+    }
+    for (const t of TRIPLES) {
+      for (const n of [23, 22]) {
+        const b = buildThree(ctx, pool, t, n);
+        if (b) builds.push(b);
+      }
+    }
+  }
   // A splash that does not beat its own unsplashed build is noise.
-  const plain = new Map(builds.filter((b) => !b.splash).map((b) => [b.colors, b.score]));
+  const plain = new Map(builds.filter((b) => !b.splash).map((b) => [`${b.colors}/${b.landCount}`, b.score]));
   return builds
-    .filter((b) => !b.splash || b.score > (plain.get(b.colors) ?? -Infinity))
+    .filter((b) => !b.splash || b.score > (plain.get(`${b.colors}/${b.landCount}`) ?? -Infinity))
     .sort((a, b) => b.score - a.score || (a.key < b.key ? -1 : 1));
 }
 
@@ -572,7 +658,7 @@ export function swapOptions(ctx: CubeContext, pool: string[], build: DeckBuild, 
     if (!f || f.land || inDeck.has(s) || BASIC_NAMES.has(s)) continue;
     if (!castableIn(f, build.colors + (build.splash ?? ''))) continue;
     const spells = build.spells.map((x) => (x === out ? s : x));
-    const nb = evaluateBuild(ctx, pool, build.colors, build.splash, spells, { landCount: build.landCount, n: DECK_SIZE - build.landCount });
+    const nb = evaluateBuild(ctx, pool, build.colors, build.splash, spells, { landCount: build.landCount, n: DECK_SIZE - build.landCount, thin: build.thin });
     res.push({ name: s, delta: round1(nb.score - build.score), score: nb.score });
   }
   return res.sort((a, b) => b.delta - a.delta || byName(a.name, b.name));

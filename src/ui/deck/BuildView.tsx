@@ -83,7 +83,7 @@ export function BuildView({
   const base = builds?.[Math.min(sel, (builds?.length ?? 1) - 1)] ?? null;
   const edited = base ? edits[base.key] : undefined;
   const current = useMemo(
-    () => (base && edited ? evaluateBuild(ctx, cards, base.colors, base.splash, edited, { landCount: base.landCount, n: base.spells.length }) : base),
+    () => (base && edited ? evaluateBuild(ctx, cards, base.colors, base.splash, edited, { landCount: base.landCount, n: base.spells.length, thin: base.thin }) : base),
     [base, edited, ctx, cards],
   );
   const problems = useMemo(() => (current ? checkBuild(current, cards, ctx) : []), [current, cards, ctx]);
@@ -127,6 +127,7 @@ export function BuildView({
               </span>
               <span className="bv-build-name">{b.name}</span>
               {i === 0 && <span className="bv-build-tag">Best</span>}
+              {b.thin && <span className="bv-build-tag is-thin">{b.thin === 'three' ? '3 colours' : '18 lands'}</span>}
             </button>
           ))}
         </div>
@@ -143,6 +144,12 @@ export function BuildView({
         </div>
       </div>
 
+      {current.thin && (
+        <div className="bv-thin">
+          <b>Thin pool.</b> No two colours have 23 playable spells here, so this build {current.thin === 'three' ? `plays three full colours on ${current.landCount} lands` : 'plays 22 spells and 18 lands'}. Draft
+          more playables in your main colours if you still can.
+        </div>
+      )}
       <div className="bv-cols">
         <div className="bv-main">
           <DeckList b={current} ctx={ctx} onCard={setSwapOut} onInfo={onInfo} />
