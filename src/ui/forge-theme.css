@@ -8,8 +8,7 @@
  * fonts (EB Garamond, JetBrains Mono), letter-spaced gold labels, serif
  * display type, the gold and line buttons, avatars. Scoped to .fx.
  */
-/* The same fonts as the ledger pages (ui/ledger/ledger.css): one request, cached. */
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap');
+/* The same fonts as the ledger pages, linked from index.html. */
 
 /* ------------------------------------------------------------------ */
 /* Tokens (scoped: the rest of the site keeps its own palette) */
