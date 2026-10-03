@@ -505,7 +505,7 @@ memory. If you are unsure, use `"confidence": "low"`.
 #### Engine-graded regret
 
 Each graded case carries a **regret table** (`grade` in its JSON), made by
-mtg-table's coach grader (`tools/coach-grade.sh`, its D332–D334): the decision is
+mtg-table's coach grader (`tools/coach-grade.sh`, its D334–D336): the decision is
 rebuilt in Forge from the viewer's redacted view, the hidden cards (the
 opponent's hand, the library order) are redealt from the opponent's deck list or
 card pool minus what was seen — never the real ones — and every legal option is
@@ -552,7 +552,7 @@ npm run bench:coach -- regrade bench/coach/results/<run>.json           # regret
 The opponent deck of each bench log is in `bench/coach/opponents.json`.
 `--write` adds each table to the case with that id. Grading the bench is not a
 routine step: the grader's main use is the live engine analysis a coach
-explains (mtg-table D334).
+explains (mtg-table D336).
 
 ### End-to-end test (play a whole game)
 

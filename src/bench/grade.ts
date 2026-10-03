@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The engine-graded coach bench's data (mtg-table's `tools/coach-grade.sh`,
- * its D332–D334): a case's precomputed regret table, how a run decides that a
+ * its D334–D336): a case's precomputed regret table, how a run decides that a
  * table is low-information, and how a graded decision becomes a case. (The
- * grader's main use is now the live analysis a coach explains, D334; the bench
+ * grader's main use is now the live analysis a coach explains, D336; the bench
  * keeps these tables for when a graded run is worth its compute.)
  *
  * The yardstick is "best against Forge Default": an option's value is how often
