@@ -8,7 +8,9 @@
  * a shared axis; the latest SPRTs, tuner runs and the league. It claims no
  * order the intervals do not support: ranks are ranges, and tapping a player
  * marks every other as clearly above, clearly below, or not separated from it.
- * Reads ladder.json (lab/ladder.ts); every string is rendered as React text.
+ * Reads ladder.json (lab/ladder.ts): by default from the runner on this PC
+ * first, then GitHub's lab-status branch (lab/source.ts); every string is
+ * rendered as React text.
  */
 import '../ledger/ledger.css';
 import './lab.css';
@@ -41,6 +43,7 @@ import {
   type TuneRow,
 } from '../../lab/ladder.ts';
 import { LabFetchError, fmtNum, formatClock, formatDuration, formatRelative, type LabSource } from '../../lab/status.ts';
+import { HINT_KEYS, LOCAL_LADDER_URL, fetchPreferLocal, originLabel, sessionStore, type Origin } from '../../lab/source.ts';
 import { LedgerShell } from '../ledger/Ledger.tsx';
 import { cx } from '../util.ts';
 import { LabTabs } from './LabTabs.tsx';
@@ -48,6 +51,7 @@ import { LabTabs } from './LabTabs.tsx';
 interface Good {
   ladder: Ladder;
   fetchedAt: Date;
+  origin: Origin;
 }
 
 const currentSource = (): LabSource => ladderSource(location.hash, import.meta.env.BASE_URL);
@@ -77,7 +81,7 @@ export default function LadderPage() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (manual = false) => {
     if (source.kind === 'invalid') return;
     ctrl.current?.abort();
     const c = new AbortController();
@@ -85,11 +89,27 @@ export default function LadderPage() {
     lastFetch.current = Date.now();
     setBusy(true);
     try {
-      let ladder = await fetchLadder(source.url, { fetch: (u, i) => fetch(u, i), signal: c.signal });
+      const get = (url: string, signal: AbortSignal) => fetchLadder(url, { fetch: (u, i) => fetch(u, i), signal });
+      let ladder: Ladder;
+      let origin: Origin;
+      if (source.kind === 'default') {
+        ({ value: ladder, origin } = await fetchPreferLocal({
+          localUrl: LOCAL_LADDER_URL,
+          remoteUrl: source.url,
+          get,
+          storage: sessionStore(),
+          hintKey: HINT_KEYS.ladder,
+          signal: c.signal,
+          manual,
+        }));
+      } else {
+        ladder = await get(source.url, c.signal);
+        origin = source.kind;
+      }
       const at = new Date();
       if (source.kind === 'sample') ladder = rebaseLadder(ladder, at);
       if (c.signal.aborted) return;
-      setGood({ ladder, fetchedAt: at });
+      setGood({ ladder, fetchedAt: at, origin });
       setError(null);
     } catch (e) {
       if (c.signal.aborted) return;
@@ -116,12 +136,13 @@ export default function LadderPage() {
     const vis = () => {
       if (document.visibilityState === 'visible' && Date.now() - lastFetch.current >= LADDER_REFRESH_MS) void load();
     };
+    const online = () => void load();
     document.addEventListener('visibilitychange', vis);
-    window.addEventListener('online', load);
+    window.addEventListener('online', online);
     return () => {
       window.clearInterval(tick);
       document.removeEventListener('visibilitychange', vis);
-      window.removeEventListener('online', load);
+      window.removeEventListener('online', online);
     };
   }, [load]);
 
@@ -141,10 +162,11 @@ export default function LadderPage() {
                 <span className="lb-dot" aria-hidden="true" />
                 {l.generatedAt ? `rated ${formatRelative(l.generatedAt, now)}` : 'no report time'}
                 {l.generatedAt && <span className="lg-muted"> · {formatClock(l.generatedAt, now)}</span>}
+                <span className="lg-muted"> · {originLabel(good!.origin, source.kind === 'custom' ? source.url : undefined)}</span>
               </div>
             )}
           </div>
-          <button type="button" className="lg-btn lb-refresh" onClick={() => void load()} disabled={busy || source.kind === 'invalid'} aria-label="Refresh now">
+          <button type="button" className="lg-btn lb-refresh" onClick={() => void load(true)} disabled={busy || source.kind === 'invalid'} aria-label="Refresh now">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={cx(busy && 'lb-spin')}>
               <path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" />
             </svg>
@@ -205,7 +227,9 @@ export default function LadderPage() {
 
         <footer className="lb-foot lg-muted">
           {source.kind === 'default'
-            ? 'From the runner’s numbers-only ladder.json on the lab-status branch (mtg-table’s AI ladder, schema 1).'
+            ? good?.origin === 'local'
+              ? 'From the runner on this PC (the same numbers-only ladder.json it pushes to the lab-status branch; mtg-table’s AI ladder, schema 1).'
+              : 'From the runner’s numbers-only ladder.json on the lab-status branch (mtg-table’s AI ladder, schema 1).'
             : source.kind === 'custom'
               ? `From ${source.url}.`
               : source.kind === 'sample'
