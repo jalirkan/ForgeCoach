@@ -540,7 +540,9 @@ forge_home() {
 # 4. the engine
 # ---------------------------------------------------------------------------
 
-PORT=8642
+# FORGECOACH_PORT: the engine's port (tests point it at a closed port so a live engine on
+# this machine never leaks into them).
+PORT="${FORGECOACH_PORT:-8642}"
 OPEN=1
 PULL=1
 WINDOW=0
@@ -1159,7 +1161,7 @@ cmd_remote_setup() {
 cmd_status() {
   local pid port mtg
   augment_path
-  port="$(cat "$PORT_FILE" 2>/dev/null || echo 8642)"
+  port="$(cat "$PORT_FILE" 2>/dev/null || echo "$PORT")"
   pid="$(engine_pid)"
   mtg="$(conf_get MTG_DIR)"
   say "ForgeCoach"
