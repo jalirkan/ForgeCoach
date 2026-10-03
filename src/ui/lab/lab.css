@@ -22,6 +22,30 @@
   min-height: 220px;
 }
 
+/* ---- lab tabs (#lab and #lab/ladder) ----------------------------------------- */
+.lb-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.lb-tabs a {
+  padding: 6px 12px;
+  border: 1px solid var(--lg-line-2);
+  border-radius: 999px;
+  color: var(--lg-text-2);
+  text-decoration: none;
+}
+.lb-tabs a:hover {
+  color: var(--lg-text);
+  border-color: var(--lg-gold);
+}
+.lb-tabs a[aria-current='page'] {
+  border-color: rgba(201, 164, 92, 0.6);
+  background: var(--lg-gold-soft);
+  color: var(--lg-gold-2);
+}
+
 /* ---- head ------------------------------------------------------------------ */
 .lb-head {
   display: flex;

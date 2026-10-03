@@ -323,6 +323,36 @@ machine's load, memory, swap, memory pressure and recent pressure events.
   `src/lab/status.ts` validates it: unknown fields are ignored, missing ones
   show as "—", every string is shown as plain text.
 
+## AI ladder (`#lab/ladder`)
+
+[`#lab/ladder`](https://jalirkan.github.io/ForgeCoach/#lab/ladder) (the
+**AI ladder** tab of the Lab page) shows mtg-table's AI ladder: every AI player
+(Forge's stock profiles, the sacrifice-outlet policy, the search AI and later
+variants) on one Elo scale, with `forge-default` fixed at 1500.
+
+- **Ratings**: one row per player with its rating, the gap to the anchor, its
+  95% interval drawn as a bar on a shared axis (the dashed line is 1500), games
+  and record, and the raw head-to-head against `forge-default` with Wilson's
+  interval. Unrated players (no decisive game) and unavailable ones are listed
+  apart.
+- **Honest about the intervals**: ranks are ranges ("1–5": the ranks the
+  intervals allow); the summary names only players whose interval clears the
+  anchor's; tapping a player shades its interval and colours every other one
+  green (clearly above), red (clearly below) or gold (not separated).
+- **Head-to-head tests** (the latest SPRTs: who vs who, H1 / H0 /
+  inconclusive, games and deals used), the **tuner** (dev-set runs, with the
+  winner's-curse caveat) and the **league** (best, pool, promotions), when the
+  file has them.
+- **Source**: `https://raw.githubusercontent.com/jalirkan/ForgeCoach/lab-status/ladder.json`
+  (cache-busted), which the runner publishes numbers-only next to
+  `status.json`; `#lab/ladder?src=<http(s) URL>` reads another copy,
+  `#lab/ladder?src=sample` the bundled `public/ladder-sample.json`. Amber after
+  a day without a new report, red after three; it refreshes every five minutes.
+- The format is mtg-table's `ladder.json` schema 1 (`docs/guides/ai-ladder.md`,
+  `tools/ai-ladder/report.ts`). `src/lab/ladder.ts` validates it and lists in
+  `LADDER_FIELDS` exactly the fields the page reads, so the runner's sanitised
+  copy can publish only those.
+
 ## Replay and review a recorded game
 
 mtg-table writes a log per game and seat at

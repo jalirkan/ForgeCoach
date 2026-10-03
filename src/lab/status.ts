@@ -424,9 +424,17 @@ export type LabSource =
  * encoded one (`https%3A%2F%2F…`) is decoded.
  */
 export function labSource(hash: string, baseUrl: string): LabSource {
-  const m = /^#lab(?:\/)?\?(?:.*&)?src=(.*)$/.exec(hash);
-  if (!m) return { kind: 'default', url: DEFAULT_LAB_SRC };
-  let raw = m[1]!.trim();
+  return hashSource(/^#lab(?:\/)?\?(?:.*&)?src=(.*)$/.exec(hash)?.[1], DEFAULT_LAB_SRC, 'lab-sample.json', baseUrl);
+}
+
+/**
+ * The source from the raw `src=` value of a hash (undefined: none): the
+ * default URL, the bundled `sampleFile` under `baseUrl`, or an http(s) URL.
+ * Shared with the ladder page (lab/ladder.ts).
+ */
+export function hashSource(src: string | undefined, defaultUrl: string, sampleFile: string, baseUrl: string): LabSource {
+  if (src === undefined) return { kind: 'default', url: defaultUrl };
+  let raw = src.trim();
   if (/^https?%3a/i.test(raw)) {
     try {
       raw = decodeURIComponent(raw);
@@ -434,8 +442,8 @@ export function labSource(hash: string, baseUrl: string): LabSource {
       return { kind: 'invalid', reason: 'The src URL is not decodable.' };
     }
   }
-  if (!raw) return { kind: 'default', url: DEFAULT_LAB_SRC };
-  if (raw === 'sample') return { kind: 'sample', url: `${baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`}lab-sample.json` };
+  if (!raw) return { kind: 'default', url: defaultUrl };
+  if (raw === 'sample') return { kind: 'sample', url: `${baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`}${sampleFile}` };
   let u: URL;
   try {
     u = new URL(raw);
@@ -466,27 +474,35 @@ export class LabFetchError extends Error {
   }
 }
 
-type FetchLike = (url: string, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'text'>>;
+export type FetchLike = (url: string, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'text'>>;
 
-/** Fetch and parse the status file. Errors are LabFetchError, sorted by kind. */
-export async function fetchLabStatus(url: string, opts: { fetch: FetchLike; now?: number; signal?: AbortSignal }): Promise<LabStatus> {
+/**
+ * Fetch a JSON file with a cache-buster: the parsed body, unvalidated. Errors
+ * are LabFetchError, sorted by kind; `noun` names the file in their messages.
+ * Shared with the ladder page (lab/ladder.ts).
+ */
+export async function fetchLabJson(url: string, opts: { fetch: FetchLike; now?: number; signal?: AbortSignal }, noun = 'status file', maxBytes = MAX_BYTES): Promise<unknown> {
   let res: Awaited<ReturnType<FetchLike>>;
   try {
     res = await opts.fetch(withCacheBuster(url, opts.now ?? Date.now()), { cache: 'no-store', credentials: 'omit', signal: opts.signal });
   } catch (e) {
     if ((e as { name?: string })?.name === 'AbortError') throw e;
-    throw new LabFetchError('network', 'Could not reach the status file.');
+    throw new LabFetchError('network', `Could not reach the ${noun}.`);
   }
-  if (res.status === 404) throw new LabFetchError('notFound', 'There is no status file there yet (404).', 404);
-  if (!res.ok) throw new LabFetchError('http', `The status file answered HTTP ${res.status}.`, res.status);
+  if (res.status === 404) throw new LabFetchError('notFound', `There is no ${noun} there yet (404).`, 404);
+  if (!res.ok) throw new LabFetchError('http', `The ${noun} answered HTTP ${res.status}.`, res.status);
   const text = await res.text();
-  if (text.length > MAX_BYTES) throw new LabFetchError('tooLarge', 'The status file is too large to be a status file.');
-  let json: unknown;
+  if (text.length > maxBytes) throw new LabFetchError('tooLarge', `The ${noun} is too large to be a ${noun}.`);
   try {
-    json = JSON.parse(text);
+    return JSON.parse(text) as unknown;
   } catch {
-    throw new LabFetchError('parse', 'The status file is not valid JSON.');
+    throw new LabFetchError('parse', `The ${noun} is not valid JSON.`);
   }
+}
+
+/** Fetch and parse the status file. Errors are LabFetchError, sorted by kind. */
+export async function fetchLabStatus(url: string, opts: { fetch: FetchLike; now?: number; signal?: AbortSignal }): Promise<LabStatus> {
+  const json = await fetchLabJson(url, opts);
   try {
     return parseLabStatus(json);
   } catch (e) {

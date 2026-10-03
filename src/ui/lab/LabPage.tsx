@@ -35,6 +35,7 @@ import {
 } from '../../lab/status.ts';
 import { LedgerShell } from '../ledger/Ledger.tsx';
 import { cx } from '../util.ts';
+import { LabTabs } from './LabTabs.tsx';
 
 /** The schema this page was written for; a newer file still renders, with a note. */
 const KNOWN_SCHEMA = 1;
@@ -142,6 +143,7 @@ export default function LabPage() {
   return (
     <LedgerShell page="lab">
       <div className="lb-col">
+        <LabTabs current="progress" />
         <header className="lb-head">
           <div className="lb-head-text">
             <div className="lg-kicker">The PC lab</div>
