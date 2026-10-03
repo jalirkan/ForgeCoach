@@ -406,3 +406,28 @@ export function progress(d: Draft): { step: number; of: number; label: string } 
 export function eventsAfter(d: Draft, after: number): DraftEvent[] {
   return d.log.filter((e) => e.n > after);
 }
+
+/**
+ * One event in words, as the player may know it: the AI's Winston takes say
+ * how many cards and only name the ones the player had seen.
+ */
+export function describeEvent(e: DraftEvent): string {
+  const who = e.who === 'you' ? 'You' : 'AI';
+  const n = e.cards.length;
+  const cards = `${n} card${n === 1 ? '' : 's'}`;
+  switch (e.kind) {
+    case 'line':
+      return `${who} took the ${lineName(e.line ?? 0)} (${cards})`;
+    case 'pass':
+      return `${who} passed pile ${e.at}`;
+    case 'blind':
+      return e.who === 'you' ? `You took the top card blind: ${e.cards[0] ?? ''}` : 'AI took the top card blind';
+    case 'take':
+    case 'forced': {
+      const verb = e.kind === 'forced' ? 'had to take' : 'took';
+      if (e.who === 'you') return `You ${verb} pile ${e.at} (${cards})`;
+      const known = e.known ?? [];
+      return `AI ${verb} pile ${e.at} (${cards})${known.length ? ` — you saw ${known.join(', ')}` : ''}`;
+    }
+  }
+}

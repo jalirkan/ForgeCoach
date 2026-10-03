@@ -25,6 +25,9 @@ import { PlayView } from './play/PlayView.tsx';
 // #deck: Draft & build, the deck assistant (lazy: its own bundle).
 const DeckApp = lazy(() => import('./deck/DeckApp.tsx'));
 
+// #draft: a cube draft against the AI (lazy: its own bundle, with the deck assistant's builder).
+const DraftApp = lazy(() => import('./draft/DraftApp.tsx'));
+
 // #ask-gallery: every ask kind rendered from fixtures (a design/QA page); lazy so the fixtures stay out of the main bundle.
 const AskGallery = lazy(() => import('./play/AskGallery.tsx'));
 
@@ -102,11 +105,27 @@ function parseHash(): { sample: string | null; d: number | null } {
 
 export function App() {
   const [gallery, setGallery] = useState(() => location.hash === '#ask-gallery');
+  const [draft, setDraft] = useState(() => /^#draft\b/.test(location.hash));
   useEffect(() => {
-    const on = () => setGallery(location.hash === '#ask-gallery');
+    const on = () => {
+      setGallery(location.hash === '#ask-gallery');
+      setDraft(/^#draft\b/.test(location.hash));
+    };
     window.addEventListener('hashchange', on);
     return () => window.removeEventListener('hashchange', on);
   }, []);
+  if (draft) {
+    return (
+      <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>
+        <DraftApp
+          onExit={() => {
+            history.replaceState(null, '', location.pathname + location.search);
+            setDraft(false);
+          }}
+        />
+      </Suspense>
+    );
+  }
   if (gallery) {
     return (
       <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>

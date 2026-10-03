@@ -215,8 +215,11 @@ function DraftCard({ onDraft }: { onDraft: () => void }) {
       </div>
       <div className="play-card-text">
         <h2 className="draft-card-title">Draft &amp; build</h2>
-        <p className="muted">Two-player cube drafts on paper: track your pool, get Grid and Winston picks called, and the best 40 with its reasons.</p>
+        <p className="muted">Draft a cube against the AI, Grid or Winston — or track a paper draft — then build the best 40 with its reasons.</p>
       </div>
+      <button className="btn btn-primary draft-go" onClick={() => (location.hash = '#draft')}>
+        Draft vs AI <IconArrowRight size={16} />
+      </button>
       <button className="btn btn-quiet draft-go" onClick={onDraft}>
         Open <IconArrowRight size={16} />
       </button>
