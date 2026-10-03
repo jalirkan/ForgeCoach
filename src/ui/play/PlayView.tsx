@@ -36,7 +36,7 @@ import { GameOverCard } from './GameOverCard.tsx';
 import { HandDock } from './HandDock.tsx';
 import { LogDrawer, LogTab } from './LogDrawer.tsx';
 import { PhaseStrip } from './PhaseStrip.tsx';
-import { cardRole, describeInput, playerClickable, type ClickContext } from './inputView.ts';
+import { cardRole, describeInput, handNeeded, noticeLine, playerClickable, type ClickContext } from './inputView.ts';
 import { lastStateFrame } from './liveDecision.ts';
 import { PlayCoach } from './PlayCoach.tsx';
 import { CombatArrows } from './CombatArrows.tsx';
@@ -117,7 +117,9 @@ export function PlayView({
     if (seenNotice.current === id) return;
     seenNotice.current = id;
     if (lastNotice.level === 'info' && lastNotice.source === 'engine') return;
-    setFlash(`${lastNotice.title}${lastNotice.text ? ` — ${lastNotice.text}` : ''}`);
+    setFlash(noticeLine(lastNotice.title, lastNotice.text, snap.state));
+    // Only a new notice flashes; the state it names cards from is read as of then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastNotice]);
   const act = useCallback((body: ActBody) => void session.act(body), [session]);
   const pressOk = useCallback(() => {
@@ -285,14 +287,10 @@ export function PlayView({
   const boardMode = view.mode === 'attack' || view.mode === 'block' || view.mode === 'pay';
   // Phones fold the hand away while it is not what you need (combat, paying, reading
   // the coach); a tap on its header overrides that until the moment changes.
-  const handTargets = useMemo(
-    () => view.mode === 'target' && !!state?.players.find((p) => p.id === seat)?.zones.hand.cards.some((c) => cardRole(c, ctx) === 'select'),
-    [view.mode, state, seat, ctx],
-  );
   // Phones (portrait): the hand is open at your main phase and when the engine asks for a hand card;
   // otherwise it folds to a peek strip so both battlefields fit on screen.
-  const handNeeded = view.mode === 'main' || view.mode === 'discard' || handTargets;
-  const autoFold = !wide && !sideDock && (!handNeeded || phoneCoach);
+  const needHand = useMemo(() => handNeeded(ctx), [ctx]);
+  const autoFold = !wide && !sideDock && (!needHand || phoneCoach);
   const [handOverride, setHandOverride] = useState<boolean | null>(null);
   useEffect(() => setHandOverride(null), [view.mode, phoneCoach]);
   const handHidden = autoFold ? handOverride ?? true : handCollapsed;

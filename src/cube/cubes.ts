@@ -45,6 +45,8 @@ export async function loadCubeDoc(info: CubeInfo, base: string, fetcher: Fetch =
 
 /** The shipped meta for a cube, or null when there is none (or it is unreadable). */
 export async function loadShippedMeta(info: CubeInfo, base: string, fetcher: Fetch = (u) => fetch(u)): Promise<CubeMeta | null> {
+  // None ships: don't ask (a 404 in the console on every page that shows this cube).
+  if (info.labData === false) return null;
   try {
     const res = await fetcher(`${base}cubes/${info.file}.meta.json`);
     if (!res.ok) return null;
