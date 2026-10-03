@@ -18,7 +18,7 @@ import { useCardInfo } from './cardData.ts';
 import { useBoardStateRef, useCardActions, usePlay, type PlayMark } from './cardContext.ts';
 import { PILE_SHOWN, pilePlan } from './landPiles.ts';
 import { ManaCost } from './Mana.tsx';
-import { IconInfo, IconMoon, IconShield, IconSword, TypeGlyph } from './Icons.tsx';
+import { IconInfo, IconShield, IconSword, TypeGlyph } from './Icons.tsx';
 import { cardColors, colorClass, counterLabel, cx, shortType, typeKind } from './util.ts';
 
 import './cards.css';
@@ -332,19 +332,19 @@ function TileInner({ card, attachments, inHand, side }: TileProps) {
               <span className="flag-text">{attacking ? 'Attack' : 'Block'}</span>
             </span>
           )}
-          {(counters.length > 0 || card.token || (!inHand && card.sick && isCreature)) && (
+          {counters.length > 0 && (
             <span className="tile-marks">
-              {!inHand && card.sick && isCreature && (
-                <span className="mk mk-sick" title="Summoning sick: can't attack or use {T} abilities">
-                  <IconMoon size={10} />
-                </span>
-              )}
               {counters.map(([k, n]) => (
                 <span key={k} className={cx('mk', k === 'M1M1' ? 'mk-minus' : 'mk-counter')} title={`${n} ${counterLabel(k)} counter${n > 1 ? 's' : ''}`}>
                   {counterText(k, n)}
                 </span>
               ))}
-              {card.token && <span className="mk mk-token">Token</span>}
+            </span>
+          )}
+          {/* Summoning sick: a big "Zz" over the art (endstep-style). */}
+          {!inHand && card.sick && isCreature && (
+            <span className="tile-zz" title="Summoning sick: can't attack or use {T} abilities" aria-hidden="true">
+              Zz
             </span>
           )}
           {showLoyalty ? (

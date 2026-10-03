@@ -39,11 +39,16 @@ import { PhaseStrip } from './PhaseStrip.tsx';
 import { cardRole, describeInput, playerClickable, type ClickContext } from './inputView.ts';
 import { lastStateFrame } from './liveDecision.ts';
 import { PlayCoach } from './PlayCoach.tsx';
+import { CombatArrows } from './CombatArrows.tsx';
+import { combatLinks } from './combatLines.ts';
+import { selectionSummary } from './selection.ts';
+import { matchBox, type MatchBox } from '../../play/match.ts';
 import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
 
 import './play.css';
 import './controls.css';
 import './log.css';
+import './board.css';
 
 const COACH_OPEN_KEY = 'forgecoach.playCoachOpen';
 
@@ -208,6 +213,10 @@ export function PlayView({
     [act, alphaStrike],
   );
 
+  // ---- the selection under way (dims the rest of the board) and the combat lines
+  const selection = useMemo(() => selectionSummary(view, { attackers: chosenAtk.size, blockers: chosenBlk.size }), [view, chosenAtk, chosenBlk]);
+  const links = useMemo(() => combatLinks(state, view.mode === 'block' ? chosenBlk : undefined), [state, view.mode, chosenBlk]);
+
   // ---- interaction context for tiles and avatars
   const ctx: ClickContext = useMemo(() => ({ view, input, state, seat }), [view, input, state, seat]);
   const play = useMemo<PlayInteraction>(
@@ -339,7 +348,7 @@ export function PlayView({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      const overlay = !!detail || help || concede || guidesOpen || logOpen || !!document.querySelector('.sheet-backdrop');
+      const overlay = !!detail || help || concede || guidesOpen || (logOpen && !wide) || !!document.querySelector('.sheet-backdrop');
       const plan = planPlayKey(
         { key: e.key, code: e.code, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey, isComposing: e.isComposing, targetTag: t?.tagName, targetEditable: t?.isContentEditable },
         {
@@ -378,7 +387,7 @@ export function PlayView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, logOpen, pressOk, doCancel, doAct]);
+  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, logOpen, wide, pressOk, doCancel, doAct]);
 
   // ---- render
   const me = state?.players.find((p) => p.id === seat) ?? null;
@@ -388,10 +397,18 @@ export function PlayView({
   const gameNo = hello?.gameNumber && (hello.gameCount ?? hello.match?.games) ? `Game ${hello.gameNumber} of ${hello.gameCount ?? hello.match?.games}` : null;
   const myDeck = hello?.match?.yourDeck?.name ?? null;
   const myMove = !!(ask || (input && view.mode !== 'waiting' && view.mode !== 'yield' && !over));
+  const match = matchBox(hello, over, snap.previousLogs, seat);
 
   const board =
     state && log && seat !== null ? (
-      <Board log={log} state={state} frameIndex={Math.max(0, frameIndex)} seat={seat} hideHand />
+      <Board
+        log={log}
+        state={state}
+        frameIndex={Math.max(0, frameIndex)}
+        seat={seat}
+        hideHand
+        overlay={<CombatArrows links={links} version={state} />}
+      />
     ) : (
       <div className="board board-empty">
         <div>
@@ -437,6 +454,7 @@ export function PlayView({
         onCancel={doCancel}
         onAct={doAct}
         onHelp={() => setHelp(true)}
+        selection={selection}
         flash={flash}
         wide={wide}
       />
@@ -453,7 +471,10 @@ export function PlayView({
       </button>
       <div className="topbar-title">
         <span className="topbar-game">You vs {opp?.name ?? 'Forge AI'}</span>
-        <span className="topbar-sub">{[gameNo, myDeck].filter(Boolean).join(' · ') || 'Playing live'}</span>
+        <span className="topbar-sub">
+          {!wide && match ? <MatchScore match={match} inline /> : null}
+          {[match ? null : gameNo, myDeck].filter(Boolean).join(' · ') || (match ? '' : 'Playing live')}
+        </span>
       </div>
       {wide && <span className="side-break" aria-hidden="true" />}
       <span className={cx('live-pill', connected ? 'is-open' : status === 'connecting' ? 'is-connecting' : 'is-error')} title={snap.detail ?? liveWords} role="status" aria-label={liveWords}>
@@ -519,7 +540,7 @@ export function PlayView({
     <CardActionsContext.Provider value={actions}>
       <BoardStateRef.Provider value={boardStateRef}>
         <PlayContext.Provider value={play}>
-          <div className={cx('game', 'play', wide ? 'is-wide' : 'is-narrow', `mode-${view.mode}`)}>
+          <div className={cx('game', 'play', wide ? 'is-wide' : 'is-narrow', `mode-${view.mode}`, selection.active && 'is-selecting')}>
             {/* Phones: the steps across the very top, above everything (endstep-style). */}
             {!wide && strip('bar')}
             {!wide && header}
@@ -534,6 +555,7 @@ export function PlayView({
                 {/* One sidebar: the turn and its steps, then the coach (foldable). */}
                 <aside className="play-side">
                   {header}
+                  {match && <MatchScore match={match} />}
                   {strip('side')}
                   {coachOpen ? (
                     <div className="play-side-coach">{coach}</div>
@@ -631,5 +653,30 @@ export function PlayView({
         </PlayContext.Provider>
       </BoardStateRef.Provider>
     </CardActionsContext.Provider>
+  );
+}
+
+/** The match box (endstep-style): MATCH · Game 1 / 3 · 0 – 0. Inline in the phone's top bar. */
+function MatchScore({ match, inline }: { match: MatchBox; inline?: boolean }) {
+  const game = match.game === null ? `Best of ${match.of}` : `Game ${match.game} / ${match.of}`;
+  const score = match.score ? `${match.score.me} – ${match.score.opp}` : null;
+  if (inline) {
+    return (
+      <span className="match-inline" title={score ? `${game}, you ${match.score!.me} – ${match.score!.opp} them` : game}>
+        <b>{match.game === null ? `Bo${match.of}` : `G${match.game}/${match.of}`}</b>
+        {score && <span className="match-inline-score">{score}</span>}
+      </span>
+    );
+  }
+  return (
+    <div className="match-box" role="group" aria-label="Match">
+      <span className="match-kicker">Match</span>
+      <span className="match-game">{game}</span>
+      {score && (
+        <span className="match-score" title="You – them">
+          {score}
+        </span>
+      )}
+    </div>
   );
 }

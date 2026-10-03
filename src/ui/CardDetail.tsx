@@ -10,6 +10,7 @@ import type { AnyCard, Card, GameStateBody } from '../protocol.ts';
 import { altFace, isHidden, keywordsOf } from '../protocol.ts';
 import { cardIndex, cardName } from '../decisions.ts';
 import type { CardInfo } from '../cards.ts';
+import { isLookupName } from '../cards.ts';
 import { useCardInfo } from './cardData.ts';
 import { displayName } from './CardTile.tsx';
 import { IconExternal } from './Icons.tsx';
@@ -236,6 +237,8 @@ export function HoverPreview({ name, rect }: { name: string | null; rect: DOMRec
     setFailed(false);
   }, [img]);
   if (!name || !rect || !shown) return null;
+  // Tokens and other names Scryfall cannot have: nothing to preview beyond the tile itself.
+  if (!isLookupName(name) || (info && !info.found)) return null;
   const W = 244;
   const H = 340;
   const right = rect.right + 12 + W < window.innerWidth;

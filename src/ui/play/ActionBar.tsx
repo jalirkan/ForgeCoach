@@ -18,6 +18,7 @@ import { cx } from '../util.ts';
 import type { ButtonView, InputView } from './inputView.ts';
 import { oneLine } from './inputView.ts';
 import { buttonWords, canPassAhead, PASS_EOT, passMenu, primaryView } from './actionWords.ts';
+import type { SelectionSummary } from './selection.ts';
 
 export function ActionBar({
   view,
@@ -31,6 +32,7 @@ export function ActionBar({
   onHelp,
   flash,
   wide,
+  selection,
 }: {
   view: InputView;
   busy: 'ok' | 'cancel' | null;
@@ -43,6 +45,8 @@ export function ActionBar({
   onHelp: () => void;
   flash: string | null;
   wide?: boolean;
+  /** A selection under way: its live count and the confirm button's words. */
+  selection?: SelectionSummary;
 }) {
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -63,7 +67,15 @@ export function ActionBar({
   const poolColors = pool ? MANA_COLORS.filter((c) => pool[c] > 0) : [];
   const engine = oneLine(view.engineText);
   const showEngine = engine && !waiting && view.mode !== 'ask' && engine.toLowerCase() !== view.title.toLowerCase();
-  const primary = primaryView(view);
+  const base = primaryView(view);
+  // "No blocks" / "Done blocking" / "Attack with 2": the moment's words on the engine's OK.
+  const primary =
+    selection?.confirm && base.which === 'ok'
+      ? { ...base, words: selection.confirm, engine: base.engine ?? view.ok.label }
+      : selection?.active && base.which === null && view.ok.label && (view.mode === 'attack' || view.mode === 'block')
+        ? // Nothing picked yet and the engine's OK is off: show it, disabled, in the moment's words.
+          { which: 'ok' as const, words: view.mode === 'attack' ? 'Attack' : 'Done blocking', engine: view.ok.label, enabled: false }
+        : base;
   // The engine's other button (End Turn, Alpha Strike, Call back, Cancel…) sits with the tools.
   const other: { b: ButtonView; which: 'ok' | 'cancel' } | null =
     primary.which === 'ok' ? { b: view.cancel, which: 'cancel' } : primary.which === 'cancel' ? { b: view.ok, which: 'ok' } : view.cancel.enabled ? { b: view.cancel, which: 'cancel' } : null;
@@ -87,6 +99,14 @@ export function ActionBar({
         {/* One line under the title: a passing notice, else what the mode means, else Forge's own prompt. */}
         {flash ? (
           <div className="ab-sub ab-flash">{flash}</div>
+        ) : selection?.active && selection.line ? (
+          <div className="ab-sub ab-select" aria-live="polite">
+            <span className={cx('ab-select-count', !!selection.count && 'has-picks')}>
+              <span className="ab-select-dot" aria-hidden="true" />
+              {selection.count ? `${selection.count} selected` : 'Click to select'}
+            </span>
+            {(selection.count || !/^click to select$/i.test(selection.line)) && <span className={cx('ab-select-line', !selection.count && 'is-hint')}>{selection.line}</span>}
+          </div>
         ) : view.detail ? (
           <div className="ab-sub ab-detail">{view.detail}</div>
         ) : (
