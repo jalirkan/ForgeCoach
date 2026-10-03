@@ -105,7 +105,8 @@ across stages, repeat it with the same `id`.
 | `opacity` | 0–1 | 1 | |
 | `x`, `y` | −1–1 | 0 | The box's left edge and bottom edge, as fractions of the slot's width and the strip's height. |
 | `w`, `h` | 0.01–2 | 1 | The box's size, in the same fractions. |
-| `fit` | `cover` \| `contain` \| `fill` | `cover` | `object-fit` within the box. |
+| `fit` | `cover` \| `contain` \| `fill` | `cover` | How the picture fills the box, as CSS `object-fit`. Applies to every kind: a sprite's frame window keeps the frame's natural aspect (sheet width ÷ `cols` by sheet height ÷ `rows`) with `contain` and `cover`, and only `fill` stretches it. |
+| `anchor` | `center` `top` `bottom` `left` `right` `top-left` `top-right` `bottom-left` `bottom-right` | `center` | Where the picture sits in its box with `contain` (or which part is kept with `cover`), as CSS `object-position`: `bottom` is `50% 100%`, `bottom-left` is `0% 100%`. Ignored with `fill`. Use `bottom` for objects that stand on the ground, such as palms in a narrow box, so they don't float. |
 | `idle` | boolean | true | Whether the layer takes part in the biome's idle loop. |
 
 **URLs** are either relative, resolved against the folder holding
@@ -116,9 +117,11 @@ across stages, repeat it with the same `id`.
 - spaces, quotes, brackets, backslashes or control characters;
 - anything over 512 characters.
 
-**Out-of-range numbers** fall back to their defaults, with a warning. A layer
+**Out-of-range numbers** and unknown names (`fit`, `anchor`, `blend`, …) fall back to their defaults, with a warning. A layer
 with a bad URL or sprite grid is dropped. A biome with no usable layer falls
-back to the built-in scene. A manifest over 256 KB is refused.
+back to the built-in scene. A manifest over 256 KB is refused. A stage
+with more than 2 moving layers (sprites and videos) gets a warning, as it is
+over budget (§3), but its layers are kept.
 
 ### Worked example: the island biome
 
@@ -148,25 +151,25 @@ back to the built-in scene. A manifest over 256 KB is refused.
           "layers": [
             { "id": "sky", "kind": "image", "src": "island/s1-sky.webp", "src2x": "island/s1-sky@2x.webp", "depth": 0, "z": 0, "idle": false },
             { "id": "sea", "kind": "video", "src": "island/sea-loop.webm", "fallback": "island/sea-loop.mp4", "poster": "island/sea-still.webp", "depth": 0.3, "z": 10, "y": 0, "h": 0.45 },
-            { "id": "shore", "kind": "image", "src": "island/s2-shore.webp", "src2x": "island/s2-shore@2x.webp", "depth": 0.7, "z": 20, "x": 0, "y": 0, "w": 0.7, "h": 0.4, "fit": "contain" }
+            { "id": "shore", "kind": "image", "src": "island/s2-shore.webp", "src2x": "island/s2-shore@2x.webp", "depth": 0.7, "z": 20, "x": 0, "y": 0, "w": 0.7, "h": 0.4, "fit": "contain", "anchor": "bottom-left" }
           ]
         },
         {
           "layers": [
             { "id": "sky", "kind": "image", "src": "island/s3-sky-sun.webp", "src2x": "island/s3-sky-sun@2x.webp", "depth": 0, "z": 0, "idle": false },
             { "id": "sea", "kind": "video", "src": "island/sea-loop.webm", "fallback": "island/sea-loop.mp4", "poster": "island/sea-still.webp", "depth": 0.3, "z": 10, "y": 0, "h": 0.45 },
-            { "id": "shore", "kind": "image", "src": "island/s2-shore.webp", "src2x": "island/s2-shore@2x.webp", "depth": 0.7, "z": 20, "x": 0, "y": 0, "w": 0.7, "h": 0.4, "fit": "contain" },
-            { "id": "palms", "kind": "sprite", "src": "island/s3-palms-sheet.webp", "poster": "island/s3-palms.webp", "frames": 24, "cols": 6, "rows": 4, "fps": 12, "depth": 1, "z": 30, "x": 0.02, "y": 0, "w": 0.4, "h": 0.95, "fit": "contain", "idle": false }
+            { "id": "shore", "kind": "image", "src": "island/s2-shore.webp", "src2x": "island/s2-shore@2x.webp", "depth": 0.7, "z": 20, "x": 0, "y": 0, "w": 0.7, "h": 0.4, "fit": "contain", "anchor": "bottom-left" },
+            { "id": "palms", "kind": "sprite", "src": "island/s3-palms-sheet.webp", "poster": "island/s3-palms.webp", "frames": 24, "cols": 6, "rows": 4, "fps": 12, "depth": 1, "z": 30, "x": 0.02, "y": 0, "w": 0.4, "h": 0.95, "fit": "contain", "anchor": "bottom", "idle": false }
           ]
         },
         {
           "layers": [
             { "id": "sky", "kind": "image", "src": "island/s3-sky-sun.webp", "src2x": "island/s3-sky-sun@2x.webp", "depth": 0, "z": 0, "idle": false },
             { "id": "sea", "kind": "video", "src": "island/sea-loop.webm", "fallback": "island/sea-loop.mp4", "poster": "island/sea-still.webp", "depth": 0.3, "z": 10, "y": 0, "h": 0.45 },
-            { "id": "lagoon", "kind": "image", "src": "island/s4-shore-lagoon.webp", "src2x": "island/s4-shore-lagoon@2x.webp", "depth": 0.7, "z": 20, "x": 0, "y": 0, "w": 0.75, "h": 0.42, "fit": "contain" },
-            { "id": "palms", "kind": "sprite", "src": "island/s3-palms-sheet.webp", "poster": "island/s3-palms.webp", "frames": 24, "cols": 6, "rows": 4, "fps": 12, "depth": 1, "z": 30, "x": 0.02, "y": 0, "w": 0.4, "h": 0.95, "fit": "contain", "idle": false },
+            { "id": "lagoon", "kind": "image", "src": "island/s4-shore-lagoon.webp", "src2x": "island/s4-shore-lagoon@2x.webp", "depth": 0.7, "z": 20, "x": 0, "y": 0, "w": 0.75, "h": 0.42, "fit": "contain", "anchor": "bottom-left" },
+            { "id": "palms", "kind": "sprite", "src": "island/s3-palms-sheet.webp", "poster": "island/s3-palms.webp", "frames": 24, "cols": 6, "rows": 4, "fps": 12, "depth": 1, "z": 30, "x": 0.02, "y": 0, "w": 0.4, "h": 0.95, "fit": "contain", "anchor": "bottom", "idle": false },
             { "id": "glints", "kind": "image", "src": "island/s4-glints.webp", "blend": "screen", "opacity": 0.8, "depth": 0.4, "z": 15, "y": 0, "h": 0.45 },
-            { "id": "gulls", "kind": "video", "src": "island/s4-gulls.webm", "fallback": "island/s4-gulls.mp4", "depth": 0.5, "z": 25, "x": 0.5, "y": 0.5, "w": 0.4, "h": 0.4, "fit": "contain" }
+            { "id": "gulls", "kind": "image", "src": "island/s4-gulls.webp", "src2x": "island/s4-gulls@2x.webp", "depth": 0.5, "z": 25, "x": 0.5, "y": 0.5, "w": 0.4, "h": 0.4, "fit": "contain", "anchor": "top" }
           ]
         }
       ]
@@ -174,6 +177,11 @@ back to the built-in scene. A manifest over 256 KB is refused.
   }
 }
 ```
+
+Stage 4 has two moving layers, the sea loop and the palms sprite, which is the
+budget (§3); the gulls are a still that drifts with the idle loop. The palms
+sprite is `contain` in a narrow box (the frame is taller than it is wide), so
+`anchor: "bottom"` stands it on the shore.
 
 `src/ambience/manifest.test.ts` validates this exact block. If you change it,
 it must stay error- and warning-free.
@@ -184,7 +192,7 @@ it must stay error- and warning-free.
 | --- | --- | --- |
 | Backdrops (sky, sea, ground bands) | WebP (quality 80–85) or AVIF | 2048 × 512 at 1x, 4096 × 1024 as `src2x`. Wide and short; `cover` crops the sides of narrow slots, so keep the interest in the middle 60%. |
 | Objects (palms, trees, rocks) | WebP or AVIF with alpha | Sized to their box at 2x: a palm 0.95 strip-high is about 480 px tall at 1x. |
-| Sprite sheets | WebP with alpha, frames in a grid | Each frame at the layer's 1x box size; the whole sheet ≤ 4096 px on either side; ≤ 48 frames is plenty (12 fps × 4 s). |
+| Sprite sheets | WebP with alpha, frames in a grid | Each frame at the layer's 1x box size (any aspect: with `contain` / `cover` the frame keeps its own shape, placed by `anchor`); the whole sheet ≤ 4096 px on either side; ≤ 48 frames is plenty (12 fps × 4 s). |
 | Loops | WebM (VP9 with alpha, `yuva420p`), plus an MP4 (H.264) `fallback` | 2–6 s, seamless, ≤ 1280 px wide, 24–30 fps, no audio track. |
 | Posters | WebP | The first frame of the loop or sprite. |
 
@@ -192,7 +200,7 @@ Budgets per biome:
 - **≤ 6 MB** in total;
 - **≤ 1.5 MB for stage 1**, which is preloaded before the scenery shows;
 - **≤ 8 layers** per stage;
-- **≤ 2 moving layers** (sprite or video) per stage. Videos are the heaviest thing on a phone, so prefer one loop per biome.
+- **≤ 2 moving layers** (sprite or video) per stage, counting layers kept from earlier stages. The validator warns on a stage with more. Videos are the heaviest thing on a phone, so prefer one loop per biome; idle motion (§4) on a still image is free.
 
 The whole pack should stay ≤ 30 MB.
 
@@ -213,7 +221,7 @@ A narrow slot is about 130 px wide on a phone; a lone slot on a desktop can be
   | 1 | The place itself: sky, a ground or water band, one quiet idle motion. |
   | 2 | A defining feature (a shoreline, reeds, a near ridge, the first trees). |
   | 3 | Life and light (palms, a sun or moon, an ember glow, light shafts). |
-  | 4 | The paradise version: the richest composition, at most two moving layers. |
+  | 4 | The paradise version: the richest composition, still at most two moving layers. |
 
   Later stages should look like the same place grown, not a different picture. Reuse ids for layers that stay.
 - **Motion.** Idle motion is slow and small (periods of 6–12 s). Nothing should flash or strobe. The bloom is the only fast moment.
@@ -234,12 +242,29 @@ npx http-server ./pack --cors -p 8650 -c-1
 `-c-1` turns caching off while you iterate. Then use the pack URL
 `http://127.0.0.1:8650/` (the folder) or `http://127.0.0.1:8650/scenery.json`.
 
-ForgeCoach on `https://jalirkan.github.io/ForgeCoach/` may fetch from
-`http://127.0.0.1`: browsers treat loopback as potentially trustworthy, so
-it is not blocked as mixed content. The coach helper (`127.0.0.1:8643`)
-already works this way. A LAN address such as `http://192.168.x.x` would be
-blocked from the https page; use a local dev build (`npm run dev`) or serve
-the pack over https for that.
+**Mixed content.** ForgeCoach on `https://jalirkan.github.io/ForgeCoach/`
+may fetch from `http://127.0.0.1`: browsers treat loopback as potentially
+trustworthy, so it is not blocked as mixed content. A LAN address such as
+`http://192.168.x.x` is blocked from the https page; use a local dev build
+(`npm run dev`) or serve the pack over https for that.
+
+**Local Network Access.** Current Chromium (Chrome, Edge) also asks before a
+public site reaches your own machine or local network. The first time the
+github.io page fetches `http://127.0.0.1` (or a LAN address), the browser shows
+a prompt to allow the site to access devices on your local network. Until you
+accept it, the fetch fails as if the server were down. The coach helper
+(`127.0.0.1:8643`) goes through the same prompt.
+
+- Accept the prompt, and the pack loads.
+- If you dismissed or blocked it, open the browser's site settings for
+  `jalirkan.github.io` (the icon left of the address bar) and set **Local
+  network access** to *Allow*, then reload. Or reset the permission, reload
+  and accept the prompt.
+- A local dev build (`http://localhost:5173`) is itself on your machine, so it
+  doesn't ask.
+
+When the manifest fetch fails for a loopback or LAN pack, `#ambience` and the
+board's fallback note say so, with these steps.
 
 ## 6. Testing on `#ambience`
 

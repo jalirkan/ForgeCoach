@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import { describe, expect, it } from 'vitest';
-import { fetchManifest, manifestUrlFor, resolveScenery, type FetchLike } from './pack.ts';
+import { fetchManifest, isLocalNetworkHost, manifestUrlFor, resolveScenery, type FetchLike } from './pack.ts';
 import { DEFAULT_PREFS, effectivePrefs, loadSceneryPrefs, reducedMotion, saveSceneryPrefs, sceneryParam } from './prefs.ts';
 
 const manifest = {
@@ -60,6 +60,29 @@ describe('resolveScenery', () => {
     expect(notes[1]).toMatch(/not valid JSON/);
     expect(notes[2]).toMatch(/schema/);
     expect(notes[3]).toMatch(/CORS/);
+    expect(notes[3]).toMatch(/local network access/);
+    expect(notes[3]).toMatch(/site settings/);
+  });
+
+  it('mentions Local Network Access only for loopback and LAN packs', async () => {
+    const fail: FetchLike = async () => {
+      throw new TypeError('Failed to fetch');
+    };
+    const remote = await fetchManifest('https://packs.example/island/', { fetch: fail });
+    expect(remote.errors[0]).toMatch(/unreachable \(is the server running, with CORS on\?\)\.$/);
+    for (const u of ['http://127.0.0.1:8650/', 'http://localhost:8650/', 'http://192.168.1.20:8650/', 'http://[::1]:8650/']) {
+      const r = await fetchManifest(u, { fetch: fail });
+      expect(r.errors[0]).toMatch(/CORS on\?\)\. If the browser asked to allow local network access/);
+    }
+    const abort: FetchLike = async () => {
+      throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+    };
+    expect((await fetchManifest('http://127.0.0.1:8650/', { fetch: abort })).errors[0]).toMatch(/is cancelled\.$/);
+  });
+
+  it('isLocalNetworkHost', () => {
+    for (const h of ['127.0.0.1', '127.1.2.3', 'localhost', 'pc.local', '10.0.0.5', '172.16.0.1', '172.31.9.9', '192.168.0.2', '169.254.1.1', '[::1]', 'fd12:3456::1']) expect(isLocalNetworkHost(h)).toBe(true);
+    for (const h of ['jalirkan.github.io', '8.8.8.8', '172.32.0.1', '192.169.0.1', '2001:db8::1', 'localhost.example.com']) expect(isLocalNetworkHost(h)).toBe(false);
   });
 
   it('drops only the biomes whose assets fail to load', async () => {

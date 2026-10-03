@@ -329,9 +329,17 @@
   }
 }
 
-.scn-sprite {
+/* The layer box as a size container: the frame window (.scn-sprite) is sized
+   in its cqw / cqh to keep the frame's aspect (layout.ts spriteFrameCss), and
+   clipped to the box for `cover`. */
+.scn-sprite-box {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+  container-type: size;
+}
+.scn-sprite {
+  position: absolute;
   overflow: hidden;
 }
 .scn-sprite-y {

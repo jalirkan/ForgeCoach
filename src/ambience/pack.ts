@@ -48,6 +48,26 @@ export function manifestUrlFor(input: string): string | null {
   }
 }
 
+/**
+ * Is this host on the user's own machine or local network (loopback, private
+ * IPv4 / IPv6 ranges, `localhost`, `.local`)? Chromium's Local Network Access
+ * asks the user's permission before a public page (the github.io site) may
+ * fetch from these; a dismissed prompt looks like a plain network failure.
+ */
+export function isLocalNetworkHost(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local')) return true;
+  if (h === '::1' || /^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h)) return true;
+  const m = /^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/.exec(h);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || a === 0;
+}
+
+/** What to tell a user whose local-network fetch failed: the Local Network Access permission. */
+export const LOCAL_NETWORK_HINT =
+  'If the browser asked to allow local network access and the prompt was dismissed or blocked, allow local network access for this site in the browser\'s site settings, or reload and accept the prompt.';
+
 /** Fetch and validate a pack's manifest. Never throws: problems come back as `errors`. */
 export async function fetchManifest(input: string, deps: { fetch: FetchLike; signal?: AbortSignal }) {
   const manifestUrl = manifestUrlFor(input);
@@ -60,8 +80,9 @@ export async function fetchManifest(input: string, deps: { fetch: FetchLike; sig
     if (!res.ok) return { manifestUrl, pack: null, errors: [`${manifestUrl} answered HTTP ${res.status}.`], warnings: [] as string[] };
     text = await res.text();
   } catch (e) {
-    const why = e instanceof Error && e.name === 'AbortError' ? 'cancelled' : 'unreachable (is the server running, with CORS on?)';
-    return { manifestUrl, pack: null, errors: [`${manifestUrl} is ${why}.`], warnings: [] as string[] };
+    if (e instanceof Error && e.name === 'AbortError') return { manifestUrl, pack: null, errors: [`${manifestUrl} is cancelled.`], warnings: [] as string[] };
+    const lna = isLocalNetworkHost(new URL(manifestUrl).hostname) ? ` ${LOCAL_NETWORK_HINT}` : '';
+    return { manifestUrl, pack: null, errors: [`${manifestUrl} is unreachable (is the server running, with CORS on?).${lna}`], warnings: [] as string[] };
   }
   if (text.length > MAX_MANIFEST_BYTES) return { manifestUrl, pack: null, errors: [`The manifest is over ${MAX_MANIFEST_BYTES / 1024} KB.`], warnings: [] as string[] };
   let raw: unknown;

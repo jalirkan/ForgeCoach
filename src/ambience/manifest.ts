@@ -38,6 +38,11 @@ export const SLOT_PREFS = ['any', 'left', 'right'] as const;
 export type SlotPref = (typeof SLOT_PREFS)[number];
 export const FITS = ['cover', 'contain', 'fill'] as const;
 export type Fit = (typeof FITS)[number];
+/** Where a `contain` (or `cover`) picture sits in its box: CSS object-position, by name. */
+export const ANCHORS = ['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'] as const;
+export type Anchor = (typeof ANCHORS)[number];
+/** Per stage: more sprites and videos than this is over the spec's budget (a warning; the layers are kept). */
+export const MAX_MOVING_LAYERS = 2;
 
 const IMAGE_EXT = /\.(webp|avif|png|jpe?g|svg)$/i;
 const VIDEO_EXT = /\.(webm|mp4)$/i;
@@ -72,6 +77,8 @@ export interface PackLayer {
   w: number;
   h: number;
   fit: Fit;
+  /** Where the picture sits in its box with `contain` / `cover` (ignored with `fill`). Default `center`. */
+  anchor: Anchor;
   /** Takes part in the biome's idle loop. */
   idle: boolean;
 }
@@ -257,6 +264,7 @@ function parseLayer(v: unknown, base: string, path: string, warn: string[]): Pac
     w: ranged(v.w, 0.01, 2, 1, `${path}.w`, warn),
     h: ranged(v.h, 0.01, 2, 1, `${path}.h`, warn),
     fit: oneOf(v.fit, FITS, 'cover', `${path}.fit`, warn),
+    anchor: oneOf(v.anchor, ANCHORS, 'center', `${path}.anchor`, warn),
     idle: v.idle === undefined ? true : v.idle === true,
   };
 }
@@ -289,6 +297,8 @@ function parseBiome(v: unknown, base: string, path: string, warn: string[]): Pac
       ids.add(layer.id);
       layers.push(layer);
     });
+    const moving = layers.filter((l) => l.kind !== 'image').length;
+    if (moving > MAX_MOVING_LAYERS) warn.push(`${sp}: ${moving} moving layers (sprite or video); the budget is ${MAX_MOVING_LAYERS} per stage, so a phone may stutter (layers kept)`);
     if (layers.length) stages.push({ layers });
     else warn.push(`${sp}: no usable layers; stage dropped`);
   });
