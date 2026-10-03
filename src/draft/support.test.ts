@@ -9,7 +9,7 @@ import { aiStep, apply, newDraft, selfPlay, toAct } from './draft.ts';
 import { poolColours } from '../cube/pick.ts';
 import { guideFor, guidePromptSection } from '../cube/guides/index.ts';
 import { matchDeck } from './deck.ts';
-import { checkRequest, deckSize, engineHealth, ensureEngineAwake, launcherStatus, launchMatch, matchSupported, wakeEngine, safeDeckName, type MatchRequest } from './launch.ts';
+import { advertisedPolicies, advertisedSearchBudget, AI_POLICIES, checkRequest, deckSize, engineHealth, policyFields, ensureEngineAwake, launcherStatus, launchMatch, matchSupported, wakeEngine, safeDeckName, type MatchRequest } from './launch.ts';
 import { buildPickPrompt } from './pickPrompt.ts';
 import { clearDraft, DRAFT_KEY, loadDraft, saveDraft } from './store.ts';
 
@@ -140,10 +140,10 @@ describe('a sleeping engine (D308)', () => {
   const started = { ok: true, already: false, yourDeck: { name: 'x', path: null, cards: 40 }, aiDeck: { name: 'y', cards: 40 }, aiProfile: 'Default', games: 3, ms: 12000, warnings: [] };
 
   it('reads engine and engine_start from /health; no engine key is an older helper, running', async () => {
-    expect(await engineHealth({ fetch: () => json(200, idle), target })).toEqual({ status: 'asleep', canWake: true });
-    expect(await engineHealth({ fetch: () => json(200, { ...idle, engine: 'running' }), target })).toEqual({ status: 'ready', canWake: true });
-    expect(await engineHealth({ fetch: () => json(200, { ok: true, helper: 1, match: 1 }), target })).toEqual({ status: 'ready', canWake: false });
-    expect(await engineHealth({ fetch: () => json(200, { ok: false, helper: 1, match: 1, engine: 'idle' }), target })).toEqual({ status: 'asleep', canWake: false });
+    expect(await engineHealth({ fetch: () => json(200, idle), target })).toEqual({ status: 'asleep', canWake: true, aiPolicies: [] });
+    expect(await engineHealth({ fetch: () => json(200, { ...idle, engine: 'running' }), target })).toEqual({ status: 'ready', canWake: true, aiPolicies: [] });
+    expect(await engineHealth({ fetch: () => json(200, { ok: true, helper: 1, match: 1 }), target })).toEqual({ status: 'ready', canWake: false, aiPolicies: [] });
+    expect(await engineHealth({ fetch: () => json(200, { ok: false, helper: 1, match: 1, engine: 'idle' }), target })).toEqual({ status: 'asleep', canWake: false, aiPolicies: [] });
     // The match set-up can still Begin: POST /match wakes the engine.
     expect(await launcherStatus({ fetch: () => json(200, idle), target })).toBe('asleep');
     expect(await matchSupported({ fetch: () => json(200, idle), target })).toBe(true);
@@ -235,5 +235,73 @@ describe('pick prompt', () => {
       const alt = { ...d, picks: { ...d.picks, ai }, seen: { ...d.seen, you: [...d.picks.you, ...ai.slice(0, 3)] } };
       expect(guideOf(buildPickPrompt({ ctx, draft: alt, infos: new Map() }).user)).toBe(section);
     }
+  });
+});
+
+describe('the opponent AI (mtg-table D333)', () => {
+  const target = { baseUrl: 'http://127.0.0.1:8643', token: null };
+  const json = (status: number, body: unknown) => Promise.resolve({ ok: status < 300, status, json: () => Promise.resolve(body) });
+  const health = { ok: true, helper: 1, match: 1, engine: 'running', engine_start: 1, aiPolicies: ['plain', 'outlets', 'search'], aiSearchMs: { min: 500, max: 5000, default: 1500 } };
+  const deck = (name: string): MatchRequest['deck'] => ({ name, main: [[40, 'Island']] });
+  const req: MatchRequest = { deck: deck('Mine'), aiDeck: deck('AI Drafter') };
+
+  it('reads aiPolicies and aiSearchMs from /health', async () => {
+    expect(await engineHealth({ fetch: () => json(200, health), target })).toEqual({
+      status: 'ready',
+      canWake: true,
+      aiPolicies: ['plain', 'outlets', 'search'],
+      aiSearchMs: { min: 500, max: 5000, default: 1500 },
+    });
+    // An older helper: no choice to offer.
+    expect((await engineHealth({ fetch: () => json(200, { ...health, aiPolicies: undefined }), target })).aiPolicies).toEqual([]);
+    // No launcher, or no helper: none either.
+    expect((await engineHealth({ fetch: () => json(200, { ...health, match: 0 }), target })).aiPolicies).toEqual([]);
+    expect((await engineHealth({ fetch: () => Promise.reject(new TypeError('down')), target })).aiPolicies).toEqual([]);
+  });
+
+  it('offers only the policies it knows, in its own order, and only with plain Forge among them', () => {
+    expect(advertisedPolicies({ aiPolicies: ['search', 'plain', 'mcts', 7] })).toEqual(['plain', 'search']);
+    expect(advertisedPolicies({ aiPolicies: ['outlets', 'search'] })).toEqual([]);
+    expect(advertisedPolicies({ aiPolicies: 'plain,search' })).toEqual([]);
+    expect(advertisedPolicies({})).toEqual([]);
+    expect(AI_POLICIES.map((p) => p.id)).toEqual(['plain', 'outlets', 'search']);
+    expect(AI_POLICIES.find((p) => p.id === 'search')?.blurb).toMatch(/1–3 s per decision/);
+  });
+
+  it('takes a search budget only when it is a sane range', () => {
+    expect(advertisedSearchBudget({ aiSearchMs: { min: 500, max: 5000, default: 1500 } })).toEqual({ min: 500, max: 5000, default: 1500 });
+    expect(advertisedSearchBudget({ aiSearchMs: { min: 500, max: 400, default: 450 } })).toBeUndefined();
+    expect(advertisedSearchBudget({ aiSearchMs: { min: 0, max: 5000, default: 1500 } })).toBeUndefined();
+    expect(advertisedSearchBudget({ aiSearchMs: { min: '500', max: 5000, default: 1500 } })).toBeUndefined();
+    expect(advertisedSearchBudget({ aiSearchMs: null })).toBeUndefined();
+  });
+
+  it('sends aiPolicy only to a helper that advertised it', () => {
+    expect(policyFields('search', { aiPolicies: [] })).toEqual({});
+    expect(policyFields('search', { aiPolicies: ['plain', 'outlets', 'search'] })).toEqual({ aiPolicy: 'search' });
+    expect(policyFields('search', { aiPolicies: ['plain', 'outlets'] })).toEqual({ aiPolicy: 'plain' });
+    expect(policyFields('plain', { aiPolicies: ['plain', 'outlets', 'search'] })).toEqual({ aiPolicy: 'plain' });
+  });
+
+  it('checks the policy and the budget before anything goes out', () => {
+    expect(checkRequest({ ...req, aiPolicy: 'search' })).toBeNull();
+    expect(checkRequest({ ...req, aiPolicy: 'search', aiSearchMs: 3000 })).toBeNull();
+    expect(checkRequest({ ...req, aiPolicy: 'hard' as never })).toMatch(/Unknown opponent AI/);
+    expect(checkRequest({ ...req, aiPolicy: 'outlets', aiSearchMs: 1000 })).toMatch(/only with the search AI/);
+    expect(checkRequest({ ...req, aiSearchMs: 1000 })).toMatch(/only with the search AI/);
+    expect(checkRequest({ ...req, aiPolicy: 'search', aiSearchMs: 100 })).toMatch(/0\.5 to 5 seconds/);
+    expect(checkRequest({ ...req, aiPolicy: 'search', aiSearchMs: 1500.5 })).toMatch(/0\.5 to 5 seconds/);
+  });
+
+  it('puts aiPolicy in the POST body and reads it back', async () => {
+    const f = vi.fn((_u: string, _i?: RequestInit) =>
+      json(200, { ok: true, yourDeck: { name: 'Mine', path: 'p', cards: 40 }, aiDeck: { name: 'AI Drafter', cards: 40 }, aiProfile: 'Default', aiPolicy: 'search', games: 3, ms: 9000, warnings: [] }),
+    );
+    const r = await launchMatch({ ...req, aiPolicy: 'search' }, { fetch: f, target });
+    expect(r).toMatchObject({ ok: true, aiPolicy: 'search' });
+    expect(JSON.parse(String(f.mock.calls[0]![1]?.body))).toMatchObject({ aiPolicy: 'search' });
+    // Without a policy the body has no key at all: an older helper never sees one.
+    await launchMatch(req, { fetch: f, target });
+    expect(JSON.parse(String(f.mock.calls[1]![1]?.body))).not.toHaveProperty('aiPolicy');
   });
 });
