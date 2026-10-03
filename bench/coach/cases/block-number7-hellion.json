@@ -1,0 +1,20 @@
+{
+  "id": "block-number7-hellion",
+  "log": "bench/coach/logs/human-number-7.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-number-7.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 1216
+  },
+  "seat": 0,
+  "type": "block",
+  "label": "R9 · Your blocks",
+  "acceptable": [
+    "block:33>55"
+  ],
+  "unacceptable": [
+    "block:none"
+  ],
+  "rationale": "Volcano Hellion (6/5) can block though summoning sick. An Ainok Tracker deals 3 first-strike damage, which a 5-toughness Hellion survives, then the Hellion kills it: a free kill. The Hellion is lost anyway at your next upkeep (echo equal to your 18 life can't be paid), so there's no reason to hold it back. Not blocking takes 6 and kills nothing.",
+  "confidence": "high"
+}

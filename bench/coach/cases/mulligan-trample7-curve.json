@@ -1,0 +1,20 @@
+{
+  "id": "mulligan-trample7-curve",
+  "log": "bench/coach/logs/human-trample-7.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-trample-7.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 4
+  },
+  "seat": 0,
+  "type": "mulligan",
+  "label": "Pre-game · keep or mulligan",
+  "acceptable": [
+    "keep"
+  ],
+  "unacceptable": [
+    "mulligan"
+  ],
+  "rationale": "Three Forests and four Garruk's Companions ({G}{G} 3/2 trample) on the draw: a 2-drop on curve every turn with the lands to cast them. An ideal aggressive seven; mulliganing it is a clear mistake.",
+  "confidence": "high"
+}

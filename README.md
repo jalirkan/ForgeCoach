@@ -314,6 +314,77 @@ Pushes to `main` deploy to GitHub Pages (`.github/workflows/pages.yml`); pull
 requests and other branches run typecheck, tests and build
 (`.github/workflows/ci.yml`).
 
+### Coach benchmark
+
+`bench/coach/` holds a fixed set of real decisions from recorded games, each
+with the answers a strong player accepts, the clear blunders and a short
+rationale. Run it before and after a change to the coach prompt
+(`src/prompt.ts`) to see what the change did. Every case rebuilds the exact
+prompt the app would send (`buildCoachPrompt`, from the viewing seat's redacted
+view only). In bench mode one extra section is appended to the prompt; it lists
+the legal choices and asks for a final `ANSWER: <choice>` line. Normal prompts
+are unchanged. Scoring: acceptable answer +1, blunder −1, anything else 0
+(another answer, or a missing or illegal `ANSWER:` line). Cases marked
+`"confidence": "low"` are run but not scored. The report gives the score per
+decision type (mulligan, play/draw, spell, attack, block, target, pass, choice)
+and the latency.
+
+**Running it on your PC.** The bench asks the same coach the app does: the
+local coach helper (Claude Code on your PC, no key) or the Anthropic API with
+your key.
+
+1. Start ForgeCoach as usual (the `forgecoach` launcher, or
+   `./scripts/play.sh --engine-only` in mtg-table). This also starts the coach
+   helper on `http://127.0.0.1:8643` (unless you passed `--no-coach`). Claude
+   Code must be installed and logged in.
+2. In a ForgeCoach checkout: `npm ci` once, then
+
+   ```bash
+   npm run bench:coach -- --label before            # the current prompt
+   # …edit src/prompt.ts…
+   npm run bench:coach -- --label after
+   npm run bench:coach -- --compare bench/coach/results/<…>-before.json bench/coach/results/<…>-after.json
+   ```
+
+   Each run writes `bench/coach/results/<time>-<label>.json` (every reply in
+   full) and a `.md` summary. `--compare` lists the cases that got better or
+   worse. Reports are git-ignored; `git add -f` one to keep it as a baseline.
+
+Options: `--source helper|api` (by default the helper if it is up, otherwise the
+API when `ANTHROPIC_API_KEY` is set), `--model <m>` (an alias the helper
+accepts, or an API model id from `src/claude.ts`), `--only id1,id2`,
+`--type block`, `--helper-url <url>`. Cases run one at a time (the helper
+answers one question at a time), so a full run takes about as long as 26 coach
+answers. Ctrl-C stops after the current case and still writes the report.
+
+`npm run bench:coach -- --dry-run` builds every prompt and checks every case
+without calling a model. Add `--show <case-id>` to print that case's full
+prompt. The same checks run in CI as part of `npm test`
+(`src/bench/coachBench.test.ts`): every case builds, every listed answer is a
+legal choice at that moment, and card text is there for every card.
+
+**Adding a case from one of your games.** mtg-table writes every game to
+`var/games/<gameId>/frames.jsonl`.
+
+```bash
+npm run bench:coach -- list --log ~/mtg-table/var/games/<gameId>/frames.jsonl          # replay decisions
+npm run bench:coach -- list --log ~/mtg-table/var/games/<gameId>/frames.jsonl --live   # every moment you acted
+npm run bench:coach -- add --log ~/mtg-table/var/games/<gameId>/frames.jsonl \
+  --decision 12 --type block --id block-my-game-double-block                         # or: --frame 1234 --live
+```
+
+`add` copies the log (gzipped) into `bench/coach/logs/`, fetches any missing
+card text into `bench/coach/cards.json`, writes
+`bench/coach/cases/<id>.json` and prints the legal choices. Fill in
+`acceptable` (1–3), `unacceptable` (clear blunders) and `rationale`, then run
+`--dry-run --show <id>` until it passes. `--decision n` picks the n-th replay
+decision (the review screen's list, with the state at the start of that
+decision). `--frame n --live` picks the moment just before your act or answer
+at frame n, as the play screen's coach saw it. Use that for a target or an
+engine question. Choose decisions whose right answer is clear to a strong player
+from what you could see. Check the card text in the printed prompt, not your
+memory. If you are unsure, use `"confidence": "low"`.
+
 ### End-to-end test (play a whole game)
 
 `e2e/play.e2e.mjs` opens the real app in a browser, joins the real Forge

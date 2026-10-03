@@ -1,0 +1,25 @@
+{
+  "id": "target-ability42-seismic-takedown",
+  "log": "src/play/testdata/human-ability-42.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-ability-42.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 1060
+  },
+  "seat": 0,
+  "type": "target",
+  "label": "R7 · Your main 1",
+  "acceptable": [
+    "target:91",
+    "target:92",
+    "target:44"
+  ],
+  "unacceptable": [
+    "target:31",
+    "target:25",
+    "target:15",
+    "target:20"
+  ],
+  "rationale": "Quake's trigger taps a creature or land; you are about to attack with Quake and Aerial Doombot. The opponent has no cards in hand and no open mana, so tapping their lands does nothing; tapping one of their untapped creatures removes a blocker. Tapping your own Quake or Doombot stops your attack, and tapping your untapped Plains loses the white mana for Spy Kit.",
+  "confidence": "high"
+}

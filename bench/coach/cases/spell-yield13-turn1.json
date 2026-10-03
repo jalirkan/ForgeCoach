@@ -1,0 +1,22 @@
+{
+  "id": "spell-yield13-turn1",
+  "log": "bench/coach/logs/human-yield-13.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-yield-13.jsonl",
+  "moment": {
+    "mode": "review",
+    "frame": 48,
+    "kind": "main"
+  },
+  "seat": 0,
+  "type": "spell",
+  "label": "R1 · Your main 1",
+  "acceptable": [
+    "cast:9",
+    "cast:7"
+  ],
+  "unacceptable": [
+    "pass"
+  ],
+  "rationale": "Turn 1 with six Forests and two Thallids: play a Forest and cast a Thallid ({G}); it starts collecting spore counters at once. The player actually passed without even playing a land, the clearest kind of lost tempo.",
+  "confidence": "high"
+}

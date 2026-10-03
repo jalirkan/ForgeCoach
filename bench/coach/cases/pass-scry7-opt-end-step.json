@@ -1,0 +1,20 @@
+{
+  "id": "pass-scry7-opt-end-step",
+  "log": "bench/coach/logs/human-scry-7.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-scry-7.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 854
+  },
+  "seat": 0,
+  "type": "pass",
+  "label": "R7 · Opponent's end step",
+  "acceptable": [
+    "cast:12"
+  ],
+  "unacceptable": [
+    "pass"
+  ],
+  "rationale": "Opponent's end step with four untapped Islands and Opt (instant: scry 1, draw a card) in hand. Mana not spent now is lost when you untap; casting the cantrip at the end of the opponent's turn is free card selection and shows the opponent nothing during their turn. Passing wastes the mana.",
+  "confidence": "high"
+}

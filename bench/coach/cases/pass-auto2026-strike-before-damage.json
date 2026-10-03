@@ -1,0 +1,20 @@
+{
+  "id": "pass-auto2026-strike-before-damage",
+  "log": "bench/coach/logs/human-auto-2026.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-auto-2026.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 681
+  },
+  "seat": 0,
+  "type": "pass",
+  "label": "R5 · Opponent's declare blockers",
+  "acceptable": [
+    "cast:3"
+  ],
+  "unacceptable": [
+    "pass"
+  ],
+  "rationale": "Blockers are declared (none; your creatures can't block fliers) and this is the last priority before combat damage. Helicarrier Strike ({W}, 2 damage to an attacking creature) kills any of the three attackers now, ideally Giant-Sized Flying Ant (3/2). Passing takes 6 at 13 life and wastes the window the card needs.",
+  "confidence": "high"
+}

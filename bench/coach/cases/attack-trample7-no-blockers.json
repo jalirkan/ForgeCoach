@@ -1,0 +1,20 @@
+{
+  "id": "attack-trample7-no-blockers",
+  "log": "bench/coach/logs/human-trample-7.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-trample-7.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 821
+  },
+  "seat": 0,
+  "type": "attack",
+  "label": "R5 · Your attacks",
+  "acceptable": [
+    "attack:21,26,34"
+  ],
+  "unacceptable": [
+    "attack:none"
+  ],
+  "rationale": "The opponent's only creature (Ainok Tracker) is tapped and they have no untapped mana: no blocks, no tricks. Attack with all three non-sick Companions for 9; the summoning-sick one stays back as a blocker, and you are at 17 against a single 3/3.",
+  "confidence": "high"
+}

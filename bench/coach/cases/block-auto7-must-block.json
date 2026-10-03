@@ -1,0 +1,22 @@
+{
+  "id": "block-auto7-must-block",
+  "log": "bench/coach/logs/human-auto-7.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-auto-7.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 1281
+  },
+  "seat": 0,
+  "type": "block",
+  "label": "R7 · Your blocks",
+  "acceptable": [
+    "block:4>42",
+    "block:26>42",
+    "block:4>42,26>42"
+  ],
+  "unacceptable": [
+    "block:none"
+  ],
+  "rationale": "9 damage is coming at 9 life. The two fliers (Air Force 2, Ant 3) can't be blocked by your ground creatures, so A.I.M. Scientists (4/4) must be blocked: chump it with Peggy Carter or Agent 13, or double-block to kill it (2+2 damage). Not blocking is lethal.",
+  "confidence": "high"
+}

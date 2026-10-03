@@ -1,0 +1,22 @@
+{
+  "id": "block-trample7-first-strike",
+  "log": "bench/coach/logs/human-trample-7.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-trample-7.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 758
+  },
+  "seat": 0,
+  "type": "block",
+  "label": "R5 · Your blocks",
+  "acceptable": [
+    "block:none",
+    "block:34>49,26>49",
+    "block:34>49,26>49,21>49"
+  ],
+  "unacceptable": [
+    "block:34>49"
+  ],
+  "rationale": "Ainok Tracker is a 3/3 first striker: a single 3/2 blocker dies before it deals damage, a pure loss. A double (or triple) block trades one 3/2 for the Tracker, since first-strike damage can kill only one blocker and the rest deal 3, safe with the opponent tapped out. Taking 3 at 20 life is also fine. The single block is the blunder.",
+  "confidence": "high"
+}

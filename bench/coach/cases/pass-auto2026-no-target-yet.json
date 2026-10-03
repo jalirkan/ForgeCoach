@@ -1,0 +1,20 @@
+{
+  "id": "pass-auto2026-no-target-yet",
+  "log": "bench/coach/logs/human-auto-2026.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-auto-2026.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 658
+  },
+  "seat": 0,
+  "type": "pass",
+  "label": "R5 · Opponent's beginning of combat",
+  "acceptable": [
+    "pass"
+  ],
+  "unacceptable": [
+    "cast:3"
+  ],
+  "rationale": "Beginning of combat, no attackers declared yet. Helicarrier Strike can only target an attacking or blocking creature, so it has no legal target now; pass and wait for attackers.",
+  "confidence": "high"
+}

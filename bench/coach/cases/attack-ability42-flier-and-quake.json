@@ -1,0 +1,20 @@
+{
+  "id": "attack-ability42-flier-and-quake",
+  "log": "src/play/testdata/human-ability-42.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-ability-42.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 1098
+  },
+  "seat": 0,
+  "type": "attack",
+  "label": "R7 · Your attacks",
+  "acceptable": [
+    "attack:25,31"
+  ],
+  "unacceptable": [
+    "attack:none"
+  ],
+  "rationale": "The opponent has no cards in hand and no untapped mana; their Helicarrier can't be crewed (crew 6; their creatures' total power is at most 3) and nothing of theirs flies, so Aerial Doombot is unblockable. Quake 3/3 can only be blocked by a 2/2, a 1/1 or a -3/1, and any block trades in your favour. Attack with both; not attacking gives away free damage.",
+  "confidence": "high"
+}

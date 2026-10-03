@@ -1,0 +1,20 @@
+{
+  "id": "attack-trample7-alpha",
+  "log": "bench/coach/logs/human-trample-7.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-trample-7.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 941
+  },
+  "seat": 0,
+  "type": "attack",
+  "label": "R6 · Your attacks",
+  "acceptable": [
+    "attack:21,22,26,32,34"
+  ],
+  "unacceptable": [
+    "attack:none"
+  ],
+  "rationale": "Five 3/2 tramplers against one untapped blocker (a face-down 2/2) and a tapped Ainok Tracker; the opponent has two red mana, not enough to turn any of their morphs face up. Attacking with everything deals at least 12 (the 2/2 can block one, and trample still pushes 1 through), putting them to 8 or less, while at 14 life you face only a 3/3 and a 2/2 back.",
+  "confidence": "high"
+}

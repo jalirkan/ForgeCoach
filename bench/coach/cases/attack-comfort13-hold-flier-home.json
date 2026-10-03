@@ -1,0 +1,20 @@
+{
+  "id": "attack-comfort13-hold-flier-home",
+  "log": "public/samples/human-comfort-13.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-comfort-13.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 1231
+  },
+  "seat": 0,
+  "type": "attack",
+  "label": "R7 · Your attacks",
+  "acceptable": [
+    "attack:none"
+  ],
+  "unacceptable": [
+    "attack:23"
+  ],
+  "rationale": "Count lethal both ways: you are at 6 and the opponent has 10 power ready for next turn (Giant-Sized Flying Ant 3/2 flier, Agents of S.H.I.E.L.D. 2/4, Quake 3/3, Agent Phil Coulson 2/2). Ant-Man's Air Force is your only flier, the only creature that can block the Ant. If it attacks (2 damage on 20 life) it stays tapped through their turn and the swing back leaves you at about 1 or dead to any trick. Keep it home.",
+  "confidence": "high"
+}
