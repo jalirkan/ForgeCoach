@@ -11,8 +11,9 @@
  *                seats (Booster), who opens, the pick timer, hints.
  *   MatchSetup — after the build: your deck vs the AI's (name and count only:
  *                its list stays hidden), the cards the AI can't pilot well,
- *                AI profile, Bo1/Bo3, and Begin, which asks mtg-table's match
- *                launcher to deal the match.
+ *                AI profile, the opponent AI (Forge, + sacrifice play, search;
+ *                only when the helper's /health offers it), Bo1/Bo3, and Begin,
+ *                which asks mtg-table's match launcher to deal the match.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';
@@ -20,7 +21,19 @@ import type { CubeMeta } from '../../cube/meta.ts';
 import { aiFlagsFromDoc, noFlags, withMetaFlags, type AiFlags } from '../../draft/aiFlags.ts';
 import { deckCount, mainNames, toMatchDeck, type DeckState } from '../../draft/deck.ts';
 import { boosterPackSize, BOOSTER_PACKS, progress, SEAT_OPTIONS, type Draft, type Format } from '../../draft/draft.ts';
-import { AI_PROFILES, deckSize, launcherStatus, launchMatch, safeDeckName, type AiProfile, type LaunchResult, type LauncherStatus } from '../../draft/launch.ts';
+import {
+  AI_POLICIES,
+  AI_PROFILES,
+  deckSize,
+  engineHealth,
+  launchMatch,
+  policyFields,
+  safeDeckName,
+  type AiPolicy,
+  type AiProfile,
+  type EngineHealth,
+  type LaunchResult,
+} from '../../draft/launch.ts';
 import type { DraftAfter } from '../../draft/store.ts';
 import { colourLabel, wubrg } from '../../cube/colors.ts';
 import { prefetchCards, useCardInfo } from '../cardData.ts';
@@ -390,8 +403,13 @@ export function MatchSetup({
   onAbandon: () => void;
 }) {
   const [profile, setProfile] = useState<AiProfile>('Default');
+  const [policy, setPolicy] = useState<AiPolicy>('plain');
   const [games, setGames] = useState<1 | 3>(3);
-  const [status, setStatus] = useState<LauncherStatus | null>(null);
+  const [health, setHealth] = useState<EngineHealth | null>(null);
+  const status = health?.status ?? null;
+  // The opponent AIs this helper takes (D333); none from an older helper: no choice shown.
+  const policies = AI_POLICIES.filter((p) => health?.aiPolicies.includes(p.id));
+  const opponent = policies.length ? (AI_POLICIES.find((p) => p.id === policy) ?? AI_POLICIES[0]!) : null;
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<LaunchResult | null>(null);
   const supported = status === null ? null : status === 'ready' || status === 'asleep';
@@ -403,7 +421,7 @@ export function MatchSetup({
 
   useEffect(() => {
     let live = true;
-    const check = () => launcherStatus().then((st) => live && setStatus(st));
+    const check = () => engineHealth().then((h) => live && setHealth(h));
     void check();
     const t = setInterval(check, 8000);
     return () => {
@@ -433,7 +451,13 @@ export function MatchSetup({
     if (!yours || !ai || !canBegin) return;
     setBusy(true);
     setResult(null);
-    const r = await launchMatch({ deck: yours, aiDeck: { ...ai, name: safeDeckName(ai.name, 'AI Drafter') }, aiProfile: profile, games });
+    const r = await launchMatch({
+      deck: yours,
+      aiDeck: { ...ai, name: safeDeckName(ai.name, 'AI Drafter') },
+      aiProfile: profile,
+      games,
+      ...(health ? policyFields(policy, health) : {}),
+    });
     setBusy(false);
     setResult(r);
     if (r.ok && r.warnings.length === 0) setTimeout(takeSeat, 900);
@@ -520,7 +544,7 @@ export function MatchSetup({
           <span className="avatar is-bot lg">
             <span>AI</span>
           </span>
-          <div className="seat-name">Forge AI</div>
+          <div className="seat-name">{opponent && opponent.id !== 'plain' ? opponent.label : 'Forge AI'}</div>
           <div className="fx-label sub-h">The AI’s deck</div>
           <div className={cx('deck-tile', ai && 'is-on')}>
             <div>
@@ -551,6 +575,21 @@ export function MatchSetup({
               </button>
             ))}
           </div>
+          {policies.length > 0 && (
+            <>
+              <div className="fx-label sub-h">Opponent AI</div>
+              <div className="profiles is-stack" role="group" aria-label="Opponent AI">
+                {policies.map((p) => (
+                  <button key={p.id} className={cx('profile', policy === p.id && 'is-on')} onClick={() => setPolicy(p.id)} aria-pressed={policy === p.id}>
+                    <span className="profile-t">
+                      {policy === p.id && <span className="check">✓</span>} {p.label}
+                    </span>
+                    <span className="profile-d">{p.blurb}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </section>
       </div>
 
@@ -559,7 +598,8 @@ export function MatchSetup({
           {result.ok ? (
             <>
               <p className="serif-i">
-                The engine is dealing your match: {result.yourDeck.name} ({result.yourDeck.cards}) against the AI’s deck ({result.aiDeck.cards}), best of {result.games}.
+                The engine is dealing your match: {result.yourDeck.name} ({result.yourDeck.cards}) against the AI’s deck ({result.aiDeck.cards}), best of {result.games}
+                {result.aiPolicy === 'search' ? ', against the search AI: expect a pause of a second or more at its plays, attacks and blocks' : result.aiPolicy === 'outlets' ? ', against Forge with sacrifice play' : ''}.
               </p>
               {result.warnings.length > 0 && (
                 <ul>

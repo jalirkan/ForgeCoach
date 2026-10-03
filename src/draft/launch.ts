@@ -6,14 +6,20 @@
  * decision D303, amendment M53): the local coach helper (port 8643, the same
  * server as coachHelper.ts) restarts the engine on two decklists.
  *
- *   GET  /health  → {…, match: 0 | 1}
+ *   GET  /health  → {…, match: 0 | 1, aiPolicies?: [...], aiSearchMs?: {min,max,default}}
  *   POST /match   {deck:{name, main:[[n,card]…], sideboard?}, aiDeck:{…},
- *                  aiProfile?, games?: 1..9}
+ *                  aiProfile?, games?: 1..9, aiPolicy?, aiSearchMs?}
  *                 → 200 {ok:true, yourDeck:{name,path,cards}, aiDeck:{name,cards},
- *                        aiProfile, games, ms, warnings[]}
+ *                        aiProfile, aiPolicy?, games, ms, warnings[]}
  *                 → {ok:false, message, problems?[] (400), restored? (502)}
  *
  *   POST /engine/start (D308) → the /match 200 shape + {already}, or a refusal
+ *
+ * The opponent AI (mtg-table D333, over D314's `--ai-policy`): Forge's own AI,
+ * Forge with the sacrifice-outlet policy (D310), or the search AI (D312). The
+ * page offers the choice only when /health advertises `aiPolicies`; with an
+ * older helper the request carries no `aiPolicy` and the engine plays as
+ * play.sh started it.
  *
  * Since D308 the engine can be asleep: play.sh and the helper stay up, nothing
  * listens on the seat port, and /health says `engine: "idle"` (and
@@ -46,12 +52,41 @@ export const AI_PROFILES: Array<{ id: AiProfile; blurb: string }> = [
   { id: 'Experimental', blurb: 'Unpredictable heuristics.' },
 ];
 
+/** The AI seat's controller (mtg-table D314 `--ai-policy`, D333 on the launcher). */
+export type AiPolicy = 'plain' | 'outlets' | 'search';
+
+export const AI_POLICIES: Array<{ id: AiPolicy; label: string; blurb: string }> = [
+  { id: 'plain', label: 'Forge', blurb: 'Forge’s own AI, as always. Answers at once.' },
+  {
+    id: 'outlets',
+    label: 'Forge + sacrifice play',
+    blurb: 'Forge’s AI plus a sacrifice-outlet rule: it sacrifices creatures that would die anyway and goes all in when that is lethal. As fast as Forge.',
+  },
+  {
+    id: 'search',
+    label: 'Search AI (stronger, slower)',
+    blurb:
+      'Sacrifice play plus a look-ahead at its main-phase plays, attacks and blocks. Thinks about 1–3 s per decision, so games run slower. In mtg-table’s tests it won 56% of cube games where Forge’s AI won 47%. It never sees your hand or library: it guesses them.',
+  },
+];
+
+/** The search budget's limits as the launcher takes them (ms per searched decision). */
+export interface SearchBudget {
+  min: number;
+  max: number;
+  default: number;
+}
+
 export interface MatchRequest {
   deck: MatchDeck;
   aiDeck: MatchDeck;
   aiProfile?: AiProfile;
   /** 1..9, default 3. */
   games?: number;
+  /** Absent: the AI play.sh was started with. Send only when /health lists it. */
+  aiPolicy?: AiPolicy;
+  /** Only with `aiPolicy: 'search'`; 500..5000. */
+  aiSearchMs?: number;
 }
 
 export interface MatchStarted {
@@ -59,6 +94,8 @@ export interface MatchStarted {
   yourDeck: { name: string; path: string; cards: number };
   aiDeck: { name: string; cards: number };
   aiProfile: string;
+  /** D333: the policy the engine started with; absent from an older helper. */
+  aiPolicy?: string | null;
   games: number;
   ms: number;
   warnings: string[];
@@ -146,6 +183,41 @@ export interface EngineHealth {
   status: LauncherStatus;
   /** POST /engine/start exists (`engine_start: 1`). */
   canWake: boolean;
+  /** The opponent AIs POST /match takes (D333 `aiPolicies`, known ids only); empty: an older helper, no choice. */
+  aiPolicies: AiPolicy[];
+  /** The search budget's limits (D333 `aiSearchMs`), when advertised and sane. */
+  aiSearchMs?: SearchBudget;
+}
+
+const isPolicy = (x: unknown): x is AiPolicy => AI_POLICIES.some((p) => p.id === x);
+
+/** The opponent AIs a /health body advertises: known ids, in our order, or none. */
+export function advertisedPolicies(j: { aiPolicies?: unknown }): AiPolicy[] {
+  if (!Array.isArray(j.aiPolicies)) return [];
+  const got = new Set(j.aiPolicies.filter(isPolicy));
+  // A choice needs plain Forge in it: without it the helper is not one we understand.
+  if (!got.has('plain')) return [];
+  return AI_POLICIES.map((p) => p.id).filter((id) => got.has(id));
+}
+
+/** The search budget a /health body advertises, when it is a sane range. */
+export function advertisedSearchBudget(j: { aiSearchMs?: unknown }): SearchBudget | undefined {
+  const b = j.aiSearchMs as Partial<SearchBudget> | null | undefined;
+  if (!b || typeof b !== 'object') return undefined;
+  const { min, max, default: def } = b;
+  if (![min, max, def].every((n) => Number.isInteger(n))) return undefined;
+  if (!(min! > 0 && min! <= def! && def! <= max!)) return undefined;
+  return { min: min!, max: max!, default: def! };
+}
+
+/**
+ * The request fields for the chosen opponent: nothing when the helper offers no
+ * choice (an older helper: the engine plays as play.sh started it), else the
+ * policy, falling back to plain Forge if the chosen one is not offered.
+ */
+export function policyFields(choice: AiPolicy, health: Pick<EngineHealth, 'aiPolicies'>): Pick<MatchRequest, 'aiPolicy'> {
+  if (health.aiPolicies.length === 0) return {};
+  return { aiPolicy: health.aiPolicies.includes(choice) ? choice : 'plain' };
 }
 
 /** GET /health, read for the launcher and the engine (`match`, `engine`, `engine_start` are there whether `ok` is true or false). */
@@ -155,17 +227,19 @@ export async function engineHealth(opts: LaunchOptions = {}): Promise<EngineHeal
   const to = withTimeout(opts.timeoutMs ?? 1500);
   try {
     const res = await f(`${t.baseUrl}/health`, { headers: headers(t, false), signal: to.signal });
-    let j: { match?: unknown; engine?: unknown; engine_start?: unknown } = {};
+    let j: { match?: unknown; engine?: unknown; engine_start?: unknown; aiPolicies?: unknown; aiSearchMs?: unknown } = {};
     try {
       j = ((await res.json()) ?? {}) as typeof j;
     } catch {
       /* no body */
     }
-    if (j.match !== 1) return { status: 'no-launcher', canWake: false };
+    if (j.match !== 1) return { status: 'no-launcher', canWake: false, aiPolicies: [] };
     // No `engine` key: an older helper, whose engine runs whenever the helper does.
-    return { status: j.engine === 'idle' ? 'asleep' : 'ready', canWake: j.engine_start === 1 };
+    const aiPolicies = advertisedPolicies(j);
+    const aiSearchMs = aiPolicies.includes('search') ? advertisedSearchBudget(j) : undefined;
+    return { status: j.engine === 'idle' ? 'asleep' : 'ready', canWake: j.engine_start === 1, aiPolicies, ...(aiSearchMs ? { aiSearchMs } : {}) };
   } catch {
-    return { status: 'down', canWake: false };
+    return { status: 'down', canWake: false, aiPolicies: [] };
   } finally {
     to.done();
   }
@@ -194,6 +268,11 @@ export function checkRequest(r: MatchRequest): string | null {
   }
   if (r.aiProfile && !AI_PROFILES.some((p) => p.id === r.aiProfile)) return `Unknown AI profile ${r.aiProfile}.`;
   if (r.games !== undefined && (!Number.isInteger(r.games) || r.games < 1 || r.games > 9)) return 'A match is 1 to 9 games.';
+  if (r.aiPolicy !== undefined && !isPolicy(r.aiPolicy)) return `Unknown opponent AI ${String(r.aiPolicy)}.`;
+  if (r.aiSearchMs !== undefined) {
+    if (r.aiPolicy !== 'search') return 'A thinking time goes only with the search AI.';
+    if (!Number.isInteger(r.aiSearchMs) || r.aiSearchMs < 500 || r.aiSearchMs > 5000) return 'The search AI thinks 0.5 to 5 seconds per decision.';
+  }
   return null;
 }
 
