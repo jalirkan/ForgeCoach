@@ -1,0 +1,310 @@
+/*
+ * ForgeCoach — ui/forge-theme.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The cube section's design language, shared by Draft vs AI, Draft & build,
+ * the cube pages and the start page: tokens on .fx (a warm near-black table,
+ * gold for what you act on, crimson for the opponent), the ledger pages'
+ * fonts (EB Garamond, JetBrains Mono), letter-spaced gold labels, serif
+ * display type, the gold and line buttons, avatars. Scoped to .fx.
+ */
+/* The same fonts as the ledger pages (ui/ledger/ledger.css): one request, cached. */
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ------------------------------------------------------------------ */
+/* Tokens (scoped: the rest of the site keeps its own palette) */
+
+.fx {
+  --bg: #0d0b08;
+  --bg-2: #120f0b;
+  --surface: #17130d;
+  --surface-2: #1d1811;
+  --surface-3: #262017;
+  --line: #2a251c;
+  --line-2: #3a3326;
+  --hair: rgba(201, 164, 92, 0.22);
+  --text: #ece5d6;
+  --text-2: #c9c0ae;
+  --muted: #988e7b;
+  --faint: #6a5d44;
+  --accent: #c9a45c;
+  --accent-2: #e2c27f;
+  --accent-ink: #1f1503;
+  --accent-soft: rgba(201, 164, 92, 0.13);
+  --gold: #c9a45c;
+  --gold-hi: #e2c27f;
+  --gold-lo: #a97a22;
+  --crimson: #a3302a;
+  --crimson-hi: #d2483d;
+  --crimson-soft: rgba(196, 64, 54, 0.16);
+  --bad: #d0574c;
+  --ok: #8fbf7a;
+  --serif: 'EB Garamond', 'Cormorant Garamond', Garamond, 'Times New Roman', serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --shadow: 0 14px 34px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --cr: 4.6%;
+  color: var(--text);
+  background: radial-gradient(1200px 600px at 50% -10%, rgba(201, 164, 92, 0.07), transparent 60%), var(--bg);
+}
+.fx ::selection {
+  background: rgba(201, 164, 92, 0.3);
+}
+
+body:has(.fx) {
+  background: #0d0b08;
+}
+
+/* Type helpers */
+.fx-label {
+  font: 600 10.5px/1.2 var(--font);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.serif-h,
+.serif-title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: 0;
+  color: var(--text);
+}
+.serif-title {
+  font-size: 24px;
+}
+.serif-i,
+.quiet-italic {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--text-2);
+}
+.quiet-italic {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 6px 0;
+}
+.muted-count {
+  font-family: var(--font);
+  font-style: normal;
+  font-size: 0.62em;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.fx kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 4px;
+  margin-left: 10px;
+  border-radius: 4px;
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0;
+  background: rgba(0, 0, 0, 0.82);
+  color: var(--gold-hi);
+}
+
+/* ------------------------------------------------------------------ */
+/* Buttons */
+
+.btn-gold,
+.btn-begin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: 8px;
+  font: 600 15px/1 var(--font);
+  color: #24180a;
+  background: linear-gradient(180deg, #e8bf5f, #c9952f);
+  box-shadow: 0 0 0 1px rgba(255, 220, 140, 0.35) inset, 0 6px 22px rgba(201, 164, 92, 0.22);
+  transition: filter 0.15s, transform 0.12s, box-shadow 0.2s;
+}
+.btn-gold:hover:not(:disabled),
+.btn-begin:hover:not(:disabled) {
+  filter: brightness(1.07);
+  box-shadow: 0 0 0 1px rgba(255, 220, 140, 0.5) inset, 0 8px 30px rgba(201, 164, 92, 0.35);
+}
+.btn-gold:active:not(:disabled),
+.btn-begin:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn-gold:disabled,
+.btn-begin:disabled {
+  background: #3a3020;
+  color: #8a7b5c;
+  box-shadow: 0 0 0 1px var(--line-2) inset;
+  cursor: not-allowed;
+}
+.btn-begin {
+  min-height: 54px;
+  padding: 0 32px;
+  font-size: 15px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+.btn-line {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font: 600 13px/1 var(--font);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  border: 1px solid var(--line-2);
+  background: rgba(255, 240, 210, 0.03);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.btn-line:hover:not(:disabled) {
+  border-color: var(--gold);
+  color: var(--gold-hi);
+}
+.btn-line:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-line.is-danger {
+  color: #d77b70;
+  border-color: rgba(196, 64, 54, 0.45);
+}
+.btn-close {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(196, 64, 54, 0.5);
+  color: #d0574c;
+  font-size: 14px;
+}
+.btn-close small {
+  font-size: 11px;
+  color: rgba(208, 87, 76, 0.75);
+}
+.btn-close:hover {
+  background: var(--crimson-soft);
+}
+.btn-wide {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  font-size: 15px;
+}
+.btn-wide:hover {
+  border-color: var(--gold);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 5px;
+  font: 500 12.5px/1 var(--font);
+  color: var(--text-2);
+  border: 1px solid var(--line-2);
+  background: rgba(255, 240, 210, 0.03);
+}
+.pill:hover:not(:disabled) {
+  border-color: var(--gold);
+  color: var(--text);
+}
+.pill.is-on {
+  color: var(--gold-hi);
+  border-color: var(--gold);
+  background: var(--accent-soft);
+}
+.pill.is-gold {
+  color: var(--gold-hi);
+  border-color: rgba(201, 164, 92, 0.55);
+}
+.pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.seg2 {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+}
+.seg2 button {
+  min-width: 46px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font: 500 13px/1 var(--font);
+  color: var(--text-2);
+}
+.seg2 button:hover {
+  color: var(--text);
+}
+.seg2 button.is-on {
+  background: #3a2e1c;
+  color: var(--text);
+  box-shadow: 0 0 0 1px rgba(201, 164, 92, 0.35) inset;
+}
+.link-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+.link-back:hover {
+  color: var(--gold-hi);
+}
+.fx .icon-btn {
+  color: var(--text-2);
+}
+
+/* Avatars: a serif monogram in a gold ring; the bot in a dark one. */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--gold-lo);
+  background: radial-gradient(circle at 50% 35%, #2a2116, #120e09);
+  font: italic 500 22px/1 var(--serif);
+  color: var(--gold-hi);
+}
+.avatar.is-bot {
+  border-color: #4a3b26;
+  background: radial-gradient(circle at 50% 35%, #1d1914, #070605);
+  color: #cdbf9f;
+  font-size: 18px;
+}
+.avatar.lg {
+  width: 104px;
+  height: 104px;
+  font-size: 50px;
+}
+.avatar.is-bot.lg {
+  font-size: 34px;
+}
+.avatar.sm {
+  width: 30px;
+  height: 30px;
+  font-size: 13px;
+}
+

@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import '../deck/deck.css';
+import '../forge-theme.css';
 import './draft.css';
 import { knownAiCards } from '../../draft/draft.ts';
 import { initialDeck } from '../../draft/deck.ts';

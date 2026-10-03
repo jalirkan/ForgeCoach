@@ -9,6 +9,9 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import './play/play.css';
+import './forge-theme.css';
+import './lobby.css';
+import { LobbyTiles, lobbyTiles } from './LobbyTiles.tsx';
 import { DEFAULT_LIVE_URL, FALLBACK_LIVE_URL } from '../live.ts';
 import { redactSeatUrl, type SeatStatus } from '../play/session.ts';
 import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconLayers, IconPlay, IconUpload } from './Icons.tsx';
@@ -329,7 +332,7 @@ export function LoadScreen({
     return <EngineConnect seatUrl={seatUrl} play={play} onPlay={onPlay} onCancel={onCancelPlay} onMore={() => setMore(true)} onSettings={onSettings} />;
   }
   return (
-    <div className="load">
+    <div className="load fx lobby">
       <header className="load-top">
         <Logo />
         <a className="load-link" href="#meta">Metagame</a>
@@ -340,6 +343,7 @@ export function LoadScreen({
       </header>
       <main className="load-main">
         <section className="hero">
+          <div className="fx-label lobby-kicker">The table</div>
           <h1>
             Play Forge. <span className="accent">Get coached.</span>
           </h1>
@@ -348,6 +352,8 @@ export function LoadScreen({
             text, and a full review when the game is done.
           </p>
         </section>
+
+        <LobbyTiles tiles={lobbyTiles({ onPlay: () => onPlay(seatUrl), onDraftBuild: onDraft, samples: SAMPLES.length })} />
 
         <PlayCard seatUrl={seatUrl} homeSeatUrl={homeSeatUrl} engineServed={engineServed} play={play} onPlay={onPlay} onCancel={onCancelPlay} />
         <DraftCard onDraft={onDraft} />
@@ -358,7 +364,7 @@ export function LoadScreen({
           </div>
         )}
 
-        <section className="load-section">
+        <section className="load-section" id="lobby-review">
           <h2 className="section-h">Review a recorded game</h2>
           <div className="sample-grid">
             {samples.map((s) => (
@@ -413,7 +419,7 @@ export function LoadScreen({
             />
           </section>
 
-          <section className="load-section">
+          <section className="load-section" id="lobby-live">
             <h2 className="section-h">
               <IconBroadcast size={15} /> Watch a game live
             </h2>

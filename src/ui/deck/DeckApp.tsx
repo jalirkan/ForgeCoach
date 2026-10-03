@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './deck.css';
+import '../forge-theme.css';
 import '../draft/draft.css';
 import './skin.css';
 import { CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';

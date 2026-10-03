@@ -203,7 +203,12 @@ export function DraftSetup({
               </span>
               <IconChevronRight size={16} />
             </button>
-            <p className="setup-small">Packs and piles are built from this cube, with its lab data.</p>
+            <p className="setup-small">
+              Packs and piles are built from this cube, with its lab data.{' '}
+              <a className="setup-link" href={`#cube/${cube.id}`}>
+                See the list
+              </a>
+            </p>
             <p className="setup-shape">{shape}</p>
             <button className={cx('adv-toggle', advanced && 'is-open')} onClick={() => setAdvanced(!advanced)} aria-expanded={advanced}>
               Advanced <span aria-hidden="true">⌄</span>

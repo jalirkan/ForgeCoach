@@ -27,6 +27,8 @@ const DeckApp = lazy(() => import('./deck/DeckApp.tsx'));
 
 // #draft: a cube draft against the AI (lazy: its own bundle, with the deck assistant's builder).
 const DraftApp = lazy(() => import('./draft/DraftApp.tsx'));
+// #cube/<id>: a cube's own page (its cards in the cube section's collection view).
+const CubePage = lazy(() => import('./draft/CubePage.tsx'));
 
 // #ask-gallery: every ask kind rendered from fixtures (a design/QA page); lazy so the fixtures stay out of the main bundle.
 const AskGallery = lazy(() => import('./play/AskGallery.tsx'));
@@ -122,6 +124,8 @@ export function App() {
       <MetaApp />
     ) : /^#history\b/.test(hash) ? (
       <HistoryApp />
+    ) : /^#cube\/[\w-]+/.test(hash) ? (
+      <CubePage id={hash.slice(6)} onExit={() => (history.length > 1 ? history.back() : (location.hash = '#draft/setup'))} />
     ) : /^#draft\b/.test(hash) ? (
       <DraftApp
         onExit={() => {
