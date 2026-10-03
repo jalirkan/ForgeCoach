@@ -17,6 +17,7 @@ import { redactSeatUrl, type SeatStatus } from '../play/session.ts';
 import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconPlay, IconUpload } from './Icons.tsx';
 import { copyText, cx } from './util.ts';
 import { Logo } from './Logo.tsx';
+import { hasSampleReview } from './review/samples.ts';
 
 export interface SampleInfo {
   id: string;
@@ -279,6 +280,7 @@ function EngineConnect({
 
 export function LoadScreen({
   onSample,
+  onSampleReview,
   onFile,
   onLive,
   onPlay,
@@ -294,6 +296,8 @@ export function LoadScreen({
   error,
 }: {
   onSample: (id: string) => void;
+  /** Open a sample with its engine review report (ui/review). */
+  onSampleReview?: (id: string) => void;
   onFile: (f: File) => void;
   onLive: (url: string) => void;
   onPlay: (url: string) => void;
@@ -383,6 +387,17 @@ export function LoadScreen({
               </button>
             ))}
           </div>
+          {onSampleReview &&
+            samples
+              .filter((s) => hasSampleReview(s.id))
+              .map((s) => (
+                <p key={s.id} className="small muted sample-review-link">
+                  <button className="link-btn" onClick={() => onSampleReview(s.id)} disabled={!!loading}>
+                    Sample engine review
+                  </button>{' '}
+                  — {s.title}, every decision graded by the engine (a demo report).
+                </p>
+              ))}
         </section>
 
         <div className="load-two">

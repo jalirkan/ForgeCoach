@@ -22,6 +22,7 @@ import { SEAT_TOKEN_KEY } from '../play/seatUrl.ts';
 import { usePlaySession } from './play/usePlaySession.ts';
 import { ensureEngineAwake } from '../draft/launch.ts';
 import { PlayView } from './play/PlayView.tsx';
+import { hasSampleReview } from './review/samples.ts';
 
 // #deck: Draft & build, the deck assistant (lazy: its own bundle).
 const DeckApp = lazy(() => import('./deck/DeckApp.tsx'));
@@ -42,6 +43,8 @@ const HistoryApp = lazy(() => import('./history/HistoryApp.tsx'));
 const LabPage = lazy(() => import('./lab/LabPage.tsx'));
 // #lab/ladder[?src=…]: the AI ladder's ratings (lazy).
 const LadderPage = lazy(() => import('./lab/LadderPage.tsx'));
+// The engine review of a loaded game (lazy; opened from the replay or the game-over card, or #sample=<id>&review=1).
+const ReviewApp = lazy(() => import('./review/ReviewApp.tsx'));
 
 const LAST_SAMPLE_KEY = 'forgecoach.lastSample';
 const SEAT_URL_KEY = 'forgecoach.seatUrl';
@@ -119,10 +122,10 @@ function validate(log: GameLog): GameLog {
   return log;
 }
 
-function parseHash(): { sample: string | null; d: number | null } {
+function parseHash(): { sample: string | null; d: number | null; review: boolean } {
   const h = new URLSearchParams(location.hash.replace(/^#/, ''));
   const d = h.get('d');
-  return { sample: h.get('sample'), d: d !== null && /^\d+$/.test(d) ? Number(d) : null };
+  return { sample: h.get('sample'), d: d !== null && /^\d+$/.test(d) ? Number(d) : null, review: h.get('review') === '1' };
 }
 
 export function App() {
@@ -175,6 +178,9 @@ function MainApp() {
   deckRef.current = deck;
   const liveRef = useRef<LiveHandle | null>(null);
   const loadSeq = useRef(0);
+  // The engine review screen, over whatever is open (the seat stays connected underneath).
+  const [engineReview, setEngineReview] = useState<{ log: GameLog; title: string; sampleId: string | null; autoSample?: boolean } | null>(null);
+  const wantSampleReview = useRef(parseHash().review);
 
   // ---- Play: one seat connection while playUrl is set.
   const [seatUrl, setSeatUrl] = useState(initialSeatUrl);
@@ -352,6 +358,22 @@ function MainApp() {
     return () => liveRef.current?.close();
   }, [loadSample]);
 
+  // #sample=<id>&review=1 (or the start page's sample-review link): open the sample's engine review once it is loaded.
+  useEffect(() => {
+    if (!wantSampleReview.current || !log || !sampleId) return;
+    wantSampleReview.current = false;
+    setEngineReview({ log, title, sampleId, autoSample: hasSampleReview(sampleId) });
+  }, [log, sampleId, title]);
+  useEffect(() => {
+    if (engineReview?.sampleId) history.replaceState(null, '', `#sample=${encodeURIComponent(engineReview.sampleId)}&review=1`);
+  }, [engineReview]);
+  const closeEngineReview = useCallback(() => {
+    setEngineReview((r) => {
+      if (r?.sampleId) history.replaceState(null, '', `#sample=${encodeURIComponent(r.sampleId)}`);
+      return null;
+    });
+  }, []);
+
   const onIndexChange = useCallback(
     (i: number) => {
       if (sampleId) history.replaceState(null, '', `#sample=${encodeURIComponent(sampleId)}&d=${i}`);
@@ -405,7 +427,13 @@ function MainApp() {
   const showGame = log !== null || (live !== null && live.status !== 'error');
   const playing = playUrl !== null && playStarted && play.session && snap;
   let main: ReactNode;
-  if (deck && !playing) {
+  if (engineReview) {
+    main = (
+      <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>
+        <ReviewApp {...engineReview} onClose={closeEngineReview} closeLabel={playing ? 'Back to the table' : undefined} onSettings={() => setSettingsOpen(true)} />
+      </Suspense>
+    );
+  } else if (deck && !playing) {
     main = (
       <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>
         <DeckApp
@@ -429,10 +457,20 @@ function MainApp() {
         onClose={() => setReview(null)}
         closeLabel="Back to the table"
         onSettings={() => setSettingsOpen(true)}
+        onEngineReview={() => setEngineReview({ log: review, title: review.header.gameId, sampleId: null })}
       />
     );
   } else if (playing) {
-    main = <PlayView session={play.session!} snapshot={snap!} onReview={setReview} onLeave={stopPlay} onSettings={() => setSettingsOpen(true)} />;
+    main = (
+      <PlayView
+        session={play.session!}
+        snapshot={snap!}
+        onReview={setReview}
+        onEngineReview={(l) => setEngineReview({ log: l, title: l.header.gameId, sampleId: null })}
+        onLeave={stopPlay}
+        onSettings={() => setSettingsOpen(true)}
+      />
+    );
   } else if (showGame && log) {
     main = (
       <GameView
@@ -444,6 +482,7 @@ function MainApp() {
         onIndexChange={onIndexChange}
         onClose={close}
         onSettings={() => setSettingsOpen(true)}
+        onEngineReview={() => setEngineReview({ log, title, sampleId })}
       />
     );
   } else if (live && live.status !== 'error') {
@@ -452,6 +491,10 @@ function MainApp() {
     main = (
       <LoadScreen
         onSample={(id) => void loadSample(id)}
+        onSampleReview={(id) => {
+          wantSampleReview.current = true;
+          void loadSample(id);
+        }}
         onFile={(f) => void loadFile(f)}
         onLive={startLive}
         onPlay={startPlay}
@@ -485,7 +528,7 @@ function MainApp() {
     <>
       {main}
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      {dragging && !deck && (
+      {dragging && !deck && !engineReview && (
         <div className="drop-overlay" aria-hidden="true">
           <div className="drop-overlay-inner">
             <IconUpload size={28} />

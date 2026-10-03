@@ -376,6 +376,36 @@ On the load screen, pick one of the two bundled samples or upload a
 You get your decisions with the board at that moment and what you did, and can
 coach each one or run the whole-game **Review** as above.
 
+### Engine review
+
+**Engine review** (the replay's top bar, or the game-over card) shows
+mtg-table's post-game grading (its `docs/game-review.md`): every decision you
+made, played out by the engine once per option, with what each option was
+worth, what you chose, what scored best and what Forge's own AI would have
+done. Open a report file (`tools/coach-grade.sh review` writes one; drop it
+anywhere on the screen), or press **Run engine review** when the coach helper
+offers it (`/health` says `review: 1`) — it takes a few minutes and the screen
+shows queued / running (with the stage) / done. The sample game ships with an
+engine-made report: **Sample engine review** on the start page, or
+`#sample=human-auto-42&review=1`.
+
+The screen lists the decisions by turn with the key moments ranked, and for
+each one the board at that moment (the replay board), the options as bars with
+95% intervals, and the verdict: *Mistake — clear* only when the regret
+interval excludes zero, *Close call* when it includes zero (*a tie* when the
+regret is zero: as good as the engine's best within noise), *Best play*.
+Numbers from a short-horizon grade (to the end of the turn, scored by an
+evaluator) are labelled as such, never as win rates. The yardstick is the best
+play against Forge's Default AI playing both seats. After a Draft vs AI match
+the review sends the cube list and the AI picks you saw, so the engine draws
+the opponent's hidden cards from the pool — never the AI's list; for other
+games it plays them as basic lands, and the screen warns that the numbers
+flatter you. **Coach: explain the key moments** asks the coach (helper or key,
+or Copy prompt) to explain the engine's table — why the best option scores
+better — without re-solving it.
+
+![Engine review on a phone](docs/screens/review-phone-moment.png)
+
 ## Live watch (optional)
 
 Follows a game being played in mtg-table's own board, read-only, so the newest
@@ -652,6 +682,18 @@ are deliberately not project dependencies: `npm install --no-save
 playwright-core && npx playwright-core install chromium` once. The test is
 not part of `npm test` and does not run in CI, since it needs mtg-table (a
 private repository) and Forge (large) on the machine.
+
+### Engine review screen test
+
+`e2e/review.e2e.mjs` needs no engine: it builds the site, opens the sample
+engine review at phone width (390 px) and desktop width, checks the timeline,
+the bars, the board, the coach action and the verdict wording, asserts the page
+never scrolls sideways, and saves screenshots (`OUT=docs/screens` for the
+README's).
+
+```bash
+node e2e/review.e2e.mjs            # BUILD=0 to reuse dist/, HEADLESS=0 to watch
+```
 
 ## Licence
 

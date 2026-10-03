@@ -69,12 +69,15 @@ export function PlayView({
   session,
   snapshot: snap,
   onReview,
+  onEngineReview,
   onLeave,
   onSettings,
 }: {
   session: PlaySession;
   snapshot: PlaySnapshot;
   onReview: (log: GameLog) => void;
+  /** The engine review of the finished game (ui/review). */
+  onEngineReview?: (log: GameLog) => void;
   onLeave: () => void;
   onSettings: () => void;
 }) {
@@ -592,6 +595,7 @@ export function PlayView({
                 connected={connected}
                 waitingNext={waitingNext}
                 onReview={() => log && onReview(log)}
+                {...(onEngineReview ? { onEngineReview: () => log && onEngineReview(log) } : {})}
                 onNext={() => {
                   setWaitingNext(true);
                   act({ action: 'newGame', mode: 'continue' });
