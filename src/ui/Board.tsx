@@ -486,6 +486,7 @@ function StackPanel({ state, seat }: { state: GameStateBody; seat: number }) {
         <IconLayers size={14} /> Stack <span className="bf-count">{items.length}</span>
         <span className="muted mid-hint">top resolves first</span>
       </div>
+      <StackTargets items={items} seat={seat} />
       <ol className="stack-list">
         {items.map((it, i) => {
           const src = it.sourceCardId !== null ? idx.get(it.sourceCardId) : undefined;
@@ -507,6 +508,28 @@ function StackPanel({ state, seat }: { state: GameStateBody; seat: number }) {
       </ol>
     </div>
   );
+}
+
+/**
+ * The Stack skin outlines each permanent a stack item targets, dashed, in its
+ * caster's colour (the topmost item wins). Only public stack data; the rules
+ * match nothing in the other skins.
+ */
+function StackTargets({ items, seat }: { items: GameStateBody['stack']; seat: number }) {
+  const css = useMemo(() => {
+    const seen = new Set<number>();
+    const rules: string[] = [];
+    for (const it of items) {
+      for (const id of it.targetCardIds) {
+        if (!Number.isInteger(id) || seen.has(id)) continue;
+        seen.add(id);
+        const who = it.controller === seat ? 'you' : 'them';
+        rules.push(`:root[data-skin='stack'] .board [data-card-id="${id}"] .tile-card{outline:2px dashed var(--skin-${who});outline-offset:3px}`);
+      }
+    }
+    return rules.join('\n');
+  }, [items, seat]);
+  return css ? <style>{css}</style> : null;
 }
 
 function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {

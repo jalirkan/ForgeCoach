@@ -145,6 +145,13 @@ treat it as a moment to think, not a play to copy. Settings → **Answer first**
 (off by default) asks the coach to start with the play in one line, so it shows
 before the explanation has finished streaming.
 
+Settings → **Look** picks the skin: **Classic** (the default), **Stack** (a dark
+table, the game stack as a pile of cream items, the coach's reasoning as a
+separate dark pile topped by its call in amber) or **Hot Felt** (green baize,
+where the only warm colour is win chance on the review's option bars). Cards
+are always the real card images. `?skin=stack` (or `felt`, `classic`) in the
+URL previews one without saving it.
+
 A **deck guide**, your notes on how a deck wants to play, is written in the page
 and included in every prompt for that deck.
 
