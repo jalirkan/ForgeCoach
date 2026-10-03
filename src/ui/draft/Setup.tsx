@@ -547,7 +547,7 @@ export function deckColoursOf(deck: DeckState | null, colorsOf: (n: string) => s
   return Object.entries(counts)
     .filter(([, v]) => v >= 3)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
+    .slice(0, 2)
     .map(([c]) => c)
     .join('');
 }

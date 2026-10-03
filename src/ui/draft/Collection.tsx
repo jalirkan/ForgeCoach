@@ -49,7 +49,9 @@ export function usePrefs(key: string, init: CollectionPrefs): [CollectionPrefs, 
   const [p, setP] = useState<CollectionPrefs>(() => {
     try {
       const raw = JSON.parse(readLS(`forgecoach.view.${key}`) ?? 'null') as Partial<CollectionPrefs> | null;
-      return { ...init, ...(raw ?? {}) };
+      // Phones start a size smaller, so more columns fit.
+      const phone = typeof window !== 'undefined' && window.innerWidth < 600;
+      return { ...init, ...(phone ? { size: Math.round(init.size * 0.8) } : {}), ...(raw ?? {}) };
     } catch {
       return init;
     }

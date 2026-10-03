@@ -169,11 +169,17 @@
 /* Stacks */
 .scols {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
   gap: 14px;
   overflow-x: auto;
   padding-bottom: 12px;
+}
+.scols > :first-child {
+  margin-left: auto;
+}
+.scols > :last-child {
+  margin-right: auto;
 }
 .szone {
   display: flex;
@@ -207,7 +213,7 @@
 }
 /* Overlapped so each card shows its title bar; the last one whole. */
 .cwrap.is-stack + .cwrap.is-stack {
-  margin-top: calc(var(--cw) * -88 / 63 + var(--cw) * 0.168);
+  margin-top: calc(var(--cw) * -88 / 63 + var(--cw) * 0.19);
 }
 .cwrap.is-stack:hover {
   z-index: 3;

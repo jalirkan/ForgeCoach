@@ -212,7 +212,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
         </div>
       </header>
 
-      <section className="pk-offer" style={{ '--cw': `${offerPrefs.size}px` } as CSSProperties}>
+      <section className="pk-offer" style={{ '--offer-cw': `${offerPrefs.size}px` } as CSSProperties}>
         {d.format !== 'grid' && (
           <div className="pk-size">
             <SizeSlider value={offerPrefs.size} onChange={(size) => setOfferPrefs({ size })} min={90} max={240} />
