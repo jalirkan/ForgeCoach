@@ -12,13 +12,14 @@ import { FAIR_FIGHT_GUIDE } from './fairFight.ts';
 import { MODERN_ERA_GUIDE } from './modernEra.ts';
 import { OMEGA_GUIDE } from './omega.ts';
 import { PAUPER_GUIDE } from './pauper.ts';
+import { PEASANT_GUIDE } from './peasant.ts';
 import { SYNERGY_GUIDE } from './synergy.ts';
 import type { CubeGuide, GuideArchetype } from './types.ts';
 import { VINTAGE_GUIDE } from './vintage.ts';
 
 export type { CubeGuide, GuideArchetype } from './types.ts';
 
-export const GUIDES: CubeGuide[] = [SYNERGY_GUIDE, MODERN_ERA_GUIDE, VINTAGE_GUIDE, PAUPER_GUIDE, OMEGA_GUIDE, FAIR_FIGHT_GUIDE];
+export const GUIDES: CubeGuide[] = [SYNERGY_GUIDE, MODERN_ERA_GUIDE, VINTAGE_GUIDE, PAUPER_GUIDE, OMEGA_GUIDE, FAIR_FIGHT_GUIDE, PEASANT_GUIDE];
 
 export function guideFor(cubeId: string | null | undefined): CubeGuide | null {
   return GUIDES.find((g) => g.cubeId === cubeId) ?? null;
