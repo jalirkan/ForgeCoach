@@ -4,7 +4,7 @@
  *
  * One decision's options as horizontal bars: the point (win rate, or the
  * short-horizon score for a leaf measure) with its 95% interval as a whisker,
- * on an axis zoomed to the options' range and labelled at both ends. The
+ * on a fixed 0–100% axis labelled at both ends. The
  * player's choice, the engine's best and Forge's choice are said in words,
  * not only by colour.
  */
@@ -12,19 +12,12 @@ import type { GameStateBody } from '../../protocol.ts';
 import { fmtInterval, fmtRate, fmtRegret, sameOption, tokenLabel, type ReviewDecision, type ReviewOption } from '../../gameReview.ts';
 import { cx } from '../util.ts';
 
-/** The axis: the options' interval range, padded, on 5-point steps, inside [0, 1]. */
-export function axisDomain(options: ReviewOption[]): [number, number] {
-  const vals = options.flatMap((o) => [o.winLo, o.winHi, o.winRate]).filter((x): x is number => x !== null);
-  if (vals.length === 0) return [0, 1];
-  let lo = Math.max(0, Math.floor((Math.min(...vals) - 0.05) * 20) / 20);
-  let hi = Math.min(1, Math.ceil((Math.max(...vals) + 0.05) * 20) / 20);
-  if (hi - lo < 0.2) {
-    const mid = (hi + lo) / 2;
-    lo = Math.max(0, mid - 0.1);
-    hi = Math.min(1, lo + 0.2);
-    lo = Math.max(0, hi - 0.2);
-  }
-  return [lo, hi];
+/**
+ * The axis: always 0–100%. A zoomed axis would make a few points look like a
+ * landslide; with intervals this wide, the full scale is the honest one.
+ */
+export function axisDomain(_options: ReviewOption[]): [number, number] {
+  return [0, 1];
 }
 
 export function OptionBars({ d, state, seat }: { d: ReviewDecision; state: GameStateBody | null; seat: number }) {

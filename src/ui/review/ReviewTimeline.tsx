@@ -57,7 +57,7 @@ export function ReviewTimeline({
                       {isTie(d) ? '=' : GLYPH[d.verdict]}
                     </span>
                     <span className="rv-chip-type">{TYPE_WORDS[d.type]}</span>
-                    <span className="rv-chip-verdict">{isTie(d) ? 'Tie' : SHORT[d.verdict]}</span>
+                    <span className="rv-chip-verdict">{isTie(d) ? 'Tie' : d.status === 'trivial' ? 'One option' : SHORT[d.verdict]}</span>
                     {keyRank !== null && <span className="rv-chip-key">#{keyRank}</span>}
                   </button>
                 );
