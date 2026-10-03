@@ -1,0 +1,573 @@
+{
+ "schema": "mtg-table/ai-ladder",
+ "version": 1,
+ "generatedAt": "2026-10-03T14:00:00.000Z",
+ "anchor": {
+  "name": "forge-default",
+  "rating": 1500
+ },
+ "scale": "elo",
+ "ci": "bootstrap:200",
+ "totals": {
+  "games": 2101,
+  "decisive": 2081,
+  "draws": 20,
+  "hosts": [
+   "pc"
+  ],
+  "first": "2026-09-28T21:04:11.000Z",
+  "last": "2026-10-03T13:41:52.000Z"
+ },
+ "players": [
+  {
+   "name": "search-v1-fixed3",
+   "kind": "search",
+   "params": {
+    "profile": "Default",
+    "outlets": "on",
+    "budgetMs": 60000,
+    "cands": 6,
+    "turns": 0,
+    "rounds": 3,
+    "margin": 20,
+    "maxRounds": 3,
+    "what": "pab",
+    "seed": 1
+   },
+   "hash": "cf2cd24499ed",
+   "anchor": false,
+   "registered": true,
+   "available": true,
+   "unavailable": null,
+   "rating": 1588.4,
+   "lo": 1527.2,
+   "hi": 1649.6,
+   "rated": true,
+   "games": 212,
+   "wins": 124,
+   "losses": 88,
+   "draws": 3,
+   "vsAnchor": {
+    "wins": 49,
+    "losses": 31,
+    "rate": 0.613,
+    "lo": 0.503,
+    "hi": 0.712
+   }
+  },
+  {
+   "name": "search-v1",
+   "kind": "search",
+   "params": {
+    "profile": "Default",
+    "outlets": "on",
+    "budgetMs": 1500,
+    "cands": 6,
+    "turns": 0,
+    "rounds": 2,
+    "margin": 20,
+    "maxRounds": 12,
+    "what": "pab",
+    "seed": 0
+   },
+   "hash": "105a98615211",
+   "anchor": false,
+   "registered": true,
+   "available": true,
+   "unavailable": null,
+   "rating": 1561.0,
+   "lo": 1472.3,
+   "hi": 1649.7,
+   "rated": true,
+   "games": 96,
+   "wins": 54,
+   "losses": 42,
+   "draws": 2,
+   "vsAnchor": {
+    "wins": 26,
+    "losses": 18,
+    "rate": 0.591,
+    "lo": 0.444,
+    "hi": 0.723
+   }
+  },
+  {
+   "name": "policy-outlet",
+   "kind": "policy",
+   "params": {
+    "profile": "Default",
+    "outlets": "on"
+   },
+   "hash": "f17e270c831e",
+   "anchor": false,
+   "registered": true,
+   "available": true,
+   "unavailable": null,
+   "rating": 1532.6,
+   "lo": 1490.7,
+   "hi": 1574.5,
+   "rated": true,
+   "games": 488,
+   "wins": 262,
+   "losses": 226,
+   "draws": 6,
+   "vsAnchor": {
+    "wins": 131,
+    "losses": 113,
+    "rate": 0.537,
+    "lo": 0.474,
+    "hi": 0.598
+   }
+  },
+  {
+   "name": "forge-reckless",
+   "kind": "forge",
+   "params": {
+    "profile": "Reckless",
+    "sim": "none"
+   },
+   "hash": "a517e37899a0",
+   "anchor": true,
+   "registered": true,
+   "available": true,
+   "unavailable": null,
+   "rating": 1514.8,
+   "lo": 1470.5,
+   "hi": 1559.1,
+   "rated": true,
+   "games": 436,
+   "wins": 224,
+   "losses": 212,
+   "draws": 5,
+   "vsAnchor": {
+    "wins": 97,
+    "losses": 91,
+    "rate": 0.516,
+    "lo": 0.445,
+    "hi": 0.586
+   }
+  },
+  {
+   "name": "forge-default",
+   "kind": "forge",
+   "params": {
+    "profile": "Default",
+    "sim": "none"
+   },
+   "hash": "ce8ac816096e",
+   "anchor": true,
+   "registered": true,
+   "available": true,
+   "unavailable": null,
+   "rating": 1500.0,
+   "lo": 1500.0,
+   "hi": 1500.0,
+   "rated": true,
+   "games": 1024,
+   "wins": 498,
+   "losses": 526,
+   "draws": 11,
+   "vsAnchor": null
+  },
+  {
+   "name": "policy-outlet-reckless",
+   "kind": "policy",
+   "params": {
+    "profile": "Reckless",
+    "outlets": "on"
+   },
+   "hash": "b08243a55f0a",
+   "anchor": false,
+   "registered": true,
+   "available": true,
+   "unavailable": null,
+   "rating": 1497.1,
+   "lo": 1400.6,
+   "hi": 1593.6,
+   "rated": true,
+   "games": 84,
+   "wins": 41,
+   "losses": 43,
+   "draws": 1,
+   "vsAnchor": {
+    "wins": 21,
+    "losses": 21,
+    "rate": 0.5,
+    "lo": 0.355,
+    "hi": 0.645
+   }
+  },
+  {
+   "name": "forge-experimental",
+   "kind": "forge",
+   "params": {
+    "profile": "Experimental",
+    "sim": "none"
+   },
+   "hash": "10b4fa7266f3",
+   "anchor": true,
+   "registered": true,
+   "available": true,
+   "unavailable": null,
+   "rating": 1470.3,
+   "lo": 1422.5,
+   "hi": 1518.1,
+   "rated": true,
+   "games": 402,
+   "wins": 187,
+   "losses": 215,
+   "draws": 4,
+   "vsAnchor": {
+    "wins": 84,
+    "losses": 98,
+    "rate": 0.462,
+    "lo": 0.391,
+    "hi": 0.534
+   }
+  },
+  {
+   "name": "forge-cautious",
+   "kind": "forge",
+   "params": {
+    "profile": "Cautious",
+    "sim": "none"
+   },
+   "hash": "82a62cff18b9",
+   "anchor": true,
+   "registered": true,
+   "available": true,
+   "unavailable": null,
+   "rating": 1418.9,
+   "lo": 1366.3,
+   "hi": 1471.5,
+   "rated": true,
+   "games": 388,
+   "wins": 163,
+   "losses": 225,
+   "draws": 7,
+   "vsAnchor": {
+    "wins": 67,
+    "losses": 103,
+    "rate": 0.394,
+    "lo": 0.324,
+    "hi": 0.469
+   }
+  },
+  {
+   "name": "search-v1-eval-3f9c2a1b",
+   "kind": "search-eval",
+   "params": {
+    "profile": "Default",
+    "outlets": "on",
+    "budgetMs": 1500,
+    "cands": 6,
+    "turns": 0,
+    "rounds": 2,
+    "margin": 20,
+    "maxRounds": 12,
+    "what": "pab",
+    "seed": 0,
+    "model": "3f9c2a1b7d40"
+   },
+   "hash": "c41d07e29a3b",
+   "anchor": false,
+   "registered": true,
+   "available": false,
+   "unavailable": "the evaluator has no bench option yet (branch c/evaluator)",
+   "rating": 1500,
+   "lo": 814,
+   "hi": 2186,
+   "rated": false,
+   "games": 0,
+   "wins": 0,
+   "losses": 0,
+   "draws": 0,
+   "vsAnchor": null
+  }
+ ],
+ "history": [
+  {
+   "at": "2026-09-29T06:10:00.000Z",
+   "run": "pc:r1",
+   "games": 702,
+   "ratings": {
+    "forge-default": [
+     1500,
+     1500,
+     1500
+    ],
+    "policy-outlet": [
+     1521.4,
+     1460.2,
+     1582.6
+    ],
+    "forge-reckless": [
+     1509.9,
+     1446.0,
+     1573.8
+    ]
+   }
+  },
+  {
+   "at": "2026-10-03T13:41:52.000Z",
+   "run": "pc:r4",
+   "games": 2081,
+   "ratings": {
+    "forge-default": [
+     1500,
+     1500,
+     1500
+    ],
+    "policy-outlet": [
+     1532.6,
+     1490.7,
+     1574.5
+    ]
+   }
+  }
+ ],
+ "sprt": [
+  {
+   "at": "2026-10-03T11:20:00.000Z",
+   "id": "s3",
+   "a": "search-v1-fixed3",
+   "b": "forge-default",
+   "elo0": 0,
+   "elo1": 20,
+   "alpha": 0.05,
+   "beta": 0.05,
+   "result": "H1",
+   "llr": 3.01,
+   "lower": -2.944,
+   "upper": 2.944,
+   "games": 800,
+   "pairs": 398,
+   "score": 0.541,
+   "purpose": "sprt"
+  },
+  {
+   "at": "2026-10-01T03:02:00.000Z",
+   "id": "s2",
+   "a": "policy-outlet",
+   "b": "forge-default",
+   "elo0": 0,
+   "elo1": 20,
+   "alpha": 0.05,
+   "beta": 0.05,
+   "result": "H1",
+   "llr": 2.97,
+   "lower": -2.944,
+   "upper": 2.944,
+   "games": 1612,
+   "pairs": 804,
+   "score": 0.533,
+   "purpose": "sprt"
+  },
+  {
+   "at": "2026-09-30T02:15:00.000Z",
+   "id": "s1",
+   "a": "policy-outlet-reckless",
+   "b": "policy-outlet",
+   "elo0": 0,
+   "elo1": 20,
+   "alpha": 0.05,
+   "beta": 0.05,
+   "result": "H0",
+   "llr": -2.95,
+   "lower": -2.944,
+   "upper": 2.944,
+   "games": 488,
+   "pairs": 243,
+   "score": 0.486,
+   "purpose": "league"
+  },
+  {
+   "at": "2026-09-29T11:48:00.000Z",
+   "id": "s0",
+   "a": "search-v1",
+   "b": "forge-default",
+   "elo0": 0,
+   "elo1": 20,
+   "alpha": 0.05,
+   "beta": 0.05,
+   "result": "inconclusive",
+   "llr": 0.88,
+   "lower": -2.944,
+   "upper": 2.944,
+   "games": 400,
+   "pairs": 196,
+   "score": 0.531,
+   "purpose": "sprt"
+  }
+ ],
+ "tune": [
+  {
+   "at": "2026-09-29T19:40:00.000Z",
+   "id": "t1",
+   "base": "policy-outlet",
+   "vary": {
+    "profile": [
+     "Default",
+     "Cautious",
+     "Reckless",
+     "Experimental"
+    ],
+    "outlets": [
+     "on",
+     "off"
+    ]
+   },
+   "pool": [
+    "forge-default",
+    "forge-reckless"
+   ],
+   "eta": 2,
+   "games": 960,
+   "winner": {
+    "label": "profile=Reckless outlets=on",
+    "params": {
+     "profile": "Reckless",
+     "outlets": "on"
+    },
+    "hash": "b08243a55f0a",
+    "registeredAs": "policy-outlet-reckless"
+   },
+   "rounds": [
+    {
+     "round": 0,
+     "blocks": 1,
+     "standings": [
+      {
+       "label": "profile=Default outlets=on",
+       "wins": 17,
+       "losses": 23,
+       "score": 0.425
+      },
+      {
+       "label": "profile=Default outlets=off",
+       "wins": 23,
+       "losses": 17,
+       "score": 0.575
+      },
+      {
+       "label": "profile=Cautious outlets=on",
+       "wins": 22,
+       "losses": 18,
+       "score": 0.55
+      },
+      {
+       "label": "profile=Cautious outlets=off",
+       "wins": 16,
+       "losses": 24,
+       "score": 0.4
+      },
+      {
+       "label": "profile=Reckless outlets=on",
+       "wins": 19,
+       "losses": 21,
+       "score": 0.475
+      },
+      {
+       "label": "profile=Reckless outlets=off",
+       "wins": 23,
+       "losses": 17,
+       "score": 0.575
+      },
+      {
+       "label": "profile=Experimental outlets=on",
+       "wins": 21,
+       "losses": 19,
+       "score": 0.525
+      },
+      {
+       "label": "profile=Experimental outlets=off",
+       "wins": 24,
+       "losses": 16,
+       "score": 0.6
+      }
+     ]
+    },
+    {
+     "round": 1,
+     "blocks": 2,
+     "standings": [
+      {
+       "label": "profile=Reckless outlets=on",
+       "wins": 45,
+       "losses": 35,
+       "score": 0.563
+      },
+      {
+       "label": "profile=Default outlets=on",
+       "wins": 43,
+       "losses": 37,
+       "score": 0.538
+      },
+      {
+       "label": "profile=Default outlets=off",
+       "wins": 40,
+       "losses": 40,
+       "score": 0.5
+      },
+      {
+       "label": "profile=Experimental outlets=on",
+       "wins": 37,
+       "losses": 43,
+       "score": 0.463
+      }
+     ]
+    },
+    {
+     "round": 2,
+     "blocks": 4,
+     "standings": [
+      {
+       "label": "profile=Reckless outlets=on",
+       "wins": 89,
+       "losses": 71,
+       "score": 0.556
+      },
+      {
+       "label": "profile=Default outlets=on",
+       "wins": 84,
+       "losses": 76,
+       "score": 0.525
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "league": {
+  "best": "policy-outlet",
+  "pool": [
+   "policy-outlet",
+   "forge-default",
+   "forge-reckless",
+   "forge-cautious",
+   "forge-experimental"
+  ],
+  "promoted": [
+   {
+    "name": "policy-outlet",
+    "at": "2026-10-01T03:02:00.000Z",
+    "reason": "SPRT H1 vs forge-default (+20, 1612 games); non-inferior vs Forge"
+   }
+  ]
+ },
+ "set": "tools/ai-bench/pairs-confirm.txt",
+ "experiments": [
+  {
+   "at": "2026-10-03T07:00:00.000Z",
+   "id": "e7",
+   "cmd": "run",
+   "purpose": "confirm",
+   "status": "finished",
+   "sha": "71d6b666fb74",
+   "dirty": false,
+   "set": "tools/ai-bench/pairs-confirm.txt",
+   "hypothesis": "",
+   "games": 640
+  }
+ ]
+}

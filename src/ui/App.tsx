@@ -40,6 +40,8 @@ const MetaApp = lazy(() => import('./meta/MetaApp.tsx'));
 const HistoryApp = lazy(() => import('./history/HistoryApp.tsx'));
 // #lab[?src=…]: the PC lab's progress page (lazy).
 const LabPage = lazy(() => import('./lab/LabPage.tsx'));
+// #lab/ladder[?src=…]: the AI ladder's ratings (lazy).
+const LadderPage = lazy(() => import('./lab/LadderPage.tsx'));
 
 const LAST_SAMPLE_KEY = 'forgecoach.lastSample';
 const SEAT_URL_KEY = 'forgecoach.seatUrl';
@@ -137,6 +139,8 @@ export function App() {
       <MetaApp />
     ) : /^#history\b/.test(hash) ? (
       <HistoryApp />
+    ) : /^#lab\/ladder\b/.test(hash) ? (
+      <LadderPage />
     ) : /^#lab\b/.test(hash) ? (
       <LabPage />
     ) : /^#cube\/[\w-]+/.test(hash) ? (
