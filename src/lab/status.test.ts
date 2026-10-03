@@ -355,8 +355,10 @@ describe('a running job’s live numbers and per-cube progress', () => {
     expect(by('Turns / game')?.value).toBe('9.40');
     expect(by('Disk')?.value).toBe('734.0 MB');
     expect(by('Games / h')?.value).toBe('674');
-    // Two keys with the same friendly label (drafts per hour twice) carry their full key.
-    expect(cells.filter((c) => c.label.startsWith('Drafts / h')).map((c) => c.label)).toEqual(['Drafts / h (q)', 'Drafts / h (q)']);
+    // Tonight's draft rate and the all-nights rate have distinct labels.
+    expect(by('Drafts tonight / h')?.value).toBe('674');
+    expect(by('Drafts / h (all nights)')?.value).toBe('674');
+    expect(new Set(cells.map((c) => c.label)).size).toBe(cells.length);
     // An unknown key keeps its raw name, last.
     expect(cells.at(-1)).toMatchObject({ label: 'q.ms_per_turn', known: false, value: '412' });
   });
