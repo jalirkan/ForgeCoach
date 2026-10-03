@@ -1318,8 +1318,8 @@ button.seat-chip:hover {
   box-shadow: none !important;
   background: transparent !important;
   padding: 4px 0 8px;
-  border: 0;
-  border-bottom: 1px dashed rgba(201, 164, 92, 0.4);
+  border: 0 !important;
+  border-bottom: 1px dashed rgba(201, 164, 92, 0.4) !important;
   background: transparent;
   text-align: center;
   font: italic 500 36px/1.1 var(--serif);
@@ -1327,7 +1327,7 @@ button.seat-chip:hover {
   outline: none;
 }
 .setup-title input:focus {
-  border-bottom-color: var(--gold);
+  border-bottom-color: var(--gold) !important;
 }
 .setup-grid {
   display: grid;
