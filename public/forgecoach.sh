@@ -8,8 +8,8 @@
 #
 #   curl -fsSL https://jalirkan.github.io/ForgeCoach/forgecoach.sh | bash -s install
 #
-# Then click ForgeCoach in the app menu.  Right-click it for "ForgeCoach (phone)"
-# and "Stop ForgeCoach" (both are also menu entries of their own).
+# Then click ForgeCoach in the app menu.  Right-click it for "ForgeCoach (phone)",
+# "ForgeCoach (away from home)" and "Stop ForgeCoach" (all menu entries of their own).
 #
 # Commands (`forgecoach <command>`; ~/.local/bin/forgecoach after install):
 #
@@ -21,6 +21,12 @@
 #                          Flags go to play.sh: --lan (phone), --deck <path>,
 #                          --ai-deck <path>, --ai-profile <name>, --mirror,
 #                          --port <n>, --no-coach, ...
+#   remote [flags]         play from your phone when you are AWAY from home, over
+#                          Tailscale (a free private network between your own
+#                          devices).  Starts the engine like --lan, shows the phone
+#                          link with your Tailscale address, and keeps this PC from
+#                          sleeping while the engine runs.  The PC must stay on.
+#   remote-setup           one-time help: install Tailscale, log in, set up the phone
 #   stop                   stop the engine this launcher started
 #   status                 is it running, where is everything
 #   install                put this script in ~/.local/bin/forgecoach and add the
@@ -30,17 +36,19 @@
 #   get-forge              download Forge 2.0.14 (about 300 MB) into ~/forge
 #   launch [flags]         what the menu icon runs: `start` in a terminal window
 #
-# Launcher flags: --no-open (do not open the browser), --no-pull (do not update
+# Launcher flags: --remote (same as the remote command), --no-open (do not open the browser), --no-pull (do not update
 # mtg-table), --window (pause before the window closes), --notify (desktop pop-up).
 #
 # Environment: FORGECOACH_MTG=<mtg-table checkout>, FORGE_JAR=<Forge jar>,
-# FORGECOACH_NO_UPDATE=1 (do not self-update), FORGECOACH_NO_KDECONNECT=1.
+# FORGECOACH_NO_UPDATE=1 (do not self-update), FORGECOACH_NO_KDECONNECT=1,
+# FORGECOACH_NO_INHIBIT=1 (do not hold off sleep during `remote`).
 #
 # What it touches: ~/.local/bin/forgecoach, ~/.local/share/applications/
 # forgecoach*.desktop, ~/.local/share/icons/forgecoach.png, ~/.config/forgecoach/,
 # ~/.cache/forgecoach/ (engine log), a fresh clone in ~/mtg-table when there is
-# no checkout, and with `get-forge` a fresh ~/forge.  It never uses sudo (it
-# prints the command for you instead) and never deletes your files.
+# no checkout, and with `get-forge` a fresh ~/forge.  It never uses sudo on its own
+# (it prints the command for you; `remote-setup` runs one only after you say yes at
+# a terminal prompt) and never deletes your files.
 
 set -euo pipefail
 
@@ -72,6 +80,7 @@ PID_FILE="$CACHE_DIR/engine.pid"
 MODE_FILE="$CACHE_DIR/engine.mode"
 PORT_FILE="$CACHE_DIR/engine.port"
 PHONE_FILE="$CACHE_DIR/phone-url"
+INHIBIT_FILE="$CACHE_DIR/inhibit.pid"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 BIN_DIR="$HOME/.local/bin"
 BIN="$BIN_DIR/forgecoach"
@@ -508,6 +517,7 @@ PORT=8642
 OPEN=1
 PULL=1
 WINDOW=0
+REMOTE=0
 PASS=()
 
 parse_flags() {
@@ -522,12 +532,17 @@ parse_flags() {
       --notify)  NOTIFY=1 ;;
       --engine-only) ;;                       # always added
       --lan)     LAN=1; PASS+=("$a") ;;
+      --remote)  LAN=1; REMOTE=1 ;;
       --port)    [ $# -ge 2 ] || { echo "--port needs a number" >&2; exit 2; }
                  PORT="$2"; PASS+=("$a" "$2"); shift ;;
       *)         PASS+=("$a") ;;
     esac
     shift
   done
+  # Away-from-home play is the bridge's --lan mode (once, even if both were given).
+  if [ "$REMOTE" = "1" ]; then
+    case " ${PASS[*]+${PASS[*]}} " in *" --lan "*) ;; *) PASS+=(--lan) ;; esac
+  fi
 }
 
 engine_pid() { local p; p="$(cat "$PID_FILE" 2>/dev/null || true)"; pid_alive "$p" && echo "$p" || true; }
@@ -602,20 +617,111 @@ phone_urls() {   # the bridge's own "WS LAN PAGE  http://<ip>:<port>/?token=..."
   sed -n 's/^WS LAN PAGE  //p' "$MTG/var/play/server.log" 2>/dev/null || true
 }
 
+# This PC's Tailscale IPv4 address (100.x.y.z), or nothing when Tailscale is not
+# installed, not logged in or not connected.
+tailscale_ip() {
+  local ip=""
+  if command -v tailscale >/dev/null 2>&1; then
+    ip="$(tailscale ip -4 2>/dev/null </dev/null | head -n 1 || true)"
+  fi
+  if [ -z "$ip" ] && command -v ip >/dev/null 2>&1; then   # the interface, when the CLI will not answer
+    ip="$(ip -4 -o addr show dev tailscale0 2>/dev/null </dev/null | sed -n 's/.* inet \([0-9.]*\)\/.*/\1/p' | head -n 1 || true)"
+  fi
+  case "$ip" in *[!0-9.]*|"") ip="" ;; esac
+  printf '%s' "$ip"
+}
+
+tailscale_install_cmd() {
+  case "$PM" in
+    pacman) echo "sudo pacman -S --needed tailscale && sudo systemctl enable --now tailscaled" ;;
+    *)      echo "curl -fsSL https://tailscale.com/install.sh | sh" ;;
+  esac
+}
+
+# URLs with the Tailscale address, built from the bridge's own links (same port
+# and token; only the host differs).  Tailscale's own address first.
+remote_urls() {   # remote_urls <tailscale ip>
+  local u first=""
+  while IFS= read -r u; do
+    [ -n "$u" ] || continue
+    [ -n "$first" ] || first="$u"
+    case "$u" in "http://$1:"*) printf '%s\n' "$u"; return 0 ;; esac
+  done < <(phone_urls)
+  [ -n "$first" ] || return 0
+  printf 'http://%s:%s\n' "$1" "${first#http://*:}"
+}
+
+remote_warn() {   # Tailscale is not usable: say what to do
+  warn "Tailscale is not connected on this PC, so the phone cannot reach it from outside your home."
+  if ! command -v tailscale >/dev/null 2>&1; then
+    info "Tailscale is not installed.  Run once:  forgecoach remote-setup"
+  else
+    info "Connect it, then run 'forgecoach remote' again (the game keeps running):"
+    fix "sudo tailscale up      (or, once set up: tailscale up)"
+    info "First time?  Run:  forgecoach remote-setup"
+  fi
+}
+
+# Keep this PC awake while the engine answers on $PORT: a systemd sleep+idle
+# inhibitor held by a small watcher that ends (releasing it) when the engine is gone.
+keep_awake() {
+  local pid
+  if [ -n "${FORGECOACH_NO_INHIBIT:-}" ]; then info "(Sleep is not held off: FORGECOACH_NO_INHIBIT is set.)"; return 0; fi
+  pid="$(cat "$INHIBIT_FILE" 2>/dev/null || true)"
+  if pid_alive "$pid"; then ok "This PC is kept awake while ForgeCoach runs."; return 0; fi
+  if ! command -v systemd-inhibit >/dev/null 2>&1 || ! systemd-inhibit --what=sleep:idle --who=ForgeCoach --why=probe --mode=block true >/dev/null 2>&1 </dev/null; then
+    warn "Could not stop this PC from sleeping automatically: turn off sleep yourself while you are away"
+    info "     (System Settings > Power Management > Energy Saving: no suspend).  A sleeping PC is unreachable."
+    return 0
+  fi
+  mkdir -p "$CACHE_DIR"
+  (
+    exec setsid nohup systemd-inhibit --what=sleep:idle --who=ForgeCoach \
+      --why="ForgeCoach is serving your phone" --mode=block \
+      bash -c 'f=0; while [ "$f" -lt 3 ]; do if curl -fsS --max-time 3 "http://127.0.0.1:$1/health" >/dev/null 2>&1; then f=0; else f=$((f + 1)); fi; sleep 20; done' _ "$PORT" \
+      >/dev/null 2>&1 </dev/null
+  ) &
+  echo "$!" >"$INHIBIT_FILE"
+  ok "This PC will not sleep while ForgeCoach runs (it can sleep again once you stop it)."
+}
+
 show_phone() {
-  local urls first html
-  mapfile -t urls < <(phone_urls)
+  local urls first html ts="" mode_note
+  if [ "$REMOTE" = "1" ]; then
+    ts="$(tailscale_ip)"
+    if [ -n "$ts" ]; then
+      mapfile -t urls < <(remote_urls "$ts")
+    else
+      remote_warn
+      mapfile -t urls < <(phone_urls)
+      [ "${#urls[@]}" -gt 0 ] && info "(Until Tailscale is connected, the links below only work on your home Wi-Fi.)"
+    fi
+    keep_awake
+  else
+    mapfile -t urls < <(phone_urls)
+  fi
   if [ "${#urls[@]}" -eq 0 ]; then
     warn "No phone address found: is this PC on a network?  (log: $ENGINE_LOG)"
     return 0
   fi
   first="${urls[0]}"
   (umask 077; printf '%s\n' "$first" >"$PHONE_FILE")
-  say "On your phone (same Wi-Fi), open:"
+  if [ -n "$ts" ]; then
+    say "On your phone (with the Tailscale app turned on), open:"
+    mode_note="Phone: the Tailscale app on and logged in to the same account. Works on any network."
+  else
+    say "On your phone (same Wi-Fi), open:"
+    mode_note="Phone on the same Wi-Fi as this PC."
+  fi
   printf '\n    %s%s%s\n\n' "$B" "$first" "$N"
   [ "${#urls[@]}" -gt 1 ] && info "If that does not load, try: ${urls[*]:1}"
   if command -v qrencode >/dev/null 2>&1; then qrencode -t ANSIUTF8 -m 2 "$first" || true; fi
-  info "Anyone on your Wi-Fi with this link can take the seat; the next start makes a new link."
+  if [ -n "$ts" ]; then
+    info "Only your own Tailscale devices can reach this link, and it also needs its secret token."
+    info "Keep this PC on and connected to the internet while you are away."
+  else
+    info "Anyone on your Wi-Fi with this link can take the seat; the next start makes a new link."
+  fi
 
   # KDE Connect: send the link straight to the phone.
   if [ -z "${FORGECOACH_NO_KDECONNECT:-}" ] && command -v kdeconnect-cli >/dev/null 2>&1; then
@@ -641,10 +747,10 @@ show_phone() {
       printf '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
       printf '<style>body{font:18px/1.5 system-ui,sans-serif;margin:0;padding:40px 16px;text-align:center;background:#14161a;color:#e8e6e1}'
       printf 'a{color:#e8b85c;word-break:break-all;font-size:20px}#qr svg,#qr img{width:280px;height:280px;background:#fff;padding:12px;border-radius:8px}</style></head><body>\n'
-      printf '<h1>Play ForgeCoach on your phone</h1><p>Phone on the same Wi-Fi as this PC. Scan the code with the camera, or open:</p>\n'
+      printf '<h1>Play ForgeCoach on your phone</h1><p>%s Scan the code with the camera, or open:</p>\n' "$mode_note"
       printf '<p><a href="%s">%s</a></p><div id="qr">' "$first" "$first"
       if command -v qrencode >/dev/null 2>&1; then qrencode -t SVG -m 2 -o - "$first" 2>/dev/null || true; fi
-      printf '</div>\n<p style="opacity:.7">Then tap Play. Keep this PC on. To stop: app menu &rsaquo; Stop ForgeCoach.</p>\n'
+      printf '</div>\n<p style="opacity:.7">Then tap Play. Keep this PC on%s. To stop: app menu &rsaquo; Stop ForgeCoach.</p>\n' "$([ -n "$ts" ] && echo " and awake while you are away")"
       printf '<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>\n'
       printf '<script>(function(){var q=document.getElementById("qr");if(q.innerHTML.trim()||typeof qrcode==="undefined")return;'
       printf 'var c=qrcode(0,"M");c.addData(%s);c.make();q.innerHTML=c.createSvgTag({scalable:true});})();</script>\n' "\"$first\""
@@ -653,6 +759,10 @@ show_phone() {
   )
   open_url "file://$html"
   NOTIFY_MSG="ForgeCoach (phone) is ready: $first"
+  if [ "$REMOTE" = "1" ]; then
+    NOTIFY_MSG="ForgeCoach (away from home) is ready: $first"
+    [ -n "$ts" ] || NOTIFY_MSG="ForgeCoach is running, but Tailscale is not connected: the phone cannot reach it away from home."
+  fi
 }
 
 start_engine() {
@@ -717,7 +827,9 @@ stop_engine() {   # stop_engine [quiet]
       stopped=1
     fi
   fi
-  rm -f "$PID_FILE" "$MODE_FILE" "$PHONE_FILE"
+  local ipid; ipid="$(cat "$INHIBIT_FILE" 2>/dev/null || true)"
+  if pid_alive "$ipid"; then kill -TERM -- "-$ipid" 2>/dev/null || kill -TERM "$ipid" 2>/dev/null || true; fi
+  rm -f "$PID_FILE" "$MODE_FILE" "$PHONE_FILE" "$INHIBIT_FILE"
   [ "${1:-}" = "quiet" ] && return 0
   if health "$port"; then
     notify "Could not stop the engine on port $port.  If you started it in a terminal, press Ctrl-C there."
@@ -751,8 +863,9 @@ write_desktop() {   # write_desktop <file> <name> <comment> <args> [actions]
     printf 'Exec=%s %s\nIcon=%s\nTerminal=false\n' "$exe" "$4" "$icon"
     printf 'Categories=Game;CardGame;\nKeywords=Magic;MTG;Forge;mtg-table;coach;\nStartupNotify=false\n'
     if [ -n "${5:-}" ]; then
-      printf 'Actions=Phone;Stop;\n\n'
+      printf 'Actions=Phone;Remote;Stop;\n\n'
       printf '[Desktop Action Phone]\nName=ForgeCoach (phone)\nExec=%s launch --lan\nIcon=%s\n\n' "$exe" "$icon"
+      printf '[Desktop Action Remote]\nName=ForgeCoach (away from home)\nExec=%s launch --remote\nIcon=%s\n\n' "$exe" "$icon"
       printf '[Desktop Action Stop]\nName=Stop ForgeCoach\nExec=%s stop --notify\nIcon=%s\n' "$exe" "$icon"
     fi
   } >"$f.tmp"
@@ -772,6 +885,7 @@ install_desktop() {
 
   write_desktop forgecoach.desktop "ForgeCoach" "Play Magic against the Forge AI, with a coach" "launch" actions
   write_desktop forgecoach-phone.desktop "ForgeCoach (phone)" "Play ForgeCoach on your phone (same Wi-Fi)" "launch --lan"
+  write_desktop forgecoach-remote.desktop "ForgeCoach (away from home)" "Play ForgeCoach on your phone from anywhere, over Tailscale (keep this PC on)" "launch --remote"
   write_desktop forgecoach-stop.desktop "Stop ForgeCoach" "Stop ForgeCoach's Forge engine" "stop --notify"
   command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$APPS_DIR" >/dev/null 2>&1 || true
   for k in kbuildsycoca6 kbuildsycoca5; do
@@ -841,7 +955,7 @@ finish() {   # finish <rc> -- what a terminal window opened from the menu does a
     if [ "$rc" != "0" ]; then
       printf '\nPress Enter to close this window.' >/dev/tty; read -r _ </dev/tty || true
     elif [ "$LAN" = "1" ]; then
-      printf '\nForgeCoach keeps running for the phone.  Press Enter to close this window.' >/dev/tty; read -r _ </dev/tty || true
+      printf '\nForgeCoach keeps running for the phone%s.  Press Enter to close this window.' "$([ "$REMOTE" = "1" ] && echo " (keep this PC on)")" >/dev/tty; read -r _ </dev/tty || true
     else
       printf '\nThis window closes in 20 seconds; ForgeCoach keeps running.  (Enter closes it now.)' >/dev/tty
       read -r -t 20 _ </dev/tty || true
@@ -873,7 +987,7 @@ cmd_start() {
       if ask "Restart it for the phone?  (This ends a game in progress.)" n; then
         stop_engine quiet; running=0
       else
-        info "Left as it is.  For the phone: app menu > Stop ForgeCoach, then ForgeCoach (phone)."
+        info "Left as it is.  For the phone: app menu > Stop ForgeCoach, then ForgeCoach (phone) or (away from home)."
         finish 1; return 1
       fi
     fi
@@ -928,6 +1042,77 @@ cmd_launch() {   # the menu icon: `start` in a terminal window, so he can see wh
   cmd_start --notify "$@" >"$CACHE_DIR/launch.log" 2>&1
 }
 
+cmd_remote() {   # play away from home: the phone mode over Tailscale
+  cmd_start --remote "$@"
+}
+
+# Run a command the person has been shown, only after a yes at a terminal.
+# Never without a terminal: then the command is only printed.
+run_after_asking() {   # run_after_asking <question> <shown command> <command...>
+  local q="$1" shown="$2"; shift 2
+  fix "$shown"
+  has_tty || { info "(No terminal here, so it was not run: paste the line above into a terminal.)"; return 1; }
+  ask "$q" y || return 1
+  "$@" </dev/tty
+}
+
+cmd_remote_setup() {
+  local ts opk me
+  parse_flags "$@"
+  augment_path; detect_pm
+  say "Away-from-home play: set up Tailscale (free; a private network between your own devices)"
+  info "Nothing is opened to the internet: only devices logged in to YOUR Tailscale account can reach this PC."
+
+  if command -v tailscale >/dev/null 2>&1; then
+    ok "Tailscale is installed ($(tailscale version 2>/dev/null </dev/null | head -n 1 || echo '?'))"
+  else
+    bad "Tailscale is not installed on this PC ($DISTRO)."
+    info "Install it with this command (it asks for your password; it is Tailscale's official installer):"
+    if run_after_asking "  Run it now?" "$(tailscale_install_cmd)" bash -c "$(tailscale_install_cmd)"; then
+      augment_path; hash -r
+    fi
+    if ! command -v tailscale >/dev/null 2>&1; then
+      info "Copy the line above into a terminal, press Enter and type your password, then run:  forgecoach remote-setup"
+      return 1
+    fi
+    ok "Tailscale is installed."
+  fi
+
+  if command -v systemctl >/dev/null 2>&1 && ! systemctl is-active --quiet tailscaled 2>/dev/null; then
+    warn "The Tailscale background service (tailscaled) is not running."
+    run_after_asking "  Start it now (and at every boot)?" "sudo systemctl enable --now tailscaled" sudo systemctl enable --now tailscaled || true
+  fi
+
+  ts="$(tailscale_ip)"
+  if [ -n "$ts" ]; then
+    ok "Tailscale is connected: this PC is $ts"
+  else
+    warn "Tailscale is not logged in / connected on this PC."
+    info "Log in (it prints a web address to open in your browser; log in with the account you will also use on your phone):"
+    if run_after_asking "  Run it now?" "sudo tailscale up" sudo tailscale up; then ts="$(tailscale_ip)"; fi
+    if [ -n "$ts" ]; then ok "Connected: this PC is $ts"
+    else info "When you have run it, run:  forgecoach remote-setup   (again; it is safe to repeat)"; fi
+  fi
+
+  if [ -n "$ts" ] && [ "$(conf_get TS_OPERATOR)" != "1" ]; then
+    info "Optional: let your normal user run tailscale commands, so later ones need no password."
+    me="${USER:-$(id -un)}"
+    opk="sudo tailscale set --operator=$me"
+    if run_after_asking "  Do that now?" "$opk" sudo tailscale set "--operator=$me"; then conf_set TS_OPERATOR 1; fi
+  fi
+
+  say "On your phone (once)"
+  info "1. Install the Tailscale app: Android (Google Play) or iPhone (App Store), or https://tailscale.com/download"
+  info "2. Open it and log in with the SAME account as on this PC.  Leave it on (it can run in the background)."
+  info "3. Both devices should now show up in the Tailscale app."
+  say "Each time you want to play away from home"
+  info "1. Leave this PC on, awake and online (ForgeCoach stops it sleeping while it runs)."
+  info "2. Start it from the PC, or ask someone at home: app menu > ForgeCoach (away from home)  (or: forgecoach remote)."
+  info "   It sends the link to your phone with KDE Connect if that is connected, and shows a QR code."
+  info "3. On the phone, with Tailscale on, open the link.  Stop it later with: app menu > Stop ForgeCoach."
+  [ -n "$ts" ] || return 1
+}
+
 cmd_status() {
   local pid port mtg
   augment_path
@@ -955,7 +1140,7 @@ cmd_install() {
   say "Installing ForgeCoach"
   install_self || return 1
   ok "Launcher: $BIN"
-  ok "App menu: ForgeCoach, ForgeCoach (phone), Stop ForgeCoach"
+  ok "App menu: ForgeCoach, ForgeCoach (phone), ForgeCoach (away from home), Stop ForgeCoach"
   # Do the slow, interactive part now, while there is a terminal to answer in.
   if setup; then
     say "All set."
@@ -979,6 +1164,8 @@ main() {
     start)     cmd_start "$@" ;;
     launch)    cmd_launch "$@" ;;
     stop)      parse_flags "$@"; stop_engine ;;
+    remote)    cmd_remote "$@" ;;
+    remote-setup) cmd_remote_setup "$@" ;;
     status)    cmd_status ;;
     install)   cmd_install "$@" ;;
     update)    install_self force-download && ok "ForgeCoach launcher updated: $BIN" ;;
