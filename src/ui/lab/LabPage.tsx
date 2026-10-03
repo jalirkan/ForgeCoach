@@ -26,6 +26,7 @@ import {
   isEmptyStatus,
   jobEta,
   labSource,
+  liveCells,
   memFraction,
   pressureLevel,
   rebaseTimes,
@@ -442,10 +443,52 @@ function RunningCard({ job: j, updated, now }: { job: RunningJob; updated: Date 
           sub={eta ? (eta.at.getTime() < now.getTime() - 60_000 ? `due ${formatRelative(eta.at, now)}` : formatRelative(eta.at, now)) : undefined}
         />
         <Stat label="Elapsed" value={j.elapsedS !== null ? formatDuration(j.elapsedS) : (j.elapsedText ?? '—')} sub={j.started ? `since ${formatClock(j.started, now)}` : undefined} />
-        <Stat label="Workers" value={fmtNum(j.workers)} />
+        <Stat label="Workers" value={j.workersMax !== null && j.workers !== null ? `${fmtNum(j.workers)} / ${fmtNum(j.workersMax)}` : fmtNum(j.workers)} sub={j.workersMax !== null && j.workers !== null ? 'in use / max' : undefined} />
         <Stat label="Errors" value={fmtNum(j.errors)} tone={j.errors ? 'bad' : undefined} />
       </dl>
+      <LiveGrid job={j} />
+      <CubeBars job={j} />
     </article>
+  );
+}
+
+/** The job's own numbers as of the runner's last minute read: friendly labels for known keys, raw names otherwise. */
+function LiveGrid({ job }: { job: RunningJob }) {
+  const cells = liveCells(job);
+  if (!cells.length) return null;
+  return (
+    <div className="lb-live">
+      <div className="lb-live-h">Live numbers <span className="lg-muted">· as of the runner’s last minute read</span></div>
+      <dl className="lb-live-grid">
+        {cells.map((c) => (
+          <div key={c.key} className={cx('lb-live-cell', c.tone && `is-${c.tone}`, c.headline && 'is-headline')} title={c.key}>
+            <dt className={cx(!c.known && 'lg-mono lb-live-raw')}>{c.label}</dt>
+            <dd className="lg-mono">{c.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+/** A cube-lab queue's drafts per cube, done of planned. */
+function CubeBars({ job }: { job: RunningJob }) {
+  if (!job.cubes.length) return null;
+  return (
+    <div className="lb-cubes">
+      <div className="lb-live-h">Per cube</div>
+      <ul>
+        {job.cubes.map((c, i) => (
+          <li key={`${c.id}-${i}`} className="lb-cube">
+            <span className="lb-cube-id">{c.id}</span>
+            <Bar fraction={c.fraction} label={`${c.id}: ${c.done} of ${c.planned} drafts`} tone={job.paused ? 'muted' : 'gold'} />
+            <span className="lb-cube-n lg-mono">
+              {fmtNum(c.done)} / {fmtNum(c.planned)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -26,6 +26,12 @@ import {
   IDLE_RED_AFTER_S,
   updatedLine,
   withCacheBuster,
+  liveCells,
+  parseLive,
+  parseCubes,
+  formatBytes,
+  MAX_LIVE,
+  MAX_CUBES,
 } from './status.ts';
 
 const sample = JSON.parse(readFileSync(new URL('../../public/lab-sample.json', import.meta.url), 'utf8')) as unknown;
@@ -69,7 +75,7 @@ describe('parseLabStatus', () => {
   it('reads the bundled sample with the optional fields', () => {
     const s = parseLabStatus(sample);
     expect(s.schema).toBe(1);
-    expect(s.running.map((r) => r.id)).toEqual(['J003', 'J005']);
+    expect(s.running.map((r) => r.id)).toEqual(['J003', 'J005', 'J020']);
     expect(s.running[0]!.elapsedS).toBe(1260);
     expect(s.host?.cpus).toBe(16);
     expect(s.waiting[0]).toMatchObject({ id: 'J007', reason: 'needs 22 GB free; waits for J003' });
@@ -324,5 +330,100 @@ describe('RUNNING / IDLE and the heartbeat', () => {
     const s = parseLabStatus({ state: 'idle', idleReason: `queue\u0000 empty${'x'.repeat(200)}` });
     expect(s.idleReason!.length).toBeLessThanOrEqual(60);
     expect(s.idleReason).toMatch(/^queue empty/);
+  });
+});
+
+describe('a running job’s live numbers and per-cube progress', () => {
+  it('reads the sample’s queue job: workers of max, memory, live metrics headline first, cubes', () => {
+    const j = parseLabStatus(sample).running.find((r) => r.id === 'J020')!;
+    expect(j).toMatchObject({ workers: 5, workersMax: 6, memGb: 9.42 });
+    expect(j.live[0]).toEqual({ key: 'q.night_drafts_done', value: 1180, headline: true });
+    expect(j.cubes).toHaveLength(4);
+    expect(j.cubes[0]).toEqual({ id: 'cube 1', done: 260, planned: 800, fraction: 0.325 });
+    const cells = liveCells(j);
+    expect(cells[0]).toMatchObject({ label: 'Memory', value: '9.4 GB' });
+    expect(cells.slice(1, 3).map((c) => [c.label, c.value, c.tone])).toEqual([
+      ['Drafts tonight', '1,180', undefined],
+      ['Engine errors', '2', 'bad'],
+    ]);
+    const by = (label: string) => cells.find((c) => c.label === label);
+    expect(by('Games')?.value).toBe('1,180');
+    expect(by('Engine error rate')?.value).toBe('0.2 %');
+    expect(by('Timeouts')).toMatchObject({ value: '3', tone: 'amber' });
+    expect(by('Recording errors')).toMatchObject({ value: '0', tone: undefined });
+    expect(by('Bridge share')?.value).toBe('20 %');
+    expect(by('Turns / game')?.value).toBe('9.40');
+    expect(by('Disk')?.value).toBe('734.0 MB');
+    expect(by('Games / h')?.value).toBe('674');
+    // Two keys with the same friendly label (drafts per hour twice) carry their full key.
+    expect(cells.filter((c) => c.label.startsWith('Drafts / h')).map((c) => c.label)).toEqual(['Drafts / h (q)', 'Drafts / h (q)']);
+    // An unknown key keeps its raw name, last.
+    expect(cells.at(-1)).toMatchObject({ label: 'q.ms_per_turn', known: false, value: '412' });
+  });
+
+  it('cleans live: unsafe keys, non-numbers, out-of-range and per-cube keys are dropped; at most MAX_LIVE', () => {
+    const live = parseLive(
+      {
+        'q.games': 10,
+        'Bad Key': 1,
+        'a/b': 2,
+        '__proto__': 3,
+        'q.text': '12',
+        'q.inf': Infinity,
+        'q.nan': NaN,
+        'q.huge': 1e20,
+        'q.neg': -4,
+        'cubes.omega.done': 5,
+        'q.cubes.omega.planned': 6,
+        'q.obj': { x: 1 },
+        'a.b.c.d.e': 1,
+        '<script>': 1,
+      },
+      ['q.games', 'nope', 7],
+    );
+    expect(live).toEqual([
+      { key: 'q.games', value: 10, headline: true },
+      { key: 'q.neg', value: -4, headline: false },
+    ]);
+    expect(parseLive(null)).toEqual([]);
+    expect(parseLive([1, 2])).toEqual([]);
+    expect(parseLive(Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`m${i}`, i])))).toHaveLength(MAX_LIVE);
+    // A running job without the new fields (an older file).
+    const j = parseLabStatus({ running: [{ id: 'J001', workers: 2 }] }).running[0]!;
+    expect([j.live, j.cubes, j.workersMax, j.memGb]).toEqual([[], [], null, null]);
+    expect(liveCells(j)).toEqual([]);
+    expect(parseLabStatus({ running: [{ id: 'J1', memGb: -2, workersMax: 'many' }] }).running[0]).toMatchObject({ memGb: null, workersMax: null });
+  });
+
+  it('cleans cubes: text ids, whole non-negative counts, at most MAX_CUBES', () => {
+    const cubes = parseCubes([
+      { id: 'omega', done: 2, planned: 4 },
+      { id: 'pauper\u0000\u202e', done: 1, planned: 0 },
+      { id: 'x', done: -1, planned: 3 },
+      { id: 'y', done: 'many', planned: 3 },
+      { done: 1, planned: 2 },
+      { id: 'z'.repeat(80), done: 5, planned: 2 },
+      'junk',
+    ]);
+    expect(cubes.map((c) => [c.id.startsWith('zzz') ? 'long' : c.id, c.done, c.planned, c.fraction])).toEqual([
+      ['omega', 2, 4, 0.5],
+      ['pauper', 1, 0, null],
+      ['long', 5, 2, 1],
+    ]);
+    expect(cubes[2]!.id.length).toBeLessThanOrEqual(40);
+    expect(parseCubes(Array.from({ length: 40 }, (_, i) => ({ id: `c${i}`, done: 0, planned: 1 })))).toHaveLength(MAX_CUBES);
+    expect(parseCubes({ omega: 1 })).toEqual([]);
+  });
+
+  it('hides workers and elapsed in the grid when the card already shows them; formats by name', () => {
+    const j = parseLabStatus({ running: [{ id: 'J1', workers: 3, elapsed: 60, live: { workers: 3, elapsed_s: 60, 'n.size_bytes': 2048, 'n.wait_s': 45, 'n.hit_rate': 0.5, 'n.x': 1.234 } }] }).running[0]!;
+    expect(liveCells(j).map((c) => [c.label, c.value])).toEqual([
+      ['n.size_bytes', '2 KB'],
+      ['n.wait_s', '45 s'],
+      ['n.hit_rate', '50 %'],
+      ['n.x', '1.23'],
+    ]);
+    expect(formatBytes(512)).toBe('512 B');
+    expect(formatBytes(3.4e9)).toBe('3.4 GB');
   });
 });

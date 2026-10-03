@@ -34,6 +34,49 @@
       "ratePerHour": 40,
       "workers": 1,
       "errors": 0
+    },
+    {
+      "id": "J020",
+      "title": "Cube lab: overnight queue, night 1",
+      "phase": "commands 1/1",
+      "started": "2026-10-03T09:10:00-04:00",
+      "elapsed": 6300,
+      "done": 1180,
+      "total": 4000,
+      "unit": "drafts",
+      "ratePerHour": 674,
+      "eta": "2026-10-03T15:06:00-04:00",
+      "workers": 5,
+      "workersMax": 6,
+      "errors": 0,
+      "paused": false,
+      "memGb": 9.42,
+      "live": {
+        "q.night_drafts_done": 1180,
+        "q.engine_errors": 2,
+        "q.games": 1180,
+        "q.night_drafts_done_per_h": 674.3,
+        "q.drafts_per_h": 674.3,
+        "q.games_per_h": 674.3,
+        "q.engine_error_rate": 0.0017,
+        "q.timeouts": 3,
+        "q.draws": 11,
+        "q.recorded_games": 118,
+        "q.recorded_errors": 0,
+        "q.bridge_share": 0.198,
+        "q.mean_turns": 9.4,
+        "q.output_bytes": 734003200,
+        "q.planned_drafts": 4000,
+        "pressure_events": 0,
+        "q.ms_per_turn": 412
+      },
+      "liveHeadline": ["q.night_drafts_done", "q.engine_errors"],
+      "cubes": [
+        { "id": "cube 1", "done": 260, "planned": 800 },
+        { "id": "cube 2", "done": 251, "planned": 800 },
+        { "id": "cube 3", "done": 214, "planned": 800 },
+        { "id": "cube 4", "done": 221, "planned": 800 }
+      ]
     }
   ],
   "queue": [

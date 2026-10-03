@@ -324,8 +324,8 @@ machine's load, memory, swap, memory pressure and recent pressure events.
   preflight and allows only this site's origin), with an 800 ms timeout. Else it
   reads the copy the runner pushes to this repo's orphan `lab-status` branch,
   `https://raw.githubusercontent.com/jalirkan/ForgeCoach/lab-status/status.json`
-  (with a cache-buster; pushed every minute while a job runs and its numbers
-  changed, at least every two minutes regardless). Which one answered is remembered for
+  (with a cache-buster; pushed when its numbers change, at most once a minute,
+  and at least every two minutes regardless). Which one answered is remembered for
   the browser session (`src/lab/source.ts`), so a phone does not wait on the PC
   at every refresh; the PC is tried again every five minutes, or at a manual
   Refresh after 30 s. `#lab?src=<http(s) URL>` reads another copy instead, e.g.
@@ -342,6 +342,14 @@ machine's load, memory, swap, memory pressure and recent pressure events.
   check); IDLE turns red after 10 minutes. Its heartbeat (the loop's last tick,
   published at least every two minutes) tells a quiet job from a dead runner:
   over five minutes old, the page warns.
+- **Live numbers**: a running job's card shows workers in use / max and a grid
+  of its own metrics as of the runner's last minute read (`live`, numbers only):
+  memory, drafts, games, rates per hour, engine errors and their rate, timeouts,
+  draws, recordings and recording errors, bridge share, turns per game, disk;
+  the job's headline metrics first, any other key under its raw name. A cube-lab
+  queue adds a bar per cube, drafts done of planned ("cube 1", … unless the job
+  file says `public_cubes: yes`). Keys outside the metric shape, non-numbers and
+  out-of-range values are dropped (`parseLive`, `parseCubes`).
 - It refreshes every 15 s while reading the PC and every minute otherwise, only
   while the page is visible, and at once on **Refresh** (a spinner while it
   runs).
