@@ -379,7 +379,7 @@ export function MatchSetup({
   const [status, setStatus] = useState<LauncherStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<LaunchResult | null>(null);
-  const supported = status === null ? null : status === 'ready';
+  const supported = status === null ? null : status === 'ready' || status === 'asleep';
   const flags = useAiFlags(draft.cubeId, meta, cubeNames);
   const cube = cubeInfo(draft.cubeId);
   const deckName = `${title} — ${deckColours ? colourLabel(wubrg(deckColours)) : 'my deck'}`;
@@ -439,6 +439,8 @@ export function MatchSetup({
         ? 'Looking for the match launcher on this computer…'
         : status === 'ready'
           ? `Best of ${games === 3 ? 'three' : 'one'} against the AI’s draft. Its list stays hidden, as at a real table.`
+          : status === 'asleep'
+            ? `The engine is sleeping; it starts when you press Begin. Best of ${games === 3 ? 'three' : 'one'} against the AI’s draft, its list hidden.`
           : status === 'down'
             ? 'ForgeCoach’s engine isn’t running (it stops an hour after the last game). Start ForgeCoach again — the app-menu launcher, or ./scripts/play.sh — and Begin unlocks.'
             : 'This engine has no match launcher: update mtg-table and start it again with ./scripts/play.sh.';

@@ -9,7 +9,7 @@
  * so it is saved with the draft.
  */
 import { BASIC_OF, BASIC_NAMES } from '../cube/colors.ts';
-import type { DeckBuild } from '../cube/builder.ts';
+import { mainDeck, sideboard, type DeckBuild } from '../cube/builder.ts';
 import { safeDeckName, type MatchDeck } from './launch.ts';
 
 export const BASIC_KEYS = ['W', 'U', 'B', 'R', 'G', 'C'] as const;
@@ -78,4 +78,9 @@ function counted(names: string[]): Array<[number, string]> {
 /** The match launcher's deck shape. */
 export function toMatchDeck(name: string, d: DeckState): MatchDeck {
   return { name: safeDeckName(name), main: counted(mainNames(d)), sideboard: counted(d.side) };
+}
+
+/** A build plus its pool as the launcher's deck shape (the AI's deck: named by its archetype). */
+export function matchDeck(name: string, b: DeckBuild, pool: string[]): MatchDeck {
+  return { name: safeDeckName(name), main: mainDeck(b), sideboard: counted(sideboard(b, pool)) };
 }

@@ -33,6 +33,12 @@ export interface SavedDraft {
   /** The deck being built after the draft. */
   deck?: DeckState;
   after?: DraftAfter;
+  /**
+   * Booster: the draft just before your last pick, so it can be undone. Kept
+   * until your next pick, which is when the seat you passed to picks from that
+   * pack (everyone picks at once). Never after the last pick.
+   */
+  undo?: Draft;
 }
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;

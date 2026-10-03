@@ -2,10 +2,10 @@
  * ForgeCoach — ui/LoadScreen.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The start page. The primary actions are playing against Forge (ForgeCoach
- * takes the player's seat on a running mtg-table engine) and Draft & build
- * (the deck assistant for paper cube drafts); reviewing a recorded game
- * (sample or file) and following a live game are secondary.
+ * The start page: the lobby tiles route to every mode (Play vs Forge, Draft vs
+ * AI, Draft & build, the cubes, review, live). Under them, Play vs Forge's
+ * engine panel (connection status, how to start the engine, its address);
+ * then reviewing a recorded game (sample or file) and following a live game.
  */
 import { useEffect, useRef, useState } from 'react';
 import './play/play.css';
@@ -14,7 +14,7 @@ import './lobby.css';
 import { LobbyTiles, lobbyTiles } from './LobbyTiles.tsx';
 import { DEFAULT_LIVE_URL, FALLBACK_LIVE_URL } from '../live.ts';
 import { redactSeatUrl, type SeatStatus } from '../play/session.ts';
-import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconLayers, IconPlay, IconUpload } from './Icons.tsx';
+import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconPlay, IconUpload } from './Icons.tsx';
 import { copyText, cx } from './util.ts';
 import { Logo } from './Logo.tsx';
 
@@ -53,6 +53,8 @@ export interface PlayStatus {
   status: SeatStatus;
   detail: string | null;
   attempts: number;
+  /** POST /engine/start is waking a sleeping engine (D308) before the seat connects. */
+  waking?: boolean;
 }
 
 function portArg(url: string): string {
@@ -87,12 +89,20 @@ function CopyCmd({ cmd }: { cmd: string }) {
 /** What the seat status means, in words (never showing the pairing token). */
 function seatStatusText(play: PlayStatus | null, url: string): string | null {
   if (!play) return null;
+  if (play.waking) return 'Waking the engine…';
   if (play.status === 'open') return 'Connected — waiting for the engine to deal…';
   if (play.status === 'connecting' || play.status === 'idle') {
     return play.attempts > 0 ? `Looking for the engine… (attempt ${play.attempts + 1})` : 'Connecting to the engine…';
   }
   if (play.status === 'refused') return 'Another window has the player’s seat.';
   return `Couldn’t reach the engine at ${redactSeatUrl(url)}.`;
+}
+
+/** The Play tile's line while a connection is under way. */
+function playLine(play: PlayStatus | null): string | undefined {
+  if (!play) return undefined;
+  const busy = play.status === 'connecting' || play.status === 'idle' || play.status === 'open';
+  return busy ? `${seatStatusText(play, '') ?? 'Connecting…'} Cancel is below.` : undefined;
 }
 
 function SeatStatusBox({ play, url }: { play: PlayStatus | null; url: string }) {
@@ -115,23 +125,28 @@ function SeatStatusBox({ play, url }: { play: PlayStatus | null; url: string }) 
   );
 }
 
-function PlayCard({
-  seatUrl,
+/**
+ * Play vs Forge's engine panel, under the lobby tiles (the tile itself is the
+ * Play button): the connection's status with Cancel / Try again, and how to
+ * start the engine, with the engine's address.
+ */
+function EnginePanel({
+  url,
+  onUrl,
   homeSeatUrl,
   engineServed,
   play,
   onPlay,
   onCancel,
 }: {
-  seatUrl: string;
+  url: string;
+  onUrl: (u: string) => void;
   homeSeatUrl: string;
   engineServed: boolean;
   play: PlayStatus | null;
   onPlay: (url: string) => void;
   onCancel: () => void;
 }) {
-  const [url, setUrl] = useState(seatUrl);
-  useEffect(() => setUrl(seatUrl), [seatUrl]);
   const busy = play !== null && (play.status === 'connecting' || play.status === 'idle' || play.status === 'open');
   const failed = play !== null && !busy;
   const [helpOpen, setHelpOpen] = useState(false);
@@ -139,26 +154,20 @@ function PlayCard({
     if (failed || (play && play.attempts > 0)) setHelpOpen(true);
   }, [failed, play]);
   const cmd = ENGINE_CMD + portArg(url);
+  if (engineServed && !play) return null;
   return (
-    <section className="play-card" aria-label="Play against Forge">
-      <div className="play-card-main">
-        <div className="play-card-text">
-          <h2 className="play-card-title">Play vs Forge</h2>
-          <p className="muted">
-            {engineServed
-              ? 'A full game against the Forge AI, with the coach one tap away. Forge runs on the computer that served this page.'
-              : 'A full game against the Forge AI, with the coach one tap away. Your Forge engine runs on this computer.'}
-          </p>
-        </div>
+    <section className="play-card engine-panel" aria-label="The Forge engine">
+      <div className="engine-panel-head">
+        <span className="fx-label">Play vs Forge · the engine</span>
         {busy ? (
-          <button className="btn btn-quiet play-go" onClick={onCancel}>
+          <button className="btn btn-quiet btn-sm" onClick={onCancel}>
             <span className="spinner" /> Cancel
           </button>
-        ) : (
-          <button className="btn btn-primary play-go" onClick={() => onPlay(engineServed ? homeSeatUrl : url.trim() || homeSeatUrl)}>
-            <IconPlay size={16} /> {failed ? 'Try again' : 'Play'}
+        ) : failed ? (
+          <button className="btn btn-primary btn-sm" onClick={() => onPlay(engineServed ? homeSeatUrl : url.trim() || homeSeatUrl)}>
+            <IconPlay size={14} /> Try again
           </button>
-        )}
+        ) : null}
       </div>
       <SeatStatusBox play={play} url={url} />
       {!engineServed && (
@@ -183,7 +192,7 @@ function PlayCard({
               Wait for <i>Engine ready on ws://…</i>. Close any mtg-table board tab first — only one window can hold the player’s seat.
             </li>
             <li>
-              Press <b>Play</b>. Chrome may ask to let this page reach devices on your local network — allow it. Safari blocks it; use Chrome or Firefox.
+              Press <b>Play vs Forge</b>. Chrome may ask to let this page reach devices on your local network — allow it. Safari blocks it; use Chrome or Firefox.
             </li>
           </ol>
           <form
@@ -196,36 +205,15 @@ function PlayCard({
             <label className="tiny muted" htmlFor="seat-url">
               Engine address
             </label>
-            <input id="seat-url" value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false} aria-label="Engine seat URL" />
+            <input id="seat-url" value={url} onChange={(e) => onUrl(e.target.value)} spellCheck={false} aria-label="Engine seat URL" />
             {url !== homeSeatUrl && (
-              <button type="button" className="btn btn-quiet btn-sm" onClick={() => setUrl(homeSeatUrl)}>
+              <button type="button" className="btn btn-quiet btn-sm" onClick={() => onUrl(homeSeatUrl)}>
                 Reset
               </button>
             )}
           </form>
         </details>
       )}
-    </section>
-  );
-}
-
-/** The third primary option: the deck assistant for paper cube drafts. */
-function DraftCard({ onDraft }: { onDraft: () => void }) {
-  return (
-    <section className="draft-card" aria-label="Draft and build">
-      <div className="draft-card-icon" aria-hidden="true">
-        <IconLayers size={22} />
-      </div>
-      <div className="play-card-text">
-        <h2 className="draft-card-title">Draft &amp; build</h2>
-        <p className="muted">Draft a cube against the AI, Grid or Winston — or track a paper draft — then build the best 40 with its reasons.</p>
-      </div>
-      <button className="btn btn-primary draft-go" onClick={() => (location.hash = '#draft')}>
-        Draft vs AI <IconArrowRight size={16} />
-      </button>
-      <button className="btn btn-quiet draft-go" onClick={onDraft}>
-        Open <IconArrowRight size={16} />
-      </button>
     </section>
   );
 }
@@ -328,6 +316,8 @@ export function LoadScreen({
   const [copied, setCopied] = useState(false);
   const samples = [...SAMPLES].sort((a, b) => Number(b.id === lastSample) - Number(a.id === lastSample));
   const [more, setMore] = useState(false);
+  const [seatInput, setSeatInput] = useState(seatUrl);
+  useEffect(() => setSeatInput(seatUrl), [seatUrl]);
   if (engineServed && !more) {
     return <EngineConnect seatUrl={seatUrl} play={play} onPlay={onPlay} onCancel={onCancelPlay} onMore={() => setMore(true)} onSettings={onSettings} />;
   }
@@ -353,10 +343,11 @@ export function LoadScreen({
           </p>
         </section>
 
-        <LobbyTiles tiles={lobbyTiles({ onPlay: () => onPlay(seatUrl), onDraftBuild: onDraft, samples: SAMPLES.length })} />
+        <LobbyTiles
+          tiles={lobbyTiles({ onPlay: () => onPlay(engineServed ? homeSeatUrl : seatInput.trim() || homeSeatUrl), onDraftBuild: onDraft, samples: SAMPLES.length, playLine: playLine(play) })}
+        />
 
-        <PlayCard seatUrl={seatUrl} homeSeatUrl={homeSeatUrl} engineServed={engineServed} play={play} onPlay={onPlay} onCancel={onCancelPlay} />
-        <DraftCard onDraft={onDraft} />
+        <EnginePanel url={seatInput} onUrl={setSeatInput} homeSeatUrl={homeSeatUrl} engineServed={engineServed} play={play} onPlay={onPlay} onCancel={onCancelPlay} />
 
         {error && (
           <div className="banner banner-bad" role="alert">

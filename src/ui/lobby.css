@@ -98,22 +98,11 @@
 }
 
 /* The existing cards, in the same hand */
-.lobby .play-card,
-.lobby .draft-card {
+.lobby .play-card {
   border-radius: 4px;
   border-color: rgba(201, 164, 92, 0.32);
   background: linear-gradient(180deg, rgba(40, 32, 20, 0.5), rgba(23, 19, 13, 0.9));
   box-shadow: none;
-}
-.lobby .play-card h2,
-.lobby .draft-card-title {
-  font: 500 24px/1.1 var(--serif);
-}
-.lobby .draft-card-icon {
-  border-radius: 50%;
-  border: 1px solid var(--gold-lo);
-  background: transparent;
-  color: var(--gold);
 }
 .lobby .btn {
   border-radius: 6px;

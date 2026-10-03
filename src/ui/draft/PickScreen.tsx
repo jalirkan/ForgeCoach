@@ -118,6 +118,8 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
     offer = `${yourPack(b).length} cards on offer`;
     status = pick ? `Picking ${pick}` : mine ? 'Choose a card' : null;
     primary = { label: 'Pick', onClick: () => pick && game.act({ kind: 'pick', card: pick }), disabled: !pick, kbd: 'Enter' };
+    // Your last pick, until your next one: only then does the next seat pick from that pack.
+    if (game.canUndo) secondary = { label: 'Undo pick', onClick: game.undo, disabled: false, kbd: 'Z' };
   }
   const poolOf = Math.round(expectedPicks(d));
   const mono = `${offer} · pool ${d.picks.you.length} / ${d.format === 'booster' ? '' : '~'}${poolOf}`;
@@ -136,14 +138,14 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
   const timerTotal = game.saved?.timer ?? 0;
   const left = useCountdown(timerTotal, mine && !d.done, stepKey, auto);
 
-  // Keys: Enter acts, P passes (Winston), Escape clears a selection.
+  // Keys: Enter acts, P passes (Winston), Z undoes a pick (Booster), Escape clears a selection.
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement || document.querySelector('.sheet-backdrop')) return;
       if (e.key === 'Enter' && primary && !primary.disabled) {
         e.preventDefault();
         primary.onClick();
-      } else if ((e.key === 'p' || e.key === 'P') && secondary && !secondary.disabled) secondary.onClick();
+      } else if (secondary?.kbd && e.key.toLowerCase() === secondary.kbd.toLowerCase() && !secondary.disabled && !e.metaKey && !e.ctrlKey) secondary.onClick();
       else if (e.key === 'Escape') {
         setSel(null);
         setPick(null);

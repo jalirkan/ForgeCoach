@@ -17,6 +17,7 @@ import { parseLog, type GameLog, type LoggedFrame } from '../log.ts';
 import { extractDecisions } from '../decisions.ts';
 import type { ActBody, AnswerBody, AskBody, OverBody } from '../protocol.ts';
 import {
+  AI_DECK_WARNING_REDACTED,
   connectSeat,
   REFUSED_DETAIL,
   SEAT_REFUSED_CLOSE_CODE,
@@ -363,6 +364,59 @@ describe('connectSeat — connection', () => {
     expect(s.log!.header.gameId).toBe('rerec-ability-42-g2');
     expect(s.log!.frames[0]!.type).toBe('hello_ok');
     expect(s.state?.gameId).toBe('rerec-ability-42-g2');
+  });
+
+  it('an engine restarted under the seat (POST /match) is a new match: the old game is archived, nothing of it shows', () => {
+    const g1 = RECORDINGS['human-ability-42']!;
+    const h = harness({ backoffMs: 1 });
+    h.sock().open();
+    replay(h, { ...g1, frames: g1.frames.slice(0, 60) });
+    const before = h.session.snapshot();
+    expect(before.state).not.toBeNull();
+    // The launcher stops the engine: 1006, no close frame; then the new engine answers.
+    vi.useFakeTimers();
+    h.sock().drop(1006);
+    vi.advanceTimersByTime(10);
+    vi.useRealTimers();
+    h.sock().open();
+    const hello = g1.frames.find((f) => f.type === 'hello_ok')!;
+    h.sock().msg({ ...wire(hello), seq: 1, body: { ...(hello.body as object), gameId: 'match-m1791019697368', match: { yourDeck: { name: 'Practice draft - Boros', cards: 40 }, aiDeck: { name: 'AI Drafter - Simic - Artifacts', cards: 40 }, aiProfile: 'Default', games: 1 } } });
+    // A stale state of the old game, re-delivered by nothing, must not show either.
+    const st = g1.frames.find((f) => f.type === 'state')!;
+    h.sock().msg({ ...wire(st), seq: 2 });
+    const s = h.session.snapshot();
+    expect(s.hello?.gameId).toBe('match-m1791019697368');
+    expect(s.hello?.match?.yourDeck?.name).toBe('Practice draft - Boros');
+    expect(s.state).toBeNull();
+    expect(s.input).toBeNull();
+    expect(s.ask).toBeNull();
+    expect(s.previousLogs).toHaveLength(1);
+    expect(s.log!.header.gameId).toBe('match-m1791019697368');
+  });
+
+  it('Forge’s “AI can’t play these cards well” reveal is answered at once and never shows or logs the AI’s cards', () => {
+    const h = harness();
+    h.sock().open();
+    const g1 = RECORDINGS['human-ability-42']!;
+    h.sock().msg(wire(g1.frames.find((f) => f.type === 'hello_ok')!));
+    h.sock().msg({
+      v: 1,
+      seq: 4,
+      t: 1,
+      type: 'ask',
+      body: { askId: 'a1', kind: 'choose_list', timeoutMs: 120000, prompt: "AI can't play these cards well from Forge AI's  Deck", options: [{ id: 0, label: '=== Main Deck ===', kind: 'text' }, { id: 1, label: 'Chromatic Star (BRR)', kind: 'other' }], preselected: [], min: -1, max: -1, reveal: true },
+    });
+    const answers = h.sock().sentOf('answer');
+    expect(answers).toHaveLength(1);
+    expect(answers[0]!.body).toEqual({ askId: 'a1', value: [] });
+    const s = h.session.snapshot();
+    expect(s.ask).toBeNull();
+    expect(JSON.stringify(s.log)).not.toContain('Chromatic Star');
+    expect(JSON.stringify(s.log)).toContain(AI_DECK_WARNING_REDACTED);
+    // Any other reveal is the player's to read.
+    h.sock().msg({ v: 1, seq: 5, t: 2, type: 'ask', body: { askId: 'a2', kind: 'choose_list', timeoutMs: 0, prompt: 'Revealed', options: [{ id: 0, label: 'Opt', kind: 'card' }], preselected: [], min: -1, max: -1, reveal: true } });
+    expect(h.session.snapshot().ask?.askId).toBe('a2');
+    expect(h.sock().sentOf('answer')).toHaveLength(1);
   });
 
   it('notifies subscribers once per scheduled flush, with a stable snapshot', () => {

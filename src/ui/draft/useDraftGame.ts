@@ -13,9 +13,8 @@ import { buildDecks } from '../../cube/builder.ts';
 import { cubeInfo } from '../../cube/cubes.ts';
 import { newPool, savePool } from '../../cube/pools.ts';
 import { labCards } from '../../draft/cards.ts';
-import { initialDeck, type DeckState } from '../../draft/deck.ts';
+import { initialDeck, matchDeck, type DeckState } from '../../draft/deck.ts';
 import { aiStep, apply, knownAiCards, newDraft, toAct, type Draft, type DraftAction, type DraftEvent, type Format } from '../../draft/draft.ts';
-import { matchDeck } from '../../draft/launch.ts';
 import { newSeed } from '../../draft/rng.ts';
 import { clearDraft, loadDraft, saveDraft, type SavedDraft } from '../../draft/store.ts';
 import { useCubeData, type CubeData } from '../deck/useCubeData.ts';
@@ -52,6 +51,10 @@ export interface DraftGame {
   update: (patch: Partial<Omit<SavedDraft, 'draft'>>) => void;
   setDeck: (d: DeckState) => void;
   abandon: () => void;
+  /** Booster: your last pick can still be taken back (see SavedDraft.undo). */
+  canUndo: boolean;
+  /** Take back your last Booster pick. */
+  undo: () => void;
 }
 
 export function useDraftGame(): DraftGame {
@@ -152,13 +155,20 @@ export function useDraftGame(): DraftGame {
       const cur = savedRef.current;
       if (!cur || toAct(cur.draft) !== 'you') return;
       try {
-        commit({ ...cur, draft: apply(cur.draft, a, Date.now(), cardsRef.current ?? undefined) });
+        const next = apply(cur.draft, a, Date.now(), cardsRef.current ?? undefined);
+        commit({ ...cur, draft: next, undo: next.format === 'booster' && !next.done ? cur.draft : undefined });
       } catch {
         /* a stale tap: ignore */
       }
     },
     [commit],
   );
+
+  const undo = useCallback(() => {
+    const cur = savedRef.current;
+    if (!cur?.undo || cur.draft.done) return;
+    commit({ ...cur, draft: cur.undo, undo: undefined });
+  }, [commit]);
 
   return {
     saved,
@@ -172,6 +182,8 @@ export function useDraftGame(): DraftGame {
     update: (patch) => savedRef.current && commit({ ...savedRef.current, ...patch }),
     setDeck: (deck) => savedRef.current && commit({ ...savedRef.current, deck }),
     abandon: () => commit(null),
+    canUndo: !!saved?.undo && !!draft && draft.format === 'booster' && !draft.done,
+    undo,
   };
 }
 

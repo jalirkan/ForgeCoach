@@ -222,6 +222,19 @@ describe('booster', () => {
     expect(b0.table[0]).toContain(knownAiCards(b2)[0]);
   });
 
+  it('undo is fair: a different pick from the state before leaves every other seat’s pick and your next pack unchanged', () => {
+    const b0 = newDraft({ cubeId: 'synergy', format: 'booster', cube: names, seed: 11, youFirst: true, seats: 4, now: 1 }) as BoosterDraft;
+    const [a, b] = b0.table[0]!;
+    const x = apply(b0, { kind: 'pick', card: a! }, 2, cards) as BoosterDraft;
+    const y = apply(b0, { kind: 'pick', card: b! }, 2, cards) as BoosterDraft;
+    expect(x.picks.ai).toEqual(y.picks.ai);
+    expect(x.bots).toEqual(y.bots);
+    // The pack you are handed next does not depend on your pick.
+    expect(x.table[0]).toEqual(y.table[0]);
+    // Only the pack you passed differs, and nobody has picked from it yet.
+    expect(x.table.filter((p, i) => JSON.stringify(p) !== JSON.stringify(y.table[i]))).toHaveLength(1);
+  });
+
   it('runs three packs to 45 cards each, every dealt card once', () => {
     for (const seats of [2, 4, 8]) {
       const d0 = newDraft({ cubeId: 'synergy', format: 'booster', cube: names, seed: 9, youFirst: true, seats, now: 1 }) as BoosterDraft;
