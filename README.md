@@ -454,12 +454,11 @@ score.
 - Format failure rates and transport errors are compared separately from the
   score. A run with transport errors puts a warning above the verdict and the
   verdict is marked not trustworthy (the CLI exits with status 3).
-- **Regret, when it exists.** An engine-graded bench is planned: each answer
-  scored by its win-rate gap to the best line, from playouts. Samples carry an
-  optional `regret` (value and interval); once both runs have it, mean regret
-  (lower is better) is the headline and the verdict, the pass rate becomes the
-  secondary view, and the calibration table reads regret instead of the score.
-  Until then nothing changes.
+- **Regret, when the cases are graded.** Graded cases carry a regret table (see
+  *Engine-graded regret* below) and every answer to them a `regret` (value and
+  interval). Once both runs have it, mean regret (lower is better) is the
+  headline and the verdict, the pass rate becomes the secondary view, and the
+  calibration table reads regret instead of the score.
 - Result files from before repeats existed (one answer per case) still load, as
   N=1 with a warning; their cases cannot be checked for noise, so no flips are
   flagged against them.
@@ -502,6 +501,64 @@ at frame n, as the play screen's coach saw it. Use that for a target or an
 engine question. Choose decisions whose right answer is clear to a strong player
 from what you could see. Check the card text in the printed prompt, not your
 memory. If you are unsure, use `"confidence": "low"`.
+
+#### Engine-graded regret
+
+Each graded case carries a **regret table** (`grade` in its JSON), made by
+mtg-table's coach grader (`tools/coach-grade.sh`, its D332–D334): the decision is
+rebuilt in Forge from the viewer's redacted view, the hidden cards (the
+opponent's hand, the library order) are redealt from the opponent's deck list or
+card pool minus what was seen — never the real ones — and every legal option is
+played out a few hundred times by Forge's Default AI on both seats, to the end of
+the game, on common random numbers (the same deals for every option, so option
+differences are paired). Each option gets a win rate and a **regret**: the best
+option's win rate minus its own, in win-rate points (0 = the best line), with a
+95% interval. A bench run needs no engine: it maps the coach's parsed answer to
+the table's option (identical creatures are interchangeable, as for the answer
+lists) and records that option's regret.
+
+- **The yardstick is "best against Forge Default".** That is the opponent
+  ForgeCoach seats, it is fixed and reproducible, and no perfect-play oracle
+  exists for Magic. Its limits: it rewards exploiting Forge's habits, can call a
+  line that is right against a strong human wrong, and plays the rest of the game
+  with Forge, not with you. The rebuild also loses history (until-end-of-turn
+  effects, hidden exile); each table lists what its rebuild could not reproduce
+  (`fidelity`).
+- **Noise is reported next to every number.** A table has a `noise` (the median
+  regret half-width; about ±3–5 points at 200 playouts per option); each answer
+  keeps its option's interval; the report prints the mean grading noise beside
+  mean regret, and per case.
+- **Low information.** An answer whose regret interval is wider than ±0.08 is
+  counted as low-information; the report says how many and gives mean regret
+  without them. Format failures (missing, unparsable, illegal answers) have no
+  regret and stay apart from quality; a legal answer the table has no option for
+  is counted as "not in table".
+- **Held-out cases.** About ten graded cases are held out (`"holdout": true`). A
+  plain run skips them (`--split dev`, the default); `--split holdout` runs only
+  them, to confirm a finished prompt change. **Never tune the prompt on what the
+  held-out cases show.**
+- **Calibration** reads regret: do answers the coach calls high confidence lose
+  less than the ones it calls low?
+
+Commands (the grading itself runs in mtg-table, on a PC):
+
+```bash
+npm run bench:coach -- moments --logs '<mtg-table>/var/cubelab/queue/normal/*/games/*/*.jsonl.gz' --out m.jsonl
+#   …mtg-table: tools/coach-grade.sh batch --moments m.jsonl --out graded.jsonl --jobs 6
+npm run bench:coach -- import-graded graded.jsonl --select 40 --candidates c.jsonl   # the turning-point miner
+npm run bench:coach -- import-graded graded.jsonl --write --holdout 10              # tables into cases
+npm run bench:coach -- regrade bench/coach/results/<run>.json                       # regret for an older run
+```
+
+`moments` lists a log's decisions worth grading (main phases, attacks, blocks,
+and a human seat's target picks, each with a real choice); a cube-lab
+recording's two decks come from its run's `drafts.jsonl`. `import-graded
+--select N` keeps the N decisions whose options' win rates differ most beyond
+the first pass's noise (at most a quarter from one log, every decision type
+represented). `--write` adds each table to the case with the moment's id, or
+writes a new case (acceptable: the best option and its statistical ties;
+unacceptable: regret ≥ 0.10 with an interval clear of 0; low confidence when the
+table is noisy or the rebuild lost something that matters).
 
 ### End-to-end test (play a whole game)
 
