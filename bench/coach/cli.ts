@@ -12,8 +12,8 @@
  *   add        write a case skeleton for one decision of a log
  *   cards      fetch card text the snapshot lacks (Scryfall)
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join, relative, resolve } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, join, relative, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { extractDecisions } from '../../src/decisions.ts';
@@ -54,13 +54,13 @@ import {
   caseGradeOf,
   chooseHoldout,
   gradeRationale,
+  GRADED_TYPES,
   LOW_INFO_HALF_WIDTH,
-  selectTurningPoints,
   seriousFidelity,
   type GradedLine,
+  type GradedType,
   type MomentLine,
 } from '../../src/bench/grade.ts';
-import { GRADED_TYPES, labDecks, momentsOf, type GradedType } from '../../src/bench/moments.ts';
 
 const ROOT = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
@@ -80,7 +80,7 @@ function flags(argv: string[]): { pos: string[]; f: Map<string, string | true> }
 }
 const VALUED = new Set([
   'source', 'model', 'label', 'only', 'type', 'helper-url', 'show', 'log', 'decision', 'frame', 'id', 'kind', 'out', 'repeat', 'concurrency', 'model-by-type', 'prompt-format',
-  'split', 'logs', 'types', 'prefix', 'opp-deck', 'opp-pool', 'deck', 'max-per-log', 'select', 'candidates', 'min-spread', 'max-fidelity', 'holdout', 'grader',
+  'split', 'holdout', 'grader',
 ]);
 const str = (f: Map<string, string | true>, k: string): string | undefined => {
   const v = f.get(k);
@@ -112,15 +112,9 @@ const USAGE = `Coach benchmark (bench/coach/). Usage: npm run bench:coach -- [op
                          set is run only to confirm a finished change, never while tuning)
   --dry-run [--show <id>]  build every prompt and check every case (all splits); no model call
   regrade <results.json>   fill each answer's regret from the cases' current regret tables
-  moments --cases --out m.jsonl [--only ids]   the bench's own spell/attack/block/target cases, to grade
-  moments --logs 'glob,…' --out m.jsonl [--types spell,attack,block,target] [--prefix mined]
-          [--opp-deck D | --opp-pool P] [--deck D] [--max-per-log N]
-                         the decisions of logs worth grading (mtg-table tools/coach-grade.sh
-                         batch reads the file); a cube-lab run's logs get both decks from
-                         its drafts.jsonl
-  import-graded <graded.jsonl> --select N --candidates c.jsonl [--min-spread 0.15] [--max-fidelity 0]
-                         the turning-point miner: keep the N decisions whose options differ most
-  import-graded <graded.jsonl> --write [--holdout N] [--prefix mined] [--grader "mtg-table <sha>"]
+  moments --cases --out m.jsonl [--only ids]   the bench's spell/attack/block/target cases as
+                         moments for mtg-table's tools/coach-grade.sh batch
+  import-graded <graded.jsonl> --write [--holdout N] [--grader "mtg-table <sha>"]
                          write each graded decision's regret table into its case (a new case
                          when no case has its id), then hold out N graded cases
   --compare a.json b.json  paired comparison: per-case difference, 95% interval, verdict,
@@ -563,49 +557,6 @@ async function refreshCards(): Promise<number> {
 // ---------------------------------------------------------------------------
 // The engine-graded bench: moments for the grader, its results back as cases
 
-/** Files matching a simple glob (`*` within a path part, `**` across parts), or the path itself. */
-function globFiles(pattern: string): string[] {
-  const abs = resolve(pattern);
-  if (!/[*?]/.test(abs)) return existsSync(abs) ? [abs] : [];
-  const parts = abs.split('/');
-  const first = parts.findIndex((p) => /[*?]/.test(p));
-  const base = parts.slice(0, first).join('/') || '/';
-  const re = new RegExp(
-    '^' +
-      parts
-        .slice(first)
-        .join('/')
-        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-        .replace(/\*\*\//g, '(?:.*/)?')
-        .replace(/\*\*/g, '.*')
-        .replace(/\*/g, '[^/]*')
-        .replace(/\?/g, '[^/]') +
-      '$',
-  );
-  const out: string[] = [];
-  const walk = (dir: string) => {
-    let names: string[];
-    try {
-      names = readdirSync(dir);
-    } catch {
-      return;
-    }
-    for (const n of names) {
-      const p = join(dir, n);
-      let st;
-      try {
-        st = statSync(p);
-      } catch {
-        continue;
-      }
-      if (st.isDirectory()) walk(p);
-      else if (re.test(relative(base, p))) out.push(p);
-    }
-  };
-  walk(base);
-  return out.sort();
-}
-
 /** The bench's own graded-type cases as moments, with their answers as extra options and their logs' opponents. */
 function caseMoments(f: Map<string, string | true>, out: string): number {
   const opp = JSON.parse(readFileSync(join(ROOT, BENCH_DIR_OPPONENTS), 'utf8')) as Record<string, string>;
@@ -638,66 +589,12 @@ function caseMoments(f: Map<string, string | true>, out: string): number {
 const BENCH_DIR_OPPONENTS = 'bench/coach/opponents.json';
 
 function moments(f: Map<string, string | true>): number {
-  if (f.has('cases')) {
-    const o = str(f, 'out');
-    if (!o) {
-      console.error('moments --cases --out m.jsonl [--only ids]');
-      return 2;
-    }
-    return caseMoments(f, o);
-  }
-  const logs = (str(f, 'logs') ?? str(f, 'log') ?? '').split(',').filter(Boolean).flatMap(globFiles);
-  const out = str(f, 'out');
-  if (!logs.length || !out) {
-    console.error("moments --logs 'glob,…' --out moments.jsonl [--types spell,attack,block,target]");
+  const o = str(f, 'out');
+  if (!f.has('cases') || !o) {
+    console.error('moments --cases --out m.jsonl [--only ids]');
     return 2;
   }
-  const types = (str(f, 'types') ?? GRADED_TYPES.join(',')).split(',') as GradedType[];
-  if (types.some((t) => !GRADED_TYPES.includes(t))) {
-    console.error(`--types: some of ${GRADED_TYPES.join(', ')}`);
-    return 2;
-  }
-  const maxPer = Number(str(f, 'max-per-log') ?? 0);
-  const cards = readCards(ROOT);
-  const lines: string[] = [];
-  for (const path of logs) {
-    let log;
-    try {
-      log = readLogFile(path);
-    } catch (e) {
-      console.error(`${path}: ${e instanceof Error ? e.message : String(e)}`);
-      continue;
-    }
-    let ms = momentsOf(log, path, cards, { types, prefix: str(f, 'prefix') ?? 'mined', logName: basename(path) });
-    if (maxPer > 0 && ms.length > maxPer) {
-      const all = ms;
-      ms = Array.from({ length: maxPer }, (_, k) => all[Math.floor((k * all.length) / maxPer)]!);
-    }
-    // A cube-lab recording: both decks from its run's drafts.jsonl (D315).
-    const runDir = resolve(dirname(path), '../..');
-    let decks: { own: string; opp: string } | null = null;
-    if (existsSync(join(runDir, 'drafts.jsonl'))) {
-      const d = labDecks(path, readFileSync(join(runDir, 'drafts.jsonl'), 'utf8'));
-      if (d) decks = { own: resolve(runDir, d.own), opp: resolve(runDir, d.opp) };
-    }
-    // A game ForgeCoach launched (mtg-table D303): var/match/<id>/you.dck beside ai.dck, paths in mtg-table.
-    const ownPath = ((log.header as { decks?: { player: number; path: string | null }[] }).decks ?? []).find((d) => d.player === log.seat)?.path ?? null;
-    const launched = ownPath && /(^|\/)var\/match\/[^/]+\/you\.dck$/.test(ownPath) ? ownPath.replace(/you\.dck$/, 'ai.dck') : null;
-    for (const m of ms) {
-      const line: MomentLine = { ...m };
-      const deck = str(f, 'deck') ?? decks?.own;
-      const oppDeck = str(f, 'opp-deck') ?? decks?.opp ?? launched ?? undefined;
-      if (deck) line.deck = resolve(deck);
-      if (oppDeck) line.oppDeck = oppDeck === launched ? oppDeck : resolve(oppDeck);
-      else if (str(f, 'opp-pool')) line.oppPool = resolve(str(f, 'opp-pool')!);
-      lines.push(JSON.stringify(line));
-    }
-    console.error(`${relative(process.cwd(), path)}: ${ms.length} moment${ms.length === 1 ? '' : 's'}${decks ? ' (lab decks)' : ''}`);
-  }
-  mkdirSync(dirname(resolve(out)), { recursive: true });
-  writeFileSync(resolve(out), lines.join('\n') + (lines.length ? '\n' : ''));
-  console.log(`${lines.length} moments → ${out}`);
-  return 0;
+  return caseMoments(f, o);
 }
 
 function readGraded(path: string): GradedLine[] {
@@ -726,36 +623,12 @@ function repoLog(abs: string): string {
 
 async function importGraded(pos: string[], f: Map<string, string | true>): Promise<number> {
   if (pos.length !== 1) {
-    console.error('import-graded <graded.jsonl> (--select N --candidates c.jsonl | --write [--holdout N])');
+    console.error('import-graded <graded.jsonl> --write [--holdout N]');
     return 2;
   }
   const lines = readGraded(pos[0]!);
-  if (f.has('select')) {
-    const keep = Number(str(f, 'select'));
-    const out = str(f, 'candidates');
-    if (!keep || !out) {
-      console.error('--select N needs --candidates <file>');
-      return 2;
-    }
-    const { kept, rejected } = selectTurningPoints(lines, {
-      keep,
-      ...(str(f, 'min-spread') ? { minSpread: Number(str(f, 'min-spread')) } : {}),
-      ...(str(f, 'max-fidelity') ? { maxFidelity: Number(str(f, 'max-fidelity')) } : {}),
-    });
-    const moments = kept.map((k) => {
-      const { grade: _g, momentKey: _k, ...m } = k.line;
-      // The second pass grades every option the first one saw, plus nothing new.
-      return JSON.stringify({ ...m, firstPass: { spread: k.spread, score: k.score } });
-    });
-    writeFileSync(resolve(out), moments.join('\n') + (moments.length ? '\n' : ''));
-    for (const k of kept) console.log(`kept ${k.line.momentKey} (${k.line.type}): ${k.why}`);
-    const why = new Map<string, number>();
-    for (const r of rejected) why.set(r.why.replace(/[\d.]+/g, '#').slice(0, 60), (why.get(r.why.replace(/[\d.]+/g, '#').slice(0, 60)) ?? 0) + 1);
-    console.log(`${kept.length} kept of ${lines.length} → ${out}; rejected: ${[...why].map(([k, n]) => `${k} ×${n}`).join('; ') || 'none'}`);
-    return 0;
-  }
   if (!f.has('write')) {
-    console.error('import-graded: --select N --candidates <file>, or --write');
+    console.error('import-graded: --write');
     return 2;
   }
   const meta = { grader: str(f, 'grader') ?? 'mtg-table tools/coach-grade.sh', gradedAt: new Date().toISOString() };

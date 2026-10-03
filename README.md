@@ -543,22 +543,16 @@ lists) and records that option's regret.
 Commands (the grading itself runs in mtg-table, on a PC):
 
 ```bash
-npm run bench:coach -- moments --logs '<mtg-table>/var/cubelab/queue/normal/*/games/*/*.jsonl.gz' --out m.jsonl
+npm run bench:coach -- moments --cases --out m.jsonl        # the bench's spell/attack/block/target cases
 #   …mtg-table: tools/coach-grade.sh batch --moments m.jsonl --out graded.jsonl --jobs 6
-npm run bench:coach -- import-graded graded.jsonl --select 40 --candidates c.jsonl   # the turning-point miner
-npm run bench:coach -- import-graded graded.jsonl --write --holdout 10              # tables into cases
-npm run bench:coach -- regrade bench/coach/results/<run>.json                       # regret for an older run
+npm run bench:coach -- import-graded graded.jsonl --write --holdout 10   # tables into the cases
+npm run bench:coach -- regrade bench/coach/results/<run>.json           # regret for an older run
 ```
 
-`moments` lists a log's decisions worth grading (main phases, attacks, blocks,
-and a human seat's target picks, each with a real choice); a cube-lab
-recording's two decks come from its run's `drafts.jsonl`. `import-graded
---select N` keeps the N decisions whose options' win rates differ most beyond
-the first pass's noise (at most a quarter from one log, every decision type
-represented). `--write` adds each table to the case with the moment's id, or
-writes a new case (acceptable: the best option and its statistical ties;
-unacceptable: regret ≥ 0.10 with an interval clear of 0; low confidence when the
-table is noisy or the rebuild lost something that matters).
+The opponent deck of each bench log is in `bench/coach/opponents.json`.
+`--write` adds each table to the case with that id. Grading the bench is not a
+routine step: the grader's main use is the live engine analysis a coach
+explains (mtg-table D334).
 
 ### End-to-end test (play a whole game)
 

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // The engine-graded bench (mtg-table's coach grader): answer → option mapping,
 // regret in samples and reports, low-information tables, regrading an old run,
-// the turning-point miner's selection, answer lists from a table, the held-out
-// split, and the moments a log offers. No engine and no model calls.
+// answer lists from a table, and the held-out split. No engine and no model calls.
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
@@ -29,13 +28,10 @@ import {
   gradeProblems,
   isLowInfo,
   LOW_INFO_HALF_WIDTH,
-  selectTurningPoints,
   seriousFidelity,
   type CaseGrade,
-  type GradedLine,
   type GradeOption,
 } from './grade.ts';
-import { labDecks, momentId, momentsOf } from './moments.ts';
 import { readCards, readCases, readLogFile } from './benchFiles.ts';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -173,50 +169,6 @@ describe('regret in a run and its report', () => {
   });
 });
 
-describe('the turning-point miner', () => {
-  const line = (key: string, log: string, type: GradedLine['type'], rates: number[], extra: Partial<GradedLine['grade']> = {}): GradedLine => ({
-    momentKey: key,
-    log,
-    frame: 1,
-    mode: 'review',
-    type,
-    grade: {
-      status: 'ok',
-      noise: 0.1,
-      options: rates.map((w, i) => opt(`t${i}`, w, Math.max(...rates) - w)),
-      ...extra,
-    },
-  });
-
-  it('keeps the decisions whose options differ most, beyond the first pass’s noise', () => {
-    const lines = [
-      line('flat', 'a', 'spell', [0.5, 0.52]),
-      line('big', 'a', 'spell', [0.2, 0.7]),
-      line('mid', 'b', 'attack', [0.4, 0.62]),
-      line('broken', 'b', 'block', [0.1, 0.9], { status: 'unsupported', error: 'stack' }),
-    ];
-    const { kept, rejected } = selectTurningPoints(lines, { keep: 5 });
-    expect(kept.map((k) => k.line.momentKey)).toEqual(['big', 'mid']);
-    expect(rejected.find((r) => r.key === 'flat')!.why).toMatch(/spread 0.02/);
-    expect(rejected.find((r) => r.key === 'broken')!.why).toMatch(/unsupported/);
-  });
-
-  it('skips positions the rebuild could not reproduce, but not mere guesses about hidden cards', () => {
-    const hidden = line('guess', 'a', 'spell', [0.2, 0.7], { fidelity: ['face-down #5 is a guess from the hidden cards'] });
-    const lost = line('lost', 'a', 'spell', [0.2, 0.7], { fidelity: ['P/T of Bear #4: log 4/4, rebuilt 2/2'] });
-    expect(seriousFidelity(hidden.grade.fidelity)).toEqual([]);
-    const { kept } = selectTurningPoints([hidden, lost], { keep: 5 });
-    expect(kept.map((k) => k.line.momentKey)).toEqual(['guess']);
-  });
-
-  it('spreads the set over logs and decision types', () => {
-    const lines = [...Array.from({ length: 6 }, (_, i) => line(`a${i}`, 'one-log', 'spell', [0.1, 0.9 - i * 0.01])), line('b0', 'other', 'block', [0.3, 0.55])];
-    const { kept } = selectTurningPoints(lines, { keep: 4, perLogShare: 0.5 });
-    expect(kept.length).toBe(3); // two from the long log (half of 4), one block
-    expect(kept.some((k) => k.line.type === 'block')).toBe(true);
-  });
-});
-
 describe('answer lists and the held-out set', () => {
   it('accepts the best and its statistical ties, rejects clear blunders', () => {
     const g = table([
@@ -230,6 +182,11 @@ describe('answer lists and the held-out set', () => {
     expect(l.acceptable).toEqual(['cast:1', 'cast:2', 'cast:3']);
     expect(l.unacceptable).toEqual(['pass']);
     expect(answerLists(g, (t) => t !== 'cast:2').acceptable).toEqual(['cast:1', 'cast:3', 'cast:4']);
+  });
+
+  it('tells hidden-card guesses from fidelity losses that change the position', () => {
+    expect(seriousFidelity(['face-down #5 is a guess from the hidden cards'])).toEqual([]);
+    expect(seriousFidelity(['P/T of Bear #4: log 4/4, rebuilt 2/2'])).toHaveLength(1);
   });
 
   it('turns a grader line into a case table only when it graded something', () => {
@@ -248,29 +205,5 @@ describe('answer lists and the held-out set', () => {
     const again = chooseHoldout(cs.map((c) => ({ ...c, holdout: c.id === 'f' })), 2);
     expect(again).toContain('f');
     expect(again.length).toBe(2);
-  });
-});
-
-describe('moments for the grader', () => {
-  it('lists the attack, block and spell decisions of a log that offer a real choice', () => {
-    const log = readLogFile(`${ROOT}/bench/coach/logs/human-trample-7.jsonl.gz`);
-    const ms = momentsOf(log, 'x.jsonl.gz', cards, { logName: 'human-trample-7.jsonl.gz' });
-    expect(ms.length).toBeGreaterThan(5);
-    expect(new Set(ms.map((m) => m.type))).toContain('attack');
-    for (const m of ms) expect(m.id).toMatch(/^[a-z0-9][a-z0-9-]*$/);
-    expect(momentId('mined', 'Human Trample-7.jsonl.gz', 'spell', 12)).toBe('mined-spell-human-trample-7-12');
-    // The target picks of a human-seat log are live moments.
-    const auto = readLogFile(`${ROOT}/bench/coach/logs/human-auto-2026.jsonl.gz`);
-    const t = momentsOf(auto, 'y', cards, { types: ['target'] });
-    expect(t.some((m) => m.mode === 'live' && m.frame === 617)).toBe(true);
-  });
-
-  it('finds a cube-lab recording’s two decks in its run’s drafts.jsonl', () => {
-    const drafts = [
-      JSON.stringify({ seed: 7, drafters: [{ played: 'lab', deckFile: 'decks/7-A.dck', forgeDeckFile: 'decks/7-A-forge.dck' }, { played: 'forge', deckFile: 'decks/7-B.dck', forgeDeckFile: 'decks/7-B-forge.dck' }] }),
-    ].join('\n');
-    expect(labDecks('/r/games/7/g1-seat1.jsonl.gz', drafts)).toEqual({ own: 'decks/7-B-forge.dck', opp: 'decks/7-A.dck' });
-    expect(labDecks('/r/games/8/g1-seat0.jsonl.gz', drafts)).toBeNull();
-    expect(labDecks('/r/other.jsonl', drafts)).toBeNull();
   });
 });

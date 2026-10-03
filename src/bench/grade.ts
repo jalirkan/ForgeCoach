@@ -4,8 +4,9 @@
  *
  * The engine-graded coach bench's data (mtg-table's `tools/coach-grade.sh`,
  * its D332–D334): a case's precomputed regret table, how a run decides that a
- * table is low-information, how the turning-point miner picks decisions worth
- * grading from a cheap first pass, and how a graded decision becomes a case.
+ * table is low-information, and how a graded decision becomes a case. (The
+ * grader's main use is now the live analysis a coach explains, D334; the bench
+ * keeps these tables for when a graded run is worth its compute.)
  *
  * The yardstick is "best against Forge Default": an option's value is how often
  * the viewing seat wins when it takes that option and Forge's Default AI then
@@ -93,7 +94,11 @@ export const isLowInfo = (o: Pick<GradeOption, 'regretLo' | 'regretHi' | 'failed
 // ---------------------------------------------------------------------------
 // The grader's output (one line of `coach-grade.sh batch`)
 
-/** A moment to grade (`bench:coach -- moments`): one line of moments.jsonl. */
+/** The decision types the grader handles. */
+export const GRADED_TYPES = ['spell', 'attack', 'block', 'target'] as const;
+export type GradedType = (typeof GRADED_TYPES)[number];
+
+/** A moment to grade (`bench:coach -- moments --cases`): one line of moments.jsonl. */
 export interface MomentLine {
   log: string;
   frame: number;
@@ -164,7 +169,7 @@ export function caseGradeOf(r: GraderResult, meta: { grader?: string; gradedAt?:
 }
 
 // ---------------------------------------------------------------------------
-// The turning-point miner's selection
+// Fidelity
 
 /** Fidelity notes that do not change the position the coach saw (they are about hidden cards). */
 const BENIGN_FIDELITY = [/is a guess from the hidden cards/, /a random subset is used each round/, /trigger\(s\) the loader fired again were removed/];
@@ -172,87 +177,6 @@ const BENIGN_FIDELITY = [/is a guess from the hidden cards/, /a random subset is
 /** Fidelity warnings that do change the position (a lost effect, a missing card, a wrong P/T). */
 export function seriousFidelity(f: string[] | undefined): string[] {
   return (f ?? []).filter((x) => !BENIGN_FIDELITY.some((re) => re.test(x)));
-}
-
-export interface SelectOptions {
-  /** Keep at most this many decisions. */
-  keep: number;
-  /** The smallest best-minus-worst win-rate spread worth grading properly (default 0.15). */
-  minSpread?: number;
-  /** Serious fidelity warnings tolerated (default 0). */
-  maxFidelity?: number;
-  /** At most this share of the kept decisions from one log (default 0.25, at least 1). */
-  perLogShare?: number;
-}
-
-export interface Selected {
-  line: GradedLine;
-  /** The selection score: the spread, less the first pass's noise. */
-  score: number;
-  spread: number;
-  why: string;
-}
-
-/**
- * The turning points of a cheap first pass: decisions whose options' win rates
- * differ most, after the first pass's own noise is taken off (a spread a few
- * playouts cannot tell from zero is not a turning point). Ties go to the
- * fewer-option decision (cheaper to grade well); at most a share of the kept
- * decisions come from one log, and each decision type keeps a place while
- * one is left, so one long game or one kind of decision does not fill the set.
- */
-export function selectTurningPoints(lines: GradedLine[], o: SelectOptions): { kept: Selected[]; rejected: { key: string; why: string }[] } {
-  const minSpread = o.minSpread ?? 0.15;
-  const maxFid = o.maxFidelity ?? 0;
-  const rejected: { key: string; why: string }[] = [];
-  const pool: Selected[] = [];
-  for (const line of lines) {
-    const g = line.grade;
-    if (g.status !== 'ok' || !g.options || g.options.length < 2) {
-      rejected.push({ key: line.momentKey, why: `${g.status}${g.error ? `: ${g.error}` : ''}` });
-      continue;
-    }
-    const serious = seriousFidelity(g.fidelity);
-    if (serious.length > maxFid) {
-      rejected.push({ key: line.momentKey, why: `fidelity: ${serious.join('; ')}` });
-      continue;
-    }
-    const rates = g.options.filter((x) => !x.failed && !x.alias && x.n > 0).map((x) => x.winRate);
-    if (rates.length < 2) {
-      rejected.push({ key: line.momentKey, why: 'fewer than two options played' });
-      continue;
-    }
-    const spread = Math.max(...rates) - Math.min(...rates);
-    const noise = typeof g.noise === 'number' && Number.isFinite(g.noise) ? g.noise : 0;
-    const score = spread - noise / 2;
-    if (spread < minSpread) {
-      rejected.push({ key: line.momentKey, why: `spread ${spread.toFixed(2)} < ${minSpread}` });
-      continue;
-    }
-    pool.push({ line, score, spread, why: `spread ${spread.toFixed(2)}, first-pass noise ±${noise.toFixed(2)}` });
-  }
-  pool.sort((a, b) => b.score - a.score || (a.line.grade.options!.length - b.line.grade.options!.length) || a.line.momentKey.localeCompare(b.line.momentKey));
-  const perLog = Math.max(1, Math.floor((o.perLogShare ?? 0.25) * o.keep));
-  const kept: Selected[] = [];
-  const fromLog = new Map<string, number>();
-  const types = [...new Set(pool.map((p) => p.line.type))];
-  const take = (p: Selected) => {
-    kept.push(p);
-    fromLog.set(p.line.log, (fromLog.get(p.line.log) ?? 0) + 1);
-  };
-  const ok = (p: Selected) => !kept.includes(p) && (fromLog.get(p.line.log) ?? 0) < perLog;
-  // One of each type first (the best of its type), then by score.
-  for (const t of types) {
-    const p = pool.find((x) => x.line.type === t && ok(x));
-    if (p && kept.length < o.keep) take(p);
-  }
-  for (const p of pool) {
-    if (kept.length >= o.keep) break;
-    if (ok(p)) take(p);
-  }
-  kept.sort((a, b) => b.score - a.score);
-  for (const p of pool) if (!kept.includes(p)) rejected.push({ key: p.line.momentKey, why: `not kept (score ${p.score.toFixed(2)}${(fromLog.get(p.line.log) ?? 0) >= perLog ? ', log share full' : ''})` });
-  return { kept, rejected };
 }
 
 // ---------------------------------------------------------------------------
