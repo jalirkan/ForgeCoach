@@ -41,6 +41,7 @@ export const CUBE_ART: Record<string, string> = {
   vintage: 'Black Lotus',
   pauper: 'Ninja of the Deep Hours',
   omega: 'Baneslayer Angel',
+  'fair-fight': 'Skyclave Apparition',
   peasant: 'Mayhem Devil',
 };
 
