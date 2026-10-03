@@ -1,0 +1,678 @@
+/*
+ * ForgeCoach — ui/skins.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The alternate skins, chosen in Settings → Look (ui/skin.ts puts
+ * `data-skin` on <html>). Classic is the site as it always was: nothing here
+ * matches it. Each other skin is one dark look (the site has no light mode),
+ * set as tokens first, then a small number of rules scoped to the skin.
+ *
+ * Cards are never redrawn: the real Scryfall images stay as they are. A skin
+ * changes the table, the frames, the panels, the type and the colour around them.
+ *
+ *   stack — a dark table (#121417 ground, #171a1e felt, #1c2025 rails); cream
+ *           (#f2ecdc / #e9e1cd) for game objects such as the items on the game
+ *           stack; amber (#c98a2c) for priority and the coach's call. The
+ *           coach's reasoning is a separate pile of dark items, so the two piles
+ *           never look alike. Alegreya / Alegreya Sans (SC) / IBM Plex Mono.
+ *   felt  — "Hot Felt": green baize, bone and chalk neutrals, calm. The only
+ *           warm colour is heat, win chance on option bars
+ *           (#3a1a10 → #a2301a → #ff8a2a → #ffd27a → #fff3d6); the best option
+ *           glows hottest. Barlow Condensed for heads and numbers, Source Serif 4
+ *           for text.
+ *
+ * Fonts come from index.html; every family names system fallbacks.
+ */
+
+/* ======================================================================== */
+/* Stack: tokens                                                            */
+
+:root[data-skin='stack'] {
+  --bg: #121417;
+  --bg-2: #15181b;
+  --surface: #171a1e;
+  --surface-2: #1c2025;
+  --surface-3: #252a30;
+  --line: #2c3036;
+  --line-2: #3a3f47;
+  --text: #e9e6df;
+  --text-2: #cfcac0;
+  --muted: #9a958a;
+  --faint: #6f6b62;
+  --accent: #c98a2c;
+  --accent-2: #e0a648;
+  --accent-ink: #1b1408;
+  --accent-soft: rgba(201, 138, 44, 0.14);
+  --ok: #7fc79a;
+  --bad: #e07a6a;
+  --info: #6fa3d8;
+  --ok-soft: rgba(127, 199, 154, 0.13);
+  --bad-soft: rgba(224, 122, 106, 0.13);
+  --info-soft: rgba(111, 163, 216, 0.14);
+  --font: 'Alegreya Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --serif: 'Alegreya', Georgia, 'Times New Roman', serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --skin-sc: 'Alegreya Sans SC', 'Alegreya Sans', ui-sans-serif, system-ui, sans-serif;
+  --skin-card: #f2ecdc;
+  --skin-card-2: #e9e1cd;
+  --skin-card-under: #d9d2c0;
+  --skin-ink: #1b1a17;
+  --skin-ink-2: #4b463c;
+  --skin-you: #6fa3d8;
+  --skin-them: #d07a5c;
+  --radius: 10px;
+}
+:root[data-skin='stack'] body {
+  font-size: 15px;
+}
+
+/* The cube section's and the ledger pages' own palettes, on the same table. */
+:root[data-skin='stack'] .fx {
+  --bg: #121417;
+  --bg-2: #15181b;
+  --surface: #171a1e;
+  --surface-2: #1c2025;
+  --surface-3: #252a30;
+  --line: #2c3036;
+  --line-2: #3a3f47;
+  --hair: rgba(201, 138, 44, 0.22);
+  --text: #e9e6df;
+  --text-2: #cfcac0;
+  --muted: #9a958a;
+  --faint: #6f6b62;
+  --accent: #c98a2c;
+  --accent-2: #e0a648;
+  --accent-ink: #1b1408;
+  --accent-soft: rgba(201, 138, 44, 0.14);
+  --gold: #c98a2c;
+  --gold-hi: #e0a648;
+}
+:root[data-skin='stack'] .ledger,
+:root[data-skin='stack'] .ledger-sheet {
+  --lg-bg: #121417;
+  --lg-bg-2: #15181b;
+  --lg-surface: #171a1e;
+  --lg-surface-2: #1c2025;
+  --lg-surface-3: #252a30;
+  --lg-line: #2c3036;
+  --lg-line-2: #3a3f47;
+  --lg-text: #e9e6df;
+  --lg-text-2: #cfcac0;
+  --lg-muted: #9a958a;
+  --lg-faint: #6f6b62;
+  --lg-gold: #c98a2c;
+  --lg-gold-2: #e0a648;
+  --lg-gold-soft: rgba(201, 138, 44, 0.14);
+  --lg-win: #7fc79a;
+  --lg-loss: #e07a6a;
+  --lg-blue: #6fa3d8;
+  --lg-serif: 'Alegreya', Georgia, 'Times New Roman', serif;
+  --lg-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --lg-sans: 'Alegreya Sans', ui-sans-serif, system-ui, sans-serif;
+}
+:root[data-skin='stack'] .lb-col {
+  --lb-amber: #c98a2c;
+  --lb-amber-soft: rgba(201, 138, 44, 0.14);
+}
+
+/* ---- Stack: type ------------------------------------------------------- */
+
+:root[data-skin='stack'] :is(.bf-label, .mid-title, .box-h, .pside-whose, .match-kicker, .live-pill-text, .rv-counts li, .lg-kicker, .tag) {
+  font-family: var(--skin-sc);
+  letter-spacing: 0.1em;
+}
+:root[data-skin='stack'] :is(.topbar-game, .moment-title, .phase-whose, .phead-name, .rv-moment-title, .rv-h1, .pc-title, .ab-title-text) {
+  font-family: var(--serif);
+  font-weight: 700;
+}
+:root[data-skin='stack'] :is(.life-n, .zone-pill b, .bf-count, .tile-pt, .rv-bar-nums b, .rv-counts li b) {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+:root[data-skin='stack'] .life-n {
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ---- Stack: the table -------------------------------------------------- */
+
+:root[data-skin='stack'] :is(.player, .player-top, .player-me) {
+  background: var(--surface);
+  border-color: var(--line);
+}
+:root[data-skin='stack'] .player-top .battlefield,
+:root[data-skin='stack'] .player-me .battlefield {
+  background: none;
+}
+:root[data-skin='stack'] .phead.is-active::before {
+  background: var(--accent);
+}
+:root[data-skin='stack'] .tile.own-me .tile-card {
+  box-shadow: 0 0 0 1.5px var(--skin-you), 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+:root[data-skin='stack'] .tile.own-opp .tile-card {
+  box-shadow: 0 0 0 1.5px var(--skin-them), 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+/* A permanent that something on the stack targets gets a dashed outline in the
+   caster's colour: Board's StackPanel writes those rules (Stack skin only). */
+
+/* Turn steps: the current step is a cream object; priority is amber. */
+:root[data-skin='stack'] .phase-steps li {
+  font-family: var(--skin-sc);
+  letter-spacing: 0.08em;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+:root[data-skin='stack'] .phase-steps li.is-now {
+  background: var(--skin-card);
+  color: var(--skin-ink);
+  box-shadow: none;
+}
+:root[data-skin='stack'] .pbar-cell.is-current {
+  background: var(--skin-card);
+  color: var(--skin-ink);
+}
+:root[data-skin='stack'] .pside-prio.is-you,
+:root[data-skin='stack'] .tag-prio {
+  background: transparent;
+  color: var(--accent-2);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+/* ---- Stack: the game stack, a pile of cream objects -------------------- */
+
+:root[data-skin='stack'] .stack-panel {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+:root[data-skin='stack'] .stack-list {
+  gap: 0;
+}
+:root[data-skin='stack'] .stack-item {
+  position: relative;
+  background: var(--skin-card);
+  color: var(--skin-ink);
+  border: 0;
+  border-left: 5px solid var(--skin-them);
+  border-radius: 9px;
+  padding: 8px 11px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+}
+:root[data-skin='stack'] .stack-item.is-mine {
+  border-left-color: var(--skin-you);
+}
+:root[data-skin='stack'] .stack-item + .stack-item {
+  margin-top: -3px;
+}
+/* Under the top: a step down in the pile. */
+:root[data-skin='stack'] .stack-item:not(.is-top) {
+  background: var(--skin-card-under);
+  transform: scale(0.97);
+  transform-origin: top;
+  z-index: 0;
+}
+:root[data-skin='stack'] .stack-item.is-top {
+  z-index: 1;
+}
+:root[data-skin='stack'] .stack-item .card-ref {
+  background: transparent;
+  color: var(--skin-ink);
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 0;
+  border: 0;
+}
+:root[data-skin='stack'] .stack-item .muted,
+:root[data-skin='stack'] .stack-item .card-ref-pt {
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] .stack-item .stack-text {
+  color: #35312a;
+}
+:root[data-skin='stack'] .stack-item .stack-targets {
+  color: #8c4a33;
+  font-family: var(--skin-sc);
+  letter-spacing: 0.06em;
+}
+:root[data-skin='stack'] .stack-item.is-mine .stack-targets {
+  color: #2f5f8f;
+}
+
+/* ---- Stack: the coach's reasoning, a separate pile of dark items -------- */
+/* Its top item is the call (the Answer line with its confidence and rule):
+   the only item with an amber outline. The reasoning under it is dark, so it
+   never reads as the game's cream stack. */
+
+:root[data-skin='stack'] .answer {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+:root[data-skin='stack'] .answer .box-h > span:first-child {
+  color: var(--muted);
+}
+:root[data-skin='stack'] .answer-head {
+  position: relative;
+  z-index: 1;
+  margin: 2px 0 0;
+  padding: 9px 11px 10px;
+  border-radius: 9px;
+  background: #1d1a15;
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 0 0 4px rgba(201, 138, 44, 0.08), 0 6px 14px rgba(0, 0, 0, 0.45);
+}
+:root[data-skin='stack'] .answer-head::before {
+  content: 'The call';
+  font: 700 10.5px/1 var(--skin-sc);
+  letter-spacing: 0.12em;
+  color: var(--accent-2);
+}
+:root[data-skin='stack'] .answer-head:not(:has(.answer-line))::before {
+  content: 'The coach’s read';
+}
+:root[data-skin='stack'] .answer-line,
+:root[data-skin='stack'] .answer-head.is-close .answer-line {
+  padding: 0;
+  background: none;
+  color: var(--text);
+  font: 700 15px/1.3 var(--serif);
+}
+:root[data-skin='stack'] :is(.conf-chip, .rule-chip) {
+  font-family: var(--skin-sc);
+  letter-spacing: 0.06em;
+  background: transparent;
+  border: 1px solid var(--line-2);
+}
+:root[data-skin='stack'] .conf-chip.conf-high {
+  border-color: var(--ok);
+}
+:root[data-skin='stack'] .conf-chip.conf-low {
+  border-color: var(--accent);
+}
+/* The reasoning: each block of the answer is one dark item under the call. */
+:root[data-skin='stack'] .answer .md {
+  display: grid;
+  margin-top: -3px;
+}
+:root[data-skin='stack'] .answer .md > * {
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: #22262c;
+  border: 1px solid var(--line-2);
+  color: #c9c4b8;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+:root[data-skin='stack'] .answer .md > * + * {
+  margin-top: -3px;
+}
+:root[data-skin='stack'] .answer .md > :is(ul, ol) {
+  padding-left: 28px;
+}
+:root[data-skin='stack'] .answer .md > hr {
+  display: none;
+}
+/* Without a call on top (the answer has no Answer line), the reasoning starts the pile. */
+:root[data-skin='stack'] .answer .md:first-child,
+:root[data-skin='stack'] .answer .box-h + .md {
+  margin-top: 0;
+}
+
+/* ---- Stack: buttons and the action bar --------------------------------- */
+
+:root[data-skin='stack'] :is(.btn, .ab-big-main, .ab-tool-main, .ab-eot) {
+  font-family: var(--skin-sc);
+  letter-spacing: 0.06em;
+}
+
+/* ---- Stack: the engine review ------------------------------------------ */
+
+:root[data-skin='stack'] .rv-bar.is-best .rv-bar-fill {
+  background: var(--accent);
+}
+:root[data-skin='stack'] .rv-bar-fill {
+  background: #6b665c;
+}
+:root[data-skin='stack'] .rv-bar.is-played .rv-bar-fill {
+  background: color-mix(in srgb, var(--info) 60%, transparent);
+}
+:root[data-skin='stack'] .rv-bar.is-played.is-best .rv-bar-fill {
+  background: var(--accent);
+}
+:root[data-skin='stack'] .rv-chip.is-on {
+  background: var(--skin-card);
+  color: var(--skin-ink);
+}
+
+/* ======================================================================== */
+/* Hot Felt: tokens                                                         */
+
+:root[data-skin='felt'] {
+  --bg: #1a312b;
+  --bg-2: #1c362f;
+  --surface: #1f3b34;
+  --surface-2: #24443b;
+  --surface-3: #2c4d44;
+  --line: #2f5148;
+  --line-2: #3d6357;
+  --text: #f1ece0;
+  --text-2: #d9dccf;
+  --muted: #b9c4b5;
+  --faint: #8aa093;
+  /* Bone, not warm: Hot Felt keeps warmth for win chance alone. */
+  --accent: #e9e2cf;
+  --accent-2: #f6f1e4;
+  --accent-ink: #1f3a33;
+  --accent-soft: rgba(233, 226, 207, 0.12);
+  --ok: #9fd8b8;
+  --bad: #e79ab4;
+  --info: #9cc5e6;
+  --violet: #bdb3ee;
+  --ok-soft: rgba(159, 216, 184, 0.13);
+  --bad-soft: rgba(231, 154, 180, 0.14);
+  --info-soft: rgba(156, 197, 230, 0.14);
+  --font: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --serif: 'Barlow Condensed', 'Arial Narrow', ui-sans-serif, system-ui, sans-serif;
+  --mono: 'Barlow Condensed', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --skin-cond: 'Barlow Condensed', 'Arial Narrow', ui-sans-serif, system-ui, sans-serif;
+  --skin-bone: #e9e2cf;
+  --skin-chalk: #b9c4b5;
+  --skin-heat: linear-gradient(90deg, #3a1a10 0%, #a2301a 30%, #ff8a2a 60%, #ffd27a 82%, #fff3d6 100%);
+  --shadow: 0 10px 30px rgba(5, 15, 12, 0.45), 0 2px 6px rgba(5, 15, 12, 0.3);
+}
+:root[data-skin='felt'] body,
+:root[data-skin='felt'] .rv,
+:root[data-skin='felt'] :is(.app, .game-app) {
+  background: radial-gradient(120% 90% at 50% 0%, #26473f, #1a312b) fixed, #1a312b;
+}
+:root[data-skin='felt'] ::selection {
+  background: rgba(233, 226, 207, 0.25);
+}
+
+:root[data-skin='felt'] .fx {
+  --bg: #1a312b;
+  --bg-2: #1c362f;
+  --surface: #1f3b34;
+  --surface-2: #24443b;
+  --surface-3: #2c4d44;
+  --line: #2f5148;
+  --line-2: #3d6357;
+  --hair: rgba(233, 226, 207, 0.2);
+  --text: #f1ece0;
+  --text-2: #d9dccf;
+  --muted: #b9c4b5;
+  --faint: #8aa093;
+  --accent: #e9e2cf;
+  --accent-2: #f6f1e4;
+  --accent-ink: #1f3a33;
+  --accent-soft: rgba(233, 226, 207, 0.12);
+  --gold: #e9e2cf;
+  --gold-hi: #f6f1e4;
+  --gold-lo: #b9c4b5;
+  --crimson: #6f8fb0;
+  --crimson-hi: #9cc5e6;
+  --crimson-soft: rgba(156, 197, 230, 0.14);
+  --bad: #e79ab4;
+  --ok: #9fd8b8;
+}
+:root[data-skin='felt'] .ledger,
+:root[data-skin='felt'] .ledger-sheet {
+  --lg-bg: #1a312b;
+  --lg-bg-2: #1c362f;
+  --lg-surface: #1f3b34;
+  --lg-surface-2: #24443b;
+  --lg-surface-3: #2c4d44;
+  --lg-line: #2f5148;
+  --lg-line-2: #3d6357;
+  --lg-text: #f1ece0;
+  --lg-text-2: #d9dccf;
+  --lg-muted: #b9c4b5;
+  --lg-faint: #8aa093;
+  --lg-gold: #e9e2cf;
+  --lg-gold-2: #f6f1e4;
+  --lg-gold-soft: rgba(233, 226, 207, 0.12);
+  --lg-win: #9fd8b8;
+  --lg-loss: #e79ab4;
+  --lg-win-soft: rgba(159, 216, 184, 0.13);
+  --lg-loss-soft: rgba(231, 154, 180, 0.14);
+  --lg-blue: #9cc5e6;
+  --lg-serif: 'Barlow Condensed', 'Arial Narrow', ui-sans-serif, system-ui, sans-serif;
+  --lg-mono: 'Barlow Condensed', ui-monospace, Menlo, Consolas, monospace;
+  --lg-sans: 'Source Serif 4', Georgia, serif;
+}
+:root[data-skin='felt'] .ledger {
+  background: radial-gradient(120% 90% at 50% 0%, #26473f, #1a312b) fixed, #1a312b;
+}
+:root[data-skin='felt'] .lb-col {
+  --lb-amber: #e9e2cf;
+  --lb-amber-soft: rgba(233, 226, 207, 0.12);
+}
+
+/* ---- Felt: type: Barlow Condensed for heads, clocks and numbers --------- */
+
+:root[data-skin='felt'] :is(.bf-label, .mid-title, .box-h, .pside-whose, .match-kicker, .live-pill-text, .tag, .rv-counts li, .rv-bars-axis, .rv-mark, .lg-kicker) {
+  font-family: var(--skin-cond);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+:root[data-skin='felt'] :is(.topbar-game, .moment-title, .phase-whose, .phead-name, .rv-moment-title, .rv-h1, .pc-title, .ab-title-text, .lg-title) {
+  font-family: var(--skin-cond);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+:root[data-skin='felt'] :is(.phase-steps li, .pbar-label) {
+  font-family: var(--skin-cond);
+  letter-spacing: 0.04em;
+}
+:root[data-skin='felt'] :is(.btn, .ab-big-main, .ab-tool-main, .ab-eot) {
+  font-family: var(--skin-cond);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+/* Life as a chess clock face: bone on the baize. */
+:root[data-skin='felt'] .life-n {
+  font-family: var(--skin-cond);
+  font-style: normal;
+  font-weight: 700;
+}
+:root[data-skin='felt'] :is(.rv-bar-nums b, .rv-counts li b, .zone-pill b, .bf-count, .tile-pt) {
+  font-family: var(--skin-cond);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Felt: the table: calm, no warm frames ----------------------------- */
+
+:root[data-skin='felt'] :is(.player, .player-top, .player-me) {
+  background: rgba(14, 32, 27, 0.35);
+  border-color: var(--line);
+}
+:root[data-skin='felt'] .player-top .battlefield,
+:root[data-skin='felt'] .player-me .battlefield {
+  background: none;
+}
+:root[data-skin='felt'] .tile.own-me .tile-card {
+  box-shadow: 0 0 0 1.5px rgba(233, 226, 207, 0.75), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+:root[data-skin='felt'] .tile.own-opp .tile-card {
+  box-shadow: 0 0 0 1.5px rgba(156, 197, 230, 0.7), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+:root[data-skin='felt'] .tile.is-act:hover .tile-card,
+:root[data-skin='felt'] .mode-pay .tile.is-act .tile-card,
+:root[data-skin='felt'] .tile.is-select .tile-card {
+  box-shadow: 0 0 0 2.5px var(--accent-2), 0 0 14px rgba(246, 241, 228, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+:root[data-skin='felt'] .tile.is-select .tile-card::after {
+  box-shadow: inset 0 0 0 2px rgba(246, 241, 228, 0.7), inset 0 0 18px rgba(246, 241, 228, 0.35);
+}
+:root[data-skin='felt'] .tile.is-attacking .tile-card {
+  box-shadow: 0 0 0 2.5px #e79ab4, 0 0 14px rgba(231, 154, 180, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+:root[data-skin='felt'] .flag-attack {
+  background: #b35a7d;
+}
+:root[data-skin='felt'] .phase-steps li.is-now,
+:root[data-skin='felt'] .pbar-cell.is-current {
+  background: var(--skin-bone);
+  color: #1f3a33;
+  box-shadow: none;
+}
+:root[data-skin='felt'] .stack-panel,
+:root[data-skin='felt'] .combat-panel {
+  background: rgba(14, 32, 27, 0.4);
+  border-color: var(--line-2);
+}
+:root[data-skin='felt'] .stack-item.is-top {
+  border-color: var(--skin-bone);
+}
+:root[data-skin='felt'] .answer {
+  background: rgba(14, 32, 27, 0.4);
+  border-color: var(--line-2);
+}
+:root[data-skin='felt'] .answer .box-h > span:first-child {
+  color: var(--text);
+}
+:root[data-skin='felt'] .answer-line {
+  background: var(--skin-bone);
+  color: #1f3a33;
+  font: 700 17px/1.25 var(--skin-cond);
+  letter-spacing: 0.01em;
+}
+:root[data-skin='felt'] .tag-prio {
+  color: var(--info);
+}
+:root[data-skin='felt'] .tag-ok {
+  color: var(--ok);
+}
+:root[data-skin='felt'] .notice-inline.bad {
+  color: #f6d3df;
+}
+
+/* ---- Felt: heat, the one warm colour: win chance on option bars ---------- */
+/* The track holds the heat gradient across the whole 0–100% axis; the fill is
+   a window onto it (its shadow covers the rest), so a bar's colour is its
+   win chance: the higher the option, the hotter its end. */
+
+:root[data-skin='felt'] .rv-bar-track {
+  overflow: hidden;
+  background: #2c4d44;
+  border-radius: 99px;
+}
+:root[data-skin='felt'] .rv-bar-track:has(.rv-bar-fill) {
+  background: var(--skin-heat);
+}
+:root[data-skin='felt'] .rv-bar-fill,
+:root[data-skin='felt'] .rv-bar.is-best .rv-bar-fill,
+:root[data-skin='felt'] .rv-bar.is-played .rv-bar-fill,
+:root[data-skin='felt'] .rv-bar.is-played.is-best .rv-bar-fill {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: 0 0 0 100vmax #2c4d44;
+}
+:root[data-skin='felt'] .rv-bar:not(.is-best) .rv-bar-track {
+  filter: saturate(0.75) brightness(0.85);
+}
+:root[data-skin='felt'] .rv-bar.is-best .rv-bar-track {
+  box-shadow: 0 0 14px rgba(255, 138, 42, 0.35);
+}
+:root[data-skin='felt'] .rv-bar-whisker,
+:root[data-skin='felt'] .rv-bar-whisker::before,
+:root[data-skin='felt'] .rv-bar-whisker::after {
+  border-color: var(--skin-bone);
+}
+:root[data-skin='felt'] .rv-bar-dot {
+  background: var(--skin-bone);
+  border-color: #1a312b;
+}
+:root[data-skin='felt'] .rv-bar.is-played {
+  background: rgba(14, 32, 27, 0.45);
+}
+:root[data-skin='felt'] .rv-chip.is-on {
+  background: var(--skin-bone);
+  color: #1f3a33;
+}
+
+/* ---- Felt: no stray warmth ---------------------------------------------- */
+/* Classic tints a few frames and glows with its amber directly; on the felt
+   they are bone, so heat stays the only warm thing on screen. */
+
+:root[data-skin='felt'] .game.play,
+:root[data-skin='felt'] .board {
+  --atk-line: #e79ab4;
+}
+:root[data-skin='felt'] :is(.ask-row.is-on, .ask-big:hover:not(:disabled), .ask-big.is-default, .ask-peek, .btn.btn-outline, .match-inline, .ab-pool, .topbar .btn.is-on, .switch input:checked + .switch-track, .top-coach.is-on .top-coach-pill, .engine-connect-card, .guide-row.is-on, .sample.is-last, .drop:hover:not(:disabled), .log-drawer, .play-card, input:focus, textarea:focus) {
+  border-color: rgba(233, 226, 207, 0.5);
+}
+:root[data-skin='felt'] .log-drawer-head {
+  border-bottom-color: rgba(233, 226, 207, 0.18);
+}
+:root[data-skin='felt'] .log-line.w-you {
+  border-left-color: rgba(233, 226, 207, 0.4);
+}
+:root[data-skin='felt'] .btn.btn-outline {
+  background: rgba(233, 226, 207, 0.08);
+}
+:root[data-skin='felt'] .btn.btn-keep:focus-visible {
+  outline-color: var(--accent-2);
+}
+:root[data-skin='felt'] .ask-card.is-on {
+  box-shadow: 0 0 0 2px var(--accent), 0 8px 24px rgba(233, 226, 207, 0.14);
+}
+:root[data-skin='felt'] .ab-big {
+  box-shadow: 0 6px 20px rgba(5, 15, 12, 0.35);
+}
+:root[data-skin='felt'] .match-box,
+:root[data-skin='felt'] .play-card,
+:root[data-skin='felt'] .engine-connect-card,
+:root[data-skin='felt'] .load {
+  background: rgba(14, 32, 27, 0.45);
+}
+:root[data-skin='felt'] .game.play.is-selecting .tile.is-act:not(.is-attacking):not(.is-blocking) .tile-card {
+  box-shadow: 0 0 0 2px rgba(246, 241, 228, 0.85), 0 0 16px rgba(246, 241, 228, 0.35), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+:root[data-skin='felt'] .game.play.mode-block .player-top .tile.is-attacking .tile-card {
+  box-shadow: 0 0 0 3px #e79ab4, 0 0 20px rgba(231, 154, 180, 0.5), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+:root[data-skin='felt'] button.avatar.is-select {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 14px rgba(246, 241, 228, 0.3);
+}
+:root[data-skin='felt'] button.avatar.is-select::after {
+  box-shadow: inset 0 0 0 1px rgba(246, 241, 228, 0.6), inset 0 0 16px rgba(246, 241, 228, 0.35);
+}
+:root[data-skin='felt'] .combat-panel {
+  border-color: rgba(231, 154, 180, 0.3);
+}
+
+/* ---- The lab pages: the bars and rules in each skin's own colour -------- */
+
+:root[data-skin='stack'] .lb-bar-fill {
+  background: linear-gradient(90deg, #8a5a1c, var(--lg-gold) 70%, var(--lg-gold-2));
+}
+:root[data-skin='felt'] .lb-bar-fill {
+  background: linear-gradient(90deg, #8aa093, var(--lg-gold) 70%, var(--lg-gold-2));
+}
+:root[data-skin='felt'] .lb-bar.is-muted .lb-bar-fill {
+  background: #5d7a6e;
+}
+:root[data-skin='felt'] .lb-rule {
+  background: linear-gradient(90deg, rgba(233, 226, 207, 0.4), var(--lg-line) 60%, transparent);
+}
+:root[data-skin='felt'] .lb-head {
+  border-image: linear-gradient(90deg, var(--lg-line-2), rgba(233, 226, 207, 0.3), var(--lg-line-2), transparent) 1;
+}
+:root[data-skin='felt'] :is(.lb-tabs a[aria-current='page'], .lb-job.is-paused, .lb-chip-paused, .lg-chip.ld-chip-zero) {
+  border-color: rgba(233, 226, 207, 0.55);
+}
+:root[data-skin='felt'] .ld-zero {
+  border-left-color: rgba(233, 226, 207, 0.6);
+}
+:root[data-skin='felt'] .ld-refband {
+  background: rgba(233, 226, 207, 0.08);
+  box-shadow:
+    inset 1px 0 0 rgba(233, 226, 207, 0.3),
+    inset -1px 0 0 rgba(233, 226, 207, 0.3);
+}
+/* The ledger's italic display serif becomes the felt's upright condensed head. */
+:root[data-skin='felt'] .ledger :is(.lg-title, .lb-job-title, h1, h2) {
+  font-style: normal;
+  font-weight: 700;
+}
