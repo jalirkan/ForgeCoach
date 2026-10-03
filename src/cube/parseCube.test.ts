@@ -5,7 +5,7 @@ import { coloursFromText, mentionedCards, parseCube, splitItem } from './parseCu
 import { loadInfos } from './testdata/load.ts';
 
 const doc = (f: string) => readFileSync(new URL(`../../public/cubes/${f}.md`, import.meta.url), 'utf8');
-const FILES = ['synergy-cube-180', 'modern-era-cube-180', 'vintage-cube-180', 'pauper-cube-180', 'omega-cube-180'];
+const FILES = ['synergy-cube-180', 'modern-era-cube-180', 'vintage-cube-180', 'pauper-cube-180', 'omega-cube-180', 'peasant-cube-180'];
 
 describe('parseCube on the shipped documents', () => {
   for (const f of FILES) {

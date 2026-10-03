@@ -41,6 +41,7 @@ export const CUBE_ART: Record<string, string> = {
   vintage: 'Black Lotus',
   pauper: 'Ninja of the Deep Hours',
   omega: 'Baneslayer Angel',
+  peasant: 'Mayhem Devil',
 };
 
 export function Seg<T extends string | number | boolean>({ value, options, onChange, label }: { value: T; options: Array<[T, string]>; onChange: (v: T) => void; label: string }) {

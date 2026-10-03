@@ -27,6 +27,7 @@ export const CUBES: CubeInfo[] = [
   { id: 'vintage', file: 'vintage-cube-180', title: 'Vintage Cube', blurb: 'Power, Moxen and cheat decks, cut to 180 for two.', accent: 'UR' },
   { id: 'pauper', file: 'pauper-cube-180', title: 'Pauper Cube', blurb: 'All commons: blink, ninjas, tokens, sacrifice.', accent: 'WG' },
   { id: 'omega', file: 'omega-cube-180', title: 'Omega Cube', blurb: 'The greatest hits at one fair power level: no Power, no cheats.', accent: 'WB', labData: false },
+  { id: 'peasant', file: 'peasant-cube-180', title: 'Peasant Cube', blurb: 'Commons and uncommons: ten guild decks from the most-followed peasant cube.', accent: 'BG', labData: false },
 ];
 
 export function cubeInfo(id: string): CubeInfo | undefined {
