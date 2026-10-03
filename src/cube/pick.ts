@@ -64,20 +64,31 @@ export function poolColours(pool: string[], ctx: CubeContext): string {
 
 export const commitment = (pool: string[]) => Math.min(1, pool.length / 20);
 
-/** Pick value of one card for a drafter holding `pool`. */
-export function pickValue(name: string, pool: string[], ctx: CubeContext): PickParts {
-  const f = ctx.facts.get(name);
-  const k = commitment(pool);
+/** What pick values need from a pool, computed once per pool. */
+export interface PoolProfile {
+  pair: string;
+  k: number;
+  onColour: Set<string>;
+  top: Set<string>;
+  counts: Map<string, number>;
+}
+
+export function poolProfile(pool: string[], ctx: CubeContext): PoolProfile {
   const pair = poolColours(pool, ctx);
-  const raw = cardValue(name, ctx);
-  const card = f?.land ? raw * 0.8 : raw;
   const onColour = pool.filter((p) => {
     const pf = ctx.facts.get(p);
     return pf && (pair.length < 2 || castableIn(pf, pair));
   });
-  const top = new Set(topThemes(onColour, ctx, 3).map(([t]) => t));
-  const counts = themeCountsOf(onColour, ctx);
-  const synergy = 0.8 * synergyOf(name, new Set(onColour), top, counts, ctx).total;
+  return { pair, k: commitment(pool), onColour: new Set(onColour), top: new Set(topThemes(onColour, ctx, 3).map(([t]) => t)), counts: themeCountsOf(onColour, ctx) };
+}
+
+/** Pick value of one card for a drafter holding `pool` (pass `profile` when scoring many cards). */
+export function pickValue(name: string, pool: string[], ctx: CubeContext, profile: PoolProfile = poolProfile(pool, ctx)): PickParts {
+  const f = ctx.facts.get(name);
+  const { k, pair } = profile;
+  const raw = cardValue(name, ctx);
+  const card = f?.land ? raw * 0.8 : raw;
+  const synergy = 0.8 * synergyOf(name, profile.onColour, profile.top, profile.counts, ctx).total;
   let colour = 0;
   if (f && pair.length === 2) {
     if (f.land) {
@@ -100,7 +111,8 @@ export function setValue(values: number[]): number {
 
 /** Value for the opponent: for their pool when known, else plain card value. */
 function oppValues(names: string[], oppPool: string[] | undefined, ctx: CubeContext): number[] {
-  return names.map((n) => (oppPool && oppPool.length ? pickValue(n, oppPool, ctx).total : cardValue(n, ctx)));
+  const prof = oppPool && oppPool.length ? poolProfile(oppPool, ctx) : null;
+  return names.map((n) => (prof && oppPool ? pickValue(n, oppPool, ctx, prof).total : cardValue(n, ctx)));
 }
 
 // ---------------------------------------------------------------------------
@@ -145,7 +157,8 @@ export function recommendGrid(slots: Array<string | null>, pool: string[], ctx: 
   const filled = slots.filter((s): s is string => !!s);
   const first = filled.length === 9;
   const cardsOf = (l: GridLine, gone: Set<number> = new Set()) => l.slots.filter((i) => !gone.has(i) && slots[i]).map((i) => slots[i] as string);
-  const mineOf = new Map(filled.map((n) => [n, pickValue(n, pool, ctx)]));
+  const prof = poolProfile(pool, ctx);
+  const mineOf = new Map(filled.map((n) => [n, pickValue(n, pool, ctx, prof)]));
   const pair = poolColours(pool, ctx);
   const options: GridOption[] = [];
   for (const line of GRID_LINES) {
@@ -237,8 +250,9 @@ export function recommendWinston(input: WinstonInput, ctx: CubeContext): Winston
   const { pile, pileIndex, pool, oppPool } = input;
   const sizes = input.sizes ?? [1, 1, 1];
   const known = new Set([...pool, ...(oppPool ?? []), ...pile, ...(input.seen ?? [])]);
-  const unseen = ctx.cube.cards.filter((c) => !known.has(c.name)).map((c) => pickValue(c.name, pool, ctx).total);
-  const cards = pile.map((n) => ({ name: n, value: pickValue(n, pool, ctx).total })).sort((a, b) => b.value - a.value);
+  const prof = poolProfile(pool, ctx);
+  const unseen = ctx.cube.cards.filter((c) => !known.has(c.name)).map((c) => pickValue(c.name, pool, ctx, prof).total);
+  const cards = pile.map((n) => ({ name: n, value: pickValue(n, pool, ctx, prof).total })).sort((a, b) => b.value - a.value);
   const take = setValue(cards.map((c) => c.value));
   // Passing: the best expected pile still ahead, or the blind top card after pile 3.
   const blind = expectedSet(unseen, 1);
