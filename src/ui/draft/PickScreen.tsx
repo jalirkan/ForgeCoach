@@ -192,6 +192,10 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
           <div className="pk-mono">{mono}</div>
           <SeatChips seats={seats} />
         </div>
+        {/* Phones have no kebab: the guide gets a quiet link of its own. */}
+        <button type="button" className="pk-guide" onClick={() => setGuide(true)}>
+          Guide
+        </button>
         <div className="pk-actions">
           {left !== null && mine && <Timer left={left} total={timerTotal} />}
           {secondary && (

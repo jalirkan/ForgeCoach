@@ -325,3 +325,38 @@ button.cg-card:focus-visible {
     margin-bottom: 8px;
   }
 }
+
+/* The pick screen's phone link to the guide (desktop has it in the kebab). */
+.pk-guide {
+  align-self: flex-start;
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--line-2, #3a3326);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2, #c9c0ae);
+  font: 600 10.5px/1.2 var(--font, system-ui);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.pk-guide:hover {
+  color: var(--gold-hi, #e2c27f);
+  border-color: var(--gold, #c9a45c);
+}
+@media (min-width: 1000px) {
+  .pk-guide {
+    display: none;
+  }
+}
+
+/* The metagame page's empty state carries the guide in a panel of its own. */
+.mt-guide {
+  margin-top: 18px;
+  padding: 20px 16px;
+}
+@media (min-width: 700px) {
+  .mt-guide {
+    padding: 26px 28px;
+  }
+}

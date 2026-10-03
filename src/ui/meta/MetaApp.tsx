@@ -303,7 +303,7 @@ export default function MetaApp() {
           </section>
 
           {view === 'guide' ? (
-            <CubeGuideView cubeId={cubeId} meta={meta} />
+            <CubeGuideView cubeId={cubeId} meta={meta} headless />
           ) : (
             <>
               <div className="lg-toolbar">
