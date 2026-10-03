@@ -72,3 +72,15 @@ export function useCoachAvailability(pollMs?: number): { settings: Settings; hel
   }, [pollMs]);
   return { ...v, ready: coachReady(v.settings, v.helper), recheck: () => void detectHelper({ force: true }) };
 }
+
+/** `Date.now()`, refreshed every `everyMs` while `active` (a ticking clock for "… 12 s" lines). */
+export function useNowWhile(active: boolean, everyMs = 1000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), everyMs);
+    return () => clearInterval(t);
+  }, [active, everyMs]);
+  return now;
+}

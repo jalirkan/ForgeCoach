@@ -19,7 +19,8 @@ import { activeGuideText as guideText } from '../guide.ts';
 import { loadSettings, MODELS } from '../claude.ts';
 import { parseCoachAnswer, type StatedConfidence } from '../coachAnswer.ts';
 import { SOURCE_LABEL } from '../coachHelper.ts';
-import { useCoachAvailability } from './hooks.ts';
+import { useCoachAvailability, useNowWhile } from './hooks.ts';
+import { isHelperThinking, thinkingLine } from './coachWait.ts';
 import { startAnswer, stopAnswer, useAnswer, type Answer } from './answers.ts';
 import { cardsForPrompt } from './cardData.ts';
 import { Markdown } from './Markdown.tsx';
@@ -326,6 +327,8 @@ export function AnswerBox({
   const coach = useCoachAvailability();
   const needsSetup = answer?.status === 'error' && (SETUP_ERRORS.has(answer.errorKind ?? '') || /api key/i.test(answer.error ?? ''));
   const showSource = answer?.source && answer.status !== 'error';
+  const now = useNowWhile(isHelperThinking(answer));
+  const thinkingNow = thinkingLine(answer, now);
   return (
     <div className="card-box answer">
       <div className="box-h">
@@ -358,7 +361,9 @@ export function AnswerBox({
       {parts && (parts.answer || parts.rule || parts.confidence) && <AnswerHead answer={parts.answer} rule={parts.rule} confidence={parts.confidence} why={parts.confidenceWhy} />}
       {answer && answer.text && <Markdown text={parts ? parts.body : answer.text} streaming={streaming} />}
       {answer?.status === 'streaming' && !answer.text && (
-        <p className="muted small pulse">{answer.thinking ? 'Thinking it through…' : answer.source === 'helper' ? 'Waiting for Claude Code on your PC…' : 'Waiting for Claude…'}</p>
+        <p className="muted small pulse" role="status">
+          {thinkingNow ?? (answer.thinking ? 'Thinking it through…' : answer.source === 'helper' ? 'Waiting for Claude Code on your PC…' : 'Waiting for Claude…')}
+        </p>
       )}
       {answer?.refused && <div className="notice-inline warn">Claude declined to answer this one. Try rephrasing via “Copy prompt” in the Claude app.</div>}
       {answer?.status === 'stopped' && (

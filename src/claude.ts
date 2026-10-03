@@ -39,10 +39,26 @@ export function isCoachSource(x: unknown): x is CoachSource {
   return COACH_SOURCES.includes(x as CoachSource);
 }
 
+/**
+ * How much the coach may think before it answers, for Claude Code on your PC
+ * (mtg-table's coach helper, D346): 'default' leaves the CLI as it is; 'low'
+ * and 'off' cap it. Haiku thinks at length by default, so its first word can
+ * take half a minute; 'off' answers in a few seconds. The API-key path ignores it.
+ */
+export type CoachThinking = 'default' | 'low' | 'off';
+export const COACH_THINKING: readonly CoachThinking[] = ['default', 'low', 'off'];
+export const DEFAULT_COACH_THINKING: CoachThinking = 'default';
+
+export function isCoachThinking(x: unknown): x is CoachThinking {
+  return COACH_THINKING.includes(x as CoachThinking);
+}
+
 export interface Settings {
   apiKey: string;
   model: ModelId;
   coachSource: CoachSource;
+  /** Coach thinking for the coach helper (absent = 'default'). */
+  coachThinking?: CoachThinking;
   /**
    * Answer first: the coach starts with a one-line **Answer:** (and its
    * confidence and rule) before the explanation, so the play shows as soon as
@@ -61,7 +77,7 @@ function storage(): Storage | null {
 
 export function loadSettings(): Settings {
   // Settings saved before the coach helper existed have no coachSource → 'auto'.
-  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false };
+  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: DEFAULT_COACH_THINKING };
   try {
     const raw = storage()?.getItem(SETTINGS_KEY);
     if (!raw) return out;
@@ -70,6 +86,7 @@ export function loadSettings(): Settings {
     if (isModelId(v.model)) out.model = v.model;
     if (isCoachSource(v.coachSource)) out.coachSource = v.coachSource;
     if (v.answerFirst === true) out.answerFirst = true;
+    if (isCoachThinking(v.coachThinking)) out.coachThinking = v.coachThinking;
   } catch {
     /* corrupt or unavailable storage → defaults */
   }
@@ -93,6 +110,7 @@ export function saveSettings(s: Settings): void {
         model: isModelId(s.model) ? s.model : DEFAULT_MODEL,
         coachSource: isCoachSource(s.coachSource) ? s.coachSource : DEFAULT_COACH_SOURCE,
         answerFirst: s.answerFirst === true,
+        coachThinking: isCoachThinking(s.coachThinking) ? s.coachThinking : DEFAULT_COACH_THINKING,
       }),
     );
   } catch {

@@ -41,6 +41,7 @@ import { buildCoachPrompt, coachCardNames, type Prompt, type PromptFormat } from
 import { statedOf, STATED_CONFIDENCES, type StatedConfidence } from '../coachAnswer.ts';
 import { canPay, chosenColors, infoFor, instantSpeedOptions, manaColorsOf, turnFacts, untappedManaSources, type ManaSource } from '../state.ts';
 import { liveDecision } from '../ui/play/liveDecision.ts';
+import type { HelperStatus, HelperThinking } from '../coachHelper.ts';
 import { bootstrapMean, mean, rng, signTest, wilson, type Interval } from './benchStats.ts';
 import { gradeProblems, halfWidth, isLowInfo, LOW_INFO_HALF_WIDTH, type CaseGrade } from './grade.ts';
 
@@ -835,6 +836,8 @@ export interface BenchReport {
   promptFormat?: PromptFormat;
   /** Models asked for per decision type (`--model-by-type`); types not listed use `model`. */
   modelByType?: Partial<Record<BenchType, string>>;
+  /** `--thinking` as sent to the coach helper (mtg-table D346); absent when none was sent. */
+  thinking?: HelperThinking;
   /** Prompt size by section, largest first. */
   promptSections?: PromptSection[];
   /** Which cases ran: the development set (default), the held-out set, or all. */
@@ -884,6 +887,8 @@ export interface RunOptions {
   promptFormat?: PromptFormat;
   modelByType?: Partial<Record<BenchType, string>>;
   split?: BenchSplit;
+  /** The "thinking" sent to the coach helper, to record in the report. */
+  thinking?: HelperThinking;
 }
 
 /** Which retry budget an error falls under, or null when it is final. */
@@ -998,6 +1003,7 @@ export async function runBench(built: BuiltCase[], ask: AskCoach, o: RunOptions)
   const report: BenchReport = { bench: 2, label: o.label, startedAt, source: o.source, model, repeat, cases, summary: summarize(cases) };
   report.promptFormat = o.promptFormat ?? built[0]?.format ?? 'classic';
   if (o.modelByType && Object.keys(o.modelByType).length) report.modelByType = o.modelByType;
+  if (o.thinking) report.thinking = o.thinking;
   if (built.length) report.promptSections = promptSections(built.map((b) => b.prompt));
   if (o.split) report.split = o.split;
   return report;
@@ -1101,6 +1107,7 @@ export function normalizeReport(raw: unknown): { report: BenchReport; warnings: 
   };
   if (o.promptFormat) report.promptFormat = o.promptFormat;
   if (o.modelByType) report.modelByType = o.modelByType;
+  if (o.thinking === 'off' || o.thinking === 'low' || o.thinking === 'default') report.thinking = o.thinking;
   if (Array.isArray(o.promptSections)) report.promptSections = o.promptSections;
   if (o.split) report.split = o.split;
   return { report, warnings };
@@ -1335,7 +1342,7 @@ export function reportMarkdown(r: BenchReport): string {
   if (warn) lines.push(`> **WARNING — ${warn}**`, '');
   const byType = r.modelByType && Object.keys(r.modelByType).length ? ` · by type: ${Object.entries(r.modelByType).map(([k, v]) => `${k}=${v}`).join(', ')}` : '';
   lines.push(
-    `${r.startedAt} · source: ${r.source}${r.model ? ` · model: ${r.model}` : ''}${byType} · prompt: ${r.promptFormat ?? 'classic'} · ${r.repeat} answer${r.repeat === 1 ? '' : 's'} per case`,
+    `${r.startedAt} · source: ${r.source}${r.model ? ` · model: ${r.model}` : ''}${byType}${r.thinking ? ` · thinking: ${r.thinking}` : ''} · prompt: ${r.promptFormat ?? 'classic'} · ${r.repeat} answer${r.repeat === 1 ? '' : 's'} per case`,
     '',
   );
   if (t.regret) {
@@ -1499,6 +1506,7 @@ export function compareReports(a: BenchReport, b: BenchReport): Comparison {
     if (Math.max(0, ...r.cases.map((c) => c.stats.n)) < 2) warnings.push(`${name} (${r.label}) has one answer per case: a case difference cannot be told from noise, so no flips are flagged and the interval below is the only guide.`);
   }
   if ((a.split ?? 'dev') !== (b.split ?? 'dev')) warnings.push(`The runs used different case sets (A ${a.split ?? 'dev'}, B ${b.split ?? 'dev'}).`);
+  if ((a.thinking ?? 'default') !== (b.thinking ?? 'default')) warnings.push(`The runs cap the coach's thinking differently (A ${a.thinking ?? 'default'}, B ${b.thinking ?? 'default'}): that is the change being measured, or a mistake.`);
   if ((a.promptFormat ?? 'classic') !== (b.promptFormat ?? 'classic')) warnings.push(`The runs ask for different answer layouts (A ${a.promptFormat ?? 'classic'}, B ${b.promptFormat ?? 'classic'}): that is the change being measured, or a mistake.`);
   const cases: CaseDiff[] = [];
   const diffs: number[] = [];
@@ -1632,4 +1640,23 @@ export function parseModelByType(spec: string, allowed: readonly string[]): Part
     out[type as BenchType] = model;
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// --thinking (mtg-table D346)
+
+/**
+ * What `--thinking <v>` sends: `send` is the value to put on /coach, only when
+ * the helper's /health lists it (an older helper would ignore it, and the
+ * report must not claim a cap that never applied); `note` explains a value not
+ * sent; `error` is a bad flag. No flag: nothing sent, nothing said.
+ */
+export function benchThinking(flag: string | undefined, source: string, helper: HelperStatus | null): { send?: HelperThinking; note?: string; error?: string } {
+  if (flag === undefined) return {};
+  if (flag !== 'off' && flag !== 'low' && flag !== 'default') return { error: '--thinking: off, low or default' };
+  if (source !== 'helper') return { error: '--thinking applies to the coach helper only (--source helper)' };
+  if (helper?.state !== 'ok' || !helper.thinking?.includes(flag)) {
+    return { note: `Note: this coach helper does not offer "thinking" (older than mtg-table D346): --thinking ${flag} is not sent, and the run uses its default.` };
+  }
+  return { send: flag };
 }

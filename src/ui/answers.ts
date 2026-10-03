@@ -9,7 +9,7 @@
 import { useSyncExternalStore } from 'react';
 import type { Prompt } from '../prompt.ts';
 import { askClaude, loadSettings, type CoachResult, type Settings, type StreamHandlers } from '../claude.ts';
-import { askHelper, chooseSource, detectHelper, helperFresh, pageHelperTarget, peekHelper, type ActiveSource } from '../coachHelper.ts';
+import { askHelper, chooseSource, detectHelper, helperFresh, helperThinking, pageHelperTarget, peekHelper, type ActiveSource } from '../coachHelper.ts';
 
 /** 'queued': the coach helper has it in line behind another question (D325). */
 export type AnswerStatus = 'preparing' | 'queued' | 'streaming' | 'done' | 'stopped' | 'error';
@@ -32,6 +32,13 @@ export interface Answer {
   queuePosition: number | null;
   /** Why it stopped, when it was not the player's Stop ('superseded', 'moved_on'). */
   stopReasonNote?: string | null;
+  /**
+   * Claude Code on the PC is working on it and no text has come yet: the time
+   * (ms) its turn began — when the request went out, or at the helper's
+   * `running` line after a wait in its queue. Null once the first word arrives,
+   * while queued, and for the API key (which streams its own thinking).
+   */
+  thinkingSince: number | null;
 }
 
 const answers = new Map<string, Answer>();
@@ -61,6 +68,7 @@ function set(key: string, patch: Partial<Answer>) {
     fallbackFrom: null,
     source: null,
     queuePosition: null,
+    thinkingSince: null,
   };
   answers.set(key, { ...prev, ...patch });
   notify();
@@ -112,9 +120,12 @@ export interface StartOptions {
    * waiting in its queue is dropped there too (D325).
    */
   supersedes?: string;
+  /** The clock for `thinkingSince` (tests). */
+  now?: () => number;
 }
 
 export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>, opts: StartOptions = {}): Promise<void> {
+  const now = opts.now ?? Date.now;
   controllers.get(key)?.abort();
   const ctrl = new AbortController();
   controllers.set(key, ctrl);
@@ -135,13 +146,21 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
     controllers.delete(key);
     return;
   }
+  // D346: a thinking cap goes only to a helper that lists it, so learn what it lists first.
+  const wantThinking = settings.coachThinking ?? 'default';
+  if (source === 'helper' && wantThinking !== 'default' && !(helper?.state === 'ok' && helperFresh())) {
+    set(key, { status: 'preparing', source });
+    helper = await detectHelper();
+    if (ctrl.signal.aborted || controllers.get(key) !== ctrl) return;
+  }
+  const thinking = source === 'helper' ? helperThinking(helper, wantThinking) : undefined;
   set(key, { status: 'preparing', source });
   try {
     const prompt = await makePrompt();
     if (ctrl.signal.aborted) return;
-    set(key, { status: 'streaming' });
+    set(key, { status: 'streaming', thinkingSince: source === 'helper' ? now() : null });
     const handlers: StreamHandlers = {
-      onText: (d) => set(key, { status: 'streaming', queuePosition: null, text: (answers.get(key)?.text ?? '') + d }),
+      onText: (d) => set(key, { status: 'streaming', queuePosition: null, thinkingSince: null, text: (answers.get(key)?.text ?? '') + d }),
       onThinking: (d) => set(key, { status: 'streaming', queuePosition: null, thinking: (answers.get(key)?.thinking ?? '') + d }),
     };
     const supersedes = opts.supersedes && helper?.state === 'ok' && helper.supersedes ? opts.supersedes : undefined;
@@ -152,11 +171,12 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
             model: settings.model,
             target: pageHelperTarget(),
             ...(supersedes ? { supersedes } : {}),
+            ...(thinking ? { thinking } : {}),
             onQueued: (n) => {
-              if (!ctrl.signal.aborted) set(key, { status: 'queued', queuePosition: n });
+              if (!ctrl.signal.aborted) set(key, { status: 'queued', queuePosition: n, thinkingSince: null });
             },
             onRunning: () => {
-              if (!ctrl.signal.aborted) set(key, { status: 'streaming', queuePosition: null });
+              if (!ctrl.signal.aborted) set(key, { status: 'streaming', queuePosition: null, thinkingSince: answers.get(key)?.text ? null : now() });
             },
           })
         : await askClaude(prompt, handlers, { signal: ctrl.signal, settings });
@@ -167,8 +187,10 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
       model: res.model,
       stopReason: res.stopReason,
       fallbackFrom: res.fallbackFrom ?? null,
+      thinkingSince: null,
     });
   } catch (e) {
+    if (answers.get(key)?.thinkingSince != null) set(key, { thinkingSince: null });
     if (ctrl.signal.aborted) {
       set(key, { status: 'stopped', queuePosition: null });
     } else {
@@ -186,7 +208,7 @@ function safeSettings(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false };
+    return { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default' };
   }
 }
 
@@ -200,7 +222,7 @@ export function stopAnswer(key: string, note: string | null = null): void {
   const c = controllers.get(key);
   if (c) {
     c.abort();
-    set(key, { status: 'stopped', queuePosition: null, stopReasonNote: note });
+    set(key, { status: 'stopped', queuePosition: null, thinkingSince: null, stopReasonNote: note });
   }
 }
 

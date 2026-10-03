@@ -20,12 +20,13 @@ import { extractDecisions } from '../../src/decisions.ts';
 import { getCards, isLookupName } from '../../src/cards.ts';
 import type { CardInfo } from '../../src/cards.ts';
 import { askClaude, DEFAULT_MODEL, isModelId, MODELS } from '../../src/claude.ts';
-import { askHelper, DEFAULT_HELPER_URL, detectHelper, helperModel, type HelperTarget } from '../../src/coachHelper.ts';
+import { askHelper, DEFAULT_HELPER_URL, detectHelper, helperModel, type HelperTarget, type HelperThinking } from '../../src/coachHelper.ts';
 import { PROMPT_FORMATS, promptAsText, type PromptFormat } from '../../src/prompt.ts';
 import { visibleName } from '../../src/review.ts';
 import type { AnyCard, AskBody, GameStateBody, InputBody } from '../../src/protocol.ts';
 import {
   BENCH_SPLITS,
+  benchThinking,
   BENCH_TYPES,
   buildCase,
   buildMoment,
@@ -80,7 +81,7 @@ function flags(argv: string[]): { pos: string[]; f: Map<string, string | true> }
 }
 const VALUED = new Set([
   'source', 'model', 'label', 'only', 'type', 'helper-url', 'show', 'log', 'decision', 'frame', 'id', 'kind', 'out', 'repeat', 'concurrency', 'model-by-type', 'prompt-format',
-  'split', 'holdout', 'grader',
+  'split', 'holdout', 'grader', 'thinking',
 ]);
 const str = (f: Map<string, string | true>, k: string): string | undefined => {
   const v = f.get(k);
@@ -99,6 +100,8 @@ const USAGE = `Coach benchmark (bench/coach/). Usage: npm run bench:coach -- [op
                          types not listed use --model
     --prompt-format f    classic (default) or answer-first: the ANSWER line first, then
                          the reasoning
+    --thinking off|low|default  cap Claude Code's thinking (helper only; sent when its
+                         /health offers it, mtg-table D346; default: not sent)
     --label <name>       report name (default: the source)
     --repeat N           answers per case (default 3); the coach is stochastic, so one
                          answer per case cannot tell two prompts apart
@@ -258,6 +261,7 @@ async function run(f: Map<string, string | true>): Promise<number> {
     return /^\d+$/.test(v) && Number(v) >= 1 ? Number(v) : null;
   };
   let helperConcurrency = 1;
+  let thinking: HelperThinking | undefined;
   let ask: AskCoach;
   if (source === 'helper') {
     const st = await detectHelper({ target: helperTarget, force: true, timeoutMs: 3000 });
@@ -267,6 +271,13 @@ async function run(f: Map<string, string | true>): Promise<number> {
     }
     helperConcurrency = st.concurrency ?? 1;
     if (!st.queue) console.error('Note: this coach helper has no queue (older than mtg-table D325): a second call in flight is refused as busy and retried here.');
+    const th = benchThinking(str(f, 'thinking'), source, st);
+    if (th.error) {
+      console.error(th.error);
+      return 2;
+    }
+    if (th.note) console.error(th.note);
+    thinking = th.send;
     ask = async (p, signal, ctx) => {
       const m = modelFor(ctx?.type);
       const t0 = Date.now();
@@ -278,6 +289,7 @@ async function run(f: Map<string, string | true>): Promise<number> {
         {
           target: helperTarget,
           ...(m ? { model: helperModel(m) } : {}),
+          ...(thinking ? { thinking } : {}),
           ...(signal ? { signal } : {}),
           onQueued: () => {
             queued = true;
@@ -290,6 +302,10 @@ async function run(f: Map<string, string | true>): Promise<number> {
       return { text: r.text, model: r.model, ...(queued && runningAt !== null ? { queuedMs: (runningAt as number) - t0 } : {}) };
     };
   } else if (source === 'api') {
+    if (f.has('thinking')) {
+      console.error('--thinking applies to the coach helper only (--source helper)');
+      return 2;
+    }
     const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
     if (!apiKey) {
       console.error('--source api needs ANTHROPIC_API_KEY in the environment.');
@@ -343,6 +359,7 @@ async function run(f: Map<string, string | true>): Promise<number> {
     promptFormat: format,
     modelByType,
     split,
+    ...(thinking ? { thinking } : {}),
     onRetry: ({ id, rep, attempt, kind, waitMs }) => {
       console.error(`  ↻ ${id} #${rep + 1}: ${kind} on try ${attempt}; retrying in ${(waitMs / 1000).toFixed(0)} s`);
     },

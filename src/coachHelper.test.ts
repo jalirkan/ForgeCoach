@@ -8,6 +8,7 @@ import {
   helperFresh,
   helperModel,
   helperTarget,
+  helperThinking,
   peekHelper,
   TOKEN_HEADER,
   type HelperStatus,
@@ -250,6 +251,36 @@ describe('the D325 queue', () => {
   it('a full queue (or an older helper) is still the friendly busy message on 429', async () => {
     const { f } = fakeFetch(() => json({ type: 'error', message: 'the coach is busy with other questions' }, 429));
     await expect(askHelper(prompt, { onText() {} }, { fetch: f, target })).rejects.toMatchObject({ kind: 'helper_busy', status: 429, message: expect.stringMatching(/busy with another answer/) });
+  });
+});
+
+describe('thinking (mtg-table D346)', () => {
+  it('reads the offered values from /health, and none from an older helper', async () => {
+    const { f } = fakeFetch(() => json({ ok: true, helper: 1, claude: '2', models: [], thinking: ['off', 'low', 'default', 'max'] }));
+    expect(await detectHelper({ fetch: f, target, force: true })).toMatchObject({ state: 'ok', thinking: ['off', 'low', 'default'] });
+    const { f: old } = fakeFetch(() => json({ ok: true, helper: 1, claude: '2', models: [] }));
+    expect(await detectHelper({ fetch: old, target, force: true })).toMatchObject({ state: 'ok', thinking: [] });
+  });
+
+  it('sends "thinking" when given, and nothing otherwise', async () => {
+    const { f, calls } = fakeFetch(() => chunked([line({ type: 'done', stopReason: 'end_turn', model: 'haiku' })]));
+    await askHelper(prompt, { onText() {} }, { fetch: f, target, model: 'haiku', thinking: 'off' });
+    expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ system: prompt.system, user: prompt.user, model: 'haiku', thinking: 'off' });
+    await askHelper(prompt, { onText() {} }, { fetch: f, target });
+    expect(JSON.parse(String(calls[1]!.init?.body))).not.toHaveProperty('thinking');
+  });
+
+  it('helperThinking: only an offered value, never default, never to a helper that is down', () => {
+    const ok = (thinking?: ('off' | 'low' | 'default')[]): HelperStatus => ({ state: 'ok', baseUrl: target.baseUrl, claude: '2', models: [], checkedAt: 0, ...(thinking ? { thinking } : {}) });
+    const down: HelperStatus = { state: 'down', baseUrl: target.baseUrl, reason: 'not_running', message: '', checkedAt: 0 };
+    expect(helperThinking(ok(['off', 'low', 'default']), 'off')).toBe('off');
+    expect(helperThinking(ok(['off', 'low', 'default']), 'low')).toBe('low');
+    expect(helperThinking(ok(['off', 'low', 'default']), 'default')).toBeUndefined();
+    expect(helperThinking(ok(['off', 'low', 'default']), undefined)).toBeUndefined();
+    expect(helperThinking(ok([]), 'off')).toBeUndefined();
+    expect(helperThinking(ok(), 'off')).toBeUndefined();
+    expect(helperThinking(down, 'off')).toBeUndefined();
+    expect(helperThinking(null, 'off')).toBeUndefined();
   });
 });
 
