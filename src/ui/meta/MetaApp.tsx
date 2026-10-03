@@ -149,7 +149,7 @@ export default function MetaApp() {
               prior: (wins + {prior.strength} × mean) ÷ (games + {prior.strength}). An archetype seen in three games sits near the mean until it earns its
               way off it. The whiskers are 95% Wilson intervals on the raw rate; where they cross 50%, the sample can’t tell the archetype from a coin flip.
             </p>
-            <p>Meta share is an archetype’s decks over all decks built. Games counts decisive games only.</p>
+            <p>Meta share is an archetype’s decks over all decks the lab built; games are the games those decks played.</p>
           </div>
         </details>
       )}
@@ -304,11 +304,12 @@ export default function MetaApp() {
 
 function ArchetypeCard({ row, onOpen }: { row: ArchetypeRow; onOpen: () => void }) {
   const art = useCardInfo(row.keyCards[0])?.image?.artCrop;
+  const [broken, setBroken] = useState<string | null>(null);
   const thin = row.games < 5;
   return (
     <button type="button" className="mt-card" onClick={onOpen} aria-label={`${row.name}: details`}>
       <div className="mt-art">
-        {art ? <img src={art} alt="" loading="lazy" decoding="async" /> : <div className={cx('mt-art-blank', `mt-wash-${row.colors.slice(0, 2) || 'C'}`)} />}
+        {art && broken !== art ? <img src={art} alt="" loading="lazy" decoding="async" onError={() => setBroken(art)} /> : <div className={cx('mt-art-blank', `mt-wash-${row.colors.slice(0, 2) || 'C'}`)} />}
         <span className={cx('mt-pill', thin && 'mt-pill-thin')}>
           {!thin && <span className={cx('lg-dot', `lg-dot-${row.colors[0] ?? 'C'}`)} />}
           {thin ? 'Thin sample' : row.id}
@@ -374,8 +375,8 @@ function ArchetypeTable({
             <SortTh k="win" sort={sort} desc={desc} onSort={onSort} num title="Shrunk toward the mean by a 20-game prior">
               Win
             </SortTh>
-            <th className="mt-col-strip">Interval</th>
-            <th>Key cards</th>
+            <th className="mt-col-strip mt-hide-sm">Interval</th>
+            <th className="mt-hide-sm">Key cards</th>
           </tr>
         </thead>
         <tbody>
@@ -392,10 +393,10 @@ function ArchetypeTable({
               </td>
               <td className="num lg-mono">{r.games}</td>
               <td className="num lg-mono">{pct(r.win)}</td>
-              <td className="mt-col-strip">
+              <td className="mt-col-strip mt-hide-sm">
                 <IntervalStrip win={r.win} ci={r.ci} />
               </td>
-              <td className="mt-keys-cell">{r.keyCards.slice(0, 3).join(' · ')}</td>
+              <td className="mt-keys-cell mt-hide-sm">{r.keyCards.slice(0, 3).join(' · ')}</td>
             </tr>
           ))}
         </tbody>
@@ -436,24 +437,24 @@ function CardTable({
               <SortTh k="name" sort={sort} desc={desc} onSort={onSort}>
                 Card
               </SortTh>
-              <th className="num">MV</th>
+              <th className="num mt-hide-sm">MV</th>
               <SortTh k="pickRate" sort={sort} desc={desc} onSort={onSort} num title="Picked when seen">
                 Pick rate
               </SortTh>
-              <th className="num" title="Average pick number when taken">
+              <th className="num mt-hide-sm" title="Average pick number when taken">
                 Avg pick
               </th>
-              <SortTh k="inclusion" sort={sort} desc={desc} onSort={onSort} num title="Made the deck when picked">
+              <SortTh k="inclusion" sort={sort} desc={desc} onSort={onSort} num title="Made the deck when picked" className="mt-hide-sm">
                 In deck
               </SortTh>
               <SortTh k="games" sort={sort} desc={desc} onSort={onSort} num>
                 Games
               </SortTh>
-              <th className="num">Raw win</th>
+              <th className="num mt-hide-sm">Raw win</th>
               <SortTh k="shrunk" sort={sort} desc={desc} onSort={onSort} num title="Shrunk toward the mean by a 20-game prior">
                 Win
               </SortTh>
-              <th className="mt-col-strip">Interval</th>
+              <th className="mt-col-strip mt-hide-sm">Interval</th>
             </tr>
           </thead>
           <tbody>
@@ -490,14 +491,14 @@ function CardTable({
                     )}
                   </span>
                 </td>
-                <td className="num lg-mono">{r.mv ?? '—'}</td>
+                <td className="num lg-mono mt-hide-sm">{r.mv ?? '—'}</td>
                 <td className="num lg-mono">{pct(r.pickRate, 0)}</td>
-                <td className="num lg-mono">{r.avgPickIndex !== null && r.picked ? r.avgPickIndex.toFixed(1) : '—'}</td>
-                <td className="num lg-mono">{r.picked ? pct(r.inclusionRate, 0) : '—'}</td>
+                <td className="num lg-mono mt-hide-sm">{r.avgPickIndex !== null && r.picked ? r.avgPickIndex.toFixed(1) : '—'}</td>
+                <td className="num lg-mono mt-hide-sm">{r.picked ? pct(r.inclusionRate, 0) : '—'}</td>
                 <td className="num lg-mono">{r.games}</td>
-                <td className="num lg-mono lg-muted">{pct(r.winRate)}</td>
+                <td className="num lg-mono lg-muted mt-hide-sm">{pct(r.winRate)}</td>
                 <td className={cx('num lg-mono', 'mt-win')}>{r.games ? pct(r.shrunk) : '—'}</td>
-                <td className="mt-col-strip">{r.games > 0 && <IntervalStrip win={r.shrunk} ci={r.ci} />}</td>
+                <td className="mt-col-strip mt-hide-sm">{r.games > 0 && <IntervalStrip win={r.shrunk} ci={r.ci} />}</td>
               </tr>
             ))}
           </tbody>

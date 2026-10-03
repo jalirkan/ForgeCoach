@@ -8,7 +8,7 @@
  * meta share by colour pair.
  */
 import { colourLabel } from '../../cube/colors.ts';
-import { intervalDomain, pct, type ArchetypeRow } from '../../cube/metaView.ts';
+import { axisTicks, intervalDomain, pct, type ArchetypeRow } from '../../cube/metaView.ts';
 import { Dots, useTip } from '../ledger/Ledger.tsx';
 
 const CHART_ROWS = 12;
@@ -20,8 +20,7 @@ export function WinChart({ rows, mean, onOpen }: { rows: ArchetypeRow[]; mean: n
   const [lo, hi] = intervalDomain(top);
   const span = hi - lo || 1;
   const x = (v: number) => `${((Math.max(lo, Math.min(hi, v)) - lo) / span) * 100}%`;
-  const ticks: number[] = [];
-  for (let t = Math.round(lo * 10); t <= Math.round(hi * 10); t++) ticks.push(t / 10);
+  const ticks = axisTicks([lo, hi]);
   const m = mean ?? 0.5;
   return (
     <section className="mt-chart" aria-label="Win rate by archetype">

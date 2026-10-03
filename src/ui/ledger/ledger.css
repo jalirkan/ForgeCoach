@@ -280,7 +280,8 @@
 .lg-about-body p {
   margin: 0 0 10px;
 }
-.lg-about-body code {
+.lg-about-body code,
+.lg-empty code {
   font-family: var(--lg-mono);
   font-size: 12.5px;
   background: var(--lg-surface-2);
@@ -388,9 +389,19 @@
   color: var(--lg-text);
   font-size: 14.5px;
 }
-.lg-input {
+.ledger .lg-search input.lg-input:not([type='radio']) {
+  /* beats styles.css's global input rule */
   width: 100%;
-  padding: 0 12px 0 32px;
+  height: 36px;
+  padding: 0 12px 0 34px;
+  border-radius: 5px;
+  border-color: var(--lg-line-2);
+  background: var(--lg-bg-2);
+  font-size: 14.5px;
+  box-shadow: none;
+}
+.ledger .lg-search input.lg-input:not([type='radio']):focus {
+  border-color: var(--lg-gold);
 }
 .lg-input::placeholder {
   color: var(--lg-muted);
@@ -526,11 +537,12 @@
   background: var(--lg-line-2);
 }
 .lg-strip-mid {
+  /* the 50 % mark: fainter and shorter than the whisker ticks */
   position: absolute;
-  top: 0;
+  top: 2px;
   width: 1px;
-  height: 9px;
-  background: var(--lg-faint);
+  height: 5px;
+  background: var(--lg-line-2);
 }
 .lg-strip-ci {
   position: absolute;

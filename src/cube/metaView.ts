@@ -206,6 +206,14 @@ export function intervalDomain(items: Array<{ win: number | null; ci: [number, n
   return [Math.max(0, Math.floor(lo * 10) / 10), Math.min(1, Math.ceil(hi * 10) / 10)];
 }
 
+/** Axis ticks for a domain: every 10 % on a narrow one, every 20 % on a wide one. */
+export function axisTicks([lo, hi]: [number, number]): number[] {
+  const step = hi - lo > 0.5 ? 2 : 1;
+  const out: number[] = [];
+  for (let t = Math.ceil((lo * 10) / step) * step; t <= Math.round(hi * 10); t += step) out.push(t / 10);
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Cards
 

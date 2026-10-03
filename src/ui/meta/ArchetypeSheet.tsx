@@ -5,7 +5,7 @@
  * One archetype in detail: its key cards, lands and curve, a sample deck
  * from the lab, and the card pairs in its colours that won more together.
  */
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CubeMeta } from '../../cube/meta.ts';
 import { cubeCardIndex, groupDeck, pairsFor, pct, signedPct, type ArchetypeRow } from '../../cube/metaView.ts';
 import { prefetchCards, useCardInfo } from '../cardData.ts';
@@ -123,9 +123,10 @@ function Stat({ label, value, note }: { label: string; value: string; note?: str
 function KeyCard({ name }: { name: string }) {
   const info = useCardInfo(name);
   const img = info?.image?.normal ?? info?.image?.small;
+  const [broken, setBroken] = useState(false);
   return (
     <figure className="mt-keycard" title={name}>
-      {img ? <img src={img} alt={name} loading="lazy" decoding="async" /> : <div className="mt-keycard-blank">{name}</div>}
+      {img && !broken ? <img src={img} alt={name} loading="lazy" decoding="async" onError={() => setBroken(true)} /> : <div className="mt-keycard-blank">{name}</div>}
     </figure>
   );
 }

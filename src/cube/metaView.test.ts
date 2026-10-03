@@ -4,6 +4,7 @@ import { loadRealMeta } from './testdata/load.ts';
 import { parseMeta } from './meta.ts';
 import {
   archetypeName,
+  axisTicks,
   archetypeRows,
   cardRows,
   cubeCardIndex,
@@ -87,6 +88,8 @@ describe('interval strip', () => {
   it('zooms a chart domain to tens around the data', () => {
     expect(intervalDomain([{ win: 0.55, ci: [0.41, 0.79] }])).toEqual([0.4, 0.8]);
     expect(intervalDomain([])).toEqual([0.5, 0.5]);
+    expect(axisTicks([0.3, 0.7])).toEqual([0.3, 0.4, 0.5, 0.6, 0.7]);
+    expect(axisTicks([0, 1])).toEqual([0, 0.2, 0.4, 0.6, 0.8, 1]);
   });
 });
 

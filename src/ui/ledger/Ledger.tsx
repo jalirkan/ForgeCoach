@@ -132,6 +132,7 @@ export function SortTh<K extends string>({
   children,
   num,
   title,
+  className,
 }: {
   k: K;
   sort: K;
@@ -140,9 +141,10 @@ export function SortTh<K extends string>({
   children: ReactNode;
   num?: boolean;
   title?: string;
+  className?: string;
 }) {
   return (
-    <th className={num ? 'num' : undefined} aria-sort={sort === k ? (desc ? 'descending' : 'ascending') : undefined} title={title}>
+    <th className={cx(num && 'num', className) || undefined} aria-sort={sort === k ? (desc ? 'descending' : 'ascending') : undefined} title={title}>
       <button type="button" onClick={() => onSort(k)}>
         {children}
       </button>
