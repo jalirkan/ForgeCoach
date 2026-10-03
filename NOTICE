@@ -47,6 +47,14 @@ They are used under Scryfall's API terms: requests are rate-limited and batched
 images are shown unaltered with their artist credit and copyright intact, and
 ForgeCoach does not proxy, repackage, sell or paywall Scryfall data or imply
 Scryfall's endorsement. ForgeCoach is not affiliated with Scryfall.
+For the test suite only, src/cube/testdata/scryfall-*.json hold a trimmed
+snapshot (name, cost, type, oracle text, colours, produced mana, P/T) of the
+cards of the four cubes in public/cubes/, so the deck-assistant tests run
+offline; the app itself fetches card data live as described above.
+
+The cube documents in public/cubes/*.md are Justin's (the project owner's)
+cube designs. The public/cubes/*.meta.json files are output of mtg-table's
+cube lab (simulated Forge AI drafts and games).
 
 
 4. Wizards of the Coast — Fan Content Policy
