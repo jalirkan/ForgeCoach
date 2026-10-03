@@ -80,9 +80,7 @@ describe('buildCoachPrompt — human-comfort-13, my attack on turn 10 (frame 871
     expect(you).toContain('Untapped mana sources: 3 —');
     expect(you).toContain('U×2 (Island ×2)');
     expect(you).toContain('Thriving Isle');
-    // Black was chosen for Thriving Isle as it entered (the seat's own answer in the log): it makes U or B, never W.
-    expect(you).toContain('U/B×1 (Thriving Isle)');
-    expect(you).toContain('Lands (4): Thriving Isle (untapped, chosen colour black); 2× Island (untapped); Plains (TAPPED)');
+    expect(you).toContain('Lands (4): Thriving Isle (untapped); 2× Island (untapped); Plains (TAPPED)');
     expect(opp).toContain('Untapped mana sources: 1 — W×1 (Plains)');
     expect(you).toContain('Mana pool: empty');
   });

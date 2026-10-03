@@ -9,14 +9,14 @@
  * What the player actually did is deliberately left out — the coach must not
  * be anchored on it. Hidden cards are never named.
  */
-import type { AnyCard, AskBody, Card, GameStateBody, PlayerState, SideboardAsk } from './protocol.ts';
+import type { AnyCard, AskBody, Card, GameStateBody, PlayerState } from './protocol.ts';
 import { isHidden, keywordsOf, MANA_COLORS } from './protocol.ts';
 import type { GameLog } from './log.ts';
 import type { Decision } from './decisions.ts';
-import { isPlayDrawInput, isTargetInput, phaseLabel } from './decisions.ts';
+import { phaseLabel } from './decisions.ts';
 import type { CardInfo } from './cards.ts';
-import type { ChosenColors, ManaSource } from './state.ts';
-import { chosenColors, chosenColorSource, colorName, infoFor, instantSpeedOptions, turnFacts, untappedManaSources } from './state.ts';
+import type { ManaSource } from './state.ts';
+import { instantSpeedOptions, turnFacts, untappedManaSources } from './state.ts';
 import { formatCardTexts, isBasicLandName, visibleName } from './review.ts';
 import { buildCubeContext, type CubeCoachInput } from './cube/coachContext.ts';
 
@@ -101,9 +101,7 @@ function manaSourcesText(sources: ManaSource[]): string {
   const groups = new Map<string, string[]>();
   for (const s of sources) {
     const key = s.colors.length ? [...s.colors].sort((a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b)).join('/') : 'unknown colour';
-    // A Thriving land whose chosen colour the log doesn't record: only its own colour is certain.
-    const name = s.unrecordedChoice ? `${s.name}: ${key}, or the colour chosen as it entered (not recorded)` : s.name;
-    groups.set(key, [...(groups.get(key) ?? []), name]);
+    groups.set(key, [...(groups.get(key) ?? []), s.name]);
   }
   const keys = [...groups.keys()].sort();
   const per = keys.map((k) => {
@@ -117,8 +115,7 @@ function manaSourcesText(sources: ManaSource[]): string {
     .map((col) => [col, sources.filter((s) => s.colors.includes(col)).length] as const)
     .filter(([, n]) => n > 0)
     .map(([col, n]) => `${col} ${n}`);
-  const unsure = sources.some((s) => s.unrecordedChoice) ? ' (a land whose chosen colour is not recorded is counted only for its own colour)' : '';
-  return `${sources.length} — ${per.join('; ')}${byColor.length ? ` · sources by colour: ${byColor.join(', ')}${unsure}` : ''}`;
+  return `${sources.length} — ${per.join('; ')}${byColor.length ? ` · sources by colour: ${byColor.join(', ')}` : ''}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,14 +146,10 @@ function permanentLine(c: Card, byId: Map<number, AnyCard>): string {
   return bits.join(' · ');
 }
 
-function landsLine(lands: Card[], cards?: Map<string, CardInfo>, chosen?: ChosenColors): string {
+function landsLine(lands: Card[]): string {
   const groups = new Map<string, number>();
   for (const c of lands) {
     const flags = [c.tapped ? 'TAPPED' : 'untapped'];
-    if (chosen && chosenColorSource(c, cards)) {
-      const pick = chosen.get(c.id);
-      flags.push(pick ? `chosen colour ${colorName(pick)}` : 'chosen colour not recorded');
-    }
     if (c.token) flags.push('token');
     const ctr = counterText(c.counters);
     if (ctr) flags.push(ctr);
@@ -166,7 +159,7 @@ function landsLine(lands: Card[], cards?: Map<string, CardInfo>, chosen?: Chosen
   return [...groups].map(([k, n]) => (n > 1 ? `${n}× ${k}` : k)).join('; ');
 }
 
-function battlefieldLines(p: PlayerState, byId: Map<number, AnyCard>, info?: Map<string, CardInfo>, chosen?: ChosenColors): string[] {
+function battlefieldLines(p: PlayerState, byId: Map<number, AnyCard>): string[] {
   const cards = p.zones.battlefield.cards;
   const hidden = cards.filter((c) => isHidden(c));
   const visible = cards.filter((c) => !isHidden(c)) as Card[];
@@ -174,7 +167,7 @@ function battlefieldLines(p: PlayerState, byId: Map<number, AnyCard>, info?: Map
   const creatures = visible.filter((c) => isCreature(c) || (c.faceDown && !isLand(c)));
   const other = visible.filter((c) => !lands.includes(c) && !creatures.includes(c));
   const out: string[] = [];
-  out.push(`Lands (${lands.length}): ${lands.length ? landsLine(lands, info, chosen) : 'none'}`);
+  out.push(`Lands (${lands.length}): ${lands.length ? landsLine(lands) : 'none'}`);
   out.push(`Creatures (${creatures.length}):${creatures.length ? '' : ' none'}`);
   for (const c of creatures) out.push(`  - ${permanentLine(c, byId)}`);
   if (other.length) {
@@ -326,128 +319,11 @@ function askLines(ask: AskBody, byId: Map<number, AnyCard>): string[] {
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Picking a target
-
-/** What the target is for: the spell or ability, from the input's focus card and the first part of its prompt. */
-function targetSource(d: Decision, byId: Map<number, AnyCard>): string | null {
-  const input = d.input;
-  if (!input) return null;
-  const head = input.prompt.split(/\n\s*\n/)[0]!.trim();
-  // The focus card, else the "Name (id) - …" the prompt opens with (the bridge gates both).
-  let id = input.focusCardId;
-  const m = /^(.+?) \((\d+)\)/.exec(head);
-  if (id === null && m) id = Number(m[2]);
-  const focus = input.focusCard ?? (id !== null ? byId.get(id) : undefined);
-  const name = focus ? (isHidden(focus) ? null : displayName(focus)) : m && Number(m[2]) === id ? m[1]!.trim() : null;
-  // "Quake, Agent of S.H.I.E.L.D. (31) - Seismic Takedown — Whenever …" → "Seismic Takedown — Whenever …"
-  let what = head.includes('\n') || /^Select\b/i.test(head) ? '' : head.replace(/ \(\d+\)/g, '').replace(/\s+/g, ' ').trim();
-  if (name && what.startsWith(`${name} - `)) what = what.slice(name.length + 3).trim();
-  if (name && what === name) what = '';
-  if (!name && !what) return null;
-  const who = name ? `${name}${id !== null ? ` #${id}` : ''}` : '';
-  return [who, what].filter(Boolean).join(' — ');
-}
-
-function targetLines(d: Decision, seat: number, byId: Map<number, AnyCard>): string[] {
-  const input = d.input!;
-  const sel = input.selectable;
-  const s = d.state;
-  const out: string[] = [];
-  const src = targetSource(d, byId);
-  if (src) out.push(`Choosing a target for: ${src}`);
-  const n = sel.min === sel.max ? `${sel.max}` : `${sel.min}–${sel.max}`;
-  out.push(`Legal targets (the engine accepts only these; choose ${n}):`);
-  if (sel.mode === 'players') {
-    for (const id of sel.cardIds) out.push(`  - ${playerName(s, id, seat)}`);
-    return out;
-  }
-  for (const id of sel.cardIds) {
-    const c = byId.get(id);
-    const owner = s.players.find((p) => Object.values(p.zones).some((z) => (z.cards as AnyCard[]).some((x) => x.id === id)));
-    const ctl = c && c.controller !== null && c.controller !== undefined ? c.controller : (owner?.id ?? null);
-    const whose = ctl === null ? '' : ctl === seat ? 'yours' : `${playerName(s, ctl, seat)}'s`;
-    const zone = owner ? (Object.entries(owner.zones).find(([, z]) => (z.cards as AnyCard[]).some((x) => x.id === id))?.[0] ?? '') : '';
-    if (!c) {
-      out.push(`  - #${id}`);
-      continue;
-    }
-    const where = zone && zone !== 'battlefield' ? ` · in ${zone}` : '';
-    const line = isHidden(c) ? `${displayName(c)} #${id}` : permanentLine(c as Card, byId);
-    out.push(`  - ${line}${whose ? ` · ${whose}` : ''}${where}`);
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Play or draw: the viewing seat's own deck
-
-/** The viewing seat's own main deck as it answered the sideboarding question in this log (name → count), or null. */
-function sideboardedDeck(log: GameLog, upTo: number): Map<string, number> | null {
-  let ask: SideboardAsk | null = null;
-  let deck: Map<string, number> | null = null;
-  const end = Math.min(upTo, log.frames.length - 1);
-  for (let i = 0; i <= end; i++) {
-    const f = log.frames[i]!;
-    if (f.type === 'ask' && (f.body as AskBody).kind === 'sideboard') ask = f.body as SideboardAsk;
-    else if (f.type === 'answer' && ask && (f.body as { askId?: string }).askId === ask.askId) {
-      const v = (f.body as { value?: unknown }).value;
-      if (!Array.isArray(v)) continue;
-      const all = [...ask.main, ...ask.side];
-      deck = new Map();
-      for (const id of v) {
-        const o = all.find((x) => x.id === id);
-        if (!o) continue;
-        const n = o.label.replace(/\s*\([A-Z0-9]{2,6}\)\s*$/, '').trim();
-        deck.set(n, (deck.get(n) ?? 0) + 1);
-      }
-    }
-  }
-  return deck;
-}
-
-function deckLines(log: GameLog, d: Decision, cards: Map<string, CardInfo>): string[] {
-  const seat = log.seat;
-  const out: string[] = ['# My deck'];
-  const match = log.hello?.match;
-  const header = log.header?.decks?.find((x) => x.player === seat);
-  const file = header?.path ? header.path.replace(/^.*[\\/]/, '').replace(/\.dck$/i, '') : '';
-  const name = match?.yourDeck?.name?.trim() || file || null;
-  const size = match?.yourDeck?.cards ?? header?.cards ?? null;
-  if (name || size) out.push(`${name ? `${name}` : 'My deck'}${size ? ` — ${size} cards` : ''}`);
-  const deck = sideboardedDeck(log, d.frameIndex);
-  if (deck && deck.size) {
-    const isLandName = (n: string) => isBasicLandName(n) || /\bLand\b/.test(infoFor(n, cards)?.typeLine ?? '');
-    const list = (pred: (n: string) => boolean) =>
-      [...deck]
-        .filter(([n]) => pred(n))
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .map(([n, k]) => (k > 1 ? `${n} ×${k}` : n));
-    const total = [...deck.values()].reduce((a, b) => a + b, 0);
-    const lands = [...deck].filter(([n]) => isLandName(n)).reduce((a, [, k]) => a + k, 0);
-    out.push(`Main deck for this game (as I sideboarded it): ${total} cards, ${lands} lands`);
-    out.push(`  Lands: ${list(isLandName).join(', ') || 'none'}`);
-    out.push(`  Other cards: ${list((n) => !isLandName(n)).join(', ') || 'none'}`);
-  } else if (out.length === 1) {
-    out.push('Deck list not in the log (see the play guide, if any).');
-  }
-  return out;
-}
-
-const PLAY_DRAW_QUESTION =
-  "Before the game starts, the engine asks whether I want to play first or draw first. No opening hand is dealt yet, so judge from my deck (above, if known) and the play guide, not from a hand. Should I play or draw, and why? The general principle: in a two-player game going first is usually right — it is a full turn of tempo, so aggressive and midrange decks almost always play; drawing first can suit a slow, controlling deck that wins long games on card advantage, or a deck that badly needs to hit its land drops. Recommend one, and say what about my deck decides it.";
-
-function targetQuestion(d: Decision, byId: Map<number, AnyCard>): string {
-  const src = targetSource(d, byId);
-  return `The engine wants me to choose a target${src ? ` for ${src.split(' — ').slice(0, 2).join(' — ')}` : ''}. What does this spell or ability do to its target, which of the legal targets above is best and why (whose it is, and what choosing it changes this turn and on the opponent's next turn), and which tempting targets are wrong? Name the one target to pick.`;
-}
-
-function questionFor(d: Decision, seat: number, byId: Map<number, AnyCard>): string {
+function questionFor(d: Decision, seat: number): string {
   const s = d.state;
   const mine = s.activePlayer === seat;
   const phase = phaseLabel(s.phase);
   if (!s.phase || !s.turn) {
-    if (isPlayDrawInput(d.input, s)) return PLAY_DRAW_QUESTION;
     return 'This is my opening hand, before the game starts. Should I keep it or mulligan? Judge lands, colours and early plays against what my deck needs.';
   }
   switch (d.kind) {
@@ -460,7 +336,6 @@ function questionFor(d: Decision, seat: number, byId: Map<number, AnyCard>): str
     case 'block':
       return 'The opponent is attacking me. How should I block — which blocker on which attacker, or no block — and should I use anything before or after blocks? Count lethal both ways.';
     case 'choice':
-      if (!d.ask && isTargetInput(d.input)) return targetQuestion(d, byId);
       return 'The engine is asking me the question above. What should I choose, and why?';
     case 'priority':
     default:
@@ -494,15 +369,6 @@ export function coachCardNames(log: GameLog, d: Decision): string[] {
   for (const p of s.players) p.zones.command.cards.forEach(add);
   me?.zones.graveyard.cards.forEach(add);
   add(d.input?.focusCard);
-  if (isTargetInput(d.input)) {
-    // The spell or ability being targeted: often on its way to the stack and in no zone yet.
-    const src = d.input!.focusCardId !== null ? cardsById(s).get(d.input!.focusCardId) : undefined;
-    if (src) add(src);
-    else {
-      const m = /^(.+?) \(\d+\) - /.exec(d.input!.prompt.trim());
-      if (m && !isBasicLandName(m[1]!.trim())) out.add(m[1]!.trim());
-    }
-  }
   if (d.ask) {
     const a = d.ask as unknown as { card?: AnyCard | null; options?: { card?: AnyCard }[]; targets?: { card?: AnyCard }[]; cards?: { card?: AnyCard }[] };
     add(a.card);
@@ -520,7 +386,6 @@ function playerSection(
   p: PlayerState,
   cards: Map<string, CardInfo>,
   byId: Map<number, AnyCard>,
-  chosen: ChosenColors,
 ): string[] {
   const s = d.state;
   const viewer = p.id === log.seat;
@@ -535,7 +400,7 @@ function playerSection(
   if (pc.length) out.push(`Player counters: ${pc.map(([k, v]) => `${v}× ${k}`).join(', ')}`);
   const pregame = !s.phase || !s.turn;
   if (!pregame) {
-    const sources = untappedManaSources(s, p.id, cards, chosen);
+    const sources = untappedManaSources(s, p.id, cards);
     out.push(`Mana pool: ${manaPoolText(p)}`);
     out.push(`Untapped mana sources: ${manaSourcesText(sources)}`);
     const facts = turnFacts(log, d.frameIndex, p.id);
@@ -546,11 +411,9 @@ function playerSection(
     out.push(`Spells cast this turn: ${casts.length ? casts.join('; ') : 'none'}`);
     out.push(`Permanents that left the battlefield this turn (revolt): ${facts.leftBattlefield.length ? facts.leftBattlefield.join('; ') : 'none'}`);
   }
-  // At play-or-draw no hand is dealt yet: an empty hand is not something to judge.
-  const playDraw = pregame && isPlayDrawInput(d.input, s);
-  if (!(playDraw && viewer && p.zones.hand.count === 0)) out.push(...handLines(p, viewer));
+  out.push(...handLines(p, viewer));
   if (viewer && !pregame) {
-    const inst = instantSpeedOptions(s, p.id, cards, chosen);
+    const inst = instantSpeedOptions(s, p.id, cards);
     if (inst.length) {
       out.push(
         `Instant-speed options the mana covers (heuristic — check the text): ${inst.map((o) => `${o.name}${o.via === 'ability' ? ` (ability ${o.cost})` : o.cost ? ` ${o.cost}` : ''}`).join('; ')}`,
@@ -558,7 +421,7 @@ function playerSection(
     }
   }
   if (pregame) return out;
-  out.push(...battlefieldLines(p, byId, cards, chosen));
+  out.push(...battlefieldLines(p, byId));
   out.push(`Graveyard: ${namesList(gy.cards)}`);
   if (ex.count) out.push(`Exile: ${namesList(ex.cards)}`);
   if (p.zones.command.count) out.push(`Command zone: ${namesList(p.zones.command.cards)}`);
@@ -570,28 +433,22 @@ export function buildCoachPrompt(log: GameLog, d: Decision, cards: Map<string, C
   const seat = log.seat;
   const byId = cardsById(s);
   const lines: string[] = [];
-  const pregame = !s.phase || !s.turn;
-  const playDraw = pregame && isPlayDrawInput(d.input, s);
-  // Colours chosen for the seat's own Thriving-style lands, from its own answers so far.
-  const chosen = chosenColors(log, d.frameIndex, seat, cards);
 
   const round = s.round || Math.ceil((s.turn || 0) / 2);
   const whose = s.activePlayer === seat ? 'my turn' : `${playerName(s, s.activePlayer, seat)}'s turn`;
   lines.push('# Decision');
   const prio = d.kind === 'main' || d.kind === 'priority' ? ` · priority: ${playerName(s, s.priority, seat)}` : '';
-  if (playDraw) lines.push('Pre-game · play or draw (no opening hand dealt yet)');
-  else if (pregame) lines.push('Pre-game · opening hand (keep or mulligan)');
+  if (!s.phase || !s.turn) lines.push('Pre-game · opening hand (keep or mulligan)');
   else lines.push(`Round ${round} (turn ${s.turn}) · ${phaseLabel(s.phase)} · ${whose}${prio}`);
   lines.push(`Decision type: ${d.kind}`);
   if (d.input?.prompt) lines.push(`Engine prompt: ${d.input.prompt.replace(/\s*\n\s*/g, ' / ').trim()}`);
   if (d.ask) lines.push(...askLines(d.ask, byId));
-  else if (d.kind === 'choice' && isTargetInput(d.input)) lines.push(...targetLines(d, seat, byId));
 
   const me = s.players.find((p) => p.id === seat);
   const others = s.players.filter((p) => p.id !== seat);
   for (const p of [...(me ? [me] : []), ...others]) {
     lines.push('');
-    lines.push(...playerSection(log, d, p, cards, byId, chosen));
+    lines.push(...playerSection(log, d, p, cards, byId));
   }
 
   lines.push('');
@@ -612,8 +469,6 @@ export function buildCoachPrompt(log: GameLog, d: Decision, cards: Map<string, C
   const cubeSection = buildCubeContext(log, opts?.cube, d.frameIndex);
   if (cubeSection) lines.push('', cubeSection);
 
-  if (playDraw) lines.push('', ...deckLines(log, d, cards));
-
   if (opts?.guide && opts.guide.trim()) {
     lines.push('');
     lines.push('# My deck play guide');
@@ -622,7 +477,7 @@ export function buildCoachPrompt(log: GameLog, d: Decision, cards: Map<string, C
 
   lines.push('');
   lines.push('# Question');
-  lines.push(questionFor(d, seat, byId));
+  lines.push(questionFor(d, seat));
 
   return { system: COACH_SYSTEM, user: lines.join('\n') };
 }
