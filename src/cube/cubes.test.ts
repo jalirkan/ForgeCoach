@@ -13,6 +13,7 @@ describe('cubeForMeta', () => {
   it('gives a meta that names no cube to the cube being viewed, and refuses a stranger', () => {
     expect(cubeForMeta({ cube: {} }, 'synergy')?.id).toBe('synergy');
     expect(cubeForMeta({ cube: {} })).toBeUndefined();
-    expect(cubeForMeta({ cube: { file: 'omega-cube-180.md' } }, 'synergy')).toBeUndefined();
+    expect(cubeForMeta({ cube: { file: 'legacy-cube-360.md' } }, 'synergy')).toBeUndefined();
+    expect(cubeForMeta({ cube: { file: 'cubes/omega-cube-180.md' } })?.id).toBe('omega');
   });
 });

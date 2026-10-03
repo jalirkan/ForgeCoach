@@ -2,11 +2,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { coloursFromText, mentionedCards, parseCube, splitItem } from './parseCube.ts';
+import { loadInfos } from './testdata/load.ts';
 
 const doc = (f: string) => readFileSync(new URL(`../../public/cubes/${f}.md`, import.meta.url), 'utf8');
-const FILES = ['synergy-cube-180', 'modern-era-cube-180', 'vintage-cube-180', 'pauper-cube-180'];
+const FILES = ['synergy-cube-180', 'modern-era-cube-180', 'vintage-cube-180', 'pauper-cube-180', 'omega-cube-180'];
 
-describe('parseCube on the four shipped documents', () => {
+describe('parseCube on the shipped documents', () => {
   for (const f of FILES) {
     it(`${f}: 180 cards, every section as promised, no duplicates`, () => {
       const c = parseCube(doc(f));
@@ -75,6 +76,19 @@ describe('parseCube on the four shipped documents', () => {
     expect(rakdos).toHaveLength(1);
     expect(rakdos[0]?.name).toBe('Rakdos sacrifice');
     expect(rakdos[0]?.signposts.slice(0, 2)).toEqual(['Body Dropper', 'Fireblade Artist']);
+  });
+});
+
+describe('the Omega document', () => {
+  it('180 cards, eight archetypes, Fire // Ice and the creature lands; every name in the Scryfall snapshot', () => {
+    const c = parseCube(doc('omega-cube-180'));
+    const by = new Map(c.cards.map((x) => [x.name, x]));
+    expect(c.archetypes).toHaveLength(8);
+    expect(by.get('Fire // Ice')).toMatchObject({ pair: 'UR', tags: ['removal'], themes: ['SPL'] });
+    expect(by.get('Mutavault')).toMatchObject({ land: true, group: 'Creature lands', themes: ['LND', 'AGG'] });
+    expect(c.cards.filter((x) => x.land)).toHaveLength(22);
+    const infos = loadInfos('omega', c);
+    expect([...infos.values()].filter((i) => i.found)).toHaveLength(180);
   });
 });
 

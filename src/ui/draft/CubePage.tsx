@@ -6,8 +6,9 @@
  * italic serif title over "180 CARDS", a search, the shared layout bar
  * (Stacks / Gallery / List, grouped by CMC, type, colour or rarity), the
  * summary line with colour dots and a curve sparkline, and the cube's
- * themes and archetypes as quiet chips. Read-only: the cube documents are
- * Justin's, edited in the repository.
+ * themes and archetypes as quiet chips, and a "How to draft" tab
+ * (#cube/<id>/guide) with the cube's guide. Read-only: the cube documents
+ * are Justin's, edited in the repository.
  */
 import { useEffect, useMemo, useState } from 'react';
 import '../deck/deck.css';
@@ -21,13 +22,16 @@ import { IconChevronLeft } from '../Icons.tsx';
 import { cx } from '../util.ts';
 import { CardInfoSheet } from '../deck/sheets.tsx';
 import { useCubeData } from '../deck/useCubeData.ts';
+import { CubeGuideView } from '../guide/CubeGuide.tsx';
 import { Collection, usePrefs, ViewBar } from './Collection.tsx';
 import { ColourDots, MiniCurve } from './Pool.tsx';
 import { useCubeMeta } from './useCubeMeta.ts';
 
 const norm = (s: string) => s.toLowerCase().replace(/[’']/g, "'");
 
-export default function CubePage({ id, onExit }: { id: string; onExit: () => void }) {
+export default function CubePage({ id: route, onExit }: { id: string; onExit: () => void }) {
+  const [id = '', sub] = route.split('/');
+  const view = sub === 'guide' ? 'guide' : 'cards';
   const info = cubeInfo(id) ?? CUBES[0]!;
   const data = useCubeData(info.id);
   const ctx = data.ctx;
@@ -53,7 +57,7 @@ export default function CubePage({ id, onExit }: { id: string; onExit: () => voi
         <nav className="cp-crumbs fx-label">
           <span>Cubes</span>
           {CUBES.map((c) => (
-            <a key={c.id} href={`#cube/${c.id}`} className={cx(c.id === info.id && 'is-on')}>
+            <a key={c.id} href={`#cube/${c.id}${view === 'guide' ? '/guide' : ''}`} className={cx(c.id === info.id && 'is-on')}>
               {c.title.replace(/ Cube$/, '')}
             </a>
           ))}
@@ -75,7 +79,21 @@ export default function CubePage({ id, onExit }: { id: string; onExit: () => voi
         </div>
       </div>
 
-      {!ctx || !meta ? (
+      <nav className="cg-tabs" aria-label="Cube page">
+        <a href={`#cube/${info.id}`} aria-current={view === 'cards' ? 'page' : undefined}>
+          Cards
+        </a>
+        <a href={`#cube/${info.id}/guide`} aria-current={view === 'guide' ? 'page' : undefined}>
+          How to draft
+        </a>
+      </nav>
+
+      {view === 'guide' ? (
+        <>
+          <CubeGuideView cubeId={info.id} onInfo={setCard} headless />
+          {ctx && <CardInfoSheet name={card} ctx={ctx} pool={[]} onClose={() => setCard(null)} />}
+        </>
+      ) : !ctx || !meta ? (
         <div className="dr-wait">
           <span className="spinner spinner-lg" />
           <p className="serif-i">{data.error ?? 'Opening the cube…'}</p>
