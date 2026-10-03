@@ -327,6 +327,7 @@ export function LoadScreen({
         <Logo />
         <a className="load-link" href="#meta">Metagame</a>
         <a className="load-link" href="#history">Your record</a>
+        <a className="load-link" href="#lab">Lab</a>
         <button className="icon-btn" onClick={onSettings} aria-label="Settings">
           <IconGear size={18} />
         </button>

@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "updated": "2026-10-03T10:55:00-04:00",
+  "paused": false,
+  "host": { "load1": 6.2, "cpus": 16, "memUsedGb": 14.1, "memTotalGb": 30, "swapUsedMb": 0, "pressure": 0.4 },
+  "running": [
+    {
+      "id": "J003",
+      "title": "AI bench: night profile vs default",
+      "phase": "night-cube-search (2 of 5)",
+      "started": "2026-10-03T10:34:00-04:00",
+      "elapsed": 1260,
+      "done": 212,
+      "total": 400,
+      "unit": "games",
+      "ratePerHour": 310,
+      "eta": "2026-10-03T11:31:00-04:00",
+      "workers": 6,
+      "errors": 0,
+      "paused": false
+    },
+    {
+      "id": "J005",
+      "title": "Meta report: Pauper",
+      "phase": "report",
+      "started": "2026-10-03T10:50:00-04:00",
+      "done": 3,
+      "total": 7,
+      "unit": "steps",
+      "ratePerHour": 40,
+      "workers": 1,
+      "errors": 0
+    }
+  ],
+  "queue": [
+    { "id": "J004", "title": "Cube lab: Synergy meta, 2000 drafts", "est": "~3 h" },
+    { "id": "J006", "title": "Learned drafter, 4 iterations", "est": "~2 h" }
+  ],
+  "waiting": [
+    { "id": "J007", "title": "Omega evolve, 8 generations", "reason": "needs 22 GB free; waits for J003", "est": "~3.8 h" }
+  ],
+  "finished": [
+    { "id": "J001", "status": "skipped", "finished": "2026-10-03T08:12:00-04:00", "headline": "cube file missing in this checkout" },
+    { "id": "J002", "status": "done", "finished": "2026-10-03T09:58:00-04:00", "headline": "no detectable difference (+0.01)" },
+    { "id": "J003a", "title": "AI bench, first run", "status": "failed", "finished": "2026-10-03T10:10:00-04:00", "headline": "stopped by memory pressure after 31 games" }
+  ],
+  "pressureEvents": [
+    { "at": "2026-10-03T10:41:00-04:00", "action": "paused new games for 2 min (some avg10 12.4)" },
+    { "at": "2026-10-03T10:43:00-04:00", "action": "dropped to 6 workers" }
+  ]
+}
