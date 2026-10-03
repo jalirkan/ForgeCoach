@@ -55,33 +55,33 @@ export const DCard = memo(function DCard({
   const all = [state, ...(states ?? [])].filter(Boolean) as string[];
   return (
     <Tag
-      className={cx('dc', ...all.map((s) => `is-${s}`), className)}
+      className={cx('dcard', ...all.map((s) => `is-${s}`), className)}
       onClick={onClick}
       aria-label={label ?? name}
       type={onClick ? 'button' : undefined}
       style={style}
     >
-      <span className={cx('dc-face', frameOf(info?.colors, land), ok && 'is-hidden')} aria-hidden={ok}>
-        <span className="dc-head">
-          <span className="dc-name">{name}</span>
+      <span className={cx('dcard-face', frameOf(info?.colors, land), ok && 'is-hidden')} aria-hidden={ok}>
+        <span className="dcard-head">
+          <span className="dcard-name">{name}</span>
           {info?.manaCost && (
-            <span className="dc-cost">
+            <span className="dcard-cost">
               <ManaCost cost={info.manaCost.split(' // ')[0]} size="sm" />
             </span>
           )}
         </span>
-        <span className="dc-art" />
-        <span className="dc-type">{type || ' '}</span>
-        <span className="dc-text">{(face?.oracleText ?? info?.oracleText ?? '').split('\n//\n')[0]}</span>
+        <span className="dcard-art" />
+        <span className="dcard-type">{type || ' '}</span>
+        <span className="dcard-text">{(face?.oracleText ?? info?.oracleText ?? '').split('\n//\n')[0]}</span>
         {info?.power !== undefined && info?.toughness !== undefined && (
-          <span className="dc-pt">
+          <span className="dcard-pt">
             {info.power}/{info.toughness}
           </span>
         )}
       </span>
       {img && failed !== img && (
         <img
-          className={cx('dc-img', ok && 'is-on')}
+          className={cx('dcard-img', ok && 'is-on')}
           src={img}
           alt=""
           loading="lazy"
@@ -94,7 +94,7 @@ export const DCard = memo(function DCard({
           onError={() => setFailed(img)}
         />
       )}
-      {badge !== undefined && badge !== null && <span className="dc-badge">{badge}</span>}
+      {badge !== undefined && badge !== null && <span className="dcard-badge">{badge}</span>}
     </Tag>
   );
 });

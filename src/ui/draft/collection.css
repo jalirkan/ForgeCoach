@@ -121,7 +121,7 @@
 .cwrap {
   position: relative;
 }
-.cwrap .dc {
+.cwrap .dcard {
   --w: var(--cw);
 }
 .cwrap[draggable='true'] {
@@ -225,7 +225,7 @@
 .cwrap.is-stack {
   transition: transform 0.18s ease;
 }
-.cwrap.is-stack .dc:hover {
+.cwrap.is-stack .dcard:hover {
   transform: none;
 }
 .scol.is-side .sstack {
