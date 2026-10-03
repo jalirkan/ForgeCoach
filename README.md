@@ -220,8 +220,9 @@ pools are saved in it (several at once).
 **Cube lab data.** Each cube ships with a `meta.json` from mtg-table's cube
 lab (`tools/cubelab.sh`: Forge AIs drafting and playing the cube): card win
 rates, archetypes, card pairs, land counts, splash results. Samples are small,
-so everything weighs the lab by its games (a card's win rate counts
-games ÷ (games + 40) against the page's own estimate). Import a newer
+so everything weighs the lab by its games (a card's raw win rate counts
+games ÷ (games + 80) against the page's own estimate; a card with no lab games
+is the page's estimate alone; `src/cube/score.ts` says why 80). Import a newer
 `meta.json` from the chip in the header (or drop it on the page); it is kept in
 this browser. Without any meta the assistant works from card text, mana value
 and the cube's themes.
@@ -299,6 +300,60 @@ seven cubes, including Fair Fight, Peasant and Omega), pick the cube and
 click **Import from file** (or drop the file on the page); the deck assistant's
 **Lab** chip takes the same files. Imports are kept in that browser only.
 
+## Lab progress (`#lab`)
+
+[`#lab`](https://jalirkan.github.io/ForgeCoach/#lab) shows what the PC lab's
+runner is doing, sized for a phone: the running job(s) with a progress bar,
+done / total, rate, ETA (local time and "in 2 h 10 min"), elapsed, workers and
+errors; the queue with estimates; waiting jobs with their reasons; finished
+jobs (done, failed, skipped) with their headline numbers, newest first; and the
+machine's load, memory, swap, memory pressure and recent pressure events.
+
+- **Source**: the runner pushes a numbers-only `status.json` to this repo's
+  orphan `lab-status` branch; the page reads
+  `https://raw.githubusercontent.com/jalirkan/ForgeCoach/lab-status/status.json`
+  (with a cache-buster). `#lab?src=<http(s) URL>` reads another copy instead,
+  e.g. the PC over Tailscale (that server must send
+  `Access-Control-Allow-Origin`); `#lab?src=sample` shows the bundled
+  `public/lab-sample.json` with its times moved to now.
+- **Staleness**: "updated 3 min ago" turns amber after 10 minutes without an
+  update and red after 30 ("the runner may be down"). A failed refresh keeps
+  the last good data, dimmed, with the reason.
+- It refreshes every minute while the page is visible, and on **Refresh**.
+- The file's format is in mtg-table's `RUNNER-SPEC.md` ("status.json");
+  `src/lab/status.ts` validates it: unknown fields are ignored, missing ones
+  show as "—", every string is shown as plain text.
+
+## AI ladder (`#lab/ladder`)
+
+[`#lab/ladder`](https://jalirkan.github.io/ForgeCoach/#lab/ladder) (the
+**AI ladder** tab of the Lab page) shows mtg-table's AI ladder: every AI player
+(Forge's stock profiles, the sacrifice-outlet policy, the search AI and later
+variants) on one Elo scale, with `forge-default` fixed at 1500.
+
+- **Ratings**: one row per player with its rating, the gap to the anchor, its
+  95% interval drawn as a bar on a shared axis (the dashed line is 1500), games
+  and record, and the raw head-to-head against `forge-default` with Wilson's
+  interval. Unrated players (no decisive game) and unavailable ones are listed
+  apart.
+- **Honest about the intervals**: ranks are ranges ("1–5": the ranks the
+  intervals allow); the summary names only players whose interval clears the
+  anchor's; tapping a player shades its interval and colours every other one
+  green (clearly above), red (clearly below) or gold (not separated).
+- **Head-to-head tests** (the latest SPRTs: who vs who, H1 / H0 /
+  inconclusive, games and deals used), the **tuner** (dev-set runs, with the
+  winner's-curse caveat) and the **league** (best, pool, promotions), when the
+  file has them.
+- **Source**: `https://raw.githubusercontent.com/jalirkan/ForgeCoach/lab-status/ladder.json`
+  (cache-busted), which the runner publishes numbers-only next to
+  `status.json`; `#lab/ladder?src=<http(s) URL>` reads another copy,
+  `#lab/ladder?src=sample` the bundled `public/ladder-sample.json`. Amber after
+  a day without a new report, red after three; it refreshes every five minutes.
+- The format is mtg-table's `ladder.json` schema 1 (`docs/guides/ai-ladder.md`,
+  `tools/ai-ladder/report.ts`). `src/lab/ladder.ts` validates it and lists in
+  `LADDER_FIELDS` exactly the fields the page reads, so the runner's sanitised
+  copy can publish only those.
+
 ## Replay and review a recorded game
 
 mtg-table writes a log per game and seat at
@@ -347,6 +402,8 @@ second and reads only new bytes. Each game of a match is a new file. Any
   by your browser and cached in it (IndexedDB).
 - **Draft pools** and imported cube-lab files stay in this browser
   (localStorage, IndexedDB).
+- The **Lab** page only downloads the runner's public status file (or the
+  `src` you give it); it sends nothing.
 
 ## Development
 

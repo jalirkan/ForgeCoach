@@ -135,7 +135,7 @@ export function CardInfoSheet({ name, ctx, pool, onClose }: { name: string | nul
                 <b>{cardValue(name, ctx)}</b>{' '}
                 <span className="muted">
                   (prior {cardPrior(name, ctx)}
-                  {m ? `, lab ${Math.round(m.value)} weighted ${Math.round(m.weight * 100)}%` : ''})
+                  {m ? `, lab ${pct(m.rawRate)} in ${m.games} games weighted ${Math.round(m.weight * 100)}%` : ', no lab games'})
                 </span>
               </dd>
               {pv && (

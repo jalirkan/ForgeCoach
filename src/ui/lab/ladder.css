@@ -1,0 +1,325 @@
+/*
+ * ForgeCoach — ui/lab/ladder.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The AI ladder page (#lab/ladder), on top of ledger.css and lab.css: one
+ * player per row (rank range, name, rating; the 95% interval on a shared
+ * axis; record), phone first. Green / red / gold mark clearly above, clearly
+ * below and not separated from the reference player.
+ */
+
+/* ---- intro ------------------------------------------------------------------ */
+.ld-lede {
+  margin: 0 0 6px;
+  font-family: var(--lg-serif);
+  font-size: 18px;
+  line-height: 1.35;
+  color: var(--lg-text);
+  overflow-wrap: anywhere;
+}
+.ld-scale {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ---- the board ---------------------------------------------------------------- */
+.ld-board {
+  --ld-above: var(--lg-win);
+  --ld-below: var(--lg-loss);
+  --ld-overlap: var(--lg-gold);
+  padding: 8px 0 10px;
+}
+/* The axis and every track share the same inner box, 18px in from each side. */
+.ld-axis,
+.ld-track {
+  position: relative;
+  margin: 0 18px;
+}
+.ld-axis {
+  height: 18px;
+  color: var(--lg-muted);
+  font-size: 10.5px;
+}
+.ld-tick {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+}
+.ld-tick.is-anchor {
+  color: var(--lg-gold);
+}
+.ld-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ld-row {
+  display: block;
+  width: 100%;
+  padding: 10px 0 9px;
+  border: 0;
+  border-top: 1px solid var(--lg-line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ld-row:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+.ld-row:focus-visible {
+  outline: 2px solid var(--lg-gold);
+  outline-offset: -2px;
+}
+.ld-row[aria-pressed='true'] {
+  background: var(--lg-gold-soft);
+}
+.ld-row-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 0 14px;
+}
+.ld-rank {
+  flex: none;
+  min-width: 2.6em;
+  color: var(--lg-muted);
+  font-size: 12px;
+}
+.ld-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.ld-name-t {
+  color: var(--lg-text);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.ld-rating {
+  flex: none;
+  color: var(--lg-text);
+  font-size: 15px;
+  text-align: right;
+}
+.ld-delta {
+  display: block;
+  color: var(--lg-muted);
+  font-size: 11px;
+}
+.lg-chip.ld-chip-zero {
+  border-color: rgba(201, 164, 92, 0.6);
+  color: var(--lg-gold-2);
+  background: var(--lg-gold-soft);
+  height: 19px;
+  font-size: 10px;
+}
+.lg-chip.ld-chip-stock,
+.lg-chip.ld-chip-old {
+  height: 19px;
+  font-size: 10px;
+  color: var(--lg-muted);
+}
+
+/* the interval track */
+.ld-track {
+  display: block;
+  height: 16px;
+  margin-top: 6px;
+}
+.ld-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--lg-line);
+}
+.ld-zero {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 0;
+  border-left: 1px dashed rgba(201, 164, 92, 0.65);
+}
+.ld-refband {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  background: rgba(201, 164, 92, 0.1);
+  box-shadow:
+    inset 1px 0 0 rgba(201, 164, 92, 0.35),
+    inset -1px 0 0 rgba(201, 164, 92, 0.35);
+}
+.ld-ci {
+  position: absolute;
+  top: 5px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ld-overlap);
+  opacity: 0.55;
+}
+.ld-pt {
+  position: absolute;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: var(--ld-overlap);
+  box-shadow: 0 0 0 2px var(--lg-surface);
+}
+.ld-pin {
+  position: absolute;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  transform: rotate(45deg);
+  background: var(--lg-gold-2);
+  box-shadow: 0 0 0 2px var(--lg-surface);
+}
+.ld-row.is-above .ld-ci,
+.ld-row.is-above .ld-pt {
+  background: var(--ld-above);
+}
+.ld-row.is-below .ld-ci,
+.ld-row.is-below .ld-pt {
+  background: var(--ld-below);
+}
+.ld-row.is-self .ld-ci {
+  opacity: 0.85;
+}
+.ld-row.is-self .ld-pt {
+  background: var(--lg-gold-2);
+}
+
+.ld-row-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 5px;
+  padding: 0 14px 0 calc(14px + 2.6em + 10px);
+  color: var(--lg-text-2);
+  font-size: 12px;
+}
+.ld-vs {
+  color: var(--lg-muted);
+}
+.ld-rel {
+  font-weight: 500;
+}
+.ld-rel.is-above {
+  color: var(--lg-win);
+}
+.ld-rel.is-below {
+  color: var(--lg-loss);
+}
+.ld-rel.is-overlap {
+  color: var(--lg-gold);
+}
+.ld-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 10px 14px 0;
+  border-top: 1px solid var(--lg-line);
+  color: var(--lg-muted);
+  font-size: 12px;
+}
+.ld-key {
+  display: inline-block;
+  width: 14px;
+  height: 6px;
+  border-radius: 3px;
+  vertical-align: 1px;
+  margin-right: 2px;
+}
+.ld-key.is-above {
+  background: var(--lg-win);
+}
+.ld-key.is-below {
+  background: var(--lg-loss);
+}
+.ld-key.is-overlap {
+  background: var(--lg-gold);
+}
+.ld-legend-ref {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+.ld-unrated {
+  margin-top: 16px;
+}
+
+/* ---- tests, tuner, league ---------------------------------------------------------- */
+.lb-fin-chip.is-amber {
+  border-color: rgba(224, 163, 58, 0.55);
+  color: var(--lb-amber);
+  background: var(--lb-amber-soft);
+}
+.ld-vsline {
+  color: var(--lg-text);
+  font-size: 13.5px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.ld-meta {
+  display: block;
+  margin-top: 4px;
+  color: var(--lg-muted);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+.ld-standings {
+  display: block;
+  margin-top: 6px;
+}
+.ld-standing {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 0;
+  color: var(--lg-text-2);
+  font-size: 12.5px;
+}
+.ld-standing-l {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ld-league {
+  padding: 2px 16px 14px;
+}
+.ld-totals,
+.ld-league-stats {
+  margin-top: 0;
+  border-top: 0;
+}
+.ld-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.ld-pool .lg-chip {
+  height: 20px;
+  font-size: 10.5px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (min-width: 560px) {
+  .ld-span2 {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 559px) {
+  .ld-league-stats,
+  .ld-totals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

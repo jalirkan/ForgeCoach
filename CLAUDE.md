@@ -65,6 +65,19 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   `ui/forge-theme.css` holds the `.fx` tokens and type the cube section,
   the deck assistant (`ui/deck/skin.css`) and the start page (`ui/lobby.css`)
   share.
+- `lab/status.ts` — the lab progress page's data (`#lab`): the PC runner's
+  `status.json` (mtg-table `RUNNER-SPEC.md`), pushed numbers-only to this
+  repo's `lab-status` branch. Parser/validator to a view model (untrusted
+  strings cleaned, numbers range-checked, unknown fields ignored), formatting
+  (ETA, durations, staleness 10 / 30 min), source from `#lab?src=` (http(s)
+  only, `sample` → `public/lab-sample.json`), `fetchLabStatus` with injected
+  `fetch`. UI: `ui/lab/LabPage.tsx` (lazy, in the ledger shell's nav).
+- `lab/ladder.ts` — the AI leaderboard's data (`#lab/ladder`): mtg-table's AI
+  ladder `ladder.json` (schema 1, `docs/guides/ai-ladder.md`), published to the
+  `lab-status` branch. Parser/validator (untrusted strings, ranges), interval
+  honesty (`rankRange`, `relation`, `anchorSummary`), `LADDER_FIELDS` (the
+  allowlist the runner publishes); shares `hashSource` / `fetchLabJson` with
+  `status.ts`. UI: `ui/lab/LadderPage.tsx` (lazy), `LabTabs` switches the two.
 - `public/cubes/` — the four cube documents (Justin's) and the cube lab's
   `<cube>.meta.json` beside each.
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.

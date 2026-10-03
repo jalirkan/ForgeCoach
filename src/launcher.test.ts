@@ -81,6 +81,8 @@ function run(args: string[], env: Record<string, string> = {}): Promise<{ code: 
           FORGECOACH_MTG: mtg,
           FORGECOACH_NO_INHIBIT: '1',
           FORGECOACH_NO_UPDATE: '1',
+          // A closed port: a real engine on 8642 (the owner's lab runs one) must not leak in.
+          FORGECOACH_PORT: '9',
           FAKE_LOG: log,
           FAKE_NOTIFY: path.join(root, 'notify.log'),
           ...env,
@@ -415,7 +417,7 @@ describe.skipIf(!hasBash)('forgecoach.sh', () => {
       fs.rmSync(pidfile, { force: true });
       try {
         const lab = execFile('bash', [SCRIPT, 'overnight', '--no-pull', '--jobs', '1', '--only', 'pauper'], {
-          env: { PATH: `${bin}:${process.env.PATH ?? ''}`, HOME: home, FORGECOACH_MTG: mtg, FORGECOACH_NO_INHIBIT: '1', FORGECOACH_NO_UPDATE: '1', FAKE_LOG: log, FAKE_NOTIFY: path.join(root, 'notify.log'), FAKE_PIDFILE: pidfile },
+          env: { PATH: `${bin}:${process.env.PATH ?? ''}`, HOME: home, FORGECOACH_MTG: mtg, FORGECOACH_NO_INHIBIT: '1', FORGECOACH_NO_UPDATE: '1', FORGECOACH_PORT: '9', FAKE_LOG: log, FAKE_NOTIFY: path.join(root, 'notify.log'), FAKE_PIDFILE: pidfile },
         });
         const exited = new Promise<void>((ok) => lab.once('exit', () => ok()));
         for (let i = 0; i < 100 && !fs.existsSync(pidfile); i++) await new Promise((r) => setTimeout(r, 100));

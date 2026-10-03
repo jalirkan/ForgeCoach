@@ -1726,6 +1726,9 @@ button.seat-chip:hover {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
+.profiles.is-stack {
+  grid-template-columns: 1fr;
+}
 .profile {
   display: flex;
   flex-direction: column;

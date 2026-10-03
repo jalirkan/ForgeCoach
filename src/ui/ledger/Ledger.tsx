@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The frame and small parts the ledger pages share (Cube metagame, Your
- * record): the top bar with its nav, segmented controls, colour dots, the
+ * record, Lab): the top bar with its nav, segmented controls, colour dots, the
  * win-rate interval strip and a hover tooltip.
  */
 import './ledger.css';
@@ -11,7 +11,7 @@ import { useState, type ReactNode } from 'react';
 import { stripGeometry } from '../../cube/metaView.ts';
 import { cx } from '../util.ts';
 
-export type LedgerPage = 'meta' | 'history';
+export type LedgerPage = 'meta' | 'history' | 'lab';
 
 export function LedgerShell({ page, children }: { page: LedgerPage; children: ReactNode }) {
   return (
@@ -30,6 +30,9 @@ export function LedgerShell({ page, children }: { page: LedgerPage; children: Re
           </a>
           <a href="#history" aria-current={page === 'history' ? 'page' : undefined}>
             Your record
+          </a>
+          <a href="#lab" aria-current={page === 'lab' ? 'page' : undefined}>
+            Lab
           </a>
         </nav>
       </header>
