@@ -230,8 +230,11 @@ parallel; each is resumable, so run it again and it continues where it stopped):
 
 1. **Omega evolve**: 8 generations x 1200 drafts that swap dead and dominant
    cards out of the Omega cube (about 3.8 hours on an 8-core PC).
-2. **Meta runs** of the synergy, modern-era, vintage and pauper cubes: 2000
-   drafts each, then the report that writes `meta.json` (about 50 minutes each).
+2. **Meta runs** of seven cubes (`meta-synergy`, `meta-modern-era`, `meta-vintage`,
+   `meta-pauper`, `meta-fair-fight`, `meta-peasant`, `meta-omega`): 2000 drafts
+   each, then the report that writes `meta.json` (about 50 minutes each on an
+   8-core PC). A cube file your mtg-table checkout lacks (an older one) is
+   skipped with a note, not treated as a failure; `git pull` it and run again.
 3. **Learned drafter**: synergy self-play, 4 iterations x 1000 drafts, head-to-head
    1000, deck head-to-head 500 (about 2 hours).
 
@@ -246,7 +249,9 @@ Options:
 
 - `--jobs N`: workers per job. Default: **physical cores - 1** (the lab is limited
   by cores, not hardware threads), at most one per 4 GB of RAM (a Forge JVM).
-- `--only evolve,synergy,learn`, `--hours N` (start no new job after N hours),
+- `--only evolve,synergy,learn` (`meta` is all seven meta runs; or name cubes:
+  `fair-fight`, `peasant`, `meta-omega`; plain `omega` still means the evolve
+  step), `--hours N` (start no new job after N hours),
   `--dry-run` (print the plan and the exact commands), `--yes` (run even while the
   engine is up, at the lowest priority), `--redo`.
 - Sizes: `--evolve-gens N`, `--evolve-drafts N`, `--meta-drafts N`,
@@ -271,9 +276,10 @@ Everything runs under `nice`, holds off sleep with `systemd-inhibit` and logs to
 done. `forgecoach status` shows the sizes, the running job and its progress.
 
 **Where the results land**, in `~/.local/share/forgecoach/`: `meta/<cube>.meta.json`
-(also `reports/`), `omega/` (the evolved cube and its changelog) and
+for all seven cubes (also `reports/`), `omega/` (the evolved cube and its changelog) and
 `learned/synergy/` (values, synergy pairs, summary). **To use them**, open the
-[Metagame page](https://jalirkan.github.io/ForgeCoach/#meta), pick the cube and
+[Metagame page](https://jalirkan.github.io/ForgeCoach/#meta) (it lists the same
+seven cubes, including Fair Fight, Peasant and Omega), pick the cube and
 click **Import from file** (or drop the file on the page); the deck assistant's
 **Lab** chip takes the same files. Imports are kept in that browser only.
 

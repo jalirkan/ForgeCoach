@@ -37,8 +37,9 @@
 #                          page).  Everything runs under nice.  Options:
 #                            --jobs N       workers per job (default: physical cores - 1,
 #                                           at most RAM / 4 GB)
-#                            --only a,b     evolve, meta | synergy | modern-era |
-#                                           vintage | pauper, learn
+#                            --only a,b     evolve, meta (all seven cubes) | synergy |
+#                                           modern-era | vintage | pauper | fair-fight |
+#                                           peasant | meta-omega, learn
 #                            --hours N      start no new job after N hours
 #                            --budget-hours H  scale the draft counts to fit about H hours
 #                            --evolve-gens N --evolve-drafts N --meta-drafts N
@@ -1192,8 +1193,14 @@ OVN_LOG="$CACHE_DIR/overnight.log"
 OVN_INHIBIT_FILE="$CACHE_DIR/overnight-inhibit.pid"
 RESULTS_DIR="$DATA_DIR/forgecoach"
 
-# the jobs, in order: evolve, then the four meta runs, then the learned drafter
-OVN_ALL="evolve meta-synergy meta-modern-era meta-vintage meta-pauper learn"
+# The cubes that get a meta run, as <id>:<file in mtg-table's cubes/ without .md>.
+# Adding a cube later is one more entry here (the jobs, --only, the plan and the
+# import help all follow).  A cube file an older mtg-table lacks is skipped with a note.
+OVN_CUBES="synergy:synergy-cube-180 modern-era:modern-era-cube-180 vintage:vintage-cube-180 pauper:pauper-cube-180 fair-fight:fair-fight-cube-180 peasant:peasant-cube-180 omega:omega-cube-180"
+ovn_cube_ids() { local c; for c in $OVN_CUBES; do printf '%s ' "${c%%:*}"; done; }
+ovn_meta_jobs() { local c; for c in $OVN_CUBES; do printf 'meta-%s ' "${c%%:*}"; done; }
+# the jobs, in order: evolve, then a meta run per cube, then the learned drafter
+OVN_ALL="evolve $(ovn_meta_jobs)learn"
 # Sizes (flags override).  Measured on a Ryzen 7 9700X: a draft with its best of
 # three costs 8-10 core-seconds, and the evolve step wants 865+ drafts a generation.
 OVN_EVOLVE_GENS=8; OVN_EVOLVE_DRAFTS=1200
@@ -1221,10 +1228,9 @@ ovn_learn_out() { echo "var/cubelab/selfplay/synergy-overnight-$(ovn_tag learn)"
 ovn_done_file() { echo "$OVN_DIR/done/$1@$(ovn_tag "$1")"; }
 
 ovn_cube_file() {   # ovn_cube_file <id> -- the cube's file name in mtg-table's cubes/
-  case "$1" in
-    synergy) echo synergy-cube-180 ;;   modern-era) echo modern-era-cube-180 ;;
-    vintage) echo vintage-cube-180 ;;   pauper) echo pauper-cube-180 ;;
-  esac
+  local c
+  for c in $OVN_CUBES; do [ "${c%%:*}" = "$1" ] && { echo "${c#*:}"; return 0; }; done
+  return 0
 }
 ovn_meta_out() { echo "var/cubelab/runs/$(ovn_cube_file "$1")-overnight-n$OVN_META_DRAFTS"; }
 
@@ -1410,16 +1416,18 @@ ovn_progress() {   # ovn_progress <job> <mtg>
 
 # --only: evolve | meta | synergy | modern-era | vintage | pauper | learn (or meta-<cube>, selfplay, omega)
 ovn_expand_only() {   # ovn_expand_only <a,b,c> -- jobs in queue order, or return 2
-  local tok want=" " j
+  local tok want=" " j unknown=0
   for tok in $(printf '%s' "$1" | tr ',' ' '); do
     case "$tok" in
       evolve|omega)                   want="$want evolve " ;;
-      meta)                           want="$want meta-synergy meta-modern-era meta-vintage meta-pauper " ;;
-      synergy|modern-era|vintage|pauper) want="$want meta-$tok " ;;
-      meta-synergy|meta-modern-era|meta-vintage|meta-pauper) want="$want $tok " ;;
+      meta)                           want="$want $(ovn_meta_jobs)" ;;
       learn|selfplay)                 want="$want learn " ;;
-      *) bad "Unknown job '$tok'.  Jobs: evolve, meta (or synergy, modern-era, vintage, pauper), learn." >&2; return 2 ;;
+      meta-*)  case " $(ovn_meta_jobs)" in *" $tok "*) want="$want $tok " ;; *) unknown=1 ;; esac ;;
+      *) case " $(ovn_cube_ids)" in *" $tok "*) want="$want meta-$tok " ;; *) unknown=1 ;; esac ;;
     esac
+    if [ "$unknown" = "1" ]; then
+      bad "Unknown job '$tok'.  Jobs: evolve, meta (or $(ovn_cube_ids | sed 's/ $//; s/ /, /g'); 'omega' alone is evolve, the Omega meta run is meta-omega), learn." >&2; return 2
+    fi
   done
   for j in $OVN_ALL; do case "$want" in *" $j "*) printf '%s\n' "$j" ;; esac; done
 }
@@ -1499,7 +1507,7 @@ ovn_keep_awake() {
 
 ovn_import_help() {
   say "Use the results in ForgeCoach"
-  info "Meta files are in: $RESULTS_DIR/meta/   (synergy, modern-era, vintage, pauper: <cube>.meta.json)"
+  info "Meta files are in: $RESULTS_DIR/meta/   ($(ovn_cube_ids | sed 's/ $//; s/ /, /g'): <cube>.meta.json)"
   info "1. Open ${FC_SITE}#meta  (the Metagame page), pick the cube's tab, click \"Import from file\""
   info "   and choose <cube>.meta.json.  Or drag the file onto the page: it finds its cube itself."
   info "2. The deck assistant takes the same files: ${FC_SITE}#deck > open a cube > the \"Lab\" chip in the"
@@ -1635,6 +1643,22 @@ cmd_overnight() {
     done
   fi
 
+  # --- cubes this mtg-table does not have (an older checkout): skipped, not a failure
+  if [ -d "$MTG/cubes" ]; then
+    local kept=() missing=""
+    for j in "${jobs[@]}"; do
+      case "$j" in
+        meta-*) if [ -f "$MTG/cubes/$(ovn_cube_file "${j#meta-}").md" ]; then kept+=("$j"); else missing="$missing $j"; fi ;;
+        *) kept+=("$j") ;;
+      esac
+    done
+    jobs=("${kept[@]}")
+    for j in $missing; do
+      warn "$j: skipped: cubes/$(ovn_cube_file "${j#meta-}").md is not in this mtg-table (update it: git pull).  Not a failure."
+    done
+    if [ "${#jobs[@]}" = "0" ]; then info "Nothing left to run."; ovn_pause "$tty"; return 0; fi
+  fi
+
   # --- one at a time: the plan -----------------------------------------------
   ovn_load_spd
   if [ -n "$budget" ]; then
@@ -1653,7 +1677,7 @@ cmd_overnight() {
     i=$((i + 1))
     s=$(( $(ovn_core_secs "$j") / J ))
     tot=$((tot + s))
-    printf '  %s%d.%s %s  (%s at %s workers)\n' "$B" "$i" "$N" "$(ovn_label "$j")" "$(ovn_hours "$s")" "$J"
+    printf '  %s%d.%s [%s] %s  (%s at %s workers)\n' "$B" "$i" "$N" "$j" "$(ovn_label "$j")" "$(ovn_hours "$s")" "$J"
     [ "$dry" = "1" ] && [ -f "$(ovn_done_file "$j")" ] && [ "$redo" = "0" ] && info "   (done already: would be skipped; --redo runs it again)"
     # selfplay starts from the synergy run when that job is ahead of it in this queue or already left its run
     if [ "$j" = "learn" ]; then

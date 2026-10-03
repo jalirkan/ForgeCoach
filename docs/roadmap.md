@@ -23,7 +23,7 @@ metagame page, "Your record" history, and `forgecoach overnight`.
 
 Open: the play-AI search step (in progress), the learned evaluator, per-cube
 "how to draft" guides, and the coach benchmark. Waiting on Justin's PC: the
-first overnight run (Omega evolve, fresh meta for four cubes, learned drafter).
+first overnight run (Omega evolve, fresh meta for seven cubes, learned drafter).
 
 ## Milestones
 
