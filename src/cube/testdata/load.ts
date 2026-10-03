@@ -7,7 +7,7 @@ import { parseCube, type Cube } from '../parseCube.ts';
 import { parseMeta, type CubeMeta } from '../meta.ts';
 import { makeContext, type CubeContext } from '../score.ts';
 
-export type CubeId = 'synergy' | 'modern-era' | 'vintage' | 'pauper' | 'omega';
+export type CubeId = 'synergy' | 'modern-era' | 'vintage' | 'pauper' | 'omega' | 'fair-fight';
 
 export function loadCube(id: CubeId): Cube {
   return parseCube(readFileSync(new URL(`../../../public/cubes/${id}-cube-180.md`, import.meta.url), 'utf8'));
