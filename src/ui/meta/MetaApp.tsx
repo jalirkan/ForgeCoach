@@ -33,6 +33,7 @@ import { prefetchCards, useCardInfo } from '../cardData.ts';
 import { cx } from '../util.ts';
 import { Dots, IntervalStrip, LedgerShell, SearchIcon, Segmented, SortTh, useTip } from '../ledger/Ledger.tsx';
 import { useMeta } from './useMeta.ts';
+import { SpreadView } from './SpreadView.tsx';
 import { ArchetypeSheet } from './ArchetypeSheet.tsx';
 import { ColourShareChart, WinChart } from './charts.tsx';
 import { CubeGuideView } from '../guide/CubeGuide.tsx';
@@ -46,7 +47,8 @@ export function cubeFromHash(hash: string): string {
   return id && cubeInfo(id) ? id : CUBES[0]!.id;
 }
 
-type View = 'archetypes' | 'cards' | 'guide';
+type View = 'archetypes' | 'cards' | 'spread' | 'guide';
+const viewHash = (v: View) => (v === 'guide' || v === 'spread' ? `/${v}` : '');
 type Layout = 'grid' | 'table';
 type ColourFilter = 'all' | 'W' | 'U' | 'B' | 'R' | 'G';
 type MinGames = '0' | '5' | '10';
@@ -62,7 +64,7 @@ export default function MetaApp() {
   }, []);
   const pick = (id: string) => {
     setCubeId(id);
-    history.replaceState(null, '', `#meta/${id}${view === 'guide' ? '/guide' : ''}`);
+    history.replaceState(null, '', `#meta/${id}${viewHash(view)}`);
   };
   const info = cubeInfo(cubeId)!;
   const { loading, meta, source, themes, reload } = useMeta(cubeId);
@@ -108,10 +110,10 @@ export default function MetaApp() {
     };
   }, [importFile]);
 
-  const [view, setViewState] = useState<View>(() => (/^#meta\/[\w-]+\/guide\b/.test(location.hash) ? 'guide' : 'archetypes'));
+  const [view, setViewState] = useState<View>(() => (/^#meta\/[\w-]+\/guide\b/.test(location.hash) ? 'guide' : /^#meta\/[\w-]+\/spread\b/.test(location.hash) ? 'spread' : 'archetypes'));
   const setView = (v: View) => {
     setViewState(v);
-    history.replaceState(null, '', `#meta/${cubeId}${v === 'guide' ? '/guide' : ''}`);
+    history.replaceState(null, '', `#meta/${cubeId}${viewHash(v)}`);
   };
   const [layout, setLayout] = useState<Layout>('grid');
   const [sort, setSort] = useState<ArchetypeSort>('share');
@@ -259,11 +261,12 @@ export default function MetaApp() {
                 options={[
                   { value: 'archetypes', label: 'Archetypes' },
                   { value: 'cards', label: 'Cards' },
+                  { value: 'spread', label: 'Power spread' },
                   { value: 'guide', label: 'How to draft' },
                 ]}
               />
             </div>
-            {view !== 'guide' && (
+            {view !== 'guide' && view !== 'spread' && (
               <>
                 <div>
                   <span className="lg-field-label">Colour</span>
@@ -304,6 +307,8 @@ export default function MetaApp() {
 
           {view === 'guide' ? (
             <CubeGuideView cubeId={cubeId} meta={meta} headless />
+          ) : view === 'spread' ? (
+            <SpreadView cubeId={cubeId} meta={meta} reloadKey={`${source}:${meta.sample?.games ?? ''}`} />
           ) : (
             <>
               <div className="lg-toolbar">
