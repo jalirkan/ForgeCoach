@@ -48,3 +48,15 @@ export async function loadShippedMeta(info: CubeInfo, base: string, fetcher: Fet
     return null;
   }
 }
+
+/**
+ * Which of the cubes a lab meta.json is for: by its file name, else its title.
+ * A meta that names neither belongs to `fallback` (the cube being looked at).
+ */
+export function cubeForMeta(meta: { cube: { file?: string; name?: string } }, fallback?: string): CubeInfo | undefined {
+  const f = meta.cube.file?.split('/').pop();
+  const n = meta.cube.name?.trim();
+  const hit = CUBES.find((c) => (f && f === `${c.file}.md`) || (n && n === c.title));
+  if (hit) return hit;
+  return !f && !n && fallback ? cubeInfo(fallback) : undefined;
+}

@@ -23,6 +23,8 @@ and gives you the exact command to paste.
   data, a cafe, work), over [Tailscale](https://tailscale.com), a free private
   network between your own devices. Set it up once with
   `forgecoach remote-setup` (see *Play away from home* below).
+- **ForgeCoach overnight lab**: runs the cube lab's AI-vs-AI jobs unattended
+  (see *Overnight lab on your PC* below).
 - **Stop ForgeCoach**: stops the engine.
 - No Forge yet? `~/.local/bin/forgecoach get-forge` downloads Forge 2.0.14
   from its official release into `~/forge` (the first start offers to do it).
@@ -212,6 +214,42 @@ and the cube's themes.
 `decks/` folder, start the engine with it —
 `./scripts/play.sh --engine-only --deck decks/<name>.dck --mirror` (or
 `--ai-deck decks/<other>.dck`) — and press **Play vs Forge**.
+
+## Overnight lab on your PC
+
+The metagame and deck-assistant numbers come from mtg-table's cube lab: Forge
+AIs draft a cube against each other, build decks and play them. That uses your
+PC's CPU, not tokens or a network. One command runs the whole queue unattended:
+
+```bash
+forgecoach overnight          # or: app menu > "ForgeCoach overnight lab"
+```
+
+It updates mtg-table first, then runs these **one after another** (never in
+parallel; each is resumable, so run it again and it continues where it stopped):
+
+1. **Omega evolve**: 8 generations x 200 drafts that swap dead and dominant
+   cards out of the Omega cube (about 3 to 4 hours).
+2. **Meta runs** of the synergy, modern-era, vintage and pauper cubes: 300
+   drafts each, then the report that writes `meta.json` (about 40 minutes each).
+3. **Learned drafter**: synergy self-play, 4 iterations, learned card values
+   and synergy against the baseline drafter (about 4 hours).
+
+The times are estimates for 3 workers from the lab guide's "about 25 s of one
+core per draft"; more cores shorten them. Options: `--jobs N` (workers per job;
+default cores - 1), `--only evolve,synergy,learn`, `--hours N` (start no new job
+after N hours), `--dry-run` (print the plan and the exact commands), `--yes`
+(run even while the engine is up, at the lowest priority), `--redo`. Everything
+runs under `nice`, holds off sleep with `systemd-inhibit` and logs to
+`~/.cache/forgecoach/overnight.log`; a desktop notification says when it is
+done. `forgecoach status` shows the running job and its progress.
+
+**Where the results land**, in `~/.local/share/forgecoach/`: `meta/<cube>.meta.json`
+(also `reports/`), `omega/` (the evolved cube and its changelog) and
+`learned/synergy/` (values, synergy pairs, summary). **To use them**, open the
+[Metagame page](https://jalirkan.github.io/ForgeCoach/#meta), pick the cube and
+click **Import from file** (or drop the file on the page); the deck assistant's
+**Lab** chip takes the same files. Imports are kept in that browser only.
 
 ## Replay and review a recorded game
 

@@ -9,8 +9,10 @@
  * cube/metaView.ts; this file only lays it out.
  */
 import './meta.css';
-import { useEffect, useMemo, useState } from 'react';
-import { CUBES, cubeInfo } from '../../cube/cubes.ts';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CUBES, cubeForMeta, cubeInfo } from '../../cube/cubes.ts';
+import { parseMeta } from '../../cube/meta.ts';
+import { setImportedMeta } from '../../cube/metaStore.ts';
 import {
   archetypeRows,
   cardRows,
@@ -61,7 +63,48 @@ export default function MetaApp() {
     history.replaceState(null, '', `#meta/${id}`);
   };
   const info = cubeInfo(cubeId)!;
-  const { loading, meta, source, themes } = useMeta(cubeId);
+  const { loading, meta, source, themes, reload } = useMeta(cubeId);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+
+  // Import a meta.json from the cube lab: the file picker, or drop it on the page.
+  const importFile = useCallback(
+    async (f: File) => {
+      try {
+        const m = parseMeta(JSON.parse(await f.text()));
+        const target = cubeForMeta(m, cubeId);
+        if (!target) {
+          setImportMsg(`${f.name}: that meta is for “${m.cube.name ?? m.cube.file ?? 'another cube'}”, which ForgeCoach does not list.`);
+          return;
+        }
+        await setImportedMeta(target.id, m);
+        setImportMsg(`Imported ${f.name} for the ${target.title}.`);
+        if (target.id !== cubeId) pick(target.id);
+        else reload();
+      } catch (e) {
+        setImportMsg(`${f.name}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cubeId, reload],
+  );
+  useEffect(() => {
+    const over = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+    };
+    const drop = (e: DragEvent) => {
+      const f = e.dataTransfer?.files?.[0];
+      if (!f) return;
+      e.preventDefault();
+      void importFile(f);
+    };
+    window.addEventListener('dragover', over);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('drop', drop);
+    };
+  }, [importFile]);
 
   const [view, setView] = useState<View>('archetypes');
   const [layout, setLayout] = useState<Layout>('grid');
@@ -125,6 +168,39 @@ export default function MetaApp() {
       <div className="lg-sub">
         {meta ? metaSubtitle(meta) : loading ? 'Loading the cube lab’s numbers…' : 'No cube lab run for this cube yet'}
         {source === 'imported' && <span className="lg-chip lg-chip-gold mt-imported">Imported</span>}
+      </div>
+
+      <div className="mt-import">
+        <button type="button" className="lg-chip mt-import-btn" onClick={() => fileRef.current?.click()}>
+          Import from file
+        </button>
+        <span className="muted tiny">
+          a <code>meta.json</code> from the cube lab (or drop it on this page)
+          {source === 'imported' && (
+            <>
+              {' · '}
+              <button
+                type="button"
+                className="mt-import-link"
+                onClick={() => void setImportedMeta(cubeId, null).then(() => (setImportMsg('Removed the imported file.'), reload()))}
+              >
+                remove it
+              </button>
+            </>
+          )}
+        </span>
+        {importMsg && <span className="mt-import-msg" role="status">{importMsg}</span>}
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void importFile(f);
+            e.target.value = '';
+          }}
+        />
       </div>
 
       <div className="lg-tabs" role="tablist" aria-label="Cubes">
@@ -526,8 +602,9 @@ function EmptyMeta({ file, title }: { file: string; title: string }) {
         {`tools/cubelab.sh run cubes/${file}.md --format grid --drafts 40 --jobs 4 \\\n    --out var/cubelab/runs/${file} \\\n  && tools/cubelab.sh report var/cubelab/runs/${file}`}
       </pre>
       <p>
-        The report writes a <code>meta.json</code> beside the run. Import it from <a href="#deck">Draft &amp; build</a> (the meta chip in the deck
-        assistant’s header) and this page picks it up.
+        The report writes a <code>meta.json</code> beside the run. Use <b>Import from file</b> above (or drop the file on this page); the deck
+        assistant’s meta chip in <a href="#deck">Draft &amp; build</a> takes it too. The overnight launcher (<code>forgecoach overnight</code>) leaves
+        them in <code>~/.local/share/forgecoach/meta/</code>.
       </p>
     </section>
   );
