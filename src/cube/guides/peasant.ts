@@ -1,0 +1,155 @@
+/*
+ * ForgeCoach — cube/guides/peasant.ts
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * How to draft the two-player Peasant Cube (public/cubes/peasant-cube-180.md),
+ * MatEffect's The Peasant Cube in its owner's own 180-card Twobert cut.
+ */
+import { FORGE_COMMON, FORMATS } from './common.ts';
+import type { CubeGuide } from './types.ts';
+
+export const PEASANT_GUIDE: CubeGuide = {
+  cubeId: 'peasant',
+  docTitle: /peasant cube/i,
+  teaser: 'Commons and uncommons: ten guild decks, real engines like Goblin Bombardment, and reanimator.',
+  summary:
+    'Commons and uncommons only, adapted from the most-followed peasant cube on Cube Cobra. It is faster and stronger than the Pauper cube: the uncommons bring engines (Goblin Bombardment, Mayhem Devil, Soulherder, Syr Konrad) and a real reanimator deck (Reanimate, Animate Dead, Dance of the Dead). There are no bombs, so games turn on synergy, removal and two-for-ones. Each of the ten colour pairs has two or three gold signposts. The mana is Landscapes, Duskmourn duals, City of Brass and Ash Barrens.',
+  archetypes: [
+    {
+      id: 'WU-blink',
+      colors: 'WU',
+      name: 'Azorius blink and fliers',
+      plan: 'Creatures with enter-the-battlefield value (Mulldrifter, Inspiring Overseer, All-Fates Stalker, Cloudgoat Ranger) used twice: Soulherder blinks one every end step, Ephemerate and Flickerwisp do it at once, Kor Skyfisher replays one. The tempo version taps blockers with Floodpits Drowner and Frost Trickster and wins in the air.',
+      cards: ['Soulherder', 'Shuri, Vibranium Technologist', 'Ephemerate', 'Flickerwisp', 'Mulldrifter'],
+      pickEarly: 'Ephemerate, Soulherder and Swords to Plowshares, then the ETB creatures that draw or remove.',
+      traps: 'Blink effects with too few creatures worth blinking. Soulherder only blinks your own creatures, and only at your end step.',
+      curve: 'Two- to four-drops, Mulldrifter and Cloudgoat Ranger at five. 17 lands.',
+      lab: { colors: 'WU', themes: ['FLK'] },
+    },
+    {
+      id: 'UB-reanimator',
+      colors: 'UB',
+      name: 'Dimir reanimator and control',
+      plan: 'Faithless Looting, Chart a Course, Waker of Waves and Troll of Khazad-dûm put a big creature in the graveyard; Reanimate, Animate Dead and Dance of the Dead bring it back on turn two or three. The control version trades with counters and removal and wins with Dinrova Horror and Ravenous Chupacabra value.',
+      cards: ['Dinrova Horror', 'Halo Forager', 'Reanimate', 'Animate Dead', 'Waker of Waves'],
+      pickEarly: 'Reanimate and Animate Dead, then removal and one or two good targets.',
+      traps: 'Targets are modest in a peasant cube: two or three is enough, and they must be good when cast too. Reanimate costs life equal to the mana value: nine for Artisan of Kozilek.',
+      curve: 'Cheap enablers and reanimation, a few six- and seven-drops. 16–17 lands.',
+      lab: { colors: 'UB' },
+    },
+    {
+      id: 'BR-aggrostocrats',
+      colors: 'BR',
+      name: 'Rakdos aggrostocrats',
+      plan: 'Sacrifice aggro. Mogg War Marshal, Sourbread Auntie, Hordeling Outburst and Goblin Plate Mail make bodies; Goblin Bombardment, Umbral Collar Zealot and Gut sacrifice them; Mayhem Devil, Spiteful Prankster and Marionette Apprentice turn every death into damage.',
+      cards: ['Mayhem Devil', 'Goblin Plate Mail', 'Goblin Bombardment', 'Gut, True Soul Zealot', 'Umbral Collar Zealot'],
+      pickEarly: 'Goblin Bombardment and Mayhem Devil above almost anything, then burn and token makers.',
+      traps: 'Outlets without fodder, or fodder without payoffs. Mayhem Devil triggers on every sacrifice, a Landscape, Clue or Food included, so count those too.',
+      curve: 'Low: many one- and two-drops, payoffs at two and three. 16 lands.',
+      lab: { colors: 'BR', themes: ['SAC'] },
+    },
+    {
+      id: 'RG-monsters',
+      colors: 'RG',
+      name: 'Gruul monsters',
+      plan: 'Elves and Eldrazi Spawn ramp into creatures ahead of the curve (Charging Monstrosaur, Bloodbraid Elf, Amethyst Dragon, Spinewoods Paladin); burn clears blockers and Choco-Comet finishes.',
+      cards: ['Writhing Chrysalis', 'Bloodbraid Elf', 'Charging Monstrosaur', 'Llanowar Elves', 'Choco-Comet'],
+      pickEarly: 'The gold cards, burn, then mana creatures.',
+      traps: 'Too much ramp and too few threats. The big green creatures have little evasion: pair them with trample and removal.',
+      curve: 'Elves at one, threats at four and five. 16 lands with elves, else 17.',
+      lab: { colors: 'RG' },
+    },
+    {
+      id: 'GW-tokens',
+      colors: 'WG',
+      name: 'Selesnya tokens and counters',
+      plan: 'Fewer, bigger tokens (Trumpeting Herd, Cloudgoat Ranger, Vitu-Ghazi Guildmage) that grow: Mighty Mutanimals counters, Veteran Beastrider pumps, Curse of Predation for every attacker. Scurry Oak with Mighty Mutanimals makes infinite Squirrels.',
+      cards: ['Vitu-Ghazi Guildmage', 'Veteran Beastrider', 'Mighty Mutanimals', 'Curse of Predation', 'Scurry Oak'],
+      pickEarly: 'Mighty Mutanimals, Curse of Predation and the white removal.',
+      traps: 'Little removal in green: take the white spells. Vitu-Ghazi Guildmage needs six mana for a token, so it is a late-game engine.',
+      curve: 'Two- to four-drops and a few five-drops. 17 lands.',
+      lab: { colors: 'WG', themes: ['TOK'] },
+    },
+    {
+      id: 'WB-drain',
+      colors: 'WB',
+      name: 'Orzhov drain and recursion',
+      plan: 'Every creature that dies drains: Elas il-Kor, Syr Konrad and Lampad of Death’s Vigil, with Lingering Souls tokens and Cult Conscript as fodder. Hero of the Dunes returns a cheap creature and pumps the small ones; the reanimation spells give a WB reanimator version.',
+      cards: ['Elas il-Kor, Sadistic Pilgrim', 'Hero of the Dunes', 'Lingering Souls', 'Syr Konrad, the Grim'],
+      pickEarly: 'Lingering Souls, Elas il-Kor and the cheap removal (Swords, Fatal Push, Bitter Triumph).',
+      traps: 'Drain payoffs without a sacrifice outlet or enough creatures dying. Hero of the Dunes only returns mana value 3 or less.',
+      curve: 'Two- and three-drops, Syr Konrad and Hero of the Dunes at five. 17 lands.',
+      lab: { colors: 'WB' },
+    },
+    {
+      id: 'UR-spells',
+      colors: 'UR',
+      name: 'Izzet spells',
+      plan: 'Cantrips, burn and counters trigger Third Path Iconoclast, Balmor, Coruscation Mage, Murmuring Mystic and Thermo-Alchemist; Slickshot Lockpicker and Halo Forager recast spells from the graveyard, and Rise from the Tides ends it.',
+      cards: ['Third Path Iconoclast', 'Balmor, Battlemage Captain', 'Khenra Spellspear', 'Murmuring Mystic', 'Rise from the Tides'],
+      pickEarly: 'Burn (Lightning Bolt, Chain Lightning) and the payoffs; cantrips come late.',
+      traps: 'Too few instants and sorceries: about twelve or more, or the payoffs are just small bodies.',
+      curve: 'Very low: payoffs at one to three, spells at one and two. 16 lands.',
+      lab: { colors: 'UR', themes: ['SPL'] },
+    },
+    {
+      id: 'BG-graveyard',
+      colors: 'BG',
+      name: 'Golgari graveyard',
+      plan: 'Fill the graveyard (Satyr Wayfinder, Malevolent Rumble, Sinister Starfish) and turn it into cards and bodies: Honest Rutstein and Eternal Witness return cards, Rise of the Witch-king trades a creature for a permanent back, Spider Spawning makes a wall of Spiders twice.',
+      cards: ['Honest Rutstein', 'Rise of the Witch-king', 'Spider Spawning', 'Satyr Wayfinder', 'Eternal Witness'],
+      pickEarly: 'Black removal and the three gold cards.',
+      traps: 'Spider Spawning counts creature cards only: you need a dozen creatures. Self-mill can bin the land you need.',
+      curve: 'Two- and three-drops, a few big spells. 17 lands.',
+      lab: { colors: 'BG', themes: ['GY'] },
+    },
+    {
+      id: 'RW-tokens',
+      colors: 'WR',
+      name: 'Boros go-wide',
+      plan: 'Cheap attackers with power 2 or less (Descendant of Storms, Signal Pest, Rabbit Battery) and token makers (Hordeling Outburst, Goblin Surprise), so Arabella drains for the whole team; Heroic Reinforcements ends it.',
+      cards: ['Arabella, Abandoned Doll', 'Heroic Reinforcements', 'Descendant of Storms', 'Goblin Surprise', 'Hordeling Outburst'],
+      pickEarly: 'Burn, Arabella and the token makers.',
+      traps: 'Running out of cards against blockers and life gain. Arabella counts power 2 or less: pumped creatures stop counting.',
+      curve: 'Very low: ten or more one- and two-drops. 16 lands.',
+      lab: { colors: 'WR', themes: ['AGG'] },
+    },
+    {
+      id: 'GU-ramp',
+      colors: 'UG',
+      name: 'Simic ramp',
+      plan: 'Biomechan Engineer, Environmental Scientist and Summon: Fenrir ramp into Pelakka Wurm, Colossal Skyturtle, Ka-Zar and Eusocial Engineering; blue’s card draw finds them. A graveyard version uses Fallaji Archaeologist and Grizzly Fate.',
+      cards: ['Biomechan Engineer', 'Colossal Skyturtle', 'Pelakka Wurm', 'Eusocial Engineering'],
+      pickEarly: 'Counterspells and card draw, then the big threats.',
+      traps: 'Little removal in these colours (Hunter’s Talent, bounce and counters): splash, or keep Colossal Skyturtle’s bounce channel for a problem creature.',
+      curve: 'Ramp at one to three, payoffs at five to seven. 17 lands.',
+      lab: { colors: 'UG' },
+    },
+  ],
+  principles: {
+    valuing: [
+      'The uncommon engines are what is scarce: Goblin Bombardment, Mayhem Devil, Soulherder, Syr Konrad, Reanimate. Take them over a fourth removal spell.',
+      'Removal is good but not everywhere: 26 spells, most of them black and red, so cheap white and black removal goes early.',
+      'Fixing comes late: every colour pair has four lands (its Duskmourn dual and three Landscapes), plus City of Brass and Ash Barrens.',
+      'Synergy matters: the gold signposts are strong in their deck and weak outside it, so read what the other drafter is taking.',
+    ],
+    formats: {
+      grid: FORMATS.grid,
+      winston: FORMATS.winston,
+      booster: FORMATS.booster,
+    },
+    splash:
+      'Each Landscape fetches one of three basic types, so a splash for one or two removal spells is easy: count three sources. City of Brass and Ash Barrens make any colour.',
+  },
+  forge: {
+    points: [
+      ...FORGE_COMMON,
+      'Here the flags fall on the sacrifice engines (Goblin Bombardment, Spawning Pit), on Faithless Looting and Waker of Waves, the reanimator deck’s enablers, and on Mishra’s Bauble. Rakdos and Dimir in the AI’s hands are weaker than in yours.',
+      'The AI rarely finds the Scurry Oak and Mighty Mutanimals combo, or holds a sacrifice outlet for the right moment.',
+    ],
+    flagged: {
+      all: ['Goblin Bombardment', 'Faithless Looting', 'Waker of Waves', "Mishra's Bauble", 'Spawning Pit'],
+      random: ['Soulherder', 'Halo Forager'],
+    },
+  },
+};
