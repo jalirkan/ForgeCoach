@@ -30,6 +30,8 @@ const AskGallery = lazy(() => import('./play/AskGallery.tsx'));
 
 // #meta[/<cube>]: the Cube metagame page (lazy: its own bundle).
 const MetaApp = lazy(() => import('./meta/MetaApp.tsx'));
+// #history: Your record, the games played against Forge here (lazy).
+const HistoryApp = lazy(() => import('./history/HistoryApp.tsx'));
 
 const LAST_SAMPLE_KEY = 'forgecoach.lastSample';
 const SEAT_URL_KEY = 'forgecoach.seatUrl';
@@ -111,7 +113,7 @@ export function App() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
   const page =
-    hash === '#ask-gallery' ? <AskGallery /> : /^#meta\b/.test(hash) ? <MetaApp /> : null;
+    hash === '#ask-gallery' ? <AskGallery /> : /^#meta\b/.test(hash) ? <MetaApp /> : /^#history\b/.test(hash) ? <HistoryApp /> : null;
   if (page) {
     return <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>{page}</Suspense>;
   }
