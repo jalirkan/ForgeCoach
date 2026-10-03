@@ -590,8 +590,11 @@
   }
   .lg-table th,
   .lg-table td {
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+  .lg-table th {
+    letter-spacing: 0.1em;
   }
   .mt-cards td:first-child .lg-name > span:nth-child(2) {
     white-space: normal;

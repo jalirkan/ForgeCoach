@@ -439,7 +439,7 @@ function CardTable({
               </SortTh>
               <th className="num mt-hide-sm">MV</th>
               <SortTh k="pickRate" sort={sort} desc={desc} onSort={onSort} num title="Picked when seen">
-                Pick rate
+                Pick %
               </SortTh>
               <th className="num mt-hide-sm" title="Average pick number when taken">
                 Avg pick

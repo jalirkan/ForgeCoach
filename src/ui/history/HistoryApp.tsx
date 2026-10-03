@@ -172,7 +172,7 @@ export default function HistoryApp() {
                     <tr>
                       <th className="num hs-rank hs-hide-sm">#</th>
                       <th>{by === 'yourDeck' ? 'Your deck' : by === 'aiProfile' ? 'AI profile' : 'AI deck'}</th>
-                      <th className="num">Played</th>
+                      <th className="num hs-hide-sm">Played</th>
                       <th>W–L–D</th>
                       <th className="num hs-hide-sm">Win</th>
                       <th>Recent</th>
@@ -190,7 +190,7 @@ export default function HistoryApp() {
                             <span className="hs-key">{r.key}</span>
                           </span>
                         </td>
-                        <td className="num hs-score">{r.matches}</td>
+                        <td className="num hs-score hs-hide-sm">{r.matches}</td>
                         <td className="lg-mono hs-wld">
                           {r.wins}–{r.losses}–{r.draws}
                         </td>
