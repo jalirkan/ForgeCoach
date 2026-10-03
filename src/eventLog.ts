@@ -44,6 +44,8 @@ export interface LogLine {
   kind: LogKind;
   /** The player the line is about (colours the line), or null. */
   who: number | null;
+  /** The step the event happened in (the Forge `PhaseType` name), or null before the first turn. */
+  phase: string | null;
   segs: LogSeg[];
 }
 
@@ -69,6 +71,8 @@ interface Walk {
   pendingToStack: Set<number>;
   /** Cards whose leaving play a `sacrificed` event already wrote (or will rewrite). */
   sacrificed: Set<number>;
+  /** The step the walk is in: the last state's phase, moved on by `phase` events. */
+  phase: string | null;
 }
 
 const walks = new WeakMap<object, Walk>();
@@ -98,7 +102,7 @@ export function gameEventLog(log: GameLog, upTo = Infinity): LogTurn[] {
   let w = walks.get(key);
   // A different (or reset) frame list: start again.
   if (!w || w.done > log.frames.length || (w.done > 0 && w.frames[w.done - 1] !== log.frames[w.done - 1])) {
-    w = { frames: log.frames, done: 0, prevIdx: new Map(), turns: [], pendingToStack: new Set(), sacrificed: new Set() };
+    w = { frames: log.frames, done: 0, prevIdx: new Map(), turns: [], pendingToStack: new Set(), sacrificed: new Set(), phase: null };
     walks.set(key, w);
   }
   w.frames = log.frames;
@@ -141,11 +145,15 @@ function foldFrame(w: Walk, log: GameLog, fi: number, s: GameStateBody, r: Frame
 
   for (const e of s.events ?? []) {
     const t = w.turns[w.turns.length - 1]!;
-    const add = (kind: LogKind, who: number | null, ...segs: LogSeg[]) => t.lines.push({ frameIndex: fi, kind, who, segs });
+    const add = (kind: LogKind, who: number | null, ...segs: LogSeg[]) => t.lines.push({ frameIndex: fi, kind, who, phase: w.phase ?? s.phase, segs });
     switch (e.kind) {
       case 'turn':
         ensure(e.turn, e.player);
         w.pendingToStack.clear();
+        w.phase = null;
+        break;
+      case 'phase':
+        w.phase = e.phase;
         break;
       case 'mulligan':
         add('info', e.player, player(e.player), ' took a mulligan');
@@ -304,4 +312,27 @@ function foldFrame(w: Walk, log: GameLog, fi: number, s: GameStateBody, r: Frame
     }
   }
   w.sacrificed.clear();
+  w.phase = s.phase;
+}
+
+/** The part of a turn a step belongs to, as the log's subheads name it. */
+export function phaseSection(phase: string | null): string {
+  if (!phase) return 'Before the game';
+  if (phase === 'UNTAP' || phase === 'UPKEEP' || phase === 'DRAW') return 'Beginning';
+  if (phase === 'MAIN1') return 'Main phase';
+  if (phase.startsWith('COMBAT')) return 'Combat';
+  if (phase === 'MAIN2') return 'Second main';
+  return 'End step';
+}
+
+/** A turn's lines cut into runs by section ("Main phase", "Combat"…), in order. */
+export function sectionsOf(lines: readonly LogLine[]): { section: string; lines: LogLine[] }[] {
+  const out: { section: string; lines: LogLine[] }[] = [];
+  for (const l of lines) {
+    const section = phaseSection(l.phase);
+    const cur = out[out.length - 1];
+    if (cur && cur.section === section) cur.lines.push(l);
+    else out.push({ section, lines: [l] });
+  }
+  return out;
 }

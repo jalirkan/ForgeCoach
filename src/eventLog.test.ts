@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { parseLog, type GameLog } from './log.ts';
-import { abilityText, gameEventLog, lineText, type LogTurn } from './eventLog.ts';
+import { abilityText, gameEventLog, lineText, phaseSection, sectionsOf, type LogTurn } from './eventLog.ts';
 import type { GameStateBody } from './protocol.ts';
 
 function load(name: string): GameLog {
@@ -43,6 +43,28 @@ describe('gameEventLog', () => {
     expect(t12).toContain('S.H.I.E.L.D. Spy Kit was attached to Soldier Token');
     expect(textOf(turns, 16)).toContain('Aerial Doombot got 3 +1/+1 counters (now 3)');
     for (const t of turns) for (const l of t.lines) expect(lineText(l)).not.toMatch(/\(\d+\)|#\d/);
+  });
+
+  it('files each line under the part of the turn it happened in', () => {
+    const t13 = turns.find((t) => t.turn === 13)!;
+    const secs = sectionsOf(t13.lines);
+    const of = (text: string) => secs.find((s) => s.lines.some((l) => lineText(l) === text))?.section;
+    expect(of('You attacked Forge AI with Quake, Agent of S.H.I.E.L.D. and Aerial Doombot')).toBe('Combat');
+    expect(of('Forge AI lost 1 life (20 → 19)')).toBe('Combat');
+    // Sections come in turn order and never repeat back to back.
+    for (let i = 1; i < secs.length; i++) expect(secs[i]!.section).not.toBe(secs[i - 1]!.section);
+    expect(turns.find((t) => t.turn === 1)!.lines.every((l) => phaseSection(l.phase) === 'Main phase')).toBe(true);
+  });
+
+  it('names the sections', () => {
+    expect(['UPKEEP', 'MAIN1', 'COMBAT_DAMAGE', 'MAIN2', 'CLEANUP', null].map(phaseSection)).toEqual([
+      'Beginning',
+      'Main phase',
+      'Combat',
+      'Second main',
+      'End step',
+      'Before the game',
+    ]);
   });
 
   it('ends with the result', () => {

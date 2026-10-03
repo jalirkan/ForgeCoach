@@ -1,0 +1,351 @@
+/*
+ * ForgeCoach — ui/play/board.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The play board's endstep-style finish: combat lines, the dimmed board while
+ * you select, the live selection count, the match box, serif life totals,
+ * the summoning-sick "Zz", and the token look.
+ */
+
+.game.play {
+  --blk-line: #74aef2;
+  --atk-line: #ef6f6c;
+}
+
+/* ------------------------------------------------------------------ */
+/* Combat lines (CombatArrows.tsx), drawn over the board and scrolling with it */
+
+.game.play .board {
+  position: relative;
+}
+.combat-arrows {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 30;
+  pointer-events: none;
+  overflow: visible;
+}
+.combat-line-path,
+.combat-line-glow {
+  fill: none;
+  stroke-linecap: round;
+}
+.combat-line-path {
+  stroke-width: 3;
+}
+.combat-line-glow {
+  stroke-width: 10;
+  opacity: 0.22;
+}
+.combat-line.is-block .combat-line-path,
+.combat-line.is-block .combat-line-glow {
+  stroke: var(--blk-line);
+}
+.combat-line.is-attack .combat-line-path,
+.combat-line.is-attack .combat-line-glow {
+  stroke: var(--atk-line);
+}
+.combat-line.is-attack .combat-line-path {
+  stroke-width: 2.5;
+  stroke-dasharray: 10 6;
+}
+.combat-line.is-pending .combat-line-glow {
+  animation: line-breathe 1.6s ease-in-out infinite;
+}
+@keyframes line-breathe {
+  50% {
+    opacity: 0.08;
+  }
+}
+.combat-line-dot {
+  fill: var(--atk-line);
+}
+.combat-badge circle {
+  fill: #0d1726;
+  stroke: var(--blk-line);
+  stroke-width: 2;
+}
+.combat-badge text {
+  fill: #fff;
+  font: 700 12px/1 var(--font);
+}
+@media (prefers-reduced-motion: reduce) {
+  .combat-line.is-pending .combat-line-glow {
+    animation: none;
+  }
+}
+
+/* Attacking / blocking: the frame and the lines say it; the flag shrinks to a corner badge. */
+.game.play .tile-flag {
+  left: auto;
+  right: 4px;
+  top: 4px;
+  transform: none;
+  height: 20px;
+  width: 20px;
+  padding: 0;
+  justify-content: center;
+}
+.game.play .tile-flag .flag-text {
+  display: none;
+}
+.game.play .tile.is-tapped .tile-flag {
+  top: calc(50% - var(--cw) / 2 + 4px);
+  right: calc(50% - var(--ch) / 2 + 4px);
+}
+
+/* ------------------------------------------------------------------ */
+/* Selecting (attackers, blockers, targets, a discard, paying): dim the rest */
+
+.game.play.is-selecting .board .tile:not(.is-act):not(.is-select):not(.is-attacking):not(.is-blocking) .tile-card,
+.game.play.is-selecting .board .tile:not(.is-act):not(.is-select):not(.is-attacking):not(.is-blocking) .pile-item,
+.game.play.is-selecting .hand-dock .tile:not(.is-act):not(.is-select) .tile-card,
+.game.play.is-selecting .hand-dock-peek {
+  filter: brightness(0.36) saturate(0.55);
+}
+.game.play.is-selecting .board .tile:not(.is-act):not(.is-select) .tile-ovl,
+.game.play.is-selecting .board .tile:not(.is-act):not(.is-select) .tile-attach {
+  opacity: 0.45;
+}
+/* What a click drives glows: gold for your pick, blue-white while blocking. */
+.game.play.is-selecting .tile.is-act:not(.is-attacking):not(.is-blocking) .tile-card {
+  box-shadow: 0 0 0 2px rgba(240, 199, 127, 0.85), 0 0 16px rgba(227, 178, 95, 0.4), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.game.play.mode-block .player-me .tile.is-act:not(.is-blocking) .tile-card {
+  box-shadow: 0 0 0 2px rgba(150, 196, 250, 0.9), 0 0 16px rgba(110, 169, 238, 0.45), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.game.play.mode-block .player-top .tile.is-attacking .tile-card {
+  box-shadow: 0 0 0 3px #e0544f, 0 0 20px rgba(239, 111, 108, 0.55), 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.game.play.is-selecting .tile .tile-card {
+  transition: filter 0.2s, box-shadow 0.15s, transform 0.18s ease;
+}
+
+/* The live count in the decision panel: ● 1 SELECTED · 1 blocker assigned — click more or confirm */
+.ab-select {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+.ab-select-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.ab-select-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+.ab-select-count.has-picks {
+  color: var(--accent-2);
+}
+.mode-block .ab-select-count.has-picks {
+  color: var(--blk-line);
+}
+.mode-attack .ab-select-count.has-picks {
+  color: var(--atk-line);
+}
+.ab-select-line {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--text-2);
+}
+@media (max-width: 1023px) {
+  .game.play .ab-sub.ab-select {
+    display: flex;
+    font-size: 12px;
+  }
+  .game.play .ab-select-line {
+    font-size: 13.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* The match box: MATCH · Game 1 / 3 · 0 – 0 */
+
+.match-box {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: 0 14px 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(227, 178, 95, 0.07), rgba(227, 178, 95, 0.02));
+}
+.match-kicker {
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.match-game {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.match-score {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.match-inline {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(227, 178, 95, 0.35);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.match-inline-score {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ */
+/* Life: a big serif number (endstep) — no pill */
+
+.game.play .board .life {
+  background: none;
+  border: 0;
+  padding: 0;
+  gap: 5px;
+  align-items: baseline;
+  color: var(--muted);
+}
+.game.play .board .life svg {
+  display: none;
+}
+.game.play .board .life-n {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: 0;
+  color: var(--text);
+}
+.game.play .board .life::after {
+  content: 'Life';
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.game.play .board .life.is-low .life-n {
+  color: #ff6f6a;
+}
+@media (min-width: 1024px) {
+  .game.play.is-wide .play-board .life-n {
+    font-size: 40px;
+  }
+  .game.play.is-wide .play-board .life {
+    padding: 0;
+  }
+}
+@media (max-width: 1023px) {
+  .game.play .play-phone-main .life-n {
+    font-size: 28px;
+  }
+  .game.play .play-phone-main .life::after {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Summoning sickness: "Zz" over the art */
+
+.tile-zz {
+  position: absolute;
+  right: 8%;
+  top: 34%;
+  z-index: 2;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(20px, calc(var(--cw) * 0.3), 40px);
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.92);
+  -webkit-text-stroke: 1px rgba(20, 22, 30, 0.85);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  letter-spacing: -0.04em;
+}
+.tile.is-tapped .tile-zz {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tokens: a token frame (a serif name, a big glyph, the type) */
+
+.tile.is-token .tile-face {
+  border-color: #2a2d36;
+  background:
+    radial-gradient(120% 70% at 50% 42%, color-mix(in srgb, var(--tc) 30%, #23262e), transparent 70%),
+    linear-gradient(180deg, #1c1f26, #121419);
+}
+.tile.is-token .tile-art {
+  background: none;
+}
+.tile.is-token .tile-art-fallback {
+  opacity: 0.75;
+  transform: scale(1.8);
+}
+.tile.is-token .tile-name {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(10px, calc(var(--cw) * 0.13), 15px);
+  letter-spacing: 0;
+}
+
+/* Cormorant's figures are old-style by default: lining figures for numbers. */
+.game.play .board .life-n,
+.match-score,
+.log-turn-no,
+.ab-select-line,
+.tile-zz {
+  font-variant-numeric: lining-nums tabular-nums;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+}
+.match-inline {
+  margin-right: 6px;
+}
+@media (max-width: 1023px) {
+  /* Phones: before the first pick the count says enough. */
+  .game.play .ab-select-line.is-hint {
+    display: none;
+  }
+}
+
+/* Phones: the combat lines and frames say what the combat strip says, and the
+   strip would sit under the lines; the desktop keeps it as a slim summary. */
+.game.play.is-narrow .midline .combat-panel {
+  display: none;
+}

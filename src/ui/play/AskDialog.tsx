@@ -1294,6 +1294,23 @@ export function OpeningDialog({ input, state, seat, onChoose, onPreviewCard }: O
     .map((l) => tidy(l))
     .filter(Boolean);
   const key = `${kind ?? 'input'}-${input.buttons.ok.label}-${input.prompt}`;
+  // 1 = the engine's OK (Keep / Play), 2 = its other button (Mulligan / Draw), endstep-style.
+  const chooseRef = useRef(choose);
+  chooseRef.current = choose;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('.sheet') || t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+      if (e.key === '1' || e.key === '2') {
+        e.preventDefault();
+        e.stopPropagation();
+        chooseRef.current(e.key === '1' ? 'ok' : 'cancel');
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
 
   if (kind === 'play_draw') {
     const question = lines[lines.length - 1] ?? 'Play or draw?';
@@ -1313,7 +1330,9 @@ export function OpeningDialog({ input, state, seat, onChoose, onPreviewCard }: O
             <span className="ask-big-icon">
               <IconPlay size={22} />
             </span>
-            <span className="ask-big-label">{input.buttons.ok.label}</span>
+            <span className="ask-big-label">
+              {input.buttons.ok.label} <kbd className="ask-kbd">1</kbd>
+            </span>
             <span className="ask-big-sub">Take the first turn</span>
           </button>
           <button type="button" className={cx('ask-opt ask-big', focus === 'cancel' && 'is-default')} disabled={sent} onClick={() => choose('cancel')} data-autofocus={focus === 'cancel' ? '' : undefined}>
@@ -1323,7 +1342,9 @@ export function OpeningDialog({ input, state, seat, onChoose, onPreviewCard }: O
                 <path d="M12 8v6M9 11l3 3 3-3" />
               </svg>
             </span>
-            <span className="ask-big-label">{input.buttons.cancel.label}</span>
+            <span className="ask-big-label">
+              {input.buttons.cancel.label} <kbd className="ask-kbd">2</kbd>
+            </span>
             <span className="ask-big-sub">Go second, draw on your first turn</span>
           </button>
         </div>
@@ -1335,23 +1356,26 @@ export function OpeningDialog({ input, state, seat, onChoose, onPreviewCard }: O
   const lands = hand.filter((c) => typeKind(c.types) === 'land').length;
   const n = hand.length;
   const okLabel = kind === 'mulligan' && n > 0 ? `${input.buttons.ok.label} ${n}` : input.buttons.ok.label;
-  const title = kind === 'mulligan' ? 'Keep this hand?' : lines[lines.length - 1] ?? 'Choose';
+  const mull = kind === 'mulligan';
+  // endstep: "Opening Hand / Keep this 7-card hand, or mulligan?"
+  const title = mull ? 'Opening hand' : lines[lines.length - 1] ?? 'Choose';
+  const context = lines.length > 1 ? lines.slice(0, -1).join(' ').replace(/^Human,\s*/i, '').replace(/^you are/i, 'You are') : '';
   return (
     <AskShell
       shellKey={key}
-      eyebrow={kind === 'mulligan' ? (n > 0 ? `Opening hand · ${n} cards · ${lands} land${lands === 1 ? '' : 's'}` : 'Opening hand') : 'Decide'}
-      title={title}
-      detail={kind === 'mulligan' && lines.length > 1 ? lines.slice(0, -1).join(' ') : undefined}
-      peek={title}
+      eyebrow={mull ? (n > 0 ? `${n} cards · ${lands} land${lands === 1 ? '' : 's'}${context ? ` · ${context}` : ''}` : context || 'Before the game') : 'Decide'}
+      title={<span className={cx(mull && 'ask-title-serif')}>{title}</span>}
+      detail={mull ? (n > 0 ? `Keep this ${n}-card hand, or mulligan?` : 'Keep this hand, or mulligan?') : undefined}
+      peek={mull ? 'Keep or mulligan?' : title}
       onEnter={() => choose(focus)}
       wide
       footer={
         <>
-          <button type="button" className={cx('btn ask-btn ask-btn-big', focus === 'cancel' ? 'btn-primary' : 'btn-quiet')} disabled={sent} onClick={() => choose('cancel')}>
-            {input.buttons.cancel.label}
+          <button type="button" className={cx('btn ask-btn ask-btn-big ask-btn-second', mull ? 'btn-outline' : focus === 'cancel' ? 'btn-primary' : 'btn-quiet')} disabled={sent} onClick={() => choose('cancel')}>
+            {input.buttons.cancel.label} <kbd className="ask-kbd">2</kbd>
           </button>
-          <button type="button" className={cx('btn ask-btn ask-btn-big', focus === 'cancel' ? 'btn-quiet' : 'btn-primary')} disabled={sent} onClick={() => choose('ok')} data-autofocus="">
-            {okLabel}
+          <button type="button" className={cx('btn ask-btn ask-btn-big', mull ? 'btn-keep' : focus === 'cancel' ? 'btn-quiet' : 'btn-primary')} disabled={sent} onClick={() => choose('ok')} data-autofocus="">
+            {okLabel} <kbd className="ask-kbd">1</kbd>
           </button>
         </>
       }

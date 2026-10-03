@@ -5,7 +5,7 @@
  * The table at one state: opponent on top, you at the bottom, with the turn
  * header, stack and combat between them.
  */
-import { memo, useMemo, useState, type CSSProperties } from 'react';
+import { memo, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import type { AnyCard, Card, GameStateBody, PlayerState } from '../protocol.ts';
 import { isHidden, MANA_COLORS } from '../protocol.ts';
 import type { GameLog } from '../log.ts';
@@ -16,7 +16,7 @@ import { useCardActions, usePlay } from './cardContext.ts';
 import { CardBack, CardTile, LandPile, displayName } from './CardTile.tsx';
 import { IconHeart, IconLayers, IconShield, IconSword } from './Icons.tsx';
 import { Pip } from './Mana.tsx';
-import { Sheet } from './Sheet.tsx';
+import { ZoneViewer, type ViewableZone } from './ZoneViewer.tsx';
 import { groupLands, pileWeight } from './landPiles.ts';
 import { cx, stateCardNames, typeKind } from './util.ts';
 
@@ -27,9 +27,11 @@ interface BoardProps {
   seat: number;
   /** Play mode draws the hand in its own dock. */
   hideHand?: boolean;
+  /** Drawn over the table, scrolling with it (play: the combat lines). */
+  overlay?: ReactNode;
 }
 
-export function Board({ log, state, frameIndex, seat, hideHand }: BoardProps) {
+export function Board({ log, state, frameIndex, seat, hideHand, overlay }: BoardProps) {
   const me = state.players.find((p) => p.id === seat) ?? state.players[0];
   const opps = state.players.filter((p) => p !== me);
   const byId = useMemo(() => {
@@ -52,6 +54,7 @@ export function Board({ log, state, frameIndex, seat, hideHand }: BoardProps) {
       ))}
       <Midline state={state} seat={seat} />
       <PlayerArea player={me} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} hideHand={hideHand} />
+      {overlay}
     </div>
   );
 }
@@ -214,7 +217,7 @@ function PlayerHeader({
   const v = useCardsVersion();
   const play = usePlay();
   const targetable = play ? play.playerMark(player.id) : false;
-  const [zone, setZone] = useState<'graveyard' | 'exile' | 'command' | null>(null);
+  const [zone, setZone] = useState<ViewableZone | null>(null);
   const mine = player.id === seat;
   const sources = useMemo(() => {
     try {
@@ -236,7 +239,7 @@ function PlayerHeader({
   const z = player.zones;
   const otherCounters = Object.entries(player.counters ?? {}).filter(([k, n]) => n > 0 && k !== 'POISON');
   return (
-    <div className={cx('phead', active && 'is-active', targetable && 'is-targetable')}>
+    <div className={cx('phead', active && 'is-active', targetable && 'is-targetable')} data-phead-player={player.id}>
       <div className="phead-id">
         {play ? (
           <button
@@ -266,7 +269,7 @@ function PlayerHeader({
             )}
           </div>
         </div>
-        <div className="life" title="Life">
+        <div className={cx('life', player.life <= 5 && 'is-low')} title="Life">
           <IconHeart size={14} />
           <span className="life-n">{player.life}</span>
           {player.poison > 0 && <span className="poison">☠ {player.poison}</span>}
@@ -280,7 +283,7 @@ function PlayerHeader({
             Hand <OppHand n={z.hand.count} /> <b>{z.hand.count}</b>
           </span>
         )}
-        <ZonePill label="Library" short="Lib" n={z.library.count} />
+        <ZonePill label="Library" short="Lib" n={z.library.count} onClick={z.library.cards.length > 0 ? () => setZone('library') : undefined} />
         <ZonePill label="Graveyard" short="GY" n={z.graveyard.count} onClick={() => setZone('graveyard')} />
         <ZonePill label="Exile" short="Ex" n={z.exile.count} onClick={() => setZone('exile')} />
         {z.command.count > 0 && <ZonePill label="Command" n={z.command.count} onClick={() => setZone('command')} />}
@@ -315,7 +318,7 @@ function PlayerHeader({
           )}
         </div>
       )}
-      <ZoneSheet player={player} zone={zone} onClose={() => setZone(null)} mine={mine} />
+      <ZoneViewer player={player} zone={zone} onClose={() => setZone(null)} mine={mine} />
     </div>
   );
 }
@@ -363,38 +366,6 @@ function OppHand({ n }: { n: number }) {
         <CardBack key={i} small />
       ))}
     </div>
-  );
-}
-
-function ZoneSheet({
-  player,
-  zone,
-  onClose,
-  mine,
-}: {
-  player: PlayerState;
-  zone: 'graveyard' | 'exile' | 'command' | null;
-  onClose: () => void;
-  mine: boolean;
-}) {
-  const cards = zone ? [...player.zones[zone].cards].reverse() : [];
-  const title = zone ? `${mine ? 'Your' : `${player.name}'s`} ${zone}` : '';
-  return (
-    <Sheet open={zone !== null} onClose={onClose} title={title} subtitle={zone ? `${cards.length} card${cards.length === 1 ? '' : 's'} · most recent first` : ''}>
-      {cards.length === 0 ? (
-        <p className="muted">Nothing here.</p>
-      ) : (
-        <div className="zone-grid">
-          {cards.map((c) =>
-            isHidden(c) ? (
-              <CardBack key={c.id} />
-            ) : (
-              <CardTile key={c.id} card={c as Card} inHand />
-            ),
-          )}
-        </div>
-      )}
-    </Sheet>
   );
 }
 
