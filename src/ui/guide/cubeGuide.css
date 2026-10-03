@@ -1,0 +1,327 @@
+/*
+ * ForgeCoach — ui/guide/cubeGuide.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The cube guide, in the endstep style of forge-theme.css and the ledger
+ * pages: gold letter-spaced kickers, italic serif headings, serif body,
+ * hairline rules, mono numbers. Its own tokens, so it reads the same on the
+ * cube page (.fx), the metagame page (.ledger) and in a sheet.
+ */
+.cg {
+  --cg-text: #ece5d6;
+  --cg-text-2: #c9c0ae;
+  --cg-muted: #988e7b;
+  --cg-line: #2a251c;
+  --cg-line-2: #3a3326;
+  --cg-gold: #c9a45c;
+  --cg-gold-hi: #e2c27f;
+  --cg-gold-soft: rgba(201, 164, 92, 0.12);
+  --cg-surface: #17130d;
+  --cg-serif: 'EB Garamond', 'Cormorant Garamond', Garamond, 'Times New Roman', serif;
+  --cg-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color: var(--cg-text);
+  max-width: 820px;
+  min-width: 0;
+}
+.cg-head {
+  margin-bottom: 10px;
+}
+.cg-kicker {
+  color: var(--cg-gold);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+.cg-kicker-sm {
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+.cg-title {
+  margin: 6px 0 0;
+  font: italic 400 clamp(28px, 5vw, 36px) / 1.1 var(--cg-serif);
+  color: var(--cg-text);
+}
+.cg-summary {
+  margin: 10px 0 18px;
+  font: 18px/1.5 var(--cg-serif);
+  color: var(--cg-text-2);
+}
+.cg-labbox {
+  margin: 0 0 22px;
+  padding: 12px 14px;
+  border: 1px solid var(--cg-line-2);
+  border-left: 2px solid var(--cg-gold);
+  border-radius: 6px;
+  background: var(--cg-gold-soft);
+}
+.cg-fact {
+  margin: 0 0 6px;
+  font: 13px/1.5 var(--cg-mono);
+  color: var(--cg-text);
+}
+.cg-caveat {
+  margin: 4px 0 0;
+  font: italic 15px/1.4 var(--cg-serif);
+  color: var(--cg-muted);
+}
+.cg-sec {
+  margin: 0 0 26px;
+}
+.cg-h {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--cg-line);
+  font: italic 500 22px/1.2 var(--cg-serif);
+  color: var(--cg-text);
+}
+.cg-h span {
+  font: 500 12px/1 var(--cg-mono);
+  font-style: normal;
+  color: var(--cg-muted);
+}
+
+/* Archetypes */
+.cg-arch {
+  border-bottom: 1px solid var(--cg-line);
+}
+.cg-arch > summary {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 2px;
+  cursor: pointer;
+  list-style: none;
+}
+.cg-arch > summary::-webkit-details-marker {
+  display: none;
+}
+.cg-arch > summary::after {
+  content: '';
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  width: 7px;
+  height: 7px;
+  margin-left: 12px;
+  border-right: 1.5px solid var(--cg-muted);
+  border-bottom: 1.5px solid var(--cg-muted);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.15s;
+}
+.cg-arch[open] > summary::after {
+  transform: rotate(225deg) translateY(-2px);
+}
+.cg-arch > summary:hover .cg-arch-name {
+  color: var(--cg-gold-hi);
+}
+.cg-arch-pips {
+  display: inline-flex;
+}
+.cg-any {
+  font: 500 10px/1 var(--cg-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cg-muted);
+}
+.cg-arch-name {
+  font: 500 18px/1.25 var(--cg-serif);
+  color: var(--cg-text);
+  min-width: 0;
+}
+.cg-arch-cols {
+  grid-column: 3;
+  grid-row: 1;
+  margin-right: 22px;
+  font-size: 12px;
+  color: var(--cg-muted);
+  text-align: right;
+}
+.cg-arch-body {
+  padding: 0 2px 16px 64px;
+}
+.cg-plan {
+  margin: 0 0 10px;
+  font: 16.5px/1.5 var(--cg-serif);
+  color: var(--cg-text-2);
+}
+.cg-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.cg-card {
+  padding: 4px 9px;
+  border: 1px solid var(--cg-line-2);
+  border-radius: 999px;
+  background: var(--cg-surface);
+  font: 13px/1.2 var(--cg-serif);
+  color: var(--cg-text);
+}
+button.cg-card {
+  cursor: pointer;
+}
+button.cg-card:hover,
+button.cg-card:focus-visible {
+  border-color: var(--cg-gold);
+  color: var(--cg-gold-hi);
+}
+.cg-dl {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 0;
+}
+.cg-dl dt {
+  padding-top: 3px;
+  color: var(--cg-gold);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.cg-dl dd {
+  margin: 0;
+  font: 15.5px/1.45 var(--cg-serif);
+  color: var(--cg-text-2);
+}
+.cg-lab-line {
+  margin: 12px 0 0;
+  font: 12px/1.4 var(--cg-mono);
+  color: var(--cg-text-2);
+}
+.cg-lab-line.is-thin {
+  color: var(--cg-muted);
+}
+
+/* Principles and the AI */
+.cg-list {
+  margin: 0 0 14px;
+  padding-left: 18px;
+}
+.cg-list li {
+  margin: 0 0 8px;
+  font: 16px/1.5 var(--cg-serif);
+  color: var(--cg-text-2);
+}
+.cg-list li::marker {
+  color: var(--cg-gold);
+}
+.cg-formats dt {
+  padding-top: 4px;
+}
+.cg-flags {
+  padding: 10px 12px;
+  border: 1px dashed var(--cg-line-2);
+  border-radius: 6px;
+}
+.cg-flags p {
+  margin: 0 0 6px;
+  font: 14.5px/1.45 var(--cg-serif);
+  color: var(--cg-text-2);
+}
+.cg-flag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--cg-gold-soft);
+  border: 1px solid rgba(201, 164, 92, 0.4);
+  font: 500 10.5px/1.3 var(--cg-mono);
+  color: var(--cg-gold-hi);
+  vertical-align: 1px;
+}
+.cg-flag.is-soft {
+  background: transparent;
+  color: var(--cg-muted);
+  border-color: var(--cg-line-2);
+}
+.cg-none {
+  font: italic 16px/1.4 var(--cg-serif);
+  color: var(--cg-muted);
+}
+
+/* In a sheet */
+.cg-sheet .sheet-body {
+  padding-top: 6px;
+}
+.cg-sheet .cg-summary {
+  margin-top: 4px;
+}
+
+/* The set-up screen's teaser and the cube page's tabs */
+.cg-teaser {
+  font: italic 15px/1.4 var(--serif, 'EB Garamond', Garamond, serif);
+  color: var(--text-2, #c9c0ae);
+}
+.cg-teaser button {
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 600 13px/1 var(--font, system-ui);
+  font-style: normal;
+  color: var(--gold-hi, #e2c27f);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cg-teaser button:hover {
+  text-decoration: underline;
+}
+.cg-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 18px;
+  border-bottom: 1px solid var(--line, #2a251c);
+}
+.cg-tabs a {
+  position: relative;
+  padding: 10px 14px 11px;
+  color: var(--muted, #988e7b);
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+.cg-tabs a:hover {
+  color: var(--text-2, #c9c0ae);
+}
+.cg-tabs a[aria-current='page'] {
+  color: var(--text, #ece5d6);
+}
+.cg-tabs a[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--gold, #c9a45c);
+}
+
+@media (max-width: 560px) {
+  .cg-summary {
+    font-size: 17px;
+  }
+  .cg-arch > summary {
+    grid-template-columns: 44px minmax(0, 1fr) 14px;
+  }
+  .cg-arch-cols {
+    display: none;
+  }
+  .cg-arch-body {
+    padding-left: 2px;
+  }
+  .cg-dl {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .cg-dl dd {
+    margin-bottom: 8px;
+  }
+}

@@ -26,6 +26,8 @@ import { colourLabel, wubrg } from '../../cube/colors.ts';
 import { prefetchCards, useCardInfo } from '../cardData.ts';
 import { IconChevronLeft, IconChevronRight } from '../Icons.tsx';
 import { PipRow } from '../Mana.tsx';
+import { CubeGuideSheet } from '../guide/CubeGuide.tsx';
+import { guideFor } from '../../cube/guides/index.ts';
 import { Sheet } from '../Sheet.tsx';
 import { cx } from '../util.ts';
 import type { StartOptions } from './useDraftGame.ts';
@@ -114,6 +116,7 @@ export function DraftSetup({
   const [title, setTitle] = useState('Practice draft');
   const [advanced, setAdvanced] = useState(false);
   const [picker, setPicker] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   useEffect(() => prefetchCards(Object.values(CUBE_ART)), []);
   const cube = cubeInfo(cubeId) ?? CUBES[0]!;
   const seats = format === 'booster' ? players : 2;
@@ -210,6 +213,14 @@ export function DraftSetup({
                 See the list
               </a>
             </p>
+            {guideFor(cube.id) && (
+              <p className="setup-small cg-teaser">
+                {guideFor(cube.id)!.teaser}{' '}
+                <button type="button" onClick={() => setGuideOpen(true)}>
+                  Read the guide
+                </button>
+              </p>
+            )}
             <p className="setup-shape">{shape}</p>
             <button className={cx('adv-toggle', advanced && 'is-open')} onClick={() => setAdvanced(!advanced)} aria-expanded={advanced}>
               Advanced <span aria-hidden="true">⌄</span>
@@ -306,6 +317,7 @@ export function DraftSetup({
         </div>
       </div>
 
+      <CubeGuideSheet open={guideOpen} onClose={() => setGuideOpen(false)} cubeId={cube.id} />
       <Sheet open={picker} onClose={() => setPicker(false)} width={720} className="fx fx-sheet" title={<span className="serif-title">Choose a cube</span>}>
         <div className="ctiles">
           {CUBES.map((c) => (
