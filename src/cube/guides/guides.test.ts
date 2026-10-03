@@ -5,10 +5,15 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { aiFlagsFromDoc } from '../../draft/aiFlags.ts';
+import { labCards } from '../../draft/cards.ts';
+import { aiStep, apply, legalLines, newDraft, toAct, type GridDraft } from '../../draft/draft.ts';
+import { buildPickPrompt } from '../../draft/pickPrompt.ts';
+import { buildDecks } from '../builder.ts';
+import { buildDeckPrompt } from '../deckPrompt.ts';
 import { CUBES } from '../cubes.ts';
 import { parseMeta, type CubeMeta } from '../meta.ts';
 import { archetypeRows } from '../metaView.ts';
-import { loadCube, loadInfos, loadRealMeta, type CubeId } from '../testdata/load.ts';
+import { context, loadCube, loadInfos, loadRealMeta, samplePool, type CubeId } from '../testdata/load.ts';
 import { archetypeColours, GUIDE_SECTION_MAX_CHARS, GUIDES, guideFor, guideForTitle, guidePromptSection, matchArchetypes } from './index.ts';
 import { archetypeLab, guideLabFacts, LAB_MIN_GAMES, topArchetype } from './lab.ts';
 
@@ -188,5 +193,30 @@ describe('lab facts come from meta.json at runtime', () => {
     expect(lab.text).toMatch(/^Lab: WU-ETB, \d+ games, \d+% win rate/);
     const thin = parseMeta({ schema: 1, cube: {}, cards: {}, archetypes: [{ id: 'WU-ETB', colors: 'WU', primaryTheme: 'ETB', decks: 1, games: 3, winRate: 1 }], pairs: [] });
     expect(archetypeLab(thin, blink)?.text).toMatch(/only 3 games: too few to read/);
+  });
+});
+
+describe('the guide in the draft and deckbuilding coach prompts', () => {
+  it('the deck prompt quotes the build’s archetype', () => {
+    const ctx = context('synergy', loadRealMeta('synergy'));
+    const pool = samplePool(ctx.cube, 'BR', 45, 3);
+    const b = buildDecks(ctx, pool).find((x) => x.colors === 'BR')!;
+    const p = buildDeckPrompt({ ctx, pool, build: b, infos: new Map() });
+    expect(p.user).toContain('## Cube guide');
+    expect(p.user).toContain('### Rakdos sacrifice');
+    expect(p.user.indexOf('## Cube guide')).toBeLessThan(p.user.indexOf('## Card text (pool)'));
+  });
+
+  it('the pick prompt quotes the pool’s archetype once there is one', () => {
+    const ctx = context('pauper', loadRealMeta('pauper'));
+    const names = ctx.cube.cards.map((c) => c.name);
+    let d = newDraft({ cubeId: 'pauper', format: 'grid', cube: names, seed: 4, youFirst: true, now: 1 });
+    const early = buildPickPrompt({ ctx, draft: d, infos: new Map() });
+    expect(early.user).toContain('## Cube guide');
+    expect(early.user).toContain('Archetypes: Azorius skies and blink');
+    const cards = labCards(ctx);
+    for (let i = 0; i < 12 && !d.done; i++) d = toAct(d) === 'ai' ? aiStep(d, cards) : apply(d, { kind: 'line', line: legalLines(d as GridDraft)[0]! }, 1);
+    const later = buildPickPrompt({ ctx, draft: d, infos: new Map() });
+    expect(later.user).toMatch(/## Cube guide[^]*### /);
   });
 });

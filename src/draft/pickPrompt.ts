@@ -13,6 +13,7 @@ import type { Prompt } from '../prompt.ts';
 import { colourLabel } from '../cube/colors.ts';
 import { GRID_LINES, pickValue, poolColours, poolProfile, recommendGrid, recommendWinston } from '../cube/pick.ts';
 import { cardValue, metaValue, pct, type CubeContext } from '../cube/score.ts';
+import { guideFor, guidePromptSection } from '../cube/guides/index.ts';
 import { knownAiCards, progress, type Draft } from './draft.ts';
 
 export const PICK_SYSTEM = `You are a Magic: The Gathering draft coach sitting beside a player in a two-player cube draft against an AI drafter (Grid or Winston). Both players will build 40-card decks from what they draft and play each other, so what the AI takes is what the player will face.
@@ -95,6 +96,9 @@ export function buildPickPrompt({ ctx, draft: d, infos, question }: PickPromptIn
   for (const n of [...you].sort()) lines.push(`- ${cardLine(n, ctx)}`);
   lines.push('', `## What you know the AI has (${aiKnown.length} of ${d.picks.ai.length})`);
   lines.push(aiKnown.length ? aiKnown.join(', ') : '(nothing seen yet)');
+  // The cube's guide for the archetype the pool points to (static advice, capped).
+  const guide = guidePromptSection(guideFor(d.cubeId), pair);
+  if (guide) lines.push('', guide);
   lines.push('', '## Card text');
   for (const n of pickPromptCards(d)) lines.push(oracle(n, infos.get(n)));
   if (question?.trim()) lines.push('', `## My question`, question.trim());
