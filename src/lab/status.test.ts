@@ -20,8 +20,18 @@ import {
   pressureLevel,
   rebaseTimes,
   staleness,
+  heartbeatStale,
+  runState,
+  HEARTBEAT_STALE_S,
+  IDLE_RED_AFTER_S,
   updatedLine,
   withCacheBuster,
+  liveCells,
+  parseLive,
+  parseCubes,
+  formatBytes,
+  MAX_LIVE,
+  MAX_CUBES,
 } from './status.ts';
 
 const sample = JSON.parse(readFileSync(new URL('../../public/lab-sample.json', import.meta.url), 'utf8')) as unknown;
@@ -65,7 +75,7 @@ describe('parseLabStatus', () => {
   it('reads the bundled sample with the optional fields', () => {
     const s = parseLabStatus(sample);
     expect(s.schema).toBe(1);
-    expect(s.running.map((r) => r.id)).toEqual(['J003', 'J005']);
+    expect(s.running.map((r) => r.id)).toEqual(['J003', 'J005', 'J020']);
     expect(s.running[0]!.elapsedS).toBe(1260);
     expect(s.host?.cpus).toBe(16);
     expect(s.waiting[0]).toMatchObject({ id: 'J007', reason: 'needs 22 GB free; waits for J003' });
@@ -277,5 +287,145 @@ describe('fetchLabStatus', () => {
     expect(await kind(fetchLabStatus('u', { fetch: reply(200, '{"updated": ') }))).toBe('parse');
     expect(await kind(fetchLabStatus('u', { fetch: reply(200, '[1,2]') }))).toBe('parse');
     expect(await kind(fetchLabStatus('u', { fetch: reply(200, ' '.repeat(600 * 1024)) }))).toBe('tooLarge');
+  });
+});
+
+describe('RUNNING / IDLE and the heartbeat', () => {
+  const now = new Date('2026-10-03T12:00:00Z');
+  const ago = (min: number) => new Date(now.getTime() - min * 60_000).toISOString();
+
+  it('reads the runner’s state, idle reason and heartbeat', () => {
+    const s = parseLabStatus({ schema: 1, updated: ago(1), heartbeat: ago(0.5), state: 'idle', idleSince: ago(12), idleReason: 'blocked after J012', running: [] });
+    expect(s.state).toBe('idle');
+    expect(s.idleReason).toBe('blocked after J012');
+    expect(s.heartbeat?.toISOString()).toBe(ago(0.5));
+    expect(runState(s, now)).toEqual({ state: 'idle', idleS: 12 * 60, reason: 'blocked after J012', red: true });
+    expect(heartbeatStale(s, now).stale).toBe(false);
+  });
+
+  it('IDLE turns red at ten minutes', () => {
+    const at = (min: number) => runState(parseLabStatus({ updated: ago(0), state: 'idle', idleSince: ago(min), idleReason: 'queue empty' }), now);
+    expect(at(9.9).red).toBe(false);
+    expect(at(IDLE_RED_AFTER_S / 60).red).toBe(true);
+    expect(runState(parseLabStatus({ updated: ago(0), state: 'idle' }), now)).toEqual({ state: 'idle', idleS: null, reason: null, red: false });
+  });
+
+  it('running ignores idle fields; an older file derives the state from its running list and the heartbeat from updated', () => {
+    const r = parseLabStatus({ updated: ago(1), state: 'running', idleSince: ago(30), idleReason: 'queue empty', running: [{ id: 'J001' }] });
+    expect(runState(r, now)).toEqual({ state: 'running', idleS: null, reason: null, red: false });
+    const old = parseLabStatus({ updated: ago(2), running: [{ id: 'J001' }] });
+    expect(old.state).toBe('running');
+    expect(old.heartbeat?.toISOString()).toBe(ago(2));
+    expect(parseLabStatus({ updated: ago(2), running: [] }).state).toBe('idle');
+    expect(parseLabStatus({ updated: ago(2), state: 'bogus' }).state).toBe('idle');
+  });
+
+  it('warns when the heartbeat is five minutes old', () => {
+    expect(heartbeatStale(parseLabStatus({ updated: ago(1), heartbeat: ago(4.9) }), now).stale).toBe(false);
+    expect(heartbeatStale(parseLabStatus({ updated: ago(1), heartbeat: ago(HEARTBEAT_STALE_S / 60) }), now).stale).toBe(true);
+    expect(heartbeatStale(parseLabStatus({}), now)).toEqual({ stale: false, ageS: null });
+  });
+
+  it('the idle reason is untrusted text: cleaned and clipped', () => {
+    const s = parseLabStatus({ state: 'idle', idleReason: `queue\u0000 empty${'x'.repeat(200)}` });
+    expect(s.idleReason!.length).toBeLessThanOrEqual(60);
+    expect(s.idleReason).toMatch(/^queue empty/);
+  });
+});
+
+describe('a running job’s live numbers and per-cube progress', () => {
+  it('reads the sample’s queue job: workers of max, memory, live metrics headline first, cubes', () => {
+    const j = parseLabStatus(sample).running.find((r) => r.id === 'J020')!;
+    expect(j).toMatchObject({ workers: 5, workersMax: 6, memGb: 9.42 });
+    expect(j.live[0]).toEqual({ key: 'q.night_drafts_done', value: 1180, headline: true });
+    expect(j.cubes).toHaveLength(4);
+    expect(j.cubes[0]).toEqual({ id: 'cube 1', done: 260, planned: 800, fraction: 0.325 });
+    const cells = liveCells(j);
+    expect(cells[0]).toMatchObject({ label: 'Memory', value: '9.4 GB' });
+    expect(cells.slice(1, 3).map((c) => [c.label, c.value, c.tone])).toEqual([
+      ['Drafts tonight', '1,180', undefined],
+      ['Engine errors', '2', 'bad'],
+    ]);
+    const by = (label: string) => cells.find((c) => c.label === label);
+    expect(by('Games')?.value).toBe('1,180');
+    expect(by('Engine error rate')?.value).toBe('0.2 %');
+    expect(by('Timeouts')).toMatchObject({ value: '3', tone: 'amber' });
+    expect(by('Recording errors')).toMatchObject({ value: '0', tone: undefined });
+    expect(by('Bridge share')?.value).toBe('20 %');
+    expect(by('Turns / game')?.value).toBe('9.40');
+    expect(by('Disk')?.value).toBe('734.0 MB');
+    expect(by('Games / h')?.value).toBe('674');
+    // Tonight's draft rate and the all-nights rate have distinct labels.
+    expect(by('Drafts tonight / h')?.value).toBe('674');
+    expect(by('Drafts / h (all nights)')?.value).toBe('674');
+    expect(new Set(cells.map((c) => c.label)).size).toBe(cells.length);
+    // An unknown key keeps its raw name, last.
+    expect(cells.at(-1)).toMatchObject({ label: 'q.ms_per_turn', known: false, value: '412' });
+  });
+
+  it('cleans live: unsafe keys, non-numbers, out-of-range and per-cube keys are dropped; at most MAX_LIVE', () => {
+    const live = parseLive(
+      {
+        'q.games': 10,
+        'Bad Key': 1,
+        'a/b': 2,
+        '__proto__': 3,
+        'q.text': '12',
+        'q.inf': Infinity,
+        'q.nan': NaN,
+        'q.huge': 1e20,
+        'q.neg': -4,
+        'cubes.omega.done': 5,
+        'q.cubes.omega.planned': 6,
+        'q.obj': { x: 1 },
+        'a.b.c.d.e': 1,
+        '<script>': 1,
+      },
+      ['q.games', 'nope', 7],
+    );
+    expect(live).toEqual([
+      { key: 'q.games', value: 10, headline: true },
+      { key: 'q.neg', value: -4, headline: false },
+    ]);
+    expect(parseLive(null)).toEqual([]);
+    expect(parseLive([1, 2])).toEqual([]);
+    expect(parseLive(Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`m${i}`, i])))).toHaveLength(MAX_LIVE);
+    // A running job without the new fields (an older file).
+    const j = parseLabStatus({ running: [{ id: 'J001', workers: 2 }] }).running[0]!;
+    expect([j.live, j.cubes, j.workersMax, j.memGb]).toEqual([[], [], null, null]);
+    expect(liveCells(j)).toEqual([]);
+    expect(parseLabStatus({ running: [{ id: 'J1', memGb: -2, workersMax: 'many' }] }).running[0]).toMatchObject({ memGb: null, workersMax: null });
+  });
+
+  it('cleans cubes: text ids, whole non-negative counts, at most MAX_CUBES', () => {
+    const cubes = parseCubes([
+      { id: 'omega', done: 2, planned: 4 },
+      { id: 'pauper\u0000\u202e', done: 1, planned: 0 },
+      { id: 'x', done: -1, planned: 3 },
+      { id: 'y', done: 'many', planned: 3 },
+      { done: 1, planned: 2 },
+      { id: 'z'.repeat(80), done: 5, planned: 2 },
+      'junk',
+    ]);
+    expect(cubes.map((c) => [c.id.startsWith('zzz') ? 'long' : c.id, c.done, c.planned, c.fraction])).toEqual([
+      ['omega', 2, 4, 0.5],
+      ['pauper', 1, 0, null],
+      ['long', 5, 2, 1],
+    ]);
+    expect(cubes[2]!.id.length).toBeLessThanOrEqual(40);
+    expect(parseCubes(Array.from({ length: 40 }, (_, i) => ({ id: `c${i}`, done: 0, planned: 1 })))).toHaveLength(MAX_CUBES);
+    expect(parseCubes({ omega: 1 })).toEqual([]);
+  });
+
+  it('hides workers and elapsed in the grid when the card already shows them; formats by name', () => {
+    const j = parseLabStatus({ running: [{ id: 'J1', workers: 3, elapsed: 60, live: { workers: 3, elapsed_s: 60, 'n.size_bytes': 2048, 'n.wait_s': 45, 'n.hit_rate': 0.5, 'n.x': 1.234 } }] }).running[0]!;
+    expect(liveCells(j).map((c) => [c.label, c.value])).toEqual([
+      ['n.size_bytes', '2 KB'],
+      ['n.wait_s', '45 s'],
+      ['n.hit_rate', '50 %'],
+      ['n.x', '1.23'],
+    ]);
+    expect(formatBytes(512)).toBe('512 B');
+    expect(formatBytes(3.4e9)).toBe('3.4 GB');
   });
 });

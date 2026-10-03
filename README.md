@@ -318,17 +318,41 @@ errors; the queue with estimates; waiting jobs with their reasons; finished
 jobs (done, failed, skipped) with their headline numbers, newest first; and the
 machine's load, memory, swap, memory pressure and recent pressure events.
 
-- **Source**: the runner pushes a numbers-only `status.json` to this repo's
-  orphan `lab-status` branch; the page reads
+- **Source**: on the PC itself the page first reads the runner's own copy,
+  `http://127.0.0.1:8645/public-status.json` (the same numbers-only file,
+  fresh to the second; the runner answers the browser's Private Network Access
+  preflight and allows only this site's origin), with an 800 ms timeout. Else it
+  reads the copy the runner pushes to this repo's orphan `lab-status` branch,
   `https://raw.githubusercontent.com/jalirkan/ForgeCoach/lab-status/status.json`
-  (with a cache-buster). `#lab?src=<http(s) URL>` reads another copy instead,
-  e.g. the PC over Tailscale (that server must send
-  `Access-Control-Allow-Origin`); `#lab?src=sample` shows the bundled
+  (with a cache-buster; pushed when its numbers change, at most once a minute,
+  and at least every two minutes regardless). Which one answered is remembered for
+  the browser session (`src/lab/source.ts`), so a phone does not wait on the PC
+  at every refresh; the PC is tried again every five minutes, or at a manual
+  Refresh after 30 s. `#lab?src=<http(s) URL>` reads another copy instead, e.g.
+  the PC from a phone through `tailscale serve`
+  (`#lab?src=https://<machine>.<tailnet>.ts.net/public-status.json`, mtg-table's
+  `docs/guides/lab-runner.md`); `#lab?src=sample` shows the bundled
   `public/lab-sample.json` with its times moved to now.
-- **Staleness**: "updated 3 min ago" turns amber after 10 minutes without an
-  update and red after 30 ("the runner may be down"). A failed refresh keeps
-  the last good data, dimmed, with the reason.
-- It refreshes every minute while the page is visible, and on **Refresh**.
+- **Freshness**: "updated 12 s ago · from your PC" (or "· from GitHub", or the
+  custom source's host), counted every second. It turns amber after 10 minutes
+  without an update and red after 30 ("the runner may be down"). A failed
+  refresh keeps the last good data, dimmed, with the reason.
+- **RUNNING / IDLE**: the runner says which, and when idle since when and why
+  (queue empty, blocked after J###, held, paused, memory backoff, needs a
+  check); IDLE turns red after 10 minutes. Its heartbeat (the loop's last tick,
+  published at least every two minutes) tells a quiet job from a dead runner:
+  over five minutes old, the page warns.
+- **Live numbers**: a running job's card shows workers in use / max and a grid
+  of its own metrics as of the runner's last minute read (`live`, numbers only):
+  memory, drafts, games, rates per hour, engine errors and their rate, timeouts,
+  draws, recordings and recording errors, bridge share, turns per game, disk;
+  the job's headline metrics first, any other key under its raw name. A cube-lab
+  queue adds a bar per cube, drafts done of planned ("cube 1", … unless the job
+  file says `public_cubes: yes`). Keys outside the metric shape, non-numbers and
+  out-of-range values are dropped (`parseLive`, `parseCubes`).
+- It refreshes every 15 s while reading the PC and every minute otherwise, only
+  while the page is visible, and at once on **Refresh** (a spinner while it
+  runs).
 - The file's format is in mtg-table's `RUNNER-SPEC.md` ("status.json");
   `src/lab/status.ts` validates it: unknown fields are ignored, missing ones
   show as "—", every string is shown as plain text.
@@ -353,7 +377,9 @@ variants) on one Elo scale, with `forge-default` fixed at 1500.
   inconclusive, games and deals used), the **tuner** (dev-set runs, with the
   winner's-curse caveat) and the **league** (best, pool, promotions), when the
   file has them.
-- **Source**: `https://raw.githubusercontent.com/jalirkan/ForgeCoach/lab-status/ladder.json`
+- **Source**: on the PC, the runner's `http://127.0.0.1:8645/public-ladder.json`
+  first, as for `#lab`; else
+  `https://raw.githubusercontent.com/jalirkan/ForgeCoach/lab-status/ladder.json`
   (cache-busted), which the runner publishes numbers-only next to
   `status.json`; `#lab/ladder?src=<http(s) URL>` reads another copy,
   `#lab/ladder?src=sample` the bundled `public/ladder-sample.json`. Amber after
