@@ -220,8 +220,9 @@ pools are saved in it (several at once).
 **Cube lab data.** Each cube ships with a `meta.json` from mtg-table's cube
 lab (`tools/cubelab.sh`: Forge AIs drafting and playing the cube): card win
 rates, archetypes, card pairs, land counts, splash results. Samples are small,
-so everything weighs the lab by its games (a card's win rate counts
-games ÷ (games + 40) against the page's own estimate). Import a newer
+so everything weighs the lab by its games (a card's raw win rate counts
+games ÷ (games + 80) against the page's own estimate; a card with no lab games
+is the page's estimate alone; `src/cube/score.ts` says why 80). Import a newer
 `meta.json` from the chip in the header (or drop it on the page); it is kept in
 this browser. Without any meta the assistant works from card text, mana value
 and the cube's themes.

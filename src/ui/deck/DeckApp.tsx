@@ -331,7 +331,7 @@ function MetaSheet({ open, onClose, data, onFile, message }: { open: boolean; on
               {m.sample?.aiProfile ? ` (${m.sample.aiProfile})` : ''}, {Object.keys(m.cards).length} cards, {m.archetypes.length} archetypes, {m.pairs.length} card pairs.
             </p>
             <p className="small muted">
-              Samples are small, so each number counts by its games: a card’s lab win rate weighs in at games ÷ (games + 40) against the page’s own estimate, pair lifts at games ÷ (games + 20). Without the file everything still works from card text and the cube’s themes.
+              Samples are small, so each number counts by its games: a card’s lab win rate weighs in at games ÷ (games + 80) against the page’s own estimate (a card with no games is the estimate alone), pair lifts at games ÷ (games + 20). Without the file everything still works from card text and the cube’s themes.
             </p>
           </>
         ) : (
