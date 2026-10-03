@@ -28,6 +28,7 @@ import { ScrubDock, TimelineList, actionsSummary, stripRound, type ScrubMode } f
 import { useAnsweredKeys } from './answers.ts';
 import { allCardNames, cx, stateFrames } from './util.ts';
 import { phaseLabel } from '../decisions.ts';
+import { BoardScenery } from './ambience/BoardScenery.tsx';
 
 export interface LiveInfo {
   url: string;
@@ -245,7 +246,7 @@ export function GameView({
   );
 
   const board = state ? (
-    <Board log={log} state={state} frameIndex={frameIndex} seat={log.seat} />
+    <Board log={log} state={state} frameIndex={frameIndex} seat={log.seat} overlay={<BoardScenery log={log} frameIndex={frameIndex} seat={log.seat} />} />
   ) : (
     <div className="board board-empty">
       <p className="muted">{live ? 'Waiting for the first game state…' : 'This log has no game states.'}</p>

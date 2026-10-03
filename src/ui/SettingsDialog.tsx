@@ -9,6 +9,7 @@ import { useCoachAvailability } from './hooks.ts';
 import { IconExternal } from './Icons.tsx';
 import { Sheet } from './Sheet.tsx';
 import { cx } from './util.ts';
+import { ScenerySettings } from './ambience/ScenerySettings.tsx';
 
 /** Coach thinking (D346): how long Claude Code on the PC may think before it answers. */
 const THINKING: Array<{ id: CoachThinking; label: string; hint: string }> = [
@@ -155,6 +156,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           </div>
           <span className="field-help">The table, panels and type around the cards. Card images stay the real cards in every look.</span>
         </fieldset>
+        <ScenerySettings />
         {s.apiKey && (
           <button
             type="button"
