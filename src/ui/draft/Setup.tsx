@@ -38,6 +38,7 @@ export const CUBE_ART: Record<string, string> = {
   'modern-era': 'Snapcaster Mage',
   vintage: 'Black Lotus',
   pauper: 'Ninja of the Deep Hours',
+  omega: 'Baneslayer Angel',
 };
 
 export function Seg<T extends string | number | boolean>({ value, options, onChange, label }: { value: T; options: Array<[T, string]>; onChange: (v: T) => void; label: string }) {
@@ -321,7 +322,7 @@ export function DraftSetup({
               <span className="ctile-body">
                 <span className="ctile-t">{c.title}</span>
                 <span className="ctile-d">{c.blurb}</span>
-                <span className="ctile-m">180 cards · lab data</span>
+                <span className="ctile-m">180 cards{c.labData === false ? '' : ' · lab data'}</span>
               </span>
             </button>
           ))}

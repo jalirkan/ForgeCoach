@@ -90,11 +90,15 @@ describe('cubes', () => {
       return Promise.resolve({ ok: false, status: 404, text: async () => '', json: async () => null });
     }
   };
-  it('every listed cube loads with 180 cards and its shipped lab meta', async () => {
+  it('every listed cube loads with 180 cards and its shipped lab meta (when it has one)', async () => {
     for (const c of CUBES) {
       const cube = await loadCubeDoc(c, '/', fake);
       expect(cube.cards).toHaveLength(180);
       const meta = await loadShippedMeta(c, '/', fake);
+      if (c.labData === false) {
+        expect(meta).toBeNull();
+        continue;
+      }
       expect(meta?.schema).toBe(1);
       expect(Object.keys(meta?.cards ?? {})).toHaveLength(180);
       expect(meta?.pairs[0]?.gain).toBeCloseTo((meta?.pairs[0]?.lift ?? 0) - 1);
