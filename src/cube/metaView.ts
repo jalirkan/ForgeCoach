@@ -229,11 +229,11 @@ export interface CardRow {
 
 const asList = (x: unknown): string[] => (Array.isArray(x) ? x.map(String) : typeof x === 'string' && x ? [x] : []);
 
-/** True when a card's stats (or its cube entry) carry an "AI plays this poorly" flag, under any of the names the lab might use. */
+/** True when a card's stats (or its cube entry) carry Forge's AI:RemAIDeck ("its AI plays this poorly") flag, under any name the lab might use. */
 function aiFlag(...objs: Array<Record<string, unknown> | undefined>): boolean {
   for (const o of objs) {
     if (!o) continue;
-    if (o.aiLimited === true || o.ai_limited === true || o.aiWeak === true || o.aiPlayable === false || o.forgeAiLimited === true) return true;
+    if (o.remAIDeck === true || o.aiLimited === true || o.ai_limited === true || o.aiWeak === true || o.aiPlayable === false || o.forgeAiLimited === true) return true;
     if (Array.isArray(o.flags) && o.flags.some((f) => /ai.?limited|ai.?weak/i.test(String(f)))) return true;
   }
   return false;
