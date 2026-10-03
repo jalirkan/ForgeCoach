@@ -22,12 +22,14 @@ import {
   formatClock,
   formatDuration,
   formatRelative,
+  heartbeatStale,
   isEmptyStatus,
   jobEta,
   labSource,
   memFraction,
   pressureLevel,
   rebaseTimes,
+  runState,
   staleness,
   type FinishedJob,
   type LabSource,
@@ -158,6 +160,8 @@ export default function LabPage() {
 
   const s = good?.status ?? null;
   const stale = staleness(s?.updated ?? null, now);
+  const beat = s ? heartbeatStale(s, now) : { stale: false, ageS: null };
+  const run = s ? runState(s, now) : null;
   const failed = error !== null || offline;
 
   return (
@@ -173,6 +177,17 @@ export default function LabPage() {
                 <span className="lb-dot" aria-hidden="true" />
                 <Freshness updated={s.updated} origin={good!.origin} customUrl={source.kind === 'custom' ? source.url : undefined} />
                 {s.updated && <span className="lg-muted"> · {formatClock(s.updated, now)}</span>}
+              </div>
+            )}
+            {run && (
+              <div className={cx('lb-state', 'lg-mono', run.state === 'running' ? 'is-running' : run.red ? 'is-idle-red' : 'is-idle')}>
+                <span className="lb-state-word">{run.state === 'running' ? 'RUNNING' : 'IDLE'}</span>
+                {run.state === 'idle' && (
+                  <span>
+                    {run.reason ?? 'no reason given'}
+                    {run.idleS !== null && ` · for ${formatDuration(run.idleS)}`}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -213,6 +228,11 @@ export default function LabPage() {
               <div className="lb-banner is-error" role="status">
                 <b>{offline ? 'Offline.' : 'Couldn’t refresh.'}</b> {offline ? 'It will try again when you are back online.' : errorText(error, false)} Showing the last good data,
                 fetched {formatClock(good!.fetchedAt, now)}.
+              </div>
+            )}
+            {beat.stale && stale.level === 'fresh' && (
+              <div className="lb-banner is-amber" role="status">
+                <b>No heartbeat for {formatDuration(beat.ageS)}.</b> The runner posts one every two minutes; it may be down.
               </div>
             )}
             {stale.level === 'red' && (

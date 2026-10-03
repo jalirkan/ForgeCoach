@@ -325,7 +325,7 @@ machine's load, memory, swap, memory pressure and recent pressure events.
   reads the copy the runner pushes to this repo's orphan `lab-status` branch,
   `https://raw.githubusercontent.com/jalirkan/ForgeCoach/lab-status/status.json`
   (with a cache-buster; pushed every minute while a job runs and its numbers
-  changed, every five minutes otherwise). Which one answered is remembered for
+  changed, at least every two minutes regardless). Which one answered is remembered for
   the browser session (`src/lab/source.ts`), so a phone does not wait on the PC
   at every refresh; the PC is tried again every five minutes, or at a manual
   Refresh after 30 s. `#lab?src=<http(s) URL>` reads another copy instead, e.g.
@@ -337,6 +337,11 @@ machine's load, memory, swap, memory pressure and recent pressure events.
   custom source's host), counted every second. It turns amber after 10 minutes
   without an update and red after 30 ("the runner may be down"). A failed
   refresh keeps the last good data, dimmed, with the reason.
+- **RUNNING / IDLE**: the runner says which, and when idle since when and why
+  (queue empty, blocked after J###, held, paused, memory backoff, needs a
+  check); IDLE turns red after 10 minutes. Its heartbeat (the loop's last tick,
+  published at least every two minutes) tells a quiet job from a dead runner:
+  over five minutes old, the page warns.
 - It refreshes every 15 s while reading the PC and every minute otherwise, only
   while the page is visible, and at once on **Refresh** (a spinner while it
   runs).

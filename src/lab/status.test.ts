@@ -20,6 +20,10 @@ import {
   pressureLevel,
   rebaseTimes,
   staleness,
+  heartbeatStale,
+  runState,
+  HEARTBEAT_STALE_S,
+  IDLE_RED_AFTER_S,
   updatedLine,
   withCacheBuster,
 } from './status.ts';
@@ -277,5 +281,48 @@ describe('fetchLabStatus', () => {
     expect(await kind(fetchLabStatus('u', { fetch: reply(200, '{"updated": ') }))).toBe('parse');
     expect(await kind(fetchLabStatus('u', { fetch: reply(200, '[1,2]') }))).toBe('parse');
     expect(await kind(fetchLabStatus('u', { fetch: reply(200, ' '.repeat(600 * 1024)) }))).toBe('tooLarge');
+  });
+});
+
+describe('RUNNING / IDLE and the heartbeat', () => {
+  const now = new Date('2026-10-03T12:00:00Z');
+  const ago = (min: number) => new Date(now.getTime() - min * 60_000).toISOString();
+
+  it('reads the runner’s state, idle reason and heartbeat', () => {
+    const s = parseLabStatus({ schema: 1, updated: ago(1), heartbeat: ago(0.5), state: 'idle', idleSince: ago(12), idleReason: 'blocked after J012', running: [] });
+    expect(s.state).toBe('idle');
+    expect(s.idleReason).toBe('blocked after J012');
+    expect(s.heartbeat?.toISOString()).toBe(ago(0.5));
+    expect(runState(s, now)).toEqual({ state: 'idle', idleS: 12 * 60, reason: 'blocked after J012', red: true });
+    expect(heartbeatStale(s, now).stale).toBe(false);
+  });
+
+  it('IDLE turns red at ten minutes', () => {
+    const at = (min: number) => runState(parseLabStatus({ updated: ago(0), state: 'idle', idleSince: ago(min), idleReason: 'queue empty' }), now);
+    expect(at(9.9).red).toBe(false);
+    expect(at(IDLE_RED_AFTER_S / 60).red).toBe(true);
+    expect(runState(parseLabStatus({ updated: ago(0), state: 'idle' }), now)).toEqual({ state: 'idle', idleS: null, reason: null, red: false });
+  });
+
+  it('running ignores idle fields; an older file derives the state from its running list and the heartbeat from updated', () => {
+    const r = parseLabStatus({ updated: ago(1), state: 'running', idleSince: ago(30), idleReason: 'queue empty', running: [{ id: 'J001' }] });
+    expect(runState(r, now)).toEqual({ state: 'running', idleS: null, reason: null, red: false });
+    const old = parseLabStatus({ updated: ago(2), running: [{ id: 'J001' }] });
+    expect(old.state).toBe('running');
+    expect(old.heartbeat?.toISOString()).toBe(ago(2));
+    expect(parseLabStatus({ updated: ago(2), running: [] }).state).toBe('idle');
+    expect(parseLabStatus({ updated: ago(2), state: 'bogus' }).state).toBe('idle');
+  });
+
+  it('warns when the heartbeat is five minutes old', () => {
+    expect(heartbeatStale(parseLabStatus({ updated: ago(1), heartbeat: ago(4.9) }), now).stale).toBe(false);
+    expect(heartbeatStale(parseLabStatus({ updated: ago(1), heartbeat: ago(HEARTBEAT_STALE_S / 60) }), now).stale).toBe(true);
+    expect(heartbeatStale(parseLabStatus({}), now)).toEqual({ stale: false, ageS: null });
+  });
+
+  it('the idle reason is untrusted text: cleaned and clipped', () => {
+    const s = parseLabStatus({ state: 'idle', idleReason: `queue\u0000 empty${'x'.repeat(200)}` });
+    expect(s.idleReason!.length).toBeLessThanOrEqual(60);
+    expect(s.idleReason).toMatch(/^queue empty/);
   });
 });

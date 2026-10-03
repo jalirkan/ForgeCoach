@@ -1,7 +1,11 @@
 {
   "schema": 1,
   "updated": "2026-10-03T10:55:00-04:00",
+  "heartbeat": "2026-10-03T10:55:00-04:00",
   "paused": false,
+  "state": "running",
+  "idleSince": null,
+  "idleReason": null,
   "host": { "load1": 6.2, "cpus": 16, "memUsedGb": 14.1, "memTotalGb": 30, "swapUsedMb": 0, "pressure": 0.4 },
   "running": [
     {

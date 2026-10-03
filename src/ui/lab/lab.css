@@ -96,6 +96,36 @@
   background: var(--lg-muted);
   box-shadow: none;
 }
+.lb-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--lg-text-2);
+}
+.lb-state-word {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.lb-state.is-running .lb-state-word {
+  color: var(--lg-win);
+  background: var(--lg-win-soft);
+}
+.lb-state.is-idle .lb-state-word {
+  color: var(--lg-gold-2);
+  background: var(--lg-gold-soft);
+}
+.lb-state.is-idle-red {
+  color: var(--lg-loss);
+}
+.lb-state.is-idle-red .lb-state-word {
+  background: var(--lg-loss-soft);
+}
 .lb-refresh {
   flex: none;
   min-height: 40px;

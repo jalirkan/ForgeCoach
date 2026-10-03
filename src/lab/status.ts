@@ -20,6 +20,10 @@ export const REFRESH_MS = 60_000;
 /** Staleness thresholds for `updated`. */
 export const AMBER_AFTER_S = 10 * 60;
 export const RED_AFTER_S = 30 * 60;
+/** The runner's heartbeat reaches the public copy every two minutes; older than this, warn. */
+export const HEARTBEAT_STALE_S = 5 * 60;
+/** IDLE turns red after this long. */
+export const IDLE_RED_AFTER_S = 10 * 60;
 /** Larger than any plausible status.json; refuse bigger bodies. */
 export const MAX_BYTES = 512 * 1024;
 const MAX_LIST = 50;
@@ -97,6 +101,14 @@ export interface FinishedJob {
 export interface LabStatus {
   schema: number | null;
   updated: Date | null;
+  /** When the runner's loop last ran (falls back to `updated` in older files). */
+  heartbeat: Date | null;
+  /** RUNNING or IDLE: the runner's word, else derived from `running`. */
+  state: 'running' | 'idle';
+  /** Since when nothing has run (idle only). */
+  idleSince: Date | null;
+  /** Why nothing runs (idle only), e.g. "queue empty", "blocked after J012". */
+  idleReason: string | null;
   /** The whole runner is paused. */
   paused: boolean;
   host: LabHost | null;
@@ -291,9 +303,14 @@ export function parseLabStatus(json: unknown): LabStatus {
   const host = parseHost(json.host);
   const events = parsePressureEvents(json.pressureEvents ?? (isObj(json.host) ? json.host.pressureEvents : undefined));
 
+  const state = json.state === 'running' || json.state === 'idle' ? json.state : running.length ? 'running' : 'idle';
   return {
     schema: int(json.schema, 0, 1e6),
     updated,
+    heartbeat: parseTime(json.heartbeat) ?? updated,
+    state,
+    idleSince: state === 'idle' ? parseTime(json.idleSince) : null,
+    idleReason: state === 'idle' ? cleanText(json.idleReason, 60) : null,
     paused,
     host,
     running,
@@ -377,6 +394,20 @@ export function updatedLine(updated: Date | null, now: Date): string {
   return ageS < 60 ? 'updated just now' : `updated ${formatDuration(ageS)} ago`;
 }
 
+/** The heartbeat is older than HEARTBEAT_STALE_S: the runner may be down (a quiet job keeps it fresh). */
+export function heartbeatStale(s: LabStatus, now: Date): { stale: boolean; ageS: number | null } {
+  if (!s.heartbeat) return { stale: false, ageS: null };
+  const ageS = Math.max(0, (now.getTime() - s.heartbeat.getTime()) / 1000);
+  return { stale: ageS >= HEARTBEAT_STALE_S, ageS };
+}
+
+/** RUNNING / IDLE for the header: how long idle, why, and red after IDLE_RED_AFTER_S. */
+export function runState(s: LabStatus, now: Date): { state: 'running' | 'idle'; idleS: number | null; reason: string | null; red: boolean } {
+  if (s.state === 'running') return { state: 'running', idleS: null, reason: null, red: false };
+  const idleS = s.idleSince ? Math.max(0, (now.getTime() - s.idleSince.getTime()) / 1000) : null;
+  return { state: 'idle', idleS, reason: s.idleReason, red: idleS !== null && idleS >= IDLE_RED_AFTER_S };
+}
+
 export type PressureLevel = 'calm' | 'elevated' | 'high';
 
 /** Memory pressure (some avg10, %): calm under 1, elevated under 10, high after. */
@@ -402,6 +433,8 @@ export function rebaseTimes(s: LabStatus, now: Date, ageS = 90): LabStatus {
   return {
     ...s,
     updated: mv(s.updated),
+    heartbeat: mv(s.heartbeat),
+    idleSince: mv(s.idleSince),
     running: s.running.map((j) => ({ ...j, started: mv(j.started), eta: mv(j.eta) })),
     finished: s.finished.map((f) => ({ ...f, finished: mv(f.finished) })),
     pressureEvents: s.pressureEvents.map((e) => ({ ...e, at: mv(e.at) })),
