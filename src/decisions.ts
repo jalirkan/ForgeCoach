@@ -110,6 +110,41 @@ export function cardIndex(state: GameStateBody): Map<number, AnyCard> {
   return m;
 }
 
+/**
+ * Is the engine asking the viewing seat to pick a target (a card or player
+ * click), as in "Quantum Reduction (5) - Quantum Reduction / Select target
+ * creature"? Targets are not an `ask` on the wire: they arrive as an `input`
+ * whose `selectable` lists the legal ids. Forge updates the prompt and the
+ * selectable set in separate frames, so a priority prompt with ids still
+ * selectable (a transient mix) does not count; the prompt must say "target".
+ */
+export function isTargetInput(input: InputBody | null | undefined): boolean {
+  if (!input || input.selectable.mode === 'none') return false;
+  if (input.selectable.mode === 'cards' && input.selectable.cardIds.length === 0) return false;
+  const p = input.prompt.trim();
+  if (/^Priority:/i.test(p)) return false;
+  const last = p.split('\n').filter((l) => l.trim()).pop() ?? '';
+  return /\btargets?\b/i.test(last);
+}
+
+/**
+ * Is this the pre-game "play or draw?" question? Like keep / mulligan it is not
+ * an ask: it is an `input` whose OK / Cancel buttons read Play / Draw (§5.3),
+ * before the first turn. Forge sets the buttons and the prompt in separate
+ * frames, so an empty prompt counts too (the same rule as ui/play/askModel's
+ * `openingKind`).
+ */
+export function isPlayDrawInput(input: InputBody | null | undefined, state?: { phase: string | null; turn?: number } | null): boolean {
+  if (!input) return false;
+  if (state && state.phase) return false;
+  const ok = input.buttons.ok.label.trim().toLowerCase();
+  const cancel = input.buttons.cancel.label.trim().toLowerCase();
+  const prompt = input.prompt.trim();
+  // Only the Play / Draw buttons: a "play or draw?" prompt left under Keep / Mulligan buttons is the mulligan question.
+  if (ok !== 'play' || cancel !== 'draw') return false;
+  return prompt === '' || /play or draw/i.test(prompt);
+}
+
 export function cardName(card: AnyCard | undefined): string {
   if (!card) return 'a card';
   if (isHidden(card)) return 'a hidden card';

@@ -7,8 +7,8 @@
  */
 import type { AskBody, GameStateBody, InputBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
-import { phaseLabel, type Decision, type DecisionKind } from '../../decisions.ts';
-import { instantSpeedOptions } from '../../state.ts';
+import { isPlayDrawInput, isTargetInput, phaseLabel, type Decision, type DecisionKind } from '../../decisions.ts';
+import { chosenColors, instantSpeedOptions } from '../../state.ts';
 import type { CardInfo } from '../../cards.ts';
 
 export interface LiveMoment {
@@ -26,14 +26,16 @@ export function liveKind(state: GameStateBody, input: InputBody | null, ask: Ask
   if (/^Select creatures to block/i.test(p)) return 'block';
   if (!state.phase || !state.turn) return 'choice';
   if (/keep (your|this) hand|mulligan/i.test(p)) return 'choice';
+  // Picking a target (a spell you are casting in your main phase, a trigger): its own question, not "what should I do this turn?".
+  if (isTargetInput(input)) return 'choice';
   const mine = state.activePlayer === seat;
   if (mine && (state.phase === 'MAIN1' || state.phase === 'MAIN2') && state.stack.length === 0) return 'main';
   if (input && input.selectable.mode !== 'none') return 'choice';
   return 'priority';
 }
 
-function label(state: GameStateBody, seat: number, kind: DecisionKind): string {
-  if (!state.phase || !state.turn) return 'Pre-game · keep or mulligan';
+function label(state: GameStateBody, seat: number, kind: DecisionKind, input: InputBody | null): string {
+  if (!state.phase || !state.turn) return isPlayDrawInput(input, state) ? 'Pre-game · play or draw' : 'Pre-game · keep or mulligan';
   const round = state.round || Math.ceil((state.turn || 0) / 2);
   if (kind === 'attack') return `R${round} · Your attacks`;
   if (kind === 'block') return `R${round} · Your blocks`;
@@ -65,13 +67,13 @@ export function liveDecision(m: LiveMoment, cards?: Map<string, CardInfo>): Deci
     state,
     input,
     ask,
-    label: label(state, seat, kind),
+    label: label(state, seat, kind, input),
     actions: [],
     endFrameIndex: log.frames.length - 1,
   };
   if (kind === 'priority' && state.phase) {
     try {
-      const opts = instantSpeedOptions(state, seat, cards);
+      const opts = instantSpeedOptions(state, seat, cards, chosenColors(log, frameIndex, seat, cards));
       if (opts.length) d.options = opts;
     } catch {
       /* heuristic only */

@@ -18,7 +18,7 @@ import { isHidden, MANA_COLORS, undoOf } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import type { PlaySession, PlaySnapshot } from '../../play/session.ts';
 import { activeGuideId, listGuides } from '../../guide.ts';
-import { canPay, turnFacts, untappedManaSources } from '../../state.ts';
+import { canPay, chosenColors, turnFacts, untappedManaSources } from '../../state.ts';
 import { cardIndex } from '../../decisions.ts';
 import { Board } from '../Board.tsx';
 import { CardDetail, HoverPreview } from '../CardDetail.tsx';
@@ -147,7 +147,8 @@ export function PlayView({
     if (!me) return out;
     try {
       const cards = cachedMap(stateCardNames(state));
-      const sources = untappedManaSources(state, seat, cards);
+      const chosen = log && frameIndex >= 0 ? chosenColors(log, frameIndex, seat, cards) : undefined;
+      const sources = untappedManaSources(state, seat, cards, chosen);
       for (const any of me.zones.hand.cards) {
         if (isHidden(any)) continue;
         const c = any as Card;
@@ -159,7 +160,7 @@ export function PlayView({
       /* hints only */
     }
     return out;
-  }, [state, seat, view.mode, landOpen, cardsVersion]);
+  }, [state, seat, view.mode, landOpen, cardsVersion, log, frameIndex]);
 
   // ---- attackers / blockers chosen so far (the wire does not say until you confirm)
   const [chosenAtk, setChosenAtk] = useState<ReadonlySet<number>>(() => new Set());

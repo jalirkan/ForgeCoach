@@ -8,7 +8,7 @@
   },
   "seat": 0,
   "type": "play_draw",
-  "label": "Pre-game · keep or mulligan",
+  "label": "Pre-game · play or draw",
   "acceptable": [
     "play"
   ],

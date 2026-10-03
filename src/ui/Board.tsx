@@ -10,7 +10,7 @@ import type { AnyCard, Card, GameStateBody, PlayerState } from '../protocol.ts';
 import { isHidden, MANA_COLORS } from '../protocol.ts';
 import type { GameLog } from '../log.ts';
 import { cardIndex, cardName, phaseLabel } from '../decisions.ts';
-import { manaSummary, turnFacts, type ManaSource } from '../state.ts';
+import { chosenColors, manaSummary, turnFacts, type ManaSource } from '../state.ts';
 import { cachedMap, useCardsVersion } from './cardData.ts';
 import { useCardActions, usePlay } from './cardContext.ts';
 import { CardBack, CardTile, LandPile, displayName } from './CardTile.tsx';
@@ -253,11 +253,13 @@ function PlayerHeader({
   const mine = player.id === seat;
   const sources = useMemo(() => {
     try {
-      return manaSummary(state, player.id, cachedMap(stateCardNames(state))).sources;
+      const cards = cachedMap(stateCardNames(state));
+      // A Thriving land counts for the colour chosen as it entered (the seat's own answer), not every colour.
+      return manaSummary(state, player.id, cards, chosenColors(log, frameIndex, seat, cards)).sources;
     } catch {
       return [] as ManaSource[];
     }
-  }, [state, player.id, v]);
+  }, [state, player.id, v, log, frameIndex, seat]);
   const facts = useMemo(() => {
     try {
       return turnFacts(log, frameIndex, player.id);

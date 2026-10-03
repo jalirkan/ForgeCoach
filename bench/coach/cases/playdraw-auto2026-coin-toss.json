@@ -1,0 +1,19 @@
+{
+  "id": "playdraw-auto2026-coin-toss",
+  "log": "bench/coach/logs/human-auto-2026.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-auto-2026.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 4
+  },
+  "seat": 0,
+  "type": "play_draw",
+  "label": "Pre-game · play or draw",
+  "acceptable": [
+    "play"
+  ],
+  "unacceptable": [],
+  "rationale": "Won the coin toss in a two-player 40-card game; no hand is dealt yet and nothing visible about the deck argues for drawing (no guide, only its name and size). Going first is a full turn of tempo, the default for almost every deck: play. Draw is not a blunder, only worse.",
+  "confidence": "high",
+  "tags": ["play-draw"]
+}

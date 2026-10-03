@@ -13,7 +13,7 @@
  * recording to date, amendment M5, but is read anyway so a later recording
  * gets better answers for free).
  */
-import type { AnyCard, Card, GameEvent, GameStateBody, PlayerState, StackItem } from './protocol.ts';
+import type { AnyCard, AskBody, Card, GameEvent, GameStateBody, PlayerState, StackItem } from './protocol.ts';
 import { isHidden, keywordsOf } from './protocol.ts';
 import type { GameLog } from './log.ts';
 import type { CardInfo } from './cards.ts';
@@ -64,6 +64,12 @@ export interface ManaSource {
   name: string;
   /** Colour letters it can produce: W U B R G C. Empty if unknown. */
   colors: string[];
+  /**
+   * A land like Thriving Isle ("choose a color as it enters") whose chosen
+   * colour the log does not tell us: `colors` holds only its fixed colour, and
+   * this says what else it might make.
+   */
+  unrecordedChoice?: boolean;
 }
 
 const BASIC_TYPE_COLOR: Record<string, string> = {
@@ -108,15 +114,152 @@ function manaAbilityNeedsTap(text: string): boolean {
   return false;
 }
 
+// ---------------------------------------------------------------------------
+// Lands that make "one mana of the chosen color" (Thriving lands)
+
+/** The Thriving lands' fixed colour, for when there is no card text. */
+const THRIVING_FIXED: Record<string, string> = {
+  'Thriving Bluff': 'R',
+  'Thriving Grove': 'G',
+  'Thriving Heath': 'W',
+  'Thriving Isle': 'U',
+  'Thriving Moor': 'B',
+};
+
+const COLOR_WORD: Record<string, string> = { white: 'W', blue: 'U', black: 'B', red: 'R', green: 'G' };
+const COLOR_NAME: Record<string, string> = { W: 'white', U: 'blue', B: 'black', R: 'red', G: 'green', C: 'colourless' };
+
+/** "W" → "white". */
+export function colorName(letter: string): string {
+  return COLOR_NAME[letter] ?? letter;
+}
+
+/**
+ * A permanent whose mana ability makes "one mana of the chosen color" (a colour
+ * chosen as it entered, as on the Thriving lands): its fixed colours, or null
+ * when it is not such a card. The chosen colour itself is not in the state
+ * (`Card` has no such field); see {@link chosenColors}.
+ */
+export function chosenColorSource(card: AnyCard | null | undefined, cards?: Map<string, CardInfo>): { fixed: string[] } | null {
+  const c = visibleCard(card);
+  if (!c) return null;
+  const info = infoFor(c.name, cards);
+  const text = info?.oracleText ?? c.abilities.map((a) => a.text).join('\n');
+  for (const m of text.matchAll(/\badd\b([^.]*)/gi)) {
+    const clause = m[1]!;
+    if (!/mana of the chosen colou?r/i.test(clause)) continue;
+    return { fixed: [...new Set([...clause.matchAll(/\{([WUBRGC])\}/g)].map((x) => x[1]!))] };
+  }
+  const fixed = THRIVING_FIXED[c.name];
+  return fixed ? { fixed: [fixed] } : null;
+}
+
+/** Card id → the colour letter chosen for it as it entered the battlefield. */
+export type ChosenColors = Map<number, string>;
+
+/**
+ * The colours the VIEWING seat chose for its own "choose a color as it
+ * enters" permanents, read from its own answers in the log up to `frameIndex`.
+ *
+ * mtg-table's state does not carry a chosen colour (no `chosenColor` field, no
+ * event), so the only record is the seat's answer to Forge's "Choose a color"
+ * question (`choose_list` of `color` options). The question names no card; it
+ * is tied to the seat's chosen-colour permanent that entered the battlefield in
+ * the state frame just before the question, or failing that in the next one.
+ * When that is ambiguous (two entered together and no earlier question named
+ * one by id) nothing is recorded. The opponent's choices are never in the log,
+ * so their lands stay unknown. A permanent that re-enters loses its old choice.
+ */
+export function chosenColors(log: GameLog, frameIndex: number, seat: number, cards?: Map<string, CardInfo>): ChosenColors {
+  const out: ChosenColors = new Map();
+  const end = Math.min(frameIndex, log.frames.length - 1);
+  /** Candidates that entered in the latest state frame, waiting for a colour. */
+  let entered: number[] = [];
+  /** A colour answered before its permanent showed up (it then enters in the next state frame). */
+  let pending: string | null = null;
+  /** Card ids named in asks since the last state frame ("Thriving Isle (9) - As Thriving Isle enters, choose a color …"). */
+  let named = new Set<number>();
+  let colorAsk: AskBody | null = null;
+  const assign = (ids: number[], color: string): boolean => {
+    const pick = ids.length === 1 ? ids : ids.filter((id) => named.has(id));
+    if (pick.length !== 1) return false;
+    out.set(pick[0]!, color);
+    return true;
+  };
+  for (let i = 0; i <= end; i++) {
+    const f = log.frames[i]!;
+    if (f.type === 'state') {
+      const s = f.body as GameStateBody;
+      const byId = cardsById(s);
+      const now: number[] = [];
+      for (const e of s.events as GameEvent[]) {
+        if (e.kind !== 'zone' || e.to?.zone !== 'battlefield' || e.from?.zone === 'battlefield') continue;
+        out.delete(e.cardId); // a new object: any old choice is gone
+        const c = byId.get(e.cardId);
+        if (e.to.player === seat && chosenColorSource(c, cards)) now.push(e.cardId);
+      }
+      if (pending !== null && now.length) {
+        if (assign(now, pending)) now.splice(0);
+      }
+      pending = null;
+      entered = now;
+      named = new Set();
+      continue;
+    }
+    if (f.type === 'ask') {
+      const a = f.body as AskBody;
+      const labels = ('source' in a ? [...a.source, ...a.dest] : 'options' in a ? (a.options as { label: string }[]) : []).map((o) => o.label);
+      for (const l of [('prompt' in a ? String(a.prompt ?? '') : ''), ...labels]) {
+        if (!/choose a colou?r/i.test(l)) continue;
+        for (const m of l.matchAll(/\((\d+)\)/g)) named.add(Number(m[1]));
+      }
+      colorAsk = isColorAsk(a) ? a : null;
+      continue;
+    }
+    if (f.type === 'answer' && colorAsk) {
+      const ans = f.body as { askId?: string; value?: unknown };
+      if (ans.askId !== colorAsk.askId) continue;
+      const a = colorAsk;
+      colorAsk = null;
+      const idx = Array.isArray(ans.value) ? ans.value[0] : ans.value;
+      const opt = (a as { options: { id: number; label: string }[] }).options.find((o) => o.id === idx);
+      const color = opt ? COLOR_WORD[opt.label.trim().toLowerCase()] : undefined;
+      if (!color) continue;
+      if (entered.length && assign(entered, color)) entered = entered.filter((id) => !out.has(id));
+      else pending = color;
+    }
+  }
+  return out;
+}
+
+/** Forge's "Choose a color" question: a choose_list whose options are all colours. */
+function isColorAsk(a: AskBody): boolean {
+  if (a.kind !== 'choose_list') return false;
+  return a.options.length > 0 && a.options.every((o) => o.kind === 'color' || COLOR_WORD[o.label.trim().toLowerCase()] !== undefined);
+}
+
 /**
  * What colours this permanent can tap for, or null when it is not (known to
  * be) a mana source. Order of evidence: Scryfall `producedMana`, the oracle
  * text, Forge's ability texts, basic land types, well-known mana tokens.
  * A land we know nothing about returns `[]` (a source of unknown colour).
+ *
+ * A "chosen colour" land (Thriving Isle) makes its fixed colour plus the
+ * colour chosen as it entered. With `chosen` (from {@link chosenColors}) it
+ * returns exactly that, or only the fixed colour when the choice is not
+ * recorded; without `chosen` (callers that never looked) it stays lenient and
+ * returns every colour it could have been given.
  */
-export function manaColorsOf(card: AnyCard, cards?: Map<string, CardInfo>): string[] | null {
+export function manaColorsOf(card: AnyCard, cards?: Map<string, CardInfo>, chosen?: ChosenColors): string[] | null {
   const c = visibleCard(card);
   if (!c) return null;
+  if (chosen) {
+    const cc = chosenColorSource(c, cards);
+    if (cc) {
+      const pick = chosen.get(c.id);
+      return pick && !cc.fixed.includes(pick) ? [...cc.fixed, pick] : [...cc.fixed];
+    }
+  }
   const info = infoFor(c.name, cards);
   if (info) {
     if (info.producedMana.length > 0) return info.producedMana.filter((x) => /^[WUBRGC]$/.test(x));
@@ -139,7 +282,7 @@ export function manaColorsOf(card: AnyCard, cards?: Map<string, CardInfo>): stri
 }
 
 /** Untapped, usable (not summoning-sick if it needs {T} on a creature) mana sources of a player. */
-export function untappedManaSources(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>): ManaSource[] {
+export function untappedManaSources(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>, chosen?: ChosenColors): ManaSource[] {
   const p = playerOf(state, playerId);
   if (!p) return [];
   const out: ManaSource[] = [];
@@ -147,7 +290,7 @@ export function untappedManaSources(state: GameStateBody, playerId: number, card
     const c = visibleCard(raw);
     if (!c || c.tapped || c.faceDown) continue;
     if (c.controller !== null && c.controller !== playerId) continue;
-    const colors = manaColorsOf(c, cards);
+    const colors = manaColorsOf(c, cards, chosen);
     if (colors === null) continue;
     if (c.sick && hasType(c, 'Creature')) {
       // A sick creature can still use a mana ability that doesn't need {T}.
@@ -155,7 +298,9 @@ export function untappedManaSources(state: GameStateBody, playerId: number, card
       const text = info?.oracleText ?? c.abilities.map((a) => a.text).join('\n');
       if (!text || manaAbilityNeedsTap(text)) continue;
     }
-    out.push({ cardId: c.id, name: c.name, colors });
+    const src: ManaSource = { cardId: c.id, name: c.name, colors };
+    if (chosen && !chosen.has(c.id) && chosenColorSource(c, cards)) src.unrecordedChoice = true;
+    out.push(src);
   }
   return out;
 }
@@ -251,8 +396,8 @@ export interface ManaSummary {
 }
 
 /** Mana a player could spend right now: untapped sources plus floating mana. */
-export function manaSummary(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>): ManaSummary {
-  const sources = untappedManaSources(state, playerId, cards);
+export function manaSummary(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>, chosen?: ChosenColors): ManaSummary {
+  const sources = untappedManaSources(state, playerId, cards, chosen);
   const pool = playerOf(state, playerId)?.manaPool ?? { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
   const byColor = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
   let unknown = 0;
@@ -308,7 +453,7 @@ export interface PermanentView {
 }
 
 /** Flat, name-resolved view of one battlefield card. Hidden cards come back as a nameless stub. */
-export function permanentView(card: AnyCard, state: GameStateBody, cards?: Map<string, CardInfo>): PermanentView {
+export function permanentView(card: AnyCard, state: GameStateBody, cards?: Map<string, CardInfo>, chosen?: ChosenColors): PermanentView {
   const byId = cardsById(state);
   const nameOf = (id: number) => {
     const x = byId.get(id);
@@ -370,7 +515,7 @@ export function permanentView(card: AnyCard, state: GameStateBody, cards?: Map<s
     faceDown: c.faceDown,
     attachedTo: c.attachedToId !== null ? { id: c.attachedToId, name: nameOf(c.attachedToId) } : null,
     attachments: (c.attachmentIds ?? []).map((id) => ({ id, name: nameOf(id) })),
-    mana: manaColorsOf(c, cards),
+    mana: manaColorsOf(c, cards, chosen),
   };
 }
 
@@ -442,10 +587,10 @@ export function activatedAbilities(oracleText: string): { cost: string; effect: 
  * when `cards` is given; without it, only instants (type line) and FLASH
  * (keywords, M49+ recordings) are found.
  */
-export function instantSpeedOptions(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>): InstantOption[] {
+export function instantSpeedOptions(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>, chosen?: ChosenColors): InstantOption[] {
   const p = playerOf(state, playerId);
   if (!p) return [];
-  const sources = untappedManaSources(state, playerId, cards);
+  const sources = untappedManaSources(state, playerId, cards, chosen);
   const pool = p.manaPool as unknown as Record<string, number>;
   const out: InstantOption[] = [];
   for (const raw of p.zones.hand.cards) {

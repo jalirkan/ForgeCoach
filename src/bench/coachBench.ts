@@ -37,7 +37,7 @@ import type { GameLog } from '../log.ts';
 import type { CardInfo } from '../cards.ts';
 import { extractDecisions, type Decision, type DecisionKind } from '../decisions.ts';
 import { buildCoachPrompt, coachCardNames, type Prompt } from '../prompt.ts';
-import { canPay, infoFor, instantSpeedOptions, manaColorsOf, turnFacts, untappedManaSources, type ManaSource } from '../state.ts';
+import { canPay, chosenColors, infoFor, instantSpeedOptions, manaColorsOf, turnFacts, untappedManaSources, type ManaSource } from '../state.ts';
 import { liveDecision } from '../ui/play/liveDecision.ts';
 
 // ---------------------------------------------------------------------------
@@ -230,6 +230,8 @@ export function choiceSet(type: BenchType, log: GameLog, d: Decision, cards: Map
   const mine = (me?.zones.battlefield.cards ?? []).filter((c) => !isHidden(c)) as Card[];
   const out: ChoiceSet = { type, choices: [], byId };
   const input = d.input;
+  // The colours the seat chose for its Thriving-style lands, as the prompt states them.
+  const chosen = chosenColors(log, d.frameIndex, seat, cards);
   switch (type) {
     case 'mulligan':
       out.choices = [
@@ -244,7 +246,7 @@ export function choiceSet(type: BenchType, log: GameLog, d: Decision, cards: Map
       ];
       break;
     case 'spell': {
-      const sources = untappedManaSources(s, seat, cards);
+      const sources = untappedManaSources(s, seat, cards, chosen);
       const pool = (me?.manaPool ?? {}) as unknown as Record<string, number>;
       const myMain = s.activePlayer === seat && (s.phase === 'MAIN1' || s.phase === 'MAIN2') && s.stack.length === 0;
       const landOpen = myMain && turnFacts(log, d.frameIndex, seat).landPlayed === false;
@@ -259,7 +261,7 @@ export function choiceSet(type: BenchType, log: GameLog, d: Decision, cards: Map
       break;
     }
     case 'pass': {
-      for (const o of instantSpeedOptions(s, seat, cards)) {
+      for (const o of instantSpeedOptions(s, seat, cards, chosen)) {
         out.choices.push(
           o.via === 'ability'
             ? { token: `activate:${o.cardId}`, label: `activate ${o.name} (${o.cost})` }

@@ -1,0 +1,21 @@
+{
+  "id": "spell-comfort13-thriving-black",
+  "log": "public/samples/human-comfort-13.jsonl.gz",
+  "source": "mtg-table fixtures/games/human-comfort-13.jsonl",
+  "moment": {
+    "mode": "live",
+    "frame": 321
+  },
+  "seat": 0,
+  "type": "spell",
+  "label": "R3 · Your main 1",
+  "acceptable": [
+    "cast:23"
+  ],
+  "unacceptable": [
+    "pass"
+  ],
+  "rationale": "Black was chosen for Thriving Isle when it entered (the seat's own answer in the log), so it makes blue or black — not white. With the land drop (Island) there are two mana, U and U/B: Ant-Man's Air Force {1}{U} is the only castable spell. Spy Kit {W} and Agent Phil Coulson {1}{W} need white the board can't make (they are not legal choices here). Casting nothing wastes the turn.",
+  "confidence": "high",
+  "tags": ["thriving", "mana-colour"]
+}
