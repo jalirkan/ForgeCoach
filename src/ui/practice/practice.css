@@ -1,0 +1,324 @@
+/*
+ * ForgeCoach — ui/practice/practice.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The practice screen, on the skins' tokens. Outcome colours repeat what the
+ * text says; they never carry it alone.
+ */
+.pz {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+}
+.pz .grow {
+  flex: 1;
+}
+.pz.is-narrow .topbar {
+  height: calc(52px + env(safe-area-inset-top));
+  gap: 6px;
+}
+.pz.is-narrow .topbar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-left: 8px;
+}
+.pz.is-narrow .topbar-game,
+.pz.is-narrow .topbar-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pz-main {
+  padding: 16px max(16px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  max-width: 1440px;
+  margin: 0 auto;
+}
+.pz .card-box {
+  margin: 0;
+}
+.pz-err {
+  color: var(--bad);
+}
+
+/* ---- the list ---- */
+.pz-list {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pz-h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 650;
+}
+.pz-intro p {
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.pz-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 12px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+.pz-stats b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.pz-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pz-items {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pz-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+}
+.pz-item:hover {
+  border-color: var(--line-2);
+  background: var(--surface-3);
+}
+.pz-item-t {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pz-badge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.pz-badge.is-engine {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pz-badge.is-eval {
+  border-color: var(--info);
+  color: var(--info);
+}
+.pz-item-o {
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .pz-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .pz-item-o {
+    grid-column: 1 / -1;
+  }
+}
+.is-best.pz-item-o,
+.is-tie.pz-item-o {
+  color: var(--ok);
+}
+.is-worse.pz-item-o {
+  color: var(--bad);
+}
+.is-close.pz-item-o {
+  color: var(--accent);
+}
+
+/* ---- one puzzle ---- */
+.pz-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pz.is-wide .pz-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  align-items: start;
+  gap: 16px;
+}
+.pz-board {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 14px;
+}
+.pz-board .board {
+  padding: 0;
+  max-width: none;
+}
+.pz-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.pz.is-wide .pz-side {
+  position: sticky;
+  top: 72px;
+  max-height: calc(100dvh - 88px);
+  overflow: auto;
+  padding-right: 2px;
+}
+.pz-question {
+  margin: 8px 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.pz-q > .tiny {
+  margin: 0 0 8px;
+}
+.pz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 12px;
+}
+.pz-opt {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+}
+.pz-opt:not(:disabled):hover {
+  border-color: var(--line-2);
+  background: var(--surface-3);
+}
+.pz-opt:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.pz-opt.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.pz-opt.is-best {
+  box-shadow: inset 3px 0 0 var(--ok);
+}
+.pz-opt-box {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-2);
+  font-size: 11px;
+  color: var(--accent-ink);
+}
+.pz-options.is-multi .pz-opt-box {
+  border-radius: 4px;
+}
+.pz-opt.is-on .pz-opt-box {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.pz-opt-l {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pz-opt-m {
+  color: var(--text-2);
+  font-style: italic;
+}
+
+.pz-result {
+  border-left-width: 4px;
+}
+.pz-result.is-best,
+.pz-result.is-tie {
+  border-left-color: var(--ok);
+}
+.pz-result.is-close,
+.pz-result.is-ungraded {
+  border-left-color: var(--accent);
+}
+.pz-result.is-worse {
+  border-left-color: var(--bad);
+}
+.pz-result.is-same,
+.pz-result.is-different {
+  border-left-color: var(--info);
+}
+.pz-result-h {
+  font-size: 16px;
+  font-weight: 650;
+  margin-bottom: 4px;
+}
+.pz-result p {
+  margin: 0 0 6px;
+  line-height: 1.45;
+}
+.pz-engine p,
+.pz-swing p {
+  margin: 6px 0;
+  line-height: 1.45;
+}
+.pz-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0;
+  font-size: 13px;
+}
+.pz-table th,
+.pz-table td {
+  padding: 5px 4px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.pz-table th {
+  font-weight: 500;
+}
+.pz-table tr.is-best th {
+  box-shadow: inset 3px 0 0 var(--ok);
+  padding-left: 8px;
+}
+.pz-num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pz-iv {
+  text-align: right !important;
+  white-space: nowrap;
+}
+.pz-warn {
+  color: var(--bad);
+}
+.pz-swing-n {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pz-spacer {
+  height: 8px;
+}

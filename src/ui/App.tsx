@@ -47,6 +47,8 @@ const LadderPage = lazy(() => import('./lab/LadderPage.tsx'));
 const DataPage = lazy(() => import('./lab/DataPage.tsx'));
 // The engine review of a loaded game (lazy; opened from the replay or the game-over card, or #sample=<id>&review=1).
 const ReviewApp = lazy(() => import('./review/ReviewApp.tsx'));
+// #practice[/<puzzle id>]: puzzles from the player's own games (lazy).
+const PracticeApp = lazy(() => import('./practice/PracticeApp.tsx'));
 // #ambience: the board scenery preview (lazy; no engine).
 const AmbiencePage = lazy(() => import('./ambience/AmbiencePage.tsx'));
 
@@ -148,6 +150,8 @@ export function App() {
       <MetaApp />
     ) : /^#history\b/.test(hash) ? (
       <HistoryApp />
+    ) : /^#practice\b/.test(hash) ? (
+      <PracticeApp />
     ) : /^#lab\/ladder\b/.test(hash) ? (
       <LadderPage />
     ) : /^#lab\/data\b/.test(hash) ? (

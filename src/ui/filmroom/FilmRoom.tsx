@@ -13,6 +13,7 @@
  * through answers.ts `startAnswer` only, and start by themselves once the
  * moments are settled and a coach is connected; without one the panel offers
  * "Copy prompts" instead. Colours are the skins' tokens (filmroom.css).
+ * A settled film of a saved game also becomes practice puzzles (#practice).
  */
 import './filmroom.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -136,6 +137,11 @@ export function FilmRoom({
     [film],
   );
   const why = useDropWhy(log, model, evalDrops);
+  // Practice: a settled film of a saved game (or a sample) becomes puzzles (ui/practice/practiceData.ts; a game not in Your record is left alone).
+  useEffect(() => {
+    if (!film) return;
+    void import('../practice/practiceData.ts').then((m) => m.rememberGame(log, { film, report, decisions })).catch(() => undefined);
+  }, [film, log, report, decisions]);
   const coach = useCoachAvailability();
   const gk = gameKey(log);
 

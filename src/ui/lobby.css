@@ -72,6 +72,10 @@
   text-align: left;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.2s;
 }
+/* An odd last tile spans the row (seven tiles: two columns, then three). */
+.lobby-tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
 .lobby-tile:hover {
   border-color: rgba(var(--fx-gold-rgb), 0.6);
   background: rgba(var(--fx-lift-rgb), 0.6);
@@ -139,6 +143,12 @@
 @media (min-width: 900px) {
   .lobby-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .lobby-tile:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+  .lobby-tile:last-child:nth-child(3n + 1) {
+    grid-column: 1 / -1;
   }
   .lobby .hero h1 {
     font-size: 64px;
