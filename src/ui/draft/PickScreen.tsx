@@ -29,6 +29,7 @@ import { GridBoard } from './GridBoard.tsx';
 import { AiBanner, Dock, Kebab, SeatChips, Timer, useCountdown, type Action, type Seat } from './Panels.tsx';
 import { PoolPanel, PoolSheet } from './Pool.tsx';
 import { useCubeMeta } from './useCubeMeta.ts';
+import { LabNumbers } from './LabNumbers.tsx';
 import type { DraftGame } from './useDraftGame.ts';
 import { WinstonBoard } from './WinstonBoard.tsx';
 
@@ -124,6 +125,11 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
     // Your last pick, until your next one: only then does the next seat pick from that pack.
     if (game.canUndo) secondary = { label: 'Undo pick', onClick: game.undo, disabled: false, kbd: 'Z' };
   }
+  // The cards on offer, for the lab numbers panel.
+  const offerNames = useMemo(
+    () => (d.format === 'grid' ? (d as GridDraft).slots.filter((x): x is string => !!x) : d.format === 'winston' ? ((d as WinstonDraft).piles[(d as WinstonDraft).look] ?? []) : yourPack(d)),
+    [d],
+  );
   const poolOf = Math.round(expectedPicks(d));
   const mono = `${offer} · pool ${d.picks.you.length} / ${d.format === 'booster' ? '' : '~'}${poolOf}`;
 
@@ -251,6 +257,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
             ))}
           </div>
         )}
+        <LabNumbers names={offerNames} ctx={ctx} />
       </section>
 
       <div className="pk-divider" aria-hidden="true" />

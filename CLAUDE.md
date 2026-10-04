@@ -61,6 +61,11 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   helper's `/vision` (mtg-table D362) or the key's image blocks — then the
   review checklist; nothing enters the pool until the player confirms).
 - `draft/` — Draft vs AI (pure, tested in node): `rng.ts`, `weights.ts`,
+  `labStats.ts` (the pick screen's Lab numbers panel: taken-when-seen /
+  avg pick — or `early` when the lab writes it —, made the 40, deck win rate
+  with a Wilson 95% interval, strong/weak only when the interval excludes 0.5,
+  per-colour baselines from `colorBaselines` or the archetypes, the
+  Forge-vs-Forge caveat and the red over-flag note; UI `ui/draft/LabNumbers.tsx`),
   `pick.ts`, `draft.ts` are mtg-table's cube-lab drafting AI (`tools/cubelab`)
   stepped one decision at a time, plus Booster (2–8 seats); `cards.ts` (the
   AI's card view from `cube/` facts, meta ratings); `deck.ts` (the post-draft

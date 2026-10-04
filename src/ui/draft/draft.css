@@ -2096,3 +2096,113 @@ button.seat-chip:hover {
   text-decoration: none;
   border-bottom: 1px dashed rgba(var(--fx-gold-rgb), 0.5);
 }
+
+/* ---- Lab numbers (LabNumbers.tsx): the cube lab's Forge-vs-Forge figures per card on offer ---- */
+.labn {
+  margin: 14px auto 0;
+  max-width: 980px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(var(--fx-tile-rgb), 0.7);
+  padding: 0 14px;
+}
+.labn-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 10px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.labn-sum::-webkit-details-marker {
+  display: none;
+}
+.labn-sum::before {
+  content: '▸';
+  color: var(--accent);
+  font-size: 11px;
+}
+.labn[open] > .labn-sum::before {
+  content: '▾';
+}
+.labn-sub {
+  font: 12px/1.3 var(--mono);
+  color: var(--muted);
+}
+.labn-caveat {
+  margin: 0 0 8px;
+  font: italic 13.5px/1.45 var(--serif);
+  color: var(--text-2);
+}
+.labn-caveat.is-red {
+  color: var(--fx-danger-ink, var(--text-2));
+}
+.labn-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.labn-row {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 8px 10px;
+  background: rgba(var(--fx-bg-rgb), 0.5);
+  min-width: 0;
+}
+.labn-name {
+  font: 500 15px/1.25 var(--serif);
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.labn-none {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.labn-facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.labn-facts > div {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 6px;
+}
+.labn-facts dt {
+  color: var(--muted);
+}
+.labn-facts dd {
+  margin: 0;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.labn-mute {
+  color: var(--muted);
+}
+.labn-win {
+  display: block;
+}
+.labn-win.is-strong {
+  color: var(--ok, #7fbf7f);
+}
+.labn-win.is-weak {
+  color: var(--fx-danger-ink, #d77b70);
+}
+.labn-verdict {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.labn-foot {
+  margin: 8px 0 12px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
