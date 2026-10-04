@@ -17,15 +17,10 @@ import type { Biome, SlotState } from '../../ambience/model.ts';
 import { DEFAULT_STRIP, layersAt, type PackBiome, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
 import { frameAspect, objectPosition, slotLayout, spriteFrameCss } from '../../ambience/layout.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
+import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import './scenery.css';
 
-export interface StripFx {
-  key: number;
-  kind: 'creature' | 'attack' | 'damage';
-  /** 0..1 across the strip (creature). */
-  x?: number;
-  color?: string;
-}
+export type { StripEffect } from './SceneryEffects.tsx';
 
 export interface SceneryStripProps {
   slots: SlotState[];
@@ -37,7 +32,8 @@ export interface SceneryStripProps {
   reduced: boolean;
   /** Land arrivals per biome; a change flashes that slot. */
   pulses?: Partial<Record<Biome, number>>;
-  fx?: StripFx[];
+  /** One-shot effects playing on this strip (useSceneryFx). */
+  fx?: readonly StripEffect[];
   /** Draw every claimed slot at this stage (the preview page's slider). */
   stageOverride?: number | null;
   className?: string;
@@ -75,26 +71,29 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
     ...style,
   } as CSSProperties;
   return (
-    <div
-      className={['scn', `scn-${edge}`, rotated && 'scn-rotated', edge === 'top' && !rotated && 'scn-upright', reduced && 'is-reduced', !visible && 'is-paused', className].filter(Boolean).join(' ')}
-      style={vars}
-      aria-hidden="true"
-    >
-      <Settled.Provider value={settled}>
-        <div className="scn-row">
-          {layout.map(({ slot, stage, grow }, i) => (
-            <Slot key={slot.biome} slot={slot} stage={stage} grow={grow} first={i === 0} pack={pack?.biomes[slot.biome]} reduced={reduced} paused={!visible} pulse={pulses?.[slot.biome] ?? 0} />
-          ))}
-        </div>
-        {!reduced && fx && fx.length > 0 && (
-          <div className="scn-fxs">
-            {fx.map((f) => (
-              <span key={f.key} className={`scn-fx scn-fx-${f.kind}`} style={{ left: f.x !== undefined ? `${f.x * 100}%` : undefined, '--fx-color': f.color } as CSSProperties} />
+    <>
+      <div
+        className={['scn', `scn-${edge}`, rotated && 'scn-rotated', edge === 'top' && !rotated && 'scn-upright', reduced && 'is-reduced', !visible && 'is-paused', className].filter(Boolean).join(' ')}
+        style={vars}
+        aria-hidden="true"
+      >
+        <Settled.Provider value={settled}>
+          <div className="scn-row">
+            {layout.map(({ slot, stage, grow }, i) => (
+              <Slot key={slot.biome} slot={slot} stage={stage} grow={grow} first={i === 0} pack={pack?.biomes[slot.biome]} reduced={reduced} paused={!visible} pulse={pulses?.[slot.biome] ?? 0} />
             ))}
           </div>
-        )}
-      </Settled.Provider>
-    </div>
+        </Settled.Provider>
+      </div>
+      {/* Effects: the strip's twin box, without its deep fade (an effect on the far strip would vanish in it); still behind the cards. */}
+      {fx && fx.length > 0 && (
+        <div className={['scn-fxs', `scn-${edge}`, rotated && 'scn-rotated', edge === 'top' && !rotated && 'is-upright', reduced && 'is-reduced', !visible && 'is-paused'].filter(Boolean).join(' ')} style={vars} aria-hidden="true">
+          {fx.map((f) => (
+            <EffectView key={f.key} fx={f} edge={edge} rotated={rotated} reduced={reduced} paused={!visible} />
+          ))}
+        </div>
+      )}
+    </>
   );
 });
 
