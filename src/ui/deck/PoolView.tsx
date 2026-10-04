@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * Entering a pool: the whole cube as cards, tap to take (or untake), search,
- * colour filters, the opponent's picks on a second switch, and paste.
+ * colour filters, the opponent's picks on a second switch, paste, and add
+ * from photo (PhotoSheet).
  */
 import { useMemo, useState } from 'react';
 import type { CubeContext } from '../../cube/score.ts';
@@ -13,9 +14,10 @@ import { pickValue, poolColours, poolProfile } from '../../cube/pick.ts';
 import { colourLabel } from '../../cube/colors.ts';
 import { Sheet } from '../Sheet.tsx';
 import { PipRow } from '../Mana.tsx';
-import { IconFile, IconX } from '../Icons.tsx';
+import { IconCamera, IconFile, IconX } from '../Icons.tsx';
 import { cx } from '../util.ts';
 import { CubeCard } from './CubeCard.tsx';
+import { PhotoSheet } from './PhotoSheet.tsx';
 
 type Filter = 'all' | 'W' | 'U' | 'B' | 'R' | 'G' | 'M' | 'C' | 'L' | 'mine' | 'opp';
 const FILTERS: Array<[Filter, string]> = [
@@ -40,6 +42,7 @@ export function PoolView({ ctx, pool, onChange, onInfo }: { ctx: CubeContext; po
   const [who, setWho] = useState<'mine' | 'opp'>('mine');
   const [sort, setSort] = useState<'list' | 'value'>('list');
   const [paste, setPaste] = useState(false);
+  const [photo, setPhoto] = useState(false);
   const mine = useMemo(() => new Set(pool.cards), [pool.cards]);
   const opp = useMemo(() => new Set(pool.opp), [pool.opp]);
   const pair = useMemo(() => poolColours(pool.cards, ctx), [pool.cards, ctx]);
@@ -107,6 +110,9 @@ export function PoolView({ ctx, pool, onChange, onInfo }: { ctx: CubeContext; po
               They took
             </button>
           </div>
+          <button className="btn btn-quiet" onClick={() => setPhoto(true)}>
+            <IconCamera size={14} /> Add from photo
+          </button>
           <button className="btn btn-quiet" onClick={() => setPaste(true)}>
             <IconFile size={14} /> Paste list
           </button>
@@ -159,9 +165,10 @@ export function PoolView({ ctx, pool, onChange, onInfo }: { ctx: CubeContext; po
             />
           );
         })}
-        {shown.length === 0 && <p className="muted pv-empty">{filter === 'mine' ? 'Your pool is empty — tap cards in “All” as you draft them, or paste a list.' : 'Nothing matches.'}</p>}
+        {shown.length === 0 && <p className="muted pv-empty">{filter === 'mine' ? 'Your pool is empty — tap cards in “All” as you draft them, add them from a photo, or paste a list.' : 'Nothing matches.'}</p>}
       </div>
       <PasteSheet open={paste} onClose={() => setPaste(false)} ctx={ctx} pool={pool} onChange={onChange} />
+      <PhotoSheet open={photo} onClose={() => setPhoto(false)} ctx={ctx} pool={pool} onChange={onChange} />
     </div>
   );
 }

@@ -171,17 +171,30 @@ export interface CoachResult {
 
 const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
 
+/** A photo for the model to look at (photo to pool): base64, no data: prefix. */
+export interface VisionImage {
+  mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+  data: string;
+}
+
+/** A question, optionally with photos: images go before the text, as vision content blocks. */
+export type AskPrompt = Prompt & { images?: VisionImage[] };
+
 /**
- * The exact request body sent for `prompt` on `model`.
+ * The exact request body sent for `prompt` on `model` (with `prompt.images`,
+ * the user turn is the images then the text).
  * - Opus 5.5 / Sonnet 5.5: adaptive thinking (summarised so it can be shown), effort "medium",
  *   and server-side refusal fallback (`fallbacks: "default"` under its beta header).
  * - Haiku 4.5: no adaptive thinking or effort support → a fixed thinking budget, no fallback.
  */
-export function buildRequest(prompt: Prompt, model: ModelId): BetaMessageStreamParams {
+export function buildRequest(prompt: AskPrompt, model: ModelId): BetaMessageStreamParams {
+  const content = prompt.images?.length
+    ? [...prompt.images.map((im) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: im.mediaType, data: im.data } })), { type: 'text' as const, text: prompt.user }]
+    : prompt.user;
   const base = {
     model,
     system: [{ type: 'text' as const, text: prompt.system, cache_control: { type: 'ephemeral' as const } }],
-    messages: [{ role: 'user' as const, content: prompt.user }],
+    messages: [{ role: 'user' as const, content }],
   };
   if (model === 'claude-haiku-4-5') {
     return { ...base, max_tokens: 32000, thinking: { type: 'enabled', budget_tokens: 8000 } };
@@ -311,7 +324,7 @@ export function friendlyError(e: unknown): CoachError {
 // Ask
 
 /** Streams Claude's answer to `prompt`. Rejects with a user-readable Error (no key, bad key, network). */
-export async function askClaude(prompt: Prompt, h: StreamHandlers, opts?: { signal?: AbortSignal; settings?: Settings }): Promise<CoachResult> {
+export async function askClaude(prompt: AskPrompt, h: StreamHandlers, opts?: { signal?: AbortSignal; settings?: Settings; fetch?: typeof fetch }): Promise<CoachResult> {
   const settings = opts?.settings ?? loadSettings();
   const apiKey = settings.apiKey.trim();
   if (!apiKey) throw new CoachError('Add your Anthropic API key in Settings to ask the coach.', 'no_key');
@@ -320,7 +333,7 @@ export async function askClaude(prompt: Prompt, h: StreamHandlers, opts?: { sign
   let text = '';
   try {
     const Anthropic = await loadSdk();
-    const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 });
+    const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 2, ...(opts?.fetch ? { fetch: opts.fetch } : {}) });
     const stream = client.beta.messages.stream(buildRequest(prompt, model), { signal: opts?.signal });
     for await (const event of stream) {
       if (event.type === 'content_block_delta') {

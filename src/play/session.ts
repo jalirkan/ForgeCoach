@@ -48,6 +48,7 @@ import type {
 } from '../protocol.ts';
 import type { GameLog, LoggedFrame } from '../log.ts';
 import { LiveLogBuilder } from '../live.ts';
+import { guardFrame } from '../faceDown.ts';
 import { whyNotAct, whyNotAnswer } from './acts.ts';
 import { recordFinishedGame } from '../history/record.ts';
 
@@ -321,7 +322,10 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     notices = [];
   };
 
-  const receive = (f: LoggedFrame) => {
+  const receive = (raw: LoggedFrame) => {
+    // Defence in depth (faceDown.ts, mtg-table D371): the board, the coach and
+    // the log never see the face of a face-down permanent this seat does not control.
+    const f = hello !== null && raw.type !== 'hello_ok' ? guardFrame(raw, hello.you) : raw;
     switch (f.type) {
       case 'hello_ok': {
         const body = f.body as HelloOkBody;

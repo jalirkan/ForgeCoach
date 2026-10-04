@@ -12,6 +12,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 
 - `protocol.ts` — wire types, **copied verbatim from mtg-table** `web/src/protocol.ts`.
 - `log.ts` — parse `frames.jsonl` / `.jsonl.gz` into a `GameLog` (header, frames, hello, over, seat).
+- `faceDown.ts` — defence in depth for a face-down card's face (`alt`, mtg-table D371): every reader (`log.ts` `parseLog`, `live.ts` `LiveLogBuilder`, `play/session.ts`) drops the `alt` of a face-down card **in play** the viewing seat does not control; an exiled card's `alt` (a look permission: Gonti, Thief of Sanity) is kept.
 - `decisions.ts` — the moments the viewing seat decided something, with the state and what was done.
 - `state.ts` — derived facts about one state: mana available, land drop, cast this turn.
 - `cards.ts` — card text and images from Scryfall, rate-limited, cached in IndexedDB.
@@ -45,13 +46,20 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   cuts, swaps, thin-pool 18-land / three-colour builds, text and `.dck`
   export), `pick.ts` (Grid / Winston advice), `deckPrompt.ts` (deterministic
   deckbuilding coach prompt), `pools.ts` (saved pools, paste parser),
-  `cubes.ts` (registry + loading), `metaStore.ts` (imported meta, IndexedDB).
+  `cubes.ts` (registry + loading), `metaStore.ts` (imported meta, IndexedDB),
+  `photoPool.ts` (photo to pool: the cube-constrained recognition prompt, the
+  strict-JSON parser, name matching with fuzzy near-misses, the review rows
+  with their "two photos / two copies?" questions, `planAdd`).
   Test data: `cube/testdata/` (Scryfall snapshots of the four cubes, a fake
   meta fixture, helpers).
 - `ui/deck/` — the Draft & build screens (lazy-loaded from `#deck`):
   `DeckApp` (home, pools, workspace, meta import), `PoolView`, `BuildView`
   (builds, score, swaps, export, coach via `answers.ts` `startAnswer`),
-  `GridView`, `WinstonView`, `CubeCard`, `sheets` (card picker, card info).
+  `GridView`, `WinstonView`, `CubeCard`, `sheets` (card picker, card info),
+  `PhotoSheet` + `photoImage` (Add from photo: downscale to 1568 px JPEG in
+  the browser, read through `startAnswer(…, { need: 'vision' })` — the
+  helper's `/vision` (mtg-table D362) or the key's image blocks — then the
+  review checklist; nothing enters the pool until the player confirms).
 - `draft/` — Draft vs AI (pure, tested in node): `rng.ts`, `weights.ts`,
   `pick.ts`, `draft.ts` are mtg-table's cube-lab drafting AI (`tools/cubelab`)
   stepped one decision at a time, plus Booster (2–8 seats); `cards.ts` (the
