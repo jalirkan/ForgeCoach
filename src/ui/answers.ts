@@ -7,9 +7,8 @@
  * whatever the store has for the selected key.
  */
 import { useSyncExternalStore } from 'react';
-import type { Prompt } from '../prompt.ts';
-import { askClaude, loadSettings, type CoachResult, type Settings, type StreamHandlers } from '../claude.ts';
-import { askHelper, chooseSource, detectHelper, helperFresh, helperThinking, pageHelperTarget, peekHelper, type ActiveSource } from '../coachHelper.ts';
+import { askClaude, loadSettings, type AskPrompt, type CoachResult, type Settings, type StreamHandlers } from '../claude.ts';
+import { askHelper, chooseSource, detectHelper, helperFresh, helperThinking, pageHelperTarget, peekHelper, type ActiveSource, type SourceNeed } from '../coachHelper.ts';
 
 /** 'queued': the coach helper has it in line behind another question (D325). */
 export type AnswerStatus = 'preparing' | 'queued' | 'streaming' | 'done' | 'stopped' | 'error';
@@ -122,9 +121,14 @@ export interface StartOptions {
   supersedes?: string;
   /** The clock for `thinkingSince` (tests). */
   now?: () => number;
+  /**
+   * 'vision': the prompt carries photos (photo to pool, D362): 'auto' then
+   * takes the coach helper only when its /health says it reads them.
+   */
+  need?: SourceNeed;
 }
 
-export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>, opts: StartOptions = {}): Promise<void> {
+export async function startAnswer(key: string, makePrompt: () => Promise<AskPrompt>, opts: StartOptions = {}): Promise<void> {
   const now = opts.now ?? Date.now;
   controllers.get(key)?.abort();
   const ctrl = new AbortController();
@@ -146,10 +150,10 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
     helper = await detectHelper();
     if (ctrl.signal.aborted || controllers.get(key) !== ctrl) return;
   }
-  const source = chooseSource(settings, helper);
+  const source = chooseSource(settings, helper, opts.need);
   if (!source) {
     // Nothing to answer with: say so now, before building the prompt or fetching any card text.
-    own({ status: 'error', error: noCoachMessage(settings), errorKind: 'no_key' });
+    own({ status: 'error', error: noCoachMessage(settings, opts.need), errorKind: 'no_key' });
     controllers.delete(key);
     return;
   }
@@ -220,7 +224,11 @@ function safeSettings(): Settings {
 }
 
 /** Why nothing can answer, and what to do about it. */
-export function noCoachMessage(s: Pick<Settings, 'coachSource'>): string {
+export function noCoachMessage(s: Pick<Settings, 'coachSource'>, need?: SourceNeed): string {
+  if (need === 'vision') {
+    if (s.coachSource === 'apiKey') return 'Add your Anthropic API key in Settings to read photos.';
+    return 'Nothing can read photos yet. Start `./scripts/play.sh` in mtg-table (Claude Code on your PC reads them), or add an Anthropic API key in Settings.';
+  }
   if (s.coachSource === 'apiKey') return 'Add your Anthropic API key to ask the coach — or copy the prompt and paste it into the Claude app.';
   return 'No coach connected. Start `./scripts/play.sh` in mtg-table to coach with Claude Code on your PC, or add an Anthropic API key in Settings — or copy the prompt and paste it into the Claude app.';
 }

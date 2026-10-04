@@ -294,3 +294,33 @@ describe('asking again while the first question is still out', () => {
     expect(getAnswer('r1')).toMatchObject({ status: 'done', text: 'second' });
   });
 });
+
+describe('startAnswer with photos (need: vision, D362)', () => {
+  it('auto takes the API key when the helper is up but cannot read photos, and passes the images on', async () => {
+    h.settings = { ...h.settings, apiKey: 'sk-ant-x' };
+    h.helper = { ...OK, vision: false };
+    h.fresh = true;
+    const images = [{ mediaType: 'image/jpeg' as const, data: 'AAAA' }];
+    await startAnswer('ph1', async () => ({ system: 's', user: 'u', images }), { need: 'vision' });
+    expect(askHelper).not.toHaveBeenCalled();
+    expect(askClaude).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(askClaude).mock.calls[0]![0]).toMatchObject({ images });
+    expect(getAnswer('ph1')).toMatchObject({ status: 'done', source: 'apiKey' });
+  });
+
+  it('auto takes the helper when it reads photos', async () => {
+    h.settings = { ...h.settings, apiKey: 'sk-ant-x' };
+    h.helper = { ...OK, vision: true };
+    h.fresh = true;
+    await startAnswer('ph2', async () => ({ system: 's', user: 'u', images: [{ mediaType: 'image/jpeg', data: 'AAAA' }] }), { need: 'vision' });
+    expect(askHelper).toHaveBeenCalledTimes(1);
+    expect(getAnswer('ph2')).toMatchObject({ status: 'done', source: 'helper' });
+  });
+
+  it('nothing to read with: a photo-specific message', async () => {
+    h.helper = DOWN;
+    h.fresh = true;
+    await startAnswer('ph3', vi.fn(), { need: 'vision' });
+    expect(getAnswer('ph3')).toMatchObject({ status: 'error', errorKind: 'no_key', error: expect.stringMatching(/read photos/) });
+  });
+});

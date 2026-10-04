@@ -15,6 +15,7 @@
  *                  D361 adds "eval":1 (with "evalModel", "evalSchema") when the helper serves
  *                  the win chance (POST /eval, evalClient.ts); read even when "ok" is false,
  *                  since the win chance does not need Claude Code.
+ *                  D362 adds "vision":1: the helper takes POST /vision (photo to pool).
  *   POST /coach  {"system","user","model"?:"opus"|"sonnet"|"haiku","supersedes"?:"<key>",
  *                 "thinking"?:"off"|"low"|"default"}   (D346: send "thinking" only to a
  *                 helper whose /health lists it; absent = "default", anything else is 400)
@@ -25,6 +26,9 @@
  *          question with the same "supersedes" key ends a queued one with
  *          {"type":"error","code":"superseded"}. Aborting the request cancels the run or
  *          leaves the queue; 429 when the queue is full (or, before D325, when busy).
+ *   POST /vision {"system","user","images":[{"mediaType","data"}…1-8],"model"?,"supersedes"?,"thinking"?}
+ *        (D362: the same question with photos, base64, at most 5 MB each and 24 MB in all; the
+ *        same queue and the same NDJSON stream as /coach. An older helper answers 404.)
  * Default base http://127.0.0.1:8643. When the engine serves this page on the
  * LAN (phone play) the helper is on the page's host, port 8643 -- or the port
  * in the page URL's `coachPort` parameter, which mtg-table's `play.sh --lan`
@@ -33,8 +37,7 @@
  *
  * DOM-light: `fetch` and the page location are injectable for tests.
  */
-import { CoachError, type CoachResult, type ModelId, type Settings, type StreamHandlers } from './claude.ts';
-import type { Prompt } from './prompt.ts';
+import { CoachError, type AskPrompt, type CoachResult, type ModelId, type Settings, type StreamHandlers } from './claude.ts';
 import { SEAT_TOKEN_KEY, servedByEngine, tokenFromSearch } from './play/seatUrl.ts';
 
 export const HELPER_PORT = 8643;
@@ -164,6 +167,8 @@ export type HelperStatus =
       thinking?: HelperThinking[];
       /** D361: the helper serves the win chance (POST /eval). */
       eval?: HelperEval | null;
+      /** D362: the helper reads photos (POST /vision). */
+      vision?: boolean;
     }
   | {
       state: 'down';
@@ -284,6 +289,7 @@ async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: (
       queue?: unknown;
       supersedes?: unknown;
       thinking?: unknown;
+      vision?: unknown;
     };
     if (res.status === 401 || res.status === 403) return down('unauthorized', refusedMessage(String(b.message ?? b.error ?? '')));
     if (b.helper === undefined && !res.ok) return down('not_running', NOT_RUNNING);
@@ -299,6 +305,7 @@ async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: (
         supersedes: b.supersedes === 1 || b.supersedes === true,
         thinking: Array.isArray(b.thinking) ? HELPER_THINKING.filter((t) => (b.thinking as unknown[]).includes(t)) : [],
         eval: helperEvalOf(b),
+        vision: b.vision === 1 || b.vision === true,
       };
     }
     if (b.helper !== undefined) return { ...down('not_ready', helperProblem(typeof b.error === 'string' ? b.error : '')), eval: helperEvalOf(b) };
@@ -362,22 +369,30 @@ export interface AskHelperOptions {
   onRunning?(): void;
 }
 
-/** Streams the coach's answer from Claude Code on the player's PC. Rejects with a CoachError. */
-export async function askHelper(prompt: Prompt, h: StreamHandlers, opts: AskHelperOptions = {}): Promise<CoachResult> {
+/** A helper from before D362 has no /vision. */
+const NO_VISION = 'This coach helper can’t read photos yet. Update mtg-table (it added photo reading in D362) and restart `./scripts/play.sh`, or add an Anthropic API key in Settings.';
+
+/**
+ * Streams the coach's answer from Claude Code on the player's PC. With
+ * `prompt.images` the question goes to /vision (D362). Rejects with a CoachError.
+ */
+export async function askHelper(prompt: AskPrompt, h: StreamHandlers, opts: AskHelperOptions = {}): Promise<CoachResult> {
   const target = opts.target ?? pageHelperTarget();
   const f = opts.fetch ?? defaultFetch();
   const model = opts.model ? helperModel(opts.model) : undefined;
   const aborted = () => new CoachError('Request cancelled.', 'aborted');
   if (opts.signal?.aborted) throw aborted();
+  const images = prompt.images?.length ? prompt.images : null;
 
   let res: Response;
   try {
-    res = await f(`${target.baseUrl}/coach`, {
+    res = await f(`${target.baseUrl}${images ? '/vision' : '/coach'}`, {
       method: 'POST',
       headers: headers(target, true),
       body: JSON.stringify({
         system: prompt.system,
         user: prompt.user,
+        ...(images ? { images: images.map((im) => ({ mediaType: im.mediaType, data: im.data })) } : {}),
         ...(model ? { model } : {}),
         ...(opts.supersedes ? { supersedes: opts.supersedes } : {}),
         ...(opts.thinking ? { thinking: opts.thinking } : {}),
@@ -404,6 +419,8 @@ export async function askHelper(prompt: Prompt, h: StreamHandlers, opts: AskHelp
       /* no body */
     }
     if (res.status === 429) throw new CoachError(BUSY, 'helper_busy', 429);
+    if (images && res.status === 404) throw new CoachError(NO_VISION, 'not_found', 404);
+    if (images && res.status === 413) throw new CoachError('The photos are too large for the coach helper. Send fewer at a time.', 'bad_request', 413);
     if (res.status === 401 || res.status === 403) throw new CoachError(refusedMessage(msg), 'auth', res.status);
     throw new CoachError(helperProblem(msg || `HTTP ${res.status}`), res.status >= 500 ? 'server' : 'unknown', res.status);
   }
@@ -477,17 +494,23 @@ export async function askHelper(prompt: Prompt, h: StreamHandlers, opts: AskHelp
 
 export type ActiveSource = 'helper' | 'apiKey';
 
+/** What a question needs from its source beyond text: 'vision' = it carries photos (D362). */
+export type SourceNeed = 'vision';
+
 /**
  * Who answers, given the settings and what is known about the helper:
- * 'auto' prefers the helper when it was detected, then the API key; null means
- * nothing is available (say so, and offer Copy prompt).
+ * 'auto' prefers the helper when it was detected (for photos, one that reads
+ * them), then the API key; null means nothing is available (say so, and offer
+ * Copy prompt).
  */
-export function chooseSource(s: Pick<Settings, 'apiKey' | 'coachSource'>, helper: HelperStatus | null): ActiveSource | null {
+export function chooseSource(s: Pick<Settings, 'apiKey' | 'coachSource'>, helper: HelperStatus | null, need?: SourceNeed): ActiveSource | null {
   const key = s.apiKey.trim().length > 0;
   if (s.coachSource === 'apiKey') return key ? 'apiKey' : null;
   if (s.coachSource === 'helper') return 'helper';
-  if (helper?.state === 'ok') return 'helper';
-  return key ? 'apiKey' : null;
+  if (helper?.state === 'ok' && (need !== 'vision' || helper.vision)) return 'helper';
+  if (key) return 'apiKey';
+  // Auto, no key, a helper that is up but cannot read photos: let it say so (its 404 says update).
+  return need === 'vision' && helper?.state === 'ok' ? 'helper' : null;
 }
 
 /** True when asking now would reach a coach (for auto-coach and the "no coach yet" hint). */
