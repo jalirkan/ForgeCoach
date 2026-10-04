@@ -235,6 +235,16 @@ pools are saved in it (several at once).
   for the opponent's picks, which sharpens the pick helper), search, filter by
   colour, or paste a list (counts, set codes and `.dck` lines are fine). The
   number on each card is its pick value for your pool.
+- **Add from photo**: take or choose up to eight photos of your drafted cards
+  (spread out, names showing; sleeves and some overlap are fine). They are
+  shrunk to 1568 px in the browser and read by Claude Code on your PC (the
+  coach helper's `/vision`, mtg-table D362) or with your API key, using the
+  coach's source setting. The reader may only name cards from this cube's
+  list; near misses are matched to the closest cube name and marked. You then
+  get a checklist with how sure each card is: tick, untick, fix a card with
+  the picker, name what was not recognised. A card seen in two photos (or
+  counted twice) asks whether it is one card or two. Nothing is added until
+  you confirm, and cards already in the pool are never added again.
 - **Build**: the best 40, three distinct builds, each with a score breakdown
   (card quality, synergy, curve, weak cards, creature count, interaction,
   splash, archetype) and plain reasons ("Skullclamp + Young Pyromancer: +6%
@@ -494,6 +504,9 @@ second and reads only new bytes. Each game of a match is a new file. Any
   by your browser and cached in it (IndexedDB).
 - **Draft pools** and imported cube-lab files stay in this browser
   (localStorage, IndexedDB).
+- **Pool photos** (Add from photo) go only to the coach helper on your PC or,
+  with your key, to `api.anthropic.com`. They live in the sheet's memory and
+  are dropped when it closes; only the cards you confirm are saved.
 - The **Lab** page only downloads the runner's public status file (or the
   `src` you give it); it sends nothing.
 

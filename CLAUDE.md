@@ -45,13 +45,20 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   cuts, swaps, thin-pool 18-land / three-colour builds, text and `.dck`
   export), `pick.ts` (Grid / Winston advice), `deckPrompt.ts` (deterministic
   deckbuilding coach prompt), `pools.ts` (saved pools, paste parser),
-  `cubes.ts` (registry + loading), `metaStore.ts` (imported meta, IndexedDB).
+  `cubes.ts` (registry + loading), `metaStore.ts` (imported meta, IndexedDB),
+  `photoPool.ts` (photo to pool: the cube-constrained recognition prompt, the
+  strict-JSON parser, name matching with fuzzy near-misses, the review rows
+  with their "two photos / two copies?" questions, `planAdd`).
   Test data: `cube/testdata/` (Scryfall snapshots of the four cubes, a fake
   meta fixture, helpers).
 - `ui/deck/` — the Draft & build screens (lazy-loaded from `#deck`):
   `DeckApp` (home, pools, workspace, meta import), `PoolView`, `BuildView`
   (builds, score, swaps, export, coach via `answers.ts` `startAnswer`),
-  `GridView`, `WinstonView`, `CubeCard`, `sheets` (card picker, card info).
+  `GridView`, `WinstonView`, `CubeCard`, `sheets` (card picker, card info),
+  `PhotoSheet` + `photoImage` (Add from photo: downscale to 1568 px JPEG in
+  the browser, read through `startAnswer(…, { need: 'vision' })` — the
+  helper's `/vision` (mtg-table D362) or the key's image blocks — then the
+  review checklist; nothing enters the pool until the player confirms).
 - `draft/` — Draft vs AI (pure, tested in node): `rng.ts`, `weights.ts`,
   `pick.ts`, `draft.ts` are mtg-table's cube-lab drafting AI (`tools/cubelab`)
   stepped one decision at a time, plus Booster (2–8 seats); `cards.ts` (the
