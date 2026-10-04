@@ -12,11 +12,11 @@
 /* Surfaces */
 .dw.fx,
 .deck-home.fx {
-  background: radial-gradient(1100px 420px at 50% -12%, rgba(201, 164, 92, 0.08), transparent 65%), var(--bg);
+  background: radial-gradient(1100px 420px at 50% -12%, rgba(var(--fx-gold-rgb), 0.08), transparent 65%), var(--bg);
 }
 .dw.fx .dw-top,
 .dw.fx .dw-tabs {
-  background: rgba(13, 11, 8, 0.92);
+  background: rgba(var(--fx-bg-rgb), 0.92);
 }
 .dw.fx .dw-top {
   border-bottom: 1px solid var(--hair);
@@ -58,7 +58,7 @@
 }
 .fx .meta-chip.is-on {
   color: var(--gold-hi);
-  border-color: rgba(201, 164, 92, 0.45);
+  border-color: rgba(var(--fx-gold-rgb), 0.45);
 }
 
 /* Home: a lobby — gold kicker, serif hero, cube tiles, ruled pool rows */
@@ -86,11 +86,11 @@
 .deck-home.fx .cube-tile {
   border-radius: 4px;
   border-color: var(--line);
-  background: rgba(23, 19, 13, 0.85);
+  background: rgba(var(--fx-tile-rgb), 0.85);
 }
 .deck-home.fx .cube-tile:hover {
-  border-color: rgba(201, 164, 92, 0.6);
-  background: rgba(40, 32, 20, 0.6);
+  border-color: rgba(var(--fx-gold-rgb), 0.6);
+  background: rgba(var(--fx-lift-rgb), 0.6);
 }
 .deck-home.fx .cube-title {
   font: 500 20px/1.15 var(--serif);
@@ -126,13 +126,13 @@
   border-radius: 6px;
 }
 .fx .btn-primary {
-  color: #24180a;
-  background: linear-gradient(180deg, #e2b754, #c8942f);
+  color: var(--fx-btn-ink);
+  background: var(--fx-btn);
   border-color: transparent;
 }
 .fx .btn-quiet {
   border-color: var(--line-2);
-  background: rgba(255, 240, 210, 0.03);
+  background: rgba(var(--fx-warm-rgb), 0.03);
 }
 .fx .btn-quiet:hover:not(:disabled) {
   border-color: var(--gold);
@@ -149,7 +149,7 @@
   font-size: 12.5px;
 }
 .fx .seg button.is-on {
-  background: #3a2c17;
+  background: var(--fx-on);
   color: var(--gold-hi);
   box-shadow: none;
 }
@@ -161,7 +161,7 @@
 }
 .fx .fchip.is-on {
   border-color: var(--gold);
-  background: rgba(58, 44, 23, 0.8);
+  background: rgba(var(--fx-raise-rgb), 0.8);
   color: var(--gold-hi);
 }
 .fx .fchip-n {
@@ -174,7 +174,7 @@
 .fx .paste-text {
   border-radius: 4px;
   border-color: var(--line-2);
-  background: rgba(23, 19, 13, 0.9);
+  background: rgba(var(--fx-tile-rgb), 0.9);
 }
 .fx .pv-search input:focus,
 .fx .dc-q:focus {
@@ -189,7 +189,7 @@
 .fx .card-box {
   border-radius: 4px;
   border-color: var(--line);
-  background: rgba(23, 19, 13, 0.88);
+  background: rgba(var(--fx-tile-rgb), 0.88);
 }
 .fx .box-h {
   font: 600 10.5px/1 var(--font);
@@ -204,15 +204,15 @@
 }
 .fx .cc.is-hl,
 .fx .cc.is-mine {
-  box-shadow: 0 0 0 2px var(--gold-hi), 0 0 18px 3px rgba(226, 194, 127, 0.35);
+  box-shadow: 0 0 0 2px var(--gold-hi), 0 0 18px 3px rgba(var(--fx-gold-hi-rgb), 0.35);
 }
 .fx .cc.is-opp {
-  box-shadow: 0 0 0 2px var(--crimson-hi), 0 0 16px 2px rgba(210, 72, 61, 0.3);
+  box-shadow: 0 0 0 2px var(--crimson-hi), 0 0 16px 2px rgba(var(--fx-crimson-rgb), 0.3);
 }
 .fx .cc-chip {
   border-radius: 4px;
   font-family: var(--mono);
-  background: rgba(12, 10, 7, 0.92);
+  background: rgba(var(--fx-shade-rgb), 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .fx .cc-chip.is-good {
@@ -220,23 +220,23 @@
 }
 .fx .cc-mark {
   background: var(--gold);
-  color: #24180a;
+  color: var(--fx-btn-ink);
 }
 .fx .cc-mark-opp {
   background: var(--crimson);
-  color: #fbe9e2;
+  color: var(--fx-opp-mark);
 }
 
 /* The builder */
 .fx .bv-build {
   border-radius: 4px;
   border-color: var(--line-2);
-  background: rgba(23, 19, 13, 0.85);
+  background: rgba(var(--fx-tile-rgb), 0.85);
 }
 .fx .bv-build.is-on {
   border-color: var(--gold);
-  background: rgba(58, 44, 23, 0.55);
-  box-shadow: 0 0 22px rgba(201, 164, 92, 0.12);
+  background: rgba(var(--fx-raise-rgb), 0.55);
+  box-shadow: 0 0 22px rgba(var(--fx-gold-rgb), 0.12);
 }
 .fx .bv-build-name {
   font: italic 500 17px/1.2 var(--serif);
@@ -256,7 +256,7 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   background: var(--gold);
-  color: #24180a;
+  color: var(--fx-btn-ink);
 }
 .fx .sc-fill.is-q,
 .fx .sc-fill.is-pos,
@@ -307,18 +307,18 @@
 }
 .fx .gl-btn.is-best {
   border-color: var(--gold-hi);
-  background: linear-gradient(180deg, #e2b754, #c8942f);
-  color: #24180a;
-  box-shadow: 0 0 16px rgba(226, 194, 127, 0.4);
+  background: var(--fx-btn);
+  color: var(--fx-btn-ink);
+  box-shadow: 0 0 16px rgba(var(--fx-gold-hi-rgb), 0.4);
 }
 .fx .gv-empty {
   border-radius: 5px;
-  border: 1px dashed rgba(201, 164, 92, 0.3);
-  background: rgba(255, 240, 210, 0.015);
+  border: 1px dashed rgba(var(--fx-gold-rgb), 0.3);
+  background: rgba(var(--fx-warm-rgb), 0.015);
 }
 .fx .adv {
-  border-color: rgba(201, 164, 92, 0.45);
-  background: linear-gradient(180deg, #2b2215, #1b160f);
+  border-color: rgba(var(--fx-gold-rgb), 0.45);
+  background: var(--fx-panel);
 }
 .fx .adv-kicker {
   font: 600 10.5px/1 var(--font);
@@ -337,7 +337,7 @@
 }
 .fx .wv-pile.is-on {
   border-color: var(--gold);
-  box-shadow: 0 0 18px rgba(201, 164, 92, 0.2);
+  box-shadow: 0 0 18px rgba(var(--fx-gold-rgb), 0.2);
 }
 .fx .wv-pile-n {
   font: 600 11px/1 var(--font);

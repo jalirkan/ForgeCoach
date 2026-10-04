@@ -86,6 +86,9 @@
   --accent-soft: rgba(201, 138, 44, 0.14);
   --gold: #c98a2c;
   --gold-hi: #e0a648;
+  --gold-lo: #9c6a22;
+  --serif: 'Alegreya', Georgia, 'Times New Roman', serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 :root[data-skin='stack'] .ledger,
 :root[data-skin='stack'] .ledger-sheet {
@@ -113,6 +116,54 @@
 :root[data-skin='stack'] .lb-col {
   --lb-amber: #c98a2c;
   --lb-amber-soft: rgba(201, 138, 44, 0.14);
+}
+
+/* The cube section's hand-mixed colours (forge-theme.css :root): cool slate
+   tiles and panels, amber edges and glows, an amber button. */
+:root[data-skin='stack'] {
+  --fx-page: #121417;
+  --fx-gold-rgb: 201, 138, 44;
+  --fx-gold-hi-rgb: 224, 166, 72;
+  --fx-warm-rgb: 214, 224, 238;
+  --fx-bg-rgb: 18, 20, 23;
+  --fx-shade-rgb: 14, 16, 19;
+  --fx-tile-rgb: 23, 26, 30;
+  --fx-lift-rgb: 37, 42, 48;
+  --fx-raise-rgb: 46, 44, 40;
+  --fx-raise-2-rgb: 46, 44, 40;
+  --fx-crimson-rgb: 208, 122, 92;
+  --fx-crimson-lo-rgb: 190, 104, 78;
+  --fx-opp-rgb: 40, 28, 26;
+  --fx-opp-ink: #f0ddd3;
+  --fx-opp-mark: #fbece4;
+  --fx-opp-hot: #eeb7a3;
+  --fx-you-bg: rgba(44, 42, 38, 0.85);
+  --fx-danger: #e07a6a;
+  --fx-danger-rgb: 224, 122, 106;
+  --fx-danger-ink: #e58f80;
+  --fx-rim-rgb: 246, 200, 120;
+  --fx-btn: linear-gradient(180deg, #e0a648, #b97a22);
+  --fx-btn-2: linear-gradient(180deg, #e4aa4c, #bb7c24);
+  --fx-btn-ink: #1b1408;
+  --fx-btn-off: #2a2f36;
+  --fx-btn-off-ink: #7d828a;
+  --fx-on: #2e3238;
+  --fx-on-2: #2e3238;
+  --fx-menu: #1c2025;
+  --fx-sheet: linear-gradient(180deg, #1f2328, #15181b);
+  --fx-panel: linear-gradient(180deg, #232830, #191c21);
+  --fx-bar: rgba(21, 24, 28, 0.94);
+  --fx-row: rgba(30, 34, 40, 0.6);
+  --fx-field: rgba(30, 34, 40, 0.85);
+  --fx-scrim: rgba(10, 12, 14, 0.85);
+  --fx-art: #15181c;
+  --fx-avatar: radial-gradient(circle at 50% 35%, #2a2f36, #101215);
+  --fx-avatar-bot: radial-gradient(circle at 50% 35%, #1c2025, #08090a);
+  --fx-avatar-bot-line: #3a3f47;
+  --fx-avatar-bot-ink: #bdb8ad;
+  --fx-amber-rgb: 201, 138, 44;
+  --fx-site-bg-rgb: 18, 20, 23;
+  --fx-art-bg: #1c2025;
 }
 
 /* ---- Stack: type ------------------------------------------------------- */
@@ -414,6 +465,9 @@
   --crimson-soft: rgba(156, 197, 230, 0.14);
   --bad: #e79ab4;
   --ok: #9fd8b8;
+  /* The cube section's serif carries running text as well as heads: Hot Felt's text face. */
+  --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --mono: 'Barlow Condensed', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 :root[data-skin='felt'] .ledger,
 :root[data-skin='felt'] .ledger-sheet {
@@ -446,6 +500,55 @@
 :root[data-skin='felt'] .lb-col {
   --lb-amber: #e9e2cf;
   --lb-amber-soft: rgba(233, 226, 207, 0.12);
+}
+
+/* The cube section's hand-mixed colours (forge-theme.css :root): tiles sit on
+   the baize, dark green-black or a lifted felt, with bone edges; the buttons
+   are bone, not gold, so heat stays the only warm thing. */
+:root[data-skin='felt'] {
+  --fx-page: #1a312b;
+  --fx-gold-rgb: 233, 226, 207;
+  --fx-gold-hi-rgb: 246, 241, 228;
+  --fx-warm-rgb: 233, 226, 207;
+  --fx-bg-rgb: 20, 40, 35;
+  --fx-shade-rgb: 12, 26, 22;
+  --fx-tile-rgb: 16, 36, 31;
+  --fx-lift-rgb: 36, 68, 59;
+  --fx-raise-rgb: 44, 77, 68;
+  --fx-raise-2-rgb: 44, 77, 68;
+  --fx-crimson-rgb: 156, 197, 230;
+  --fx-crimson-lo-rgb: 111, 143, 176;
+  --fx-opp-rgb: 22, 38, 48;
+  --fx-opp-ink: #dbe8f3;
+  --fx-opp-mark: #f1f6fb;
+  --fx-opp-hot: #cfe3f3;
+  --fx-you-bg: rgba(44, 77, 68, 0.85);
+  --fx-danger: #e79ab4;
+  --fx-danger-rgb: 231, 154, 180;
+  --fx-danger-ink: #eab0c4;
+  --fx-rim-rgb: 255, 252, 242;
+  --fx-btn: linear-gradient(180deg, #f3eddd, #d3cab1);
+  --fx-btn-2: linear-gradient(180deg, #f5efe0, #d6cdb4);
+  --fx-btn-ink: #1f3a33;
+  --fx-btn-off: #2c4d44;
+  --fx-btn-off-ink: #8aa093;
+  --fx-on: #2c4d44;
+  --fx-on-2: #2c4d44;
+  --fx-menu: #1f3b34;
+  --fx-sheet: linear-gradient(180deg, #22403a, #1a312b);
+  --fx-panel: linear-gradient(180deg, #24443b, #1c362f);
+  --fx-bar: rgba(22, 44, 38, 0.94);
+  --fx-row: rgba(36, 68, 59, 0.6);
+  --fx-field: rgba(36, 68, 59, 0.85);
+  --fx-scrim: rgba(10, 24, 20, 0.85);
+  --fx-art: #1c362f;
+  --fx-avatar: radial-gradient(circle at 50% 35%, #2c4d44, #132823);
+  --fx-avatar-bot: radial-gradient(circle at 50% 35%, #24443b, #0d1d19);
+  --fx-avatar-bot-line: #3d6357;
+  --fx-avatar-bot-ink: #d9dccf;
+  --fx-amber-rgb: 233, 226, 207;
+  --fx-site-bg-rgb: 26, 49, 43;
+  --fx-art-bg: #1f3b34;
 }
 
 /* ---- Felt: type: Barlow Condensed for heads, clocks and numbers --------- */
@@ -640,6 +743,15 @@
 }
 :root[data-skin='felt'] .combat-panel {
   border-color: rgba(231, 154, 180, 0.3);
+}
+
+/* ---- The cube section's drawn card faces keep their own type ------------- */
+/* A skin sets the cube section's --serif; a card face drawn without its image
+   (draft.css .dcard-face) is a card, so it keeps Classic's face. */
+
+:root[data-skin='stack'] .fx .dcard-face,
+:root[data-skin='felt'] .fx .dcard-face {
+  --serif: 'EB Garamond', 'Cormorant Garamond', Garamond, 'Times New Roman', serif;
 }
 
 /* ---- The lab pages: the bars and rules in each skin's own colour -------- */

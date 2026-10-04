@@ -11,6 +11,60 @@
 /* The same fonts as the ledger pages, linked from index.html. */
 
 /* ------------------------------------------------------------------ */
+/* Skin tokens: the colours the cube section's stylesheets (this file,
+   lobby.css, draft/*.css, deck/*.css) used to write out by hand. Set on the
+   root so sheets portalled outside .fx see them too. These are Classic's
+   values; ui/skins.css gives Stack and Hot Felt their own. A `-rgb` token is
+   a bare triplet for `rgba(var(--x-rgb), alpha)`. */
+
+:root {
+  --fx-page: #0d0b08; /* the page behind a .fx screen */
+  --fx-gold-rgb: 201, 164, 92; /* --gold: hairlines, edges, glows */
+  --fx-gold-hi-rgb: 226, 194, 127; /* --gold-hi: hot glows */
+  --fx-warm-rgb: 255, 240, 210; /* a faint light wash on a dark ground */
+  --fx-bg-rgb: 13, 11, 8; /* --bg: docks and bars over the page */
+  --fx-shade-rgb: 12, 10, 7; /* chips over card images */
+  --fx-tile-rgb: 23, 19, 13; /* --surface: tiles and panels */
+  --fx-lift-rgb: 40, 32, 20; /* a hovered tile */
+  --fx-raise-rgb: 58, 44, 23; /* the primary tile, a chosen chip */
+  --fx-raise-2-rgb: 58, 46, 28; /* a chosen option */
+  --fx-crimson-rgb: 210, 72, 61; /* the opponent */
+  --fx-crimson-lo-rgb: 196, 64, 54;
+  --fx-opp-rgb: 40, 18, 14; /* the AI's banner */
+  --fx-opp-ink: #f0dccc;
+  --fx-opp-mark: #fbe9e2;
+  --fx-opp-hot: #f0b4ab;
+  --fx-you-bg: rgba(40, 32, 18, 0.85); /* your banner */
+  --fx-danger: #d0574c;
+  --fx-danger-rgb: 208, 87, 76;
+  --fx-danger-ink: #d77b70;
+  --fx-rim-rgb: 255, 220, 140; /* the gold button's inner rim */
+  --fx-btn: linear-gradient(180deg, #e2b754, #c8942f); /* primary buttons */
+  --fx-btn-2: linear-gradient(180deg, #e8bf5f, #c9952f); /* .btn-gold, .btn-begin */
+  --fx-btn-ink: #24180a;
+  --fx-btn-off: #3a3020;
+  --fx-btn-off-ink: #8a7b5c;
+  --fx-on: #3a2c17; /* the chosen segment */
+  --fx-on-2: #3a2e1c;
+  --fx-menu: #1d170f;
+  --fx-sheet: linear-gradient(180deg, #221b12, #16120c);
+  --fx-panel: linear-gradient(180deg, #2b2215, #1b160f);
+  --fx-bar: rgba(22, 18, 12, 0.94);
+  --fx-row: rgba(30, 22, 16, 0.6);
+  --fx-field: rgba(30, 24, 16, 0.85);
+  --fx-scrim: rgba(10, 8, 5, 0.85);
+  --fx-art: #1a140c; /* a cube tile's art well */
+  --fx-avatar: radial-gradient(circle at 50% 35%, #2a2116, #120e09);
+  --fx-avatar-bot: radial-gradient(circle at 50% 35%, #1d1914, #070605);
+  --fx-avatar-bot-line: #4a3b26;
+  --fx-avatar-bot-ink: #cdbf9f;
+  /* deck.css, in the site's own palette */
+  --fx-amber-rgb: 227, 178, 95; /* the site's --accent */
+  --fx-site-bg-rgb: 14, 16, 20; /* the site's --bg */
+  --fx-art-bg: #1a1f27;
+}
+
+/* ------------------------------------------------------------------ */
 /* Tokens (scoped: the rest of the site keeps its own palette) */
 
 .fx {
@@ -43,14 +97,14 @@
   --shadow: 0 14px 34px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
   --cr: 4.6%;
   color: var(--text);
-  background: radial-gradient(1200px 600px at 50% -10%, rgba(201, 164, 92, 0.07), transparent 60%), var(--bg);
+  background: radial-gradient(1200px 600px at 50% -10%, rgba(var(--fx-gold-rgb), 0.07), transparent 60%), var(--bg);
 }
 .fx ::selection {
-  background: rgba(201, 164, 92, 0.3);
+  background: rgba(var(--fx-gold-rgb), 0.3);
 }
 
 body:has(.fx) {
-  background: #0d0b08;
+  background: var(--fx-page);
 }
 
 /* Type helpers */
@@ -117,15 +171,15 @@ body:has(.fx) {
   padding: 0 22px;
   border-radius: 8px;
   font: 600 15px/1 var(--font);
-  color: #24180a;
-  background: linear-gradient(180deg, #e8bf5f, #c9952f);
-  box-shadow: 0 0 0 1px rgba(255, 220, 140, 0.35) inset, 0 6px 22px rgba(201, 164, 92, 0.22);
+  color: var(--fx-btn-ink);
+  background: var(--fx-btn-2);
+  box-shadow: 0 0 0 1px rgba(var(--fx-rim-rgb), 0.35) inset, 0 6px 22px rgba(var(--fx-gold-rgb), 0.22);
   transition: filter 0.15s, transform 0.12s, box-shadow 0.2s;
 }
 .btn-gold:hover:not(:disabled),
 .btn-begin:hover:not(:disabled) {
   filter: brightness(1.07);
-  box-shadow: 0 0 0 1px rgba(255, 220, 140, 0.5) inset, 0 8px 30px rgba(201, 164, 92, 0.35);
+  box-shadow: 0 0 0 1px rgba(var(--fx-rim-rgb), 0.5) inset, 0 8px 30px rgba(var(--fx-gold-rgb), 0.35);
 }
 .btn-gold:active:not(:disabled),
 .btn-begin:active:not(:disabled) {
@@ -133,8 +187,8 @@ body:has(.fx) {
 }
 .btn-gold:disabled,
 .btn-begin:disabled {
-  background: #3a3020;
-  color: #8a7b5c;
+  background: var(--fx-btn-off);
+  color: var(--fx-btn-off-ink);
   box-shadow: 0 0 0 1px var(--line-2) inset;
   cursor: not-allowed;
 }
@@ -157,7 +211,7 @@ body:has(.fx) {
   text-transform: uppercase;
   color: var(--text-2);
   border: 1px solid var(--line-2);
-  background: rgba(255, 240, 210, 0.03);
+  background: rgba(var(--fx-warm-rgb), 0.03);
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .btn-line:hover:not(:disabled) {
@@ -169,8 +223,8 @@ body:has(.fx) {
   cursor: not-allowed;
 }
 .btn-line.is-danger {
-  color: #d77b70;
-  border-color: rgba(196, 64, 54, 0.45);
+  color: var(--fx-danger-ink);
+  border-color: rgba(var(--fx-crimson-lo-rgb), 0.45);
 }
 .btn-close {
   display: inline-flex;
@@ -179,13 +233,13 @@ body:has(.fx) {
   gap: 2px;
   padding: 8px 14px;
   border-radius: 6px;
-  border: 1px solid rgba(196, 64, 54, 0.5);
-  color: #d0574c;
+  border: 1px solid rgba(var(--fx-crimson-lo-rgb), 0.5);
+  color: var(--fx-danger);
   font-size: 14px;
 }
 .btn-close small {
   font-size: 11px;
-  color: rgba(208, 87, 76, 0.75);
+  color: rgba(var(--fx-danger-rgb), 0.75);
 }
 .btn-close:hover {
   background: var(--crimson-soft);
@@ -211,7 +265,7 @@ body:has(.fx) {
   font: 500 12.5px/1 var(--font);
   color: var(--text-2);
   border: 1px solid var(--line-2);
-  background: rgba(255, 240, 210, 0.03);
+  background: rgba(var(--fx-warm-rgb), 0.03);
 }
 .pill:hover:not(:disabled) {
   border-color: var(--gold);
@@ -224,7 +278,7 @@ body:has(.fx) {
 }
 .pill.is-gold {
   color: var(--gold-hi);
-  border-color: rgba(201, 164, 92, 0.55);
+  border-color: rgba(var(--fx-gold-rgb), 0.55);
 }
 .pill:disabled {
   opacity: 0.45;
@@ -256,9 +310,9 @@ body:has(.fx) {
   color: var(--text);
 }
 .seg2 button.is-on {
-  background: #3a2e1c;
+  background: var(--fx-on-2);
   color: var(--text);
-  box-shadow: 0 0 0 1px rgba(201, 164, 92, 0.35) inset;
+  box-shadow: 0 0 0 1px rgba(var(--fx-gold-rgb), 0.35) inset;
 }
 .link-back {
   display: inline-flex;
@@ -283,14 +337,14 @@ body:has(.fx) {
   flex: none;
   border-radius: 50%;
   border: 1px solid var(--gold-lo);
-  background: radial-gradient(circle at 50% 35%, #2a2116, #120e09);
+  background: var(--fx-avatar);
   font: italic 500 22px/1 var(--serif);
   color: var(--gold-hi);
 }
 .avatar.is-bot {
-  border-color: #4a3b26;
-  background: radial-gradient(circle at 50% 35%, #1d1914, #070605);
-  color: #cdbf9f;
+  border-color: var(--fx-avatar-bot-line);
+  background: var(--fx-avatar-bot);
+  color: var(--fx-avatar-bot-ink);
   font-size: 18px;
 }
 .avatar.lg {

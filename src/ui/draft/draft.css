@@ -185,7 +185,7 @@ button.dcard:hover {
   padding: 3px 7px;
   border-radius: 4px;
   background: var(--gold);
-  color: #24180a;
+  color: var(--fx-btn-ink);
   font: 700 9.5px/1 var(--font);
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -221,7 +221,7 @@ button.dcard:hover {
   height: 24px;
   padding: 0 8px;
   border-radius: 6px;
-  background: rgba(12, 10, 7, 0.92);
+  background: rgba(var(--fx-shade-rgb), 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #f4ead2;
   font: 600 13px/1 var(--font);
@@ -259,7 +259,7 @@ button.dcard:hover {
 }
 .bstack.is-glow .dback:last-child,
 .bstack.is-glow .bstack-card:nth-last-child(2) {
-  box-shadow: 0 0 0 2px var(--gold-hi), 0 0 24px 5px rgba(226, 194, 127, 0.45), 0 6px 16px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 2px var(--gold-hi), 0 0 24px 5px rgba(var(--fx-gold-hi-rgb), 0.45), 0 6px 16px rgba(0, 0, 0, 0.6);
 }
 .bstack.is-lift {
   transform: translateY(-6px);
@@ -276,26 +276,26 @@ button.dcard:hover {
   gap: 10px;
   padding: 9px 14px;
   border-radius: 8px;
-  border: 1px solid rgba(196, 64, 54, 0.35);
-  background: rgba(40, 18, 14, 0.85);
+  border: 1px solid rgba(var(--fx-crimson-lo-rgb), 0.35);
+  background: rgba(var(--fx-opp-rgb), 0.85);
   font: italic 16px/1.3 var(--serif);
-  color: #f0dccc;
+  color: var(--fx-opp-ink);
   animation: banner-in 0.3s ease-out;
 }
 .aibanner.is-take {
-  border-color: rgba(210, 72, 61, 0.7);
-  box-shadow: 0 0 22px rgba(210, 72, 61, 0.18);
+  border-color: rgba(var(--fx-crimson-rgb), 0.7);
+  box-shadow: 0 0 22px rgba(var(--fx-crimson-rgb), 0.18);
 }
 .aibanner.is-you {
   border-color: var(--hair);
-  background: rgba(40, 32, 18, 0.85);
+  background: var(--fx-you-bg);
 }
 .aibanner-mark {
   flex: none;
   padding: 3px 6px;
   border-radius: 4px;
   background: var(--crimson);
-  color: #fbe9e2;
+  color: var(--fx-opp-mark);
   font: 700 10px/1 var(--font);
   letter-spacing: 0.16em;
   font-style: normal;
@@ -316,7 +316,7 @@ button.dcard:hover {
   z-index: 30;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--hair);
-  background: linear-gradient(180deg, rgba(23, 19, 13, 0.96), rgba(13, 11, 8, 0.98));
+  background: linear-gradient(180deg, rgba(var(--fx-tile-rgb), 0.96), rgba(var(--fx-bg-rgb), 0.98));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -343,7 +343,7 @@ button.dcard:hover {
   max-width: 55%;
   padding: 4px 9px;
   border-radius: 5px;
-  border: 1px dashed rgba(201, 164, 92, 0.5);
+  border: 1px dashed rgba(var(--fx-gold-rgb), 0.5);
   color: var(--gold-hi);
   font-size: 12px;
   white-space: nowrap;
@@ -375,7 +375,7 @@ button.dcard:hover {
   gap: 10px;
   min-height: 56px;
   border-radius: 8px;
-  border: 1px solid rgba(196, 64, 54, 0.35);
+  border: 1px solid rgba(var(--fx-crimson-lo-rgb), 0.35);
   font: italic 17px/1 var(--serif);
   color: var(--text-2);
 }
@@ -468,8 +468,8 @@ button.dcard:hover {
   width: var(--cw);
   aspect-ratio: 63 / 88;
   border-radius: calc(var(--cw) * 0.048);
-  border: 1px dashed rgba(201, 164, 92, 0.16);
-  background: rgba(255, 240, 210, 0.015);
+  border: 1px dashed rgba(var(--fx-gold-rgb), 0.16);
+  background: rgba(var(--fx-warm-rgb), 0.015);
 }
 .garrow {
   position: relative;
@@ -478,7 +478,7 @@ button.dcard:hover {
   border-radius: 6px;
   border: 1px solid var(--line-2);
   color: var(--gold);
-  background: rgba(255, 240, 210, 0.025);
+  background: rgba(var(--fx-warm-rgb), 0.025);
   transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.2s;
 }
 .garrow.is-row {
@@ -493,14 +493,14 @@ button.dcard:hover {
 }
 .garrow.is-on {
   border-color: var(--gold-hi);
-  background: linear-gradient(180deg, #e8bf5f, #c9952f);
-  color: #24180a;
-  box-shadow: 0 0 16px rgba(226, 194, 127, 0.45);
+  background: var(--fx-btn-2);
+  color: var(--fx-btn-ink);
+  box-shadow: 0 0 16px rgba(var(--fx-gold-hi-rgb), 0.45);
 }
 .garrow.is-hint:not(.is-on) {
   border-style: dashed;
-  border-color: rgba(226, 194, 127, 0.7);
-  box-shadow: 0 0 12px rgba(226, 194, 127, 0.18);
+  border-color: rgba(var(--fx-gold-hi-rgb), 0.7);
+  box-shadow: 0 0 12px rgba(var(--fx-gold-hi-rgb), 0.18);
 }
 .garrow.is-ai {
   border-color: var(--crimson-hi);
@@ -547,7 +547,7 @@ button.dcard:hover {
   padding: 10px 6px 4px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: radial-gradient(80% 120% at 50% 0%, rgba(201, 164, 92, 0.05), transparent 70%), rgba(255, 240, 210, 0.015);
+  background: radial-gradient(80% 120% at 50% 0%, rgba(var(--fx-gold-rgb), 0.05), transparent 70%), rgba(var(--fx-warm-rgb), 0.015);
 }
 .wspot {
   display: flex;
@@ -578,7 +578,7 @@ button.dcard:hover {
   color: var(--crimson-hi);
 }
 .wspot.is-ai .bstack .dback:last-of-type {
-  box-shadow: 0 0 0 2px var(--crimson-hi), 0 0 20px 4px rgba(210, 72, 61, 0.4);
+  box-shadow: 0 0 0 2px var(--crimson-hi), 0 0 20px 4px rgba(var(--fx-crimson-rgb), 0.4);
 }
 .wfan-wrap {
   display: flex;
@@ -603,7 +603,7 @@ button.dcard:hover {
 }
 .tag-hint {
   border-style: dashed;
-  border-color: rgba(226, 194, 127, 0.6);
+  border-color: rgba(var(--fx-gold-hi-rgb), 0.6);
   font-weight: 600;
 }
 .tag-hint.is-pass {
@@ -634,8 +634,8 @@ button.dcard:hover {
 
 /* Pool sheet (the graveyard-viewer pattern) */
 .fx-sheet.sheet {
-  background: linear-gradient(180deg, #221b12, #16120c);
-  border-color: rgba(201, 164, 92, 0.4);
+  background: var(--fx-sheet);
+  border-color: rgba(var(--fx-gold-rgb), 0.4);
 }
 .fx-sheet .sheet-head {
   border-bottom-color: var(--hair);
@@ -652,7 +652,7 @@ button.dcard:hover {
   padding: 10px 12px;
   margin-bottom: 12px;
   border-radius: 8px;
-  border: 1px dashed rgba(201, 164, 92, 0.4);
+  border: 1px dashed rgba(var(--fx-gold-rgb), 0.4);
   font: italic 16px/1.35 var(--serif);
 }
 .coach-call ul {
@@ -728,7 +728,7 @@ button.dcard:hover {
   gap: 16px;
   padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
   border-bottom: 1px solid var(--hair);
-  background: linear-gradient(180deg, rgba(23, 19, 13, 0.6), transparent);
+  background: linear-gradient(180deg, rgba(var(--fx-tile-rgb), 0.6), transparent);
 }
 .pk-titles {
   min-width: 0;
@@ -802,12 +802,12 @@ button.seat-chip:hover {
 .seat-chip.is-active {
   border-color: var(--gold);
   color: var(--gold-hi);
-  box-shadow: 0 0 10px rgba(201, 164, 92, 0.25);
+  box-shadow: 0 0 10px rgba(var(--fx-gold-rgb), 0.25);
 }
 .seat-chip.is-bot.is-active {
   border-color: var(--crimson-hi);
-  color: #f0b4ab;
-  box-shadow: 0 0 10px rgba(210, 72, 61, 0.3);
+  color: var(--fx-opp-hot);
+  box-shadow: 0 0 10px rgba(var(--fx-crimson-rgb), 0.3);
 }
 .pk-actions {
   display: none;
@@ -849,8 +849,8 @@ button.seat-chip:hover {
   min-width: 230px;
   padding: 6px;
   border-radius: 8px;
-  border: 1px solid rgba(201, 164, 92, 0.35);
-  background: #1d170f;
+  border: 1px solid rgba(var(--fx-gold-rgb), 0.35);
+  background: var(--fx-menu);
   box-shadow: var(--shadow);
   animation: banner-in 0.15s ease-out;
 }
@@ -872,7 +872,7 @@ button.seat-chip:hover {
   opacity: 0.4;
 }
 .kebab-item.is-danger {
-  color: #d77b70;
+  color: var(--fx-danger-ink);
 }
 .kebab-check {
   font: 600 10px/1 var(--font);
@@ -1032,7 +1032,7 @@ button.seat-chip:hover {
 .mcurve-bar {
   width: 100%;
   border-bottom: 1px solid var(--gold);
-  background: linear-gradient(180deg, rgba(201, 164, 92, 0.35), rgba(201, 164, 92, 0.08));
+  background: linear-gradient(180deg, rgba(var(--fx-gold-rgb), 0.35), rgba(var(--fx-gold-rgb), 0.08));
 }
 .mcurve-l {
   font: 500 9.5px/1 var(--mono);
@@ -1053,7 +1053,7 @@ button.seat-chip:hover {
   padding: 10px 12px;
   margin-bottom: 12px;
   border-radius: 8px;
-  border: 1px dashed rgba(201, 164, 92, 0.4);
+  border: 1px dashed rgba(var(--fx-gold-rgb), 0.4);
   font: italic 16px/1.35 var(--serif);
 }
 .coach-call ul {
@@ -1109,7 +1109,7 @@ button.seat-chip:hover {
   padding: 12px 16px;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  background: rgba(22, 18, 12, 0.94);
+  background: var(--fx-bar);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -1148,7 +1148,7 @@ button.seat-chip:hover {
   padding: 0 14px;
   font-size: 11px;
   color: var(--gold-hi);
-  border-color: rgba(201, 164, 92, 0.55);
+  border-color: rgba(var(--fx-gold-rgb), 0.55);
 }
 .de-body {
   display: grid;
@@ -1192,7 +1192,7 @@ button.seat-chip:hover {
   padding: 0 12px;
   border-radius: 4px;
   border: 1px solid var(--line);
-  background: rgba(255, 240, 210, 0.015);
+  background: rgba(var(--fx-warm-rgb), 0.015);
   transition: background 0.2s;
 }
 .basic-dot {
@@ -1231,7 +1231,7 @@ button.seat-chip:hover {
   margin-top: 16px;
   padding: 12px 14px;
   border-radius: 4px;
-  border: 1px dashed rgba(201, 164, 92, 0.35);
+  border: 1px dashed rgba(var(--fx-gold-rgb), 0.35);
   color: var(--text-2);
 }
 .de-note-t {
@@ -1261,7 +1261,7 @@ button.seat-chip:hover {
   display: flex;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--hair);
-  background: rgba(13, 11, 8, 0.96);
+  background: rgba(var(--fx-bg-rgb), 0.96);
 }
 .dbuild-dock .dock-main {
   flex: 1;
@@ -1319,7 +1319,7 @@ button.seat-chip:hover {
   background: transparent !important;
   padding: 4px 0 8px;
   border: 0 !important;
-  border-bottom: 1px dashed rgba(201, 164, 92, 0.4) !important;
+  border-bottom: 1px dashed rgba(var(--fx-gold-rgb), 0.4) !important;
   background: transparent;
   text-align: center;
   font: italic 500 36px/1.1 var(--serif);
@@ -1343,7 +1343,7 @@ button.seat-chip:hover {
   padding: 16px 14px;
   border-radius: 4px;
   border: 1px solid var(--line);
-  background: rgba(23, 19, 13, 0.85);
+  background: rgba(var(--fx-tile-rgb), 0.85);
 }
 .panel-h {
   padding-bottom: 10px;
@@ -1378,8 +1378,8 @@ button.seat-chip:hover {
   text-align: left;
 }
 .opt-tile.is-on {
-  border-color: rgba(201, 164, 92, 0.5);
-  background: rgba(58, 46, 28, 0.35);
+  border-color: rgba(var(--fx-gold-rgb), 0.5);
+  background: rgba(var(--fx-raise-2-rgb), 0.35);
 }
 .opt-t {
   font: 500 18px/1.1 var(--serif);
@@ -1405,8 +1405,8 @@ button.seat-chip:hover {
 }
 .src-tile.is-on {
   border-color: transparent;
-  background: linear-gradient(180deg, #e2b754, #c8942f);
-  color: #24180a;
+  background: var(--fx-btn);
+  color: var(--fx-btn-ink);
   font-weight: 500;
 }
 .src-tile:disabled:not(.is-on) {
@@ -1466,7 +1466,7 @@ button.seat-chip:hover {
   padding: 0 14px;
   border-radius: 3px;
   border: 1px solid var(--line);
-  background: rgba(30, 22, 16, 0.6);
+  background: var(--fx-row);
 }
 .seat-row-name {
   font-size: 15px;
@@ -1478,7 +1478,7 @@ button.seat-chip:hover {
   border-radius: 3px;
   font: 500 11px/1 var(--mono);
   color: var(--gold);
-  background: rgba(201, 164, 92, 0.14);
+  background: rgba(var(--fx-gold-rgb), 0.14);
 }
 .tag-plain {
   font-family: var(--font);
@@ -1508,7 +1508,7 @@ button.seat-chip:hover {
   color: var(--text-2);
 }
 .seat-remove:hover {
-  color: #d77b70;
+  color: var(--fx-danger-ink);
 }
 .setup-line {
   margin: 18px 0 0;
@@ -1541,7 +1541,7 @@ button.seat-chip:hover {
   border-color: var(--gold);
 }
 .launch-result.is-bad {
-  border-color: rgba(196, 64, 54, 0.6);
+  border-color: rgba(var(--fx-crimson-lo-rgb), 0.6);
 }
 .launch-result p {
   margin: 0 0 10px;
@@ -1570,7 +1570,7 @@ button.seat-chip:hover {
   margin-bottom: 18px;
   border-radius: 4px;
   border: 1px solid var(--gold);
-  background: linear-gradient(90deg, rgba(201, 164, 92, 0.12), transparent 80%), var(--surface);
+  background: linear-gradient(90deg, rgba(var(--fx-gold-rgb), 0.12), transparent 80%), var(--surface);
 }
 .resume-t {
   margin-top: 4px;
@@ -1596,19 +1596,19 @@ button.seat-chip:hover {
   transition: border-color 0.15s, box-shadow 0.2s, background 0.15s;
 }
 .ctile:hover {
-  border-color: rgba(201, 164, 92, 0.6);
+  border-color: rgba(var(--fx-gold-rgb), 0.6);
 }
 .ctile.is-on {
   border-color: var(--gold);
-  background: rgba(58, 46, 28, 0.45);
-  box-shadow: 0 0 22px rgba(201, 164, 92, 0.12);
+  background: rgba(var(--fx-raise-2-rgb), 0.45);
+  box-shadow: 0 0 22px rgba(var(--fx-gold-rgb), 0.12);
 }
 .cube-art2 {
   position: relative;
   display: block;
   overflow: hidden;
   border-radius: 3px;
-  background: #1a140c;
+  background: var(--fx-art);
 }
 .cube-art2 img {
   position: absolute;
@@ -1684,7 +1684,7 @@ button.seat-chip:hover {
 }
 .deck-tile.is-on {
   border-color: var(--gold);
-  background: rgba(40, 32, 20, 0.5);
+  background: rgba(var(--fx-lift-rgb), 0.5);
 }
 .deck-tile-name {
   font: italic 500 18px/1.2 var(--serif);
@@ -1713,7 +1713,7 @@ button.seat-chip:hover {
   padding: 12px 14px;
   border: 1px solid var(--gold);
   border-top: 0;
-  background: rgba(58, 46, 28, 0.35);
+  background: rgba(var(--fx-raise-2-rgb), 0.35);
   text-align: left;
 }
 .warn-box p {
@@ -1739,11 +1739,11 @@ button.seat-chip:hover {
   text-align: left;
 }
 .profile:hover {
-  border-color: rgba(201, 164, 92, 0.6);
+  border-color: rgba(var(--fx-gold-rgb), 0.6);
 }
 .profile.is-on {
   border-color: var(--gold);
-  background: rgba(58, 46, 28, 0.55);
+  background: rgba(var(--fx-raise-2-rgb), 0.55);
 }
 .profile-t {
   font: 500 15px/1.2 var(--font);
@@ -1838,7 +1838,7 @@ button.seat-chip:hover {
     top: 0;
     z-index: 25;
     padding: 18px 26px 16px;
-    background: rgba(13, 11, 8, 0.94);
+    background: rgba(var(--fx-bg-rgb), 0.94);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
   }
@@ -2020,7 +2020,7 @@ button.seat-chip:hover {
   margin-bottom: 16px;
   border-radius: 4px;
   border: 1px solid var(--line-2);
-  background: rgba(30, 24, 16, 0.85);
+  background: var(--fx-field);
   color: var(--muted);
 }
 .cp-search:focus-within {
@@ -2094,5 +2094,5 @@ button.seat-chip:hover {
 .setup-link {
   color: var(--gold-hi);
   text-decoration: none;
-  border-bottom: 1px dashed rgba(201, 164, 92, 0.5);
+  border-bottom: 1px dashed rgba(var(--fx-gold-rgb), 0.5);
 }
