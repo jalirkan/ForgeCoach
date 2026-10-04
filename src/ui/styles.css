@@ -2827,3 +2827,56 @@ textarea:focus {
   gap: 2px;
   min-width: 0;
 }
+
+/* ---- "Was this advice helpful?" (AdviceFeedback.tsx) ---- */
+.advice-fb {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+.advice-fb-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.advice-fb-q {
+  margin-right: 2px;
+}
+.advice-fb-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-2);
+}
+.advice-fb-btn:hover {
+  border-color: var(--line-2);
+  color: var(--text);
+}
+.advice-fb-btn.is-on {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.advice-fb-btn.is-on.is-down {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+.advice-fb-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.advice-fb-note input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+}
+.advice-fb-saved {
+  min-width: 34px;
+}

@@ -507,6 +507,10 @@ second and reads only new bytes. Each game of a match is a new file. Any
 - **Pool photos** (Add from photo) go only to the coach helper on your PC or,
   with your key, to `api.anthropic.com`. They live in the sheet's memory and
   are dropped when it closes; only the cards you confirm are saved.
+- **Advice feedback** (the thumbs and one-line note under a coach answer)
+  stays in this browser (localStorage): the vote, the note, which game and
+  decision it was about and who answered — never the advice text. Settings →
+  Advice feedback exports it as JSON; nothing is sent anywhere.
 - The **Lab** page only downloads the runner's public status file (or the
   `src` you give it); it sends nothing.
 

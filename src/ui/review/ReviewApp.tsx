@@ -40,6 +40,7 @@ import { CardDetail } from '../CardDetail.tsx';
 import { BoardStateRef, CardActionsContext, type CardActions } from '../cardContext.ts';
 import { cardsForPrompt, prefetchCards } from '../cardData.ts';
 import { AnswerBox, gameKey } from '../CoachPanel.tsx';
+import { feedbackTarget } from '../../feedback.ts';
 import { startAnswer, stopAnswer, useAnswer } from '../answers.ts';
 import { IconGear, IconSpark, IconUpload, IconX } from '../Icons.tsx';
 import { Logo } from '../Logo.tsx';
@@ -577,6 +578,7 @@ function ExplainCoach({ log, loaded, onOpenSettings }: { log: GameLog; loaded: L
           onStop={() => stopAnswer(key)}
           makePrompt={makePrompt}
           onOpenSettings={onOpenSettings}
+          feedback={feedbackTarget(log, null, 'engine-review')}
         />
       )}
     </section>
