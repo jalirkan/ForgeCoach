@@ -61,23 +61,28 @@ const piece = (id: string, anchor: OverlayAnchor, builtin: BuiltinOverlay, extra
   return { id, anchor, src: null, src2x: null, builtin, size: d.size, maxPx: d.maxPx, tile: 'repeat', opacity: 0.7, blend: 'normal', motion: 'none', periodMs: 9000, mirror: true, bytes: null, ...extra };
 };
 
-/** A corner placeholder that grows with the stage, a second corner from stage 2, an edge band from stage 3. */
+/**
+ * A corner placeholder that grows with the stage, a second corner from stage
+ * 2, a band along the outer edge from stage 3, and from stage 4 bands creeping
+ * up both side edges (five pieces, the two corners moving).
+ */
 function grows(corner: BuiltinOverlay, edge: BuiltinOverlay, motion: OverlayMotion, opts: { opacity?: number; blend?: OverlayPiece['blend'] } = {}): OverlayPiece[][] {
-  const o = { opacity: opts.opacity ?? 0.7, blend: opts.blend ?? 'normal' };
+  const o = { opacity: opts.opacity ?? 0.85, blend: opts.blend ?? 'normal' };
   const a = (size: number, maxPx: number) => piece('bl', 'bottom-left', corner, { ...o, size, maxPx, motion, periodMs: 11000 });
   const b = (size: number, maxPx: number) => piece('br', 'bottom-right', corner, { ...o, size, maxPx, motion, periodMs: 13000 });
-  const e = (size: number) => piece('edge', 'bottom-edge', edge, { ...o, opacity: o.opacity * 0.8, size, maxPx: 40 });
-  return [[a(0.1, 120)], [a(0.13, 160), b(0.1, 120)], [a(0.16, 200), b(0.13, 160), e(0.025)], [a(0.2, 240), b(0.16, 200), e(0.035)]];
+  const e = (size: number) => piece('edge', 'bottom-edge', edge, { ...o, opacity: o.opacity * 0.85, size, maxPx: 44 });
+  const side = (id: string, anchor: OverlayAnchor) => piece(id, anchor, edge, { ...o, opacity: o.opacity * 0.75, size: 0.03, maxPx: 34 });
+  return [[a(0.12, 140)], [a(0.15, 180), b(0.12, 140)], [a(0.18, 220), b(0.15, 180), e(0.03)], [a(0.22, 260), b(0.18, 220), e(0.04), side('left', 'left-edge'), side('right', 'right-edge')]];
 }
 
 /** The built-in accents per biome: vines for forest, frost and spray for island, ash and embers for mountain, moss for swamp, petals for plains, dust for wastes. */
 export const BUILTIN_OVERLAY: Record<Biome, OverlayPiece[][]> = {
   forest: grows('vine', 'leaves', 'sway'),
-  island: grows('frost', 'spray', 'breathe', { blend: 'screen', opacity: 0.75 }),
-  mountain: grows('ash', 'embers', 'drift', { opacity: 0.65 }),
-  swamp: grows('moss', 'mist', 'breathe', { opacity: 0.7 }),
-  plains: grows('petals', 'motes', 'drift', { blend: 'screen', opacity: 0.7 }),
-  wastes: grows('dust', 'motes', 'drift', { opacity: 0.55 }),
+  island: grows('frost', 'spray', 'breathe'),
+  mountain: grows('ash', 'embers', 'drift', { opacity: 0.8 }),
+  swamp: grows('moss', 'mist', 'breathe'),
+  plains: grows('petals', 'motes', 'drift'),
+  wastes: grows('dust', 'motes', 'drift', { opacity: 0.7 }),
 };
 
 /** A biome's accents at a stage: the pack's when it gives them, else the built-in when the biome draws the built-in scene, else none. */

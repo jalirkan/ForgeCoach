@@ -12,7 +12,8 @@
  * Corners are drawn for the bottom-left (200 × 200, hugging the left and
  * bottom edges, transparent elsewhere); the renderer flips them for the other
  * corners. Edge tiles are drawn for the bottom edge (160 × 40), seamless
- * left to right. These are generated here, never fetched: a pack's own URLs
+ * left to right, and turned for the left edge (40 × 160; flipped for the
+ * right). These are generated here, never fetched: a pack's own URLs
  * still go through the manifest's URL rules.
  */
 import type { BuiltinOverlay } from '../../ambience/manifest.ts';
@@ -54,7 +55,11 @@ const cornerArea = (reach: number) => (r: () => number): [number, number] => {
   return [Math.cos(a) * d + 2, 200 - Math.sin(a) * d - 2];
 };
 
-const svg = (w: number, h: number, body: string, defs = '') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${defs ? `<defs>${defs}</defs>` : ''}${body}</svg>`;
+/** A soft dark halo, so pale art (frost, spray, petals, motes) still reads over a bright sky or a light skin. */
+const HALO = '<filter id="h" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="0" stdDeviation="1.4" flood-color="#0b1622" flood-opacity="0.6"/></filter>';
+
+const svg = (w: number, h: number, body: string, defs = '', halo = false) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">${defs || halo ? `<defs>${defs}${halo ? HALO : ''}</defs>` : ''}${halo ? `<g filter="url(#h)">${body}</g>` : body}</svg>`;
 
 const CORNERS: Record<string, () => string> = {
   vine: () =>
@@ -99,6 +104,7 @@ const CORNERS: Record<string, () => string> = {
       <circle cx="0" cy="200" r="70" fill="url(#g)"/>
       ${specks(11, 26, ['#e8f7ff', '#bfe3ff'], cornerArea(150), 0.8, 2.2)}`,
       `<radialGradient id="g" cx="0" cy="1" r="1"><stop offset="0" stop-color="#cfeaff" stop-opacity="0.35"/><stop offset="1" stop-color="#cfeaff" stop-opacity="0"/></radialGradient>`,
+      true,
     ),
   ash: () =>
     svg(
@@ -128,7 +134,7 @@ const CORNERS: Record<string, () => string> = {
       const fill = ['#f6d7df', '#fbeacb', '#f2c6d3'][i % 3];
       body += `<path transform="translate(${r1(x)} ${r1(y)}) rotate(${rot}) scale(${s})" d="M0 0 C 3 -5, 9 -5, 10 0 C 9 4, 3 4, 0 0 Z" fill="${fill}" opacity="${r1(0.55 + r() * 0.4)}"/>`;
     }
-    return svg(200, 200, `<circle cx="0" cy="200" r="90" fill="url(#g)"/>${body}`, `<radialGradient id="g" cx="0" cy="1" r="1"><stop offset="0" stop-color="#ffe9b0" stop-opacity="0.22"/><stop offset="1" stop-color="#ffe9b0" stop-opacity="0"/></radialGradient>`);
+    return svg(200, 200, `<circle cx="0" cy="200" r="90" fill="url(#g)"/>${body}`, `<radialGradient id="g" cx="0" cy="1" r="1"><stop offset="0" stop-color="#ffe9b0" stop-opacity="0.22"/><stop offset="1" stop-color="#ffe9b0" stop-opacity="0"/></radialGradient>`, true);
   },
   dust: () =>
     svg(
@@ -165,6 +171,8 @@ const EDGES: Record<string, () => string> = {
       160,
       40,
       `<path d="M0 34 C 20 28, 40 38, 60 32 S 100 26, 120 33 S 150 36, 160 34" stroke="#d8f0ff" stroke-width="1.4" fill="none" opacity="0.8"/>${specks(61, 22, ['#e8f7ff', '#bfe3ff'], bottomArea, 0.6, 1.6)}`,
+      '',
+      true,
     ),
   embers: () => svg(160, 40, `${specks(67, 20, ['#8d8a88', '#6f6b69'], bottomArea, 0.6, 1.6, 0.3, 0.7)}${specks(71, 4, ['#ff9a4a'], bottomArea, 0.8, 1.3, 0.6, 0.9)}`),
   mist: () =>
@@ -174,17 +182,24 @@ const EDGES: Record<string, () => string> = {
       `<rect x="0" y="0" width="160" height="40" fill="url(#g)"/>${specks(73, 8, ['#9fc58a'], bottomArea, 0.6, 1.4, 0.3, 0.6)}`,
       `<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7f9b78" stop-opacity="0"/><stop offset="1" stop-color="#7f9b78" stop-opacity="0.35"/></linearGradient>`,
     ),
-  motes: () => svg(160, 40, specks(79, 14, ['#fff1c4', '#ffe0a0'], bottomArea, 0.6, 1.4, 0.35, 0.8)),
+  motes: () => svg(160, 40, specks(79, 14, ['#fff1c4', '#ffe0a0'], bottomArea, 0.6, 1.4, 0.35, 0.8), '', true),
 };
+
+/** An edge tile turned for the left edge: 40 × 160, the ground at the left (the renderer flips it for the right edge). */
+const vertical = (tile: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 160" width="40" height="160"><g transform="translate(40 0) rotate(90)">${tile}</g></svg>`;
+
+/** The shape a built-in piece is drawn in: a corner picture, a tile along the top or bottom edge, or one along a side edge. */
+export type BuiltinShape = 'corner' | 'h' | 'v';
 
 const cache = new Map<string, string>();
 
-/** A built-in accent as a `data:` URL: a corner picture, or an edge tile. */
-export function builtinOverlaySrc(kind: BuiltinOverlay, corner: boolean): string {
-  const key = `${kind}|${corner}`;
+/** A built-in accent as a `data:` URL. */
+export function builtinOverlaySrc(kind: BuiltinOverlay, shape: BuiltinShape): string {
+  const key = `${kind}|${shape}`;
   let url = cache.get(key);
   if (!url) {
-    const draw = (corner ? CORNERS[kind] : EDGES[kind]) ?? (corner ? CORNERS.dust! : EDGES.motes!);
+    const edge = () => (EDGES[kind] ?? EDGES.motes!)();
+    const draw = shape === 'corner' ? (CORNERS[kind] ?? CORNERS.dust!) : shape === 'h' ? edge : () => vertical(edge());
     url = `data:image/svg+xml,${encodeURIComponent(draw().replace(/\s+/g, ' '))}`;
     cache.set(key, url);
   }

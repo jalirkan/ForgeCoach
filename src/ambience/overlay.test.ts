@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { combineOverlayStages, hasOverlays, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayAt, overlayUrls, validateManifest, type OverlayPiece } from './manifest.ts';
 import { anchorGroup, biomeOverlay, BUILTIN_OVERLAY, mirrorAnchor, overlayFit, overlayPieces, OVERLAY_CORNERS_ONLY_PX, OVERLAY_HIDDEN_PX } from './overlay.ts';
 import { preloadOverlays } from './pack.ts';
+import { builtinOverlaySrc } from '../ui/ambience/overlayArt.ts';
 import { accentsOn, DEFAULT_PREFS, effectivePrefs } from './prefs.ts';
 import type { Biome, SlotState } from './model.ts';
 
@@ -228,11 +229,22 @@ describe('spec 1.3 overlay: built-in placeholders', () => {
     expect(BUILTIN_OVERLAY.island[0]![0]!.builtin).toBe('frost');
     expect(BUILTIN_OVERLAY.mountain[0]![0]!.builtin).toBe('ash');
   });
+  it('draws every built-in kind as an SVG data URL, in each shape', () => {
+    for (const st of Object.values(BUILTIN_OVERLAY))
+      for (const p of st.flat()) for (const shape of ['corner', 'h', 'v'] as const) expect(builtinOverlaySrc(p.builtin!, shape)).toMatch(/^data:image\/svg\+xml,%3Csvg/);
+    expect(decodeURIComponent(builtinOverlaySrc('spray', 'v'))).toContain('viewBox="0 0 40 160"');
+  });
   it('a pack biome with its own art and no accents gets none; one without art gets the built-in', () => {
     const r = validateManifest(pack([{ layers: [sky] }]), BASE);
     expect(biomeOverlay(r.pack, 'forest', 2)).toEqual([]);
     expect(biomeOverlay(r.pack, 'island', 2).map((p) => p.builtin)).toEqual(['frost', 'frost']);
-    expect(biomeOverlay(null, 'mountain', 4).map((p) => p.builtin)).toEqual(['ash', 'ash', 'embers']);
+    expect(biomeOverlay(null, 'mountain', 4).map((p) => [p.anchor, p.builtin])).toEqual([
+      ['bottom-left', 'ash'],
+      ['bottom-right', 'ash'],
+      ['bottom-edge', 'embers'],
+      ['left-edge', 'embers'],
+      ['right-edge', 'embers'],
+    ]);
   });
 });
 
@@ -248,7 +260,7 @@ describe('spec 1.3 overlay: width and motion', () => {
   it('a phone-width area shows corners only, capped and still; a tiny one nothing', () => {
     const slots = [slot('forest', 0, 6, 4)];
     const wide = overlayPieces(slots, null, { side: 'bottom', widthPx: 1100, reduced: false });
-    expect(wide.map((p) => p.anchor)).toEqual(['bottom-left', 'bottom-right', 'bottom-edge']);
+    expect(wide.map((p) => p.anchor)).toEqual(['bottom-left', 'bottom-right', 'bottom-edge', 'left-edge', 'right-edge']);
     expect(wide.filter((p) => p.animate)).toHaveLength(2);
     const phone = overlayPieces(slots, null, { side: 'bottom', widthPx: 370, reduced: false });
     expect(phone.map((p) => p.anchor)).toEqual(['bottom-left', 'bottom-right']);

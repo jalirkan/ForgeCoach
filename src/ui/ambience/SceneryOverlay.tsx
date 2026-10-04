@@ -63,9 +63,10 @@ export const SceneryOverlay = memo(function SceneryOverlay({ slots, pack, edge, 
   );
 });
 
-/** The anchor as drawn inside the (possibly flipped) box: built-in corners are drawn for the left, so right corners flip them across. */
+/** The anchor as drawn inside the (possibly flipped) box: built-in corners and side bands are drawn for the left, so right ones flip them across. */
 function localAnchor(p: PlacedOverlay): { anchor: OverlayAnchor; flipX: boolean } {
   const a = p.piece.anchor;
+  if (p.piece.builtin && a === 'right-edge') return { anchor: 'left-edge', flipX: true };
   if (p.piece.builtin && isOverlayCorner(a) && a.endsWith('right')) return { anchor: a.replace('right', 'left') as OverlayAnchor, flipX: true };
   return { anchor: a, flipX: false };
 }
@@ -87,7 +88,8 @@ function Piece({ p, bloom }: { p: PlacedOverlay; bloom: boolean }) {
   const corner = isOverlayCorner(p.anchor);
   const { anchor: local, flipX } = localAnchor(p);
   const piece = p.piece;
-  const src = piece.src ?? (piece.builtin ? builtinOverlaySrc(piece.builtin, corner) : null);
+  const shape = corner ? 'corner' : p.anchor === 'left-edge' || p.anchor === 'right-edge' ? 'v' : 'h';
+  const src = piece.src ?? (piece.builtin ? builtinOverlaySrc(piece.builtin, shape) : null);
   if (!src || failed) return null;
   const size = `min(${+(piece.size * 100).toFixed(2)}cqw, ${p.maxPx}px)`;
   const transform = [flipX && 'scaleX(-1)', p.flipY && 'scaleY(-1)'].filter(Boolean).join(' ') || undefined;
