@@ -47,6 +47,8 @@ import { cardsForPrompt } from '../cardData.ts';
 import { AnswerHead, gameKey } from '../CoachPanel.tsx';
 import { useCoachAvailability } from '../hooks.ts';
 import { Markdown } from '../Markdown.tsx';
+import { AdviceFeedback } from '../AdviceFeedback.tsx';
+import { feedbackTarget } from '../../feedback.ts';
 import { IconCheck, IconCopy, IconSpark, IconStop } from '../Icons.tsx';
 import { copyText, cx } from '../util.ts';
 
@@ -336,6 +338,7 @@ function MomentCard({
         {answer?.status === 'preparing' && <p className="tiny muted pulse">Getting the coach ready…</p>}
         {answer?.status === 'queued' && <p className="tiny muted pulse">Waiting for the coach{answer.queuePosition ? ` (${answer.queuePosition} ahead)` : ''}…</p>}
         {streaming && !answer?.text && <p className="tiny muted pulse">The coach is looking at it…</p>}
+        <AdviceFeedback target={feedbackTarget(log, m.decision.frameIndex, 'film')} answer={answer} />
         {answer?.status === 'error' && <p className="tiny film-err">{answer.error}</p>}
         {answer?.status === 'stopped' && <p className="tiny muted">Stopped.</p>}
         {canAsk && (

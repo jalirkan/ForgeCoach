@@ -12,6 +12,7 @@ import type { GameLog } from '../../log.ts';
 import type { Decision } from '../../decisions.ts';
 import { answerBusy, startAnswer, stopAnswer, useAnswer } from '../answers.ts';
 import { AnswerBox, AnswerHead, coachPrompt } from '../CoachPanel.tsx';
+import { feedbackTarget } from '../../feedback.ts';
 import { parseCoachAnswer } from '../../coachAnswer.ts';
 import { Markdown } from '../Markdown.tsx';
 import { IconBook, IconChevronDown, KindIcon, KIND_LABEL } from '../Icons.tsx';
@@ -161,6 +162,7 @@ export const PlayCoach = memo(function PlayCoach({
             makePrompt={makePrompt}
             onOpenSettings={onOpenSettings}
             structured
+            feedback={feedbackTarget(log, decision.frameIndex, 'play')}
           />
         </div>
       ) : (
