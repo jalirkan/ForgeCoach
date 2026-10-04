@@ -7,7 +7,7 @@
  * timer.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { describeEvent, type DraftEvent } from '../../draft/draft.ts';
+import { describeEvent, type Draft, type DraftEvent } from '../../draft/draft.ts';
 import { IconMore } from '../Icons.tsx';
 import { cx } from '../util.ts';
 
@@ -52,12 +52,13 @@ export function Dock({ primary, secondary, status, waiting, pool, onPool }: { pr
   );
 }
 
-export function AiBanner({ e }: { e: DraftEvent | null }) {
+/** `d`: the draft the event belongs to, so a 3+ seat Booster pick names no card (`describeEvent`). */
+export function AiBanner({ e, d }: { e: DraftEvent | null; d?: Draft }) {
   if (!e || e.who !== 'ai') return null;
   return (
     <div className={cx('aibanner', e.kind !== 'pass' && 'is-take')} role="status" key={e.n}>
       <span className="aibanner-mark">AI</span>
-      <span>{describeEvent(e)}</span>
+      <span>{describeEvent(e, d)}</span>
     </div>
   );
 }
