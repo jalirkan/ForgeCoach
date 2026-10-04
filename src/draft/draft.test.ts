@@ -8,7 +8,9 @@ import { DEFAULT_WEIGHTS as W } from './weights.ts';
 import {
   aiAction,
   aiStep,
+  aiPicksAttributable,
   boosterPackSize,
+  describeEvent,
   botPick,
   progress,
   type BoosterDraft,
@@ -249,6 +251,38 @@ describe('booster', () => {
       expect(progress(end).label).toBe('Draft complete');
     }
   });
+
+  it('two seats: every AI pick but the first of each pack is known, and named', () => {
+    const end = selfPlay(newDraft({ cubeId: 'synergy', format: 'booster', cube: names, seed: 3, youFirst: true, seats: 2, now: 1 }), cards) as BoosterDraft;
+    expect(aiPicksAttributable(end)).toBe(true);
+    // Pick 1 of a pack comes from the AI's own fresh pack; every later one from the pack you just passed.
+    const firsts = new Set([0, 1, 2].map((r) => end.picks.ai[r * end.packSize]));
+    expect(knownAiCards(end)).toEqual(end.picks.ai.filter((n) => !firsts.has(n)));
+    const ai = end.log.filter((e) => e.who === 'ai');
+    for (const e of ai) expect(describeEvent(e, end)).toBe(e.known?.length ? `AI picked ${e.cards[0]}` : 'AI picked a card you haven’t seen');
+  });
+
+  for (const seats of [3, 8]) {
+    it(`${seats} seats: no AI pick is known, even of cards you saw, and the feed names none`, () => {
+      const d0 = newDraft({ cubeId: 'synergy', format: 'booster', cube: names, seed: 5, youFirst: true, seats, now: 1 }) as BoosterDraft;
+      expect(aiPicksAttributable(d0)).toBe(false);
+      const end = selfPlay(d0, cards) as BoosterDraft;
+      // Not vacuous: the AI took many cards you had seen in a pack.
+      const seen = new Set(end.seen.you);
+      expect(end.picks.ai.filter((n) => seen.has(n)).length).toBeGreaterThan(5);
+      expect(knownAiCards(end)).toEqual([]);
+      const ai = end.log.filter((e) => e.who === 'ai');
+      expect(ai).toHaveLength(end.picks.ai.length);
+      for (const e of ai) {
+        expect(e.known).toEqual([]);
+        expect(describeEvent(e, end)).toBe('The pack moved on');
+      }
+      // A draft saved under the old rule (known filled in) leaks nothing either.
+      const old = JSON.parse(JSON.stringify(end)) as BoosterDraft;
+      for (const e of old.log) if (e.who === 'ai') e.known = seen.has(e.cards[0]!) ? [e.cards[0]!] : [];
+      expect(knownAiCards(old)).toEqual([]);
+    });
+  }
 
   it('the bot takes its best-scoring card', () => {
     const pack = ['Lightning Bolt', 'Opt', 'Plains'].filter((n) => cards.has(n));
