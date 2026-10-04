@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseMeta, type CubeMeta } from '../cube/meta.ts';
-import { colourBaselines, FORGE_CAVEAT, labCardView, rateOf, RED_NOTE, VERDICT_WORDS, verdictOf, winLine } from './labStats.ts';
+import { colourBaselines, FORGE_CAVEAT, LAND_HIDDEN, labCardView, rateOf, RED_NOTE, VERDICT_WORDS, verdictOf, winLine, ZERO_HIDDEN } from './labStats.ts';
 
 const shipped = (id: string) => parseMeta(JSON.parse(readFileSync(new URL(`../../public/cubes/${id}.meta.json`, import.meta.url), 'utf8')));
 
@@ -114,5 +114,38 @@ describe('colour baselines', () => {
   it('the shipped metas give a baseline for every colour', () => {
     const b = colourBaselines(shipped('vintage-cube-180'));
     expect([...b.keys()].sort()).toEqual(['B', 'G', 'R', 'U', 'W']);
+  });
+});
+
+describe('suspicious zeros are hidden', () => {
+  it('lands: the lab counts only nonland cards in decks, so no inclusion and no win rate', () => {
+    const m = meta({ cards: { 'Arid Mesa': { picked: 23, seen: 25, avgPickIndex: 9, inDecks: 0, games: 0, wins: 0 } } } as never);
+    const v = labCardView(m, 'Arid Mesa', '', undefined, { land: true })!;
+    expect(v.inDeck).toBeNull();
+    expect(v.win).toBeNull();
+    expect(v.hidden).toBe(LAND_HIDDEN);
+    expect(v.taken).not.toBeNull();
+  });
+
+  it('a nonland card picked more than 10 times and never in a deck: hidden with its reason', () => {
+    const m = meta({ cards: { Amalgam: { picked: 23, seen: 30, inDecks: 0, games: 0, wins: 0 }, Rare: { picked: 4, seen: 30, inDecks: 0, games: 0, wins: 0 } } } as never);
+    const v = labCardView(m, 'Amalgam', 'B')!;
+    expect(v.inDeck).toBeNull();
+    expect(v.hidden).toBe(ZERO_HIDDEN);
+    // Picked a few times and never played: a real 0 of 4, shown.
+    expect(labCardView(m, 'Rare', 'B')!.inDeck).toEqual({ inDecks: 0, picked: 4, p: 0 });
+    expect(labCardView(m, 'Rare', 'B')!.hidden).toBeNull();
+  });
+
+  it('no shipped land ever shows an inclusion or a win rate', () => {
+    for (const id of ['modern-era-cube-180', 'vintage-cube-180']) {
+      const m = shipped(id);
+      for (const c of m.cube.cards ?? []) {
+        const types = Array.isArray(c.types) ? c.types.join(' ') : (c.types ?? '');
+        if (!/Land/.test(types)) continue;
+        const v = labCardView(m, c.name, '', undefined, { land: true });
+        if (v) expect(v.inDeck === null && v.win === null).toBe(true);
+      }
+    }
   });
 });

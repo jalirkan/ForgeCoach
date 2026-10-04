@@ -21,7 +21,7 @@ export function LabNumbers({ names, ctx }: { names: readonly string[]; ctx: Cube
   const [open, setOpen] = useState(() => readLS(OPEN_KEY) === '1');
   const baselines = useMemo(() => colourBaselines(meta), [meta]);
   const rows = useMemo(
-    () => names.map((n) => ({ name: n, view: labCardView(meta, n, ctx.facts.get(n)?.colors ?? '', baselines) })),
+    () => names.map((n) => ({ name: n, view: labCardView(meta, n, ctx.facts.get(n)?.colors ?? '', baselines, { land: ctx.facts.get(n)?.land === true }) })),
     [names, meta, ctx, baselines],
   );
   if (!meta || !names.length) return null;
@@ -95,19 +95,26 @@ function CardNumbers({ v }: { v: LabCardView }) {
           </dd>
         </div>
       )}
-      <div>
-        <dt>Deck win rate</dt>
-        <dd>
-          {v.win ? (
-            <>
-              <span className={cx('labn-win', `is-${v.verdict}`)}>{winLine(v.win)}</span>
-              <span className="labn-verdict">{VERDICT_WORDS[v.verdict]}</span>
-            </>
-          ) : (
-            <span className="labn-mute">no decisive games yet</span>
-          )}
-        </dd>
-      </div>
+      {v.hidden ? (
+        <div>
+          <dt>In decks</dt>
+          <dd className="labn-mute">{v.hidden}</dd>
+        </div>
+      ) : (
+        <div>
+          <dt>Deck win rate</dt>
+          <dd>
+            {v.win ? (
+              <>
+                <span className={cx('labn-win', `is-${v.verdict}`)}>{winLine(v.win)}</span>
+                <span className="labn-verdict">{VERDICT_WORDS[v.verdict]}</span>
+              </>
+            ) : (
+              <span className="labn-mute">no decisive games yet</span>
+            )}
+          </dd>
+        </div>
+      )}
       {v.baselines.length > 0 && (
         <div>
           <dt>Colour baseline</dt>

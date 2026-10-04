@@ -68,6 +68,8 @@ export interface LabCardView {
   baselines: ColourBaseline[];
   /** The card is red: the red over-flag note applies. */
   red: boolean;
+  /** Why the deck numbers are hidden, when they are (see `deckNumbersHidden`). */
+  hidden: string | null;
 }
 
 const num = (x: unknown): number | null => (typeof x === 'number' && Number.isFinite(x) ? x : null);
@@ -134,7 +136,32 @@ function earlyOf(s: MetaCardStats): LabCardView['early'] {
 }
 
 /** The panel's view of one card; null when the meta says nothing about it. `colors` is the card's colours (WUBRG letters, '' colourless). */
-export function labCardView(meta: CubeMeta | null, name: string, colors: string, baselines: Map<string, ColourBaseline> = colourBaselines(meta)): LabCardView | null {
+/**
+ * A suspicious zero is hidden, not shown. The lab's meta writer (mtg-table
+ * tools/cubelab/meta.ts) counts only a played deck's NONLAND cards for
+ * `inDecks`, `games` and `wins`, so every land reads "0 of N in the 40" and has
+ * no games: a recording gap, not a 0%. A nonland card picked more than
+ * SUSPECT_PICKS times and never in a deck is hidden too until that is checked.
+ */
+export const SUSPECT_PICKS = 10;
+export const LAND_HIDDEN = 'The lab’s meta counts only nonland cards in decks, so a land’s deck numbers are not recorded.';
+export const ZERO_HIDDEN = 'Never in a deck though picked often: likely a gap in how the lab records decks, so the deck numbers are hidden.';
+
+export function deckNumbersHidden(s: MetaCardStats, land: boolean): string | null {
+  if (land) return LAND_HIDDEN;
+  const picked = count(s.picked);
+  const inDecks = count(s.inDecks);
+  if (inDecks === 0 && picked !== null && picked > SUSPECT_PICKS) return ZERO_HIDDEN;
+  return null;
+}
+
+export function labCardView(
+  meta: CubeMeta | null,
+  name: string,
+  colors: string,
+  baselines: Map<string, ColourBaseline> = colourBaselines(meta),
+  opts: { land?: boolean } = {},
+): LabCardView | null {
   const s = meta?.cards[name];
   if (!s) return null;
   const picked = count(s.picked);
@@ -143,13 +170,14 @@ export function labCardView(meta: CubeMeta | null, name: string, colors: string,
   const games = count(s.games);
   const wins = count(s.wins);
   const avg = num(s.avgPickIndex);
-  const win = games !== null && wins !== null ? rateOf(wins, games) : null;
+  const hidden = deckNumbersHidden(s, opts.land === true);
+  const win = !hidden && games !== null && wins !== null ? rateOf(wins, games) : null;
   const view: LabCardView = {
     name,
     early: earlyOf(s),
     avgPick: avg !== null && avg > 0 ? avg : null,
     taken: picked !== null && seen ? (picked <= seen ? { picked, seen, p: picked / seen } : null) : null,
-    inDeck: inDecks !== null && picked ? (inDecks <= picked ? { inDecks, picked, p: inDecks / picked } : null) : null,
+    inDeck: !hidden && inDecks !== null && picked ? (inDecks <= picked ? { inDecks, picked, p: inDecks / picked } : null) : null,
     win,
     verdict: verdictOf(win),
     baselines: [...colors]
@@ -157,6 +185,7 @@ export function labCardView(meta: CubeMeta | null, name: string, colors: string,
       .map((c) => baselines.get(c))
       .filter((b): b is ColourBaseline => !!b),
     red: colors.includes('R'),
+    hidden,
   };
   if (!view.early && view.avgPick === null && !view.taken && !view.inDeck && !view.win) return null;
   return view;
