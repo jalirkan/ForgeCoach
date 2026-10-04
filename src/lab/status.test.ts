@@ -32,6 +32,8 @@ import {
   formatBytes,
   MAX_LIVE,
   MAX_CUBES,
+  MAX_CORES,
+  coresMeter,
 } from './status.ts';
 
 const sample = JSON.parse(readFileSync(new URL('../../public/lab-sample.json', import.meta.url), 'utf8')) as unknown;
@@ -427,5 +429,54 @@ describe('a running job’s live numbers and per-cube progress', () => {
     ]);
     expect(formatBytes(512)).toBe('512 B');
     expect(formatBytes(3.4e9)).toBe('3.4 GB');
+  });
+});
+
+describe('cores (D337 amended: host.coresUsed / coresTotal, running[].cores)', () => {
+  it('reads the sample: 6 of 8 cores, two running jobs with their widths', () => {
+    const s = parseLabStatus(sample);
+    expect(s.host).toMatchObject({ coresUsed: 6, coresTotal: 8 });
+    expect(coresMeter(s.host)).toEqual({ used: 6, total: 8, fraction: 0.75, over: false });
+    const withCores = s.running.filter((j) => j.cores != null).map((j) => [j.id, j.cores]);
+    expect(withCores).toEqual([
+      ['J003', 2],
+      ['J020', 4],
+    ]);
+  });
+
+  it('leaves the keys off an older payload, so the page renders as before', () => {
+    const s = parseLabStatus(SPEC_EXAMPLE);
+    expect(s.host).not.toHaveProperty('coresUsed');
+    expect(s.host).not.toHaveProperty('coresTotal');
+    expect(s.running[0]).not.toHaveProperty('cores');
+    expect(coresMeter(s.host)).toBeNull();
+    expect(coresMeter(null)).toBeNull();
+  });
+
+  it('accepts whole numbers in range; numeric strings and fractions are read like other counts', () => {
+    const s = parseLabStatus({ host: { coresUsed: '3', coresTotal: 8.2 }, running: [{ id: 'J1', cores: 0 }, { id: 'J2', cores: 2.6 }] });
+    expect(s.host).toMatchObject({ coresUsed: 3, coresTotal: 8 });
+    expect(s.running.map((j) => j.cores)).toEqual([0, 3]);
+  });
+
+  it('drops out-of-range and non-finite values', () => {
+    const bad = [-1, Infinity, NaN, MAX_CORES + 1, 'many', null, {}, true];
+    for (const v of bad) {
+      const s = parseLabStatus({ host: { load1: 1, coresUsed: v, coresTotal: v }, running: [{ id: 'J1', cores: v }] });
+      expect(s.host).not.toHaveProperty('coresUsed');
+      expect(s.host).not.toHaveProperty('coresTotal');
+      expect(s.running[0]).not.toHaveProperty('cores');
+    }
+    // A zero budget is "not known" (an older runner's default), not 0 of 0.
+    const z = parseLabStatus({ host: { coresUsed: 0, coresTotal: 0 } });
+    expect(z.host).toMatchObject({ coresUsed: 0 });
+    expect(z.host).not.toHaveProperty('coresTotal');
+    expect(coresMeter(z.host)).toBeNull();
+  });
+
+  it('needs both numbers for the meter, and flags more cores in use than the budget', () => {
+    expect(coresMeter(parseLabStatus({ host: { coresUsed: 4 } }).host)).toBeNull();
+    expect(coresMeter(parseLabStatus({ host: { coresTotal: 8 } }).host)).toBeNull();
+    expect(coresMeter(parseLabStatus({ host: { coresUsed: 10, coresTotal: 8 } }).host)).toEqual({ used: 10, total: 8, fraction: 1, over: true });
   });
 });

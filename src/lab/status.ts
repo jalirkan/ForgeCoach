@@ -27,6 +27,8 @@ export const IDLE_RED_AFTER_S = 10 * 60;
 /** Larger than any plausible status.json; refuse bigger bodies. */
 export const MAX_BYTES = 512 * 1024;
 const MAX_LIST = 50;
+/** More cores than any lab PC has; larger counts are refused. */
+export const MAX_CORES = 4096;
 const MAX_TEXT = 200;
 /** The runner publishes at most 40 live metrics and 24 cubes. */
 export const MAX_LIVE = 40;
@@ -46,6 +48,10 @@ export interface LabHost {
   swapUsedMb: number | null;
   /** Memory pressure, /proc/pressure/memory "some avg10" (a percentage, 0–100). */
   pressure: number | null;
+  /** Cores the running jobs keep busy now (their widths summed), when the runner says. */
+  coresUsed?: number | null;
+  /** The runner's core budget, when the runner says (never 0). */
+  coresTotal?: number | null;
 }
 
 export interface PressureEvent {
@@ -76,6 +82,8 @@ export interface RunningJob {
   workersMax: number | null;
   /** The job's memory now, GB. */
   memGb: number | null;
+  /** The cores the job keeps busy now (its width), when the runner says. */
+  cores?: number | null;
   errors: number | null;
   paused: boolean;
   /** done / total in 0..1, or null. */
@@ -236,7 +244,29 @@ function parseHost(v: unknown): LabHost | null {
     swapUsedMb: num(v.swapUsedMb, 0, 1e8),
     pressure: num(v.pressure, 0, 100),
   };
+  // Newer runners only (D337 amended); absent or out of range, the keys stay off so older pages look the same.
+  const coresTotal = int(v.coresTotal, 1, MAX_CORES);
+  const coresUsed = int(v.coresUsed, 0, MAX_CORES);
+  if (coresTotal !== null) h.coresTotal = coresTotal;
+  if (coresUsed !== null) h.coresUsed = coresUsed;
   return Object.values(h).some((x) => x !== null) ? h : null;
+}
+
+/** A running job's `cores` as a spread: the key only when it is a whole number in range. */
+function coresOf(v: unknown): { cores?: number } {
+  const n = int(v, 0, MAX_CORES);
+  return n === null ? {} : { cores: n };
+}
+
+/**
+ * The machine's "cores in use" meter: used of total, the fill in 0..1 (capped), and
+ * whether the jobs ask for more than the budget. Null unless both numbers are known.
+ */
+export function coresMeter(h: LabHost | null): { used: number; total: number; fraction: number; over: boolean } | null {
+  const used = h?.coresUsed;
+  const total = h?.coresTotal;
+  if (used == null || total == null || total <= 0) return null;
+  return { used, total, fraction: Math.min(1, used / total), over: used > total };
 }
 
 function parseRunning(v: unknown, updated: Date | null, allPaused: boolean): RunningJob | null {
@@ -266,6 +296,7 @@ function parseRunning(v: unknown, updated: Date | null, allPaused: boolean): Run
     workers: int(v.workers, 0, 10_000),
     workersMax: int(v.workersMax, 0, 10_000),
     memGb: num(v.memGb, 0, 100_000),
+    ...coresOf(v.cores),
     errors: int(v.errors, 0, 1e9),
     paused: allPaused || bool(v.paused),
     fraction: done !== null && total !== null && total > 0 ? Math.min(1, Math.max(0, done / total)) : null,

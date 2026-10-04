@@ -21,6 +21,7 @@ import {
   fmtNum,
   formatClock,
   formatDuration,
+  coresMeter,
   formatRelative,
   heartbeatStale,
   isEmptyStatus,
@@ -426,6 +427,11 @@ function RunningCard({ job: j, updated, now }: { job: RunningJob; updated: Date 
         <span className="lb-id lg-mono">{j.id}</span>
         {j.paused && <span className="lg-chip lb-chip-paused">Paused</span>}
         {j.phase && <span className="lb-phase">{j.phase}</span>}
+        {j.cores != null && (
+          <span className="lb-job-cores lg-mono" title="Cores this job keeps busy now">
+            {fmtNum(j.cores)} {j.cores === 1 ? 'core' : 'cores'}
+          </span>
+        )}
       </div>
       <h3 className="lb-job-title">{j.title ?? '—'}</h3>
       <Bar fraction={j.fraction} label={`${j.id} progress`} tone={j.paused ? 'muted' : 'gold'} />
@@ -516,20 +522,31 @@ function Machine({ status: s, now }: { status: LabStatus; now: Date }) {
   const h = s.host;
   const mem = memFraction(h);
   const pl = pressureLevel(h?.pressure ?? null);
+  const cores = coresMeter(h);
+  const memMeter = (
+    <div className="lb-mem">
+      <div className="lb-mem-head">
+        <span className="lb-mem-label">Memory</span>
+        <span className="lg-mono">
+          {fmtNum(h?.memUsedGb ?? null, 1)} / {fmtNum(h?.memTotalGb ?? null, 0)} GB
+          {mem !== null && <span className="lg-muted"> · {Math.round(mem * 100)} %</span>}
+        </span>
+      </div>
+      <Bar fraction={mem} label="Memory used" tone={mem !== null && mem >= 0.9 ? 'red' : mem !== null && mem >= 0.75 ? 'amber' : 'gold'} />
+    </div>
+  );
   const loadTone = h?.load1 != null && h.cpus ? (h.load1 > h.cpus * 1.25 ? 'bad' : h.load1 > h.cpus ? 'amber' : undefined) : undefined;
   return (
     <Section title="Machine">
       <div className="lb-machine lg-panel">
-        <div className="lb-mem">
-          <div className="lb-mem-head">
-            <span className="lb-mem-label">Memory</span>
-            <span className="lg-mono">
-              {fmtNum(h?.memUsedGb ?? null, 1)} / {fmtNum(h?.memTotalGb ?? null, 0)} GB
-              {mem !== null && <span className="lg-muted"> · {Math.round(mem * 100)} %</span>}
-            </span>
+        {cores ? (
+          <div className="lb-meters">
+            {memMeter}
+            <CoresMeter {...cores} />
           </div>
-          <Bar fraction={mem} label="Memory used" tone={mem !== null && mem >= 0.9 ? 'red' : mem !== null && mem >= 0.75 ? 'amber' : 'gold'} />
-        </div>
+        ) : (
+          memMeter
+        )}
         <dl className="lb-stats lb-stats-3">
           <Stat label="Load (1 min)" value={fmtNum(h?.load1 ?? null, 1)} sub={h?.cpus ? `of ${h.cpus} threads` : undefined} tone={loadTone} />
           <Stat label="Swap" value={h?.swapUsedMb == null ? '—' : h.swapUsedMb >= 1024 ? `${fmtNum(h.swapUsedMb / 1024, 1)} GB` : `${fmtNum(h.swapUsedMb)} MB`} tone={h?.swapUsedMb ? 'amber' : undefined} />
@@ -555,5 +572,29 @@ function Machine({ status: s, now }: { status: LabStatus; now: Date }) {
         )}
       </div>
     </Section>
+  );
+}
+
+/** "Cores in use 6 / 8": one pip per core on a small budget, a bar on a large one. */
+function CoresMeter({ used, total, fraction, over }: { used: number; total: number; fraction: number; over: boolean }) {
+  const label = `Cores in use: ${used} of ${total}`;
+  return (
+    <div className="lb-mem lb-cores">
+      <div className="lb-mem-head">
+        <span className="lb-mem-label">Cores in use</span>
+        <span className={cx('lg-mono', over && 'lb-over')}>
+          {fmtNum(used)} / {fmtNum(total)}
+        </span>
+      </div>
+      {total <= 32 ? (
+        <div className={cx('lb-pips', over && 'is-over')} role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={total} aria-valuenow={used}>
+          {Array.from({ length: total }, (_, i) => (
+            <span key={i} className={cx('lb-pip', i < used && 'is-on')} />
+          ))}
+        </div>
+      ) : (
+        <Bar fraction={fraction} label={label} tone={over ? 'red' : 'gold'} />
+      )}
+    </div>
   );
 }
