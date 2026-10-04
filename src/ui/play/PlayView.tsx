@@ -34,6 +34,7 @@ import { allCardNames, cx, readLS, stateCardNames, writeLS } from '../util.ts';
 import { AskDialog, OpeningDialog, openingKind } from './AskDialog.tsx';
 import { ActionBar } from './ActionBar.tsx';
 import { GameOverCard } from './GameOverCard.tsx';
+import { FilmRoom } from '../filmroom/FilmRoom.tsx';
 import { HandDock } from './HandDock.tsx';
 import { LogDrawer, LogTab } from './LogDrawer.tsx';
 import { PhaseStrip } from './PhaseStrip.tsx';
@@ -79,7 +80,8 @@ export function PlayView({
 }: {
   session: PlaySession;
   snapshot: PlaySnapshot;
-  onReview: (log: GameLog) => void;
+  /** Open the replay of this game, at a decision's frame when given (the film room's moments). */
+  onReview: (log: GameLog, atFrame?: number) => void;
   /** The engine review of the finished game (ui/review). */
   onEngineReview?: (log: GameLog) => void;
   onLeave: () => void;
@@ -606,6 +608,7 @@ export function PlayView({
                 waitingNext={waitingNext}
                 onReview={() => log && onReview(log)}
                 {...(onEngineReview ? { onEngineReview: () => log && onEngineReview(log) } : {})}
+                filmRoom={log ? <FilmRoom log={log} variant="over" onJump={(m) => onReview(log, m.decision.frameIndex)} onOpenSettings={onSettings} /> : null}
                 onNext={() => {
                   setWaitingNext(true);
                   act({ action: 'newGame', mode: 'continue' });
