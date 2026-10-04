@@ -24,6 +24,7 @@ const G = {
   build: <path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />,
   cube: <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12 4 7.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />,
   review: <path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4M12 8v4l3 2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />,
+  practice: <path d="M12 3v3M12 18v3M3 12h3M18 12h3M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />,
   live: <path d="M12 12h.01M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />,
 };
 
@@ -36,6 +37,7 @@ export function lobbyTiles(o: { onPlay: () => void; onDraftBuild: () => void; sa
     { id: 'build', title: 'Draft & build', line: 'Track a paper draft; the best 40 with its reasons.', glyph: G.build, onClick: o.onDraftBuild },
     { id: 'cube', title: 'The cubes', line: `${CUBES.length} cubes of 180, with the lab’s numbers.`, glyph: G.cube, onClick: () => (location.hash = `#cube/${CUBES[0]?.id ?? 'synergy'}`) },
     { id: 'review', title: 'Review a game', line: `${o.samples} recorded games, or your own frames.jsonl.`, glyph: G.review, onClick: () => scrollTo('lobby-review') },
+    { id: 'practice', title: 'Practice', line: 'Puzzles from your own games: what would you do here?', glyph: G.practice, onClick: () => (location.hash = '#practice') },
     { id: 'live', title: 'Watch live', line: 'Follow a game in mtg-table’s own board, read-only.', glyph: G.live, onClick: () => scrollTo('lobby-live') },
   ];
 }

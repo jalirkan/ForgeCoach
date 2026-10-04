@@ -467,6 +467,29 @@ better — without re-solving it.
 
 ![Engine review on a phone](docs/screens/review-phone-moment.png)
 
+### Practice puzzles (`#practice`)
+
+**Practice** on the start page turns your own games into puzzles: the film
+room's turning points (where your position fell the most across one of your
+decisions) and, once an engine review is open for a game, its graded mistakes
+and close calls. Each puzzle shows the replay board at the decision — your own
+view only — and asks what you would do, with the options the log gives: the
+engine's own option list when it graded the moment, otherwise the lands you
+could still play, the spells your untapped mana covered and what you played
+(main phases), or your untapped creatures (attacks). After you pick, it shows
+what you did in the game, the engine's preferred option with the same honesty
+rules as the review (an interval that includes zero is a close call, never a
+mistake; a tie is a tie; short-horizon scores are never win rates), the swing
+and its source, and the coach's explanation of your pick. A moment the engine
+did not grade has no right answer: your pick is only compared with the game.
+
+Puzzles come from the games in **Your record** (read when the page opens), the
+film room and engine review of a saved game, or **Add the sample games**. The
+list, your tries and nothing else live in this browser's localStorage; the
+board is read from the saved game's log when you open a puzzle.
+
+![Practice on a phone](docs/screens/practice-phone-reveal.png)
+
 ## Live watch (optional)
 
 Follows a game being played in mtg-table's own board, read-only, so the newest
@@ -795,6 +818,11 @@ README's).
 ```bash
 node e2e/review.e2e.mjs            # BUILD=0 to reuse dist/, HEADLESS=0 to watch
 ```
+
+`e2e/practice.e2e.mjs` (`npm run e2e:practice`) does the same for the practice
+puzzles from the samples, in the classic and stack skins at desktop and phone
+widths: the list, an engine-graded puzzle (board, options, the reveal's wording
+and table) and one the engine did not grade.
 
 ## Licence
 
