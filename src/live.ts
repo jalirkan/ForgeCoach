@@ -124,6 +124,8 @@ export class LiveLogBuilder {
   over: OverBody | null = null;
   #seen = new Set<string>();
   #early: LoggedFrame[] = [];
+  /** The seq and t of the hello_ok `hello` came in (a reconnect re-delivers that very frame, M10). */
+  #helloStamp: { seq: number; t: number } | null = null;
 
   reset(): void {
     this.header = null;
@@ -132,6 +134,7 @@ export class LiveLogBuilder {
     this.over = null;
     this.#seen.clear();
     this.#early = [];
+    this.#helloStamp = null;
   }
 
   setHeader(h: SessionHeader): void {
@@ -165,10 +168,16 @@ export class LiveLogBuilder {
     if (synthesizeHeader && f.seq === 0) return false;
     if (f.type === 'hello_ok') {
       const hello = f.body as HelloOkBody;
-      if (synthesizeHeader && this.hello && this.hello.gameId !== hello.gameId) {
-        // A new game in the match (M38): new ids, new seq series, a new log.
+      // A new game in the match (M38): new ids, new seq series, a new log. Or the same
+      // id from an engine that started over (a bare play.sh restarted keeps its default
+      // id): a hello_ok other than the one we have, since a reconnect re-sends that one
+      // byte for byte (M10) -- its seq series is new, and the old seen-keys would drop it.
+      const stamp = this.#helloStamp;
+      const restarted = stamp !== null && (stamp.seq !== f.seq || stamp.t !== f.t);
+      if (synthesizeHeader && this.hello && (this.hello.gameId !== hello.gameId || restarted)) {
         this.reset();
       }
+      if (synthesizeHeader) this.#helloStamp ??= { seq: f.seq, t: f.t };
       if (!this.header && synthesizeHeader) this.header = LiveLogBuilder.headerFromHello(hello, f.v);
     }
     // A catch-up between a new game's hello_ok and its first state can carry
