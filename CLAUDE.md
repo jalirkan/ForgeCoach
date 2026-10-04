@@ -80,7 +80,16 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   `lab-status` branch. Parser/validator (untrusted strings, ranges), interval
   honesty (`rankRange`, `relation`, `anchorSummary`), `LADDER_FIELDS` (the
   allowlist the runner publishes); shares `hashSource` / `fetchLabJson` with
-  `status.ts`. UI: `ui/lab/LadderPage.tsx` (lazy), `LabTabs` switches the two.
+  `status.ts`. UI: `ui/lab/LadderPage.tsx` (lazy), `LabTabs` switches the lab pages.
+- `lab/warehouse.ts` — the lab warehouse at a glance (`#lab/data`): the PC
+  runner's numbers-only `warehouse.json` (schema 1, strict) on the
+  `lab-status` branch. Parser/validator to a view model (strings cleaned and
+  capped, numbers range-checked, rates in [0,1] with lo ≤ winRate ≤ hi, bad
+  rows dropped and counted), staleness (amber 36 h / red 72 h), `verdict`
+  (strong/weak only when the interval excludes 0.5), `cubeViews`; source from
+  `#lab/data?src=` via `hashSource` (`sample` → `public/warehouse-sample.json`,
+  made-up numbers; `lab/testdata/warehouse-exporter-sample.json` is mtg-table's
+  exporter sample, read as is in the tests). UI: `ui/lab/DataPage.tsx` (lazy) + `data.css`.
 - `gameReview.ts` — mtg-table's engine review report (`docs/game-review.md` there, D353): strict validator to a view model (honesty enforced: an interval including zero is never a mistake; a zero-regret close call is a tie; leaf = short-horizon, not a win rate; `knowledge.opponentModel` basic-lands → warning), log matching, option labels from the redacted state, timeline, and the deterministic `reviewExplainPrompt`. `gameReviewClient.ts` — the helper's `/health` `review: 1`, `POST /review`, `GET /review/<id>`, `runReview` polling (injected fetch). `draft/reviewInput.ts` — `oppPool` / `oppKnown` only for the Draft vs AI match the saved draft launched.
 - `filmRoom.ts` — the film room: the three biggest turning points of the viewer's own decisions (score just before a decision → the next scored position after it ends; source: the helper's win chance, else the engine review report, else a labelled life/board/hand heuristic) and a deterministic per-moment coach prompt (prompt.ts's state table, options, what was done, both scores; **Rule:** / **Confidence:**). UI: `ui/filmroom/FilmRoom.tsx` on the game-over card, the replay's Game review tab and the engine review screen.
 - `ui/review/` — the engine review screen (lazy `ReviewApp`, opened from GameView's top bar, the game-over card, or `#sample=<id>&review=1`): timeline, `OptionBars`, the replay `Board` at `stateFrame`, the coach via `startAnswer`. Sample report: `public/samples/human-auto-42.review.json` (engine-made); tests also use the hand-made `src/testdata/human-auto-42.review.handmade.json`.

@@ -1,0 +1,385 @@
+/*
+ * ForgeCoach — ui/lab/data.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The lab data page (#lab/data), on top of ledger.css and lab.css: the nightly
+ * volume table, storage, and per cube one row per pair or card (name; the 95%
+ * interval on the cube's shared axis; rate, interval, games; the verdict).
+ * Only the --lg-* / --lb-* tokens, so every skin (skins.css) recolours it.
+ * Green / red mark an interval wholly above / below 50%; the rest stay gold.
+ */
+
+.dt-caveat {
+  margin: 14px 0 0;
+  padding: 9px 12px;
+  border-left: 2px solid var(--lg-line-2);
+  color: var(--lg-text-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.dt-hint {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.dt-hint + .dt-cubes {
+  margin-top: 12px;
+}
+.dt-none {
+  margin: 0;
+  font-size: 13px;
+}
+.dt-panel {
+  min-width: 0;
+}
+
+/* ---- nightly volume ------------------------------------------------------------ */
+.dt-nights {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.dt-nights th,
+.dt-nights td {
+  padding: 7px 10px;
+  border-top: 1px solid var(--lg-line);
+  text-align: left;
+  white-space: nowrap;
+}
+.dt-nights thead th {
+  border-top: 0;
+  color: var(--lg-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.dt-nights tbody th {
+  color: var(--lg-text);
+  font-weight: 500;
+}
+.dt-nights td {
+  color: var(--lg-text-2);
+}
+.dt-nights .num {
+  text-align: right;
+}
+.dt-nights td.is-amber {
+  color: var(--lb-amber);
+}
+.dt-nights td.is-bad {
+  color: var(--lg-loss);
+}
+.dt-nights tfoot th,
+.dt-nights tfoot td {
+  border-top: 1px solid var(--lg-line-2);
+  color: var(--lg-text);
+  font-weight: 500;
+}
+.dt-vol {
+  display: block;
+  height: 3px;
+  margin-top: 3px;
+  border-radius: 2px;
+  background: var(--lg-surface-3);
+  overflow: hidden;
+}
+.dt-vol span {
+  display: block;
+  height: 100%;
+  margin-left: auto;
+  background: var(--lg-gold);
+  opacity: 0.7;
+}
+.dt-narrow {
+  display: none;
+}
+
+/* ---- storage ------------------------------------------------------------------- */
+.dt-storage {
+  padding: 2px 16px 14px;
+}
+.dt-blocks {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0;
+  border-top: 0;
+}
+.dt-disk {
+  margin: 6px 0 2px;
+}
+.dt-tables {
+  margin: 14px 0 0;
+  padding: 10px 0 0;
+  list-style: none;
+  border-top: 1px solid var(--lg-line);
+}
+.dt-tables li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 5.5em;
+  grid-template-areas:
+    'name rows bytes'
+    'bar bar bar';
+  gap: 3px 12px;
+  padding: 5px 0;
+  font-size: 12.5px;
+}
+.dt-tname {
+  grid-area: name;
+  min-width: 0;
+  color: var(--lg-text);
+  overflow-wrap: anywhere;
+}
+.dt-trows {
+  grid-area: rows;
+  color: var(--lg-muted);
+  text-align: right;
+}
+.dt-tbytes {
+  grid-area: bytes;
+  color: var(--lg-text-2);
+  text-align: right;
+}
+.dt-tbar {
+  grid-area: bar;
+  height: 4px;
+}
+
+/* ---- cubes --------------------------------------------------------------------- */
+.dt-cubes {
+  display: grid;
+  gap: 16px;
+}
+.dt-cube {
+  --dt-strong: var(--lg-win);
+  --dt-weak: var(--lg-loss);
+  --dt-even: var(--lg-gold);
+  min-width: 0;
+  padding: 12px 0 10px;
+}
+.dt-cube-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 14px;
+  padding: 0 14px 8px;
+}
+.dt-cube-title {
+  margin: 0;
+  color: var(--lg-text);
+  font-family: var(--lg-serif);
+  font-size: 19px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.dt-cube-meta {
+  color: var(--lg-muted);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+.dt-group {
+  margin-top: 6px;
+}
+.dt-group-h {
+  padding: 8px 14px 4px;
+  color: var(--lg-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.dt-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One row: name | track | numbers | verdict, on one grid with the axis above. */
+.dt-row,
+.dt-axis-row {
+  display: grid;
+  grid-template-columns: minmax(0, 11.5rem) minmax(0, 1fr) 8.6rem 4.6rem;
+  grid-template-areas: 'name track num verdict';
+  align-items: center;
+  column-gap: 12px;
+  padding: 0 14px;
+}
+.dt-axis-row {
+  grid-template-areas: '. axis . .';
+  height: 16px;
+}
+.dt-row {
+  min-height: 32px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-top: 1px solid var(--lg-line);
+}
+.dt-name {
+  grid-area: name;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dt-name-t {
+  min-width: 0;
+  color: var(--lg-text);
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dt-num {
+  grid-area: num;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.dt-rate {
+  color: var(--lg-text);
+  font-size: 13px;
+}
+.dt-range {
+  color: var(--lg-muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.dt-verdict {
+  grid-area: verdict;
+  justify-self: end;
+  font-size: 11.5px;
+  white-space: nowrap;
+  color: var(--lg-muted);
+}
+.dt-verdict.is-strong {
+  color: var(--dt-strong);
+  font-weight: 500;
+}
+.dt-verdict.is-weak {
+  color: var(--dt-weak);
+  font-weight: 500;
+}
+
+/* the axis and the interval track */
+.dt-axis {
+  grid-area: axis;
+  position: relative;
+  height: 16px;
+  color: var(--lg-muted);
+  font-size: 10.5px;
+}
+.dt-tick {
+  position: absolute;
+  top: 1px;
+  transform: translateX(-50%);
+}
+.dt-tick.is-even {
+  color: var(--lg-gold);
+}
+.dt-track {
+  grid-area: track;
+  position: relative;
+  display: block;
+  height: 14px;
+}
+.dt-grid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--lg-line);
+}
+.dt-even {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 0;
+  border-left: 1px dashed var(--lg-gold);
+  opacity: 0.7;
+}
+.dt-ci {
+  position: absolute;
+  top: 4px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--dt-even);
+  opacity: 0.5;
+}
+.dt-pt {
+  position: absolute;
+  top: 2px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: var(--dt-even);
+  box-shadow: 0 0 0 2px var(--lg-bg-2);
+}
+.dt-row.is-strong .dt-ci,
+.dt-row.is-strong .dt-pt {
+  background: var(--dt-strong);
+}
+.dt-row.is-weak .dt-ci,
+.dt-row.is-weak .dt-pt {
+  background: var(--dt-weak);
+}
+.dt-row.is-strong .dt-ci,
+.dt-row.is-weak .dt-ci {
+  opacity: 0.7;
+}
+.dt-more {
+  margin: 0;
+  padding: 8px 14px 0;
+  border-top: 1px solid var(--lg-line);
+  font-size: 12px;
+}
+
+/* ---- phone ---------------------------------------------------------------------- */
+@media (max-width: 559px) {
+  .dt-nights th,
+  .dt-nights td {
+    padding: 7px 6px;
+    font-size: 12px;
+  }
+  .dt-nights th:first-child,
+  .dt-nights td:first-child {
+    padding-left: 10px;
+  }
+  .dt-nights th:last-child,
+  .dt-nights td:last-child {
+    padding-right: 10px;
+  }
+  .dt-nights thead th {
+    letter-spacing: 0.04em;
+    font-size: 9.5px;
+  }
+  .dt-wide {
+    display: none;
+  }
+  .dt-narrow {
+    display: inline;
+  }
+  .dt-blocks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Name, numbers and verdict on top; the track full width under them. */
+  .dt-row,
+  .dt-axis-row {
+    grid-template-columns: minmax(0, 1fr) auto 4.4rem;
+    grid-template-areas:
+      'name num verdict'
+      'track track track';
+    row-gap: 4px;
+    column-gap: 10px;
+  }
+  .dt-axis-row {
+    grid-template-areas: 'axis axis axis';
+  }
+  .dt-row {
+    padding-top: 7px;
+    padding-bottom: 8px;
+  }
+}

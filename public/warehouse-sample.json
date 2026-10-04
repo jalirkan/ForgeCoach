@@ -1,0 +1,970 @@
+{
+ "note": "Hand-made sample for ForgeCoach #lab/data?src=sample. Every number in it is made up; the card names are real cards from the four cube documents in public/cubes.",
+ "schema": 1,
+ "generatedAt": "2026-10-04T06:12:00.000Z",
+ "warehouseVer": "wh-3 (sample)",
+ "tables": [
+  {
+   "name": "drafts",
+   "rows": 4212,
+   "bytes": 3480000
+  },
+  {
+   "name": "decks",
+   "rows": 8424,
+   "bytes": 21900000
+  },
+  {
+   "name": "games",
+   "rows": 25218,
+   "bytes": 9870000
+  },
+  {
+   "name": "game_cards",
+   "rows": 1008720,
+   "bytes": 118400000
+  },
+  {
+   "name": "picks",
+   "rows": 379080,
+   "bytes": 41200000
+  },
+  {
+   "name": "quarantine",
+   "rows": 61,
+   "bytes": 512000
+  }
+ ],
+ "nights": [
+  {
+   "night": "2026-09-27",
+   "drafts": 636,
+   "games": 3816,
+   "recorded": 3807,
+   "quarantined": 7,
+   "engineErrors": 2
+  },
+  {
+   "night": "2026-09-28",
+   "drafts": 598,
+   "games": 3588,
+   "recorded": 3580,
+   "quarantined": 4,
+   "engineErrors": 4
+  },
+  {
+   "night": "2026-09-29",
+   "drafts": 594,
+   "games": 3564,
+   "recorded": 3554,
+   "quarantined": 8,
+   "engineErrors": 2
+  },
+  {
+   "night": "2026-09-30",
+   "drafts": 670,
+   "games": 4020,
+   "recorded": 4015,
+   "quarantined": 3,
+   "engineErrors": 2
+  },
+  {
+   "night": "2026-10-01",
+   "drafts": 655,
+   "games": 3930,
+   "recorded": 3901,
+   "quarantined": 6,
+   "engineErrors": 23
+  },
+  {
+   "night": "2026-10-02",
+   "drafts": 532,
+   "games": 3192,
+   "recorded": 3178,
+   "quarantined": 11,
+   "engineErrors": 3
+  },
+  {
+   "night": "2026-10-03",
+   "drafts": 529,
+   "games": 3174,
+   "recorded": 3167,
+   "quarantined": 2,
+   "engineErrors": 5
+  }
+ ],
+ "archive": {
+  "gzipBytes": 2310000000,
+  "zstdBytes": 1480000000
+ },
+ "disk": {
+  "freeGB": 412.6,
+  "usedPct": 58.4
+ },
+ "cubes": [
+  {
+   "cube": "vintage",
+   "drafts": 1191,
+   "games": 7146,
+   "avgTurns": 8.5,
+   "onPlayWinRate": 0.5236
+  },
+  {
+   "cube": "modern-era",
+   "drafts": 1113,
+   "games": 6678,
+   "avgTurns": 9,
+   "onPlayWinRate": 0.5627
+  },
+  {
+   "cube": "pauper",
+   "drafts": 1055,
+   "games": 6330,
+   "avgTurns": 11,
+   "onPlayWinRate": 0.5433
+  },
+  {
+   "cube": "synergy",
+   "drafts": 1118,
+   "games": 6708,
+   "avgTurns": 10.6,
+   "onPlayWinRate": 0.5666
+  }
+ ],
+ "pairs": [
+  {
+   "cube": "vintage",
+   "pair": "WU",
+   "games": 388,
+   "winRate": 0.4948,
+   "lo": 0.4454,
+   "hi": 0.5444
+  },
+  {
+   "cube": "vintage",
+   "pair": "UB",
+   "games": 1054,
+   "winRate": 0.4734,
+   "lo": 0.4434,
+   "hi": 0.5036
+  },
+  {
+   "cube": "vintage",
+   "pair": "BR",
+   "games": 1152,
+   "winRate": 0.4826,
+   "lo": 0.4539,
+   "hi": 0.5115
+  },
+  {
+   "cube": "vintage",
+   "pair": "RG",
+   "games": 674,
+   "winRate": 0.4481,
+   "lo": 0.4109,
+   "hi": 0.4858
+  },
+  {
+   "cube": "vintage",
+   "pair": "GW",
+   "games": 728,
+   "winRate": 0.4409,
+   "lo": 0.4053,
+   "hi": 0.4772
+  },
+  {
+   "cube": "vintage",
+   "pair": "WB",
+   "games": 309,
+   "winRate": 0.4401,
+   "lo": 0.3859,
+   "hi": 0.4959
+  },
+  {
+   "cube": "vintage",
+   "pair": "UR",
+   "games": 493,
+   "winRate": 0.4523,
+   "lo": 0.4089,
+   "hi": 0.4965
+  },
+  {
+   "cube": "vintage",
+   "pair": "BG",
+   "games": 1048,
+   "winRate": 0.4523,
+   "lo": 0.4224,
+   "hi": 0.4825
+  },
+  {
+   "cube": "vintage",
+   "pair": "RW",
+   "games": 818,
+   "winRate": 0.4914,
+   "lo": 0.4573,
+   "hi": 0.5257
+  },
+  {
+   "cube": "vintage",
+   "pair": "GU",
+   "games": 580,
+   "winRate": 0.4828,
+   "lo": 0.4423,
+   "hi": 0.5234
+  },
+  {
+   "cube": "modern-era",
+   "pair": "WU",
+   "games": 1035,
+   "winRate": 0.4841,
+   "lo": 0.4537,
+   "hi": 0.5145
+  },
+  {
+   "cube": "modern-era",
+   "pair": "UB",
+   "games": 988,
+   "winRate": 0.5162,
+   "lo": 0.485,
+   "hi": 0.5472
+  },
+  {
+   "cube": "modern-era",
+   "pair": "BR",
+   "games": 1190,
+   "winRate": 0.5622,
+   "lo": 0.5338,
+   "hi": 0.5901
+  },
+  {
+   "cube": "modern-era",
+   "pair": "RG",
+   "games": 544,
+   "winRate": 0.5313,
+   "lo": 0.4892,
+   "hi": 0.5728
+  },
+  {
+   "cube": "modern-era",
+   "pair": "GW",
+   "games": 607,
+   "winRate": 0.5404,
+   "lo": 0.5006,
+   "hi": 0.5796
+  },
+  {
+   "cube": "modern-era",
+   "pair": "WB",
+   "games": 837,
+   "winRate": 0.5352,
+   "lo": 0.5014,
+   "hi": 0.5688
+  },
+  {
+   "cube": "modern-era",
+   "pair": "UR",
+   "games": 816,
+   "winRate": 0.4498,
+   "lo": 0.4159,
+   "hi": 0.484
+  },
+  {
+   "cube": "modern-era",
+   "pair": "BG",
+   "games": 444,
+   "winRate": 0.4482,
+   "lo": 0.4026,
+   "hi": 0.4947
+  },
+  {
+   "cube": "modern-era",
+   "pair": "RW",
+   "games": 999,
+   "winRate": 0.4444,
+   "lo": 0.4139,
+   "hi": 0.4754
+  },
+  {
+   "cube": "modern-era",
+   "pair": "GU",
+   "games": 776,
+   "winRate": 0.5644,
+   "lo": 0.5293,
+   "hi": 0.5989
+  },
+  {
+   "cube": "pauper",
+   "pair": "WU",
+   "games": 986,
+   "winRate": 0.4919,
+   "lo": 0.4608,
+   "hi": 0.5231
+  },
+  {
+   "cube": "pauper",
+   "pair": "UB",
+   "games": 807,
+   "winRate": 0.5217,
+   "lo": 0.4872,
+   "hi": 0.556
+  },
+  {
+   "cube": "pauper",
+   "pair": "BR",
+   "games": 923,
+   "winRate": 0.4312,
+   "lo": 0.3996,
+   "hi": 0.4634
+  },
+  {
+   "cube": "pauper",
+   "pair": "RG",
+   "games": 362,
+   "winRate": 0.4392,
+   "lo": 0.389,
+   "hi": 0.4907
+  },
+  {
+   "cube": "pauper",
+   "pair": "GW",
+   "games": 463,
+   "winRate": 0.514,
+   "lo": 0.4686,
+   "hi": 0.5593
+  },
+  {
+   "cube": "pauper",
+   "pair": "WB",
+   "games": 362,
+   "winRate": 0.5442,
+   "lo": 0.4927,
+   "hi": 0.5948
+  },
+  {
+   "cube": "pauper",
+   "pair": "UR",
+   "games": 1098,
+   "winRate": 0.5246,
+   "lo": 0.495,
+   "hi": 0.554
+  },
+  {
+   "cube": "pauper",
+   "pair": "BG",
+   "games": 468,
+   "winRate": 0.4808,
+   "lo": 0.4358,
+   "hi": 0.526
+  },
+  {
+   "cube": "pauper",
+   "pair": "RW",
+   "games": 1095,
+   "winRate": 0.4347,
+   "lo": 0.4056,
+   "hi": 0.4642
+  },
+  {
+   "cube": "pauper",
+   "pair": "GU",
+   "games": 1004,
+   "winRate": 0.4801,
+   "lo": 0.4493,
+   "hi": 0.511
+  },
+  {
+   "cube": "synergy",
+   "pair": "WU",
+   "games": 586,
+   "winRate": 0.5375,
+   "lo": 0.4971,
+   "hi": 0.5775
+  },
+  {
+   "cube": "synergy",
+   "pair": "UB",
+   "games": 1162,
+   "winRate": 0.4931,
+   "lo": 0.4644,
+   "hi": 0.5218
+  },
+  {
+   "cube": "synergy",
+   "pair": "BR",
+   "games": 348,
+   "winRate": 0.523,
+   "lo": 0.4705,
+   "hi": 0.5749
+  },
+  {
+   "cube": "synergy",
+   "pair": "RG",
+   "games": 937,
+   "winRate": 0.5133,
+   "lo": 0.4813,
+   "hi": 0.5452
+  },
+  {
+   "cube": "synergy",
+   "pair": "GW",
+   "games": 314,
+   "winRate": 0.5287,
+   "lo": 0.4734,
+   "hi": 0.5832
+  },
+  {
+   "cube": "synergy",
+   "pair": "WB",
+   "games": 790,
+   "winRate": 0.5241,
+   "lo": 0.4892,
+   "hi": 0.5587
+  },
+  {
+   "cube": "synergy",
+   "pair": "UR",
+   "games": 770,
+   "winRate": 0.513,
+   "lo": 0.4777,
+   "hi": 0.5481
+  },
+  {
+   "cube": "synergy",
+   "pair": "BG",
+   "games": 512,
+   "winRate": 0.5273,
+   "lo": 0.4841,
+   "hi": 0.5702
+  },
+  {
+   "cube": "synergy",
+   "pair": "RW",
+   "games": 850,
+   "winRate": 0.4553,
+   "lo": 0.4221,
+   "hi": 0.4889
+  },
+  {
+   "cube": "synergy",
+   "pair": "GU",
+   "games": 1000,
+   "winRate": 0.488,
+   "lo": 0.4571,
+   "hi": 0.519
+  }
+ ],
+ "cards": [
+  {
+   "cube": "vintage",
+   "card": "Goblin Guide",
+   "games": 645,
+   "winRate": 0.5628,
+   "lo": 0.5242,
+   "hi": 0.6006
+  },
+  {
+   "cube": "vintage",
+   "card": "Ephemerate",
+   "games": 333,
+   "winRate": 0.5796,
+   "lo": 0.5259,
+   "hi": 0.6314
+  },
+  {
+   "cube": "vintage",
+   "card": "Flickerwisp",
+   "games": 242,
+   "winRate": 0.5083,
+   "lo": 0.4456,
+   "hi": 0.5706
+  },
+  {
+   "cube": "vintage",
+   "card": "Mystic Confluence",
+   "games": 317,
+   "winRate": 0.5521,
+   "lo": 0.497,
+   "hi": 0.6058
+  },
+  {
+   "cube": "vintage",
+   "card": "Palace Jailer",
+   "games": 473,
+   "winRate": 0.5539,
+   "lo": 0.5089,
+   "hi": 0.5981
+  },
+  {
+   "cube": "vintage",
+   "card": "Containment Priest",
+   "games": 429,
+   "winRate": 0.5758,
+   "lo": 0.5285,
+   "hi": 0.6217
+  },
+  {
+   "cube": "vintage",
+   "card": "Animate Dead",
+   "games": 660,
+   "winRate": 0.4591,
+   "lo": 0.4214,
+   "hi": 0.4972
+  },
+  {
+   "cube": "vintage",
+   "card": "Unholy Heat",
+   "games": 257,
+   "winRate": 0.5019,
+   "lo": 0.4412,
+   "hi": 0.5626
+  },
+  {
+   "cube": "vintage",
+   "card": "Lightning Bolt",
+   "games": 763,
+   "winRate": 0.46,
+   "lo": 0.4249,
+   "hi": 0.4955
+  },
+  {
+   "cube": "vintage",
+   "card": "Dragon's Rage Channeler",
+   "games": 551,
+   "winRate": 0.4392,
+   "lo": 0.3983,
+   "hi": 0.4809
+  },
+  {
+   "cube": "vintage",
+   "card": "Thoughtseize",
+   "games": 532,
+   "winRate": 0.5,
+   "lo": 0.4577,
+   "hi": 0.5423
+  },
+  {
+   "cube": "vintage",
+   "card": "Lingering Souls",
+   "games": 577,
+   "winRate": 0.5026,
+   "lo": 0.4619,
+   "hi": 0.5432
+  },
+  {
+   "cube": "vintage",
+   "card": "Council's Judgment",
+   "games": 133,
+   "winRate": 0.4887,
+   "lo": 0.4053,
+   "hi": 0.5728
+  },
+  {
+   "cube": "vintage",
+   "card": "Deathrite Shaman",
+   "games": 538,
+   "winRate": 0.4665,
+   "lo": 0.4248,
+   "hi": 0.5088
+  },
+  {
+   "cube": "vintage",
+   "card": "Jace, Vryn's Prodigy",
+   "games": 350,
+   "winRate": 0.4714,
+   "lo": 0.4197,
+   "hi": 0.5238
+  },
+  {
+   "cube": "vintage",
+   "card": "Umezawa's Jitte",
+   "games": 435,
+   "winRate": 0.4552,
+   "lo": 0.409,
+   "hi": 0.5022
+  },
+  {
+   "cube": "modern-era",
+   "card": "Terminate",
+   "games": 759,
+   "winRate": 0.4835,
+   "lo": 0.4482,
+   "hi": 0.5191
+  },
+  {
+   "cube": "modern-era",
+   "card": "Lotus Cobra",
+   "games": 147,
+   "winRate": 0.5102,
+   "lo": 0.4302,
+   "hi": 0.5897
+  },
+  {
+   "cube": "modern-era",
+   "card": "Gideon, Ally of Zendikar",
+   "games": 582,
+   "winRate": 0.5636,
+   "lo": 0.523,
+   "hi": 0.6033
+  },
+  {
+   "cube": "modern-era",
+   "card": "Collected Company",
+   "games": 718,
+   "winRate": 0.4903,
+   "lo": 0.4538,
+   "hi": 0.5268
+  },
+  {
+   "cube": "modern-era",
+   "card": "Griselbrand",
+   "games": 458,
+   "winRate": 0.5546,
+   "lo": 0.5088,
+   "hi": 0.5995
+  },
+  {
+   "cube": "modern-era",
+   "card": "Smuggler's Copter",
+   "games": 622,
+   "winRate": 0.4566,
+   "lo": 0.4178,
+   "hi": 0.4959
+  },
+  {
+   "cube": "modern-era",
+   "card": "Skyclave Apparition",
+   "games": 632,
+   "winRate": 0.568,
+   "lo": 0.5291,
+   "hi": 0.6061
+  },
+  {
+   "cube": "modern-era",
+   "card": "Tireless Tracker",
+   "games": 632,
+   "winRate": 0.4415,
+   "lo": 0.4032,
+   "hi": 0.4804
+  },
+  {
+   "cube": "modern-era",
+   "card": "Steel Leaf Champion",
+   "games": 636,
+   "winRate": 0.4403,
+   "lo": 0.4021,
+   "hi": 0.4791
+  },
+  {
+   "cube": "modern-era",
+   "card": "Noble Hierarch",
+   "games": 693,
+   "winRate": 0.5483,
+   "lo": 0.5111,
+   "hi": 0.585
+  },
+  {
+   "cube": "modern-era",
+   "card": "Ranger-Captain of Eos",
+   "games": 158,
+   "winRate": 0.4367,
+   "lo": 0.3618,
+   "hi": 0.5146
+  },
+  {
+   "cube": "modern-era",
+   "card": "Remand",
+   "games": 137,
+   "winRate": 0.5401,
+   "lo": 0.4567,
+   "hi": 0.6214
+  },
+  {
+   "cube": "modern-era",
+   "card": "Rankle, Master of Pranks",
+   "games": 269,
+   "winRate": 0.4684,
+   "lo": 0.4096,
+   "hi": 0.5281
+  },
+  {
+   "cube": "modern-era",
+   "card": "Luminarch Aspirant",
+   "games": 164,
+   "winRate": 0.4878,
+   "lo": 0.4125,
+   "hi": 0.5637
+  },
+  {
+   "cube": "modern-era",
+   "card": "Deadly Dispute",
+   "games": 303,
+   "winRate": 0.5545,
+   "lo": 0.4982,
+   "hi": 0.6094
+  },
+  {
+   "cube": "modern-era",
+   "card": "Portable Hole",
+   "games": 304,
+   "winRate": 0.5296,
+   "lo": 0.4735,
+   "hi": 0.585
+  },
+  {
+   "cube": "pauper",
+   "card": "Hordeling Outburst",
+   "games": 738,
+   "winRate": 0.4593,
+   "lo": 0.4237,
+   "hi": 0.4954
+  },
+  {
+   "cube": "pauper",
+   "card": "Saproling Migration",
+   "games": 797,
+   "winRate": 0.4605,
+   "lo": 0.4261,
+   "hi": 0.4952
+  },
+  {
+   "cube": "pauper",
+   "card": "Flame Slash",
+   "games": 415,
+   "winRate": 0.4434,
+   "lo": 0.3963,
+   "hi": 0.4915
+  },
+  {
+   "cube": "pauper",
+   "card": "Deadly Dispute",
+   "games": 452,
+   "winRate": 0.458,
+   "lo": 0.4126,
+   "hi": 0.5041
+  },
+  {
+   "cube": "pauper",
+   "card": "Rolling Thunder",
+   "games": 725,
+   "winRate": 0.5379,
+   "lo": 0.5015,
+   "hi": 0.5739
+  },
+  {
+   "cube": "pauper",
+   "card": "Doomed Traveler",
+   "games": 297,
+   "winRate": 0.5421,
+   "lo": 0.4852,
+   "hi": 0.5979
+  },
+  {
+   "cube": "pauper",
+   "card": "Snap",
+   "games": 121,
+   "winRate": 0.4298,
+   "lo": 0.345,
+   "hi": 0.5188
+  },
+  {
+   "cube": "pauper",
+   "card": "Disfigure",
+   "games": 306,
+   "winRate": 0.4379,
+   "lo": 0.3834,
+   "hi": 0.4939
+  },
+  {
+   "cube": "pauper",
+   "card": "Galvanic Discharge",
+   "games": 248,
+   "winRate": 0.4355,
+   "lo": 0.3752,
+   "hi": 0.4977
+  },
+  {
+   "cube": "pauper",
+   "card": "Rimrock Knight",
+   "games": 341,
+   "winRate": 0.4809,
+   "lo": 0.4284,
+   "hi": 0.5339
+  },
+  {
+   "cube": "pauper",
+   "card": "Tenth District Legionnaire",
+   "games": 474,
+   "winRate": 0.4831,
+   "lo": 0.4385,
+   "hi": 0.5281
+  },
+  {
+   "cube": "pauper",
+   "card": "Sakura-Tribe Elder",
+   "games": 758,
+   "winRate": 0.4314,
+   "lo": 0.3966,
+   "hi": 0.4669
+  },
+  {
+   "cube": "pauper",
+   "card": "Jewel Thief",
+   "games": 390,
+   "winRate": 0.5744,
+   "lo": 0.5248,
+   "hi": 0.6225
+  },
+  {
+   "cube": "pauper",
+   "card": "Yavimaya Elder",
+   "games": 775,
+   "winRate": 0.5161,
+   "lo": 0.481,
+   "hi": 0.5511
+  },
+  {
+   "cube": "pauper",
+   "card": "Perilous Myr",
+   "games": 493,
+   "winRate": 0.5314,
+   "lo": 0.4873,
+   "hi": 0.5751
+  },
+  {
+   "cube": "pauper",
+   "card": "Body Dropper",
+   "games": 171,
+   "winRate": 0.5614,
+   "lo": 0.4865,
+   "hi": 0.6336
+  },
+  {
+   "cube": "synergy",
+   "card": "Scavenging Ooze",
+   "games": 150,
+   "winRate": 0.4933,
+   "lo": 0.4145,
+   "hi": 0.5725
+  },
+  {
+   "cube": "synergy",
+   "card": "Showdown of the Skalds",
+   "games": 355,
+   "winRate": 0.4789,
+   "lo": 0.4274,
+   "hi": 0.5308
+  },
+  {
+   "cube": "synergy",
+   "card": "Soul Warden",
+   "games": 468,
+   "winRate": 0.5256,
+   "lo": 0.4804,
+   "hi": 0.5705
+  },
+  {
+   "cube": "synergy",
+   "card": "Battle Screech",
+   "games": 517,
+   "winRate": 0.5609,
+   "lo": 0.5179,
+   "hi": 0.6031
+  },
+  {
+   "cube": "synergy",
+   "card": "Knight of Autumn",
+   "games": 374,
+   "winRate": 0.5535,
+   "lo": 0.5028,
+   "hi": 0.6031
+  },
+  {
+   "cube": "synergy",
+   "card": "Thought Scour",
+   "games": 756,
+   "winRate": 0.5582,
+   "lo": 0.5226,
+   "hi": 0.5932
+  },
+  {
+   "cube": "synergy",
+   "card": "Ophiomancer",
+   "games": 796,
+   "winRate": 0.549,
+   "lo": 0.5143,
+   "hi": 0.5832
+  },
+  {
+   "cube": "synergy",
+   "card": "Intangible Virtue",
+   "games": 692,
+   "winRate": 0.4436,
+   "lo": 0.407,
+   "hi": 0.4809
+  },
+  {
+   "cube": "synergy",
+   "card": "Courser of Kruphix",
+   "games": 327,
+   "winRate": 0.4495,
+   "lo": 0.3965,
+   "hi": 0.5037
+  },
+  {
+   "cube": "synergy",
+   "card": "Go for the Throat",
+   "games": 466,
+   "winRate": 0.47,
+   "lo": 0.4251,
+   "hi": 0.5153
+  },
+  {
+   "cube": "synergy",
+   "card": "Chandra, Torch of Defiance",
+   "games": 364,
+   "winRate": 0.4615,
+   "lo": 0.411,
+   "hi": 0.5129
+  },
+  {
+   "cube": "synergy",
+   "card": "Legion Warboss",
+   "games": 548,
+   "winRate": 0.4653,
+   "lo": 0.424,
+   "hi": 0.5072
+  },
+  {
+   "cube": "synergy",
+   "card": "Lotus Cobra",
+   "games": 135,
+   "winRate": 0.563,
+   "lo": 0.4787,
+   "hi": 0.6437
+  },
+  {
+   "cube": "synergy",
+   "card": "Lightning Helix",
+   "games": 796,
+   "winRate": 0.4523,
+   "lo": 0.418,
+   "hi": 0.487
+  },
+  {
+   "cube": "synergy",
+   "card": "Phantasmal Image",
+   "games": 681,
+   "winRate": 0.4435,
+   "lo": 0.4066,
+   "hi": 0.481
+  },
+  {
+   "cube": "synergy",
+   "card": "Rishkar, Peema Renegade",
+   "games": 710,
+   "winRate": 0.5535,
+   "lo": 0.5168,
+   "hi": 0.5897
+  }
+ ]
+}
