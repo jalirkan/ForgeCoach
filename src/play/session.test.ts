@@ -443,6 +443,43 @@ describe('connectSeat — connection', () => {
     expect(s.log!.frames.filter((f) => f.dir === 's2c')).toHaveLength(2);
   });
 
+  it('an ask open when the socket dropped is gone after the reconnect unless the bridge re-sends it (M19: a drop cancels parked asks)', () => {
+    const rec = RECORDINGS['human-ability-42']!;
+    const firstAsk = rec.frames.findIndex((f) => f.type === 'ask');
+    const lastBefore = (type: string) => [...rec.frames.slice(0, firstAsk)].reverse().find((f) => f.type === type && f.dir === 's2c')!;
+    for (const resent of [false, true]) {
+      const h = harness({ backoffMs: 1 });
+      h.sock().open();
+      for (const f of rec.frames.slice(0, firstAsk + 1)) {
+        if (f.dir === 's2c') h.sock().msg(wire(f));
+        else if (f.type === 'act') h.session.act(f.body as ActBody);
+        else if (f.type === 'answer') h.session.answer((f.body as AnswerBody).askId, (f.body as AnswerBody).value);
+      }
+      const ask = h.session.snapshot().ask as AskBody;
+      expect(ask).not.toBeNull();
+      vi.useFakeTimers();
+      h.sock().drop(1006);
+      vi.advanceTimersByTime(10);
+      vi.useRealTimers();
+      h.sock().open();
+      // The bridge's catch-up: the same hello_ok and state (M10), a fresh input, and the ask only if it still waits.
+      h.sock().msg(wire(rec.frames.find((f) => f.type === 'hello_ok')!));
+      h.sock().msg(wire(lastBefore('state')));
+      h.sock().msg({ ...wire(lastBefore('input')), seq: rec.frames[firstAsk]!.seq + 1 });
+      if (resent) h.sock().msg(wire(rec.frames[firstAsk]!));
+      h.flush();
+      const s = h.session.snapshot();
+      if (resent) {
+        expect(s.ask?.askId).toBe(ask.askId);
+        expect(h.session.act(A.ok())).toBe(false);
+        expect(h.session.answer(ask.askId, null)).toBe(true);
+      } else {
+        expect(s.ask).toBeNull();
+        expect(h.session.act(A.ok())).toBe(true);
+      }
+    }
+  });
+
   it('Forge’s “AI can’t play these cards well” reveal is answered at once and never shows or logs the AI’s cards', () => {
     const h = harness();
     h.sock().open();

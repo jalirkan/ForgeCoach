@@ -508,6 +508,14 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
       const reconnected = everOpened;
       everOpened = true;
       setStatus('open', null);
+      if (reconnected && ask !== null) {
+        // The bridge cancelled every ask parked when the socket dropped (M19: they
+        // took their §5.4 defaults) and re-sends, in this same catch-up, only those
+        // still waiting (§2.4). One we still show is a dead question that would hold
+        // the board modal; if it is still open it comes back with its own id.
+        ask = null;
+        changed();
+      }
       // §2.4 — only on a RE-connect; a first connect is sent hello_ok + state + input unasked.
       if (reconnected) sendFrame('resync', {});
       stopPing();
