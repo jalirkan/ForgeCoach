@@ -14,7 +14,7 @@
 import '../ledger/ledger.css';
 import './lab.css';
 import './data.css';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   WAREHOUSE_REFRESH_MS,
   archiveSaving,
@@ -41,7 +41,9 @@ import { LabFetchError, fmtNum, formatBytes, formatClock, formatDuration, format
 import { originLabel, type Origin } from '../../lab/source.ts';
 import { cubeInfo } from '../../cube/cubes.ts';
 import { colourLabel } from '../../cube/colors.ts';
-import { Dots, LedgerShell } from '../ledger/Ledger.tsx';
+import { Dots, LedgerShell, Segmented } from '../ledger/Ledger.tsx';
+import { cubeTrends, niceDomain, pairTrendCubes, pairTrends, volumeTrends } from '../../lab/trends.ts';
+import { TrendChart } from './TrendChart.tsx';
 import { cx } from '../util.ts';
 import { LabTabs } from './LabTabs.tsx';
 
@@ -208,6 +210,7 @@ export default function DataPage() {
             </p>
             <div className={cx('lb-body', stale.level === 'red' && 'is-stale')}>
               <Nights nights={w.nights} />
+              <Trends wh={w} />
               <Storage wh={w} />
               <Cubes wh={w} />
             </div>
@@ -447,6 +450,103 @@ const VERDICT_LABEL: Record<Verdict, string> = { strong: 'strong', weak: 'weak',
 const COLOURS_RE = /^[WUBRG]{1,5}$/;
 
 /** A cube id as a title: "pauper" → "Pauper Cube"; "bridge:pauper+modern-era" → "Bridge: Pauper + Modern-Era"; else the id. */
+// ---------------------------------------------------------------------------
+// Trends (lab/trends.ts): nightly volume from schema 1's nights; per cube and per colour pair from the optional series block
+
+/** Categorical slots (dark steps of the reference palette, validated on the ledger surface): assigned by the cube's place in the file, never by rank. */
+const SERIES = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9'];
+const VOLUME = 'var(--lg-gold)';
+const pct0 = (y: number) => `${Math.round(y * 100)}%`;
+const fmtCount = (y: number) => (y >= 10000 ? `${Math.round(y / 1000)}k` : y >= 1000 ? `${(y / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(Math.round(y)));
+
+function Trends({ wh }: { wh: Warehouse }) {
+  const vol = useMemo(() => volumeTrends(wh.nights), [wh.nights]);
+  const cubes = useMemo(() => cubeTrends(wh, (c) => cubeTitle(c).replace(/ Cube$/, '')), [wh]);
+  const pairCubes = useMemo(() => pairTrendCubes(wh), [wh]);
+  const [pick, setPick] = useState<string | null>(null);
+  const cube = pick && pairCubes.includes(pick) ? pick : (pairCubes[0] ?? null);
+  const pairs = useMemo(() => (cube ? pairTrends(wh, cube, pairName) : null), [wh, cube]);
+  const colorOf = useMemo(() => {
+    const order = [...wh.cubes.map((c) => c.cube), ...(wh.series?.cubes ?? []).map((c) => c.cube)];
+    const uniq = [...new Set(order)];
+    return (id: string) => SERIES[uniq.indexOf(id) % SERIES.length] ?? SERIES[0]!;
+  }, [wh]);
+  if (!vol && !cubes && !pairCubes.length) return null;
+  // Rates on the page's own rate axis (holds 50%, at least 20 points wide), from the values and their bands.
+  const rateAxis = (pts: Array<{ y: number; lo?: number; hi?: number }>) => rateDomain(pts.map((p) => ({ games: 0, winRate: p.y, lo: p.lo ?? p.y, hi: p.hi ?? p.y })));
+  const pairDomain = pairs ? rateAxis(pairs.series.flatMap((s) => s.points)) : null;
+  return (
+    <Section title="Trends">
+      {vol && (
+        <div className="dt-trend-grid">
+          {(
+            [
+              ['Drafts a night', vol.drafts],
+              ['Games a night', vol.games],
+              ['Quarantined a night', vol.quarantined],
+            ] as const
+          ).map(([t, c]) => (
+            <div key={t} className="dt-trend">
+              <h3 className="dt-trend-h">{t}</h3>
+              <TrendChart chart={c} title={t} domain={niceDomain(c.series[0]!.points.map((p) => p.y), { floor: 0 })} yFmt={fmtCount} xFmt={nightLabel} colorOf={() => VOLUME} legend={false} height={120} />
+            </div>
+          ))}
+        </div>
+      )}
+      {cubes ? (
+        <div className="dt-trend-grid is-two">
+          <div className="dt-trend">
+            <h3 className="dt-trend-h">On-the-play win rate, by cube</h3>
+            <TrendChart
+              chart={cubes.onPlay}
+              title="On-the-play win rate by cube"
+              domain={rateAxis(cubes.onPlay.series.flatMap((s) => s.points))}
+              yFmt={pct0}
+              xFmt={nightLabel}
+              colorOf={colorOf}
+              refY={0.5}
+              refLabel="50%"
+            />
+          </div>
+          <div className="dt-trend">
+            <h3 className="dt-trend-h">Average turns, by cube</h3>
+            <TrendChart
+              chart={cubes.turns}
+              title="Average turns by cube"
+              domain={niceDomain(cubes.turns.series.flatMap((s) => s.points.map((p) => p.y)))}
+              yFmt={(y) => (Number.isInteger(y) ? String(y) : y.toFixed(1))}
+              xFmt={nightLabel}
+              colorOf={colorOf}
+            />
+          </div>
+          {cubes.omitted.length > 0 && <p className="dt-hint lg-muted">Not drawn (fewest games): {cubes.omitted.map(cubeTitle).join(', ')}.</p>}
+        </div>
+      ) : (
+        <p className="dt-hint lg-muted">No per-night cube values in this file: the exporter’s optional <code>series</code> block adds them.</p>
+      )}
+      {pairs && pairDomain && cube ? (
+        <div className="dt-trend-pairs">
+          <div className="dt-trend-pairs-head">
+            <h3 className="dt-trend-h">Colour pairs across nights</h3>
+            {pairCubes.length > 1 && <Segmented label="Cube" value={cube} options={pairCubes.map((c) => ({ value: c, label: cubeTitle(c).replace(/ Cube$/, '') }))} onChange={setPick} />}
+          </div>
+          <p className="dt-hint lg-muted">Each night’s win rate with its interval band. A pair is only above or below 50% on a night when its whole band is.</p>
+          <div className="dt-trend-grid is-multi">
+            {pairs.series.map((s) => (
+              <div key={s.id} className="dt-trend">
+                <h4 className="dt-trend-h is-small">{s.label}</h4>
+                <TrendChart chart={{ nights: pairs.nights, series: [s] }} title={`${s.label} win rate`} domain={pairDomain} yFmt={pct0} xFmt={nightLabel} colorOf={() => SERIES[0]!} refY={0.5} bands legend={false} height={110} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        cubes && <p className="dt-hint lg-muted">No per-night colour-pair values in this file.</p>
+      )}
+    </Section>
+  );
+}
+
 function cubeTitle(id: string): string {
   const known = cubeInfo(id)?.title;
   if (known) return known;
