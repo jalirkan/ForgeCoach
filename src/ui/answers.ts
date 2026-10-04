@@ -131,37 +131,44 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
   controllers.set(key, ctrl);
   answers.delete(key);
   snapVersion++;
+  // Everything this run writes goes through `own`: once a newer startAnswer for the
+  // same key has taken over (or clearAnswers dropped it), a late reply of this one
+  // -- its cancellation, a queue line, a final answer -- must not land on the new one.
+  const mine = () => controllers.get(key) === ctrl;
+  const own = (patch: Partial<Answer>) => {
+    if (mine()) set(key, patch);
+  };
   const settings = safeSettings();
   // Auto: is Claude Code on the PC reachable? (Cached; at most ~800 ms when it isn't known.)
   let helper = peekHelper();
   if (settings.coachSource === 'auto' && !helperFresh()) {
-    set(key, { status: 'preparing' });
+    own({ status: 'preparing' });
     helper = await detectHelper();
     if (ctrl.signal.aborted || controllers.get(key) !== ctrl) return;
   }
   const source = chooseSource(settings, helper);
   if (!source) {
     // Nothing to answer with: say so now, before building the prompt or fetching any card text.
-    set(key, { status: 'error', error: noCoachMessage(settings), errorKind: 'no_key' });
+    own({ status: 'error', error: noCoachMessage(settings), errorKind: 'no_key' });
     controllers.delete(key);
     return;
   }
   // D346: a thinking cap goes only to a helper that lists it, so learn what it lists first.
   const wantThinking = settings.coachThinking ?? 'default';
   if (source === 'helper' && wantThinking !== 'default' && !(helper?.state === 'ok' && helperFresh())) {
-    set(key, { status: 'preparing', source });
+    own({ status: 'preparing', source });
     helper = await detectHelper();
     if (ctrl.signal.aborted || controllers.get(key) !== ctrl) return;
   }
   const thinking = source === 'helper' ? helperThinking(helper, wantThinking) : undefined;
-  set(key, { status: 'preparing', source });
+  own({ status: 'preparing', source });
   try {
     const prompt = await makePrompt();
     if (ctrl.signal.aborted) return;
-    set(key, { status: 'streaming', thinkingSince: source === 'helper' ? now() : null });
+    own({ status: 'streaming', thinkingSince: source === 'helper' ? now() : null });
     const handlers: StreamHandlers = {
-      onText: (d) => set(key, { status: 'streaming', queuePosition: null, thinkingSince: null, text: (answers.get(key)?.text ?? '') + d }),
-      onThinking: (d) => set(key, { status: 'streaming', queuePosition: null, thinking: (answers.get(key)?.thinking ?? '') + d }),
+      onText: (d) => own({ status: 'streaming', queuePosition: null, thinkingSince: null, text: (answers.get(key)?.text ?? '') + d }),
+      onThinking: (d) => own({ status: 'streaming', queuePosition: null, thinking: (answers.get(key)?.thinking ?? '') + d }),
     };
     const supersedes = opts.supersedes && helper?.state === 'ok' && helper.supersedes ? opts.supersedes : undefined;
     const res: CoachResult =
@@ -173,14 +180,14 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
             ...(supersedes ? { supersedes } : {}),
             ...(thinking ? { thinking } : {}),
             onQueued: (n) => {
-              if (!ctrl.signal.aborted) set(key, { status: 'queued', queuePosition: n, thinkingSince: null });
+              if (!ctrl.signal.aborted) own({ status: 'queued', queuePosition: n, thinkingSince: null });
             },
             onRunning: () => {
-              if (!ctrl.signal.aborted) set(key, { status: 'streaming', queuePosition: null, thinkingSince: answers.get(key)?.text ? null : now() });
+              if (!ctrl.signal.aborted) own({ status: 'streaming', queuePosition: null, thinkingSince: answers.get(key)?.text ? null : now() });
             },
           })
         : await askClaude(prompt, handlers, { signal: ctrl.signal, settings });
-    set(key, {
+    own({
       status: 'done',
       text: res.text || answers.get(key)?.text || '',
       refused: res.refused,
@@ -190,14 +197,14 @@ export async function startAnswer(key: string, makePrompt: () => Promise<Prompt>
       thinkingSince: null,
     });
   } catch (e) {
-    if (answers.get(key)?.thinkingSince != null) set(key, { thinkingSince: null });
+    if (answers.get(key)?.thinkingSince != null) own({ thinkingSince: null });
     if (ctrl.signal.aborted) {
-      set(key, { status: 'stopped', queuePosition: null });
+      own({ status: 'stopped', queuePosition: null });
     } else {
       const kind = e && typeof e === 'object' && 'kind' in e ? String((e as { kind: unknown }).kind) : null;
-      if (kind === 'aborted') set(key, { status: 'stopped', queuePosition: null });
-      else if (kind === 'superseded') set(key, { status: 'stopped', queuePosition: null, stopReasonNote: 'superseded' });
-      else set(key, { status: 'error', error: e instanceof Error ? e.message : String(e), errorKind: kind });
+      if (kind === 'aborted') own({ status: 'stopped', queuePosition: null });
+      else if (kind === 'superseded') own({ status: 'stopped', queuePosition: null, stopReasonNote: 'superseded' });
+      else own({ status: 'error', error: e instanceof Error ? e.message : String(e), errorKind: kind });
     }
   } finally {
     if (controllers.get(key) === ctrl) controllers.delete(key);
