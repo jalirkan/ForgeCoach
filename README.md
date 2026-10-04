@@ -736,6 +736,41 @@ playwright-core && npx playwright-core install chromium` once. The test is
 not part of `npm test` and does not run in CI, since it needs mtg-table (a
 private repository) and Forge (large) on the machine.
 
+### Seat test against a fake engine (CI)
+
+`e2e/seat.e2e.mjs` (`npm run test:e2e`) plays through the real app against
+`e2e/fake-engine.mjs`, a stand-in for mtg-table's bridge: `/ws`, `/observe`
+and `/health`, the protocol's catch-up rules (hello_ok and state verbatim,
+the input re-emitted, the open ask re-sent), one seat, and a small scripted
+game of Mountains, Raging Goblin, Memnite, Goblin Guide, Shock and Hill Giant
+whose prompts and card shapes are copied from recorded Forge games. It needs
+no mtg-table, no Forge and no network (fonts, Scryfall and the coach helper
+are stubbed). Scenarios:
+
+- a whole game: mulligan and the London bottom pick, a land, a creature paid
+  with Auto, passing to resolve it, attacking, passing on the AI's spell,
+  blocking, Shock's target question, the result and the next game — checked
+  against the exact acts the engine received;
+- the seat dropped with a question open: the engine took its default (the
+  question leaves the screen and acts go through), or asked again with a new
+  id (that one is answered);
+- the engine restarted under the same game id after the result (Reconnect on
+  the result card) and mid-game (the board follows the new game);
+- live watch on `/observe`: the page opens no `/ws` socket and sends nothing,
+  and a `/ws` live URL is refused before any socket opens;
+- the coach's “Copy prompt” with no helper and no key.
+
+```bash
+npm run test:e2e                   # builds, serves dist/ on a Vite port, runs every scenario
+BUILD=0 REPEAT=5 npm run test:e2e  # reuse dist/, run the suite five times
+ONLY=restart HEADLESS=0 npm run test:e2e
+```
+
+It needs `playwright-core` with a Chromium (see above). CI runs it in its own
+job after a build. The fake engine also runs on its own, for a browser or
+`npm run e2e`: `node e2e/fake-engine.mjs --port 8642` (POST `/control/drop`,
+`/control/restart`, `/control/reset?scene=main3`).
+
 ### Engine review screen test
 
 `e2e/review.e2e.mjs` needs no engine: it builds the site, opens the sample
