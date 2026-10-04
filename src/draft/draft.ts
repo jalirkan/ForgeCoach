@@ -347,6 +347,7 @@ function boosterPick(d: BoosterDraft, card: string, cards: Map<string, LabCard> 
   const pack0 = d.table[0] as string[];
   addSeen(d, 'you', pack0);
   const youSaw = new Set(d.seen.you);
+  const attributable = aiPicksAttributable(d);
   // Everyone picks at once.
   for (let s = 0; s < d.seats; s++) {
     const pack = d.table[s] as string[];
@@ -364,7 +365,7 @@ function boosterPick(d: BoosterDraft, card: string, cards: Map<string, LabCard> 
       push(d, { who: 'you', kind: 'pick', at: n, cards: [c] });
     } else if (s === 1) {
       d.picks.ai.push(c);
-      push(d, { who: 'ai', kind: 'pick', at: n, cards: [c], known: youSaw.has(c) ? [c] : [] });
+      push(d, { who: 'ai', kind: 'pick', at: n, cards: [c], known: attributable && youSaw.has(c) ? [c] : [] });
     } else (d.bots[s - 2] as string[]).push(c);
   }
   // Pass: left (to the next seat) in packs 1 and 3, right in pack 2.
@@ -499,11 +500,29 @@ export function selfPlay(d: Draft, cards: Map<string, LabCard>, w: Weights = DEF
 // What the player may know
 
 /**
+ * Can the player tell which cards the AI took? Grid and Winston: yes, as far
+ * as they saw them (they watch it take). Booster with two seats: yes, the AI
+ * picks from the pack you just passed, and it comes straight back to you with
+ * exactly its pick missing. Booster with three or more seats: never. Between
+ * two looks at the same pack every other seat takes one card from it (all
+ * packs are the same size, so no seat skips), so N - 1 cards are gone and
+ * nothing in your view says which seat took which; a pack you never saw
+ * reveals nothing at all. The AI's own picks are never shown to you.
+ */
+export function aiPicksAttributable(d: Draft): boolean {
+  return d.format !== 'booster' || d.seats < 3;
+}
+
+/**
  * The AI's cards the player knows about: every Grid pick (public); Winston
- * takes and Booster picks only as far as the player had seen the card.
+ * takes and two-seat Booster picks only as far as the player had seen the
+ * card; nothing in a Booster of three or more seats (`aiPicksAttributable`).
+ * Checked here as well as when the pick is logged, so drafts saved before the
+ * rule leak nothing either.
  */
 export function knownAiCards(d: Draft): string[] {
   if (d.format === 'grid') return [...d.picks.ai];
+  if (!aiPicksAttributable(d)) return [];
   const out: string[] = [];
   for (const e of d.log) if (e.who === 'ai' && e.known) out.push(...e.known);
   return out;
@@ -534,9 +553,11 @@ export function eventsAfter(d: Draft, after: number): DraftEvent[] {
 
 /**
  * One event in words, as the player may know it: the AI's Winston takes say
- * how many cards and only name the ones the player had seen.
+ * how many cards and only name the ones the player had seen. Pass the draft:
+ * in a Booster of three or more seats an AI pick is only "The pack moved on".
  */
-export function describeEvent(e: DraftEvent): string {
+export function describeEvent(e: DraftEvent, d?: Draft): string {
+  if (e.who === 'ai' && e.kind === 'pick' && d && !aiPicksAttributable(d)) return 'The pack moved on';
   const who = e.who === 'you' ? 'You' : 'AI';
   const n = e.cards.length;
   const cards = `${n} card${n === 1 ? '' : 's'}`;

@@ -228,7 +228,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
             <SizeSlider value={offerPrefs.size} onChange={(size) => setOfferPrefs({ size })} min={90} max={240} />
           </div>
         )}
-        <AiBanner e={game.aiNote} />
+        <AiBanner e={game.aiNote} d={d} />
         {lastBlind?.who === 'you' && lastBlind.kind === 'blind' && <div className="aibanner is-you">You took the top card blind: {lastBlind.cards[0]}</div>}
         {status && <p className="pk-status">{sel !== null || pick ? <span className="dot" /> : null}{status}</p>}
         {d.format === 'grid' ? (
