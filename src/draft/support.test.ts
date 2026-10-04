@@ -9,7 +9,7 @@ import { aiStep, apply, newDraft, selfPlay, toAct } from './draft.ts';
 import { poolColours } from '../cube/pick.ts';
 import { guideFor, guidePromptSection } from '../cube/guides/index.ts';
 import { matchDeck } from './deck.ts';
-import { advertisedPolicies, advertisedSearchBudget, AI_POLICIES, checkRequest, deckSize, engineHealth, policyFields, ensureEngineAwake, launcherStatus, launchMatch, matchSupported, wakeEngine, safeDeckName, type MatchRequest } from './launch.ts';
+import { advertisedPolicies, advertisedSearchBudget, AI_POLICIES, AI_PROFILES, isAiProfile, checkRequest, deckSize, engineHealth, policyFields, ensureEngineAwake, launcherStatus, launchMatch, matchSupported, wakeEngine, safeDeckName, type MatchRequest } from './launch.ts';
 import { buildPickPrompt } from './pickPrompt.ts';
 import { clearDraft, DRAFT_KEY, loadDraft, saveDraft } from './store.ts';
 
@@ -196,6 +196,76 @@ describe('a sleeping engine (D308)', () => {
           });
     const p = ensureEngineAwake({ fetch: hang, target, signal: c.signal, onWaking: () => c.abort() });
     expect(await p).toMatchObject({ ok: false, status: 0, message: 'Cancelled.' });
+  });
+});
+
+describe('plain Play vs Forge picks the AI profile (mtg-table D381)', () => {
+  const target = { baseUrl: 'http://127.0.0.1:8643', token: null };
+  const json = (status: number, body: unknown) => Promise.resolve({ ok: status < 300, status, json: () => Promise.resolve(body) });
+  const idle = { ok: true, helper: 1, match: 1, engine: 'idle', engine_start: 1, engine_start_profile: 1 };
+  const started = { ok: true, already: false, yourDeck: { name: 'x', path: null, cards: 40 }, aiDeck: { name: 'y', cards: 40 }, aiProfile: 'Cautious', games: 1, ms: 9000, warnings: [] };
+  const recorder = (health: unknown, reply: (u: string, i?: RequestInit) => ReturnType<typeof json> = () => json(200, started)) => {
+    const calls: Array<{ path: string; body: unknown }> = [];
+    const f = vi.fn((u: string, i?: RequestInit) => {
+      calls.push({ path: u.replace(target.baseUrl, ''), body: i?.body });
+      return u.endsWith('/health') ? json(200, health) : reply(u, i);
+    });
+    return { f, calls };
+  };
+
+  it('reads engine_start_profile from /health, only beside engine_start', async () => {
+    expect(await engineHealth({ fetch: () => json(200, idle), target })).toEqual({ status: 'asleep', canWake: true, canPickProfile: true, aiPolicies: [] });
+    expect((await engineHealth({ fetch: () => json(200, { ...idle, engine_start: undefined }), target })).canPickProfile).toBeUndefined();
+    expect((await engineHealth({ fetch: () => json(200, { ...idle, engine_start_profile: undefined }), target })).canPickProfile).toBeUndefined();
+    expect((await engineHealth({ fetch: () => json(200, { ...idle, engine_start_profile: true }), target })).canPickProfile).toBeUndefined();
+  });
+
+  it('wakeEngine sends {"aiProfile"} as JSON, and no body without one', async () => {
+    const f = vi.fn((_u: string, _i?: RequestInit) => json(200, started));
+    await wakeEngine({ fetch: f, target, aiProfile: 'Cautious' });
+    const init = f.mock.calls[0]![1]!;
+    expect(JSON.parse(String(init.body))).toEqual({ aiProfile: 'Cautious' });
+    expect((init.headers as Record<string, string>)['Content-Type'] ?? (init.headers as Record<string, string>)['content-type']).toMatch(/json/);
+    await wakeEngine({ fetch: f, target, aiProfile: null });
+    expect(f.mock.calls[1]![1]!.body).toBeUndefined();
+    expect(AI_PROFILES.map((p) => p.id).every(isAiProfile)).toBe(true);
+    expect(isAiProfile('Hard')).toBe(false);
+  });
+
+  it('asleep: wakes with the profile when the helper takes it, with no body when it does not', async () => {
+    const a = recorder(idle);
+    expect(await ensureEngineAwake({ fetch: a.f, target, aiProfile: 'Reckless' })).toMatchObject({ ok: true, woke: true, profileSent: true });
+    expect(a.calls.map((c) => c.path)).toEqual(['/health', '/engine/start']);
+    expect(JSON.parse(String(a.calls[1]!.body))).toEqual({ aiProfile: 'Reckless' });
+    const old = recorder({ ...idle, engine_start_profile: undefined });
+    expect(await ensureEngineAwake({ fetch: old.f, target, aiProfile: 'Reckless' })).toMatchObject({ ok: true, woke: true, profileSent: false });
+    expect(old.calls[1]!.body).toBeUndefined();
+    const none = recorder(idle);
+    expect(await ensureEngineAwake({ fetch: none.f, target })).toMatchObject({ ok: true, woke: true, profileSent: false });
+    expect(none.calls[1]!.body).toBeUndefined();
+  });
+
+  it('running: a picked profile still goes out, so the "not applied" warning reaches the player; nothing else does', async () => {
+    const warn = 'The running match plays Default; Cautious was not applied (it applies the next time the engine starts).';
+    const running = { ...idle, engine: 'running' };
+    const r = recorder(running, () => json(200, { ok: true, already: true, aiProfile: 'Default', warnings: [warn] }));
+    const onWaking = vi.fn();
+    expect(await ensureEngineAwake({ fetch: r.f, target, aiProfile: 'Cautious', onWaking })).toMatchObject({ ok: true, already: true, woke: false, profileSent: true, warnings: [warn] });
+    expect(onWaking).not.toHaveBeenCalled();
+    // No profile, or a helper that does not take one: only /health, as before.
+    for (const [h, p] of [
+      [running, null],
+      [{ ...running, engine_start_profile: undefined }, 'Cautious'],
+    ] as const) {
+      const q = recorder(h);
+      expect(await ensureEngineAwake({ fetch: q.f, target, aiProfile: p })).toMatchObject({ ok: true, woke: false, profileSent: false });
+      expect(q.calls.map((c) => c.path)).toEqual(['/health']);
+    }
+  });
+
+  it('a 400 brings its problems back', async () => {
+    const r = recorder(idle, () => json(400, { ok: false, type: 'error', message: 'Bad request', problems: ['aiProfile: unknown profile "Hard"'] }));
+    expect(await ensureEngineAwake({ fetch: r.f, target, aiProfile: 'Cautious' })).toMatchObject({ ok: false, status: 400, message: 'Bad request', problems: ['aiProfile: unknown profile "Hard"'] });
   });
 });
 

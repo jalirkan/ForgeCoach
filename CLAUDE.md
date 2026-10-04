@@ -73,7 +73,10 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   deck: main, side, basics); `poolView.ts` (collection grouping, curve, colour
   counts); `aiFlags.ts` (AI:RemoveDeck from the cube docs); `pickPrompt.ts`;
   `store.ts` (the draft in localStorage); `launch.ts` (mtg-table's match
-  launcher, `POST /match`, docs/match-launcher.md there). Hidden information:
+  launcher, `POST /match`, docs/match-launcher.md there; plain Play vs
+  Forge wakes a sleeping engine with `POST /engine/start`, carrying
+  `{"aiProfile"}` only when `/health` has `engine_start_profile: 1`, D381 —
+  picker `ui/PlayProfile.tsx`, the helper's warnings shown on the board). Hidden information:
   the player only ever sees `knownAiCards`, never the AI's list.
 - `ui/draft/` — Draft vs AI screens (lazy, `#draft`, `#draft/build`,
   `#draft/match`) and the cube pages (`#cube/<id>`): `PickScreen`,

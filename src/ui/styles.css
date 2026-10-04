@@ -2880,3 +2880,40 @@ textarea:focus {
 .advice-fb-saved {
   min-width: 34px;
 }
+
+/* ---- plain Play vs Forge: the AI profile (PlayProfile.tsx, mtg-table D381) ---- */
+.play-profile {
+  margin: 10px 0 2px;
+}
+.play-profile-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.play-profile-k {
+  margin-right: 2px;
+}
+.play-profile-opt {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+.play-profile-opt:hover:not(:disabled) {
+  border-color: var(--line-2);
+  color: var(--text);
+}
+.play-profile-opt.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.play-profile-blurb {
+  margin: 6px 0 0;
+}
+.play-note .link-btn {
+  margin-left: 6px;
+}
