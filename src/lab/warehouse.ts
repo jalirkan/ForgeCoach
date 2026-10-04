@@ -26,15 +26,16 @@ export const WAREHOUSE_REFRESH_MS = 5 * 60_000;
 export const WAREHOUSE_MAX_BYTES = 2 * 1024 * 1024;
 
 const MAX_TABLES = 100;
-const MAX_NIGHTS = 120;
-const MAX_CUBES = 24;
-const MAX_PAIRS = 600;
+// At least the exporter's own caps (mtg-table tools/runner/warehouse.ts, D363).
+const MAX_NIGHTS = 500;
+const MAX_CUBES = 60;
+const MAX_PAIRS = 60 * 32;
 const MAX_CARDS = 6000;
 const BIG = 1e12;
 /** Rounding slack for lo ≤ winRate ≤ hi (the runner writes four decimals). */
 const EPS = 1e-6;
 
-const LEN = { name: 60, ver: 60, night: 32, cube: 40, pair: 24, card: 120 } as const;
+const LEN = { name: 60, ver: 60, night: 32, cube: 60, pair: 24, card: 120 } as const;
 
 // ---------------------------------------------------------------------------
 // View model
@@ -70,9 +71,10 @@ export interface WhCube {
   cube: string;
   drafts: number;
   games: number;
-  avgTurns: number;
-  /** The player on the play's win rate, 0..1. */
-  onPlayWinRate: number;
+  /** Null when the exporter has no games to average. */
+  avgTurns: number | null;
+  /** The player on the play's win rate, 0..1; null when the exporter has none. */
+  onPlayWinRate: number | null;
 }
 
 /** A win rate with its interval: lo ≤ winRate ≤ hi, all in [0, 1]. */
@@ -181,14 +183,17 @@ function parseCube(o: Obj): WhCube | null {
   const cube = text(own(o, 'cube'), LEN.cube);
   const drafts = whole(own(o, 'drafts'));
   const games = whole(own(o, 'games'));
-  const avgTurns = real(own(o, 'avgTurns'), 0, 500);
-  const onPlayWinRate = real(own(o, 'onPlayWinRate'), 0, 1);
-  if (!cube || drafts === null || games === null || avgTurns === null || onPlayWinRate === null) return null;
+  // null is the exporter's "none"; anything else must be in range.
+  const at = own(o, 'avgTurns');
+  const op = own(o, 'onPlayWinRate');
+  const avgTurns = at === null ? null : real(at, 0, 1000);
+  const onPlayWinRate = op === null ? null : real(op, 0, 1);
+  if (!cube || drafts === null || games === null || (at !== null && avgTurns === null) || (op !== null && onPlayWinRate === null)) return null;
   return { cube, drafts, games, avgTurns, onPlayWinRate };
 }
 
 function parseRate(o: Obj): WhRate | null {
-  const games = whole(own(o, 'games'), 1);
+  const games = whole(own(o, 'games'));
   const winRate = real(own(o, 'winRate'), 0, 1);
   const lo = real(own(o, 'lo'), 0, 1);
   const hi = real(own(o, 'hi'), 0, 1);
@@ -242,10 +247,12 @@ function dedupe<T>(r: { out: T[]; bad: number }, key: (x: T) => string): { out: 
   return { out, bad: r.bad + r.out.length - out.length };
 }
 
+/** Numbered nights by number, then dates and words (such as the exporter's "other") as text. */
 function nightOrder(a: WhNight, b: WhNight): number {
   const na = /^\d+$/.test(a.night) ? Number(a.night) : NaN;
   const nb = /^\d+$/.test(b.night) ? Number(b.night) : NaN;
   if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+  if (Number.isFinite(na) !== Number.isFinite(nb)) return Number.isFinite(na) ? -1 : 1;
   return a.night < b.night ? -1 : a.night > b.night ? 1 : 0;
 }
 

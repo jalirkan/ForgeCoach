@@ -83,7 +83,47 @@ describe('parseWarehouse: the bundled sample', () => {
   });
 });
 
+describe("parseWarehouse: the exporter's own sample (mtg-table tools/lab/warehouse-sample.json)", () => {
+  // A verbatim copy of the file mtg-table's `warehouse.py export` writes (synthetic numbers).
+  const exp = JSON.parse(readFileSync(new URL('./testdata/warehouse-exporter-sample.json', import.meta.url), 'utf8')) as Doc;
+  const w = parseWarehouse(exp);
+
+  it('reads it as is, with nothing dropped', () => {
+    expect(droppedTotal(w)).toBe(0);
+    expect(w.tables.length).toBe(exp.tables.length);
+    expect(w.nights.length).toBe(exp.nights.length);
+    expect(w.cubes.length).toBe(exp.cubes.length);
+    expect(w.pairs.length).toBe(exp.pairs.length);
+    expect(w.cards.length).toBe(exp.cards.length);
+    expect(w.archive).toBeNull();
+    expect(w.disk).not.toBeNull();
+    expect(w.generatedAt).not.toBeNull();
+  });
+
+  it('keeps bridge cube ids whole and builds a block for every cube', () => {
+    expect(w.cubes.map((c) => c.cube)).toContain('bridge:pauper+modern-era');
+    expect(cubeViews(w).length).toBe(exp.cubes.length);
+  });
+});
+
 describe('parseWarehouse: schema and shape', () => {
+  it("accepts the exporter's null avgTurns / onPlayWinRate, but not a bad value", () => {
+    const w = parseWarehouse({
+      schema: 1,
+      cubes: [
+        { cube: 'omega', drafts: 0, games: 0, avgTurns: null, onPlayWinRate: null },
+        { cube: 'pauper', drafts: 1, games: 2, avgTurns: 'many', onPlayWinRate: null },
+      ],
+    });
+    expect(w.cubes).toEqual([{ cube: 'omega', drafts: 0, games: 0, avgTurns: null, onPlayWinRate: null }]);
+    expect(w.dropped.cubes).toBe(1);
+  });
+
+  it('sorts numbered nights before a word night such as "other"', () => {
+    const n = (night: unknown) => ({ night, drafts: 1, games: 1, recorded: 1, quarantined: 0, engineErrors: 0 });
+    expect(parseWarehouse({ schema: 1, nights: [n('other'), n(2), n(1)] }).nights.map((x) => x.night)).toEqual(['1', '2', 'other']);
+  });
+
   it('refuses the wrong schema number, a missing one, and a string one', () => {
     expect(() => parseWarehouse({ ...clone(), schema: 2 })).toThrow(WarehouseError);
     expect(() => parseWarehouse({ ...clone(), schema: 2 })).toThrow(/schema 2/);
@@ -146,7 +186,7 @@ describe('parseWarehouse: out-of-range values', () => {
       { ...card, hi: 1.01 },
       { ...card, lo: 0.6 }, // lo above winRate
       { ...card, hi: 0.5 }, // hi below winRate
-      { ...card, games: 0 },
+      { ...card, games: -1 },
       { ...card, games: 2.5 },
       { ...card, games: '100' }, // numeric string
       { ...card, winRate: Number.NaN },
@@ -182,9 +222,9 @@ describe('parseWarehouse: out-of-range values', () => {
   });
 
   it('counts rows past the cap as dropped and a non-list as one bad block', () => {
-    const many = Array.from({ length: 130 }, (_, i) => ({ night: i, drafts: 1, games: 1, recorded: 1, quarantined: 0, engineErrors: 0 }));
+    const many = Array.from({ length: 510 }, (_, i) => ({ night: i, drafts: 1, games: 1, recorded: 1, quarantined: 0, engineErrors: 0 }));
     const w = parseWarehouse({ schema: 1, nights: many, pairs: { not: 'a list' } });
-    expect(w.nights.length).toBe(120);
+    expect(w.nights.length).toBe(500);
     expect(w.dropped.nights).toBe(10);
     expect(w.dropped.pairs).toBe(1);
   });

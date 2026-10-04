@@ -444,12 +444,19 @@ function Storage({ wh }: { wh: Warehouse }) {
 
 const VERDICT_LABEL: Record<Verdict, string> = { strong: 'strong', weak: 'weak', even: 'can’t tell' };
 
+const COLOURS_RE = /^[WUBRG]{1,5}$/;
+
+/** A cube id as a title: "pauper" → "Pauper Cube"; "bridge:pauper+modern-era" → "Bridge: Pauper + Modern-Era"; else the id. */
 function cubeTitle(id: string): string {
-  return cubeInfo(id)?.title ?? id;
+  const known = cubeInfo(id)?.title;
+  if (known) return known;
+  const bridge = /^bridge:(.+)$/.exec(id);
+  if (bridge) return `Bridge: ${bridge[1]!.split('+').map((c) => (cubeInfo(c)?.title ?? c).replace(/ Cube$/, '')).join(' + ')}`;
+  return id;
 }
 
 function pairName(p: string): string {
-  return /^[WUBRG]{2,3}$/.test(p) ? colourLabel(p) : p;
+  return COLOURS_RE.test(p) ? colourLabel(p) : p;
 }
 
 function Cubes({ wh }: { wh: Warehouse }) {
@@ -485,7 +492,9 @@ function CubeBlock({ v }: { v: CubeView }) {
         <h3 className="dt-cube-title">{cubeTitle(v.cube)}</h3>
         {s && (
           <span className="dt-cube-meta lg-mono">
-            {fmtNum(s.drafts)} drafts · {fmtNum(s.games)} games · {fmtNum(s.avgTurns, 1)} turns avg · on the play {fmtRate(s.onPlayWinRate)}
+            {fmtNum(s.drafts)} drafts · {fmtNum(s.games)} games
+            {s.avgTurns !== null && ` · ${fmtNum(s.avgTurns, 1)} turns avg`}
+            {s.onPlayWinRate !== null && ` · on the play ${fmtRate(s.onPlayWinRate)}`}
           </span>
         )}
       </header>
@@ -499,7 +508,7 @@ function CubeBlock({ v }: { v: CubeView }) {
               d={d}
               label={
                 <>
-                  {/^[WUBRG]{2,3}$/.test(p.pair) && <Dots colors={p.pair} />}
+                  {COLOURS_RE.test(p.pair) && <Dots colors={p.pair} />}
                   <span className="dt-name-t">{pairName(p.pair)}</span>
                 </>
               }
