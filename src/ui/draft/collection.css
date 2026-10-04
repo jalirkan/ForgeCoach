@@ -50,7 +50,7 @@
   color: var(--text);
 }
 .vseg button.is-on {
-  background: #3a2c17;
+  background: var(--fx-on);
   color: var(--gold-hi);
 }
 .vseg sup {
@@ -99,7 +99,7 @@
   height: 11px;
   border-radius: 50%;
   background: var(--gold-hi);
-  box-shadow: 0 0 6px rgba(226, 194, 127, 0.6);
+  box-shadow: 0 0 6px rgba(var(--fx-gold-hi-rgb), 0.6);
 }
 .vsize input::-moz-range-thumb {
   width: 11px;
@@ -137,7 +137,7 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: rgba(10, 8, 5, 0.85);
+  background: var(--fx-scrim);
   color: var(--text-2);
   opacity: 0;
   transition: opacity 0.15s;
@@ -189,7 +189,7 @@
   transition: background 0.15s;
 }
 .szone.is-over {
-  background: rgba(201, 164, 92, 0.05);
+  background: rgba(var(--fx-gold-rgb), 0.05);
 }
 .scol {
   flex: none;
@@ -230,12 +230,12 @@
 }
 .scol.is-side .sstack {
   border-radius: calc(var(--cw) * 0.05);
-  outline: 1px dashed rgba(201, 164, 92, 0.28);
+  outline: 1px dashed rgba(var(--fx-gold-rgb), 0.28);
   outline-offset: 4px;
 }
 .scol.is-side.is-over .sstack {
   outline-color: var(--gold);
-  background: rgba(201, 164, 92, 0.06);
+  background: rgba(var(--fx-gold-rgb), 0.06);
 }
 .sdrop {
   display: block;
@@ -261,7 +261,7 @@
   min-height: 60px;
   padding: 8px;
   border-radius: 6px;
-  outline: 1px dashed rgba(201, 164, 92, 0.28);
+  outline: 1px dashed rgba(var(--fx-gold-rgb), 0.28);
 }
 .ggroup.is-over .gcards {
   outline-color: var(--gold);
@@ -291,7 +291,7 @@
   border-bottom: 1px solid var(--line);
 }
 .lrow:hover {
-  background: rgba(255, 240, 210, 0.03);
+  background: rgba(var(--fx-warm-rgb), 0.03);
 }
 .lrow.is-hint .lrow-name {
   color: var(--gold-hi);
@@ -325,7 +325,7 @@
   color: var(--muted);
 }
 .lgroup.is-side.is-over {
-  background: rgba(201, 164, 92, 0.05);
+  background: rgba(var(--fx-gold-rgb), 0.05);
 }
 
 @media (max-width: 640px) {

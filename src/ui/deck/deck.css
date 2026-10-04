@@ -37,7 +37,7 @@
   transition: border-color 0.15s, background 0.15s, transform 0.15s;
 }
 .cube-tile:hover {
-  border-color: rgba(227, 178, 95, 0.45);
+  border-color: rgba(var(--fx-amber-rgb), 0.45);
   background: var(--surface-2);
   transform: translateY(-1px);
 }
@@ -49,19 +49,19 @@
   display: flex;
   align-items: flex-end;
   padding: 7px;
-  background: #1a1f27;
+  background: var(--fx-art-bg);
 }
 .art-BR {
-  background: radial-gradient(90% 90% at 25% 20%, rgba(223, 102, 68, 0.6), transparent 70%), radial-gradient(90% 90% at 85% 90%, rgba(143, 127, 153, 0.55), transparent 70%), #1a1f27;
+  background: radial-gradient(90% 90% at 25% 20%, rgba(223, 102, 68, 0.6), transparent 70%), radial-gradient(90% 90% at 85% 90%, rgba(143, 127, 153, 0.55), transparent 70%), var(--fx-art-bg);
 }
 .art-UG {
-  background: radial-gradient(90% 90% at 25% 20%, rgba(74, 144, 218, 0.6), transparent 70%), radial-gradient(90% 90% at 85% 90%, rgba(63, 166, 106, 0.55), transparent 70%), #1a1f27;
+  background: radial-gradient(90% 90% at 25% 20%, rgba(74, 144, 218, 0.6), transparent 70%), radial-gradient(90% 90% at 85% 90%, rgba(63, 166, 106, 0.55), transparent 70%), var(--fx-art-bg);
 }
 .art-UR {
-  background: radial-gradient(90% 90% at 25% 20%, rgba(74, 144, 218, 0.6), transparent 70%), radial-gradient(90% 90% at 85% 90%, rgba(223, 102, 68, 0.55), transparent 70%), #1a1f27;
+  background: radial-gradient(90% 90% at 25% 20%, rgba(74, 144, 218, 0.6), transparent 70%), radial-gradient(90% 90% at 85% 90%, rgba(223, 102, 68, 0.55), transparent 70%), var(--fx-art-bg);
 }
 .art-WG {
-  background: radial-gradient(90% 90% at 25% 20%, rgba(217, 204, 152, 0.5), transparent 70%), radial-gradient(90% 90% at 85% 90%, rgba(63, 166, 106, 0.55), transparent 70%), #1a1f27;
+  background: radial-gradient(90% 90% at 25% 20%, rgba(217, 204, 152, 0.5), transparent 70%), radial-gradient(90% 90% at 85% 90%, rgba(63, 166, 106, 0.55), transparent 70%), var(--fx-art-bg);
 }
 .cube-body {
   flex: 1;
@@ -148,7 +148,7 @@
 .dw {
   min-height: 100vh;
   min-height: 100dvh;
-  background: radial-gradient(900px 380px at 10% -10%, rgba(227, 178, 95, 0.06), transparent 70%), var(--bg);
+  background: radial-gradient(900px 380px at 10% -10%, rgba(var(--fx-amber-rgb), 0.06), transparent 70%), var(--bg);
   padding-bottom: env(safe-area-inset-bottom);
 }
 .dw-top {
@@ -159,7 +159,7 @@
   align-items: center;
   gap: 6px;
   padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
-  background: rgba(14, 16, 20, 0.86);
+  background: rgba(var(--fx-site-bg-rgb), 0.86);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -197,7 +197,7 @@
   gap: 2px;
   padding: 0 12px;
   border-bottom: 1px solid var(--line);
-  background: rgba(14, 16, 20, 0.86);
+  background: rgba(var(--fx-site-bg-rgb), 0.86);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -390,14 +390,14 @@ button.cc-hit:active {
   border: 1px solid rgba(239, 111, 108, 0.5);
 }
 .cc.is-mine .cc-hit {
-  box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(227, 178, 95, 0.25);
+  box-shadow: 0 0 0 2px var(--accent), 0 6px 18px rgba(var(--fx-amber-rgb), 0.25);
 }
 .cc.is-opp .cc-hit {
   opacity: 0.42;
   filter: grayscale(0.6);
 }
 .cc.is-hl .cc-hit {
-  box-shadow: 0 0 0 2.5px var(--accent), 0 0 22px rgba(227, 178, 95, 0.45);
+  box-shadow: 0 0 0 2.5px var(--accent), 0 0 22px rgba(var(--fx-amber-rgb), 0.45);
 }
 .cc-chip {
   position: absolute;
@@ -412,7 +412,7 @@ button.cc-hit:active {
   font-size: 11.5px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  background: rgba(14, 16, 20, 0.86);
+  background: rgba(var(--fx-site-bg-rgb), 0.86);
   color: var(--text-2);
   border: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(4px);
@@ -426,7 +426,7 @@ button.cc-hit:active {
 }
 .cc-chip.is-mid {
   color: var(--accent-2);
-  border-color: rgba(227, 178, 95, 0.4);
+  border-color: rgba(var(--fx-amber-rgb), 0.4);
 }
 .cc-info {
   position: absolute;
@@ -437,7 +437,7 @@ button.cc-hit:active {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: rgba(14, 16, 20, 0.78);
+  background: rgba(var(--fx-site-bg-rgb), 0.78);
   color: var(--text-2);
   opacity: 0;
   transition: opacity 0.15s;
@@ -532,7 +532,7 @@ button.cc-hit:active {
 }
 .fchip.is-on {
   background: var(--accent-soft);
-  border-color: rgba(227, 178, 95, 0.5);
+  border-color: rgba(var(--fx-amber-rgb), 0.5);
   color: var(--accent-2);
 }
 .fchip-n {
@@ -739,8 +739,8 @@ textarea.paste-text {
   border-color: var(--line-2);
 }
 .bv-build.is-on {
-  border-color: rgba(227, 178, 95, 0.6);
-  background: radial-gradient(400px 120px at 0% 0%, rgba(227, 178, 95, 0.1), transparent 70%), var(--surface);
+  border-color: rgba(var(--fx-amber-rgb), 0.6);
+  background: radial-gradient(400px 120px at 0% 0%, rgba(var(--fx-amber-rgb), 0.1), transparent 70%), var(--surface);
 }
 .bv-build-top {
   display: flex;
@@ -783,14 +783,14 @@ textarea.paste-text {
   right: 10px;
   background: var(--surface-3);
   color: #ffd29a;
-  border: 1px solid rgba(227, 178, 95, 0.4);
+  border: 1px solid rgba(var(--fx-amber-rgb), 0.4);
 }
 .bv-thin {
   margin: -4px 0 14px;
   padding: 10px 12px;
   border-radius: 10px;
   background: var(--accent-soft);
-  border: 1px solid rgba(227, 178, 95, 0.35);
+  border: 1px solid rgba(var(--fx-amber-rgb), 0.35);
   color: #f3dcae;
   font-size: 13px;
 }
@@ -1231,7 +1231,7 @@ textarea.paste-text {
 }
 .gl-btn.is-best {
   border-style: solid;
-  border-color: rgba(227, 178, 95, 0.7);
+  border-color: rgba(var(--fx-amber-rgb), 0.7);
   background: var(--accent-soft);
   color: var(--accent-2);
 }
@@ -1256,7 +1256,7 @@ textarea.paste-text {
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .gv-empty:hover {
-  border-color: rgba(227, 178, 95, 0.6);
+  border-color: rgba(var(--fx-amber-rgb), 0.6);
   color: var(--accent);
   background: var(--accent-soft);
 }
@@ -1272,8 +1272,8 @@ textarea.paste-text {
   top: 112px;
 }
 .adv {
-  border-color: rgba(227, 178, 95, 0.4);
-  background: radial-gradient(500px 160px at 0% 0%, rgba(227, 178, 95, 0.11), transparent 70%), var(--surface);
+  border-color: rgba(var(--fx-amber-rgb), 0.4);
+  background: radial-gradient(500px 160px at 0% 0%, rgba(var(--fx-amber-rgb), 0.11), transparent 70%), var(--surface);
 }
 .adv.is-pass {
   border-color: var(--line-2);
@@ -1369,7 +1369,7 @@ textarea.paste-text {
   background: var(--surface);
 }
 .wv-pile.is-on {
-  border-color: rgba(227, 178, 95, 0.6);
+  border-color: rgba(var(--fx-amber-rgb), 0.6);
   background: var(--accent-soft);
 }
 .wv-pile-n {
