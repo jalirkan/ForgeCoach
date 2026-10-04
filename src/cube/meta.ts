@@ -19,6 +19,10 @@
  *    "splash":{"games","winRate","vsNoSplash"},
  *    "noise":{"sdEmpirical","archetypeSdEmpirical","minGames","archetypeMinGames","permutations","method"}}
  *
+ * `colorBaselines` ({"R":{"games","wins"},…}) and a card's `early`
+ * ({"picks","of","window"}) are optional schema-1 additions the pick screen's
+ * lab panel reads when present (draft/labStats.ts); not yet written by the lab.
+ *
  * `noise` is optional (added under schema 1, no version bump) and not yet
  * written by the lab: the spread of shrunk win rates that chance alone gives,
  * measured by a permutation null — re-randomise every game's winner by a fair
@@ -109,6 +113,8 @@ export interface CubeMeta {
   lands?: { overall?: Record<string, LandStat>; byArchetype?: Record<string, Record<string, LandStat>> };
   splash?: { games?: number; winRate?: number; vsNoSplash?: number };
   noise?: MetaNoise;
+  /** Optional (schema-1 addition, not yet written by the lab): decisive games and wins of decks whose main colours include each colour (draft/labStats.ts). */
+  colorBaselines?: Record<string, { games?: number; wins?: number }>;
 }
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -140,6 +146,7 @@ export function parseMeta(raw: unknown): CubeMeta {
   if (isObj(raw.lands)) out.lands = raw.lands as CubeMeta['lands'];
   if (isObj(raw.splash)) out.splash = raw.splash as CubeMeta['splash'];
   if (isObj(raw.noise)) out.noise = raw.noise as MetaNoise;
+  if (isObj(raw.colorBaselines)) out.colorBaselines = raw.colorBaselines as CubeMeta['colorBaselines'];
   return out;
 }
 
