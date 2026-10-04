@@ -12,7 +12,8 @@
  *                  D325 adds "concurrency":1, "queue":{"max","length"}, "running":0|1,
  *                  "supersedes":1. A helper without "queue" refuses a second question (429).
  *                  D346 adds "thinking":["off","low","default"].
- *                  D361 adds "eval":1 (with "evalModel", "evalSchema") when the helper serves
+ *                  D361 adds "eval":1 (with "evalModel", "evalSchema"; D368 "evalEnsemble",
+ *                  "evalExplain") when the helper serves
  *                  the win chance (POST /eval, evalClient.ts); read even when "ok" is false,
  *                  since the win chance does not need Claude Code.
  *                  D362 adds "vision":1: the helper takes POST /vision (photo to pool).
@@ -184,15 +185,21 @@ export type HelperStatus =
 export interface HelperEval {
   model: string;
   schema: string;
+  /** mtg-table D368: how many models it averages ("evalEnsemble"; 1 from an older helper). 2+: answers carry an sd. */
+  ensemble: number;
+  /** mtg-table D368: it answers `explain` ("evalExplain": 1). An older helper refuses the field, so it is sent only then. */
+  explain: boolean;
 }
 
 /** The `eval` part of a /health body: present only with "eval": 1 and well-formed ids. */
 export function helperEvalOf(body: unknown): HelperEval | null {
-  const b = body as { eval?: unknown; evalModel?: unknown; evalSchema?: unknown } | null;
+  const b = body as { eval?: unknown; evalModel?: unknown; evalSchema?: unknown; evalEnsemble?: unknown; evalExplain?: unknown } | null;
   if (!b || typeof b !== 'object' || b.eval !== 1) return null;
   const model = typeof b.evalModel === 'string' && /^[0-9a-f]{12}$/.test(b.evalModel) ? b.evalModel : null;
   const schema = typeof b.evalSchema === 'string' && /^[0-9a-f]{16}$/.test(b.evalSchema) ? b.evalSchema : null;
-  return model && schema ? { model, schema } : null;
+  const n = b.evalEnsemble;
+  const ensemble = typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 64 ? n : 1;
+  return model && schema ? { model, schema, ensemble, explain: b.evalExplain === 1 } : null;
 }
 
 type FetchFn = (input: string, init?: RequestInit) => Promise<Response>;

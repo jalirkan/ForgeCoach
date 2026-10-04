@@ -8,13 +8,20 @@
  * is — a local model's estimate, trained on Forge-vs-Forge games — and neither
  * is drawn when the setting is off or the helper has no model (the callers
  * check `useWinChanceModel`). Colours are the skins' tokens (winchance.css).
+ *
+ * mtg-table D368: when the helper averages several models, the strip says
+ * "62% ± 6" and the line carries a faint band of ± one sd; when it explains,
+ * each drop marker says why it fell ("your board −9, cards in hand −4"), and
+ * `WinDropWhy` is that line on its own for any screen that wants it.
  */
 import './winchance.css';
 import type { CSSProperties } from 'react';
-import { pct, points as signedPoints, type TurnChange, type WinDrop, type WinPoint } from '../../winChance.ts';
+import { band, bandWords, dropKey, pct, pctBand, points as signedPoints, whyWords, type TurnChange, type WhyItem, type WinDrop, type WinPoint } from '../../winChance.ts';
 import { cx } from '../util.ts';
 
 export const WC_LABEL = 'Win chance';
+/** How many falls the line lists with their "why" (the largest; every marker's title says its own). */
+export const WHY_LIST = 3;
 export const WC_SOURCE = '(local model, Forge-vs-Forge trained)';
 export const WC_TIP =
   'An estimate, not a fact. A model trained on your PC on games Forge’s AI played against itself scores the position your board shows: ' +
@@ -36,9 +43,25 @@ function Label({ compact }: { compact?: boolean }) {
   );
 }
 
+/**
+ * Why the estimate fell, in a line: "Why: your board −9, cards in hand −4".
+ * Nothing when there is nothing to say. For the drop list here, and for any
+ * screen (the film room) that holds a drop's `WhyItem`s (useDropWhy).
+ */
+export function WinDropWhy({ items, className }: { items: readonly WhyItem[] | undefined; className?: string }) {
+  const words = items ? whyWords(items) : '';
+  if (!words) return null;
+  return (
+    <span className={cx('wc-why', className)} title="The parts of the position that moved the estimate most between the two positions around this fall, in points (the model’s own account of its number, not a rule of the game).">
+      <span className="wc-why-k">Why:</span> {words}
+    </span>
+  );
+}
+
 /** While playing: the newest estimate, a meter, and the change since the previous turn. */
-export function WinChanceStrip({ change, busy, error, compact }: { change: TurnChange | null; busy: boolean; error: string | null; compact?: boolean }) {
+export function WinChanceStrip({ change, busy, error, compact, models = 1 }: { change: TurnChange | null; busy: boolean; error: string | null; compact?: boolean; models?: number }) {
   const p = change?.now.p ?? null;
+  const sd = change?.now.sd;
   const delta = change?.delta ?? null;
   const style = { '--wc-p': p === null ? 0 : Math.max(0.01, p) } as CSSProperties;
   return (
@@ -52,14 +75,15 @@ export function WinChanceStrip({ change, busy, error, compact }: { change: TurnC
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={p === null ? undefined : Math.round(p * 100)}
-          aria-valuetext={p === null ? 'not scored yet' : `${pct(p)}, an estimate`}
+          aria-valuetext={p === null ? 'not scored yet' : `${pctBand(p, sd)}, an estimate`}
           style={style}
         >
           {p !== null && <span className="wc-fill" />}
           <span className="wc-mid" aria-hidden="true" />
         </div>
-        <span className="wc-num" title={WC_TIP}>
+        <span className="wc-num" title={sd === undefined ? WC_TIP : `${WC_TIP} ${bandWords(sd, models)}`}>
           {p === null ? '—' : pct(p)}
+          {p !== null && sd !== undefined && <span className="wc-band-n"> {band(sd)}</span>}
         </span>
         {delta !== null && change?.before && (
           <span
@@ -94,6 +118,7 @@ export function WinChanceChart({
   error,
   onMarker,
   threshold,
+  why,
 }: {
   positions: readonly ChartPosition[];
   points: readonly WinPoint[];
@@ -105,6 +130,8 @@ export function WinChanceChart({
   onMarker: (id: number) => void;
   /** The marker threshold, in points, for the legend. */
   threshold: number;
+  /** mtg-table D368: why each drop fell, by `dropKey` (useDropWhy); absent when the helper does not explain. */
+  why?: ReadonlyMap<string, readonly WhyItem[]>;
 }) {
   const n = positions.length;
   const xOf = new Map<number, number>();
@@ -124,6 +151,24 @@ export function WinChanceChart({
     }
   }
   if (run.length) runs.push(run.join(' '));
+  // D368: ± one sd of the models, a faint band under the line, where the answers carry one.
+  const bands: string[] = [];
+  let up: string[] = [];
+  let down: string[] = [];
+  const flush = () => {
+    if (up.length > 1) bands.push([...up, ...down.reverse()].join(' '));
+    up = [];
+    down = [];
+  };
+  for (const pos of positions) {
+    const pt = byFrame.get(pos.frameIndex);
+    if (pt && pt.sd !== undefined) {
+      const x = xOf.get(pos.frameIndex)!.toFixed(2);
+      up.push(`${x},${yOf(Math.min(1, pt.p + pt.sd)).toFixed(2)}`);
+      down.push(`${x},${yOf(Math.max(0, pt.p - pt.sd)).toFixed(2)}`);
+    } else flush();
+  }
+  flush();
   const turnTicks: { x: number; turn: number }[] = [];
   positions.forEach((p, i) => {
     if (i > 0 && p.turn !== positions[i - 1]!.turn) turnTicks.push({ x: ((xOf.get(p.frameIndex)! + xOf.get(positions[i - 1]!.frameIndex)!) / 2), turn: p.turn });
@@ -140,7 +185,8 @@ export function WinChanceChart({
         <span className="wc-chart-now">
           {curPoint ? (
             <>
-              <b className="wc-num">{pct(curPoint.p)}</b> <span className="muted tiny">turn {curPoint.turn}</span>
+              <b className="wc-num">{pct(curPoint.p)}</b>
+              {curPoint.sd !== undefined && <span className="wc-band-n tiny"> {band(curPoint.sd)}</span>} <span className="muted tiny">turn {curPoint.turn}</span>
             </>
           ) : null}
         </span>
@@ -153,6 +199,9 @@ export function WinChanceChart({
             <line className="wc-half" x1="0" x2="100" y1={H / 2} y2={H / 2} />
             {turnTicks.map((t) => (
               <line key={`${t.x}-${t.turn}`} className="wc-turn" x1={t.x} x2={t.x} y1="0" y2={H} />
+            ))}
+            {bands.map((b, i) => (
+              <polygon key={`b${i}`} className="wc-band" points={b} />
             ))}
             {runs.map((r, i) => (
               <polyline key={i} className="wc-area" points={`${r.split(' ')[0]!.split(',')[0]},${H} ${r} ${r.split(' ').slice(-1)[0]!.split(',')[0]},${H}`} />
@@ -172,7 +221,8 @@ export function WinChanceChart({
             const x0 = xOf.get(d.before.frameIndex);
             const x1 = xOf.get(d.after.frameIndex);
             if (x0 === undefined || x1 === undefined) return null;
-            const words = `Fell ${Math.round(d.drop * 100)} points after your decision on turn ${d.before.turn}: ${pct(d.before.p)} → ${pct(d.after.p)}. Go to it.`;
+            const because = why ? whyWords(why.get(dropKey(d)) ?? []) : '';
+            const words = `Fell ${Math.round(d.drop * 100)} points after your decision on turn ${d.before.turn}: ${pct(d.before.p)} → ${pct(d.after.p)}.${because ? ` Why: ${because}.` : ''} Go to it.`;
             return (
               <button
                 key={`${d.id}-${d.after.frameIndex}`}
@@ -188,6 +238,22 @@ export function WinChanceChart({
             );
           })}
         </div>
+      )}
+      {why && why.size > 0 && (
+        <ul className="wc-whys tiny" aria-label="Why the estimate fell most">
+          {[...drops].sort((a, b) => b.drop - a.drop || a.after.frameIndex - b.after.frameIndex).filter((d) => whyWords(why.get(dropKey(d)) ?? []) !== '').slice(0, WHY_LIST).map((d) => {
+            const items = why.get(dropKey(d));
+            if (!items || !whyWords(items)) return null;
+            return (
+              <li key={dropKey(d)}>
+                <button type="button" className="wc-why-go" onClick={() => onMarker(d.id)} title="Go to this decision">
+                  <span className="wc-why-drop">{signedPoints(-d.drop)}</span> turn {d.before.turn}
+                </button>{' '}
+                <WinDropWhy items={items} />
+              </li>
+            );
+          })}
+        </ul>
       )}
       <p className="wc-legend tiny muted">
         {!done && n > 0 ? `Scoring your positions… ${scored}/${n}. ` : ''}

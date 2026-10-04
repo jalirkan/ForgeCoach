@@ -59,6 +59,8 @@ export interface WinPoint {
   frameIndex: number;
   turn: number;
   p: number;
+  /** mtg-table D368: the helper's models disagree by this much (their sample sd), when it serves several. */
+  sd?: number;
 }
 
 /** Is this a position the model was trained on, for `seat`? */
@@ -218,6 +220,66 @@ export function pct(p: number): string {
 export function points(delta: number): string {
   const n = Math.round(delta * 100);
   return n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '±0';
+}
+
+/** The ± of an estimate, in points: "± 6" (at least "± 1": a band of under half a point is not worth a zero). */
+export function band(sd: number): string {
+  return `± ${Math.max(1, Math.round(Math.max(0, sd) * 100))}`;
+}
+
+/** "62%", or "62% ± 6" when the models' spread is known. */
+export function pctBand(p: number, sd?: number): string {
+  return sd === undefined ? pct(p) : `${pct(p)} ${band(sd)}`;
+}
+
+/** The words for what ± means, for a tooltip. */
+export function bandWords(sd: number, n: number): string {
+  return `± ${Math.round(sd * 100)} points is how far ${n} models, trained alike from different random starts, disagree about this position: the estimate’s own uncertainty, not the game’s luck.`;
+}
+
+/** The key a drop's "why" is kept under: the decision's id and the position the fall ended at. */
+export const dropKey = (d: Pick<WinDrop, 'id' | 'after'>) => `${d.id}-${d.after.frameIndex}`;
+
+/** A part of the position that moved the win chance, in points (mtg-table D368's buckets). */
+export interface WhyItem {
+  key: string;
+  label: string;
+  pts: number;
+}
+
+/** One position's attribution, as evalClient.ts reads it (structurally: winChance.ts imports nothing of the client). */
+export interface WhySource {
+  buckets: ReadonlyArray<{ key: string; label: string; pts: number }>;
+}
+
+/**
+ * Why the estimate moved from `before` to `after`: each bucket's share at
+ * `after` minus its share at `before` (a bucket absent at one is 0 there: a
+ * card that left the board, or came). Both are measured from the same baseline,
+ * so the differences sum to the change in points. The `k` largest by size,
+ * those under `min` points left out, largest first.
+ */
+export function dropWhy(before: WhySource, after: WhySource, k = 3, min = 1): WhyItem[] {
+  const d = new Map<string, WhyItem>();
+  for (const b of after.buckets) d.set(b.key, { key: b.key, label: b.label, pts: b.pts });
+  for (const b of before.buckets) {
+    const x = d.get(b.key);
+    if (x) x.pts -= b.pts;
+    else d.set(b.key, { key: b.key, label: b.label, pts: -b.pts });
+  }
+  return [...d.values()]
+    .filter((x) => Math.abs(x.pts) >= min - 1e-9)
+    .sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts) || a.key.localeCompare(b.key))
+    .slice(0, k);
+}
+
+/** "your board −9, cards in hand −4" (points rounded; a bucket that rounds to 0 is left out). */
+export function whyWords(items: readonly WhyItem[]): string {
+  return items
+    .map((x) => ({ ...x, n: Math.round(x.pts) }))
+    .filter((x) => x.n !== 0)
+    .map((x) => `${x.label} ${x.n > 0 ? `+${x.n}` : `−${-x.n}`}`)
+    .join(', ');
 }
 
 /** The game a cache entry belongs to. */

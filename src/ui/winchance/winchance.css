@@ -268,3 +268,59 @@
   background: var(--skin-heat);
   background-size: calc(100% / var(--wc-p)) 100%;
 }
+
+/* ---- mtg-table D368: the models' spread, and why a drop fell -------------- */
+.wc-band-n {
+  font: 500 11px/1 var(--mono);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.wc-num .wc-band-n {
+  margin-left: 1px;
+}
+.wc-band {
+  fill: var(--wc-line);
+  opacity: 0.14;
+  stroke: none;
+}
+.wc-whys {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.wc-whys li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.wc-why-go {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wc-why-go:hover,
+.wc-why-go:focus-visible {
+  border-color: var(--wc-drop);
+}
+.wc-why-drop {
+  font: 600 10px/1.2 var(--mono);
+  color: var(--wc-drop);
+}
+.wc-why {
+  color: var(--text-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.wc-why-k {
+  color: var(--muted);
+}

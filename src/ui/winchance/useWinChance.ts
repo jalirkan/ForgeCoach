@@ -11,9 +11,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { loadSettings, onSettingsChange } from '../../claude.ts';
 import { detectHelper, onHelperStatus, peekHelper, type HelperEval } from '../../coachHelper.ts';
-import { evalPosition, helperEval } from '../../evalClient.ts';
+import { evalPosition, explainPosition, helperEval, type EvalExplain } from '../../evalClient.ts';
 import type { GameLog } from '../../log.ts';
-import { buildRequest, buildRequests, evalGameKey, evalPoints, turnChange, type TurnChange, type WinPoint } from '../../winChance.ts';
+import { buildRequest, buildRequests, dropKey, dropWhy, evalGameKey, evalPoints, turnChange, type TurnChange, type WinDrop, type WinPoint, type WhyItem } from '../../winChance.ts';
 
 function settingOn(): boolean {
   try {
@@ -56,6 +56,8 @@ export interface LiveWinChance {
   change: TurnChange | null;
   busy: boolean;
   error: string | null;
+  /** mtg-table D368: how many models the helper averages (the ± is their spread when 2+). */
+  models: number;
 }
 
 /**
@@ -109,7 +111,7 @@ export function useLiveWinChance(log: GameLog | null, model: HelperEval | null, 
           }
           setError(null);
           if (!a.decision || a.model !== model.model) continue;
-          const pt: WinPoint = { frameIndex: fi, turn: a.turn, p: a.p };
+          const pt: WinPoint = { frameIndex: fi, turn: a.turn, p: a.p, ...(a.sd !== undefined ? { sd: a.sd } : {}) };
           cache.set(keyOf(model, log, fi), pt);
           add(pt);
         }
@@ -125,7 +127,7 @@ export function useLiveWinChance(log: GameLog | null, model: HelperEval | null, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, previous, game, modelId, debounceMs]);
 
-  return { change: useMemo(() => turnChange(points), [points]), busy, error };
+  return { change: useMemo(() => turnChange(points), [points]), busy, error, models: model?.ensemble ?? 1 };
 }
 
 export interface WinSeries {
@@ -187,7 +189,7 @@ export function useWinSeries(log: GameLog | null, model: HelperEval | null, conc
           continue;
         }
         if (!a.decision || a.model !== model.model) continue;
-        const pt: WinPoint = { frameIndex: fi, turn: a.turn, p: a.p };
+        const pt: WinPoint = { frameIndex: fi, turn: a.turn, p: a.p, ...(a.sd !== undefined ? { sd: a.sd } : {}) };
         cache.set(keyOf(model, log, fi), pt);
         got.set(fi, pt);
         if (Date.now() - lastPublish > 150) {
@@ -208,4 +210,48 @@ export function useWinSeries(log: GameLog | null, model: HelperEval | null, conc
   }, [log, modelId, wanted, concurrency]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { points, total: wanted.length, done, error };
+}
+
+/** Attributions per model, game and frame (mtg-table D368), kept in memory like the answers. */
+const explained = new Map<string, EvalExplain>();
+
+/**
+ * Why each drop fell (mtg-table D368): the two positions around it explained by
+ * the helper, and the parts of the position that moved most between them
+ * (`dropWhy`). Empty — and nothing is asked — when the helper does not explain.
+ * The drops are few; they are asked one position at a time, after the line.
+ */
+export function useDropWhy(log: GameLog | null, model: HelperEval | null, drops: readonly WinDrop[], k = 3): Map<string, WhyItem[]> {
+  const [why, setWhy] = useState<Map<string, WhyItem[]>>(() => new Map());
+  const modelId = model?.model ?? null;
+  const explains = model?.explain === true;
+  const wantKey = drops.map((d) => `${dropKey(d)}:${d.before.frameIndex}`).join(',');
+  useEffect(() => {
+    setWhy(new Map());
+    if (!log || !model || !explains || drops.length === 0) return;
+    const ctrl = new AbortController();
+    const frames = [...new Set(drops.flatMap((d) => [d.before.frameIndex, d.after.frameIndex]))];
+    void (async () => {
+      const reqs = buildRequests(log, frames.filter((fi) => !explained.has(keyOf(model, log, fi))));
+      for (const fi of frames) {
+        const key = keyOf(model, log, fi);
+        if (explained.has(key)) continue;
+        const req = reqs.get(fi);
+        if (!req) continue;
+        const a = await explainPosition(req, model, { signal: ctrl.signal, timeoutMs: 20_000 });
+        if (ctrl.signal.aborted) return;
+        if (!a || !a.ok) return;   // the helper stopped explaining: the markers keep their plain words
+        if (a.model === model.model && a.explain) explained.set(key, a.explain);
+      }
+      const out = new Map<string, WhyItem[]>();
+      for (const d of drops) {
+        const b = explained.get(keyOf(model, log, d.before.frameIndex));
+        const af = explained.get(keyOf(model, log, d.after.frameIndex));
+        if (b && af) out.set(dropKey(d), dropWhy(b, af, k));
+      }
+      setWhy(out);
+    })();
+    return () => ctrl.abort();
+  }, [log, modelId, explains, wantKey, k]); // eslint-disable-line react-hooks/exhaustive-deps
+  return why;
 }

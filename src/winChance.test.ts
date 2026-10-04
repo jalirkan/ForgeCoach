@@ -12,11 +12,16 @@ import {
   DROP_THRESHOLD,
   evalPoints,
   isEvalState,
+  band,
+  dropKey,
+  dropWhy,
   pct,
+  pctBand,
   points,
   pointAt,
   readStates,
   turnChange,
+  whyWords,
   type WinPoint,
 } from './winChance.ts';
 import type { GameStateBody } from './protocol.ts';
@@ -158,5 +163,49 @@ describe('turn change and drops', () => {
     expect(points(0.04)).toBe('+4');
     expect(points(-0.12)).toBe('−12');
     expect(points(0.001)).toBe('±0');
+  });
+});
+
+describe('mtg-table D368: the models’ spread and why a drop fell', () => {
+  it('band and pctBand', () => {
+    expect(band(0.061)).toBe('± 6');
+    expect(band(0.002)).toBe('± 1');
+    expect(pctBand(0.62)).toBe('62%');
+    expect(pctBand(0.62, 0.06)).toBe('62% ± 6');
+  });
+
+  it('dropWhy: the change of every bucket between the two positions, largest first, summing to the change', () => {
+    const before = {
+      buckets: [
+        { key: 'me.board', label: 'your board', pts: 6 },
+        { key: 'me.hand', label: 'cards in hand', pts: 2 },
+        { key: 'card.me:Glorybringer', label: 'your Glorybringer', pts: 3 },
+        { key: 'opp.life', label: 'their life', pts: -1 },
+      ],
+    };
+    const after = {
+      buckets: [
+        { key: 'me.board', label: 'your board', pts: -3 },
+        { key: 'me.hand', label: 'cards in hand', pts: -2 },
+        { key: 'opp.life', label: 'their life', pts: 0.6 },
+        { key: 'opp.board', label: 'their board', pts: -0.4 },
+      ],
+    };
+    const all = dropWhy(before, after, 99, 0);
+    const sum = (b: { buckets: { pts: number }[] }) => b.buckets.reduce((t, x) => t + x.pts, 0);
+    expect(all.reduce((t, x) => t + x.pts, 0)).toBeCloseTo(sum(after) - sum(before), 12);
+    expect(all.find((x) => x.key === 'card.me:Glorybringer')!.pts).toBe(-3); // it left: its whole share goes
+    expect(all.find((x) => x.key === 'opp.board')!.pts).toBe(-0.4); // it came
+    const top = dropWhy(before, after);
+    expect(top.map((x) => x.key)).toEqual(['me.board', 'me.hand', 'card.me:Glorybringer']);
+    expect(whyWords(top)).toBe('your board −9, cards in hand −4, your Glorybringer −3');
+    expect(dropWhy(before, after, 3, 5).map((x) => x.key)).toEqual(['me.board']);
+    expect(whyWords([{ key: 'x', label: 'their life', pts: 0.3 }])).toBe('');
+    expect(whyWords([{ key: 'x', label: 'their life', pts: 2.6 }])).toBe('their life +3');
+  });
+
+  it('dropKey names a drop by its decision and the position it fell to', () => {
+    const after: WinPoint = { frameIndex: 40, turn: 5, p: 0.3 };
+    expect(dropKey({ id: 7, after })).toBe('7-40');
   });
 });
