@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1)
+# Scenery pack spec (schema 1, version 1.2)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -10,6 +10,15 @@ built-in procedural fallback. Packs are never committed to this repository.
 - Engine: `src/ambience/` (model, events, manifest validator, loader), `src/ui/ambience/` (renderer, preview page).
 - Preview: open ForgeCoach at `#ambience` (no engine needed).
 - The validator is strict: what it refuses is listed on `#ambience`, with the path of the field and why.
+
+**Versions.** The `schema` number stays `1`; minor versions only add optional
+fields, so a pack written for an earlier version keeps working unchanged.
+
+| Version | What it added |
+| --- | --- |
+| 1.0 | Biomes, stages, layers (image, sprite, video), bloom, idle, strip. |
+| 1.1 | Sprite `fit` and `anchor`; the moving-layer budget warning; Local Network Access notes (§5). |
+| 1.2 | Optional one-shot **`effects`** (§2, *Effects*): creature enters, attack, damage to a player or a creature, landfall and stage up, for the whole pack or per biome; their budgets (§3) and reduced-motion behaviour (§4). An optional top-level `spec` field. A pack may now have effects and no stage art. |
 
 ## 1. How the scenery works
 
@@ -37,25 +46,29 @@ other game information.
   A pack may change these thresholds and may define up to 6 stages. A slot past a pack's last stage shows that last stage.
 - **Width.** Slot width grows a little with stage (+18% per stage), times the biome's `slot.weight`.
 - **Bloom.** When a stage adds layers, the new layers *bloom in*. A layer whose `id` is also in the previous stage stays where it is and does not bloom again. Every land arrival also flashes its slot with a soft glow.
-- **Events.** The scenery engine also emits *creature entered* (with the creature's colours), *attack declared* and *damage dealt*. Today these draw simple placeholder effects. A later schema will let packs supply art for them.
+- **Events.** The scenery engine also emits *creature entered* (with the creature's colours), *attack declared* and *damage dealt* (to a player or to a creature). Each plays a short one-shot **effect**: the pack's own (§2, *Effects*), or else a built-in placeholder.
 - **Hidden information.** Only the viewing seat's redacted battlefield is read, so the scenery never shows anything the board does not.
 
 ## 2. Manifest format
 
 `scenery.json` at the pack's root. Every field below is optional unless
 marked **required**. Unknown fields are ignored, so you may add notes or
-fields for your own tools.
+fields for your own tools. Two kinds of unknown *key* do get a warning, since a
+typo there would silently do nothing: a key under `biomes` that is not a biome,
+and a key under `effects` that is not an effect event.
 
 ### Top level
 
 | Field | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `schema` | `1` | — | **Required.** |
+| `spec` | `"1.2"` | — | The version the pack was written for. Informational; a newer minor version than this ForgeCoach reads gets a warning (its new fields are ignored). |
 | `name` | string ≤ 80 | "Untitled pack" | Shown on `#ambience`. |
 | `author`, `license` | string ≤ 80 | — | Shown on `#ambience`. |
 | `strip` | object | see below | Applies to the whole strip. |
 | `stageThresholds` | 1–6 increasing numbers, 0.5–40 | `[1, 2, 4, 6]` | Land weight at which stage 1, 2, … begins. |
-| `biomes` | object | — | **Required.** Keyed by biome name, with at least one usable biome. Biomes left out use the built-in scene. |
+| `biomes` | object | — | **Required.** Keyed by biome name, with at least one usable biome (or at least one effect). Biomes left out use the built-in scene. |
+| `effects` | object | — | 1.2. One-shot effects for every biome, and `maxConcurrent`. See *Effects*. |
 
 ### `strip`
 
@@ -81,6 +94,7 @@ fields for your own tools.
 | `idle.kind` | `sway` \| `drift` \| `breathe` \| `none` | `drift` | A gentle loop on layers with `idle: true`. |
 | `idle.periodMs` | 1000–60000 | 9000 | One swing (the loop alternates). |
 | `idle.amplitude` | 0–1 | 0.3 | Scaled by each layer's `depth`. At 1, `sway` is ±2°, `drift` is ±3% and `breathe` is +4%. |
+| `effects` | object | — | 1.2. This biome's own effects; they win over the top-level ones. A biome may have `effects` and no `stages`: it then keeps the built-in scene and plays your effects. |
 
 ### A stage
 
@@ -186,6 +200,109 @@ sprite is `contain` in a narrow box (the frame is taller than it is wide), so
 `src/ambience/manifest.test.ts` validates this exact block. If you change it,
 it must stay error- and warning-free.
 
+### Effects (1.2)
+
+Effects are short one-shots that play on a player's strip when something
+happens on the board. A pack may give them for every biome (top-level
+`effects`), per biome (`biomes.<name>.effects`, which wins), or not at all.
+Any event the pack leaves out plays ForgeCoach's built-in placeholder.
+
+**Events.**
+
+| Event | When | Plays on | Biome used | Default `at` | Built-in placeholder |
+| --- | --- | --- | --- | --- | --- |
+| `creatureEnter` | A creature the viewer can see enters the battlefield. | Its controller's strip. | The creature's colour's biome (W plains, U island, B swamp, R mountain, G forest; colourless wastes) if that player has the slot, else their largest biome. | `card` | `shimmer`: a soft rising shimmer in the biome's colour. |
+| `attack` | Attackers are declared (one effect per attacking player, however many bands). | The attacker's strip. | The attacker's largest biome. | `slot` | `sweep`: a crescent driving toward the other side. |
+| `damagePlayer` | A player is dealt damage (merged per player per frame). | That player's strip. | Their largest biome. | `strip` | `flash`: a red-gold flash from the strip's ground. |
+| `damageCreature` | A creature is dealt damage (merged per creature per frame). | Its controller's strip. | Their largest biome. | `card` | `crack`: a gold crack over an ember glow. |
+| `landfall` | A land enters. | Its controller's strip. | The land's biome. | `slot` | None: the slot's own glow. A pack's `landfall` replaces that glow. |
+| `stageUp` | A land lifts a claimed slot to its next stage. | Its controller's strip. | The slot's biome. | `slot` | None: the new layers bloom. |
+
+Only the viewing seat's redacted states feed the events, so an effect never
+shows what the board does not (a face-down creature plays nothing).
+
+**An effect.**
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `kind` | `sprite` \| `video` \| `particles` | — | **Required.** |
+| `src` | URL | — | **Required** for `sprite` (an image: `.webp` preferred) and `video` (`.webm` or `.mp4`). Same URL rules as layers. |
+| `src2x` | URL | — | `sprite`: the 2x sheet. |
+| `fallback` | URL (`.mp4`) | — | `video`: for browsers without webm alpha. |
+| `poster` | URL (image) | — | A still for reduced motion (`reduced: "poster"`). |
+| `frames`, `cols`, `rows`, `fps` | 1–120, 1–32, 1–32, 1–60 | — | `sprite` only, and required for it, as for layers. Played **once**: left to right, top to bottom, then gone. |
+| `loop` | `false` | `false` | Effects never loop; `true` gets a warning and is ignored. |
+| `preset` | `shimmer` `sweep` `flash` `crack` `motes` `ripple` | — | **Required** for `particles`: a built-in effect, drawn by ForgeCoach, with no files. |
+| `color` | `#rgb` \| `#rrggbb` | the biome's colour | The light of a `particles` preset and of the reduced-motion glow. |
+| `durationMs` | 100–2500 (whole) | the sheet's `frames ÷ fps`; a preset's own (≈ 0.5 s); 2000 for a clip | How long it shows. Never more than **2500 ms**: a longer sheet is cut, with a warning. |
+| `blend` | as layers | `screen` | CSS `mix-blend-mode` over the scenery. |
+| `scale` | 0.1–3 | 1 | The effect box's height, as a fraction of the strip's height. |
+| `aspect` | 0.2–8 | 1 | The box's width ÷ height. The picture is `contain`ed in it, standing on its bottom edge. |
+| `y` | −1–1 | 0 | The box's bottom edge, as a fraction of the strip's height. |
+| `at` | `slot` \| `card` \| `strip` | per event, above | Where the box is centred across the strip: the biome's slot, the card's position on the board (falls back to the slot), or the strip's middle. |
+| `mirror` | boolean | `true` for `attack`, else `false` | Flip vertically on the opponent's strip (drawn upright on the far edge), so art drawn pointing *up*, at the other side, points at the other player from both sides. |
+| `reduced` | `glow` \| `poster` \| `skip` | `glow` | With reduced motion: a still glow, the `poster`, or nothing (§4). `poster` without a `poster` falls back to `glow`, with a warning. |
+| `bytes` | whole number | — | The size of this effect's files (sheet, 2x, clip, fallback, poster). Only for the budget (§3): over 4 MB in a biome gets a warning. |
+
+**Top-level only:** `effects.maxConcurrent` (1–6, default 3) caps how many
+effects play at once across the board. Put anywhere else, it gets a warning.
+
+**Validation.** As for layers: a bad `kind`, URL, preset or sprite grid drops
+that effect (a warning, with the path); out-of-range numbers and unknown names
+fall back to their defaults (a warning); unknown fields inside an effect are
+ignored. An effect-only pack (top-level `effects`, or biomes with only
+`effects`) is valid: the built-in scenery plays your effects.
+
+### Worked example: effects for the island
+
+The island biome from above, with effects. Its stages are cut to stage 1 here
+for space; in a real pack they stay as above. The island has its own creature,
+attack, damage and stage-up effects; every other biome, and creature damage
+everywhere, uses the top-level ones.
+
+<!-- example-effects -->
+```json
+{
+  "schema": 1,
+  "spec": "1.2",
+  "name": "Justin's tidewater",
+  "effects": {
+    "maxConcurrent": 3,
+    "damageCreature": { "kind": "particles", "preset": "crack" },
+    "creatureEnter": { "kind": "particles", "preset": "shimmer" }
+  },
+  "biomes": {
+    "island": {
+      "label": "Tidewater isles",
+      "stages": [
+        {
+          "layers": [
+            { "id": "sky", "kind": "image", "src": "island/s1-sky.webp", "src2x": "island/s1-sky@2x.webp", "depth": 0, "z": 0, "idle": false },
+            { "id": "sea", "kind": "video", "src": "island/sea-loop.webm", "fallback": "island/sea-loop.mp4", "poster": "island/sea-still.webp", "depth": 0.3, "z": 10, "y": 0, "h": 0.45 }
+          ]
+        }
+      ],
+      "effects": {
+        "creatureEnter": { "kind": "sprite", "src": "island/fx-spout-sheet.webp", "src2x": "island/fx-spout-sheet@2x.webp", "frames": 18, "cols": 6, "rows": 3, "fps": 24, "scale": 0.9, "aspect": 0.6, "poster": "island/fx-spout.webp", "reduced": "poster", "bytes": 520000 },
+        "attack": { "kind": "video", "src": "island/fx-wave.webm", "fallback": "island/fx-wave.mp4", "poster": "island/fx-wave.webp", "durationMs": 900, "scale": 1, "aspect": 1.8, "bytes": 1400000 },
+        "damagePlayer": { "kind": "particles", "preset": "ripple", "color": "#bfe8ff", "scale": 0.6, "aspect": 4, "y": 0.05 },
+        "stageUp": { "kind": "sprite", "src": "island/fx-tide-rise-sheet.webp", "frames": 24, "cols": 6, "rows": 4, "fps": 16, "scale": 1.4, "aspect": 1.8, "blend": "plus-lighter", "bytes": 1100000 }
+      }
+    }
+  }
+}
+```
+
+The spout plays for 750 ms (18 frames at 24 fps) where the creature landed;
+the wave clip is cut at 900 ms and, drawn pointing up, is mirrored to point
+down from the far strip; island damage is a pale ripple across the strip, not
+the red flash; the tide-rise sheet runs 1.5 s, the longest and most dreamlike
+moment. The island declares 3.0 MB of effects, under the 4 MB budget.
+
+`src/ambience/manifest-effects.test.ts` validates this exact block. If you
+change it, it must stay error- and warning-free.
+
+
 ## 3. Files and budgets
 
 | What | Format | Size |
@@ -202,7 +319,14 @@ Budgets per biome:
 - **≤ 8 layers** per stage;
 - **≤ 2 moving layers** (sprite or video) per stage, counting layers kept from earlier stages. The validator warns on a stage with more. Videos are the heaviest thing on a phone, so prefer one loop per biome; idle motion (§4) on a still image is free.
 
-The whole pack should stay ≤ 30 MB.
+Budgets for effects (1.2), counted apart from the scenery's 6 MB:
+- **≤ 4 MB per biome** for its effects' files, and ≤ 4 MB for the top-level effects. Declare each effect's size in `bytes` and the validator warns past it; **Check effect files** on `#ambience` measures the real files.
+- **≤ 2.5 s** per effect (longer sheets and clips are cut).
+- **Effect sprite sheets:** ≤ 2048 px on either side, 8–30 frames at 12–24 fps; one row per stage of the motion reads well (`cols` frames per row).
+- **Effect clips:** ≤ 720 px wide, WebM VP9 with alpha plus an MP4 `fallback`, no audio, under 2.5 s; the clip is not looped.
+- **At most `effects.maxConcurrent`** play at once (default 3, at most 6); a burst waits briefly, and what waits too long (0.9 s) is dropped.
+
+The whole pack should stay ≤ 30 MB, effects included.
 
 A narrow slot is about 130 px wide on a phone; a lone slot on a desktop can be
 1280 px or more. Art must read at both sizes.
@@ -230,6 +354,9 @@ A narrow slot is about 130 px wide on a phone; a lone slot on a desktop can be
   - no idle loops, no bloom, no flashes.
 
   Every moving layer therefore needs a poster that looks complete on its own.
+- **Effects and motion.** Effects are the board's punctuation: short, soft at the edges, and gone. No strobing (no more than one bright peak per effect), no full-strip white flashes, nothing that hides a card. They play only for live play and for stepping a replay at normal speed: jumping, going back or scrubbing quickly cancels them, and a hidden tab pauses them.
+- **Effects with reduced motion.** Each effect's `reduced` says what shows instead: `glow` (the default, a still soft glow in the effect's colour at its anchor, for the effect's length), `poster` (its `poster` still), or `skip` (nothing).
+- **Levelling up with mana.** The art direction for every biome: each stage is more intricate, vivid and fantastical than the last, and the final stage is dreamlike. A `stageUp` effect is the moment to show that: it plays when a land lifts a claimed slot to its next stage.
 
 ## 5. Serving a pack locally
 
@@ -275,10 +402,11 @@ board's fallback note say so, with these steps.
 3. Play lands for either side with the buttons, or press **Demo sequence**. **Undo** and **Reset** step back.
 4. Drag **Stage** to see every stage of every claimed biome without playing more lands.
 5. Switch **Motion** to *Stills only* to check posters and reduced motion.
-6. **Creature enters** and **Attack** fire the placeholder effects. The event list shows what the engine emitted.
-7. **Check a manifest by pasting it** validates JSON as you type, before any file is served.
-8. **Use on the board** saves the choice. Settings → Board scenery does the same, and so does `?scenery=<url>` on any ForgeCoach URL. The play board and the replay board (`#sample=human-auto-42`) then show the pack.
-9. Press **Reload** after changing files. The preview loads the pack fresh each time; the board caches it per page load.
+6. **Creature enters** and **Attack** under *Play* change the made-up game, and fire the effects the engine derives from it. The event list shows what the engine emitted.
+7. The **Effects** card fires each effect for either side directly: creature enters, attack, damage (player), damage (creature), landfall, stage up. It plays on that side's largest biome, so play a land first. Its **Pack effects** status lists what the pack supplies for each event and biome (else the built-in), and **Check effect files** fetches each effect file and measures it against the 4 MB budget.
+8. **Check a manifest by pasting it** validates JSON as you type, before any file is served.
+9. **Use on the board** saves the choice. Settings → Board scenery does the same, and so does `?scenery=<url>` on any ForgeCoach URL. The play board and the replay board (`#sample=human-auto-42`) then show the pack.
+10. Press **Reload** after changing files. The preview loads the pack fresh each time; the board caches it per page load.
 
 If a pack fails on the board, ForgeCoach falls back to the built-in scenery.
 It logs why in the console (`ForgeCoach scenery: …`); dev builds also show it

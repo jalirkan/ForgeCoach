@@ -372,71 +372,245 @@
   }
 }
 
-/* ---- effects (placeholders for the future creature / combat art) */
+/* ---- effects (spec 1.2): one-shots in a box at their anchor (SceneryEffects.tsx).
+   --fx-ms is the effect's length, --fx-color its light. Built-in presets
+   animate transform and opacity (and one short stroke draw for the crack).
+   The effects box is the strip's twin (same edge and height, behind the
+   cards) without the strip's deep fade, so an effect reads on either side. */
 .scn-fxs {
   position: absolute;
-  inset: 0;
-  z-index: 400;
+  left: 0;
+  right: 0;
+  height: var(--scn-h, 46%);
+  z-index: -1;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+  contain: strict;
+  -webkit-mask-image: linear-gradient(to top, #000 0, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0, #000 78%, transparent 100%);
+}
+.scn-fxs.is-upright {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
 }
 .scn-fx {
   position: absolute;
-  opacity: 0;
+  bottom: var(--fx-y, 0%);
+  transform: translateX(-50%);
+  max-width: none;
 }
-.scn-fx-creature {
-  bottom: 6%;
-  width: 54px;
-  height: 54px;
-  margin-left: -27px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff 0, var(--fx-color, #e9f2ff) 30%, transparent 70%);
-  mix-blend-mode: screen;
-  animation: scn-fx-creature 1500ms ease-out 1 forwards;
+/* The far strip, upright, shows its picture's middle: effects stand there, not in its faded ground. */
+.scn-fxs.is-upright .scn-fx {
+  bottom: calc(var(--fx-y, 0%) + 26%);
 }
-@keyframes scn-fx-creature {
-  0% {
-    opacity: 0;
-    transform: translateY(30%) scale(0.3);
-  }
-  25% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-120%) scale(1.4);
-  }
-}
-.scn-fx-attack {
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 40%;
-  background: linear-gradient(100deg, transparent, rgba(255, 236, 200, 0.55) 45%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 236, 200, 0.55) 55%, transparent);
-  mix-blend-mode: screen;
-  animation: scn-fx-attack 900ms ease-in 1 forwards;
-}
-@keyframes scn-fx-attack {
-  0% {
-    opacity: 0;
-    transform: translateX(-100%) skewX(-12deg);
-  }
-  20% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(260%) skewX(-12deg);
-  }
-}
-.scn-fx-damage {
+.scn-fx-inner {
+  position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 100%, rgba(220, 40, 40, 0.6), rgba(160, 20, 20, 0.15) 60%, transparent 80%);
-  animation: scn-fx-damage 900ms ease-out 1 forwards;
 }
-@keyframes scn-fx-damage {
+.scn-fx.is-mirrored > .scn-fx-inner {
+  transform: scaleY(-1);
+}
+.scn-fx-inner > video,
+.scn-fx-inner > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: 50% 100%;
+}
+.scn-fx-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.scn-fx-svg * {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation-duration: var(--fx-ms, 560ms);
+  animation-fill-mode: both;
+  animation-iteration-count: 1;
+}
+/* Sprite sheets played once (rows of cols frames). */
+.scn-sprite-once .scn-sprite-y {
+  animation: scn-sprite-y var(--scn-sheet-s) steps(var(--scn-rows)) 1 forwards;
+}
+.scn-sprite-once .scn-sprite-x {
+  animation: scn-sprite-x var(--scn-row-s) steps(var(--scn-cols)) var(--scn-rows);
+}
+/* Reduced motion: a still, soft glow at the anchor for the effect's length. */
+.scn-fx-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--fx-color, #fff) 0, transparent 100%);
+  opacity: 0.4;
+}
+.scn-fx-damagePlayer .scn-fx-glow {
+  border-radius: 0;
+  background: radial-gradient(ellipse 60% 100% at 50% 100%, rgba(226, 69, 46, 0.55), transparent);
+}
+
+/* shimmer: a soft column of light rising, motes lifting off it. */
+.scn-p-rise {
+  animation-name: scn-p-rise;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+@keyframes scn-p-rise {
   0% {
     opacity: 0;
+    transform: translateY(18%) scale(0.5, 0.3);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12%) scale(1, 1.1);
+  }
+}
+.scn-p-ray {
+  animation-name: scn-p-ray;
+  animation-delay: calc(var(--d, 0) * var(--fx-ms, 560ms));
+  animation-duration: calc(var(--fx-ms, 560ms) * 0.7);
+  animation-timing-function: ease-out;
+}
+@keyframes scn-p-ray {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.2);
+  }
+  40% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1) translateY(-10%);
+  }
+}
+.scn-p-mote {
+  animation-name: scn-p-mote;
+  animation-delay: calc(var(--d, 0) * var(--fx-ms, 560ms));
+  animation-duration: calc(var(--fx-ms, 560ms) * 0.7);
+  animation-timing-function: ease-out;
+  transform-origin: 50% 50%;
+}
+@keyframes scn-p-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0), -38px) scale(1);
+  }
+}
+
+/* sweep: a crescent driving toward the other side, streaks behind it. */
+.scn-p-sweep {
+  animation-name: scn-p-sweep;
+  animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  transform-origin: 50% 50%;
+}
+@keyframes scn-p-sweep {
+  0% {
+    opacity: 0;
+    transform: translateY(32%) scaleX(0.7);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-55%) scaleX(1.12);
+  }
+}
+.scn-p-streak {
+  animation-name: scn-p-streak;
+  animation-delay: calc(var(--d, 0) * var(--fx-ms, 560ms));
+  animation-duration: calc(var(--fx-ms, 560ms) * 0.7);
+  animation-timing-function: ease-in;
+}
+@keyframes scn-p-streak {
+  0% {
+    opacity: 0;
+    transform: translateY(20%) scaleY(0.3);
+  }
+  35% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60%) scaleY(1);
+  }
+}
+
+/* flash: red into gold from the ground, and gone. */
+.scn-p-flash {
+  animation-name: scn-p-flash;
+  animation-timing-function: ease-out;
+}
+@keyframes scn-p-flash {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.4);
+  }
+  22% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+}
+.scn-p-edge {
+  animation-name: scn-p-edge;
+  animation-timing-function: ease-out;
+  transform-origin: 50% 50%;
+}
+@keyframes scn-p-edge {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.2);
   }
   25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+
+/* crack: a gold crack drawn up from the ground over an ember glow. */
+.scn-p-ember {
+  animation-name: scn-p-flash;
+  animation-timing-function: ease-out;
+}
+.scn-p-crack {
+  animation-name: scn-p-crack-fade;
+  animation-timing-function: linear;
+}
+.scn-p-crack path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-name: scn-p-crack-draw;
+  animation-duration: calc(var(--fx-ms, 560ms) * 0.45);
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes scn-p-crack-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes scn-p-crack-fade {
+  0%,
+  55% {
     opacity: 1;
   }
   100% {
@@ -444,17 +618,45 @@
   }
 }
 
+/* ripple: rings spreading over the ground. */
+.scn-p-ring {
+  animation-name: scn-p-ring;
+  animation-delay: calc(var(--d, 0) * var(--fx-ms, 560ms));
+  animation-duration: calc(var(--fx-ms, 560ms) * 0.7);
+  animation-timing-function: ease-out;
+  transform-origin: 50% 50%;
+}
+@keyframes scn-p-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.15);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
 /* Stills only. */
 .scn.is-reduced *,
 .scn.is-reduced *::before,
-.scn.is-reduced *::after {
+.scn.is-reduced *::after,
+.scn-fxs.is-reduced *,
+.scn-fxs.is-reduced *::before,
+.scn-fxs.is-reduced *::after {
   animation: none !important;
   transition: none !important;
 }
 /* Tab hidden (or off screen): nothing ticks. */
 .scn.is-paused *,
 .scn.is-paused *::before,
-.scn.is-paused *::after {
+.scn.is-paused *::after,
+.scn-fxs.is-paused *,
+.scn-fxs.is-paused *::before,
+.scn-fxs.is-paused *::after {
   animation-play-state: paused !important;
 }
 

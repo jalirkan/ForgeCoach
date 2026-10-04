@@ -14,6 +14,7 @@
  */
 import type { CSSProperties, ReactNode } from 'react';
 import type { Biome } from '../../ambience/model.ts';
+import type { ParticlePreset } from '../../ambience/manifest.ts';
 
 export interface DrawLayer {
   id: string;
@@ -822,4 +823,127 @@ const DRAW: Record<Biome, (uid: string, stage: number) => DrawLayer[]> = { islan
 /** The procedural layers of a biome at a stage (stage 0: the withered base only). */
 export function proceduralLayers(biome: Biome, stage: number, uid: string): DrawLayer[] {
   return DRAW[biome](uid, Math.max(1, Math.min(4, stage)));
+}
+
+// ---------------------------------------------------------------------------
+// Effects: the built-in one-shots (spec 1.2 particle presets). Each fills its
+// effect box; the colour comes from `--fx-color`, the length from `--fx-ms`
+// (scenery.css). Transform and opacity only, plus one short stroke draw for
+// the crack. With reduced motion none of these is drawn (a still glow is).
+
+/** A preset's drawing, for an effect box (its aspect is set by the effect). */
+export function proceduralEffect(preset: ParticlePreset, uid: string): ReactNode {
+  const r = rng(preset.length * 977 + 13);
+  switch (preset) {
+    case 'shimmer': {
+      // A soft column of light rising, with motes lifting off it.
+      const motes = Array.from({ length: 10 }, (_, i) => ({ x: 22 + r() * 76, y: 60 + r() * 30, s: 0.9 + r() * 1.6, d: f1(i * 0.035 + r() * 0.05), dx: f1((r() - 0.5) * 14) }));
+      return (
+        <svg className="scn-fx-svg" viewBox="0 0 120 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+          <defs>
+            <radialGradient id={`${uid}-sh`} cx="0.5" cy="0.62" r="0.5">
+              <stop offset="0" stopColor="#fff" stopOpacity="0.95" />
+              <stop offset="0.35" style={{ stopColor: 'var(--fx-color)' }} stopOpacity="0.7" />
+              <stop offset="1" style={{ stopColor: 'var(--fx-color)' }} stopOpacity="0" />
+            </radialGradient>
+            <linearGradient id={`${uid}-shl`} x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" stopColor="#fff" stopOpacity="0" />
+              <stop offset="0.5" stopColor="#fff" stopOpacity="0.8" />
+              <stop offset="1" stopColor="#fff" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <ellipse className="scn-p-rise" cx="60" cy="66" rx="52" ry="40" fill={`url(#${uid}-sh)`} />
+          {[42, 60, 78].map((x, i) => (
+            <rect key={x} className="scn-p-ray" x={x - 0.6} y={18 + i * 6} width="1.2" height={58 - i * 8} fill={`url(#${uid}-shl)`} style={{ '--d': `${i * 0.08}` } as CSSProperties} />
+          ))}
+          {motes.map((m, i) => (
+            <circle key={i} className="scn-p-mote" cx={f1(m.x)} cy={f1(m.y)} r={f1(m.s)} fill="#fff" style={{ '--d': m.d, '--dx': `${m.dx}px` } as CSSProperties} />
+          ))}
+        </svg>
+      );
+    }
+    case 'sweep': {
+      // A crescent of light driving toward the other side, with streaks behind it.
+      const streaks = Array.from({ length: 6 }, (_, i) => ({ x: 30 + i * 20 + r() * 8, h: 18 + r() * 22, d: f1(r() * 0.2) }));
+      return (
+        <svg className="scn-fx-svg" viewBox="0 0 160 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+          <defs>
+            <linearGradient id={`${uid}-sw`} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" style={{ stopColor: 'var(--fx-color)' }} stopOpacity="0" />
+              <stop offset="0.5" stopColor="#fff" stopOpacity="1" />
+              <stop offset="1" style={{ stopColor: 'var(--fx-color)' }} stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id={`${uid}-sws`} x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0" style={{ stopColor: 'var(--fx-color)' }} stopOpacity="0" />
+              <stop offset="1" style={{ stopColor: 'var(--fx-color)' }} stopOpacity="0.85" />
+            </linearGradient>
+          </defs>
+          <g className="scn-p-sweep">
+            <path d="M8 74 Q80 22 152 74" fill="none" stroke={`url(#${uid}-sw)`} strokeWidth="12" strokeLinecap="round" opacity="0.35" />
+            <path d="M14 72 Q80 28 146 72" fill="none" stroke={`url(#${uid}-sw)`} strokeWidth="3.2" strokeLinecap="round" />
+          </g>
+          {streaks.map((s, i) => (
+            <rect key={i} className="scn-p-streak" x={f1(s.x)} y={f1(96 - s.h)} width="1.4" height={f1(s.h)} fill={`url(#${uid}-sws)`} style={{ '--d': s.d } as CSSProperties} />
+          ))}
+        </svg>
+      );
+    }
+    case 'flash':
+      // Red into gold, swelling from the strip's ground, and gone.
+      return (
+        <svg className="scn-fx-svg" viewBox="0 0 600 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <radialGradient id={`${uid}-fl`} cx="0.5" cy="1" r="0.6">
+              <stop offset="0" stopColor="#ffd27a" stopOpacity="0.95" />
+              <stop offset="0.4" stopColor="#e2452e" stopOpacity="0.6" />
+              <stop offset="1" stopColor="#7a1010" stopOpacity="0" />
+            </radialGradient>
+            <linearGradient id={`${uid}-fle`} x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#ffcf6a" stopOpacity="0" />
+              <stop offset="0.5" stopColor="#fff1c2" stopOpacity="1" />
+              <stop offset="1" stopColor="#ffcf6a" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <rect className="scn-p-flash" width="600" height="100" fill={`url(#${uid}-fl)`} />
+          <rect className="scn-p-edge" x="0" y="95" width="600" height="5" fill={`url(#${uid}-fle)`} />
+        </svg>
+      );
+    case 'crack':
+      // A gold crack splitting up from the ground, over a red ember glow.
+      return (
+        <svg className="scn-fx-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+          <defs>
+            <radialGradient id={`${uid}-cr`} cx="0.5" cy="0.7" r="0.5">
+              <stop offset="0" stopColor="#ffb347" stopOpacity="0.85" />
+              <stop offset="0.5" stopColor="#d23b26" stopOpacity="0.45" />
+              <stop offset="1" stopColor="#d23b26" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <ellipse className="scn-p-ember" cx="50" cy="70" rx="44" ry="34" fill={`url(#${uid}-cr)`} />
+          <g className="scn-p-crack" fill="none" stroke="#fff0c0" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M50 98 L46 82 L55 70 L47 56 L56 42 L50 26" strokeWidth="2.4" pathLength={1} />
+            <path d="M55 70 L67 64 L74 52" strokeWidth="1.6" pathLength={1} />
+            <path d="M47 56 L36 50 L31 38" strokeWidth="1.4" pathLength={1} />
+          </g>
+        </svg>
+      );
+    case 'motes': {
+      const motes = Array.from({ length: 14 }, (_, i) => ({ x: 8 + r() * 104, y: 50 + r() * 46, s: 0.8 + r() * 1.8, d: f1(i * 0.015 + r() * 0.08), dx: f1((r() - 0.5) * 24) }));
+      return (
+        <svg className="scn-fx-svg" viewBox="0 0 120 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+          {motes.map((m, i) => (
+            <circle key={i} className="scn-p-mote" cx={f1(m.x)} cy={f1(m.y)} r={f1(m.s)} style={{ fill: i % 3 ? 'var(--fx-color)' : '#fff', '--d': m.d, '--dx': `${m.dx}px` } as CSSProperties} />
+          ))}
+        </svg>
+      );
+    }
+    case 'ripple':
+      return (
+        <svg className="scn-fx-svg" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <ellipse key={i} className="scn-p-ring" cx="100" cy="82" rx="80" ry="16" fill="none" strokeWidth="1.6" style={{ stroke: i === 1 ? '#fff' : 'var(--fx-color)', '--d': `${i * 0.12}` } as CSSProperties} />
+          ))}
+        </svg>
+      );
+  }
 }

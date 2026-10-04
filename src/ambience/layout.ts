@@ -100,3 +100,20 @@ export function spriteFrameCss(aspect: number | null, fit: Fit, anchor: Anchor):
   const { x, y } = anchorFractions(anchor);
   return { left: `calc((100cqw - ${width}) * ${x})`, top: `calc((100cqh - ${height}) * ${y})`, width, height };
 }
+
+/**
+ * The centre of a biome's slot across the strip, 0..1 (slots share the width
+ * by their `grow`), or null when the strip has no such slot.
+ */
+export function slotCentre(slots: SlotState[], pack: ScenePack | null, biome: string | null, stageOverride: number | null = null): number | null {
+  if (!biome) return null;
+  const layout = slotLayout(slots, pack, stageOverride);
+  const total = layout.reduce((n, l) => n + l.grow, 0);
+  if (!(total > 0)) return null;
+  let left = 0;
+  for (const l of layout) {
+    if (l.slot.biome === biome) return (left + l.grow / 2) / total;
+    left += l.grow;
+  }
+  return null;
+}

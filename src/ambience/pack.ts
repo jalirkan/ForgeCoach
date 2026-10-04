@@ -13,7 +13,7 @@
  */
 import type { Biome } from './model.ts';
 import { BIOMES } from './model.ts';
-import { MANIFEST_FILE, MAX_MANIFEST_BYTES, packUrls, validateManifest, type LayerKind, type ScenePack } from './manifest.ts';
+import { effectUrls, MANIFEST_FILE, MAX_EFFECT_BYTES, MAX_MANIFEST_BYTES, packUrls, validateManifest, type EffectEvent, type LayerKind, type ScenePack } from './manifest.ts';
 import type { SceneryPrefs } from './prefs.ts';
 
 export interface SceneryLoad {
@@ -210,4 +210,57 @@ export function browserLoader(): AssetLoader {
       img.onerror = () => reject(new Error('error'));
       img.src = url;
     });
+}
+
+/** One effect file, fetched: did it load, and how big is it. */
+export interface EffectFileCheck {
+  biome: Biome | null;
+  event: EffectEvent;
+  url: string;
+  ok: boolean;
+  bytes: number | null;
+  error: string | null;
+}
+
+/** Effect files per group (a biome, or null for the global effects) against the 4 MB budget. */
+export interface EffectBudget {
+  biome: Biome | null;
+  bytes: number;
+  over: boolean;
+}
+
+/**
+ * Fetch every effect file a pack names (the preview page's "pack effects"
+ * status): whether it loads and its real size, then each group's total
+ * against the budget. A few at a time; never throws.
+ */
+export async function checkEffectFiles(pack: ScenePack, deps: { fetch: (url: string, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'arrayBuffer'>> }, concurrency = 3): Promise<{ files: EffectFileCheck[]; budgets: EffectBudget[] }> {
+  const items = effectUrls(pack);
+  const files: EffectFileCheck[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      const it = items[i]!;
+      try {
+        const res = await deps.fetch(it.url, { cache: 'no-cache', credentials: 'omit' });
+        if (!res.ok) files[i] = { ...it, ok: false, bytes: null, error: `HTTP ${res.status}` };
+        else files[i] = { ...it, ok: true, bytes: (await res.arrayBuffer()).byteLength, error: null };
+      } catch {
+        files[i] = { ...it, ok: false, bytes: null, error: 'unreachable' };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  const totals = new Map<Biome | null, number>();
+  for (const f of files) totals.set(f.biome, (totals.get(f.biome) ?? 0) + (f.bytes ?? 0));
+  const budgets = [...totals].map(([biome, bytes]) => ({ biome, bytes, over: bytes > MAX_EFFECT_BYTES }));
+  return { files: files.map(({ biome, event, url, ok, bytes, error }) => ({ biome, event, url, ok, bytes, error })), budgets };
+}
+
+/** Warm the cache with a pack's effect files, in the background (the board does not wait for them). */
+export function preloadEffects(pack: ScenePack, load: AssetLoader): Promise<string[]> {
+  const failed: string[] = [];
+  const items = effectUrls(pack);
+  return Promise.all(items.map((it) => load(it.url, it.kind).catch(() => void failed.push(it.url)))).then(() => failed);
 }

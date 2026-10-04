@@ -191,8 +191,20 @@ export function sceneryFromLog(log: GameLog, frameIndex: number, opts: SceneryOp
  * at a time (a live seat) and sometimes jumps (a replay scrubber): continues
  * from where it was when it can, starts over when it cannot.
  */
+/** One state frame the tracker stepped over: the scenery before and after it. */
+export interface SceneryStep {
+  frameIndex: number;
+  prev: Scenery | null;
+  next: Scenery;
+  state: GameStateBody;
+}
+
+/** Steps kept from one `at` call (a live burst of frames, or a replay step). */
+export const MAX_TRACKED_STEPS = 16;
+
 export class SceneryTracker {
   private log: GameLog | null = null;
+  private lastSteps: SceneryStep[] = [];
   private upto = -1;
   private scenery: Scenery | null = null;
   private prevScenery: Scenery | null = null;
@@ -216,6 +228,7 @@ export class SceneryTracker {
       this.lastState = null;
       this.prevState = null;
     }
+    const steps: SceneryStep[] = [];
     for (let i = this.upto + 1; i <= end; i++) {
       const f = log.frames[i]!;
       if (f.type !== 'state') continue;
@@ -224,9 +237,21 @@ export class SceneryTracker {
       this.prevState = this.lastState;
       this.scenery = stepScenery(this.scenery, st, this.opts);
       this.lastState = st;
+      steps.push({ frameIndex: i, prev: this.prevScenery, next: this.scenery, state: st });
+      if (steps.length > MAX_TRACKED_STEPS) steps.shift();
     }
+    if (steps.length || end !== this.upto) this.lastSteps = steps;
     this.upto = Math.max(this.upto, end);
     return this.scenery ?? emptyScenery(this.opts.thresholds);
+  }
+
+  /**
+   * The state frames the last `at` call stepped over (at most
+   * {@link MAX_TRACKED_STEPS}, the newest), each with its frame index, so a
+   * caller can turn only the frames it has not seen yet into events.
+   */
+  steps(): readonly SceneryStep[] {
+    return this.lastSteps;
   }
 
   /** The scenery and state one state frame before the last `at` (for {@link sceneryEvents}). */
