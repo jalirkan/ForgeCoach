@@ -27,6 +27,7 @@ export function GameOverCard({
   onEngineReview,
   onNext,
   onRestart,
+  onReconnect,
   onLeave,
   filmRoom = null,
 }: {
@@ -40,6 +41,11 @@ export function GameOverCard({
   onEngineReview?: () => void;
   onNext: () => void;
   onRestart: () => void;
+  /**
+   * Connect again (the session's `reconnect`), for an engine started again after
+   * it closed at the result. The card covers the top bar's Reconnect on a desktop.
+   */
+  onReconnect?: () => void;
   onLeave: () => void;
   /** The film room (ui/filmroom): the game's turning points, under the actions. */
   filmRoom?: ReactNode;
@@ -81,7 +87,19 @@ export function GameOverCard({
               New match
             </button>
           </div>
-          {!connected && <p className="tiny muted">The engine has disconnected — start it again to play on.</p>}
+          {!connected && (
+            <p className="tiny muted">
+              The engine has disconnected — start it again to play on.
+              {onReconnect && (
+                <>
+                  {' '}
+                  <button className="link-btn over-reconnect" onClick={onReconnect}>
+                    Reconnect
+                  </button>
+                </>
+              )}
+            </p>
+          )}
           <button className="link-btn over-leave" onClick={onLeave}>
             Back to start
           </button>

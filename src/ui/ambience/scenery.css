@@ -675,3 +675,131 @@
   border-radius: 4px;
   pointer-events: none;
 }
+
+/* ------------------------------------------------------------------ */
+/* Board accents (spec 1.3): corner and edge pieces in a player's area.
+   Same stacking as the strip (z-index -1 in the host's isolated context,
+   after it in the DOM): above the strip and the host's background, below
+   every card, label and control. A size container, so pieces size in cqw. */
+
+.scn-ovl {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+  contain: strict;
+  container-type: size;
+}
+.scn-ovl-piece {
+  position: absolute;
+  pointer-events: none;
+}
+.scn-ovl-inner {
+  position: absolute;
+  inset: 0;
+}
+.scn-ovl-inner > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.scn-ovl-at-top-left {
+  top: 0;
+  left: 0;
+}
+.scn-ovl-at-top-right {
+  top: 0;
+  right: 0;
+}
+.scn-ovl-at-bottom-left {
+  bottom: 0;
+  left: 0;
+}
+.scn-ovl-at-bottom-right {
+  bottom: 0;
+  right: 0;
+}
+.scn-ovl-at-top-edge {
+  top: 0;
+  left: 0;
+  right: 0;
+}
+.scn-ovl-at-bottom-edge {
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+.scn-ovl-at-left-edge {
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+.scn-ovl-at-right-edge {
+  top: 0;
+  bottom: 0;
+  right: 0;
+}
+
+/* CSS motion on still pictures: small, slow, alternating. */
+.scn-ovl-sway,
+.scn-ovl-drift,
+.scn-ovl-breathe {
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-duration: 9s;
+  will-change: transform;
+}
+.scn-ovl-sway {
+  animation-name: scn-ovl-sway;
+}
+.scn-ovl-drift {
+  animation-name: scn-ovl-drift;
+}
+.scn-ovl-breathe {
+  animation-name: scn-ovl-breathe;
+}
+@keyframes scn-ovl-sway {
+  from {
+    transform: rotate(-1.2deg);
+  }
+  to {
+    transform: rotate(1.2deg);
+  }
+}
+@keyframes scn-ovl-drift {
+  from {
+    transform: translate(-1.5%, 0.5%);
+  }
+  to {
+    transform: translate(1.5%, -1%);
+  }
+}
+@keyframes scn-ovl-breathe {
+  from {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  to {
+    transform: scale(1.035);
+    opacity: 1;
+  }
+}
+.scn-ovl-in {
+  animation: scn-ovl-in 1.2s ease-out both;
+}
+@keyframes scn-ovl-in {
+  from {
+    opacity: 0;
+  }
+}
+.scn-ovl.is-paused * {
+  animation-play-state: paused !important;
+}
+/* Reduced motion (the system's, or Settings → Stills only): still pieces. */
+.scn-ovl.is-reduced * {
+  animation: none !important;
+}

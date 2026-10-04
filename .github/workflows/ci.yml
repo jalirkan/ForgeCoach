@@ -21,3 +21,28 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+  e2e:
+    # The seat test against the fake engine (e2e/seat.e2e.mjs): the real app in
+    # Chromium, no mtg-table, no network. playwright-core is deliberately not a
+    # dependency, so it is installed here without touching package.json.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save playwright-core@1.56.1
+      - run: npx playwright-core install --with-deps --only-shell chromium
+      - run: npm run build
+      - run: npm run test:e2e
+        env:
+          BUILD: '0'
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: e2e/out/
+          if-no-files-found: ignore
