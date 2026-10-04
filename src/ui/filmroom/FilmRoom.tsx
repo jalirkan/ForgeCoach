@@ -37,7 +37,10 @@ import {
   type Film,
   type FilmMoment,
 } from '../../filmRoom.ts';
-import { useWinSeries } from '../winchance/useWinChance.ts';
+import { useDropWhy, useWinSeries } from '../winchance/useWinChance.ts';
+import { WinDropWhy } from '../winchance/WinChance.tsx';
+import { dropKey, type WhyItem, type WinDrop } from '../../winChance.ts';
+import type { HelperEval } from '../../coachHelper.ts';
 import { answerBusy, getAnswer, startAnswer, stopAnswer, useAnswer } from '../answers.ts';
 import { cardsForPrompt } from '../cardData.ts';
 import { AnswerHead, gameKey } from '../CoachPanel.tsx';
@@ -77,6 +80,8 @@ export interface FilmState {
   film: Film | null;
   /** Scoring the win chance: positions done / to do. */
   scoring: { done: number; total: number } | null;
+  /** The helper's win-chance model, when it serves one (mtg-table D368: whether it explains). */
+  model?: HelperEval | null;
 }
 
 /** The film for a game: waits for the helper check and, when it serves the win chance, for every position to be scored. */
@@ -95,7 +100,7 @@ export function useFilm(log: GameLog, decisions: readonly Decision[], report: Re
           : 'No win chance: the coach helper is not running.'
         : 'No win chance: no coach helper.';
     const film = pickFilm({ log, decisions, evalPoints: model && series.done ? series.points : null, evalMissing, report });
-    return { film, scoring: null };
+    return { film, scoring: null, model };
   }, [looked, model, series.done, series.error, series.points, series.total, helper?.state, log, decisions, report]);
 }
 
@@ -124,7 +129,13 @@ export function FilmRoom({
   onOpenSettings?: () => void;
 }) {
   const decisions = useMemo(() => given ?? safeDecisions(log), [given, log]);
-  const { film, scoring } = useFilm(log, decisions, report);
+  const { film, scoring, model = null } = useFilm(log, decisions, report);
+  // mtg-table D368: why each win-chance fall happened, from a helper that explains (nothing is asked otherwise).
+  const evalDrops = useMemo<WinDrop[]>(
+    () => (film?.source === 'eval' ? film.moments.map((m) => ({ id: m.rank, decisionFrame: m.decision.frameIndex, before: m.before, after: m.after, drop: m.drop })) : []),
+    [film],
+  );
+  const why = useDropWhy(log, model, evalDrops);
   const coach = useCoachAvailability();
   const gk = gameKey(log);
 
@@ -206,6 +217,7 @@ export function FilmRoom({
                   onAsk={() => void startAnswer(filmKey(gk, m), () => makePrompt(m))}
                   {...(onJump ? { onJump: () => onJump(m) } : {})}
                   current={current !== null && m.decision.frameIndex === current}
+                  why={m.source === 'eval' ? why.get(dropKey({ id: m.rank, after: m.after })) : undefined}
                 />
               ))}
             </ol>
@@ -239,9 +251,12 @@ function MomentCard({
   onAsk,
   onJump,
   current,
+  why,
 }: {
   log: GameLog;
   m: FilmMoment;
+  /** mtg-table D368: the parts of the position that moved the win chance most across this fall. */
+  why?: readonly WhyItem[] | undefined;
   answerKey: string;
   canAsk: boolean;
   onAsk: () => void;
@@ -298,6 +313,11 @@ function MomentCard({
             <span className="muted">Hand</span> {mini.you.hand}–{mini.them.hand}
           </span>
         </div>
+      )}
+      {why && why.length > 0 && (
+        <p className="film-why tiny">
+          <WinDropWhy items={why} />
+        </p>
       )}
       {m.review && (
         <p className="film-review tiny">

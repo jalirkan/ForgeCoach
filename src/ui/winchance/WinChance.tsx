@@ -20,6 +20,8 @@ import { band, bandWords, dropKey, pct, pctBand, points as signedPoints, whyWord
 import { cx } from '../util.ts';
 
 export const WC_LABEL = 'Win chance';
+/** How many falls the line lists with their "why" (the largest; every marker's title says its own). */
+export const WHY_LIST = 3;
 export const WC_SOURCE = '(local model, Forge-vs-Forge trained)';
 export const WC_TIP =
   'An estimate, not a fact. A model trained on your PC on games Forge’s AI played against itself scores the position your board shows: ' +
@@ -238,8 +240,8 @@ export function WinChanceChart({
         </div>
       )}
       {why && why.size > 0 && (
-        <ul className="wc-whys tiny" aria-label="Why the estimate fell">
-          {drops.map((d) => {
+        <ul className="wc-whys tiny" aria-label="Why the estimate fell most">
+          {[...drops].sort((a, b) => b.drop - a.drop || a.after.frameIndex - b.after.frameIndex).filter((d) => whyWords(why.get(dropKey(d)) ?? []) !== '').slice(0, WHY_LIST).map((d) => {
             const items = why.get(dropKey(d));
             if (!items || !whyWords(items)) return null;
             return (
