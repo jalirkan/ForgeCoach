@@ -29,6 +29,8 @@ import { useAnsweredKeys } from './answers.ts';
 import { allCardNames, cx, stateFrames } from './util.ts';
 import { phaseLabel } from '../decisions.ts';
 import { BoardScenery } from './ambience/BoardScenery.tsx';
+import { WinChanceLine } from './winchance/WinChanceLine.tsx';
+import { decisionSpans } from '../winChance.ts';
 
 export interface LiveInfo {
   url: string;
@@ -215,8 +217,19 @@ export function GameView({
   const dockTitle = decision ? stripRound(decision.label) : frame ? `${frame.state.activePlayer === log.seat ? 'Your' : "Opp's"} ${phaseLabel(frame.state.phase)}` : 'Nothing yet';
   const dockSub = decision ? `R${decision.state.round} · ${actionsSummary(decision)}` : frame ? `Round ${frame.state.round} · frame #${frame.frameIndex}` : '';
 
+  // The win-chance line (mtg-table D359; Settings → Show win chance): markers jump to a decision.
+  const wcDecisions = useMemo(() => decisionSpans(log, decisions.map((d, i) => ({ frameIndex: d.frameIndex, id: i }))), [log, decisions]);
+  const jumpToMarker = useCallback(
+    (i: number) => {
+      if (mode !== 'decisions') setMode('decisions');
+      setDIdx(i);
+      setListOpen(false);
+    },
+    [mode],
+  );
   const list = (
     <TimelineList
+      extra={<WinChanceLine log={log} decisions={wcDecisions} current={frameIndex} onMarker={jumpToMarker} />}
       mode={mode}
       onMode={switchMode}
       decisions={decisions}
