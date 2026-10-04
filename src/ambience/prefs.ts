@@ -10,6 +10,8 @@
  * `?scenery=<url>` (in the page query, or in the hash's query, e.g.
  * `#ambience?scenery=…`) overrides the stored choice for this page load:
  * `procedural` and `off` are words, anything else is a pack URL.
+ * `?accents=off` (or `on`) does the same for the board accents (spec 1.3), a
+ * sub-toggle of the scenery: on by default whenever the scenery is on.
  */
 
 export type SceneryMode = 'off' | 'procedural' | 'pack';
@@ -19,10 +21,12 @@ export interface SceneryPrefs {
   mode: SceneryMode;
   packUrl: string;
   motion: MotionPref;
+  /** Board accents (corner and edge pieces in the player's area); only drawn when the scenery is on. */
+  accents: boolean;
 }
 
 export const SCENERY_KEY = 'forgecoach.scenery';
-export const DEFAULT_PREFS: SceneryPrefs = { mode: 'off', packUrl: '', motion: 'system' };
+export const DEFAULT_PREFS: SceneryPrefs = { mode: 'off', packUrl: '', motion: 'system', accents: true };
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -44,6 +48,7 @@ export function loadSceneryPrefs(s?: Store | null): SceneryPrefs {
     if (v.mode === 'off' || v.mode === 'procedural' || v.mode === 'pack') out.mode = v.mode;
     if (typeof v.packUrl === 'string') out.packUrl = v.packUrl.slice(0, 512);
     if (v.motion === 'system' || v.motion === 'reduce' || v.motion === 'full') out.motion = v.motion;
+    if (typeof v.accents === 'boolean') out.accents = v.accents;
   } catch {
     /* corrupt or blocked storage → defaults */
   }
@@ -66,25 +71,32 @@ export function onSceneryPrefs(l: () => void): () => void {
   return () => listeners.delete(l);
 }
 
-/** The `scenery` parameter from the page query or the hash's query, or null. */
-export function sceneryParam(search: string, hash: string): string | null {
-  const fromSearch = new URLSearchParams(search.replace(/^\?/, '')).get('scenery');
+/** The `scenery` (or another) parameter from the page query or the hash's query, or null. */
+export function sceneryParam(search: string, hash: string, name = 'scenery'): string | null {
+  const fromSearch = new URLSearchParams(search.replace(/^\?/, '')).get(name);
   if (fromSearch) return fromSearch.trim();
   const q = hash.indexOf('?');
   if (q >= 0) {
-    const fromHash = new URLSearchParams(hash.slice(q + 1)).get('scenery');
+    const fromHash = new URLSearchParams(hash.slice(q + 1)).get(name);
     if (fromHash) return fromHash.trim();
   }
   return null;
 }
 
-/** The stored prefs with the page's `?scenery=` applied. */
+/** The stored prefs with the page's `?scenery=` and `?accents=` applied. */
 export function effectivePrefs(stored: SceneryPrefs, search: string, hash: string): SceneryPrefs {
+  const a = sceneryParam(search, hash, 'accents');
+  const withAccents = a === 'off' || a === '0' ? { ...stored, accents: false } : a === 'on' || a === '1' ? { ...stored, accents: true } : stored;
   const p = sceneryParam(search, hash);
-  if (!p) return stored;
-  if (p === 'off') return { ...stored, mode: 'off' };
-  if (p === 'procedural' || p === 'builtin') return { ...stored, mode: 'procedural' };
-  return { ...stored, mode: 'pack', packUrl: p };
+  if (!p) return withAccents;
+  if (p === 'off') return { ...withAccents, mode: 'off' };
+  if (p === 'procedural' || p === 'builtin') return { ...withAccents, mode: 'procedural' };
+  return { ...withAccents, mode: 'pack', packUrl: p };
+}
+
+/** Are the board accents drawn? Only with the scenery on and the sub-toggle on. */
+export function accentsOn(p: SceneryPrefs): boolean {
+  return p.mode !== 'off' && p.accents;
 }
 
 /** The prefs for this page, from localStorage and location. */

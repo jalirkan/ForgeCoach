@@ -5,8 +5,9 @@
  * #ambience: the scenery preview. Two player strips over a mock table, buttons
  * that "play" lands (and fake creatures and attacks) for either side, undo
  * and reset, a stage slider, reduced motion, buttons that fire each effect
- * (spec 1.2) for either side, and a pack URL with its validation and its
- * effect files listed — how an art pack is tried with no engine running.
+ * (spec 1.2) for either side, the board accents (spec 1.3) with their own
+ * toggle, and a pack URL with its validation and its effect files listed —
+ * how an art pack is tried with no engine running.
  *
  * Everything here is made up in the page (ambience/sim.ts). It never opens a
  * socket to the engine.
@@ -18,10 +19,11 @@ import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '..
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
 import { SIM_PLAYERS, simLog, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
 import { browserLoader, checkEffectFiles, fetchManifest, manifestUrlFor, preloadPack, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
-import { validateManifest, EFFECT_EVENTS, MAX_EFFECT_BYTES, MAX_LAYERS, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
+import { validateManifest, EFFECT_EVENTS, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
 import { currentPrefs, loadSceneryPrefs, saveSceneryPrefs } from '../../ambience/prefs.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
+import { SceneryOverlay } from './SceneryOverlay.tsx';
 import { useSceneryFx, type PlaceCard } from './useScenery.ts';
 import './ambience-page.css';
 
@@ -65,6 +67,7 @@ export default function AmbiencePage() {
   const [packState, setPackState] = useState<PackState>({ status: 'none' });
   const [usePack, setUsePack] = useState(initial.mode === 'pack');
   const [eventsLog, setEventsLog] = useState<string[]>([]);
+  const [accents, setAccents] = useState(initial.accents);
 
   const log = useMemo(() => simLog(plays), [plays]);
   const scenery = useMemo(() => sceneryFromLog(log, Infinity), [log]);
@@ -168,16 +171,19 @@ export default function AmbiencePage() {
             slots={counts(SIM_PLAYERS[1])}
             creatures={creaturesOf(SIM_PLAYERS[1])}
             strip={
-              <SceneryStrip
-                slots={slotsOf(scenery, SIM_PLAYERS[1])}
-                pack={pack}
-                edge="top"
-                orient={orient}
-                reduced={reduced}
-                pulses={fx.pulses.get(SIM_PLAYERS[1])}
-                fx={fx.fx.get(SIM_PLAYERS[1])}
-                stageOverride={stage || null}
-              />
+              <>
+                <SceneryStrip
+                  slots={slotsOf(scenery, SIM_PLAYERS[1])}
+                  pack={pack}
+                  edge="top"
+                  orient={orient}
+                  reduced={reduced}
+                  pulses={fx.pulses.get(SIM_PLAYERS[1])}
+                  fx={fx.fx.get(SIM_PLAYERS[1])}
+                  stageOverride={stage || null}
+                />
+                {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[1])} pack={pack} edge="top" reduced={reduced} stageOverride={stage || null} />}
+              </>
             }
             plays={plays}
           />
@@ -188,15 +194,18 @@ export default function AmbiencePage() {
             slots={counts(SIM_PLAYERS[0])}
             creatures={creaturesOf(SIM_PLAYERS[0])}
             strip={
-              <SceneryStrip
-                slots={slotsOf(scenery, SIM_PLAYERS[0])}
-                pack={pack}
-                edge="bottom"
-                reduced={reduced}
-                pulses={fx.pulses.get(SIM_PLAYERS[0])}
-                fx={fx.fx.get(SIM_PLAYERS[0])}
-                stageOverride={stage || null}
-              />
+              <>
+                <SceneryStrip
+                  slots={slotsOf(scenery, SIM_PLAYERS[0])}
+                  pack={pack}
+                  edge="bottom"
+                  reduced={reduced}
+                  pulses={fx.pulses.get(SIM_PLAYERS[0])}
+                  fx={fx.fx.get(SIM_PLAYERS[0])}
+                  stageOverride={stage || null}
+                />
+                {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[0])} pack={pack} edge="bottom" reduced={reduced} stageOverride={stage || null} />}
+              </>
             }
             plays={plays}
           />
@@ -275,6 +284,19 @@ export default function AmbiencePage() {
               </div>
             </div>
             <div className="amb-field">
+              <span>Board accents</span>
+              <div className="amb-seg" role="radiogroup" aria-label="Board accents">
+                {([true, false] as const).map((on) => (
+                  <button key={String(on)} role="radio" aria-checked={accents === on} className={accents === on ? 'is-on' : ''} onClick={() => setAccents(on)} data-accents-toggle={on ? 'on' : 'off'}>
+                    {on ? 'On' : 'Off'}
+                  </button>
+                ))}
+              </div>
+              <span className="amb-hint">
+                Corner and edge pieces in each side's area, beneath the cards (spec 1.3). Corners only under 600 px wide; none under 300. At most {MAX_OVERLAY_PIECES} per side, {MAX_OVERLAY_ANIMATED} moving.
+              </span>
+            </div>
+            <div className="amb-field">
               <span>Opponent side</span>
               <div className="amb-seg" role="radiogroup" aria-label="Opponent side">
                 {(['upright', 'rotated'] as const).map((o) => (
@@ -293,7 +315,7 @@ export default function AmbiencePage() {
             usePack={usePack}
             setUsePack={setUsePack}
             onLoad={() => loadPack(url || DEFAULT_PACK_URL)}
-            onSave={() => saveSceneryPrefs({ ...loadSceneryPrefs(), mode: usePack && url ? 'pack' : 'procedural', packUrl: url, motion })}
+            onSave={() => saveSceneryPrefs({ ...loadSceneryPrefs(), mode: usePack && url ? 'pack' : 'procedural', packUrl: url, motion, accents })}
           />
         </aside>
       </main>
@@ -354,6 +376,17 @@ function MockSide({ title, player, top, slots, creatures, strip, plays }: { titl
   );
 }
 
+/** One line per biome: its stage layers, and its accent pieces per stage (spec 1.3). */
+function* packSummary(pack: ScenePack): Generator<string> {
+  for (const [b, v] of Object.entries(pack.biomes) as [Biome, NonNullable<ScenePack['biomes'][Biome]>][]) {
+    yield `${BIOME_LABEL[b]}: ${v.stages.length} stage${v.stages.length === 1 ? '' : 's'}, ${v.stages.map((s) => s.layers.length).join('/')} layers`;
+  }
+  for (const [b, v] of Object.entries(pack.overlays ?? {}) as [Biome, NonNullable<NonNullable<ScenePack['overlays']>[Biome]>][]) {
+    const bytes = overlayBytes(v);
+    yield `${BIOME_LABEL[b]} accents: ${v.stages.map((s) => s.length).join('/')} pieces${bytes ? ` · ${(bytes / 1048576).toFixed(1)} MB declared` : ''}`;
+  }
+}
+
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 function PackCard({
@@ -384,9 +417,7 @@ function PackCard({
       return { errors: [`Not valid JSON: ${e instanceof Error ? e.message : String(e)}`], warnings: [], summary: null };
     }
     const r = validateManifest(raw, manifestUrlFor(url || DEFAULT_PACK_URL) ?? DEFAULT_PACK_URL);
-    const summary = r.pack
-      ? (Object.entries(r.pack.biomes) as [Biome, NonNullable<ScenePack['biomes'][Biome]>][]).map(([b, v]) => `${BIOME_LABEL[b]}: ${v.stages.length} stage${v.stages.length === 1 ? '' : 's'}, ${v.stages.map((s) => s.layers.length).join('/')} layers`).join(' · ')
-      : null;
+    const summary = r.pack ? [...packSummary(r.pack)].join(' · ') || 'effects only' : null;
     return { errors: r.errors, warnings: r.warnings, summary };
   }, [paste, url]);
   return (
@@ -407,6 +438,7 @@ function PackCard({
             <>
               Loaded <b>{state.pack!.name}</b>
               {state.pack!.author ? ` by ${state.pack!.author}` : ''}: {Object.keys(state.pack!.biomes).length ? `${Object.keys(state.pack!.biomes).map((b) => BIOME_LABEL[b as Biome]).join(', ')}. Other biomes use the built-in scenery.` : 'effects only, over the built-in scenery.'}
+              {state.pack!.overlays ? ` Accents: ${Object.keys(state.pack!.overlays).map((b) => BIOME_LABEL[b as Biome]).join(', ')}.` : ''}
             </>
           ) : (
             <>Not loaded. {state.note}</>
