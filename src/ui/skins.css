@@ -12,7 +12,10 @@
  *
  *   stack — a dark table (#121417 ground, #171a1e felt, #1c2025 rails); cream
  *           (#f2ecdc / #e9e1cd) for game objects such as the items on the game
- *           stack; amber (#c98a2c) for priority and the coach's call. The
+ *           stack, and off the board for every object you pick up and act on
+ *           (the start page's tiles, primary buttons, chosen options, seats),
+ *           cards of paper lying on the table in dark ink; amber (#c98a2c) for
+ *           priority and the coach's call. The
  *           coach's reasoning is a separate pile of dark items, so the two piles
  *           never look alike. Alegreya / Alegreya Sans (SC) / IBM Plex Mono.
  *   felt  — "Hot Felt": green baize, bone and chalk neutrals, calm. The only
@@ -141,10 +144,11 @@
   --fx-danger: #e07a6a;
   --fx-danger-rgb: 224, 122, 106;
   --fx-danger-ink: #e58f80;
-  --fx-rim-rgb: 246, 200, 120;
-  --fx-btn: linear-gradient(180deg, #e0a648, #b97a22);
-  --fx-btn-2: linear-gradient(180deg, #e4aa4c, #bb7c24);
-  --fx-btn-ink: #1b1408;
+  /* Primary buttons and chosen options are cream objects (see "cream objects" below). */
+  --fx-rim-rgb: 255, 255, 255;
+  --fx-btn: linear-gradient(180deg, #f6f1e4, #e7dec8);
+  --fx-btn-2: linear-gradient(180deg, #f6f1e4, #e7dec8);
+  --fx-btn-ink: #1b1a17;
   --fx-btn-off: #2a2f36;
   --fx-btn-off-ink: #7d828a;
   --fx-on: #2e3238;
@@ -393,6 +397,226 @@
 :root[data-skin='stack'] .rv-chip.is-on {
   background: var(--skin-card);
   color: var(--skin-ink);
+}
+
+/* ---- Stack: cream objects on the table, off the board ------------------- */
+/* What you pick up and act on (the start page's tiles, the recorded games,
+   primary buttons, chosen options, seats, the cube tiles) is a cream card
+   lying on the dark table: dark ink and a soft drop shadow. Reference
+   material (a cube's archetypes) stays dark: it is read, not acted on. Heads,
+   kickers and rails stay light on the dark; amber stays for priority and
+   accents, darkened to --skin-ink-amber where it sits on cream. */
+
+:root[data-skin='stack'] {
+  --skin-paper: linear-gradient(180deg, #f5f0e3, #ebe3cf);
+  --skin-paper-hi: linear-gradient(180deg, #f8f4e9, #efe8d6);
+  --skin-edge: #d3cab4; /* a cream object's hairline */
+  --skin-chip: #e2d9c2; /* a chip printed on cream */
+  --skin-ink-amber: #8a5512; /* amber that reads on cream (4.8:1 or more) */
+  --skin-lie: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 20px rgba(0, 0, 0, 0.42);
+  --skin-lift: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4), 0 14px 28px rgba(0, 0, 0, 0.5);
+}
+
+/* The common paper. */
+:root[data-skin='stack'] .lobby-tile,
+:root[data-skin='stack'] .lobby .sample,
+:root[data-skin='stack'] .deck-home.fx .cube-tile,
+:root[data-skin='stack'] .seat-row,
+:root[data-skin='stack'] .opt-tile.is-on,
+:root[data-skin='stack'] .src-tile.is-on,
+:root[data-skin='stack'] .ctile.is-on,
+:root[data-skin='stack'] .deck-tile.is-on,
+:root[data-skin='stack'] .profile.is-on,
+:root[data-skin='stack'] .fx .bv-build.is-on {
+  border-color: var(--skin-edge);
+  background: var(--skin-paper);
+  color: var(--skin-ink);
+  box-shadow: var(--skin-lie);
+}
+/* Focus on or inside cream: the ring stays visible (dark amber on paper). */
+:root[data-skin='stack'] :is(.lobby-tile, .lobby .sample, .deck-home.fx .cube-tile, .seat-row, .ctile, .deck-tile, .profile, .fx .bv-build) :focus-visible {
+  outline-color: var(--skin-ink-amber);
+}
+
+/* Start page: Open a table. Every tile is a cream card; the primary action
+   (Play vs Forge, LobbyTiles' is-primary) carries an amber notch. */
+:root[data-skin='stack'] .lobby-tile {
+  border-radius: 7px;
+  transition: transform 0.15s, box-shadow 0.2s, background 0.15s;
+}
+:root[data-skin='stack'] .lobby-tile.is-primary::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+:root[data-skin='stack'] .lobby-tile:hover,
+:root[data-skin='stack'] .lobby .sample:hover:not(:disabled),
+:root[data-skin='stack'] .deck-home.fx .cube-tile:hover {
+  border-color: var(--skin-edge);
+  background: var(--skin-paper-hi);
+  transform: translateY(-2px);
+  box-shadow: var(--skin-lift);
+}
+:root[data-skin='stack'] .lobby-tile-t {
+  color: var(--skin-ink);
+  font-weight: 700;
+}
+:root[data-skin='stack'] .lobby-tile-l {
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] .lobby-tile-g {
+  color: var(--skin-ink-amber);
+  opacity: 1;
+}
+:root[data-skin='stack'] .lobby-grid {
+  gap: 14px;
+}
+
+/* Start page: the recorded games are cream cards with a dark art well. */
+:root[data-skin='stack'] .lobby .sample {
+  border-radius: 8px;
+  transition: transform 0.15s, box-shadow 0.2s, background 0.15s;
+}
+:root[data-skin='stack'] .lobby .sample.is-last {
+  border-color: var(--accent);
+}
+:root[data-skin='stack'] .lobby .sample-art {
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+:root[data-skin='stack'] .lobby .sample-title,
+:root[data-skin='stack'] .lobby .sample b {
+  color: var(--skin-ink);
+  font-weight: 700;
+}
+:root[data-skin='stack'] .lobby .sample-blurb {
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] :is(.lobby .sample-meta span, .deck-home.fx .cube-meta span) {
+  background: var(--skin-chip);
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] :is(.lobby .sample, .deck-home.fx .cube-tile) .sample-go {
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] :is(.lobby .sample, .deck-home.fx .cube-tile):hover .sample-go {
+  color: var(--skin-ink-amber);
+}
+:root[data-skin='stack'] .lobby .sample .tag-accent {
+  background: transparent;
+  color: var(--skin-ink-amber);
+  box-shadow: inset 0 0 0 1px var(--skin-ink-amber);
+}
+
+/* Primary buttons: cream, with an amber foot (the call to act). */
+:root[data-skin='stack'] :is(.btn-gold, .btn-begin, .fx .btn-primary, .lobby .live-box .btn) {
+  border: 0;
+  background: var(--fx-btn);
+  color: var(--fx-btn-ink);
+  box-shadow: inset 0 -3px 0 var(--accent), var(--skin-lie);
+}
+:root[data-skin='stack'] :is(.btn-gold, .btn-begin, .fx .btn-primary, .lobby .live-box .btn):hover:not(:disabled) {
+  filter: none;
+  background: var(--skin-paper-hi);
+  color: var(--fx-btn-ink);
+  box-shadow: inset 0 -3px 0 var(--accent-2), var(--skin-lift);
+}
+:root[data-skin='stack'] :is(.btn-gold, .btn-begin, .fx .btn-primary, .lobby .live-box .btn):disabled {
+  background: var(--fx-btn-off);
+  color: var(--fx-btn-off-ink);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+:root[data-skin='stack'] .btn-begin {
+  font-weight: 700;
+}
+:root[data-skin='stack'] :is(.btn-gold, .btn-begin) kbd {
+  background: var(--skin-ink);
+  color: #f2ecdc;
+}
+
+/* Chosen options: segments, source tiles, pills. */
+:root[data-skin='stack'] :is(.seg2 button.is-on, .vseg button.is-on, .fx .seg button.is-on) {
+  background: var(--skin-card);
+  color: var(--skin-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+:root[data-skin='stack'] .vseg button.is-on sup {
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] .pill.is-on {
+  border-color: var(--skin-edge);
+  background: var(--skin-card);
+  color: var(--skin-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+:root[data-skin='stack'] .src-tile.is-on {
+  border-color: var(--skin-edge);
+  font-weight: 700;
+}
+:root[data-skin='stack'] :is(.opt-tile.is-on, .ctile.is-on, .deck-tile.is-on, .profile.is-on) {
+  border-radius: 6px;
+}
+:root[data-skin='stack'] :is(.opt-tile.is-on .opt-t, .ctile.is-on .ctile-t, .deck-tile.is-on .deck-tile-name, .profile.is-on .profile-t) {
+  color: var(--skin-ink);
+  font-weight: 700;
+}
+:root[data-skin='stack'] :is(.opt-tile.is-on .opt-d, .ctile.is-on :is(.ctile-d, .ctile-m), .deck-tile.is-on :is(.deck-tile-meta, .deck-tile-k, .deck-tile-swap), .profile.is-on .profile-d) {
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] .profile.is-on .check {
+  color: var(--skin-ink-amber);
+}
+
+/* The seats (You / Forge AI): cream place cards. */
+:root[data-skin='stack'] .seat-row {
+  border-radius: 6px;
+}
+:root[data-skin='stack'] .seat-row-name {
+  color: var(--skin-ink);
+  font-weight: 700;
+}
+:root[data-skin='stack'] .seat-row :is(.bot-glyph, .seat-remove) {
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] .seat-row .tag-host {
+  background: transparent;
+  color: var(--skin-ink-amber);
+  box-shadow: inset 0 0 0 1px rgba(138, 85, 18, 0.55);
+}
+:root[data-skin='stack'] .seat-row .tag-plain {
+  color: var(--skin-ink-2);
+  border-color: var(--skin-edge);
+}
+:root[data-skin='stack'] .seat-row .seat-dot {
+  background: #2f8a4a;
+  box-shadow: 0 0 0 2px rgba(47, 138, 74, 0.2);
+}
+
+/* Draft & build: the cubes to start from are cream cards; the art stays a dark well. */
+:root[data-skin='stack'] .deck-home.fx .cube-tile {
+  border-radius: 8px;
+  transition: transform 0.15s, box-shadow 0.2s, background 0.15s;
+}
+:root[data-skin='stack'] .deck-home.fx .cube-art {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+:root[data-skin='stack'] .deck-home.fx .cube-title {
+  color: var(--skin-ink);
+  font-weight: 700;
+}
+:root[data-skin='stack'] .deck-home.fx .cube-blurb {
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] .fx .bv-build.is-on :is(.bv-build-name) {
+  color: var(--skin-ink);
+}
+:root[data-skin='stack'] .fx .bv-build.is-on .bv-build-score {
+  color: var(--skin-ink-amber);
 }
 
 /* ======================================================================== */
