@@ -24,6 +24,8 @@ import { isHelperThinking, thinkingLine } from './coachWait.ts';
 import { startAnswer, stopAnswer, useAnswer, type Answer } from './answers.ts';
 import { cardsForPrompt } from './cardData.ts';
 import { Markdown } from './Markdown.tsx';
+import { AdviceFeedback } from './AdviceFeedback.tsx';
+import { feedbackTarget, type FeedbackTarget } from '../feedback.ts';
 import { ManaCost } from './Mana.tsx';
 import { IconBook, IconCheck, IconChevronDown, IconCopy, IconSpark, IconStop, IconTrophy, KindIcon, KIND_LABEL } from './Icons.tsx';
 import { stripRound } from './Timeline.tsx';
@@ -223,6 +225,7 @@ const MomentView = memo(function MomentView({ log, d, onOpenSettings }: { log: G
         makePrompt={makePrompt}
         onOpenSettings={onOpenSettings}
         structured
+        feedback={feedbackTarget(log, d.frameIndex, 'replay')}
       />
     </div>
   );
@@ -268,6 +271,7 @@ function ReviewView({ log, onOpenSettings, filmRoom }: { log: GameLog; onOpenSet
         onStop={() => stopAnswer(key)}
         makePrompt={makePrompt}
         onOpenSettings={onOpenSettings}
+        feedback={feedbackTarget(log, null, 'review')}
       />
     </div>
   );
@@ -299,6 +303,7 @@ export function AnswerBox({
   makePrompt,
   onOpenSettings,
   structured = false,
+  feedback = null,
 }: {
   answer: Answer | undefined;
   askLabel: string;
@@ -309,6 +314,8 @@ export function AnswerBox({
   onOpenSettings: () => void;
   /** A decision answer (prompt.ts's format): show its one-line answer, rule and stated confidence as a header. */
   structured?: boolean;
+  /** "Was this advice helpful?" under a finished answer: the game and decision it is about (feedback.ts). */
+  feedback?: FeedbackTarget | null;
 }) {
   const [copyState, setCopyState] = useState<'idle' | 'busy' | 'ok' | 'err'>('idle');
   const copy = async () => {
@@ -369,6 +376,7 @@ export function AnswerBox({
           {thinkingNow ?? (answer.thinking ? 'Thinking it through…' : answer.source === 'helper' ? 'Waiting for Claude Code on your PC…' : 'Waiting for Claude…')}
         </p>
       )}
+      <AdviceFeedback target={feedback} answer={answer} />
       {answer?.refused && <div className="notice-inline warn">Claude declined to answer this one. Try rephrasing via “Copy prompt” in the Claude app.</div>}
       {answer?.status === 'stopped' && (
         <div className="notice-inline">
