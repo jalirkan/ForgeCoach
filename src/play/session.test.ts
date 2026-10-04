@@ -15,7 +15,7 @@ import { gunzipSync } from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseLog, type GameLog, type LoggedFrame } from '../log.ts';
 import { extractDecisions } from '../decisions.ts';
-import type { ActBody, AnswerBody, AskBody, OverBody } from '../protocol.ts';
+import type { ActBody, AnswerBody, AnyCard, AskBody, GameStateBody, OverBody } from '../protocol.ts';
 import {
   AI_DECK_WARNING_REDACTED,
   connectSeat,
@@ -546,5 +546,41 @@ describe('connectSeat — connection', () => {
     expect(h.session.snapshot().status).toBe('closed');
     vi.advanceTimersByTime(60_000);
     expect(h.sockets).toHaveLength(1);
+  });
+});
+
+describe('connectSeat — an opponent’s face-down permanent never shows its face (mtg-table D371)', () => {
+  it('drops alt from the board state and the log; keeps the viewer’s own', () => {
+    const rec = RECORDINGS['human-auto-42']!;
+    const h = harness();
+    h.sock().open();
+    const elves = { name: 'Llanowar Elves', manaCost: '{G}', types: 'Creature - Elf Druid', power: '1', toughness: '1' };
+    let planted = 0;
+    for (const f of rec.frames) {
+      if (f.dir === 'c2s') continue;
+      const w = structuredClone(wire(f)) as LoggedFrame;
+      if (w.type === 'state') {
+        const s = w.body as GameStateBody;
+        for (const p of s.players) {
+          const proto = p.zones.battlefield.cards.find((c) => !('hidden' in c && c.hidden));
+          if (!proto) continue;
+          p.zones.battlefield.cards.push({ ...proto, id: 99000 + p.id, name: '', faceDown: true, alt: { ...elves } } as AnyCard);
+          planted++;
+        }
+      }
+      h.sock().msg(w);
+    }
+    expect(planted).toBeGreaterThan(10);
+    const snap = h.session.snapshot();
+    const seat = rec.seat;
+    const at = (s: GameStateBody | null, id: number) =>
+      s?.players.flatMap((p) => p.zones.battlefield.cards).find((c) => c.id === id) as { alt: unknown } | undefined;
+    const theirs = 99000 + (seat === 0 ? 1 : 0);
+    const mine = 99000 + seat;
+    expect(at(snap.state, theirs)?.alt).toBeNull();
+    expect(at(snap.state, mine)?.alt).toEqual(elves);
+    for (const f of snap.log!.frames) {
+      if (f.type === 'state') expect(at(f.body as GameStateBody, theirs)?.alt ?? null).toBeNull();
+    }
   });
 });
