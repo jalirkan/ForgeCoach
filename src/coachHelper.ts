@@ -12,6 +12,9 @@
  *                  D325 adds "concurrency":1, "queue":{"max","length"}, "running":0|1,
  *                  "supersedes":1. A helper without "queue" refuses a second question (429).
  *                  D346 adds "thinking":["off","low","default"].
+ *                  D359 adds "eval":1 (with "evalModel", "evalSchema") when the helper serves
+ *                  the win chance (POST /eval, evalClient.ts); read even when "ok" is false,
+ *                  since the win chance does not need Claude Code.
  *   POST /coach  {"system","user","model"?:"opus"|"sonnet"|"haiku","supersedes"?:"<key>",
  *                 "thinking"?:"off"|"low"|"default"}   (D346: send "thinking" only to a
  *                 helper whose /health lists it; absent = "default", anything else is 400)
@@ -159,8 +162,33 @@ export type HelperStatus =
       supersedes?: boolean;
       /** D346: the "thinking" values /coach accepts; [] from an older helper (send none). */
       thinking?: HelperThinking[];
+      /** D359: the helper serves the win chance (POST /eval). */
+      eval?: HelperEval | null;
     }
-  | { state: 'down'; baseUrl: string; reason: 'not_running' | 'not_ready' | 'unauthorized'; message: string; checkedAt: number };
+  | {
+      state: 'down';
+      baseUrl: string;
+      reason: 'not_running' | 'not_ready' | 'unauthorized';
+      message: string;
+      checkedAt: number;
+      /** D359: a helper whose Claude Code is not ready may still serve the win chance. */
+      eval?: HelperEval | null;
+    };
+
+/** D359: what /health says about the win chance: the model's file hash and its feature schema. */
+export interface HelperEval {
+  model: string;
+  schema: string;
+}
+
+/** The `eval` part of a /health body: present only with "eval": 1 and well-formed ids. */
+export function helperEvalOf(body: unknown): HelperEval | null {
+  const b = body as { eval?: unknown; evalModel?: unknown; evalSchema?: unknown } | null;
+  if (!b || typeof b !== 'object' || b.eval !== 1) return null;
+  const model = typeof b.evalModel === 'string' && /^[0-9a-f]{12}$/.test(b.evalModel) ? b.evalModel : null;
+  const schema = typeof b.evalSchema === 'string' && /^[0-9a-f]{16}$/.test(b.evalSchema) ? b.evalSchema : null;
+  return model && schema ? { model, schema } : null;
+}
 
 type FetchFn = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -270,9 +298,10 @@ async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: (
         queue: helperQueue(b.queue),
         supersedes: b.supersedes === 1 || b.supersedes === true,
         thinking: Array.isArray(b.thinking) ? HELPER_THINKING.filter((t) => (b.thinking as unknown[]).includes(t)) : [],
+        eval: helperEvalOf(b),
       };
     }
-    if (b.helper !== undefined) return down('not_ready', helperProblem(typeof b.error === 'string' ? b.error : ''));
+    if (b.helper !== undefined) return { ...down('not_ready', helperProblem(typeof b.error === 'string' ? b.error : '')), eval: helperEvalOf(b) };
     return down('not_running', NOT_RUNNING);
   } catch {
     return down('not_running', NOT_RUNNING);

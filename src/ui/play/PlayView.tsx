@@ -46,6 +46,8 @@ import { selectionSummary } from './selection.ts';
 import { matchBox, type MatchBox } from '../../play/match.ts';
 import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
 import { BoardScenery } from '../ambience/BoardScenery.tsx';
+import { WinChanceStrip } from '../winchance/WinChance.tsx';
+import { useLiveWinChance, useWinChanceModel } from '../winchance/useWinChance.ts';
 
 import './play.css';
 import './controls.css';
@@ -135,6 +137,10 @@ export function PlayView({
     act({ action: 'buttonCancel' });
   }, [view.cancel.enabled, act]);
 
+
+  // ---- the win chance (mtg-table D359; Settings → Show win chance): only with a helper that has a model
+  const wcModel = useWinChanceModel();
+  const winChance = useLiveWinChance(log, wcModel);
 
   // ---- derived facts for hints
   const frameIndex = log ? lastStateFrame(log) : -1;
@@ -550,6 +556,7 @@ export function PlayView({
             {/* Phones: the steps across the very top, above everything (endstep-style). */}
             {!wide && strip('bar')}
             {!wide && header}
+            {!wide && wcModel && <WinChanceStrip {...winChance} compact />}
             {!connected && snap.detail && status !== 'connecting' && <div className="live-banner play-banner">{snap.detail}</div>}
 
             {wide ? (
@@ -563,6 +570,7 @@ export function PlayView({
                   {header}
                   {match && <MatchScore match={match} />}
                   {strip('side')}
+                  {wcModel && <WinChanceStrip {...winChance} />}
                   {coachOpen ? (
                     <div className="play-side-coach">{coach}</div>
                   ) : (

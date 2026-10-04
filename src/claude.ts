@@ -81,6 +81,12 @@ export interface Settings {
   answerFirst?: boolean;
   /** The site's look (absent = 'classic'). */
   skin?: Skin;
+  /**
+   * Show the win chance (mtg-table D359): the local model's estimate, served by
+   * the coach helper's /eval. Off by default (absent = off); shown only while the
+   * helper has a model (evalClient.ts).
+   */
+  winChance?: boolean;
 }
 
 function storage(): Storage | null {
@@ -93,7 +99,7 @@ function storage(): Storage | null {
 
 export function loadSettings(): Settings {
   // Settings saved before the coach helper existed have no coachSource → 'auto'.
-  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: DEFAULT_COACH_THINKING, skin: DEFAULT_SKIN };
+  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: DEFAULT_COACH_THINKING, skin: DEFAULT_SKIN, winChance: false };
   try {
     const raw = storage()?.getItem(SETTINGS_KEY);
     if (!raw) return out;
@@ -104,6 +110,7 @@ export function loadSettings(): Settings {
     if (v.answerFirst === true) out.answerFirst = true;
     if (isCoachThinking(v.coachThinking)) out.coachThinking = v.coachThinking;
     if (isSkin(v.skin)) out.skin = v.skin;
+    if (v.winChance === true) out.winChance = true;
   } catch {
     /* corrupt or unavailable storage → defaults */
   }
@@ -129,6 +136,7 @@ export function saveSettings(s: Settings): void {
         answerFirst: s.answerFirst === true,
         coachThinking: isCoachThinking(s.coachThinking) ? s.coachThinking : DEFAULT_COACH_THINKING,
         skin: isSkin(s.skin) ? s.skin : DEFAULT_SKIN,
+        winChance: s.winChance === true,
       }),
     );
   } catch {
