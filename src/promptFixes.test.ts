@@ -194,8 +194,8 @@ describe('picking a target in your own main phase', () => {
     const p = buildCoachPrompt(m.log, d, cards).user;
     expect(p).toContain('Choosing a target for: Quantum Reduction #5');
     expect(p).toContain('Legal targets (the engine accepts only these; choose 1):');
-    expect(p).toContain('  - Bold Biochemist #12 · 1/3 · Creature - Human Scientist · yours');
-    expect(p).toContain("  - Ant-Man's Air Force #63 · 2/1 · Creature - Insect · SUMMONING SICK · Forge AI's");
+    expect(p).toContain('  1. Bold Biochemist #12 · 1/3 · Creature - Human Scientist · yours');
+    expect(p).toContain("  3. Ant-Man's Air Force #63 · 2/1 · Creature - Insect · SUMMONING SICK · Forge AI's");
     expect(p).toContain('The engine wants me to choose a target for Quantum Reduction #5.');
     expect(p).not.toContain('What should I do this turn');
     // The spell's own text is there to judge the targets by.
@@ -206,7 +206,7 @@ describe('picking a target in your own main phase', () => {
     const p = benchCase('target-auto2026-seismic-takedown').appPrompt.user;
     expect(p).toContain('Choosing a target for: Quake, Agent of S.H.I.E.L.D. #31 — Seismic Takedown');
     expect(p).toContain('choose a target for Quake, Agent of S.H.I.E.L.D. #31 — Seismic Takedown');
-    expect(p).toContain("  - Giant-Sized Flying Ant #64 · 3/2 · Creature - Insect · SUMMONING SICK · Forge AI's");
+    expect(p).toMatch(/^ {2}\d+\. Giant-Sized Flying Ant #64 · 3\/2 · Creature - Insect · SUMMONING SICK · Forge AI's$/m);
   });
 });
 

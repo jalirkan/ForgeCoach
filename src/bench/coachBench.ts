@@ -14,6 +14,12 @@
  * last line in the classic layout, the first in the answer-first one
  * (`--prompt-format`). Normal prompts never carry that section.
  *
+ * Except for attack and block, the choices are numbered from 1 and the coach
+ * answers `ANSWER: <number> — <label>`; the number maps back to the choice's
+ * token (`resolveAnswer`). For an engine question or a target, the bench's
+ * numbering is the app prompt's own (checked by `numberingProblems`). A bare
+ * token (`cast:12`) is still read, so older replies score the same.
+ *
  * Choices are machine tokens over the ids in the viewer's redacted state:
  *   mulligan   keep | mulligan
  *   play_draw  play | draw
@@ -37,8 +43,8 @@ import { isHidden, keywordsOf } from '../protocol.ts';
 import type { GameLog } from '../log.ts';
 import type { CardInfo } from '../cards.ts';
 import { extractDecisions, type Decision, type DecisionKind } from '../decisions.ts';
-import { buildCoachPrompt, coachCardNames, type Prompt, type PromptFormat } from '../prompt.ts';
-import { statedOf, STATED_CONFIDENCES, type StatedConfidence } from '../coachAnswer.ts';
+import { buildCoachPrompt, coachCardNames, optionLabelText, type Prompt, type PromptFormat } from '../prompt.ts';
+import { optionNumberOf, statedOf, STATED_CONFIDENCES, type StatedConfidence } from '../coachAnswer.ts';
 import { canPay, chosenColors, infoFor, instantSpeedOptions, manaColorsOf, turnFacts, untappedManaSources, type ManaSource } from '../state.ts';
 import { liveDecision } from '../ui/play/liveDecision.ts';
 import type { HelperStatus, HelperThinking } from '../coachHelper.ts';
@@ -468,6 +474,9 @@ const DEFAULT_QUESTION: Record<BenchType, string> = {
   choice: 'Which option should you choose?',
 };
 
+/** Attack and block answers are built from creature ids; every other type picks one numbered choice. */
+export const isNumbered = (type: BenchType): boolean => type !== 'attack' && type !== 'block';
+
 function formatHelp(type: BenchType): string[] {
   switch (type) {
     case 'attack':
@@ -478,28 +487,30 @@ function formatHelp(type: BenchType): string[] {
         'ANSWER: block:none',
       ];
     default:
-      return ['ANSWER: <one choice token below, exactly>'];
+      return ['ANSWER: <option number> — <its label>'];
   }
 }
 
 /** The bench-only section appended to the app's prompt. */
 export function benchSection(c: Pick<BenchCase, 'type' | 'question'>, cs: ChoiceSet, format: PromptFormat = 'classic'): string {
   const lines = ['# Bench answer', c.question?.trim() || DEFAULT_QUESTION[c.type], ''];
-  if (format === 'answer-first') lines.push('Make your FIRST line exactly one line in this form (it stands in for the one-line **Answer:**), then continue in your usual format:');
-  else lines.push('Answer in your usual format. Then end with exactly one final line, in this form:');
-  lines.push(...formatHelp(c.type));
   if (c.type === 'attack') {
-    lines.push('', 'Creatures that can attack:');
+    lines.push('Creatures that can attack:');
     lines.push(...(cs.attackers ?? []).map((x) => `- #${x.id} ${cardLabel(x)}`));
   } else if (c.type === 'block') {
-    lines.push('', 'Creatures that can block:');
+    lines.push('Creatures that can block:');
     lines.push(...(cs.blockers ?? []).map((x) => `- #${x.id} ${cardLabel(x)}`));
     lines.push('Attacking you:');
     lines.push(...(cs.attacking ?? []).map((x) => `- #${x.id} ${cardLabel(x)}`));
   } else {
-    lines.push('', 'Choices:');
-    lines.push(...cs.choices.map((x) => `- ${x.token} — ${x.label}`));
+    // An engine question's options and a target list are the engine's own; the other lists are the bench's (castable by mana).
+    lines.push(c.type === 'choice' || c.type === 'target' ? 'Options (exactly what the engine accepts):' : 'Options:');
+    lines.push(...cs.choices.map((x, i) => `${i + 1}. ${optionLabelText(x.label)}`));
   }
+  lines.push('');
+  if (format === 'answer-first') lines.push('Make your FIRST line exactly this (it stands in for the one-line **Answer:**), then continue in your usual format:');
+  else lines.push('Answer in your usual format. Then end with exactly one final line:');
+  lines.push(...formatHelp(c.type));
   return lines.join('\n');
 }
 
@@ -548,6 +559,50 @@ export function caseProblems(b: BuiltCase): string[] {
       keys.set(k, list);
     }
   }
+  out.push(...numberingProblems(b));
+  return out;
+}
+
+/** The numbered option lines ("  2. Plains") of the app prompt's decision section (before the first player section). */
+function appOptionNumbers(user: string): number[] {
+  const head = user.split('\n## ')[0]!;
+  return [...head.matchAll(/^ {2}(\d+)\. /gm)].map((m) => Number(m[1]));
+}
+
+/**
+ * Checks that the option numbering round-trips: every choice token is listed
+ * exactly once, the bench prompt prints each numbered option exactly once,
+ * "ANSWER: n", "ANSWER: n — label" and the bare token all score as choice n,
+ * a number past the list is refused, and — for an engine question or a
+ * target — the app prompt numbers the same options 1…n.
+ */
+export function numberingProblems(b: BuiltCase): string[] {
+  const cs = b.choices;
+  if (!isNumbered(cs.type)) return [];
+  const out: string[] = [];
+  const tokens = cs.choices.map((c) => c.token);
+  const dup = tokens.filter((t, i) => tokens.indexOf(t) !== i);
+  if (dup.length) out.push(`choice tokens listed twice: ${[...new Set(dup)].join(', ')}`);
+  if (!cs.choices.length) out.push('no choices to number');
+  const lines = b.prompt.user.split('\n');
+  const scoreOf = (text: string) => scoreReply({ ...b, format: 'classic' }, text).canonical;
+  cs.choices.forEach((c, i) => {
+    const n = i + 1;
+    const line = `${n}. ${optionLabelText(c.label)}`;
+    const count = lines.filter((l) => l === line).length;
+    if (count !== 1) out.push(`bench prompt prints "${line}" ${count} times`);
+    const want = formatAnswer(parseAnswer(c.token)!);
+    for (const reply of [`ANSWER: ${n}`, `ANSWER: ${n} — ${optionLabelText(c.label)}`, `ANSWER: ${c.token}`]) {
+      const got = scoreOf(reply);
+      if (got !== want) out.push(`"${reply}" scores as ${got ?? 'nothing'}, not ${want}`);
+    }
+  });
+  if (scoreOf(`ANSWER: ${cs.choices.length + 1}`) !== null) out.push(`"ANSWER: ${cs.choices.length + 1}" (past the list) is not refused`);
+  if (cs.type === 'choice' || cs.type === 'target') {
+    const app = appOptionNumbers(b.appPrompt.user);
+    const expect = cs.choices.map((_, i) => i + 1);
+    if (app.join(',') !== expect.join(',')) out.push(`the app prompt numbers ${app.length ? app.join(',') : 'no options'}, the bench ${expect.join(',')}`);
+  }
   return out;
 }
 
@@ -557,10 +612,11 @@ export function caseProblems(b: BuiltCase): string[] {
 /**
  * The answer on an `ANSWER:` line of a coach reply, or null. Either layout
  * parses: `prefer` 'last' (classic: the final line) or 'first' (answer-first),
- * and a line whose value is an answer token beats one that isn't (the
- * answer-first layout's prose **Answer:** line can sit beside the token line).
+ * and a line whose value is an answer (a token, or with `cs` a choice number)
+ * beats one that isn't (the answer-first layout's prose **Answer:** line can
+ * sit beside the bench's line).
  */
-export function extractAnswer(text: string, prefer: 'first' | 'last' = 'last'): string | null {
+export function extractAnswer(text: string, prefer: 'first' | 'last' = 'last', cs?: ChoiceSet): string | null {
   const found: string[] = [];
   for (const line of text.split('\n')) {
     const m = /^[\s>*_`-]*answer\s*:\s*(.+?)\s*$/i.exec(line.replace(/\*\*/g, ''));
@@ -568,7 +624,41 @@ export function extractAnswer(text: string, prefer: 'first' | 'last' = 'last'): 
   }
   if (!found.length) return null;
   const ordered = prefer === 'first' ? found : [...found].reverse();
-  return ordered.find((a) => parseAnswer(a) !== null) ?? ordered[0]!;
+  const reads = (a: string) => parseAnswer(a) !== null || (!!cs && isNumbered(cs.type) && optionNumberOf(a) !== null);
+  return ordered.find(reads) ?? ordered[0]!;
+}
+
+const normLabel = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[`*_"“”']/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/[.;,]+$/, '')
+    .trim();
+
+/**
+ * An answer read against the case's choices: a numbered choice ("2", "2 —
+ * Plains") becomes that choice's token; anything else parses as a token. An
+ * out-of-range number, or a number whose label is another choice's, is an
+ * error (the coach confused the numbering), never silently another choice.
+ */
+export function resolveAnswer(raw: string, cs: ChoiceSet): { parsed: Parsed } | { error: string } | null {
+  if (isNumbered(cs.type)) {
+    const o = optionNumberOf(raw);
+    if (o) {
+      const n = cs.choices.length;
+      if (o.n < 1 || o.n > n) return { error: `no option ${o.n} (options are 1–${n})` };
+      const said = normLabel(o.rest);
+      if (said && said !== normLabel(cs.choices[o.n - 1]!.label)) {
+        const other = cs.choices.findIndex((c) => normLabel(c.label) === said);
+        if (other >= 0) return { error: `option ${o.n} is "${cs.choices[o.n - 1]!.label}", but the label given is option ${other + 1}'s` };
+      }
+      const parsed = parseAnswer(cs.choices[o.n - 1]!.token);
+      return parsed ? { parsed } : { error: `option ${o.n} has no token` };
+    }
+  }
+  const parsed = parseAnswer(raw);
+  return parsed ? { parsed } : null;
 }
 
 export type Verdict = 'acceptable' | 'unacceptable' | 'other' | 'illegal' | 'missing';
@@ -604,10 +694,12 @@ export function gradeRegret(b: Pick<BuiltCase, 'case' | 'choices'>, p: Parsed): 
 
 /** acceptable = 1, blunder = −1, anything else (incl. a missing or illegal answer) = 0. */
 export function scoreReply(b: BuiltCase, text: string): Scored {
-  const answer = extractAnswer(text, b.format === 'answer-first' ? 'first' : 'last');
+  const answer = extractAnswer(text, b.format === 'answer-first' ? 'first' : 'last', b.choices);
   if (answer === null) return { answer, canonical: null, verdict: 'missing', score: 0, note: 'no ANSWER: line' };
-  const p = parseAnswer(answer);
-  if (!p) return { answer, canonical: null, verdict: 'illegal', score: 0, note: 'not an answer token' };
+  const r = resolveAnswer(answer, b.choices);
+  if (!r) return { answer, canonical: null, verdict: 'illegal', score: 0, note: 'not an answer token or option number' };
+  if ('error' in r) return { answer, canonical: null, verdict: 'illegal', score: 0, note: r.error };
+  const p = r.parsed;
   const canonical = formatAnswer(p);
   const why = illegalReason(p, b.choices);
   if (why) return { answer, canonical, verdict: 'illegal', score: 0, note: why };

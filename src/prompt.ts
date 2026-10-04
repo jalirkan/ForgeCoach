@@ -37,33 +37,37 @@ export interface Prompt {
 export type PromptFormat = 'classic' | 'answer-first';
 export const PROMPT_FORMATS: readonly PromptFormat[] = ['classic', 'answer-first'];
 
-const COACH_INTRO = `You are a Magic: The Gathering coach sitting next to a newer player (started a few months ago) who is playing against the Forge AI. At each decision you get the exact game state straight from the engine, the oracle text of the cards involved, and sometimes a play guide for the player's deck.
+const COACH_INTRO = `You coach a newer Magic: The Gathering player (a few months in) who is playing against the Forge AI. You get the engine's exact game state as the player sees it, the oracle text of the cards that matter, and sometimes a play guide for the player's deck.
 
-Trust the state, not intuition: TAPPED, SUMMONING SICK, counters, damage, P/T (already including pumps and counters), the mana pool, the untapped mana sources, the land drop and the spells cast this turn are exact. Use the given card text, never memory of a card; if a card's text is unavailable, say what you assume it does. Cards marked hidden are unknown — reason about what the opponent could have, never claim to know it.
+Ground rules:
+- The state is exact: TAPPED, SUMMONING SICK, counters, damage, P/T (pumps and counters included), the untapped mana sources, the mana pool (shown only when not empty), the land drop and this turn's spells.
+- Use the given card text, never memory of a card. If a card's text is unavailable, say what you assume it does.
+- You can't see the opponent's hand or either library. Never name or assume a specific hidden card; reason about what they could have (cards in hand, open mana, colours) and say it is a guess.
+- Recommend only legal plays. Numbered options and legal targets in the message are exactly what the engine accepts: pick from them and name your pick by its number and label.
 
-Before recommending any attack, activation or spell, check:
-- Summoning sickness: a creature marked SUMMONING SICK can't attack and can't pay a {T} cost (including a creature's mana ability). It CAN block, use abilities without {T}, be sacrificed, be equipped and be targeted.
-- {T} in a cost means once per untap: "{1}, {T}: …" (Hangarback Walker) is once a turn; an ability with no {T} ("{1}: +1/+0", like Edgar's pump) can be activated again and again while you can pay.
-- Mana: only the listed untapped sources plus the mana pool are available, each source makes one mana of one of its colours, and the pool empties between steps. Check colour requirements, not just the total. Say which sources pay for what.
-- Land drop: one per turn unless a card says otherwise; the state says whether it is used.
-- "Whenever you cast an instant or sorcery" (Young Pyromancer, prowess) triggers only on instants and sorceries — not creatures, artifacts or enchantments, and never on activated abilities. A copy that is cast (e.g. Prepared in Reality Fracture) is a spell; an activation is not.
-- Equip is sorcery speed (your main phase, empty stack), activated from the Equipment, and may target a summoning-sick creature. Equipment that lowers toughness (Skullclamp's +1/-1) kills a 1-toughness creature immediately as a state-based action, and its death triggers still happen.
+Check before any attack, block, activation or spell:
+- SUMMONING SICK: can't attack or pay a {T} cost (mana abilities included); CAN block, use abilities without {T}, be sacrificed, equipped and targeted.
+- {T} in a cost means once per untap; an ability without {T} ("{1}: +1/+0") repeats while you can pay.
+- Mana: only the listed untapped sources plus the pool, each source one mana of one of its colours; the pool empties between steps. Check colours, not just the total, and say which sources pay for what.
+- One land drop per turn unless a card says otherwise.
+- "Whenever you cast an instant or sorcery" (prowess) triggers only on instants and sorceries: never on other spells or on activated abilities. A copy that is cast is a spell.
+- Equip is sorcery speed (your main phase, empty stack) and may target a summoning-sick creature. Equipment that lowers toughness (Skullclamp) kills a 1-toughness creature at once, and its death triggers still happen.
 - Triggered abilities ("whenever … dies / attacks / enters") work whether the source is tapped or not.
-- Revolt-style conditions ("if a permanent you controlled left the battlefield this turn", Fatal Push) count any permanent: a cracked fetchland, a sacrificed creature, a dead token. The state lists what left this turn.
-- Read restrictions literally: "can't block" (Bloodghast, Gravecrawler), conditional haste (Bloodghast only while an opponent is at 10 life or less; it returns on every landfall, fetched lands included), conditional recasting (Gravecrawler only while you control a Zombie).
-- Respond to removal by sacrificing its target for value when you have an outlet.
-- Count lethal both ways before every attack and every block: what you can push through against their life and untapped blockers, and what they can swing back with next turn against your life and blockers.
+- Revolt (Fatal Push) counts any permanent of yours that left the battlefield this turn: a cracked fetchland, a sacrificed creature, a dead token. The state lists them.
+- Read restrictions literally: "can't block" (Bloodghast, Gravecrawler); conditional haste (Bloodghast only while an opponent is at 10 life or less; it returns on every landfall, fetchlands included); conditional recasting (Gravecrawler only while you control a Zombie).
+- Facing removal with a sacrifice outlet, sacrifice the target in response for value.
+- Count lethal both ways before every attack and every block: what you can push through against their life and untapped blockers, and what they can swing back with next turn.
 
 `;
 
-const F_PLAY = '**Play:** one recommended line as numbered steps in order. For every spell or ability give its cost and which sources pay it, and what mana is left at the end. For combat, name every attacker / blocker assignment.';
+const F_PLAY = '**Play:** the recommended line as numbered steps in order. For each spell or ability: its cost, which sources pay it, and the mana left after. For combat: every attacker / blocker assignment. For a numbered option or target: its number and label.';
 const F_WHY = '**Why:** two or three sentences.';
 const F_RULE = '**Rule:** the heuristic the line follows, in a few words ("count lethal", "hold the outlet", "fodder before payoffs", "trade on your terms", "use all your mana", "don\'t overextend"), so the pattern transfers.';
 const F_CONFIDENCE = '**Confidence:** high, medium or low, then a few words why when it is not high. Low means a close call: another line is about as good, or the right play turns on something hidden.';
 const F_TAIL = [
-  "**Trap:** the tempting wrong play here and why it's wrong.",
-  '**Their turn:** what the opponent can do next (their untapped creatures, open mana, cards in hand) and what to keep back for it.',
-  '**Alternative:** only if a second line is genuinely close; otherwise leave this out.',
+  "**Trap:** the tempting wrong play and why it's wrong, in one sentence.",
+  '**Their turn:** in one sentence, what the opponent can do next (untapped creatures, open mana, cards in hand) and what to keep back for it.',
+  '**Alternative:** only if a second line is genuinely close; otherwise leave it out.',
   '**Assumptions:** only if something is ambiguous or a card\'s text is unavailable — state it rather than guessing.',
 ];
 
@@ -73,7 +77,7 @@ export function coachSystem(format: PromptFormat = 'classic'): string {
     format === 'answer-first'
       ? [
           'Answer format — answer first, short, no preamble, no restating the state. The first line is the answer, so the player can act on it before reading the rest:',
-          '**Answer:** the recommended play in one line (for example "Attack with both Bears, keep the Wall home").',
+          '**Answer:** the recommended play in one line (a numbered option or target by number and label, e.g. "2 — Plains"; otherwise e.g. "Attack with both Bears, keep the Wall home").',
           F_CONFIDENCE,
           F_RULE,
           F_PLAY,
@@ -232,17 +236,24 @@ function handLines(p: PlayerState, isViewer: boolean): string[] {
   const cards = p.zones.hand.cards;
   if (isViewer) {
     if (cards.length === 0) return ['Hand (0): empty'];
-    return [
-      `Hand (${p.zones.hand.count}):`,
-      ...cards.map((c) => {
-        if (isHidden(c)) return '  - a hidden card';
+    // Identical cards share a line ("Mountain ×3 · Basic Land - Mountain"), in first-seen order.
+    const rows = new Map<string, { name: string; rest: string; n: number }>();
+    for (const c of cards) {
+      let name = 'a hidden card';
+      let rest = '';
+      if (!isHidden(c)) {
         const k = c as Card;
-        return `  - ${displayName(k)}${k.manaCost ? ` ${k.manaCost}` : ''}${k.types ? ` · ${k.types}` : ''}`;
-      }),
-    ];
+        name = displayName(k);
+        rest = `${k.manaCost ? ` ${k.manaCost}` : ''}${k.types ? ` · ${k.types}` : ''}`;
+      }
+      const row = rows.get(name + rest) ?? { name, rest, n: 0 };
+      row.n++;
+      rows.set(name + rest, row);
+    }
+    return [`Hand (${p.zones.hand.count}):`, ...[...rows.values()].map((r) => `  - ${r.name}${r.n > 1 ? ` ×${r.n}` : ''}${r.rest}`)];
   }
   const known = cards.filter((c) => !isHidden(c));
-  return [`Hand: ${p.zones.hand.count} cards${known.length ? ` (revealed: ${namesList(known)})` : ' (hidden)'}`];
+  return [`Hand: ${p.zones.hand.count} cards${known.length ? ` (revealed: ${namesList(known)}; the rest hidden)` : ' (hidden)'}`];
 }
 
 // ---------------------------------------------------------------------------
@@ -303,38 +314,49 @@ function combatLines(state: GameStateBody, seat: number, byId: Map<number, AnyCa
   return out;
 }
 
-function optionLabels(opts: { label: string; card?: AnyCard }[]): string {
+/** An option's label as the prompt prints it: a bare number (an amount: 0, 1, 2 …) is quoted, so it is never read as the option's own number. */
+export function optionLabelText(label: string): string {
+  return /^\d+$/.test(label.trim()) ? `"${label.trim()}"` : label;
+}
+
+/**
+ * The engine's options, numbered from 1 in the engine's order. The bench
+ * numbers its choices the same way (bench/coachBench.ts), so "option 2" means
+ * the same option in the coach's answer and in the bench's scoring.
+ */
+function optionLabels(opts: { label: string; card?: AnyCard }[], suffix: (i: number) => string = () => ''): string {
   return opts
     .map((o, i) => {
       // An option's label is engine text that the bridge already gates; a hidden card's label is "???".
       const label = o.card && isHidden(o.card) ? 'a hidden card' : o.label;
-      return `  ${i}. ${label}`;
+      return `  ${i + 1}. ${optionLabelText(label)}${suffix(i)}`;
     })
     .join('\n');
 }
 
+const LEGAL_ONLY = 'only these are legal';
+
 function askLines(ask: AskBody, byId: Map<number, AnyCard>): string[] {
   const out: string[] = [`Engine question (${ask.kind}):`];
+  const on = (card: AnyCard | null | undefined) => (card ? ` [card: ${displayName(card)}]` : '');
   switch (ask.kind) {
     case 'confirm':
-      out.push(`  ${ask.prompt}${ask.card ? ` [card: ${displayName(ask.card)}]` : ''} — ${ask.yesLabel} / ${ask.noLabel}`);
+      out.push(`  ${ask.prompt}${on(ask.card)} (${LEGAL_ONLY}):`, optionLabels([{ label: ask.yesLabel || 'yes' }, { label: ask.noLabel || 'no' }]));
       break;
     case 'options':
-      out.push(`  ${ask.prompt}${ask.card ? ` [card: ${displayName(ask.card)}]` : ''}`, optionLabels(ask.options));
+      out.push(`  ${ask.prompt}${on(ask.card)} (${LEGAL_ONLY}):`, optionLabels(ask.options));
       break;
     case 'text':
       out.push(`  ${ask.prompt}${ask.numeric ? ' (a number)' : ''}`);
       break;
     case 'choose_list':
-      out.push(`  ${ask.prompt} (choose ${ask.min}–${ask.max})`, optionLabels(ask.options));
-      break;
     case 'choose_entities':
-      out.push(`  ${ask.prompt} (choose ${ask.min}–${ask.max})`, optionLabels(ask.options));
+      out.push(`  ${ask.prompt} (choose ${ask.min === ask.max ? ask.max : `${ask.min}–${ask.max}`}; ${LEGAL_ONLY}):`, optionLabels(ask.options));
       break;
     case 'ability_menu':
       out.push(
         `  Which ability of ${displayName(byId.get(ask.cardId))} #${ask.cardId}?`,
-        ask.options.map((o, i) => `  ${i}. ${o.label}${o.canPlay ? '' : ' (not playable now)'}`).join('\n'),
+        optionLabels(ask.options, (i) => (ask.options[i]!.canPlay ? '' : ' (not playable now)')),
       );
       break;
     case 'order':
@@ -343,7 +365,7 @@ function askLines(ask: AskBody, byId: Map<number, AnyCard>): string[] {
     case 'assign_damage':
       out.push(
         `  Assign ${ask.total} combat damage from ${ask.attackerId !== null ? `${displayName(byId.get(ask.attackerId))} #${ask.attackerId}` : 'an attacker'}:`,
-        ask.targets.map((t, i) => `  ${i}. ${t.defender ? `${t.label} (defender)` : t.label}${t.lethal != null ? ` — lethal ${t.lethal}` : ''}`).join('\n'),
+        ask.targets.map((t, i) => `  ${i + 1}. ${t.defender ? `${t.label} (defender)` : t.label}${t.lethal != null ? ` — lethal ${t.lethal}` : ''}`).join('\n'),
       );
       break;
     case 'assign_amount':
@@ -391,23 +413,24 @@ function targetLines(d: Decision, seat: number, byId: Map<number, AnyCard>): str
   if (src) out.push(`Choosing a target for: ${src}`);
   const n = sel.min === sel.max ? `${sel.max}` : `${sel.min}–${sel.max}`;
   out.push(`Legal targets (the engine accepts only these; choose ${n}):`);
+  // Numbered from 1 in the engine's order, as the bench numbers its target choices.
   if (sel.mode === 'players') {
-    for (const id of sel.cardIds) out.push(`  - ${playerName(s, id, seat)}`);
+    sel.cardIds.forEach((id, i) => out.push(`  ${i + 1}. ${playerName(s, id, seat)}`));
     return out;
   }
-  for (const id of sel.cardIds) {
+  for (const [i, id] of sel.cardIds.entries()) {
     const c = byId.get(id);
     const owner = s.players.find((p) => Object.values(p.zones).some((z) => (z.cards as AnyCard[]).some((x) => x.id === id)));
     const ctl = c && c.controller !== null && c.controller !== undefined ? c.controller : (owner?.id ?? null);
     const whose = ctl === null ? '' : ctl === seat ? 'yours' : `${playerName(s, ctl, seat)}'s`;
     const zone = owner ? (Object.entries(owner.zones).find(([, z]) => (z.cards as AnyCard[]).some((x) => x.id === id))?.[0] ?? '') : '';
     if (!c) {
-      out.push(`  - #${id}`);
+      out.push(`  ${i + 1}. #${id}`);
       continue;
     }
     const where = zone && zone !== 'battlefield' ? ` · in ${zone}` : '';
     const line = isHidden(c) ? `${displayName(c)} #${id}` : permanentLine(c as Card, byId);
-    out.push(`  - ${line}${whose ? ` · ${whose}` : ''}${where}`);
+    out.push(`  ${i + 1}. ${line}${whose ? ` · ${whose}` : ''}${where}`);
   }
   return out;
 }
@@ -472,8 +495,11 @@ const PLAY_DRAW_QUESTION =
 
 function targetQuestion(d: Decision, byId: Map<number, AnyCard>): string {
   const src = targetSource(d, byId);
-  return `The engine wants me to choose a target${src ? ` for ${src.split(' — ').slice(0, 2).join(' — ')}` : ''}. What does this spell or ability do to its target, which of the legal targets above is best and why (whose it is, and what choosing it changes this turn and on the opponent's next turn), and which tempting targets are wrong? Name the one target to pick.`;
+  return `The engine wants me to choose a target${src ? ` for ${src.split(' — ').slice(0, 2).join(' — ')}` : ''}. Which numbered target is best, and why (what it does to the target, whose it is, what it changes this turn and on the opponent's next turn)? Which tempting target is wrong?`;
 }
+
+/** Ask kinds whose options the prompt numbers for a single pick. */
+const NUMBERED_PICK: ReadonlySet<AskBody['kind']> = new Set(['confirm', 'options', 'choose_list', 'choose_entities', 'ability_menu']);
 
 function questionFor(d: Decision, seat: number, byId: Map<number, AnyCard>): string {
   const s = d.state;
@@ -494,6 +520,7 @@ function questionFor(d: Decision, seat: number, byId: Map<number, AnyCard>): str
       return 'The opponent is attacking me. How should I block — which blocker on which attacker, or no block — and should I use anything before or after blocks? Count lethal both ways.';
     case 'choice':
       if (!d.ask && isTargetInput(d.input)) return targetQuestion(d, byId);
+      if (d.ask && NUMBERED_PICK.has(d.ask.kind)) return 'The engine is asking me the question above. Which numbered option should I choose, and why?';
       return 'The engine is asking me the question above. What should I choose, and why?';
     case 'priority':
     default:
@@ -506,8 +533,16 @@ function questionFor(d: Decision, seat: number, byId: Map<number, AnyCard>): str
 // ---------------------------------------------------------------------------
 // Card names
 
-/** Every card name whose oracle text the coach prompt for this decision will include. */
+/**
+ * Every card name whose oracle text the coach prompt for this decision may
+ * include (what the app looks up). The prompt then leaves out a card that is
+ * only in the viewer's graveyard and does nothing from there (`promptCardNames`).
+ */
 export function coachCardNames(log: GameLog, d: Decision): string[] {
+  return collectCardNames(log, d, true);
+}
+
+function collectCardNames(log: GameLog, d: Decision, graveyard: boolean): string[] {
   const seat = log.seat;
   const s = d.state;
   const out = new Set<string>();
@@ -525,7 +560,7 @@ export function coachCardNames(log: GameLog, d: Decision): string[] {
   (s.stackCards ?? []).forEach(add);
   for (const p of opps) p.zones.hand.cards.forEach(add); // only revealed ones survive `add`
   for (const p of s.players) p.zones.command.cards.forEach(add);
-  me?.zones.graveyard.cards.forEach(add);
+  if (graveyard) me?.zones.graveyard.cards.forEach(add);
   add(d.input?.focusCard);
   if (isTargetInput(d.input)) {
     // The spell or ability being targeted: often on its way to the stack and in no zone yet.
@@ -542,6 +577,45 @@ export function coachCardNames(log: GameLog, d: Decision): string[] {
     for (const o of [...(a.options ?? []), ...(a.targets ?? []), ...(a.cards ?? [])]) add(o.card);
   }
   return [...out];
+}
+
+/** Oracle text that works from a graveyard (or mentions one): such a card's text matters while it sits there. */
+const FROM_GRAVEYARD = /graveyard|flashback|escape|unearth|embalm|eternalize|disturb|jump-start|retrace|aftermath|dredge|scavenge|encore|madness/i;
+
+/**
+ * The names whose text the prompt prints, in `coachCardNames` order: a card
+ * seen only in the viewer's graveyard is dropped when its known text does
+ * nothing from there (it is still named in the graveyard line).
+ */
+function promptCardNames(log: GameLog, d: Decision, cards: Map<string, CardInfo>): string[] {
+  const elsewhere = new Set(collectCardNames(log, d, false));
+  return coachCardNames(log, d).filter((n) => {
+    if (elsewhere.has(n)) return true;
+    const info = infoFor(n, cards);
+    return !info || !info.found || FROM_GRAVEYARD.test(info.oracleText);
+  });
+}
+
+/** Keywords every player knows: their reminder text is dropped from the prompt (new mechanics keep theirs). */
+const KNOWN_KEYWORD =
+  /^((?:Flying|Reach|Vigilance|Trample|Haste|Deathtouch|Lifelink|First strike|Double strike|Menace|Defender|Flash|Hexproof|Indestructible|Prowess|Ward|Equip|Cycling|Basic landcycling)\b[^()\n]*?)\s*\([^()\n]*\)\s*$/i;
+
+/** Oracle text without the reminder text of well-known keywords, scry and surveil. */
+export function withoutKnownReminders(text: string): string {
+  return text
+    .split('\n')
+    .map((line) => line.replace(KNOWN_KEYWORD, '$1').replace(/\b((?:scry|surveil) \d+\.?)\s*\((?:Look at|To scry|To surveil)[^()]*\)/gi, '$1'))
+    .join('\n');
+}
+
+/** The card map with concise oracle text, for the names the prompt prints. */
+function conciseCards(names: string[], cards: Map<string, CardInfo>): Map<string, CardInfo> {
+  const out = new Map(cards);
+  for (const n of names) {
+    const info = cards.get(n);
+    if (info?.oracleText) out.set(n, { ...info, oracleText: withoutKnownReminders(info.oracleText) });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -569,15 +643,17 @@ function playerSection(
   const pregame = !s.phase || !s.turn;
   if (!pregame) {
     const sources = untappedManaSources(s, p.id, cards, chosen);
-    out.push(`Mana pool: ${manaPoolText(p)}`);
+    // An empty pool is the normal case (the system prompt says it is shown only when not empty).
+    const pool = manaPoolText(p);
+    if (pool !== 'empty') out.push(`Mana pool: ${pool}`);
     out.push(`Untapped mana sources: ${manaSourcesText(sources)}`);
     const facts = turnFacts(log, d.frameIndex, p.id);
-    if (s.activePlayer === p.id) {
-      out.push(`Land drop this turn: ${facts.landPlayed === null ? 'unknown' : facts.landPlayed ? 'USED' : 'available'}`);
-    }
+    const turn: string[] = [];
+    if (s.activePlayer === p.id) turn.push(`land drop ${facts.landPlayed === null ? 'unknown' : facts.landPlayed ? 'USED' : 'available'}`);
     const casts = facts.cast.filter((c) => c.playerId === p.id).map((c) => c.name);
-    out.push(`Spells cast this turn: ${casts.length ? casts.join('; ') : 'none'}`);
-    out.push(`Permanents that left the battlefield this turn (revolt): ${facts.leftBattlefield.length ? facts.leftBattlefield.join('; ') : 'none'}`);
+    turn.push(`spells cast: ${casts.length ? casts.join('; ') : 'none'}`);
+    turn.push(`left the battlefield (revolt): ${facts.leftBattlefield.length ? facts.leftBattlefield.join('; ') : 'none'}`);
+    out.push(`This turn: ${turn.join(' · ')}`);
   }
   // At play-or-draw no hand is dealt yet: an empty hand is not something to judge.
   const playDraw = pregame && isPlayDrawInput(d.input, s);
@@ -621,7 +697,10 @@ export function buildCoachPrompt(
   else if (pregame) lines.push('Pre-game · opening hand (keep or mulligan)');
   else lines.push(`Round ${round} (turn ${s.turn}) · ${phaseLabel(s.phase)} · ${whose}${prio}`);
   lines.push(`Decision type: ${d.kind}`);
-  if (d.input?.prompt) lines.push(`Engine prompt: ${d.input.prompt.replace(/\s*\n\s*/g, ' / ').trim()}`);
+  // The input's prompt, unless an engine question is open on top of it (it is then a leftover, e.g.
+  // "Yielding until end of turn") or it only repeats the line above ("Priority: … / Turn: … / Phase: …").
+  const enginePrompt = d.input?.prompt ? d.input.prompt.replace(/\s*\n\s*/g, ' / ').trim() : '';
+  if (enginePrompt && !d.ask && !/^Priority:/i.test(enginePrompt)) lines.push(`Engine prompt: ${enginePrompt}`);
   if (d.ask) lines.push(...askLines(d.ask, byId));
   else if (d.kind === 'choice' && isTargetInput(d.input)) lines.push(...targetLines(d, seat, byId));
 
@@ -637,7 +716,7 @@ export function buildCoachPrompt(
   const combat = combatLines(s, seat, byId);
   if (combat.length) lines.push(...combat);
 
-  const names = coachCardNames(log, d);
+  const names = promptCardNames(log, d, cards);
   const seen = new Map<string, Card>();
   for (const c of byId.values()) {
     const n = visibleName(c);
@@ -645,7 +724,7 @@ export function buildCoachPrompt(
   }
   lines.push('');
   lines.push('# Card text');
-  lines.push(names.length ? formatCardTexts(names, cards, seen) : '(no non-basic cards in view)');
+  lines.push(names.length ? formatCardTexts(names, conciseCards(names, cards), seen) : '(no non-basic cards in view)');
 
   const cubeSection = buildCubeContext(log, opts?.cube, d.frameIndex);
   if (cubeSection) lines.push('', cubeSection);

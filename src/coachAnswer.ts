@@ -79,6 +79,20 @@ export function parseCoachAnswer(text: string, opts: { complete?: boolean } = {}
   return out;
 }
 
+/**
+ * The option an answer names by number — "2", "2 — Plains", "Option 2 (Plains)",
+ * "#2. Plains" — with the words after the number (the label, if any), or null
+ * when the answer does not start with an option number. The prompt numbers
+ * the engine's options from 1 and asks for the number and the label.
+ */
+export function optionNumberOf(answer: string): { n: number; rest: string } | null {
+  const t = answer.replace(/\*\*|__|`/g, '').trim();
+  const m = /^(?:option\s*)?\(?#?(\d{1,3})\)?(?=$|[\s.:)\-–—,])[\s.:)\-–—,]*(.*)$/i.exec(t);
+  if (!m) return null;
+  const rest = m[2]!.trim().replace(/^\((.*)\)$/, '$1').replace(/[.;]+$/, '').trim();
+  return { n: Number(m[1]), rest };
+}
+
 /** Just the stated confidence and rule of a finished reply (the bench's view). */
 export function statedOf(text: string): { confidence?: StatedConfidence; rule?: string } {
   const p = parseCoachAnswer(text, { complete: true });

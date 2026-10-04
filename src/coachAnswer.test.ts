@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
-import { confidenceLevel, parseCoachAnswer, statedOf } from './coachAnswer.ts';
+import { confidenceLevel, optionNumberOf, parseCoachAnswer, statedOf } from './coachAnswer.ts';
 import { coachSystem, COACH_SYSTEM } from './prompt.ts';
 
 describe('parseCoachAnswer', () => {
@@ -56,5 +56,21 @@ describe('the answer formats', () => {
     expect(i('**Answer:**')).toBeGreaterThan(0);
     expect(i('**Answer:**')).toBeLessThan(i('**Confidence:**'));
     expect(i('**Confidence:**')).toBeLessThan(i('**Play:**'));
+  });
+});
+
+describe('optionNumberOf', () => {
+  it('reads the option an answer names by number, with its label', () => {
+    expect(optionNumberOf('2 — Plains')).toEqual({ n: 2, rest: 'Plains' });
+    expect(optionNumberOf('**2.** Plains')).toEqual({ n: 2, rest: 'Plains' });
+    expect(optionNumberOf('Option 3 (pass)')).toEqual({ n: 3, rest: 'pass' });
+    expect(optionNumberOf('#1')).toEqual({ n: 1, rest: '' });
+    expect(optionNumberOf('`4`')).toEqual({ n: 4, rest: '' });
+    expect(optionNumberOf('1 — "0"')).toEqual({ n: 1, rest: '"0"' });
+  });
+  it('is null for an answer that does not start with a number', () => {
+    expect(optionNumberOf('Attack with both Bears')).toBeNull();
+    expect(optionNumberOf('cast:12')).toBeNull();
+    expect(optionNumberOf('3/3 blocks first')).toBeNull();
   });
 });

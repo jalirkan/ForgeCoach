@@ -214,6 +214,13 @@ function dryRun(f: Map<string, string | true>): number {
     else console.log(promptAsText(b.prompt));
   }
   console.log(`${built.length} case${built.length === 1 ? '' : 's'} built: ${[...counts].map(([k, n]) => `${k} ${n}`).join(', ')}`);
+  if (built.length) {
+    // A rough token count (characters ÷ 4) to compare prompt changes offline; the real count is the model's.
+    const sizes = built.map((b) => b.prompt.system.length + b.prompt.user.length);
+    const meanChars = Math.round(sizes.reduce((a, x) => a + x, 0) / sizes.length);
+    const maxChars = Math.max(...sizes);
+    console.log(`Prompt size (system + user, bench section included): mean ${meanChars} chars ≈ ${Math.round(meanChars / 4)} tokens, max ${maxChars} chars ≈ ${Math.round(maxChars / 4)} tokens (tokens ≈ chars ÷ 4)`);
+  }
   console.log(bad ? `${bad} problem${bad === 1 ? '' : 's'}` : 'All cases build and every answer is legal.');
   return bad ? 1 : 0;
 }

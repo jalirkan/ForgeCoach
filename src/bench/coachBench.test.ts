@@ -20,6 +20,7 @@ import {
   extractAnswer,
   formatAnswer,
   missingCards,
+  numberingProblems,
   normalizeReport,
   parseAnswer,
   reportMarkdown,
@@ -87,6 +88,18 @@ describe('coach bench — dry run over bench/coach/cases', () => {
     }
   });
 
+  it('numbers an engine question from 1, and drops an engine prompt that is a leftover or a repeat', () => {
+    const h = byId('choice-number7-hellion-damage').appPrompt.user;
+    expect(h).toContain('(choose 0–1; only these are legal):\n  1. "0"\n  2. "1"');
+    expect(h).toContain('  11. Other...');
+    // The input under the open question ("Yielding until end of turn") is not the decision.
+    expect(h).not.toContain('Yielding');
+    expect(h).toContain('Which numbered option should I choose');
+    // "Priority: … / Turn: … / Phase: …" only repeats the header line.
+    expect(byId('pass-auto2026-strike-before-damage').appPrompt.user).not.toContain('Engine prompt: Priority');
+    expect(byId('target-auto2026-quantum-reduction').appPrompt.user).toContain('Engine prompt: Quantum Reduction (5) - Quantum Reduction / Select target creature');
+  });
+
   it('never shows the opponent’s hidden hand', () => {
     for (const b of built) {
       const opp = b.moment.decision.state.players.find((p) => p.id !== b.case.seat)!;
@@ -129,6 +142,42 @@ describe('answers', () => {
     expect(scoreReply(b, 'ANSWER: block:42>23')).toMatchObject({ verdict: 'illegal', score: 0 });
     expect(scoreReply(b, 'ANSWER: cast:3')).toMatchObject({ verdict: 'illegal', score: 0 });
     expect(scoreReply(b, 'Block the Ant.')).toMatchObject({ verdict: 'missing', score: 0 });
+  });
+
+  it('reads a numbered choice by its number, refuses a number past the list or one whose label is another option', () => {
+    const b = byId('choice-number7-hellion-damage');
+    // Option 1 is the engine's first option, the amount 0 (printed quoted: "0").
+    expect(b.prompt.user).toContain('\n1. "0"\n2. "1"\n');
+    expect(b.prompt.user).toContain('ANSWER: <option number> — <its label>');
+    expect(scoreReply(b, 'ANSWER: 1 — "0"')).toMatchObject({ verdict: 'acceptable', canonical: 'option:0' });
+    expect(scoreReply(b, '**ANSWER:** 1')).toMatchObject({ verdict: 'acceptable', canonical: 'option:0' });
+    expect(scoreReply(b, 'ANSWER: option:0')).toMatchObject({ verdict: 'acceptable', canonical: 'option:0' });
+    expect(scoreReply(b, 'ANSWER: 7 (6)')).toMatchObject({ verdict: 'unacceptable', canonical: 'option:6' });
+    // "1 — 1": number 1 is the amount 0, the label is option 2's — a confused answer, not a silent pick.
+    expect(scoreReply(b, 'ANSWER: 1 — 1')).toMatchObject({ verdict: 'illegal', note: expect.stringContaining("option 2's") });
+    expect(scoreReply(b, 'ANSWER: 0')).toMatchObject({ verdict: 'illegal', note: 'no option 0 (options are 1–11)' });
+    expect(scoreReply(b, 'ANSWER: 12')).toMatchObject({ verdict: 'illegal' });
+    const p = byId('pass-auto2026-strike-before-damage');
+    expect(p.prompt.user).toMatch(/\n1\. cast Helicarrier Strike \{W\}\n2\. pass \(do nothing now\)\n/);
+    expect(scoreReply(p, 'ANSWER: 1 — cast Helicarrier Strike {W}').canonical).toBe('cast:3');
+    expect(scoreReply(p, 'ANSWER: Option 2 (pass)').canonical).toBe('pass');
+    // A paraphrased label is read by the number.
+    expect(scoreReply(p, 'ANSWER: 1 — Strike the Ant').canonical).toBe('cast:3');
+    // Attack and block stay on creature ids: a bare number is not an answer there.
+    expect(scoreReply(byId('block-comfort13-trade-fliers'), 'ANSWER: 1')).toMatchObject({ verdict: 'illegal' });
+  });
+
+  it('checks that the option numbering round-trips (dry run)', () => {
+    for (const b of built) expect(numberingProblems(b), b.case.id).toEqual([]);
+    const b = byId('target-auto2026-quantum-reduction');
+    // The app prompt and the bench number the targets alike.
+    expect(b.appPrompt.user).toContain('  2. Aerial Doombot #65');
+    expect(b.prompt.user).toContain('\n2. Aerial Doombot #65 1/1 (opponent\'s)\n');
+    // A bench whose list disagrees with the app's numbering is caught.
+    const broken = { ...b, appPrompt: { ...b.appPrompt, user: b.appPrompt.user.replace('  1. Bold', '  0. Bold') } };
+    expect(numberingProblems(broken).join(' ')).toMatch(/the app prompt numbers 0,2,3, the bench 1,2,3/);
+    const dup = { ...b, choices: { ...b.choices, choices: [...b.choices.choices, b.choices.choices[0]!] } };
+    expect(numberingProblems(dup).join(' ')).toMatch(/choice tokens listed twice: target:12/);
   });
 
   it('treats identical creatures as interchangeable', () => {

@@ -519,8 +519,17 @@ rationale. Run it before and after a change to the coach prompt
 (`src/prompt.ts`) to see what the change did. Every case rebuilds the exact
 prompt the app would send (`buildCoachPrompt`, from the viewing seat's redacted
 view only). In bench mode one extra section is appended to the prompt; it lists
-the legal choices and asks for a final `ANSWER: <choice>` line (or, with
-`--prompt-format answer-first`, a first one). Normal prompts are unchanged. Scoring: acceptable answer +1, blunder −1, anything else 0
+the legal choices and asks for a final `ANSWER:` line (or, with
+`--prompt-format answer-first`, a first one). Normal prompts are unchanged.
+Except for attack and block (answered by creature ids, `attack:21,26`,
+`block:23>64`), the choices are numbered from 1 — for an engine question or a
+target, exactly as the app prompt numbers the engine's options — and the coach
+answers `ANSWER: <number> — <label>`; the scorer maps the number to the
+choice. A number past the list, or one whose label is another option's, is a
+format failure; a bare token (`cast:12`) is still read. The dry run checks that
+this numbering round-trips for every case and prints the prompt size (tokens
+≈ characters ÷ 4). Comparing two prompts on the PC, step by step:
+[`bench/coach/RUN-ON-PC.md`](bench/coach/RUN-ON-PC.md). Scoring: acceptable answer +1, blunder −1, anything else 0
 (another answer, or a missing or illegal `ANSWER:` line). Cases marked
 `"confidence": "low"` are run but not scored. The report gives the score per
 decision type (mulligan, play/draw, spell, attack, block, target, pass, choice)

@@ -84,13 +84,14 @@ describe('buildCoachPrompt — human-comfort-13, my attack on turn 10 (frame 871
     expect(you).toContain('U/B×1 (Thriving Isle)');
     expect(you).toContain('Lands (4): Thriving Isle (untapped, chosen colour black); 2× Island (untapped); Plains (TAPPED)');
     expect(opp).toContain('Untapped mana sources: 1 — W×1 (Plains)');
-    expect(you).toContain('Mana pool: empty');
+    // An empty pool is not printed (the system prompt says the pool is shown only when not empty).
+    expect(you).not.toContain('Mana pool');
   });
 
   it('reports the land drop and spells cast this turn', () => {
-    expect(you).toContain('Land drop this turn: USED');
-    expect(you).toContain('Spells cast this turn: S.H.I.E.L.D. Spy Kit');
-    expect(opp).toContain('Spells cast this turn: none');
+    expect(you).toContain('This turn: land drop USED · spells cast: S.H.I.E.L.D. Spy Kit · left the battlefield (revolt): none');
+    // Not the opponent's turn: no land drop for them.
+    expect(opp).toContain('This turn: spells cast: none · left the battlefield (revolt): none');
   });
 
   it('marks TAPPED and SUMMONING SICK on the right permanents', () => {
@@ -108,7 +109,7 @@ describe('buildCoachPrompt — human-comfort-13, my attack on turn 10 (frame 871
     expect(p.user).not.toContain('Agents of S.H.I.E.L.D.');
   });
 
-  it('includes card text for exactly coachCardNames, unknown ones marked', () => {
+  it('includes card text for coachCardNames, minus graveyard cards that do nothing from there; unknown ones marked', () => {
     const names = coachCardNames(log, d);
     expect(names).toEqual(expect.arrayContaining(["Ant-Man's Air Force", 'Web Up', 'Giant-Sized Flying Ant', 'Depower']));
     expect(names).not.toContain('Island');
@@ -117,8 +118,22 @@ describe('buildCoachPrompt — human-comfort-13, my attack on turn 10 (frame 871
       .split('\n')
       .filter((l) => l && !l.startsWith('  '))
       .map((l) => l.split(/ \{| —/)[0]);
-    expect(heads).toEqual(names);
+    // Wasp and Depower are only in my graveyard, and their (fake) text never mentions a graveyard.
+    // Depower's fake text is unknown (every third card), so it stays, marked unavailable.
+    const cards = fakeCards(names);
+    const gyOnly = (n: string) => n === 'Wasp, Shrinking Savior' || n === 'Depower';
+    expect(heads).toEqual(names.filter((n) => !gyOnly(n) || !cards.get(n)!.found));
+    expect(you).toContain('Graveyard: Wasp, Shrinking Savior; Depower');
     expect(text).toContain('(text unavailable)');
+  });
+
+  it('keeps a graveyard card whose text works from the graveyard, and drops known keywords\' reminder text', () => {
+    const cards = fakeCards(coachCardNames(log, d));
+    const wasp = cards.get('Wasp, Shrinking Savior')!;
+    cards.set('Wasp, Shrinking Savior', { ...wasp, found: true, oracleText: 'Flying (This creature can\'t be blocked except by creatures with flying or reach.)\nFlashback {2}{U}' });
+    const text = section(buildCoachPrompt(log, d, cards).user, '# Card text');
+    expect(text).toContain('Wasp, Shrinking Savior');
+    expect(text).toContain('  Flying\n  Flashback {2}{U}');
   });
 
   it('never includes what the player actually did', () => {
@@ -200,5 +215,8 @@ describe('buildCoachPrompt — every decision of both samples', () => {
     const p = buildCoachPrompt(log, extractDecisions(log)[1]!, new Map());
     for (const s of ['SUMMONING SICK', '{T}', 'Equip is sorcery speed', 'instant or sorcery', 'Revolt', 'Count lethal both ways', '**Play:**', '**Trap:**', '**Their turn:**', 'heuristic', 'Assumptions'])
       expect(p.system).toContain(s);
+    // Hidden information and legality are stated as ground rules.
+    expect(p.system).toContain("You can't see the opponent's hand or either library. Never name or assume a specific hidden card");
+    expect(p.system).toContain('Numbered options and legal targets in the message are exactly what the engine accepts');
   });
 });
