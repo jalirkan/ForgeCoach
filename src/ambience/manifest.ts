@@ -2,8 +2,10 @@
  * ForgeCoach — ambience/manifest.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The scenery asset pack's manifest (`scenery.json`, schema 1; the contract
- * is docs/scenery-pack-spec.md) and its strict validator. DOM-free.
+ * The scenery asset pack's manifest (`scenery.json`, schema 1, spec 1.2; the
+ * contract is docs/scenery-pack-spec.md) and its strict validator. DOM-free.
+ * Spec 1.2 adds optional one-shot `effects` (creature enters, attack, damage,
+ * landfall, stage up), globally and per biome; a 1.1 pack reads as before.
  *
  * A pack is untrusted input, served from wherever the user pointed the page:
  * every string is cleaned and clipped, every number range-checked, every URL
@@ -17,6 +19,8 @@ import { cleanText, int, num } from '../lab/status.ts';
 import { BIOMES, MAX_STAGES, type Biome } from './model.ts';
 
 export const MANIFEST_SCHEMA = 1;
+/** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
+export const SPEC_VERSION = '1.2';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */
@@ -109,8 +113,250 @@ export interface PackStrip {
   order: 'arrival' | 'preference';
 }
 
+// ---------------------------------------------------------------------------
+// Effects (spec 1.2)
+
+/** What an effect answers to. `damagePlayer` hits a player; `damageCreature` a card on the battlefield. */
+export const EFFECT_EVENTS = ['creatureEnter', 'attack', 'damagePlayer', 'damageCreature', 'landfall', 'stageUp'] as const;
+export type EffectEvent = (typeof EFFECT_EVENTS)[number];
+export const EFFECT_KINDS = ['sprite', 'video', 'particles'] as const;
+export type EffectKind = (typeof EFFECT_KINDS)[number];
+/** Built-in particle effects a pack may name instead of shipping files (drawn in the biome's colour, or `color`). */
+export const PARTICLE_PRESETS = ['shimmer', 'sweep', 'flash', 'crack', 'motes', 'ripple'] as const;
+export type ParticlePreset = (typeof PARTICLE_PRESETS)[number];
+/** Where an effect plays: the slot of its biome, the card's position (falls back to the slot), or the strip's middle. */
+export const EFFECT_AT = ['slot', 'card', 'strip'] as const;
+export type EffectAt = (typeof EFFECT_AT)[number];
+/** With reduced motion: skip it, show a still glow, or show the effect's `poster`. */
+export const EFFECT_REDUCED = ['skip', 'glow', 'poster'] as const;
+export type EffectReduced = (typeof EFFECT_REDUCED)[number];
+/** Every effect is a short one-shot: longer sheets and clips are cut here. */
+export const MAX_EFFECT_MS = 2500;
+/** The declared `bytes` of one biome's effects (and of the global ones) should stay under this. */
+export const MAX_EFFECT_BYTES = 4 * 1024 * 1024;
+export const MAX_CONCURRENT_EFFECTS = 6;
+export const DEFAULT_CONCURRENT_EFFECTS = 3;
+/** Each preset's own length when the pack gives no `durationMs` (all under 600 ms). */
+export const PRESET_MS: Record<ParticlePreset, number> = { shimmer: 560, sweep: 520, flash: 480, crack: 560, motes: 580, ripple: 580 };
+
+export interface PackEffect {
+  kind: EffectKind;
+  /** sprite / video: resolved URLs. */
+  src: string | null;
+  src2x: string | null;
+  fallback: string | null;
+  poster: string | null;
+  frames: number;
+  cols: number;
+  rows: number;
+  fps: number;
+  /** particles: the preset, and its colour (#rgb / #rrggbb) or null for the biome's. */
+  preset: ParticlePreset | null;
+  color: string | null;
+  /** How long it plays, ≤ 2500 ms. */
+  durationMs: number;
+  blend: BlendMode;
+  /** The effect box's height as a fraction of the strip's height. */
+  scale: number;
+  /** The box's width ÷ height. */
+  aspect: number;
+  /** The box's bottom edge, as a fraction of the strip's height. */
+  y: number;
+  at: EffectAt;
+  /** Flip vertically on the opponent's (top) strip, so art drawn pointing up points at the other player. */
+  mirror: boolean;
+  reduced: EffectReduced;
+  /** Declared size of its files in bytes (for the budget), or null. */
+  bytes: number | null;
+}
+
+export type PackEffects = Partial<Record<EffectEvent, PackEffect>>;
+
+export interface PackEffectSet {
+  maxConcurrent: number;
+  /** Used for any biome without its own effect for the event. */
+  global: PackEffects;
+  /** Per-biome effects (a biome may have effects and still use the built-in scene). */
+  biomes: Partial<Record<Biome, PackEffects>>;
+}
+
+const EFFECT_AT_DEFAULT: Record<EffectEvent, EffectAt> = { creatureEnter: 'card', attack: 'slot', damagePlayer: 'strip', damageCreature: 'card', landfall: 'slot', stageUp: 'slot' };
+
+function parseEffect(v: unknown, event: EffectEvent, base: string, path: string, warn: string[]): PackEffect | null {
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object; effect dropped`);
+    return null;
+  }
+  const problems: string[] = [];
+  const kind = typeof v.kind === 'string' && (EFFECT_KINDS as readonly string[]).includes(v.kind) ? (v.kind as EffectKind) : null;
+  if (!kind) problems.push(`${path}.kind: must be sprite, video or particles`);
+  let src: string | null = null;
+  let preset: ParticlePreset | null = null;
+  if (kind === 'sprite') src = layerUrl(v.src, base, IMAGE_EXT, '.webp, .avif, .png, .jpg or .svg', `${path}.src`, problems, false);
+  else if (kind === 'video') src = layerUrl(v.src, base, VIDEO_EXT, '.webm or .mp4', `${path}.src`, problems, false);
+  else if (kind === 'particles') {
+    if (typeof v.preset === 'string' && (PARTICLE_PRESETS as readonly string[]).includes(v.preset)) preset = v.preset as ParticlePreset;
+    else problems.push(`${path}.preset: must be one of ${PARTICLE_PRESETS.join(', ')}`);
+  }
+  const opt: string[] = [];
+  const src2x = kind === 'sprite' ? layerUrl(v.src2x, base, IMAGE_EXT, '.webp, .avif, .png, .jpg or .svg', `${path}.src2x`, opt, true) : null;
+  const fallback = kind === 'video' ? layerUrl(v.fallback, base, MP4_EXT, '.mp4', `${path}.fallback`, opt, true) : null;
+  const poster = layerUrl(v.poster, base, IMAGE_EXT, 'an image', `${path}.poster`, opt, true);
+  for (const o of opt) warn.push(`${o}; ignored`);
+
+  let frames = 1;
+  let cols = 1;
+  let rows = 1;
+  let fps = 0;
+  if (kind === 'sprite') {
+    frames = int(v.frames, 1, MAX_SPRITE_FRAMES) ?? 0;
+    cols = int(v.cols, 1, 32) ?? 0;
+    rows = v.rows === undefined ? (cols ? Math.ceil(frames / cols) : 0) : int(v.rows, 1, 32) ?? 0;
+    fps = num(v.fps, 1, 60) ?? 0;
+    if (!frames) problems.push(`${path}.frames: a whole number 1–${MAX_SPRITE_FRAMES}`);
+    if (!cols) problems.push(`${path}.cols: a whole number 1–32`);
+    if (!rows) problems.push(`${path}.rows: a whole number 1–32`);
+    if (!fps) problems.push(`${path}.fps: 1–60`);
+    if (frames && cols && rows && frames !== cols * rows) problems.push(`${path}: frames (${frames}) must fill the grid (cols × rows = ${cols * rows})`);
+  }
+  if (problems.length) {
+    warn.push(...problems.map((p) => `${p}; effect dropped`));
+    return null;
+  }
+  if (v.loop !== undefined && v.loop !== false) warn.push(`${path}.loop: effects play once; loop ignored`);
+
+  // Its natural length (a sheet's frames at its fps, a preset's own, 2 s for a clip), then the pack's durationMs, then the cap.
+  const natural = kind === 'sprite' ? Math.round((frames / fps) * 1000) : kind === 'particles' ? PRESET_MS[preset!] : 2000;
+  let durationMs = natural;
+  if (v.durationMs !== undefined && v.durationMs !== null) {
+    const d = int(v.durationMs, 100, MAX_EFFECT_MS);
+    if (d === null) warn.push(`${path}.durationMs: ${cleanText(v.durationMs, 40) ?? typeof v.durationMs} is out of range 100–${MAX_EFFECT_MS}; using ${Math.min(natural, MAX_EFFECT_MS)}`);
+    else durationMs = d;
+  }
+  if (durationMs > MAX_EFFECT_MS) {
+    warn.push(`${path}: the sheet runs ${durationMs} ms (${frames} frames at ${fps} fps); cut at ${MAX_EFFECT_MS}`);
+    durationMs = MAX_EFFECT_MS;
+  }
+  let color: string | null = null;
+  if (v.color !== undefined && v.color !== null) {
+    if (typeof v.color === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.color)) color = v.color.toLowerCase();
+    else warn.push(`${path}.color: not #rgb or #rrggbb; using the biome's colour`);
+  }
+  let reduced = oneOf(v.reduced, EFFECT_REDUCED, 'glow', `${path}.reduced`, warn);
+  if (reduced === 'poster' && !poster) {
+    warn.push(`${path}.reduced: "poster" needs a poster; using glow`);
+    reduced = 'glow';
+  }
+  let bytes: number | null = null;
+  if (v.bytes !== undefined && v.bytes !== null) {
+    bytes = int(v.bytes, 0, 1e9);
+    if (bytes === null) warn.push(`${path}.bytes: a whole number of bytes; ignored`);
+  }
+  return {
+    kind: kind!,
+    src,
+    src2x,
+    fallback,
+    poster,
+    frames,
+    cols,
+    rows,
+    fps,
+    preset,
+    color,
+    durationMs,
+    blend: oneOf(v.blend, BLEND_MODES, 'screen', `${path}.blend`, warn),
+    scale: ranged(v.scale, 0.1, 3, 1, `${path}.scale`, warn),
+    aspect: ranged(v.aspect, 0.2, 8, 1, `${path}.aspect`, warn),
+    y: ranged(v.y, -1, 1, 0, `${path}.y`, warn),
+    at: oneOf(v.at, EFFECT_AT, EFFECT_AT_DEFAULT[event], `${path}.at`, warn),
+    mirror: v.mirror === undefined ? event === 'attack' : v.mirror === true,
+    reduced,
+    bytes,
+  };
+}
+
+/** The declared bytes of a set of effects. */
+export function effectBytes(set: PackEffects | undefined): number {
+  return Object.values(set ?? {}).reduce((n, e) => n + (e?.bytes ?? 0), 0);
+}
+
+/** One `effects` object: event name → effect. `top` allows `maxConcurrent`. */
+function parseEffects(v: unknown, base: string, path: string, warn: string[], top: boolean): PackEffects {
+  const out: PackEffects = {};
+  if (v === undefined || v === null) return out;
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object; ignored`);
+    return out;
+  }
+  for (const key of Object.keys(v)) {
+    if (key === 'maxConcurrent') {
+      if (!top) warn.push(`${path}.maxConcurrent: only at the top level (effects.maxConcurrent); ignored`);
+      continue;
+    }
+    if (!(EFFECT_EVENTS as readonly string[]).includes(key)) {
+      warn.push(`${path}.${cleanText(key, 30)}: not an effect event (${EFFECT_EVENTS.join(', ')}); ignored`);
+      continue;
+    }
+    const e = parseEffect(v[key], key as EffectEvent, base, `${path}.${key}`, warn);
+    if (e) out[key as EffectEvent] = e;
+  }
+  const bytes = effectBytes(out);
+  if (bytes > MAX_EFFECT_BYTES) warn.push(`${path}: ${(bytes / 1048576).toFixed(1)} MB of effects declared; the budget is ${MAX_EFFECT_BYTES / 1048576} MB (effects kept)`);
+  return out;
+}
+
+function parseEffectSet(raw: Obj, base: string, warn: string[]): PackEffectSet | null {
+  const top = isObj(raw.effects) ? raw.effects : {};
+  const global = parseEffects(raw.effects, base, 'effects', warn, true);
+  const biomes: Partial<Record<Biome, PackEffects>> = {};
+  if (isObj(raw.biomes)) {
+    for (const b of BIOMES) {
+      const bv = raw.biomes[b];
+      if (!isObj(bv) || bv.effects === undefined) continue;
+      const e = parseEffects(bv.effects, base, `biomes.${b}.effects`, warn, false);
+      if (Object.keys(e).length) biomes[b] = e;
+    }
+  }
+  const maxConcurrent = ranged(top.maxConcurrent, 1, MAX_CONCURRENT_EFFECTS, DEFAULT_CONCURRENT_EFFECTS, 'effects.maxConcurrent', warn, true);
+  const any = Object.keys(global).length > 0 || Object.keys(biomes).length > 0;
+  return any ? { maxConcurrent, global, biomes } : null;
+}
+
+/** The pack's effect for an event in a biome (the biome's own, else the global one), or null. */
+export function packEffect(pack: ScenePack | null | undefined, event: EffectEvent, biome: Biome | null): PackEffect | null {
+  const fx = pack?.effects;
+  if (!fx) return null;
+  return (biome ? fx.biomes[biome]?.[event] : undefined) ?? fx.global[event] ?? null;
+}
+
+/** Every effect file a pack names (src, poster), for preloading and the preview's status. */
+export function effectUrls(pack: ScenePack): { biome: Biome | null; event: EffectEvent; url: string; kind: 'image' | 'video' }[] {
+  const out: { biome: Biome | null; event: EffectEvent; url: string; kind: 'image' | 'video' }[] = [];
+  const seen = new Set<string>();
+  const add = (biome: Biome | null, event: EffectEvent, url: string | null, kind: 'image' | 'video') => {
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    out.push({ biome, event, url, kind });
+  };
+  const group = (biome: Biome | null, set: PackEffects) => {
+    for (const event of EFFECT_EVENTS) {
+      const e = set[event];
+      if (!e) continue;
+      add(biome, event, e.src, e.kind === 'video' ? 'video' : 'image');
+      add(biome, event, e.poster, 'image');
+    }
+  };
+  if (!pack.effects) return out;
+  group(null, pack.effects.global);
+  for (const b of BIOMES) if (pack.effects.biomes[b]) group(b, pack.effects.biomes[b]!);
+  return out;
+}
+
 export interface ScenePack {
   schema: 1;
+  /** The spec version the pack says it was written for ("1.2"), or null. Informational. */
+  spec?: string | null;
   name: string;
   author: string | null;
   license: string | null;
@@ -120,6 +366,8 @@ export interface ScenePack {
   /** Growth thresholds (weights where stage 1, 2, … begin), or null for the default. */
   stageThresholds: number[] | null;
   biomes: Partial<Record<Biome, PackBiome>>;
+  /** Spec 1.2: one-shot effects, or undefined / null when the pack has none (the built-in placeholders play). */
+  effects?: PackEffectSet | null;
 }
 
 export interface ManifestResult {
@@ -303,6 +551,8 @@ function parseBiome(v: unknown, base: string, path: string, warn: string[]): Pac
     else warn.push(`${sp}: no usable layers; stage dropped`);
   });
   if (!stages.length) {
+    // Effects only: the built-in scene with the pack's effects, no warning.
+    if (v.stages === undefined && v.effects !== undefined) return null;
     warn.push(`${path}: no usable stages; biome uses the built-in scene`);
     return null;
   }
@@ -388,13 +638,21 @@ export function validateManifest(raw: unknown, base: string): ManifestResult {
     const parsed = parseBiome(raw.biomes[biome], b, `biomes.${biome}`, warnings);
     if (parsed) biomes[biome] = parsed;
   }
-  if (Object.keys(biomes).length === 0) {
+  const effects = parseEffectSet(raw, b, warnings);
+  if (Object.keys(biomes).length === 0 && !effects) {
     errors.push('No biome has a usable layer.');
     return { pack: null, errors, warnings };
+  }
+  let spec: string | null = null;
+  if (raw.spec !== undefined) {
+    spec = typeof raw.spec === 'string' && /^1\.\d{1,2}$/.test(raw.spec) ? raw.spec : null;
+    if (!spec) warnings.push(`spec: "${cleanText(raw.spec, 20) ?? typeof raw.spec}" is not a 1.x version; ignored`);
+    else if (Number(spec.split('.')[1]) > Number(SPEC_VERSION.split('.')[1])) warnings.push(`spec: the pack is written for ${spec}; this ForgeCoach reads ${SPEC_VERSION}, so newer fields are ignored`);
   }
   return {
     pack: {
       schema: 1,
+      spec,
       name: cleanText(raw.name, 80) ?? 'Untitled pack',
       author: cleanText(raw.author, 80),
       license: cleanText(raw.license, 80),
@@ -402,6 +660,7 @@ export function validateManifest(raw: unknown, base: string): ManifestResult {
       strip: parseStrip(raw.strip, warnings),
       stageThresholds: parseThresholds(raw.stageThresholds, warnings),
       biomes,
+      effects,
     },
     errors,
     warnings,

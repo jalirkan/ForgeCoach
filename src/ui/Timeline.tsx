@@ -5,7 +5,7 @@
  * The decision list (desktop sidebar / phone sheet) and the phone scrubber
  * dock. Items are memoised: moving the selection re-renders two rows.
  */
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import type { Decision } from '../decisions.ts';
 import { phaseLabel } from '../decisions.ts';
 import { IconChevronLeft, IconChevronRight, IconList, KindIcon } from './Icons.tsx';
@@ -32,10 +32,12 @@ interface ListProps {
   onSelect: (i: number) => void;
   answered: (i: number) => boolean;
   seat: number;
+  /** Drawn under the mode switch (the win-chance line, ui/winchance). */
+  extra?: ReactNode;
 }
 
 export function TimelineList(props: ListProps) {
-  const { mode, onMode, decisions, frames } = props;
+  const { mode, onMode, decisions, frames, extra } = props;
   return (
     <div className="timeline">
       <div className="timeline-head">
@@ -47,6 +49,7 @@ export function TimelineList(props: ListProps) {
             All states <span className="seg-n">{frames.length}</span>
           </button>
         </div>
+        {extra}
       </div>
       <div className="timeline-scroll">
         {mode === 'decisions' ? <DecisionList {...props} /> : <FrameList {...props} />}

@@ -1,0 +1,270 @@
+/*
+ * ForgeCoach — ui/winchance/winchance.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The win chance strip and line (mtg-table D359). Built on the skins' tokens
+ * only (--accent, --line, --surface-*, --muted, --bad, --mono), so Classic,
+ * Stack and Hot Felt each draw it in their own colours; Hot Felt's meter takes
+ * its heat token (--skin-heat), the one warm colour it keeps for win chance.
+ * skins.css is untouched: the one skin-scoped rule lives here.
+ */
+
+.wc {
+  --wc-line: var(--accent);
+  --wc-fill: var(--accent);
+  --wc-area: var(--accent-soft);
+  --wc-track: var(--surface-3);
+  --wc-drop: var(--bad);
+  color: var(--text-2);
+  font-size: 12px;
+}
+.wc-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.wc-label {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  cursor: help;
+  min-width: 0;
+}
+.wc-name {
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+.wc-source {
+  color: var(--muted);
+  font-size: 11px;
+}
+.wc-source {
+  white-space: nowrap;
+}
+.wc-info {
+  margin-left: 4px;
+  display: inline-grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  color: var(--muted);
+  font: 600 9px/1 var(--mono);
+  transform: translateY(-1px);
+}
+
+/* ---- the strip (PlayView) ------------------------------------------------ */
+.wc-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.wc-strip.is-compact {
+  padding: 5px 12px 6px;
+  gap: 2px;
+}
+.wc-strip.is-compact .wc-source {
+  font-size: 10px;
+}
+.wc-strip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wc-meter {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--wc-track);
+  overflow: hidden;
+}
+.wc-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--wc-p) * 100%);
+  background: var(--wc-fill);
+  border-radius: inherit;
+  transition: width 0.35s ease;
+}
+.wc-mid {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-2);
+}
+.wc-num {
+  font: 600 13px/1 var(--mono);
+  color: var(--text);
+  min-width: 3.2em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.wc-delta {
+  font: 500 11px/1 var(--mono);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 2.6em;
+}
+.wc-delta.is-down {
+  color: color-mix(in srgb, var(--bad) 70%, var(--muted));
+}
+.wc-delta.is-up {
+  color: color-mix(in srgb, var(--ok) 70%, var(--muted));
+}
+.wc-strip.is-busy .wc-num {
+  opacity: 0.75;
+}
+.wc-error {
+  color: var(--muted);
+}
+
+/* ---- the line (GameView's timeline, the engine review) ------------------- */
+.wc-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.wc-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.wc-chart-now {
+  white-space: nowrap;
+}
+.wc-chart-now .wc-num {
+  min-width: 0;
+}
+.wc-plot {
+  position: relative;
+  height: 64px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.wc-svg {
+  position: absolute;
+  inset: 4px 0;
+  width: 100%;
+  height: calc(100% - 8px);
+  overflow: visible;
+}
+.wc-half {
+  stroke: var(--line-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.wc-turn {
+  stroke: var(--line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.wc-area {
+  fill: var(--wc-area);
+  stroke: none;
+}
+.wc-line {
+  fill: none;
+  stroke: var(--wc-line);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.wc-cursor {
+  stroke: var(--text-2);
+  stroke-width: 1;
+  opacity: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+.wc-axis {
+  position: absolute;
+  right: 4px;
+  color: var(--faint);
+  font-size: 9px;
+  line-height: 1;
+  pointer-events: none;
+}
+.wc-axis-top {
+  top: 3px;
+}
+.wc-axis-mid {
+  top: calc(50% - 5px);
+}
+.wc-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 1;
+}
+/* A small downward triangle on the line; its number shows on hover or focus. */
+.wc-marker::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 3px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 8px solid var(--wc-drop);
+  filter: drop-shadow(0 0 1px var(--bg));
+}
+.wc-marker-n {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 2px);
+  transform: translateX(-50%);
+  padding: 1px 4px;
+  border-radius: 5px;
+  border: 1px solid var(--wc-drop);
+  background: var(--bg);
+  color: var(--wc-drop);
+  font: 600 10px/1.2 var(--mono);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.wc-marker:hover .wc-marker-n,
+.wc-marker:focus-visible .wc-marker-n {
+  opacity: 1;
+}
+.wc-marker:focus-visible {
+  outline: 2px solid var(--wc-drop);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+.wc-legend {
+  margin: 0;
+  line-height: 1.35;
+}
+.wc-empty {
+  margin: 0;
+}
+
+/* ---- Hot Felt: the meter is a window onto the heat gradient -------------- */
+/* As the option bars do (skins.css): the gradient spans the whole track, so
+   the fill's colour at its end is the win chance's heat. */
+:root[data-skin='felt'] .wc-fill {
+  background: var(--skin-heat);
+  background-size: calc(100% / var(--wc-p)) 100%;
+}

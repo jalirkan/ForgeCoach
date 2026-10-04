@@ -3,23 +3,26 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * #ambience: the scenery preview. Two player strips over a mock table, buttons
- * that "play" lands (and fake creature / attack effects) for either side, undo
- * and reset, a stage slider, reduced motion, and a pack URL with its
- * validation listed — how an art pack is tried with no engine running.
+ * that "play" lands (and fake creatures and attacks) for either side, undo
+ * and reset, a stage slider, reduced motion, buttons that fire each effect
+ * (spec 1.2) for either side, and a pack URL with its validation and its
+ * effect files listed — how an art pack is tried with no engine running.
  *
  * Everything here is made up in the page (ambience/sim.ts). It never opens a
  * socket to the engine.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import type { Card, GameStateBody } from '../../protocol.ts';
 import { BIOME_LABEL, sceneryFromLog, slotsOf, type Biome } from '../../ambience/model.ts';
+import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '../../ambience/effects.ts';
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
 import { SIM_PLAYERS, simLog, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
-import { browserLoader, fetchManifest, manifestUrlFor, preloadPack, withoutBiomes } from '../../ambience/pack.ts';
-import { validateManifest, MAX_LAYERS, type ScenePack } from '../../ambience/manifest.ts';
+import { browserLoader, checkEffectFiles, fetchManifest, manifestUrlFor, preloadPack, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
+import { validateManifest, EFFECT_EVENTS, MAX_EFFECT_BYTES, MAX_LAYERS, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
 import { currentPrefs, loadSceneryPrefs, saveSceneryPrefs } from '../../ambience/prefs.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
-import { useSceneryFx } from './useScenery.ts';
+import { useSceneryFx, type PlaceCard } from './useScenery.ts';
 import './ambience-page.css';
 
 const LANDS: { name: SimLandName; short: string; tone: string }[] = [
@@ -61,12 +64,35 @@ export default function AmbiencePage() {
   const [url, setUrl] = useState(initial.mode === 'pack' ? initial.packUrl : '');
   const [packState, setPackState] = useState<PackState>({ status: 'none' });
   const [usePack, setUsePack] = useState(initial.mode === 'pack');
-  const [eventsLog, setEventsLog] = useState<SceneryEvent[]>([]);
-  const fx = useSceneryFx();
+  const [eventsLog, setEventsLog] = useState<string[]>([]);
 
   const log = useMemo(() => simLog(plays), [plays]);
   const scenery = useMemo(() => sceneryFromLog(log, Infinity), [log]);
   const pack = usePack && packState.status === 'ok' ? packState.pack : null;
+  const fx = useSceneryFx(pack, reduced);
+  const lastState = log.frames.at(-1)!.body as GameStateBody;
+  const creaturesOf = (player: number) => (lastState.players.find((x) => x.id === player)?.zones.battlefield?.cards ?? []).filter((c) => /Creature/.test((c as Card).types)).map((c) => c.id);
+  const table = useRef<HTMLElement>(null);
+  // The mock creatures carry data-card-id, as the board's tiles do: creature effects anchor on them.
+  const place: PlaceCard = (cue) => {
+    const bf = table.current?.querySelector<HTMLElement>(`.amb-bf[data-amb-player="${cue.player}"]`);
+    const tile = cue.cardId !== null ? bf?.querySelector<HTMLElement>(`[data-card-id="${cue.cardId}"]`) : null;
+    if (!bf || !tile) return null;
+    const host = bf.getBoundingClientRect();
+    const r = tile.getBoundingClientRect();
+    return host.width > 0 ? Math.min(0.97, Math.max(0.03, (r.left + r.width / 2 - host.left) / host.width)) : null;
+  };
+  const fireEffect = (player: number, event: EffectEvent) => {
+    const slots = slotsOf(scenery, player);
+    const biome = dominantBiome(slots);
+    const ids = creaturesOf(player);
+    const cue: EffectCue = { event, player, biome, cardId: event === 'creatureEnter' || event === 'damageCreature' ? (ids.at(-1) ?? null) : null, amount: 2 };
+    fx.fire([cue], scenery, place);
+    const r = resolveEffect(cue, pack, reduced);
+    const who = player === SIM_PLAYERS[0] ? 'you' : 'opponent';
+    const what = !r ? (reduced ? 'skipped (reduced motion)' : 'nothing (no built-in)') : r.source === 'pack' ? `pack ${r.effect.kind}${r.effect.preset ? ` ${r.effect.preset}` : ''}` : `built-in ${r.effect.preset}`;
+    setEventsLog((l) => [`effect · ${who} · ${event} · ${biome ?? 'no slot'} · ${what}`, ...l].slice(0, 6));
+  };
   const maxStage = Math.max(4, ...Object.values(pack?.biomes ?? {}).map((b) => b?.stages.length ?? 0));
 
   const play = (p: SimPlay) => setPlays((cur) => [...cur, p]);
@@ -78,8 +104,8 @@ export default function AmbiencePage() {
     if (plays.length !== before.length + 1 || before.some((p, i) => p !== plays[i])) return;
     const prevLog = simLog(before);
     const ev = sceneryEvents(sceneryFromLog(prevLog, Infinity), scenery, log.frames.at(-1)!.body as never);
-    fx.push(ev);
-    setEventsLog((l) => [...ev, ...l].slice(0, 6));
+    fx.push(ev, scenery, place);
+    setEventsLog((l) => [...ev.map(describe), ...l].slice(0, 6));
   }, [plays]); // eslint-disable-line react-hooks/exhaustive-deps
   const playDemo = () => {
     fx.reset();
@@ -98,7 +124,8 @@ export default function AmbiencePage() {
     }
     const pre = await preloadPack(m.pack, browserLoader(), { maxStage: 6 });
     const p = pre.failed.length ? withoutBiomes(m.pack, pre.failed) : m.pack;
-    const any = Object.keys(p.biomes).length > 0;
+    // A pack with effects and no stage art (spec 1.2) is usable too.
+    const any = Object.keys(p.biomes).length > 0 || !!p.effects;
     setPackState({
       status: any ? 'ok' : 'failed',
       url: u,
@@ -133,12 +160,13 @@ export default function AmbiencePage() {
       </header>
 
       <main className="amb-main">
-        <section className="amb-table" aria-label="Preview table">
+        <section className="amb-table" aria-label="Preview table" ref={table}>
           <MockSide
             title="Opponent"
             player={SIM_PLAYERS[1]}
             top
             slots={counts(SIM_PLAYERS[1])}
+            creatures={creaturesOf(SIM_PLAYERS[1])}
             strip={
               <SceneryStrip
                 slots={slotsOf(scenery, SIM_PLAYERS[1])}
@@ -158,6 +186,7 @@ export default function AmbiencePage() {
             title="You"
             player={SIM_PLAYERS[0]}
             slots={counts(SIM_PLAYERS[0])}
+            creatures={creaturesOf(SIM_PLAYERS[0])}
             strip={
               <SceneryStrip
                 slots={slotsOf(scenery, SIM_PLAYERS[0])}
@@ -218,11 +247,13 @@ export default function AmbiencePage() {
             {eventsLog.length > 0 && (
               <ul className="amb-events" aria-label="Last scenery events">
                 {eventsLog.map((e, i) => (
-                  <li key={i}>{describe(e)}</li>
+                  <li key={i}>{e}</li>
                 ))}
               </ul>
             )}
           </div>
+
+          <EffectsCard pack={pack} reduced={reduced} onFire={fireEffect} />
 
           <div className="amb-card">
             <h2>View</h2>
@@ -278,9 +309,8 @@ function describe(e: SceneryEvent): string {
   return `damage · ${who} · ${e.amount}`;
 }
 
-function MockSide({ title, player, top, slots, strip, plays }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; strip: React.ReactNode; plays: SimPlay[] }) {
+function MockSide({ title, player, top, slots, creatures, strip, plays }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; creatures: number[]; strip: React.ReactNode; plays: SimPlay[] }) {
   const lands = plays.filter((p): p is Extract<SimPlay, { kind: 'land' }> => p.kind === 'land' && p.player === player);
-  const creatures = plays.filter((p) => p.kind === 'creature' && p.player === player).length;
   const summary = slots.length ? slots.map((s) => `${BIOME_LABEL[s.biome]} ${fmt(s.weight)} · stage ${s.stage}`).join('   ') : 'No lands yet';
   const chips = (
     <div className="amb-chips" aria-label={`${title}'s lands`}>
@@ -291,10 +321,10 @@ function MockSide({ title, player, top, slots, strip, plays }: { title: string; 
       ))}
     </div>
   );
-  const creatureRow = creatures > 0 && (
+  const creatureRow = creatures.length > 0 && (
     <div className="amb-creatures">
-      {Array.from({ length: creatures }, (_, i) => (
-        <span key={i} className="amb-creature">
+      {creatures.map((id) => (
+        <span key={id} className="amb-creature" data-card-id={id}>
           2/2
         </span>
       ))}
@@ -306,7 +336,7 @@ function MockSide({ title, player, top, slots, strip, plays }: { title: string; 
         <b>{title}</b>
         <span className="amb-summary">{summary}</span>
       </div>
-      <div className="amb-bf scn-host">
+      <div className="amb-bf scn-host" data-amb-player={player}>
         {strip}
         {top ? (
           <>
@@ -376,7 +406,7 @@ function PackCard({
           {state.status === 'ok' ? (
             <>
               Loaded <b>{state.pack!.name}</b>
-              {state.pack!.author ? ` by ${state.pack!.author}` : ''}: {Object.keys(state.pack!.biomes).map((b) => BIOME_LABEL[b as Biome]).join(', ')}. Other biomes use the built-in scenery.
+              {state.pack!.author ? ` by ${state.pack!.author}` : ''}: {Object.keys(state.pack!.biomes).length ? `${Object.keys(state.pack!.biomes).map((b) => BIOME_LABEL[b as Biome]).join(', ')}. Other biomes use the built-in scenery.` : 'effects only, over the built-in scenery.'}
             </>
           ) : (
             <>Not loaded. {state.note}</>
@@ -439,4 +469,121 @@ function PackCard({
       </p>
     </div>
   );
+}
+
+const EFFECT_LABEL: Record<EffectEvent, string> = {
+  creatureEnter: 'Creature enters',
+  attack: 'Attack',
+  damagePlayer: 'Damage (player)',
+  damageCreature: 'Damage (creature)',
+  landfall: 'Landfall',
+  stageUp: 'Stage up',
+};
+
+const mb = (n: number) => (n < 102400 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1048576).toFixed(1)} MB`);
+
+function effectSummary(e: PackEffect): string {
+  const what = e.kind === 'particles' ? `particles ${e.preset}` : e.kind === 'sprite' ? `sprite ${e.frames} frames @ ${e.fps} fps` : 'clip';
+  return `${what} · ${e.durationMs} ms · at ${e.at}${e.bytes !== null ? ` · ${mb(e.bytes)} declared` : ''}`;
+}
+
+/**
+ * Fire any effect for either side, with no game state needed, and see what a
+ * loaded pack supplies for each event (else the built-in placeholder), plus
+ * its effect files fetched and measured against the budget.
+ */
+function EffectsCard({ pack, reduced, onFire }: { pack: ScenePack | null; reduced: boolean; onFire: (player: number, event: EffectEvent) => void }) {
+  const [files, setFiles] = useState<{ status: 'idle' | 'checking' | 'done'; files: EffectFileCheck[]; budgets: EffectBudget[] }>({ status: 'idle', files: [], budgets: [] });
+  useEffect(() => setFiles({ status: 'idle', files: [], budgets: [] }), [pack]);
+  const fx = pack?.effects ?? null;
+  const groups: [string, Partial<Record<EffectEvent, PackEffect>>][] = fx ? [['All biomes', fx.global], ...(Object.entries(fx.biomes) as [Biome, Partial<Record<EffectEvent, PackEffect>>][]).map(([b, set]) => [BIOME_LABEL[b], set] as [string, typeof set])] : [];
+  const check = async () => {
+    if (!pack) return;
+    setFiles({ status: 'checking', files: [], budgets: [] });
+    const r = await checkEffectFiles(pack, { fetch: (u, i) => fetch(u, i) });
+    setFiles({ status: 'done', ...r });
+  };
+  return (
+    <div className="amb-card" data-amb-effects>
+      <h2>Effects</h2>
+      {[SIM_PLAYERS[0], SIM_PLAYERS[1]].map((p) => (
+        <div key={p} className="amb-group" role="group" aria-label={p === SIM_PLAYERS[0] ? 'Your effects' : 'Opponent effects'}>
+          <div className="amb-group-h">{p === SIM_PLAYERS[0] ? 'You' : 'Opponent'}</div>
+          <div className="amb-fxbtns">
+            {EFFECT_EVENTS.map((ev) => (
+              <button key={ev} className="btn btn-quiet btn-sm" onClick={() => onFire(p, ev)} data-fire={`${p}:${ev}`}>
+                {EFFECT_LABEL[ev]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+      <span className="amb-hint">
+        Fires on the side's largest biome (play a land first to anchor it on a slot). Creature effects anchor on the newest creature when there is one.
+        {reduced ? ' Motion is still: effects show a still glow, a poster, or nothing.' : ''}
+      </span>
+      <div className="amb-fxstatus" role="status" aria-label="Pack effects">
+        <div className="amb-group-h">Pack effects</div>
+        {!pack ? (
+          <p className="amb-hint">No pack shown: every event plays the built-in placeholder ({EFFECT_EVENTS.filter((e) => BUILTIN_EFFECT[e]).map((e) => `${EFFECT_LABEL[e].toLowerCase()}: ${BUILTIN_EFFECT[e]}`).join(', ')}; landfall and stage up keep the slot glow and bloom).</p>
+        ) : !fx ? (
+          <p className="amb-hint">This pack has no effects (spec 1.1 or earlier): the built-in placeholders play.</p>
+        ) : (
+          <>
+            <p className="amb-hint">
+              At most {fx.maxConcurrent} at once. A biome without its own effect for an event uses the pack's “all biomes” one, else the built-in.
+            </p>
+            <ul className="amb-fxlist">
+              {groups.map(([label, set]) => (
+                <li key={label}>
+                  <b>{label}</b>
+                  {Object.keys(set).length === 0 ? (
+                    <span className="amb-hint"> none</span>
+                  ) : (
+                    <ul>
+                      {EFFECT_EVENTS.filter((e) => set[e]).map((e) => (
+                        <li key={e}>
+                          {e}: {effectSummary(set[e]!)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <div className="amb-row">
+              <button className="btn btn-quiet btn-sm" onClick={check} disabled={files.status === 'checking'}>
+                {files.status === 'checking' ? 'Checking…' : 'Check effect files'}
+              </button>
+              <span className="amb-hint">Fetches each file and measures it; budget {mb(MAX_EFFECT_BYTES)} per biome.</span>
+            </div>
+            {files.status === 'done' && (
+              <ul className="amb-issues">
+                {files.files.length === 0 && <li className="is-ok">No effect files: presets only.</li>}
+                {files.files.map((f) => (
+                  <li key={f.url} className={f.ok ? '' : 'is-error'}>
+                    {f.biome ? BIOME_LABEL[f.biome] : 'All biomes'} · {f.event} · {shortPath(f.url)} · {f.ok ? mb(f.bytes ?? 0) : `did not load (${f.error})`}
+                  </li>
+                ))}
+                {files.budgets.map((b) => (
+                  <li key={b.biome ?? '*'} className={b.over ? 'is-error' : 'is-ok'}>
+                    {b.biome ? BIOME_LABEL[b.biome] : 'All biomes'}: {mb(b.bytes)} of {mb(MAX_EFFECT_BYTES)}
+                    {b.over ? ' (over budget)' : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function shortPath(u: string): string {
+  try {
+    return new URL(u).pathname.split('/').slice(-2).join('/');
+  } catch {
+    return u;
+  }
 }

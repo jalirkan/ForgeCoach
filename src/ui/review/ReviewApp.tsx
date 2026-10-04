@@ -49,6 +49,7 @@ import { OptionBars } from './OptionBars.tsx';
 import { ReviewTimeline } from './ReviewTimeline.tsx';
 import { SAMPLE_REVIEWS } from './samples.ts';
 import { STAGE_WORDS, useReviewRun } from './useReviewRun.ts';
+import { WinChanceLine } from '../winchance/WinChanceLine.tsx';
 
 export interface ReviewAppProps {
   log: GameLog;
@@ -191,6 +192,8 @@ export default function ReviewApp({ log, title, sampleId = null, autoSample = fa
   const players = log.hello?.players ?? [];
   const opp = players.find((p) => p.id !== log.seat);
   const over = log.over;
+  // The win-chance line (mtg-table D359): each graded decision at the state it was taken in; a marker selects it.
+  const wcDecisions = useMemo(() => (loaded?.decisions ?? []).map((x) => ({ frame: x.stateFrame, id: x.frame })), [loaded]);
 
   return (
     <CardActionsContext.Provider value={actions}>
@@ -266,6 +269,7 @@ export default function ReviewApp({ log, title, sampleId = null, autoSample = fa
                       <span className="v-mistake">! mistake</span> <span className="v-close">≈ close</span> <span className="v-best">✓ best</span> <span className="v-close">= tie</span>
                     </span>
                   </div>
+                  <WinChanceLine log={log} decisions={wcDecisions} current={d?.stateFrame ?? null} onMarker={setSelected} />
                   <ReviewTimeline log={log} decisions={loaded.decisions} keyMoments={loaded.report.keyMoments} selected={selected} onSelect={setSelected} />
                 </section>
                 {wide && <ExplainCoach log={log} loaded={loaded} onOpenSettings={onSettings} />}

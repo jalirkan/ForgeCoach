@@ -17,7 +17,9 @@ import { SceneryTracker, slotsOf } from '../../ambience/model.ts';
 import { sceneryEvents } from '../../ambience/events.ts';
 import { cachedMap, useCardsVersion } from '../cardData.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
-import { useReducedMotion, useSceneryFx, useSceneryLoad, useSceneryPrefs } from './useScenery.ts';
+import { effectGate } from '../../ambience/effects.ts';
+import { browserLoader, preloadEffects } from '../../ambience/pack.ts';
+import { useReducedMotion, useSceneryFx, useSceneryLoad, useSceneryPrefs, type PlaceCard } from './useScenery.ts';
 
 interface Target {
   playerId: number;
@@ -43,7 +45,28 @@ function findTargets(anchor: HTMLElement | null, log: GameLog, seat: number, sta
   return out;
 }
 
-const sameTargets = (a: Target[], b: Target[]) => a.length === b.length && a.every((t, i) => t.el === b[i]!.el && t.playerId === b[i]!.playerId && t.top === b[i]!.top);
+/** Is `frameIndex` the log's last state frame (the board follows the end)? */
+function atLastState(log: GameLog, frameIndex: number): boolean {
+  for (let i = log.frames.length - 1; i > frameIndex; i--) if (log.frames[i]!.type === 'state') return false;
+  return true;
+}
+
+/** Where a card sits across its player's battlefield (the strip spans it), from the board's own tiles. */
+function placeCard(targets: Target[]): PlaceCard {
+  return (cue) => {
+    if (cue.cardId === null) return null;
+    const t = targets.find((x) => x.playerId === cue.player);
+    if (!t) return null;
+    const tile = t.el.querySelector<HTMLElement>(`[data-card-id="${cue.cardId}"]`);
+    if (!tile) return null;
+    const host = t.el.getBoundingClientRect();
+    const r = tile.getBoundingClientRect();
+    if (!(host.width > 0) || !(r.width > 0)) return null;
+    return Math.min(0.97, Math.max(0.03, (r.left + r.width / 2 - host.left) / host.width));
+  };
+}
+
+const sameTargets =(a: Target[], b: Target[]) => a.length === b.length && a.every((t, i) => t.el === b[i]!.el && t.playerId === b[i]!.playerId && t.top === b[i]!.top);
 
 export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; frameIndex: number; seat: number }) {
   const prefs = useSceneryPrefs();
@@ -71,19 +94,39 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
   useMemo(() => tracker.current.setOptions({ cards, thresholds: load?.pack?.stageThresholds ?? undefined }), [cardsKey, load?.pack?.stageThresholds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scenery = tracker.current.at(log, frameIndex);
-  const fx = useSceneryFx();
+  const fx = useSceneryFx(load?.pack ?? null, reduced);
   const lastIndex = useRef(frameIndex);
+  const lastLen = useRef(log.frames.length);
+  const lastLog = useRef(log);
+  const lastMoveAt = useRef<number | null>(null);
   useEffect(() => {
-    // Effects only for a board moving forward a little (play, or stepping a replay), never for a jump.
-    const prev = tracker.current.previous();
-    const forward = frameIndex > lastIndex.current && frameIndex - lastIndex.current < 12;
+    // Effects for live play and normal replay steps; a jump back or ahead, or scrubbing, cancels them (effects.ts effectGate).
+    const from = lastLog.current === log ? lastIndex.current : frameIndex;
+    const grew = log.frames.length > lastLen.current;
+    const fresh = tracker.current.steps().filter((s) => s.frameIndex > from && s.frameIndex <= frameIndex);
+    const t = performance.now();
+    const verdict = effectGate({ from, to: frameIndex, stateSteps: fresh.length, live: grew && atLastState(log, frameIndex), now: t, lastMoveAt: lastMoveAt.current });
+    if (verdict !== 'idle') lastMoveAt.current = t;
     lastIndex.current = frameIndex;
-    if (forward) fx.push(sceneryEvents(prev.scenery, scenery, tracker.current.current().state));
-  }, [scenery]); // eslint-disable-line react-hooks/exhaustive-deps
+    lastLen.current = log.frames.length;
+    lastLog.current = log;
+    if (verdict === 'cancel') fx.cancel();
+    if (verdict !== 'fire') return;
+    const place = placeCard(targets);
+    for (const s of fresh) fx.push(sceneryEvents(s.prev, s.next, s.state), s.next, place);
+  }, [scenery, frameIndex, log.frames.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (load?.note) console.info(`ForgeCoach scenery: ${load.note}`);
   }, [load?.note]);
+
+  // A pack's effect files warm the cache in the background; the board never waits for them.
+  useEffect(() => {
+    if (!load?.pack?.effects) return;
+    void preloadEffects(load.pack, browserLoader()).then((failed) => {
+      if (failed.length) console.info(`ForgeCoach scenery: ${failed.length} effect file(s) did not load; those effects may not show.`);
+    });
+  }, [load?.pack]);
 
   useLayoutEffect(() => {
     const next = findTargets(anchor.current, log, seat, state);

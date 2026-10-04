@@ -140,6 +140,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             </span>
           </span>
         </label>
+        <WinChanceField s={s} setS={setS} />
         <fieldset className="field">
           <legend className="field-label">Look</legend>
           <div className="model-grid" role="radiogroup" aria-label="Look">
@@ -211,6 +212,31 @@ function CoachSourceField({ s, setS }: { s: Settings; setS: (s: Settings) => voi
   );
 }
 
+/** Win chance (mtg-table D359): off by default; shown only while the coach helper has a model. */
+function WinChanceField({ s, setS }: { s: Settings; setS: (s: Settings) => void }) {
+  const { helper } = useCoachAvailability();
+  const model = helper?.eval ?? null;
+  return (
+    <label className="field check-row">
+      <input type="checkbox" checked={s.winChance === true} onChange={(e) => setS({ ...s, winChance: e.target.checked })} />
+      <span>
+        <span className="field-label">Show win chance (needs the local helper)</span>
+        <span className="field-help">
+          An estimate from a model trained on your PC on Forge-vs-Forge games, served by mtg-table’s coach helper: a strip while you
+          play, and a line over a replay’s timeline marking where it fell after your decisions. It reads only what your board shows.{' '}
+          {!helper
+            ? 'Looking for the helper…'
+            : model
+              ? `The helper has a model (${model.model}).`
+              : helper.state === 'ok' || helper.reason === 'not_ready'
+                ? 'The helper is running but has no model (play.sh --eval-model), so nothing is shown.'
+                : 'The helper is not running, so nothing is shown.'}
+        </span>
+      </span>
+    </label>
+  );
+}
+
 function HelperStatusText({ helper }: { helper: HelperStatus | null }) {
   if (!helper) return <>Looking for Claude Code on your PC…</>;
   if (helper.state === 'ok') {
@@ -246,6 +272,6 @@ function safeLoad(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default', skin: DEFAULT_SKIN };
+    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default', skin: DEFAULT_SKIN, winChance: false };
   }
 }

@@ -155,6 +155,22 @@ URL previews one without saving it.
 A **deck guide**, your notes on how a deck wants to play, is written in the page
 and included in every prompt for that deck.
 
+### Win chance (optional)
+
+**Settings → Show win chance (needs the local helper)** shows an estimate of
+your chance to win: a slim strip beside the board while you play (with its
+change since the previous turn), and a line over a replay's timeline and the
+engine review's decisions, with markers where it fell 8 points or more after
+one of your decisions (click one to go there). It is labelled **Win chance
+(local model, Forge-vs-Forge trained)**: a model mtg-table trains on your PC
+from games Forge's AI played against itself, served by the coach helper's
+`/eval` (mtg-table decision D359). It is off by default and hidden unless the
+helper has a model (`./scripts/play.sh --engine-only`, which loads
+`var/ml/models/night-1-eval.json` when it exists, or `--eval-model <path>`).
+It scores only the positions where you hold priority in a main phase or combat,
+and only from what your board shows; it is an estimate, not a verdict. The model
+stays on your PC: the page receives only the number.
+
 ### After the game
 
 The game-over card offers **Review this game with the coach**: a turn-by-turn
@@ -472,6 +488,8 @@ second and reads only new bytes. Each game of a match is a new file. Any
   decision's state and card text go to Anthropic with your request — straight
   from the browser with your key, or through the coach helper and Claude Code
   on your own PC. Copy prompt sends nothing anywhere.
+- The **win chance** (off by default) sends the board's own state, as your seat
+  sees it, to the coach helper on your PC and nowhere else.
 - **Card data and images** come from [Scryfall](https://scryfall.com), fetched
   by your browser and cached in it (IndexedDB).
 - **Draft pools** and imported cube-lab files stay in this browser
