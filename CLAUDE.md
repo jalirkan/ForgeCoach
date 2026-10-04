@@ -12,6 +12,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 
 - `protocol.ts` — wire types, **copied verbatim from mtg-table** `web/src/protocol.ts`.
 - `log.ts` — parse `frames.jsonl` / `.jsonl.gz` into a `GameLog` (header, frames, hello, over, seat).
+- `faceDown.ts` — defence in depth for a face-down card's face (`alt`, mtg-table D371): every reader (`log.ts` `parseLog`, `live.ts` `LiveLogBuilder`, `play/session.ts`) drops the `alt` of a face-down card **in play** the viewing seat does not control; an exiled card's `alt` (a look permission: Gonti, Thief of Sanity) is kept.
 - `decisions.ts` — the moments the viewing seat decided something, with the state and what was done.
 - `state.ts` — derived facts about one state: mana available, land drop, cast this turn.
 - `cards.ts` — card text and images from Scryfall, rate-limited, cached in IndexedDB.

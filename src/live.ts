@@ -41,6 +41,7 @@
  */
 import type { GameStateBody, HelloOkBody, OverBody, SessionHeader } from './protocol.ts';
 import type { GameLog, LoggedFrame } from './log.ts';
+import { guardFrame } from './faceDown.ts';
 
 /** mtg-table's read-only observer socket (needs the "read-only /observe" bridge update). */
 export const DEFAULT_LIVE_URL = 'ws://127.0.0.1:8642/observe';
@@ -193,11 +194,14 @@ export class LiveLogBuilder {
       if (this.#early.length < 1000) this.#early.push(frame);
       return false;
     }
+    // Defence in depth (faceDown.ts, mtg-table D371): a face-down permanent's
+    // face only for its controller.
+    const seat = this.header.seat;
     if (this.#early.length) {
-      this.frames.push(...this.#early);
+      this.frames.push(...this.#early.map((e) => guardFrame(e, seat)));
       this.#early = [];
     }
-    this.frames.push(frame);
+    this.frames.push(guardFrame(frame, seat));
     if (frame.type === 'hello_ok' && !this.hello) this.hello = frame.body as HelloOkBody;
     if (frame.type === 'over') this.over = frame.body as OverBody;
     return true;

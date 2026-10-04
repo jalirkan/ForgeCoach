@@ -19,6 +19,7 @@ import type {
   OverBody,
   SessionHeader,
 } from './protocol.ts';
+import { guardFrame } from './faceDown.ts';
 
 /** One frame as it sits in the file: the envelope plus the direction. */
 export type LoggedFrame = Frame & { dir?: 's2c' | 'c2s' };
@@ -53,7 +54,9 @@ export function parseLog(text: string): GameLog {
   let hello: HelloOkBody | null = null;
   let over: OverBody | null = null;
   for (let i = 1; i < lines.length; i++) {
-    const f = JSON.parse(lines[i]!) as LoggedFrame;
+    // Defence in depth (faceDown.ts, mtg-table D371): no opponent's face-down
+    // permanent keeps a face, whatever the file says.
+    const f = guardFrame(JSON.parse(lines[i]!) as LoggedFrame, header.seat);
     frames.push(f);
     if (f.type === 'hello_ok' && !hello) hello = f.body as HelloOkBody;
     if (f.type === 'over') over = f.body as OverBody;
