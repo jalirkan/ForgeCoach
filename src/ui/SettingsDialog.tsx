@@ -10,6 +10,8 @@ import { IconExternal } from './Icons.tsx';
 import { Sheet } from './Sheet.tsx';
 import { cx } from './util.ts';
 import { ScenerySettings } from './ambience/ScenerySettings.tsx';
+import { setFeedbackList, useFeedbackList } from './AdviceFeedback.tsx';
+import { exportFeedback } from '../feedback.ts';
 
 /** Coach thinking (D346): how long Claude Code on the PC may think before it answers. */
 const THINKING: Array<{ id: CoachThinking; label: string; hint: string }> = [
@@ -158,6 +160,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           <span className="field-help">The table, panels and type around the cards. Card images stay the real cards in every look.</span>
         </fieldset>
         <ScenerySettings />
+        <AdviceFeedbackField />
         {s.apiKey && (
           <button
             type="button"
@@ -234,6 +237,50 @@ function WinChanceField({ s, setS }: { s: Settings; setS: (s: Settings) => void 
         </span>
       </span>
     </label>
+  );
+}
+
+/** Settings → Advice feedback: how many answers were rated, the JSON export, and clearing it. */
+function AdviceFeedbackField() {
+  const list = useFeedbackList();
+  const up = list.filter((e) => e.vote === 'up').length;
+  const exportJson = () => {
+    const text = JSON.stringify(exportFeedback(list), null, 2);
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `forgecoach-advice-feedback-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  return (
+    <div className="field">
+      <span className="field-label">Advice feedback</span>
+      <span className="field-help">
+        {list.length
+          ? `${list.length} answer${list.length === 1 ? '' : 's'} rated (${up} helpful, ${list.length - up} not), ${list.filter((e) => e.note).length} with a note.`
+          : 'Nothing rated yet: use the thumbs under a coach answer.'}{' '}
+        Kept in this browser only: the vote, your note, the game and decision it was about, and who answered — never the advice itself.
+      </span>
+      {list.length > 0 && (
+        <div className="field-row">
+          <button type="button" className="btn btn-sm" onClick={exportJson}>
+            Export JSON
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-quiet"
+            onClick={() => {
+              if (confirm('Delete every advice rating stored in this browser?')) setFeedbackList([]);
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

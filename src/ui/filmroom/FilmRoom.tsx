@@ -13,6 +13,7 @@
  * through answers.ts `startAnswer` only, and start by themselves once the
  * moments are settled and a coach is connected; without one the panel offers
  * "Copy prompts" instead. Colours are the skins' tokens (filmroom.css).
+ * A settled film of a saved game also becomes practice puzzles (#practice).
  */
 import './filmroom.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -46,6 +47,8 @@ import { cardsForPrompt } from '../cardData.ts';
 import { AnswerHead, gameKey } from '../CoachPanel.tsx';
 import { useCoachAvailability } from '../hooks.ts';
 import { Markdown } from '../Markdown.tsx';
+import { AdviceFeedback } from '../AdviceFeedback.tsx';
+import { feedbackTarget } from '../../feedback.ts';
 import { IconCheck, IconCopy, IconSpark, IconStop } from '../Icons.tsx';
 import { copyText, cx } from '../util.ts';
 
@@ -136,6 +139,11 @@ export function FilmRoom({
     [film],
   );
   const why = useDropWhy(log, model, evalDrops);
+  // Practice: a settled film of a saved game (or a sample) becomes puzzles (ui/practice/practiceData.ts; a game not in Your record is left alone).
+  useEffect(() => {
+    if (!film) return;
+    void import('../practice/practiceData.ts').then((m) => m.rememberGame(log, { film, report, decisions })).catch(() => undefined);
+  }, [film, log, report, decisions]);
   const coach = useCoachAvailability();
   const gk = gameKey(log);
 
@@ -330,6 +338,7 @@ function MomentCard({
         {answer?.status === 'preparing' && <p className="tiny muted pulse">Getting the coach ready…</p>}
         {answer?.status === 'queued' && <p className="tiny muted pulse">Waiting for the coach{answer.queuePosition ? ` (${answer.queuePosition} ahead)` : ''}…</p>}
         {streaming && !answer?.text && <p className="tiny muted pulse">The coach is looking at it…</p>}
+        <AdviceFeedback target={feedbackTarget(log, m.decision.frameIndex, 'film')} answer={answer} />
         {answer?.status === 'error' && <p className="tiny film-err">{answer.error}</p>}
         {answer?.status === 'stopped' && <p className="tiny muted">Stopped.</p>}
         {canAsk && (
