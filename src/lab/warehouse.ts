@@ -14,6 +14,19 @@
  * is range-checked (JSON numbers only, no numeric strings); rates are in
  * [0, 1] with lo ≤ winRate ≤ hi. A row that fails is dropped and counted in
  * `dropped`, never repaired. Unknown fields are ignored.
+ *
+ * `series` is an optional schema-1 addition (no version bump; null when
+ * absent) for the trend charts: per-night rows per cube and per colour pair.
+ *
+ *   "series": {
+ *     "cubes": [{"cube","night","games","avgTurns": n|null,"onPlayWinRate": r|null,
+ *                "onPlayLo"?: r,"onPlayHi"?: r}],
+ *     "pairs": [{"cube","pair","night","games","winRate","lo","hi"}]
+ *   }
+ *
+ * Same rules as the rest: `night` as in `nights`, rates in [0, 1] with
+ * lo ≤ rate ≤ hi (onPlayLo/onPlayHi both or neither), one row per
+ * (cube, night) and (cube, pair, night); a bad row is dropped and counted.
  */
 import { cleanText, fetchLabJson, hashSource, parseTime, type FetchLike, type LabSource, LabFetchError } from './status.ts';
 
@@ -31,6 +44,8 @@ const MAX_NIGHTS = 500;
 const MAX_CUBES = 60;
 const MAX_PAIRS = 60 * 32;
 const MAX_CARDS = 6000;
+const MAX_SERIES_CUBES = 60 * 120;
+const MAX_SERIES_PAIRS = 12000;
 const BIG = 1e12;
 /** Rounding slack for lo ≤ winRate ≤ hi (the runner writes four decimals). */
 const EPS = 1e-6;
@@ -95,6 +110,30 @@ export interface WhCard extends WhRate {
   card: string;
 }
 
+/** One cube on one night (series.cubes). */
+export interface WhCubeNight {
+  cube: string;
+  night: string;
+  games: number;
+  avgTurns: number | null;
+  onPlayWinRate: number | null;
+  /** The on-the-play rate's interval, when the exporter writes one. */
+  onPlayLo: number | null;
+  onPlayHi: number | null;
+}
+
+/** One colour pair of one cube on one night (series.pairs). */
+export interface WhPairNight extends WhRate {
+  cube: string;
+  pair: string;
+  night: string;
+}
+
+export interface WhSeries {
+  cubes: WhCubeNight[];
+  pairs: WhPairNight[];
+}
+
 export interface WhDropped {
   tables: number;
   nights: number;
@@ -103,6 +142,8 @@ export interface WhDropped {
   cards: number;
   /** archive or disk present but unreadable. */
   blocks: number;
+  /** series rows (and an unreadable series block). */
+  series: number;
 }
 
 export interface Warehouse {
@@ -118,6 +159,8 @@ export interface Warehouse {
   cubes: WhCube[];
   pairs: WhPair[];
   cards: WhCard[];
+  /** Per-night trends (optional; null when the file has none). */
+  series: WhSeries | null;
   dropped: WhDropped;
 }
 
@@ -167,9 +210,13 @@ function parseTable(o: Obj): WhTable | null {
   return name && rows !== null && bytes !== null ? { name, rows, bytes } : null;
 }
 
+/** A night label: a whole number (as text) or a short string. */
+function nightOf(n: unknown): string | null {
+  return typeof n === 'number' ? (whole(n, 0, 1e9) === null ? null : String(n)) : text(n, LEN.night);
+}
+
 function parseNight(o: Obj): WhNight | null {
-  const n = own(o, 'night');
-  const night = typeof n === 'number' ? (whole(n, 0, 1e9) === null ? null : String(n)) : text(n, LEN.night);
+  const night = nightOf(own(o, 'night'));
   const drafts = whole(own(o, 'drafts'));
   const games = whole(own(o, 'games'));
   const recorded = whole(own(o, 'recorded'));
@@ -216,6 +263,47 @@ function parseCard(o: Obj): WhCard | null {
   return cube && card && r ? { cube, card, ...r } : null;
 }
 
+function parseCubeNight(o: Obj): WhCubeNight | null {
+  const cube = text(own(o, 'cube'), LEN.cube);
+  const night = nightOf(own(o, 'night'));
+  const games = whole(own(o, 'games'));
+  const at = own(o, 'avgTurns');
+  const op = own(o, 'onPlayWinRate');
+  const avgTurns = at === null || at === undefined ? null : real(at, 0, 1000);
+  const onPlayWinRate = op === null || op === undefined ? null : real(op, 0, 1);
+  if (!cube || night === null || games === null) return null;
+  if (at !== null && at !== undefined && avgTurns === null) return null;
+  if (op !== null && op !== undefined && onPlayWinRate === null) return null;
+  const rawLo = own(o, 'onPlayLo');
+  const rawHi = own(o, 'onPlayHi');
+  let onPlayLo: number | null = null;
+  let onPlayHi: number | null = null;
+  if (rawLo !== undefined || rawHi !== undefined) {
+    onPlayLo = real(rawLo, 0, 1);
+    onPlayHi = real(rawHi, 0, 1);
+    if (onPlayLo === null || onPlayHi === null || onPlayWinRate === null) return null;
+    if (onPlayLo > onPlayWinRate + EPS || onPlayWinRate > onPlayHi + EPS) return null;
+  }
+  return { cube, night, games, avgTurns, onPlayWinRate, onPlayLo, onPlayHi };
+}
+
+function parsePairNight(o: Obj): WhPairNight | null {
+  const cube = text(own(o, 'cube'), LEN.cube);
+  const pair = text(own(o, 'pair'), LEN.pair);
+  const night = nightOf(own(o, 'night'));
+  const r = parseRate(o);
+  return cube && pair && night !== null && r ? { cube, pair, night, ...r } : null;
+}
+
+/** The optional series block: absent or null → null; present but not an object → null and one counted. */
+function parseSeries(v: unknown): { value: WhSeries | null; bad: number } {
+  if (v === undefined || v === null) return { value: null, bad: 0 };
+  if (!isObj(v)) return { value: null, bad: 1 };
+  const cubes = dedupe(rows(own(v, 'cubes'), MAX_SERIES_CUBES, parseCubeNight), (c) => `${c.cube}\u0000${c.night}`);
+  const pairs = dedupe(rows(own(v, 'pairs'), MAX_SERIES_PAIRS, parsePairNight), (p) => `${p.cube}\u0000${p.pair}\u0000${p.night}`);
+  return { value: { cubes: cubes.out, pairs: pairs.out }, bad: cubes.bad + pairs.bad };
+}
+
 /** An optional block: absent or null → null; present but bad → null and counted. */
 function block<T>(v: unknown, parse: (o: Obj) => T | null): { value: T | null; bad: number } {
   if (v === undefined || v === null) return { value: null, bad: 0 };
@@ -248,12 +336,16 @@ function dedupe<T>(r: { out: T[]; bad: number }, key: (x: T) => string): { out: 
 }
 
 /** Numbered nights by number, then dates and words (such as the exporter's "other") as text. */
-function nightOrder(a: WhNight, b: WhNight): number {
-  const na = /^\d+$/.test(a.night) ? Number(a.night) : NaN;
-  const nb = /^\d+$/.test(b.night) ? Number(b.night) : NaN;
+export function nightLabelOrder(a: string, b: string): number {
+  const na = /^\d+$/.test(a) ? Number(a) : NaN;
+  const nb = /^\d+$/.test(b) ? Number(b) : NaN;
   if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
   if (Number.isFinite(na) !== Number.isFinite(nb)) return Number.isFinite(na) ? -1 : 1;
-  return a.night < b.night ? -1 : a.night > b.night ? 1 : 0;
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function nightOrder(a: WhNight, b: WhNight): number {
+  return nightLabelOrder(a.night, b.night);
 }
 
 /** Unknown JSON → Warehouse. Throws WarehouseError when it is not an object or not schema 1. */
@@ -271,6 +363,7 @@ export function parseWarehouse(json: unknown): Warehouse {
   const cards = dedupe(rows(own(json, 'cards'), MAX_CARDS, parseCard), (c) => `${c.cube}\u0000${c.card}`);
   const archive = block(own(json, 'archive'), parseArchive);
   const disk = block(own(json, 'disk'), parseDisk);
+  const series = parseSeries(own(json, 'series'));
   return {
     schema: WAREHOUSE_SCHEMA,
     generatedAt: parseTime(own(json, 'generatedAt')),
@@ -282,14 +375,15 @@ export function parseWarehouse(json: unknown): Warehouse {
     cubes: cubes.out,
     pairs: pairs.out,
     cards: cards.out,
-    dropped: { tables: tables.bad, nights: nights.bad, cubes: cubes.bad, pairs: pairs.bad, cards: cards.bad, blocks: archive.bad + disk.bad },
+    series: series.value,
+    dropped: { tables: tables.bad, nights: nights.bad, cubes: cubes.bad, pairs: pairs.bad, cards: cards.bad, blocks: archive.bad + disk.bad, series: series.bad },
   };
 }
 
 /** Rows dropped in all. */
 export function droppedTotal(w: Warehouse): number {
   const d = w.dropped;
-  return d.tables + d.nights + d.cubes + d.pairs + d.cards + d.blocks;
+  return d.tables + d.nights + d.cubes + d.pairs + d.cards + d.blocks + d.series;
 }
 
 // ---------------------------------------------------------------------------
