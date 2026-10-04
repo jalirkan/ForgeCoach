@@ -2,10 +2,12 @@
  * ForgeCoach — ambience/manifest.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The scenery asset pack's manifest (`scenery.json`, schema 1, spec 1.2; the
+ * The scenery asset pack's manifest (`scenery.json`, schema 1, spec 1.3; the
  * contract is docs/scenery-pack-spec.md) and its strict validator. DOM-free.
  * Spec 1.2 adds optional one-shot `effects` (creature enters, attack, damage,
- * landfall, stage up), globally and per biome; a 1.1 pack reads as before.
+ * landfall, stage up), globally and per biome; spec 1.3 adds optional board
+ * accents (`overlay` per stage: corner and edge pieces in the player's area,
+ * outside the strip). A 1.1 or 1.2 pack reads as before.
  *
  * A pack is untrusted input, served from wherever the user pointed the page:
  * every string is cleaned and clipped, every number range-checked, every URL
@@ -20,7 +22,7 @@ import { BIOMES, MAX_STAGES, type Biome } from './model.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
-export const SPEC_VERSION = '1.2';
+export const SPEC_VERSION = '1.3';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */
@@ -353,9 +355,254 @@ export function effectUrls(pack: ScenePack): { biome: Biome | null; event: Effec
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Board accents (spec 1.3)
+
+/** Where an accent piece hugs the player's area. Corners take a picture; edges take a band. */
+export const OVERLAY_ANCHORS = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'top-edge', 'bottom-edge', 'left-edge', 'right-edge'] as const;
+export type OverlayAnchor = (typeof OVERLAY_ANCHORS)[number];
+export const isOverlayCorner = (a: OverlayAnchor) => !a.endsWith('-edge');
+/** An edge band: the picture repeats along the edge (seamless art), or is stretched to it. */
+export const OVERLAY_TILES = ['repeat', 'stretch'] as const;
+export type OverlayTile = (typeof OVERLAY_TILES)[number];
+/** CSS-only motion on a still picture. */
+export const OVERLAY_MOTIONS = ['none', 'sway', 'drift', 'breathe'] as const;
+export type OverlayMotion = (typeof OVERLAY_MOTIONS)[number];
+/** How a stage's `overlay` list combines with the previous stage's pieces. */
+export const OVERLAY_MODES = ['replace', 'add'] as const;
+export type OverlayMode = (typeof OVERLAY_MODES)[number];
+/** The procedural placeholders ForgeCoach draws itself (no files); a pack names a `src` instead. */
+export const BUILTIN_OVERLAYS = ['vine', 'leaves', 'frost', 'spray', 'ash', 'embers', 'moss', 'mist', 'petals', 'motes', 'dust'] as const;
+export type BuiltinOverlay = (typeof BUILTIN_OVERLAYS)[number];
+
+/** At most this many accent pieces show in one player's area (more are dropped). */
+export const MAX_OVERLAY_PIECES = 6;
+/** At most this many accent pieces per stage may move (CSS sway / drift / breathe); the rest are drawn still. */
+export const MAX_OVERLAY_ANIMATED = 3;
+/** The declared `bytes` of one biome's accent files should stay under this (a warning). */
+export const MAX_OVERLAY_BYTES = 2 * 1024 * 1024;
+/** Defaults by kind of anchor: a corner's width, or an edge band's thickness, as a fraction of the area's width, and its pixel cap. */
+export const OVERLAY_DEFAULTS = { corner: { size: 0.18, maxPx: 280 }, edge: { size: 0.05, maxPx: 72 } } as const;
+
+const OVERLAY_EXT = /\.(webp|avif)$/i;
+
+export interface OverlayPiece {
+  /** Unique within a stage; with `overlayMode: "add"` a piece with an earlier id replaces it. */
+  id: string;
+  anchor: OverlayAnchor;
+  /** Resolved URL (a pack's), or null for a built-in placeholder (`builtin`). */
+  src: string | null;
+  src2x: string | null;
+  /** A procedural placeholder drawn by ForgeCoach (built-in accents only). */
+  builtin: BuiltinOverlay | null;
+  /** Corner: the picture's width; edge: the band's thickness; as a fraction of the area's width. */
+  size: number;
+  /** A pixel cap on that width or thickness. */
+  maxPx: number;
+  /** Edges only. */
+  tile: OverlayTile;
+  opacity: number;
+  blend: BlendMode;
+  motion: OverlayMotion;
+  periodMs: number;
+  /** On the opponent's side, flip vertically so the piece hugs their (top) edge. */
+  mirror: boolean;
+  bytes: number | null;
+}
+
+/** One biome's accents, per stage (`stages[0]` is stage 1), already combined across stages (replace / add). */
+export interface PackOverlayBiome {
+  stages: OverlayPiece[][];
+}
+
+export type PackOverlays = Partial<Record<Biome, PackOverlayBiome>>;
+
+function parseOverlayPiece(v: unknown, base: string, path: string, warn: string[]): OverlayPiece | null {
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object; piece dropped`);
+    return null;
+  }
+  const problems: string[] = [];
+  const id = cleanText(v.id, 40);
+  if (!id || !/^[A-Za-z0-9][\w.-]*$/.test(id)) problems.push(`${path}.id: missing, or not letters, digits, - _ .`);
+  let anchor: OverlayAnchor | null = null;
+  if (typeof v.anchor === 'string' && (OVERLAY_ANCHORS as readonly string[]).includes(v.anchor)) anchor = v.anchor as OverlayAnchor;
+  else problems.push(`${path}.anchor: "${cleanText(v.anchor, 40) ?? typeof v.anchor}" is not one of ${OVERLAY_ANCHORS.join(', ')}`);
+  const src = layerUrl(v.src, base, OVERLAY_EXT, '.webp or .avif (a transparent still)', `${path}.src`, problems, false);
+  if (problems.length) {
+    warn.push(...problems.map((p) => `${p}; piece dropped`));
+    return null;
+  }
+  const opt: string[] = [];
+  const src2x = layerUrl(v.src2x, base, OVERLAY_EXT, '.webp or .avif', `${path}.src2x`, opt, true);
+  for (const o of opt) warn.push(`${o}; ignored`);
+  const corner = isOverlayCorner(anchor!);
+  const d = corner ? OVERLAY_DEFAULTS.corner : OVERLAY_DEFAULTS.edge;
+  let tile: OverlayTile = 'repeat';
+  if (v.tile !== undefined && v.tile !== null) {
+    if (corner) warn.push(`${path}.tile: only for edges; ignored`);
+    else tile = oneOf(v.tile, OVERLAY_TILES, 'repeat', `${path}.tile`, warn);
+  }
+  let mirror = true;
+  if (v.mirror !== undefined && v.mirror !== null) {
+    if (typeof v.mirror === 'boolean') mirror = v.mirror;
+    else warn.push(`${path}.mirror: not true or false; using true`);
+  }
+  let bytes: number | null = null;
+  if (v.bytes !== undefined && v.bytes !== null) {
+    bytes = int(v.bytes, 0, 1e9);
+    if (bytes === null) warn.push(`${path}.bytes: a whole number of bytes; ignored`);
+  }
+  return {
+    id: id!,
+    anchor: anchor!,
+    src,
+    src2x,
+    builtin: null,
+    size: ranged(v.size, 0.02, 1, d.size, `${path}.size`, warn),
+    maxPx: ranged(v.maxPx, 16, 1024, d.maxPx, `${path}.maxPx`, warn, true),
+    tile,
+    opacity: ranged(v.opacity, 0, 1, 1, `${path}.opacity`, warn),
+    blend: oneOf(v.blend, BLEND_MODES, 'normal', `${path}.blend`, warn),
+    motion: oneOf(v.motion, OVERLAY_MOTIONS, 'none', `${path}.motion`, warn),
+    periodMs: ranged(v.periodMs, 2000, 60000, 9000, `${path}.periodMs`, warn, true),
+    mirror,
+    bytes,
+  };
+}
+
+/**
+ * Combine per-stage lists across stages. A stage without `overlay` (null here)
+ * keeps the previous stage's pieces; `replace` (the default) lists the
+ * stage's complete set; `add` adds to the previous stage's (a repeated id
+ * replaces that piece, in its place). Then the caps: at most
+ * {@link MAX_OVERLAY_PIECES} pieces (the first kept) and
+ * {@link MAX_OVERLAY_ANIMATED} moving ones (the rest drawn still). Pure;
+ * `warn` gets one line per cap hit, `path` naming the biome.
+ */
+export function combineOverlayStages(lists: ({ mode: OverlayMode; pieces: OverlayPiece[] } | null)[], path = 'overlay', warn: string[] = []): OverlayPiece[][] {
+  const out: OverlayPiece[][] = [];
+  let prev: OverlayPiece[] = [];
+  lists.forEach((l, i) => {
+    let cur: OverlayPiece[];
+    if (!l) cur = prev;
+    else if (l.mode === 'replace') cur = l.pieces;
+    else {
+      cur = [...prev];
+      for (const p of l.pieces) {
+        const at = cur.findIndex((x) => x.id === p.id);
+        if (at >= 0) cur[at] = p;
+        else cur.push(p);
+      }
+    }
+    const sp = `${path}.stages[${i}].overlay`;
+    if (cur.length > MAX_OVERLAY_PIECES) {
+      if (l) warn.push(`${sp}: ${cur.length} pieces in this stage; at most ${MAX_OVERLAY_PIECES} show, the rest dropped`);
+      cur = cur.slice(0, MAX_OVERLAY_PIECES);
+    }
+    let moving = 0;
+    const capped = cur.map((p) => {
+      if (p.motion === 'none') return p;
+      moving++;
+      return moving > MAX_OVERLAY_ANIMATED ? { ...p, motion: 'none' as const } : p;
+    });
+    if (moving > MAX_OVERLAY_ANIMATED && l) warn.push(`${sp}: ${moving} moving pieces; at most ${MAX_OVERLAY_ANIMATED} per stage move, the rest are drawn still`);
+    out.push(capped);
+    prev = capped;
+  });
+  return out;
+}
+
+/** The declared bytes of a biome's accent files (each file once). */
+export function overlayBytes(b: PackOverlayBiome | undefined): number {
+  const seen = new Map<string, number>();
+  for (const st of b?.stages ?? []) for (const p of st) if (p.src && p.bytes !== null) seen.set(p.src, p.bytes);
+  return [...seen.values()].reduce((n, x) => n + x, 0);
+}
+
+function parseOverlayBiome(v: Obj, base: string, path: string, warn: string[]): PackOverlayBiome | null {
+  const rawStages = Array.isArray(v.stages) ? v.stages.slice(0, MAX_STAGES) : [];
+  if (!rawStages.some((st) => isObj(st) && st.overlay !== undefined)) return null;
+  const lists = rawStages.map((st, i) => {
+    if (!isObj(st) || st.overlay === undefined) return null;
+    const sp = `${path}.stages[${i}]`;
+    const mode = oneOf(st.overlayMode, OVERLAY_MODES, 'replace', `${sp}.overlayMode`, warn);
+    if (!Array.isArray(st.overlay)) {
+      warn.push(`${sp}.overlay: not a list; ignored`);
+      return null;
+    }
+    const pieces: OverlayPiece[] = [];
+    const ids = new Set<string>();
+    st.overlay.forEach((raw, j) => {
+      const p = parseOverlayPiece(raw, base, `${sp}.overlay[${j}]`, warn);
+      if (!p) return;
+      if (ids.has(p.id)) {
+        warn.push(`${sp}.overlay[${j}].id: "${p.id}" repeats in this stage; piece dropped`);
+        return;
+      }
+      ids.add(p.id);
+      pieces.push(p);
+    });
+    return { mode, pieces };
+  });
+  const stages = combineOverlayStages(lists, path, warn);
+  if (!stages.some((s) => s.length)) {
+    warn.push(`${path}: no usable accent pieces; the biome has no accents`);
+    return { stages };
+  }
+  const out = { stages };
+  const bytes = overlayBytes(out);
+  if (bytes > MAX_OVERLAY_BYTES) warn.push(`${path}: ${(bytes / 1048576).toFixed(1)} MB of accents declared; the budget is ${MAX_OVERLAY_BYTES / 1048576} MB per biome (pieces kept)`);
+  return out;
+}
+
+function parseOverlays(raw: Obj, base: string, warn: string[]): PackOverlays | null {
+  if (!isObj(raw.biomes)) return null;
+  const out: PackOverlays = {};
+  for (const b of BIOMES) {
+    const bv = raw.biomes[b];
+    if (!isObj(bv)) continue;
+    const o = parseOverlayBiome(bv, base, `biomes.${b}`, warn);
+    if (o) out[b] = o;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/** Does any biome of the pack have an accent piece? */
+export function hasOverlays(pack: ScenePack | null | undefined): boolean {
+  return Object.values(pack?.overlays ?? {}).some((b) => b?.stages.some((s) => s.length));
+}
+
+/**
+ * A biome's accent pieces at a stage (the last given stage past the end), or
+ * null when the pack gives that biome no accents. A pack that lists accents
+ * for a biome, even all empty, owns them: an empty list means none.
+ */
+export function overlayAt(b: PackOverlayBiome | undefined, stage: number): OverlayPiece[] | null {
+  if (!b || !b.stages.length) return null;
+  if (stage <= 0) return [];
+  return b.stages[Math.min(stage, b.stages.length) - 1] ?? [];
+}
+
+/** Every accent file a pack names, stage 1 first (preload order). */
+export function overlayUrls(pack: ScenePack): { biome: Biome; stage: number; url: string }[] {
+  const out: { biome: Biome; stage: number; url: string }[] = [];
+  const seen = new Set<string>();
+  for (let stage = 1; stage <= MAX_STAGES; stage++) {
+    for (const biome of BIOMES) {
+      for (const p of pack.overlays?.[biome]?.stages[stage - 1] ?? []) {
+        if (!p.src || seen.has(p.src)) continue;
+        seen.add(p.src);
+        out.push({ biome, stage, url: p.src });
+      }
+    }
+  }
+  return out;
+}
+
 export interface ScenePack {
   schema: 1;
-  /** The spec version the pack says it was written for ("1.2"), or null. Informational. */
+  /** The spec version the pack says it was written for ("1.3"), or null. Informational. */
   spec?: string | null;
   name: string;
   author: string | null;
@@ -368,6 +615,8 @@ export interface ScenePack {
   biomes: Partial<Record<Biome, PackBiome>>;
   /** Spec 1.2: one-shot effects, or undefined / null when the pack has none (the built-in placeholders play). */
   effects?: PackEffectSet | null;
+  /** Spec 1.3: board accents per biome, or undefined / null when the pack has none. */
+  overlays?: PackOverlays | null;
 }
 
 export interface ManifestResult {
@@ -525,6 +774,9 @@ function parseBiome(v: unknown, base: string, path: string, warn: string[]): Pac
   const rawStages = Array.isArray(v.stages) ? v.stages : [];
   if (rawStages.length > MAX_STAGES) warn.push(`${path}.stages: more than ${MAX_STAGES}; the rest ignored`);
   const stages: PackStage[] = [];
+  // Accents only (spec 1.3): every stage has an `overlay` and no `layers`; the strip keeps the built-in scene, no warning.
+  const accentsOnly = rawStages.length > 0 && rawStages.every((st) => isObj(st) && st.layers === undefined && st.overlay !== undefined);
+  if (accentsOnly) return null;
   rawStages.slice(0, MAX_STAGES).forEach((st, i) => {
     const sp = `${path}.stages[${i}]`;
     const rawLayers = isObj(st) && Array.isArray(st.layers) ? st.layers : Array.isArray(st) ? st : null;
@@ -639,7 +891,8 @@ export function validateManifest(raw: unknown, base: string): ManifestResult {
     if (parsed) biomes[biome] = parsed;
   }
   const effects = parseEffectSet(raw, b, warnings);
-  if (Object.keys(biomes).length === 0 && !effects) {
+  const overlays = parseOverlays(raw, b, warnings);
+  if (Object.keys(biomes).length === 0 && !effects && !overlays) {
     errors.push('No biome has a usable layer.');
     return { pack: null, errors, warnings };
   }
@@ -661,6 +914,7 @@ export function validateManifest(raw: unknown, base: string): ManifestResult {
       stageThresholds: parseThresholds(raw.stageThresholds, warnings),
       biomes,
       effects,
+      overlays,
     },
     errors,
     warnings,

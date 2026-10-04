@@ -13,7 +13,7 @@
  */
 import type { Biome } from './model.ts';
 import { BIOMES } from './model.ts';
-import { effectUrls, MANIFEST_FILE, MAX_EFFECT_BYTES, MAX_MANIFEST_BYTES, packUrls, validateManifest, type EffectEvent, type LayerKind, type ScenePack } from './manifest.ts';
+import { effectUrls, overlayUrls, MANIFEST_FILE, MAX_EFFECT_BYTES, MAX_MANIFEST_BYTES, packUrls, validateManifest, type EffectEvent, type LayerKind, type ScenePack } from './manifest.ts';
 import type { SceneryPrefs } from './prefs.ts';
 
 export interface SceneryLoad {
@@ -263,4 +263,23 @@ export function preloadEffects(pack: ScenePack, load: AssetLoader): Promise<stri
   const failed: string[] = [];
   const items = effectUrls(pack);
   return Promise.all(items.map((it) => load(it.url, it.kind).catch(() => void failed.push(it.url)))).then(() => failed);
+}
+
+/**
+ * Warm the cache with a pack's accent files (spec 1.3), stage 1 first, a few
+ * at a time, in the background (the board does not wait; a piece whose file
+ * fails is simply not drawn). Returns the URLs that failed.
+ */
+export async function preloadOverlays(pack: ScenePack, load: AssetLoader, concurrency = 3): Promise<string[]> {
+  const items = overlayUrls(pack);
+  const failed: string[] = [];
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const it = items[next++]!;
+      await load(it.url, 'image').catch(() => void failed.push(it.url));
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  return failed;
 }

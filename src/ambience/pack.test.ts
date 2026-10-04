@@ -109,8 +109,11 @@ describe('prefs', () => {
     const m = new Map<string, string>();
     const s = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
     expect(loadSceneryPrefs(s)).toEqual(DEFAULT_PREFS);
-    saveSceneryPrefs({ mode: 'pack', packUrl: 'http://127.0.0.1:8650/', motion: 'reduce' }, s);
-    expect(loadSceneryPrefs(s)).toEqual({ mode: 'pack', packUrl: 'http://127.0.0.1:8650/', motion: 'reduce' });
+    saveSceneryPrefs({ mode: 'pack', packUrl: 'http://127.0.0.1:8650/', motion: 'reduce', accents: false }, s);
+    expect(loadSceneryPrefs(s)).toEqual({ mode: 'pack', packUrl: 'http://127.0.0.1:8650/', motion: 'reduce', accents: false });
+    // Prefs saved before spec 1.3 have no accents field: on.
+    m.set('forgecoach.scenery', '{"mode":"procedural","packUrl":"","motion":"system"}');
+    expect(loadSceneryPrefs(s).accents).toBe(true);
     m.set('forgecoach.scenery', '{"mode":"loud","motion":7}');
     expect(loadSceneryPrefs(s)).toEqual(DEFAULT_PREFS);
   });

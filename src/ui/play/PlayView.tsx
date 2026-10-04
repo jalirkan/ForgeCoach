@@ -617,6 +617,7 @@ export function PlayView({
                   setWaitingNext(true);
                   act({ action: 'newGame', mode: 'restart' });
                 }}
+                {...(status !== 'connecting' ? { onReconnect: () => session.reconnect() } : {})}
                 onLeave={onLeave}
               />
             )}

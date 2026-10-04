@@ -6,7 +6,9 @@
  * It renders an invisible anchor inside the board, finds each player's
  * battlefield from there, and portals that player's strip into it — so the
  * board's own components carry no scenery code at all. Reads only the log's
- * frames up to the board's frame (the viewer's redacted states).
+ * frames up to the board's frame (the viewer's redacted states). With the
+ * board accents on (spec 1.3, Settings → Board accents), each battlefield also
+ * gets its accent layer (SceneryOverlay), beneath the cards like the strip.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -17,8 +19,10 @@ import { SceneryTracker, slotsOf } from '../../ambience/model.ts';
 import { sceneryEvents } from '../../ambience/events.ts';
 import { cachedMap, useCardsVersion } from '../cardData.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
+import { SceneryOverlay } from './SceneryOverlay.tsx';
+import { accentsOn } from '../../ambience/prefs.ts';
 import { effectGate } from '../../ambience/effects.ts';
-import { browserLoader, preloadEffects } from '../../ambience/pack.ts';
+import { browserLoader, preloadEffects, preloadOverlays } from '../../ambience/pack.ts';
 import { useReducedMotion, useSceneryFx, useSceneryLoad, useSceneryPrefs, type PlaceCard } from './useScenery.ts';
 
 interface Target {
@@ -128,6 +132,15 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     });
   }, [load?.pack]);
 
+  // Accent files warm the cache in the background too.
+  const accents = accentsOn(prefs);
+  useEffect(() => {
+    if (!accents || !load?.pack?.overlays) return;
+    void preloadOverlays(load.pack, browserLoader()).then((failed) => {
+      if (failed.length) console.info(`ForgeCoach scenery: ${failed.length} accent file(s) did not load; those pieces are not drawn.`);
+    });
+  }, [load?.pack, accents]);
+
   useLayoutEffect(() => {
     const next = findTargets(anchor.current, log, seat, state);
     for (const t of next) t.el.classList.add('scn-host');
@@ -140,14 +153,17 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
       {load &&
         targets.map((t) =>
           createPortal(
-            <SceneryStrip
-              slots={slotsOf(scenery, t.playerId)}
-              pack={load.pack}
-              edge={t.top ? 'top' : 'bottom'}
-              reduced={reduced}
-              pulses={fx.pulses.get(t.playerId)}
-              fx={fx.fx.get(t.playerId)}
-            />,
+            <>
+              <SceneryStrip
+                slots={slotsOf(scenery, t.playerId)}
+                pack={load.pack}
+                edge={t.top ? 'top' : 'bottom'}
+                reduced={reduced}
+                pulses={fx.pulses.get(t.playerId)}
+                fx={fx.fx.get(t.playerId)}
+              />
+              {accents && <SceneryOverlay slots={slotsOf(scenery, t.playerId)} pack={load.pack} edge={t.top ? 'top' : 'bottom'} reduced={reduced} />}
+            </>,
             t.el,
             `scn-${t.playerId}`,
           ),
