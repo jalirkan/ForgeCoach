@@ -10,11 +10,12 @@
  * a text face. Memoised on the fields they draw, so scrubbing between states
  * only re-renders tiles whose card actually changed.
  */
-import { memo, useCallback, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import type { AnyCard, Card } from '../protocol.ts';
 import { isHidden } from '../protocol.ts';
 import type { CardInfo } from '../cards.ts';
 import { useCardInfo } from './cardData.ts';
+import { createLongPress, pressBuzz, pressTimers } from './longPress.ts';
 import { useBoardStateRef, useCardActions, usePlay, type PlayMark } from './cardContext.ts';
 import { PILE_SHOWN, pilePlan } from './landPiles.ts';
 import { ManaCost } from './Mana.tsx';
@@ -66,20 +67,18 @@ function useOpen(card: AnyCard, onClicked?: (card: AnyCard) => void) {
   const chosen = play ? play.chosen(card) : null;
   const hint = play && !mark ? false : play ? play.hint(card) : false;
   // Long-press (touch) opens details without acting; the click that follows is
-  // swallowed. A finger that moves (scrolling the hand) is not a long-press.
-  const pressTimer = useRef<number | null>(null);
-  const pressAt = useRef<{ x: number; y: number } | null>(null);
-  const longPressed = useRef(false);
+  // swallowed. A finger that moves (scrolling the hand) is not a long-press (ui/longPress.ts).
+  const openRef = useRef(open);
+  openRef.current = open;
+  const press = useMemo(() => createLongPress({ onLong: () => openRef.current(), timers: pressTimers, haptic: pressBuzz }), []);
+  useEffect(() => () => press.cancel(), [press]);
   const activate = useCallback(() => {
-    if (longPressed.current) {
-      longPressed.current = false;
-      return;
-    }
+    if (press.takeClick()) return;
     if (play && mark) {
       onClicked?.(cardRef.current);
       play.click(cardRef.current);
     } else open();
-  }, [play, mark, open, onClicked]);
+  }, [play, mark, open, onClicked, press]);
   // Enter activates a focused tile. In play, Space is left to the table's
   // primary button (click a land, then Space = OK); in replay it opens too.
   const onKey = useCallback(
@@ -99,57 +98,30 @@ function useOpen(card: AnyCard, onClicked?: (card: AnyCard) => void) {
     },
     [actions, name],
   );
-  const clearPress = useCallback(() => {
-    if (pressTimer.current !== null) window.clearTimeout(pressTimer.current);
-    pressTimer.current = null;
-    pressAt.current = null;
-  }, []);
+  const clearPress = useCallback(() => press.cancel(), [press]);
   const onLeave = useCallback(
     (e: PointerEvent<HTMLElement>) => {
       // A touch that slides off the tile cancels; the mouse only ends its hover.
-      if (e.pointerType !== 'mouse') clearPress();
+      if (e.pointerType !== 'mouse') press.cancel();
       actions.hover(null);
     },
-    [actions, clearPress],
+    [actions, press],
   );
   const onDown = useCallback(
     (e: PointerEvent<HTMLElement>) => {
-      longPressed.current = false;
-      if (!play || e.pointerType === 'mouse' || !e.isPrimary) return;
-      clearPress();
-      pressAt.current = { x: e.clientX, y: e.clientY };
-      pressTimer.current = window.setTimeout(() => {
-        pressTimer.current = null;
-        longPressed.current = true;
-        try {
-          navigator.vibrate?.(12);
-        } catch {
-          /* not supported */
-        }
-        open();
-      }, 450);
+      if (play) press.down(e.clientX, e.clientY, e.pointerType, e.isPrimary);
     },
-    [play, open, clearPress],
+    [play, press],
   );
-  const onMove = useCallback(
-    (e: PointerEvent<HTMLElement>) => {
-      const at = pressAt.current;
-      if (!at || pressTimer.current === null) return;
-      if (Math.abs(e.clientX - at.x) > 8 || Math.abs(e.clientY - at.y) > 8) clearPress();
-    },
-    [clearPress],
-  );
+  const onMove = useCallback((e: PointerEvent<HTMLElement>) => press.move(e.clientX, e.clientY), [press]);
   const onContext = useCallback(
     (e: MouseEvent<HTMLElement>) => {
       if (!play) return;
       e.preventDefault();
       // Touch browsers fire contextmenu on their own long-press; the timer already opened it.
-      if (longPressed.current) return;
-      clearPress();
-      longPressed.current = (e.nativeEvent as globalThis.PointerEvent).pointerType === 'touch';
-      open();
+      if (press.context((e.nativeEvent as globalThis.PointerEvent).pointerType)) open();
     },
-    [play, open, clearPress],
+    [play, open, press],
   );
   const handlers = {
     onClick: activate,
