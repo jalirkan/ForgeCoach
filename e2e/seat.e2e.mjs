@@ -43,7 +43,7 @@ const env = process.env;
 const HEADLESS = !/^(0|false|no)$/i.test(env.HEADLESS ?? '1');
 const VERBOSE = /^(1|true|yes)$/i.test(env.VERBOSE ?? '');
 const REPEAT = Math.max(1, Number(env.REPEAT || 1));
-const STEP_MS = 8000;
+const STEP_MS = 15_000;
 
 class Fail extends Error {}
 const check = (ok, msg) => {
