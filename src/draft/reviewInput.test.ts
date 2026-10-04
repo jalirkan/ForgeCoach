@@ -48,6 +48,14 @@ describe('draftReviewFields', () => {
     expect(isDraftMatch(logWith('Izzet Spells'), saved())).toBe(true);
   });
 
+  it('sends no known picks after a Booster of three or more seats, and the same ones as before after two', () => {
+    const log = [{ n: 1, who: 'ai', kind: 'pick', at: 1, cards: ['Card 2'], known: ['Card 2'] }];
+    const booster = (seats: number) => saved({ format: 'booster', seats, log, picks: { you: ['Card 1'], ai: ['Card 2'] } } as never);
+    expect(draftReviewFields(logWith('Izzet Spells'), booster(3), cube).oppKnown).toBeUndefined();
+    expect(draftReviewFields(logWith('Izzet Spells'), booster(8), cube).oppKnown).toBeUndefined();
+    expect(draftReviewFields(logWith('Izzet Spells'), booster(2), cube).oppKnown).toEqual(['Card 2']);
+  });
+
   it('keeps to the endpoint limits: a pool of at least 80, at most 60 known picks', () => {
     expect(draftReviewFields(logWith('Izzet Spells'), saved(), cube.slice(0, 79))).toEqual({});
     const many = Array.from({ length: 70 }, (_, i) => `Card ${i}`);

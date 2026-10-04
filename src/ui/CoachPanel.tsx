@@ -6,7 +6,7 @@
  * post-game review. Streaming answers live in answers.ts so they survive
  * scrubbing away and back.
  */
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
 import type { GameLog } from '../log.ts';
 import type { Decision } from '../decisions.ts';
 import { buildCoachPrompt, coachCardNames, promptAsText, type Prompt } from '../prompt.ts';
@@ -110,6 +110,7 @@ export function CoachPanel({
   onOpenSettings,
   onOpenGuides,
   guideName,
+  filmRoom = null,
 }: {
   log: GameLog;
   decision: Decision | null;
@@ -120,6 +121,8 @@ export function CoachPanel({
   onOpenSettings: () => void;
   onOpenGuides: () => void;
   guideName: string | null;
+  /** The film room (ui/filmroom), shown in the Game review tab. */
+  filmRoom?: ReactNode;
 }) {
   return (
     <div className="coach">
@@ -153,7 +156,7 @@ export function CoachPanel({
           </div>
         )
       ) : (
-        <ReviewView log={log} onOpenSettings={onOpenSettings} />
+        <ReviewView log={log} onOpenSettings={onOpenSettings} filmRoom={filmRoom} />
       )}
     </div>
   );
@@ -225,7 +228,7 @@ const MomentView = memo(function MomentView({ log, d, onOpenSettings }: { log: G
   );
 });
 
-function ReviewView({ log, onOpenSettings }: { log: GameLog; onOpenSettings: () => void }) {
+function ReviewView({ log, onOpenSettings, filmRoom }: { log: GameLog; onOpenSettings: () => void; filmRoom: ReactNode }) {
   const key = `${gameKey(log)}:review`;
   const answer = useAnswer(key);
   const summary = useMemo(() => safe(() => summarizeGame(log), ''), [log]);
@@ -242,6 +245,7 @@ function ReviewView({ log, onOpenSettings }: { log: GameLog; onOpenSettings: () 
         </span>
         <h2 className="moment-title">Post-game review</h2>
       </div>
+      {filmRoom}
       <div className="card-box">
         <button className="box-h box-toggle" onClick={() => setShowSummary((s) => !s)} aria-expanded={showSummary}>
           Game summary <IconChevronDown size={14} className={showSummary ? 'rot' : ''} />

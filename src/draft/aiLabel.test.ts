@@ -104,6 +104,33 @@ describe('the label comes from known cards only', () => {
   });
 });
 
+describe('Booster with three or more seats: the AI’s picks are never attributable', () => {
+  for (const seats of [3, 8]) {
+    it(`${seats} seats: swapping every AI pick, seen or not, with another bot’s leaves the label and the prompt unchanged`, () => {
+      let d = newDraft({ cubeId: 'synergy', format: 'booster', cube: names, seed: 13, youFirst: true, seats, now: 1 }) as BoosterDraft;
+      // Into pack 2, so the AI has taken plenty you saw.
+      while (!d.done && d.round < 1) d = aiStep(d, cards, undefined, 1) as BoosterDraft;
+      d = aiStep(d, cards, undefined, 1) as BoosterDraft;
+      const seen = new Set(d.seen.you);
+      expect(d.picks.ai.filter((n) => seen.has(n)).length).toBeGreaterThan(2);
+      expect(knownAiCards(d)).toEqual([]);
+      const swap = clone(d);
+      const bot = swap.bots[swap.bots.length - 1]!;
+      expect(bot).toHaveLength(swap.picks.ai.length);
+      [swap.picks.ai, swap.bots[swap.bots.length - 1]] = [[...bot], [...swap.picks.ai]];
+      for (const e of swap.log) if (e.who === 'ai') e.cards = [swap.picks.ai[e.at - 1]!];
+      expect(swap.picks.ai).not.toEqual(d.picks.ai);
+      // …and the full lists would read differently: the test is not vacuous.
+      expect(aiLabelFrom(swap.picks.ai, ctx).text).not.toBe(aiLabelFrom(d.picks.ai, ctx).text);
+      expect(aiDeckLabel(swap, ctx)).toEqual(aiDeckLabel(d, ctx));
+      expect(aiDeckLabel(d, ctx).text).toBe('Unknown so far');
+      const p = buildPickPrompt({ ctx, draft: d, infos: new Map() }).user;
+      expect(buildPickPrompt({ ctx, draft: swap, infos: new Map() }).user).toBe(p);
+      expect(p).toContain(`## What you know the AI has (0 of ${d.picks.ai.length})`);
+    });
+  }
+});
+
 describe('the pick coach prompt', () => {
   /** The prompt without its cube-guide section (static advice that names fixed cube cards). */
   const withoutGuide = (text: string) => text.replace(/\n## Cube guide[^]*?(?=\n## (?!#)|$)/, '');

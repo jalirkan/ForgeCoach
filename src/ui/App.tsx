@@ -191,6 +191,12 @@ function MainApp() {
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [playStarted, setPlayStarted] = useState(false);
   const [review, setReview] = useState<GameLog | null>(null);
+  // The film room opens the replay at a moment: the decision frame to start on.
+  const [reviewFrame, setReviewFrame] = useState<number | null>(null);
+  const openReview = useCallback((l: GameLog, atFrame?: number) => {
+    setReviewFrame(atFrame ?? null);
+    setReview(l);
+  }, []);
   const play = usePlaySession(playUrl);
   const snap = play.snapshot;
   useEffect(() => {
@@ -460,7 +466,8 @@ function MainApp() {
         title={`Review · ${review.hello?.gameNumber ? `game ${review.hello.gameNumber}` : review.header.gameId}`}
         live={null}
         initialDecision={null}
-        initialTab="review"
+        {...(reviewFrame !== null ? { initialFrame: reviewFrame } : {})}
+        initialTab={reviewFrame !== null ? 'moment' : 'review'}
         onClose={() => setReview(null)}
         closeLabel="Back to the table"
         onSettings={() => setSettingsOpen(true)}
@@ -472,7 +479,7 @@ function MainApp() {
       <PlayView
         session={play.session!}
         snapshot={snap!}
-        onReview={setReview}
+        onReview={openReview}
         onEngineReview={(l) => setEngineReview({ log: l, title: l.header.gameId, sampleId: null })}
         onLeave={stopPlay}
         onSettings={() => setSettingsOpen(true)}

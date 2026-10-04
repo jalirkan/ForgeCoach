@@ -1,0 +1,292 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the prompt > is deterministic (snapshot), for each source > eval 1`] = `
+"# Decision
+Round 6 (turn 11) · main 1 · my turn · priority: you (Human)
+Decision type: main
+Engine prompt: Priority: Human / Turn: 11 (Human) / Phase: Main phase, precombat / Stack: Empty
+
+## YOU — Human (active player)
+Life 20 · library 26 · hand 6 · graveyard 2 · exile 1
+Mana pool: empty
+Untapped mana sources: 4 — U×4 (Island ×4) · sources by colour: U 4
+Land drop this turn: available
+Spells cast this turn: none
+Permanents that left the battlefield this turn (revolt): none
+Hand (6):
+  - Robotics Mastery {4}{U} · Enchantment - Aura
+  - Quake, Agent of S.H.I.E.L.D. {2}{W} · Legendary Creature - Inhuman Spy Hero
+  - S.H.I.E.L.D. Helicarrier {4} · Artifact - Vehicle
+  - Aerial Doombot {U} · Artifact Creature - Robot Villain
+  - Plains · Basic Land - Plains
+  - Plains · Basic Land - Plains
+Lands (4): 4× Island (untapped)
+Creatures (0): none
+Other permanents (1):
+  - Quantum Reduction #5 · Enchantment - Aura · attached to Peggy Carter, Secret Agent #44
+Graveyard: Pym Particles; Web Up
+Exile: A.I.M. Scientists
+
+## OPPONENT — Forge AI
+Life 20 · library 30 · hand 1 · graveyard 0 · exile 0
+Mana pool: empty
+Untapped mana sources: 0
+Spells cast this turn: none
+Permanents that left the battlefield this turn (revolt): none
+Hand: 1 cards (hidden)
+Lands (4): Plains (TAPPED); Island (TAPPED); Thriving Isle (TAPPED, chosen colour not recorded); Thriving Heath (TAPPED, chosen colour not recorded)
+Creatures (1):
+  - Peggy Carter, Secret Agent #44 · -3/1 · Legendary Creature - Human Spy Hero · TAPPED · with Quantum Reduction #5
+Other permanents (4):
+  - S.H.I.E.L.D. Spy Kit #47 · Artifact - Equipment
+  - Super Suit #80 · Artifact - Equipment
+  - Strategic Intervention #62 · Enchantment
+  - Web Up #67 · Enchantment
+Graveyard: empty
+
+Stack: empty
+
+# Card text
+Robotics Mastery {4}{U} — Enchantment - Aura
+  (text unavailable)
+Quake, Agent of S.H.I.E.L.D. {2}{W} — Legendary Creature - Inhuman Spy Hero — 3/3
+  (text unavailable)
+S.H.I.E.L.D. Helicarrier {4} — Artifact - Vehicle — 4/5
+  (text unavailable)
+Aerial Doombot {U} — Artifact Creature - Robot Villain — 1/1
+  (text unavailable)
+Quantum Reduction {1}{U} — Enchantment - Aura
+  (text unavailable)
+S.H.I.E.L.D. Spy Kit {W} — Artifact - Equipment
+  (text unavailable)
+Super Suit {1}{U} — Artifact - Equipment
+  (text unavailable)
+Peggy Carter, Secret Agent {1}{W} — Legendary Creature - Human Spy Hero — -3/1
+  (text unavailable)
+Thriving Isle — Land
+  (text unavailable)
+Strategic Intervention {1}{W} — Enchantment
+  (text unavailable)
+Web Up {2}{W} — Enchantment
+  (text unavailable)
+Thriving Heath — Land
+  (text unavailable)
+Pym Particles {U} — Sorcery
+  (text unavailable)
+
+# What you could do
+- Cast or play from your hand: Robotics Mastery; Quake, Agent of S.H.I.E.L.D.; S.H.I.E.L.D. Helicarrier; Aerial Doombot; Plains; Plains (what the mana covers: see the untapped sources above).
+- Activate abilities of your permanents, or pass.
+
+# What you did
+- played Plains
+- cast Quake, Agent of S.H.I.E.L.D.
+- cast Aerial Doombot
+
+# How the position moved
+Source: Win chance (local model, Forge-vs-Forge trained). An estimate from the player's own view only, not a fact.
+Before the decision (turn 11): 68%.
+The next time the player held priority (turn 11): 49%.
+Drop: 19 points (number 1 by size among the drops across the player's decisions). The opponent's moves in between count too.
+
+# Question
+This is turning point #1 of the game (turn 11, main 1). What happened here, what should I have considered instead, and what is the rule of thumb?"
+`;
+
+exports[`the prompt > is deterministic (snapshot), for each source > heuristic 1`] = `
+"# Decision
+Round 8 (turn 16) · declare blockers · Forge AI's turn
+Decision type: block
+Engine prompt: Select creatures to block Aerial Doombot (65) or select another attacker to declare blockers for.
+
+## YOU — Human
+Life 16 · library 24 · hand 0 · graveyard 3 · exile 1
+Mana pool: empty
+Untapped mana sources: 2 — W×2 (Plains ×2) · sources by colour: W 2
+Spells cast this turn: none
+Permanents that left the battlefield this turn (revolt): none
+Hand (0): empty
+Lands (7): 5× Island (TAPPED); 2× Plains (untapped)
+Creatures (5):
+  - Aerial Doombot #25 · 3/3 · Artifact Creature - Robot Villain · TAPPED · with Robotics Mastery #39
+  - Soldier Token (token) #94 · 1/1 · Creature - Soldier
+  - Soldier Token (token) #95 · 1/1 · Creature - Soldier
+  - Robot Token (token) #97 · 1/1 · Artifact Creature - Robot · SUMMONING SICK
+  - Robot Token (token) #98 · 1/1 · Artifact Creature - Robot · SUMMONING SICK
+Other permanents (4):
+  - Quantum Reduction #5 · Enchantment - Aura · attached to Peggy Carter, Secret Agent #44
+  - S.H.I.E.L.D. Helicarrier #29 · Artifact - Vehicle
+  - S.H.I.E.L.D. Spy Kit #7 · Artifact - Equipment
+  - Robotics Mastery #39 · Enchantment - Aura · attached to Aerial Doombot #25
+Graveyard: Pym Particles; Web Up; Quake, Agent of S.H.I.E.L.D.
+Exile: A.I.M. Scientists
+
+## OPPONENT — Forge AI (active player)
+Life 19 · library 27 · hand 0 · graveyard 0 · exile 0
+Mana pool: empty
+Untapped mana sources: 6 — U×4 (Island ×3, Thriving Isle: U, or the colour chosen as it entered (not recorded)); W×2 (Plains, Thriving Heath: W, or the colour chosen as it entered (not recorded)) · sources by colour: W 2, U 4 (a land whose chosen colour is not recorded is counted only for its own colour)
+Land drop this turn: USED
+Spells cast this turn: none
+Permanents that left the battlefield this turn (revolt): none
+Hand: 0 cards (hidden)
+Lands (6): Plains (untapped); 3× Island (untapped); Thriving Isle (untapped, chosen colour not recorded); Thriving Heath (untapped, chosen colour not recorded)
+Creatures (3):
+  - Peggy Carter, Secret Agent #44 · -3/1 · Legendary Creature - Human Spy Hero · with Quantum Reduction #5
+  - Soldier Token (token) #91 · 3/4 · Creature - Soldier · with S.H.I.E.L.D. Spy Kit #47, Super Suit #80
+  - Aerial Doombot #65 · 2/2 · Artifact Creature - Robot Villain · TAPPED · ATTACKING
+Other permanents (5):
+  - S.H.I.E.L.D. Spy Kit #47 · Artifact - Equipment · attached to Soldier Token #91
+  - Super Suit #80 · Artifact - Equipment · attached to Soldier Token #91
+  - Strategic Intervention #62 · Enchantment
+  - Web Up #67 · Enchantment
+  - S.H.I.E.L.D. Helicarrier #69 · Artifact - Vehicle
+Graveyard: empty
+
+Stack: empty
+Combat:
+  - Aerial Doombot #65 2/2 → you (Human) · no blockers (yet)
+  Attacking power total 2; unblocked at a player 2 (defending player's life 16).
+
+# Card text
+Quantum Reduction {1}{U} — Enchantment - Aura
+  (text unavailable)
+Aerial Doombot {U} — Artifact Creature - Robot Villain — 3/3
+  (text unavailable)
+S.H.I.E.L.D. Helicarrier {4} — Artifact - Vehicle — 4/5
+  (text unavailable)
+S.H.I.E.L.D. Spy Kit {W} — Artifact - Equipment
+  (text unavailable)
+Robotics Mastery {4}{U} — Enchantment - Aura
+  (text unavailable)
+Super Suit {1}{U} — Artifact - Equipment
+  (text unavailable)
+Peggy Carter, Secret Agent {1}{W} — Legendary Creature - Human Spy Hero — -3/1
+  (text unavailable)
+Thriving Isle — Land
+  (text unavailable)
+Strategic Intervention {1}{W} — Enchantment
+  (text unavailable)
+Web Up {2}{W} — Enchantment
+  (text unavailable)
+Thriving Heath — Land
+  (text unavailable)
+Pym Particles {U} — Sorcery
+  (text unavailable)
+Quake, Agent of S.H.I.E.L.D. {2}{W} — Legendary Creature - Inhuman Spy Hero — 3/3
+  (text unavailable)
+
+# What you could do
+- Attacking you: Aerial Doombot 2/2.
+- Block with any of: Soldier Token 1/1; Soldier Token 1/1; Robot Token 1/1; Robot Token 1/1, or take it.
+
+# What you did
+- declared no blockers
+
+# How the position moved
+Source: a rough score from life, board presence and cards in hand (0–100). NOT a win chance; it ignores card quality and what is hidden.
+Before the decision (turn 16): 43/100.
+The next time the player held priority (turn 17): 22/100.
+Fall: 21. The opponent's moves in between count too.
+
+# Question
+This is turning point #1 of the game (turn 16, declare blockers). What happened here, what should I have considered instead, and what is the rule of thumb?"
+`;
+
+exports[`the prompt > is deterministic (snapshot), for each source > review 1`] = `
+"# Decision
+Round 5 (turn 9) · main 1 · my turn · priority: you (Human)
+Decision type: main
+Engine prompt: Priority: Human / Turn: 9 (Human) / Phase: Main phase, precombat / Stack: Empty
+Engine question (ability_menu):
+  Which ability of A.I.M. Scientists #2?
+  0. A.I.M. Scientists - Creature 3 / 3
+  1. Basic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)
+
+## YOU — Human (active player)
+Life 20 · library 28 · hand 6 · graveyard 1 · exile 0
+Mana pool: empty
+Untapped mana sources: 4 — U×4 (Island ×4) · sources by colour: U 4
+Land drop this turn: available
+Spells cast this turn: none
+Permanents that left the battlefield this turn (revolt): none
+Hand (6):
+  - Web Up {2}{W} · Enchantment
+  - Robotics Mastery {4}{U} · Enchantment - Aura
+  - A.I.M. Scientists {3}{U} · Creature - Human Scientist Villain
+  - Quake, Agent of S.H.I.E.L.D. {2}{W} · Legendary Creature - Inhuman Spy Hero
+  - S.H.I.E.L.D. Helicarrier {4} · Artifact - Vehicle
+  - Aerial Doombot {U} · Artifact Creature - Robot Villain
+Lands (4): 4× Island (untapped)
+Creatures (0): none
+Other permanents (1):
+  - Quantum Reduction #5 · Enchantment - Aura · attached to Peggy Carter, Secret Agent #44
+Graveyard: Pym Particles
+
+## OPPONENT — Forge AI
+Life 20 · library 31 · hand 2 · graveyard 0 · exile 0
+Mana pool: empty
+Untapped mana sources: 0
+Spells cast this turn: none
+Permanents that left the battlefield this turn (revolt): none
+Hand: 2 cards (hidden)
+Lands (3): Plains (TAPPED); Island (TAPPED); Thriving Isle (TAPPED, chosen colour not recorded)
+Creatures (1):
+  - Peggy Carter, Secret Agent #44 · -3/1 · Legendary Creature - Human Spy Hero · with Quantum Reduction #5
+Other permanents (3):
+  - S.H.I.E.L.D. Spy Kit #47 · Artifact - Equipment
+  - Super Suit #80 · Artifact - Equipment
+  - Strategic Intervention #62 · Enchantment
+Graveyard: empty
+
+Stack: empty
+
+# Card text
+Web Up {2}{W} — Enchantment
+  (text unavailable)
+Robotics Mastery {4}{U} — Enchantment - Aura
+  (text unavailable)
+A.I.M. Scientists {3}{U} — Creature - Human Scientist Villain — 3/3
+  (text unavailable)
+Quake, Agent of S.H.I.E.L.D. {2}{W} — Legendary Creature - Inhuman Spy Hero — 3/3
+  (text unavailable)
+S.H.I.E.L.D. Helicarrier {4} — Artifact - Vehicle — 4/5
+  (text unavailable)
+Aerial Doombot {U} — Artifact Creature - Robot Villain — 1/1
+  (text unavailable)
+Quantum Reduction {1}{U} — Enchantment - Aura
+  (text unavailable)
+S.H.I.E.L.D. Spy Kit {W} — Artifact - Equipment
+  (text unavailable)
+Super Suit {1}{U} — Artifact - Equipment
+  (text unavailable)
+Peggy Carter, Secret Agent {1}{W} — Legendary Creature - Human Spy Hero — -3/1
+  (text unavailable)
+Thriving Isle — Land
+  (text unavailable)
+Strategic Intervention {1}{W} — Enchantment
+  (text unavailable)
+Pym Particles {U} — Sorcery
+  (text unavailable)
+
+# What you could do
+- Cast or play from your hand: Web Up; Robotics Mastery; A.I.M. Scientists; Quake, Agent of S.H.I.E.L.D.; S.H.I.E.L.D. Helicarrier; Aerial Doombot (what the mana covers: see the untapped sources above).
+- Activate abilities of your permanents, or pass.
+
+# What you did
+- cast A.I.M. Scientists
+- discarded Web Up
+
+# How the position moved
+Source: Engine review (playouts against Forge’s Default AI). Each option was played out many times from this position; the yardstick is the best play against Forge's Default AI playing both seats.
+Opponent's hidden cards in the playouts: sampled from the cube pool, never the AI's real list.
+Measure: win rate (playouts to the end of the game); graded twice, deep, 3 rounds, 13 playouts.
+Options:
+- Pass (cast nothing): 67% (21–94%); regret 33 pts (0–100 pts); n=3 — Forge's choice
+- Cast A.I.M. Scientists: 67% (21–94%); regret 33 pts (0–100 pts); n=3 — PLAYED
+- Cast Aerial Doombot: 100% (44–100%); regret 0 pts (0–65 pts); n=3 — ENGINE BEST
+- Cast S.H.I.E.L.D. Helicarrier: 100% (44–100%); regret 0 pts (0–65 pts); n=3
+Verdict: close call — the interval includes zero; do not call it a mistake. Regret of the played option: 33 pts (95% interval 0–100 pts).
+
+# Question
+This is turning point #1 of the game (turn 9, main 1). What happened here, what should I have considered instead, and what is the rule of thumb?"
+`;
