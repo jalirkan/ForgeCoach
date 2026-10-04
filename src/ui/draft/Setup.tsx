@@ -9,8 +9,9 @@
  *
  *   DraftSetup — variant (Booster, Winston, Grid), the cube, players and bot
  *                seats (Booster), who opens, the pick timer, hints.
- *   MatchSetup — after the build: your deck vs the AI's (name and count only:
- *                its list stays hidden), the cards the AI can't pilot well,
+ *   MatchSetup — after the build: your deck vs the AI's (its colours as far
+ *                as you have seen them, and its count: its list stays
+ *                hidden), the known cards the AI can't pilot well,
  *                AI profile, the opponent AI (Forge, + sacrifice play, search;
  *                only when the helper's /health offers it), Bo1/Bo3, and Begin,
  *                which asks mtg-table's match launcher to deal the match.
@@ -384,6 +385,7 @@ export function MatchSetup({
   deckColours,
   after,
   known,
+  aiLabel,
   meta,
   cubeNames,
   title,
@@ -396,6 +398,8 @@ export function MatchSetup({
   deckColours: string;
   after: DraftAfter | undefined;
   known: string[];
+  /** The AI deck's colours as far as you have seen them (draft/aiLabel.ts, known cards only). */
+  aiLabel: string;
   meta: CubeMeta | null;
   cubeNames: string[];
   title: string;
@@ -430,14 +434,14 @@ export function MatchSetup({
     };
   }, []);
 
-  // Cards the AI can't pilot well: named only when you know it holds them.
+  // Cards the AI can't pilot well, among those you know it has in its deck. The
+  // hidden rest is neither named nor counted: a count would describe its list.
   const weak = useMemo(() => {
     const inDeck = new Set((ai?.main ?? []).map(([, n]) => n));
-    const flagged = [...flags.all].filter((n) => inDeck.has(n));
     const knownSet = new Set(known);
-    return { named: flagged.filter((n) => knownSet.has(n)), unnamed: flagged.filter((n) => !knownSet.has(n)).length };
+    return [...flags.all].filter((n) => inDeck.has(n) && knownSet.has(n));
   }, [ai, flags, known]);
-  const weakTotal = weak.named.length + weak.unnamed;
+  const weakTotal = weak.length;
 
   const ready = !!yours && !!ai && deckSize(yours) >= 40;
   const canBegin = ready && supported === true && !busy;
@@ -548,9 +552,9 @@ export function MatchSetup({
           <div className="fx-label sub-h">The AI’s deck</div>
           <div className={cx('deck-tile', ai && 'is-on')}>
             <div>
-              <div className="deck-tile-name">{ai ? 'Its draft' : 'Building…'}</div>
+              <div className="deck-tile-name">{ai ? aiLabel : 'Building…'}</div>
               <div className="deck-tile-meta">{ai ? `${deckSize(ai)} cards · list hidden` : '—'}</div>
-              <div className="fx-label deck-tile-k">{ai ? 'Built by the AI' : ''}</div>
+              <div className="fx-label deck-tile-k">{ai ? 'From the cards you’ve seen' : ''}</div>
             </div>
           </div>
           {weakTotal > 0 && (
@@ -558,10 +562,7 @@ export function MatchSetup({
               <div className="fx-label">
                 {weakTotal} card{weakTotal === 1 ? '' : 's'} the AI can’t pilot well
               </div>
-              <p>
-                {weak.named.join(', ')}
-                {weak.unnamed > 0 && `${weak.named.length ? ', and ' : ''}${weak.unnamed} you haven’t seen`}
-              </p>
+              <p>{weak.join(', ')}</p>
             </div>
           )}
           <div className="fx-label sub-h">AI profile</div>

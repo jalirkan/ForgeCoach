@@ -50,6 +50,18 @@ import { ReviewTimeline } from './ReviewTimeline.tsx';
 import { SAMPLE_REVIEWS } from './samples.ts';
 import { STAGE_WORDS, useReviewRun } from './useReviewRun.ts';
 import { WinChanceLine } from '../winchance/WinChanceLine.tsx';
+import { FilmRoom } from '../filmroom/FilmRoom.tsx';
+import type { FilmMoment } from '../../filmRoom.ts';
+
+/** The graded decision a film-room moment lands on: its own, else the first graded inside its decision, else the nearest after it. */
+function reviewFrameFor(decisions: readonly ReviewDecision[], m: FilmMoment): number | null {
+  if (m.review) return m.review.frame;
+  const lo = m.decision.frameIndex;
+  const hi = Math.max(lo, m.decision.endFrameIndex);
+  const sorted = [...decisions].sort((a, b) => a.stateFrame - b.stateFrame);
+  const hit = sorted.find((x) => x.stateFrame >= lo && x.stateFrame <= hi) ?? sorted.find((x) => x.stateFrame >= lo) ?? sorted[sorted.length - 1];
+  return hit?.frame ?? null;
+}
 
 export interface ReviewAppProps {
   log: GameLog;
@@ -252,6 +264,9 @@ export default function ReviewApp({ log, title, sampleId = null, autoSample = fa
                 onPick={() => fileRef.current?.click()}
                 onSample={() => void openSample()}
               />
+              <div className="rv-load-film">
+                <FilmRoom log={log} variant="panel" autoAsk={false} onOpenSettings={onSettings} />
+              </div>
             </main>
           ) : (
             <main className="rv-main rv-grid">
@@ -272,6 +287,15 @@ export default function ReviewApp({ log, title, sampleId = null, autoSample = fa
                   <WinChanceLine log={log} decisions={wcDecisions} current={d?.stateFrame ?? null} onMarker={setSelected} />
                   <ReviewTimeline log={log} decisions={loaded.decisions} keyMoments={loaded.report.keyMoments} selected={selected} onSelect={setSelected} />
                 </section>
+                <FilmRoom
+                  log={log}
+                  report={loaded.report}
+                  onJump={(m) => {
+                    const f = reviewFrameFor(loaded.decisions, m);
+                    if (f !== null) setSelected(f);
+                  }}
+                  onOpenSettings={onSettings}
+                />
                 {wide && <ExplainCoach log={log} loaded={loaded} onOpenSettings={onSettings} />}
               </div>
               <div className="rv-moment-col">

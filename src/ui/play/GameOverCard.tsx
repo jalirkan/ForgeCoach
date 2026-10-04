@@ -6,6 +6,7 @@
  * (act newGame continue), or a fresh match (act newGame restart — protocol
  * §2.2 / M38: only `restart` produces a game once `matchOver` is true).
  */
+import type { ReactNode } from 'react';
 import type { OverBody } from '../../protocol.ts';
 import { IconTrophy } from '../Icons.tsx';
 import { cx } from '../util.ts';
@@ -27,6 +28,7 @@ export function GameOverCard({
   onNext,
   onRestart,
   onLeave,
+  filmRoom = null,
 }: {
   over: OverBody;
   seat: number | null;
@@ -39,6 +41,8 @@ export function GameOverCard({
   onNext: () => void;
   onRestart: () => void;
   onLeave: () => void;
+  /** The film room (ui/filmroom): the game's turning points, under the actions. */
+  filmRoom?: ReactNode;
 }) {
   const won = over.winner !== null && over.winner === seat;
   const draw = over.winner === null;
@@ -52,7 +56,7 @@ export function GameOverCard({
       : `${oppName} won this game.`;
   return (
     <div className="over-wrap" role="dialog" aria-label="Game over">
-      <div className={cx('over-card', won ? 'is-win' : draw ? 'is-draw' : 'is-loss')}>
+      <div className={cx('over-card', won ? 'is-win' : draw ? 'is-draw' : 'is-loss', !!filmRoom && 'has-film')}>
         <div className="over-icon">
           <IconTrophy size={26} />
         </div>
@@ -82,6 +86,7 @@ export function GameOverCard({
             Back to start
           </button>
         </div>
+        {filmRoom}
       </div>
     </div>
   );

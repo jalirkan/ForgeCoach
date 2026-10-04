@@ -1,0 +1,226 @@
+/*
+ * ForgeCoach — ui/filmroom/filmroom.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The film room panel (FilmRoom.tsx): on the game-over card, in the replay's
+ * Game review tab and on the engine review screen. Tokens only (--surface-*,
+ * --line*, --text*, --muted, --accent*, --bad*), so Classic, Stack and Hot
+ * Felt each draw it in their own colours; no skin-scoped rule.
+ */
+
+.film {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  text-align: left;
+  color: var(--text-2);
+}
+.film-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.film-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+.film-source {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.film-source.is-eval {
+  color: var(--accent-2);
+  border-color: var(--accent-soft);
+  background: var(--accent-soft);
+}
+.film-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.film-lede,
+.film-wait,
+.film-off {
+  margin: 0;
+  line-height: 1.45;
+}
+.film-note {
+  color: var(--faint);
+}
+.film-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.film-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.film-card.is-current {
+  border-color: var(--accent);
+}
+.film-card-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.film-card-head.is-link {
+  cursor: pointer;
+}
+.film-card-head.is-link:hover,
+.film-card-head.is-link:focus-visible {
+  background: var(--surface-3);
+}
+.film-card-head.is-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.film-rank {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text);
+  font: 600 12px/1 var(--mono);
+}
+.film-when {
+  display: grid;
+  min-width: 0;
+}
+.film-turn {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+}
+.film-did {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.film-drop {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.film-drop b {
+  font: 650 13px/1.1 var(--mono);
+  color: var(--bad);
+}
+.film-drop.is-rough b {
+  color: var(--text-2);
+}
+.film-from {
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.film-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  padding: 0 10px 6px 42px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.film-review {
+  margin: 0;
+  padding: 0 10px 6px 42px;
+  color: var(--text-2);
+}
+.film-answer {
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 13px;
+  line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.film-answer:empty {
+  display: none;
+}
+.film-answer .answer-head {
+  margin: 0 0 6px;
+}
+.film-answer p {
+  margin: 0 0 6px;
+}
+.film-answer p:last-child {
+  margin-bottom: 0;
+}
+.film-err {
+  color: var(--bad);
+}
+.film-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.film-actions:empty {
+  display: none;
+}
+.film-actions .link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* In a panel (the engine review's side column, the replay's Game review tab). */
+.film-panel {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+/* On the game-over card: wider, the three moments side by side when there is room. */
+.over-card.has-film {
+  width: min(880px, 100%);
+  max-height: 100%;
+  overflow: auto;
+}
+.film-over {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+@media (min-width: 760px) {
+  .film-over .film-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+  .film-over .film-mini,
+  .film-over .film-review {
+    padding-left: 10px;
+  }
+}
+
+/* Under the engine review's load card. */
+.rv-load-film {
+  margin-top: 12px;
+}

@@ -5,8 +5,8 @@
  * What an engine review (gameReviewClient.ts, mtg-table docs/game-review.md)
  * may know about the opponent after a Draft vs AI match: the cube's full card
  * list (`oppPool`, the engine draws the opponent's hidden cards from it minus
- * every card it can rule out) and the AI picks the player saw (`oppKnown`,
- * `knownAiCards`). Only for the match the saved draft launched — recognised by
+ * every card it can rule out) and the AI picks the player knows of
+ * (`oppKnown`, `knownAiCards`: none in a Booster of three or more seats). Only for the match the saved draft launched — recognised by
  * the AI deck's public NAME in the log; the AI deck's contents are never read
  * here and never sent. Any other game: nothing (the engine then treats the
  * opponent's hidden cards as basic lands, and its report says so).

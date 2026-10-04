@@ -723,7 +723,7 @@ export function boardSummary(state: GameStateBody, seat: number): string[] {
 }
 
 /** The prompt's line on the opponent's hidden cards, from the report's knowledge. */
-function opponentKnowledge(k: ReviewReport['knowledge']): string {
+export function opponentKnowledge(k: ReviewReport['knowledge']): string {
   if (k.opponentModel === 'pool') return "sampled from the cube pool, never the AI's real list.";
   if (k.opponentModel === 'deck') return `the opponent's deck was public for this review${k.opponent ? ` (${k.opponent})` : ''}.`;
   if (k.opponentModel === 'basic-lands')
@@ -746,7 +746,7 @@ Write one block per moment, in the order given:
 **Turn N · <phase> — <verdict>** then your sentences, ending with the general rule it shows in a few words ("count your attackers against their blockers", "hold removal for the real threat").
 Finish with **One habit for next game:** a single sentence.`;
 
-function optionRows(d: ReviewDecision, state: GameStateBody | null, seat: number): string[] {
+export function optionRows(d: ReviewDecision, state: GameStateBody | null, seat: number): string[] {
   const rows: string[] = [];
   const m = d.measure;
   for (const o of d.options) {
@@ -762,7 +762,7 @@ function optionRows(d: ReviewDecision, state: GameStateBody | null, seat: number
   return rows;
 }
 
-function verdictLine(d: ReviewDecision): string {
+export function verdictLine(d: ReviewDecision): string {
   const m = d.measure;
   const reg = d.regret !== null ? ` Regret of the played option: ${fmtRegret(d.regret, m)}${d.regretLo !== null ? ` (95% interval ${fmtInterval(d.regretLo, d.regretHi, m, 'regret')})` : ''}.` : '';
   if (d.verdict === 'mistake') return `Verdict: mistake — the interval excludes zero, so the difference is clear.${reg}`;
@@ -772,7 +772,7 @@ function verdictLine(d: ReviewDecision): string {
   return 'Verdict: not graded.';
 }
 
-function measureLine(d: ReviewDecision): string {
+export function measureLine(d: ReviewDecision): string {
   const how = d.measure === 'wins' ? 'win rate (playouts to the end of the game)' : 'short-horizon score (playouts to the end of this turn, scored by an evaluator; NOT a win rate)';
   const depth = [d.stage === 'deep' ? 'graded twice, deep' : 'quick triage grade', d.rounds !== null ? `${d.rounds} rounds` : null, d.playouts !== null ? `${d.playouts} playouts` : null]
     .filter(Boolean)

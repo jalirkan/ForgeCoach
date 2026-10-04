@@ -14,6 +14,7 @@ import { colourLabel } from '../cube/colors.ts';
 import { GRID_LINES, pickValue, poolColours, poolProfile, recommendGrid, recommendWinston } from '../cube/pick.ts';
 import { cardValue, metaValue, pct, type CubeContext } from '../cube/score.ts';
 import { guideFor, guidePromptSection } from '../cube/guides/index.ts';
+import { aiLabelFrom } from './aiLabel.ts';
 import { knownAiCards, progress, type Draft } from './draft.ts';
 
 export const PICK_SYSTEM = `You are a Magic: The Gathering draft coach sitting beside a player in a cube draft against an AI drafter (Grid or Winston, two players; or Booster, two to eight drafters, the player against seat 1's AI). Both players will build 40-card decks from what they draft and play each other, so what the AI takes is what the player will face.
@@ -96,6 +97,8 @@ export function buildPickPrompt({ ctx, draft: d, infos, question }: PickPromptIn
   for (const n of [...you].sort()) lines.push(`- ${cardLine(n, ctx)}`);
   lines.push('', `## What you know the AI has (${aiKnown.length} of ${d.picks.ai.length})`);
   lines.push(aiKnown.length ? aiKnown.join(', ') : '(nothing seen yet)');
+  // Its colours from those cards alone; the hidden picks never count.
+  lines.push(`Its colours from these cards: ${aiLabelFrom(aiKnown, ctx).text}.`);
   // The cube's guide for the archetype the pool points to (static advice, capped).
   const guide = guidePromptSection(guideFor(d.cubeId), pair);
   if (guide) lines.push('', guide);
