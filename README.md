@@ -488,8 +488,6 @@ film room and engine review of a saved game, or **Add the sample games**. The
 list, your tries and nothing else live in this browser's localStorage; the
 board is read from the saved game's log when you open a puzzle.
 
-![Practice on a phone](docs/screens/practice-phone-reveal.png)
-
 ## Live watch (optional)
 
 Follows a game being played in mtg-table's own board, read-only, so the newest
