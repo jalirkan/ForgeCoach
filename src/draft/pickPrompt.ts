@@ -16,7 +16,7 @@ import { cardValue, metaValue, pct, type CubeContext } from '../cube/score.ts';
 import { guideFor, guidePromptSection } from '../cube/guides/index.ts';
 import { knownAiCards, progress, type Draft } from './draft.ts';
 
-export const PICK_SYSTEM = `You are a Magic: The Gathering draft coach sitting beside a player in a two-player cube draft against an AI drafter (Grid or Winston). Both players will build 40-card decks from what they draft and play each other, so what the AI takes is what the player will face.
+export const PICK_SYSTEM = `You are a Magic: The Gathering draft coach sitting beside a player in a cube draft against an AI drafter (Grid or Winston, two players; or Booster, two to eight drafters, the player against seat 1's AI). Both players will build 40-card decks from what they draft and play each other, so what the AI takes is what the player will face.
 
 How to work:
 - Use the card text given, never memory of a card. Card values are the page's estimate (0-100, about 50 = filler, 70 = strong); "lab" numbers come from Forge AIs drafting and playing this cube — small samples, treat them as hints.
@@ -24,7 +24,7 @@ How to work:
 - The page's pick helper gives a call with numbers. Agree or disagree with it plainly, and say why.
 
 Answer format — short, no preamble:
-**Pick** — the line or the action (Take / Pass), in one sentence.
+**Pick** — the line, the action (Take / Pass) or the card, in one sentence.
 **Why** — two or three bullets.
 **Watch for** — one line on what to look for in the next picks.
 Then answer the player's own question, if there is one.`;
@@ -63,7 +63,7 @@ export function buildPickPrompt({ ctx, draft: d, infos, question }: PickPromptIn
   const you = d.picks.you;
   const aiKnown = knownAiCards(d);
   const lines: string[] = [];
-  lines.push(`# ${ctx.cube.title} — ${d.format === 'grid' ? 'Grid' : 'Winston'} draft vs the AI`);
+  lines.push(`# ${ctx.cube.title} — ${d.format === 'grid' ? 'Grid' : d.format === 'booster' ? 'Booster' : 'Winston'} draft vs the AI`);
   lines.push(`${progress(d).label}. You hold ${you.length} cards; the AI holds ${d.picks.ai.length}.`);
   const pair = poolColours(you, ctx);
   if (pair) lines.push(`Your colours so far: ${colourLabel(pair)}.`);
