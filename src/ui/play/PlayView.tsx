@@ -77,6 +77,8 @@ export function PlayView({
   onEngineReview,
   onLeave,
   onSettings,
+  note = null,
+  onDismissNote,
 }: {
   session: PlaySession;
   snapshot: PlaySnapshot;
@@ -86,6 +88,9 @@ export function PlayView({
   onEngineReview?: (log: GameLog) => void;
   onLeave: () => void;
   onSettings: () => void;
+  /** A note from starting the engine (the helper's warning that a picked AI profile was not applied), until dismissed. */
+  note?: string | null;
+  onDismissNote?: () => void;
 }) {
   const { state, input, ask, over, log, status } = snap;
   const seat = snap.seat ?? log?.seat ?? null;
@@ -559,7 +564,18 @@ export function PlayView({
             {!wide && strip('bar')}
             {!wide && header}
             {!wide && wcModel && <WinChanceStrip {...winChance} compact />}
-            {!connected && snap.detail && status !== 'connecting' && <div className="live-banner play-banner">{snap.detail}</div>}
+            {!connected && snap.detail && status !== 'connecting' ? (
+              <div className="live-banner play-banner">{snap.detail}</div>
+            ) : note ? (
+              <div className="live-banner play-banner play-note" role="status">
+                {note}{' '}
+                {onDismissNote && (
+                  <button type="button" className="link-btn" onClick={onDismissNote}>
+                    Dismiss
+                  </button>
+                )}
+              </div>
+            ) : null}
 
             {wide ? (
               <div className={cx('play-cols', coachOpen && 'has-coach')}>

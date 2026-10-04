@@ -21,6 +21,7 @@ import { defaultSeatUrl, servedByEngine, tokenFromSearch } from '../play/session
 import { SEAT_TOKEN_KEY } from '../play/seatUrl.ts';
 import { usePlaySession } from './play/usePlaySession.ts';
 import { ensureEngineAwake } from '../draft/launch.ts';
+import { readPlayProfile } from './PlayProfile.tsx';
 import { PlayView } from './play/PlayView.tsx';
 import { hasSampleReview } from './review/samples.ts';
 
@@ -230,26 +231,30 @@ function MainApp() {
   // belongs to: this page's own seat, or one named with ?coach=.
   const [waking, setWaking] = useState<{ url: string; error: string | null } | null>(null);
   const wakeRef = useRef<AbortController | null>(null);
+  // D381: what the helper said about the AI profile picked for this Play (e.g. "the running match keeps Default").
+  const [playNote, setPlayNote] = useState<string | null>(null);
   const startPlay = useCallback(
     (url: string) => {
       wakeRef.current?.abort();
       wakeRef.current = null;
       setWaking(null);
+      setPlayNote(null);
       if (!wakesHelperEngine(url)) {
         connect(url);
         return;
       }
       const c = new AbortController();
       wakeRef.current = c;
-      void ensureEngineAwake({ signal: c.signal, onWaking: () => !c.signal.aborted && setWaking({ url, error: null }) }).then((r) => {
+      void ensureEngineAwake({ signal: c.signal, aiProfile: readPlayProfile(), onWaking: () => !c.signal.aborted && setWaking({ url, error: null }) }).then((r) => {
         if (c.signal.aborted) return;
         wakeRef.current = null;
         if (r.ok) {
           setWaking(null);
+          if (r.warnings.length) setPlayNote(r.warnings.join(' '));
           connect(url);
         } else {
           setSeatUrl(url);
-          setWaking({ url, error: r.message });
+          setWaking({ url, error: r.problems?.length ? `${r.message} ${r.problems.join('; ')}` : r.message });
         }
       });
     },
@@ -259,6 +264,7 @@ function MainApp() {
     wakeRef.current?.abort();
     wakeRef.current = null;
     setWaking(null);
+    setPlayNote(null);
     setPlayUrl(null);
     setPlayStarted(false);
     setReview(null);
@@ -491,6 +497,8 @@ function MainApp() {
         onEngineReview={(l) => setEngineReview({ log: l, title: l.header.gameId, sampleId: null })}
         onLeave={stopPlay}
         onSettings={() => setSettingsOpen(true)}
+        note={playNote}
+        onDismissNote={() => setPlayNote(null)}
       />
     );
   } else if (showGame && log) {

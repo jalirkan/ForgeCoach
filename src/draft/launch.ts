@@ -14,6 +14,10 @@
  *                 → {ok:false, message, problems?[] (400), restored? (502)}
  *
  *   POST /engine/start (D308) → the /match 200 shape + {already}, or a refusal
+ *                      body (D381, only when /health has `engine_start_profile: 1`):
+ *                      none, or {"aiProfile"} — the last setup with that AI profile;
+ *                      a running engine answers {already: true} and, for another
+ *                      profile than its own, a warning (nothing restarts)
  *
  * The opponent AI (mtg-table D333, over D314's `--ai-policy`): Forge's own AI,
  * Forge with the sacrifice-outlet policy (D310), or the search AI (D312). The
@@ -183,6 +187,8 @@ export interface EngineHealth {
   status: LauncherStatus;
   /** POST /engine/start exists (`engine_start: 1`). */
   canWake: boolean;
+  /** POST /engine/start takes `{"aiProfile"}` (D381, `engine_start_profile: 1`): plain Play vs Forge can pick the AI profile. */
+  canPickProfile?: boolean;
   /** The opponent AIs POST /match takes (D333 `aiPolicies`, known ids only); empty: an older helper, no choice. */
   aiPolicies: AiPolicy[];
   /** The search budget's limits (D333 `aiSearchMs`), when advertised and sane. */
@@ -227,7 +233,7 @@ export async function engineHealth(opts: LaunchOptions = {}): Promise<EngineHeal
   const to = withTimeout(opts.timeoutMs ?? 1500);
   try {
     const res = await f(`${t.baseUrl}/health`, { headers: headers(t, false), signal: to.signal });
-    let j: { match?: unknown; engine?: unknown; engine_start?: unknown; aiPolicies?: unknown; aiSearchMs?: unknown } = {};
+    let j: { match?: unknown; engine?: unknown; engine_start?: unknown; engine_start_profile?: unknown; aiPolicies?: unknown; aiSearchMs?: unknown } = {};
     try {
       j = ((await res.json()) ?? {}) as typeof j;
     } catch {
@@ -237,7 +243,14 @@ export async function engineHealth(opts: LaunchOptions = {}): Promise<EngineHeal
     // No `engine` key: an older helper, whose engine runs whenever the helper does.
     const aiPolicies = advertisedPolicies(j);
     const aiSearchMs = aiPolicies.includes('search') ? advertisedSearchBudget(j) : undefined;
-    return { status: j.engine === 'idle' ? 'asleep' : 'ready', canWake: j.engine_start === 1, aiPolicies, ...(aiSearchMs ? { aiSearchMs } : {}) };
+    const canWake = j.engine_start === 1;
+    return {
+      status: j.engine === 'idle' ? 'asleep' : 'ready',
+      canWake,
+      ...(canWake && j.engine_start_profile === 1 ? { canPickProfile: true } : {}),
+      aiPolicies,
+      ...(aiSearchMs ? { aiSearchMs } : {}),
+    };
   } catch {
     return { status: 'down', canWake: false, aiPolicies: [] };
   } finally {
@@ -346,9 +359,16 @@ export interface EngineWoken {
 
 export type WakeResult = EngineWoken | MatchRefused;
 
-/** POST /engine/start (D308): wake a sleeping engine on the last match setup. Never throws. */
-export async function wakeEngine(opts: LaunchOptions = {}): Promise<WakeResult> {
-  const p = await post('/engine/start', undefined, opts);
+export const isAiProfile = (x: unknown): x is AiProfile => AI_PROFILES.some((p) => p.id === x);
+
+/**
+ * POST /engine/start (D308): wake a sleeping engine on the last match setup.
+ * With `aiProfile` (D381; send it only to a helper whose /health says
+ * `engine_start_profile: 1`) the AI plays that profile; no deck is named or
+ * sent. Never throws.
+ */
+export async function wakeEngine(opts: LaunchOptions & { aiProfile?: AiProfile | null } = {}): Promise<WakeResult> {
+  const p = await post('/engine/start', opts.aiProfile ? JSON.stringify({ aiProfile: opts.aiProfile }) : undefined, opts);
   if ('ok' in p) return p;
   const { res, body } = p;
   if (res.ok && body.ok === true) return { ok: true, already: body.already === true, warnings: warningsOf(body), ms: typeof body.ms === 'number' ? body.ms : undefined };
@@ -361,11 +381,20 @@ export async function wakeEngine(opts: LaunchOptions = {}): Promise<WakeResult> 
  * engine…" state). Anything else — running, an older helper, no helper, no
  * launcher — resolves `{ok: true, woke: false}` at once and the page simply
  * connects, as before D308.
+ *
+ * `aiProfile` (D381) goes only to a helper that takes it (`canPickProfile`);
+ * to an older one the wake has no body, as before. With a profile picked and
+ * the engine already running, the request still goes out — nothing restarts —
+ * so its warning that the running match keeps its own profile reaches the
+ * player. `profileSent` says whether the profile went to the helper.
  */
-export async function ensureEngineAwake(opts: LaunchOptions & { onWaking?: () => void } = {}): Promise<(EngineWoken & { woke: boolean }) | MatchRefused> {
+export async function ensureEngineAwake(
+  opts: LaunchOptions & { onWaking?: () => void; aiProfile?: AiProfile | null } = {},
+): Promise<(EngineWoken & { woke: boolean; profileSent: boolean }) | MatchRefused> {
   const h = await engineHealth({ ...opts, timeoutMs: 1500 });
-  if (h.status !== 'asleep' || !h.canWake) return { ok: true, already: true, warnings: [], woke: false };
-  opts.onWaking?.();
-  const r = await wakeEngine(opts);
-  return r.ok ? { ...r, woke: !r.already } : r;
+  const aiProfile = opts.aiProfile && h.canPickProfile ? opts.aiProfile : null;
+  if (!h.canWake || (h.status !== 'asleep' && !(h.status === 'ready' && aiProfile))) return { ok: true, already: true, warnings: [], woke: false, profileSent: false };
+  if (h.status === 'asleep') opts.onWaking?.();
+  const r = await wakeEngine({ ...opts, aiProfile });
+  return r.ok ? { ...r, woke: !r.already, profileSent: aiProfile !== null } : r;
 }
