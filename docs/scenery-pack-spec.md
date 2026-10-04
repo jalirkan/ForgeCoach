@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.2)
+# Scenery pack spec (schema 1, version 1.3)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -19,6 +19,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.0 | Biomes, stages, layers (image, sprite, video), bloom, idle, strip. |
 | 1.1 | Sprite `fit` and `anchor`; the moving-layer budget warning; Local Network Access notes (§5). |
 | 1.2 | Optional one-shot **`effects`** (§2, *Effects*): creature enters, attack, damage to a player or a creature, landfall and stage up, for the whole pack or per biome; their budgets (§3) and reduced-motion behaviour (§4). An optional top-level `spec` field. A pack may now have effects and no stage art. |
+| 1.3 | Optional **board accents** (§2, *Board accents*): per biome and stage, an `overlay` list of corner and edge pieces drawn in the player's area outside the strip, with `overlayMode` (`replace` / `add`) across stages; their budgets (§3); the rendering rules (beneath the cards, small widths, reduced motion, Settings → Board accents). A pack may have accents and no stage art. |
 
 ## 1. How the scenery works
 
@@ -47,6 +48,7 @@ other game information.
 - **Width.** Slot width grows a little with stage (+18% per stage), times the biome's `slot.weight`.
 - **Bloom.** When a stage adds layers, the new layers *bloom in*. A layer whose `id` is also in the previous stage stays where it is and does not bloom again. Every land arrival also flashes its slot with a soft glow.
 - **Events.** The scenery engine also emits *creature entered* (with the creature's colours), *attack declared* and *damage dealt* (to a player or to a creature). Each plays a short one-shot **effect**: the pack's own (§2, *Effects*), or else a built-in placeholder.
+- **Accents (1.3).** Besides the strip, each player's area can carry a few **accents**: pictures in its corners and bands along its edges (vines creeping in as the forest grows, frost and spray for islands, ash for mountains). They grow with the same stages, sit beneath every card and control, and are a separate setting (Settings → Board accents, on whenever the scenery is on).
 - **Hidden information.** Only the viewing seat's redacted battlefield is read, so the scenery never shows anything the board does not.
 
 ## 2. Manifest format
@@ -62,12 +64,12 @@ and a key under `effects` that is not an effect event.
 | Field | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `schema` | `1` | — | **Required.** |
-| `spec` | `"1.2"` | — | The version the pack was written for. Informational; a newer minor version than this ForgeCoach reads gets a warning (its new fields are ignored). |
+| `spec` | `"1.3"` | — | The version the pack was written for. Informational; a newer minor version than this ForgeCoach reads gets a warning (its new fields are ignored). |
 | `name` | string ≤ 80 | "Untitled pack" | Shown on `#ambience`. |
 | `author`, `license` | string ≤ 80 | — | Shown on `#ambience`. |
 | `strip` | object | see below | Applies to the whole strip. |
 | `stageThresholds` | 1–6 increasing numbers, 0.5–40 | `[1, 2, 4, 6]` | Land weight at which stage 1, 2, … begins. |
-| `biomes` | object | — | **Required.** Keyed by biome name, with at least one usable biome (or at least one effect). Biomes left out use the built-in scene. |
+| `biomes` | object | — | **Required.** Keyed by biome name, with at least one usable biome (or at least one effect, or one accent piece). Biomes left out use the built-in scene. |
 | `effects` | object | — | 1.2. One-shot effects for every biome, and `maxConcurrent`. See *Effects*. |
 
 ### `strip`
@@ -101,6 +103,10 @@ and a key under `effects` that is not an effect event.
 A stage is `{ "layers": [ … ] }`, with at most **8 layers**; any extra layers
 are dropped. Each stage lists its *complete* set of layers. To keep a layer
 across stages, repeat it with the same `id`.
+
+1.3: a stage may also have an `overlay` list and an `overlayMode`; see
+*Board accents* below. A biome whose stages all have `overlay` and none has
+`layers` keeps the built-in scene in its strip and draws your accents.
 
 ### A layer
 
@@ -302,6 +308,151 @@ moment. The island declares 3.0 MB of effects, under the 4 MB budget.
 `src/ambience/manifest-effects.test.ts` validates this exact block. If you
 change it, it must stay error- and warning-free.
 
+### Board accents (1.3)
+
+Accents are still pictures that reach out of the strip onto the player's area
+itself, like a board frame: a vine in a corner, a band of leaves or spray
+along an edge. Each biome gives them per stage, so they grow with that
+player's mana.
+
+**Where they go.** The *player area* is that player's battlefield (the region
+the strip sits in). Each piece has an `anchor`:
+
+| Anchor | Where | The picture |
+| --- | --- | --- |
+| `top-left`, `top-right`, `bottom-left`, `bottom-right` | A corner of the area. | Drawn `contain`ed in a square box tucked into the corner (at most 60% of the area's height), pushed into the corner. |
+| `top-edge`, `bottom-edge` | Along the whole top or bottom edge. | A band, at most 18% of the area's height thick, repeated or stretched along it. |
+| `left-edge`, `right-edge` | Along the whole left or right edge. | A band, at most 12% of the area's width thick. |
+
+**Draw for your own side.** Author every piece for the viewer's side, where
+the player's outer edge (and their strip) is at the **bottom**. On the
+opponent's side, at the top of the board, a piece with `mirror` (the default)
+swaps top and bottom (`bottom-left` → `top-left`, `bottom-edge` → `top-edge`)
+and is flipped vertically, so it hugs their outer edge the same way. Left
+and right never swap. With `mirror: false` the piece keeps its anchor and is
+drawn as is.
+
+**Several biomes: split by slot.** The strip shows a player's biomes left to
+right in slot order, and the accents follow it:
+- the left corners and `left-edge` come from the **leftmost** slot's biome;
+- the right corners and `right-edge` from the **rightmost** slot's biome;
+- `top-edge` and `bottom-edge`, which span the area, from the **dominant**
+  biome (the most land weight; ties go to the earlier slot).
+
+Each biome's pieces are those of its own stage, and a lone biome owns every
+anchor. A withered slot (its lands gone) gives no accents. So with islands on
+the left and a bigger forest on the right, the left corners are frost, the
+right corners vines, and the bottom band is leaves. Give every biome pieces
+for both sides and the long edges, and let the slots decide which show.
+
+**Which accents a biome uses.** The pack's `overlay` for that biome, if it has
+any; else, if the biome draws the built-in scene (the pack has no art for it,
+or no pack is set), ForgeCoach's built-in placeholder accents; else none. A
+pack biome with its own stage art and no `overlay` (a 1.2 pack) has no
+accents, so older packs look as they did.
+
+**A stage's accents.**
+
+| Field | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `overlay` | list of pieces | — | This stage's pieces. Leave it out to keep the previous stage's pieces unchanged. |
+| `overlayMode` | `replace` \| `add` | `replace` | `replace`: `overlay` is the stage's complete set (an empty list clears). `add`: `overlay` is added to the previous stage's pieces; a piece whose `id` was already there replaces it, in its place. |
+
+**A piece.**
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `id` | `[A-Za-z0-9][\w.-]*`, ≤ 40 | — | **Required**, unique within the stage. A piece kept from the stage before (same `id`, same anchor) stays put; a new one fades in. |
+| `anchor` | one of the eight above | — | **Required.** An unknown anchor drops the piece, with a warning. |
+| `src` | URL (`.webp` or `.avif`) | — | **Required.** A transparent **still**. Same URL rules as layers. |
+| `src2x` | URL (`.webp` or `.avif`) | — | The 2x file. |
+| `size` | 0.02–1 | corners 0.18, edges 0.05 | As a fraction of the area's **width**: a corner's box width, or an edge band's thickness. |
+| `maxPx` | 16–1024 (whole) | corners 280, edges 72 | A pixel cap on that width or thickness. |
+| `tile` | `repeat` \| `stretch` | `repeat` | Edges only (a warning on a corner). `repeat` tiles the picture along the edge at the band's thickness, so the art must be seamless end to end; `stretch` fits it to the whole edge. |
+| `opacity` | 0–1 | 1 | |
+| `blend` | as layers | `normal` | CSS `mix-blend-mode` over the area. |
+| `motion` | `none` \| `sway` \| `drift` \| `breathe` | `none` | CSS only, on the still: `sway` turns ±1.2° about the piece's corner, `drift` shifts ±1.5%, `breathe` grows 3.5% and brightens a little. |
+| `periodMs` | 2000–60000 (whole) | 9000 | One swing of `motion` (it alternates). |
+| `mirror` | boolean | `true` | Flip onto the opponent's side (above). |
+| `bytes` | whole number | — | The size of the piece's files (`src` + `src2x`), for the budget (§3). Each `src` counts once per biome however many stages repeat it. |
+
+Unknown fields inside a piece are ignored. As elsewhere, out-of-range numbers
+and unknown names fall back to their defaults with a warning; a piece with a
+bad `id`, `anchor` or `src` is dropped with a warning.
+
+**What is enforced, and how.**
+- **≤ 6 pieces per stage** (after `add`): the first six are kept, the rest dropped, with a warning. On the board, **≤ 6 pieces per player area** across all its biomes: the dominant biome's pieces come first, so a minor biome's are the ones cut.
+- **≤ 3 moving pieces per stage** (a `motion` other than `none`): the rest are drawn still, with a warning; again ≤ 3 per player area on the board.
+- **CSS motion on a still does not count against the strip's 2 moving layers** (§3): those are decoded video and sprite sheets, the expensive kind. A swaying accent is a transform on a picture already decoded, so it is cheap; that is why up to 3 may move.
+- **≤ 2 MB of declared accent files per biome**: a warning past it (pieces kept).
+
+**Rendering rules** (what ForgeCoach guarantees, so art can rely on it):
+- **Never over the game.** Accents are drawn beneath everything in the area: every card (names, costs, power and toughness, counters), every label, the action bar and the ask dialogs. They sit in the same layer as the strip, above the board's background and the strip, below all content. They never take clicks or taps, and screen readers skip them.
+- **Clipped to the area**; an accent never spills onto the other player's side or the panels.
+- **Small screens.** Under **600 px** of area width only corner pieces show, capped at **88 px**, still. Under **300 px**, none.
+- **Reduced motion** (`prefers-reduced-motion`, or Settings → Motion → Stills only): every piece still, nothing fades in.
+- **A hidden tab** pauses the motion.
+- **Settings.** Accents show only when the scenery is on, and have their own switch, **Board accents** (on by default). `?accents=off` (or `on`) overrides it for one page load, like `?scenery=`.
+- **Load.** Accent files load in the background; the board never waits for them, and a piece whose file fails is simply not drawn.
+
+### Worked example: accents for the forest
+
+The forest's strip art is left out here (`layers` lists omitted), so this
+biome keeps the built-in scene and draws these accents; in a real pack each
+stage has its `layers` too.
+
+<!-- example-overlay -->
+```json
+{
+  "schema": 1,
+  "spec": "1.3",
+  "name": "Justin's greenwood accents",
+  "biomes": {
+    "forest": {
+      "stages": [
+        {
+          "overlay": [
+            { "id": "vine-bl", "anchor": "bottom-left", "src": "forest/ov-vine-bl.webp", "src2x": "forest/ov-vine-bl@2x.webp", "size": 0.14, "maxPx": 200, "motion": "sway", "periodMs": 11000, "bytes": 380000 }
+          ]
+        },
+        {
+          "overlayMode": "add",
+          "overlay": [
+            { "id": "vine-br", "anchor": "bottom-right", "src": "forest/ov-vine-br.webp", "size": 0.12, "maxPx": 180, "motion": "sway", "periodMs": 13000, "bytes": 360000 }
+          ]
+        },
+        {
+          "overlayMode": "add",
+          "overlay": [
+            { "id": "vine-bl", "anchor": "bottom-left", "src": "forest/ov-vine-bl-s3.webp", "size": 0.2, "maxPx": 260, "motion": "sway", "periodMs": 11000, "bytes": 420000 },
+            { "id": "leaves", "anchor": "bottom-edge", "src": "forest/ov-leaves-edge.webp", "size": 0.03, "maxPx": 48, "tile": "repeat", "opacity": 0.85, "bytes": 180000 },
+            { "id": "canopy", "anchor": "top-left", "src": "forest/ov-canopy-tl.webp", "size": 0.12, "maxPx": 160, "opacity": 0.7, "motion": "breathe", "bytes": 300000 }
+          ]
+        },
+        {
+          "overlayMode": "add",
+          "overlay": [
+            { "id": "creeper", "anchor": "left-edge", "src": "forest/ov-creeper-edge.webp", "size": 0.025, "maxPx": 40, "tile": "repeat", "opacity": 0.8, "bytes": 200000 }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+Stage 1 is one vine in the bottom-left corner; stage 2 adds a second in the
+bottom-right; stage 3 swaps the first vine for a bigger drawing (same `id`,
+`add`), runs leaves along the bottom edge and lets a canopy breathe in the
+top-left; stage 4 adds a creeper up the left edge, five pieces, three moving.
+On the opponent's side every piece mirrors: the vines hang from their top
+corners, the leaves run along their top edge, the canopy sits bottom-left.
+The forest declares 1,840,000 bytes of accent files (six files; the stage-1 vine
+still counts once), under the 2 MB (2,097,152-byte) budget.
+
+`src/ambience/overlay.test.ts` validates this exact block. If you change it,
+it must stay error- and warning-free.
+
 
 ## 3. Files and budgets
 
@@ -326,7 +477,16 @@ Budgets for effects (1.2), counted apart from the scenery's 6 MB:
 - **Effect clips:** ≤ 720 px wide, WebM VP9 with alpha plus an MP4 `fallback`, no audio, under 2.5 s; the clip is not looped.
 - **At most `effects.maxConcurrent`** play at once (default 3, at most 6); a burst waits briefly, and what waits too long (0.9 s) is dropped.
 
-The whole pack should stay ≤ 30 MB, effects included.
+Budgets for board accents (1.3), counted apart from the scenery's 6 MB and the effects' 4 MB:
+- **≤ 2 MB per biome** of accent files (declare `bytes`; the validator warns past it).
+- **≤ 6 pieces per stage**, and on the board ≤ 6 per player area (enforced).
+- **≤ 3 moving pieces per stage** (CSS `motion`; enforced: the rest are still). CSS motion on a still is **not** one of the 2 moving layers above, which are video and sprites.
+- **Corners:** about **1024 × 1024**, transparent WebP (or AVIF), the subject pushed into the bottom-left (or whichever corner it is for) and fading out toward the opposite corner; no hard edge where the picture ends. Shown at most 280 px wide by default (`maxPx`), so 1024 covers 2x and beyond.
+- **Top and bottom edges:** about **2048 × 256**, the ground at the bottom; seamless left to right when `tile` is `repeat`.
+- **Left and right edges:** about **256 × 2048**, the root at the outer side; seamless top to bottom when tiled.
+- Stills only: no animated WebP, no video, no sprite sheets.
+
+The whole pack should stay ≤ 30 MB, effects and accents included.
 
 A narrow slot is about 130 px wide on a phone; a lone slot on a desktop can be
 1280 px or more. Art must read at both sizes.
@@ -356,6 +516,7 @@ A narrow slot is about 130 px wide on a phone; a lone slot on a desktop can be
   Every moving layer therefore needs a poster that looks complete on its own.
 - **Effects and motion.** Effects are the board's punctuation: short, soft at the edges, and gone. No strobing (no more than one bright peak per effect), no full-strip white flashes, nothing that hides a card. They play only for live play and for stepping a replay at normal speed: jumping, going back or scrubbing quickly cancels them, and a hidden tab pauses them.
 - **Effects with reduced motion.** Each effect's `reduced` says what shows instead: `glow` (the default, a still soft glow in the effect's colour at its anchor, for the effect's length), `poster` (its `poster` still), or `skip` (nothing).
+- **Accents (1.3).** Quiet, low-contrast, mostly at the very edge: they frame the area, they are not a picture in it. The inner part of a corner picture (toward the area's middle) should fade to nothing. Cards are drawn over them, so keep fine detail at the rim, where cards rarely sit. Keep motion as small as the strip's idle.
 - **Levelling up with mana.** The art direction for every biome: each stage is more intricate, vivid and fantastical than the last, and the final stage is dreamlike. A `stageUp` effect is the moment to show that: it plays when a land lifts a claimed slot to its next stage.
 
 ## 5. Serving a pack locally
@@ -403,10 +564,11 @@ board's fallback note say so, with these steps.
 4. Drag **Stage** to see every stage of every claimed biome without playing more lands.
 5. Switch **Motion** to *Stills only* to check posters and reduced motion.
 6. **Creature enters** and **Attack** under *Play* change the made-up game, and fire the effects the engine derives from it. The event list shows what the engine emitted.
-7. The **Effects** card fires each effect for either side directly: creature enters, attack, damage (player), damage (creature), landfall, stage up. It plays on that side's largest biome, so play a land first. Its **Pack effects** status lists what the pack supplies for each event and biome (else the built-in), and **Check effect files** fetches each effect file and measures it against the 4 MB budget.
-8. **Check a manifest by pasting it** validates JSON as you type, before any file is served.
-9. **Use on the board** saves the choice. Settings → Board scenery does the same, and so does `?scenery=<url>` on any ForgeCoach URL. The play board and the replay board (`#sample=human-auto-42`) then show the pack.
-10. Press **Reload** after changing files. The preview loads the pack fresh each time; the board caches it per page load.
+7. **View → Board accents** turns the accents on and off on the preview (Settings → Board accents does it on the board). Narrow the window under 600 px to see the corners-only fit. The pasted-manifest check and the pack status list each biome's accent pieces per stage and their declared size.
+8. The **Effects** card fires each effect for either side directly: creature enters, attack, damage (player), damage (creature), landfall, stage up. It plays on that side's largest biome, so play a land first. Its **Pack effects** status lists what the pack supplies for each event and biome (else the built-in), and **Check effect files** fetches each effect file and measures it against the 4 MB budget.
+9. **Check a manifest by pasting it** validates JSON as you type, before any file is served.
+10. **Use on the board** saves the choice. Settings → Board scenery does the same, and so does `?scenery=<url>` on any ForgeCoach URL. The play board and the replay board (`#sample=human-auto-42`) then show the pack.
+11. Press **Reload** after changing files. The preview loads the pack fresh each time; the board caches it per page load.
 
 If a pack fails on the board, ForgeCoach falls back to the built-in scenery.
 It logs why in the console (`ForgeCoach scenery: …`); dev builds also show it
