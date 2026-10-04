@@ -2,7 +2,7 @@
  * ForgeCoach — ui/winchance/winchance.css
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The win chance strip and line (mtg-table D359). Built on the skins' tokens
+ * The win chance strip and line (mtg-table D361). Built on the skins' tokens
  * only (--accent, --line, --surface-*, --muted, --bad, --mono), so Classic,
  * Stack and Hot Felt each draw it in their own colours; Hot Felt's meter takes
  * its heat token (--skin-heat), the one warm colour it keeps for win chance.

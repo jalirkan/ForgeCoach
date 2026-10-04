@@ -2,7 +2,7 @@
  * ForgeCoach — ui/winchance/useWinChance.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The win chance's hooks (mtg-table D359): whether to show it (Settings →
+ * The win chance's hooks (mtg-table D361): whether to show it (Settings →
  * "Show win chance", and a coach helper with a model), the live value while
  * playing, and the whole game's line for a replay or the engine review.
  * Requests go through evalClient.ts only; answers are kept per model and game

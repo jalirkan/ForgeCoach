@@ -192,7 +192,7 @@ export default function ReviewApp({ log, title, sampleId = null, autoSample = fa
   const players = log.hello?.players ?? [];
   const opp = players.find((p) => p.id !== log.seat);
   const over = log.over;
-  // The win-chance line (mtg-table D359): each graded decision at the state it was taken in; a marker selects it.
+  // The win-chance line (mtg-table D361): each graded decision at the state it was taken in; a marker selects it.
   const wcDecisions = useMemo(() => (loaded?.decisions ?? []).map((x) => ({ frame: x.stateFrame, id: x.frame })), [loaded]);
 
   return (

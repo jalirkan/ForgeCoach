@@ -138,7 +138,7 @@ export function PlayView({
   }, [view.cancel.enabled, act]);
 
 
-  // ---- the win chance (mtg-table D359; Settings → Show win chance): only with a helper that has a model
+  // ---- the win chance (mtg-table D361; Settings → Show win chance): only with a helper that has a model
   const wcModel = useWinChanceModel();
   const winChance = useLiveWinChance(log, wcModel);
 

@@ -12,7 +12,7 @@
  *                  D325 adds "concurrency":1, "queue":{"max","length"}, "running":0|1,
  *                  "supersedes":1. A helper without "queue" refuses a second question (429).
  *                  D346 adds "thinking":["off","low","default"].
- *                  D359 adds "eval":1 (with "evalModel", "evalSchema") when the helper serves
+ *                  D361 adds "eval":1 (with "evalModel", "evalSchema") when the helper serves
  *                  the win chance (POST /eval, evalClient.ts); read even when "ok" is false,
  *                  since the win chance does not need Claude Code.
  *   POST /coach  {"system","user","model"?:"opus"|"sonnet"|"haiku","supersedes"?:"<key>",
@@ -162,7 +162,7 @@ export type HelperStatus =
       supersedes?: boolean;
       /** D346: the "thinking" values /coach accepts; [] from an older helper (send none). */
       thinking?: HelperThinking[];
-      /** D359: the helper serves the win chance (POST /eval). */
+      /** D361: the helper serves the win chance (POST /eval). */
       eval?: HelperEval | null;
     }
   | {
@@ -171,11 +171,11 @@ export type HelperStatus =
       reason: 'not_running' | 'not_ready' | 'unauthorized';
       message: string;
       checkedAt: number;
-      /** D359: a helper whose Claude Code is not ready may still serve the win chance. */
+      /** D361: a helper whose Claude Code is not ready may still serve the win chance. */
       eval?: HelperEval | null;
     };
 
-/** D359: what /health says about the win chance: the model's file hash and its feature schema. */
+/** D361: what /health says about the win chance: the model's file hash and its feature schema. */
 export interface HelperEval {
   model: string;
   schema: string;

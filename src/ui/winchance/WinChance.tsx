@@ -2,7 +2,7 @@
  * ForgeCoach — ui/winchance/WinChance.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The win chance on screen (mtg-table D359): a slim strip while playing, and a
+ * The win chance on screen (mtg-table D361): a slim strip while playing, and a
  * line over a replay's or an engine review's timeline with markers where the
  * estimate fell after one of the player's decisions. Both say what the number
  * is — a local model's estimate, trained on Forge-vs-Forge games — and neither
