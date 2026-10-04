@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { cubeInfo } from '../../cube/cubes.ts';
 import { GRID_LINES, poolColours, recommendGrid, recommendWinston } from '../../cube/pick.ts';
+import { aiLabelFrom } from '../../draft/aiLabel.ts';
 import { canPass, expectedPicks, knownAiCards, lineName, progress, toAct, yourPack, type BoosterDraft, type Draft, type GridDraft, type WinstonDraft } from '../../draft/draft.ts';
 import { bestBoosterPick, buildPickPrompt, pickPromptCards } from '../../draft/pickPrompt.ts';
 import { startAnswer, stopAnswer, useAnswer } from '../answers.ts';
@@ -266,6 +267,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
         meta={meta}
         title={d.format === 'grid' ? 'The AI’s picks' : 'What you know the AI has'}
         hiddenCount={d.picks.ai.length - known.length}
+        label={`Looks like: ${aiLabelFrom(known, ctx).text}`}
         onInfo={setInfo}
         prefsKey="ai-sheet"
       />

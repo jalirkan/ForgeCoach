@@ -6,12 +6,14 @@
  * refresh), the cube's scoring context, the AI's Grid and Winston turns
  * played out one beat at a time (Booster bots pick with you), and what
  * happens when the draft ends: your pool saved for the deck assistant, your
- * deck started, the AI's deck built and kept out of sight.
+ * deck started, the AI's deck built and kept out of sight. The AI's deck is
+ * named from the cards you know it has (`aiDeckName`), never from its list.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildDecks } from '../../cube/builder.ts';
 import { cubeInfo } from '../../cube/cubes.ts';
 import { newPool, savePool } from '../../cube/pools.ts';
+import { aiDeckName } from '../../draft/aiLabel.ts';
 import { labCards } from '../../draft/cards.ts';
 import { initialDeck, matchDeck, type DeckState } from '../../draft/deck.ts';
 import { aiStep, apply, knownAiCards, newDraft, toAct, type Draft, type DraftAction, type DraftEvent, type Format } from '../../draft/draft.ts';
@@ -146,8 +148,17 @@ export function useDraftGame(): DraftGame {
     commit({
       ...saved,
       deck: saved.deck ?? deck,
-      after: { poolId: pool.id, aiDeck: ai ? matchDeck(`AI Drafter - ${ai.name}`, ai, draft.picks.ai) : undefined },
+      // The deck's public name: from the cards you know the AI has, never its full list.
+      after: { poolId: pool.id, aiDeck: ai ? matchDeck(aiDeckName(draft, ctx), ai, draft.picks.ai) : undefined },
     });
+  }, [saved, draft, ctx, commit]);
+
+  // A draft saved before the AI's deck was named from known cards: rename it (its old name came from the hidden list).
+  useEffect(() => {
+    const ai = saved?.after?.aiDeck;
+    if (!saved || !ai || !draft?.done || !ctx) return;
+    const name = aiDeckName(draft, ctx);
+    if (ai.name !== name) commit({ ...saved, after: { ...saved.after, aiDeck: { ...ai, name } } });
   }, [saved, draft, ctx, commit]);
 
   const act = useCallback(

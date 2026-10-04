@@ -106,6 +106,7 @@ export function PoolSheet({
   title,
   onInfo,
   hiddenCount = 0,
+  label,
   prefsKey = 'pool-sheet',
 }: {
   open: boolean;
@@ -116,6 +117,8 @@ export function PoolSheet({
   onInfo: (n: string) => void;
   /** Cards the player has not seen (the AI's hidden picks): counted, never named. */
   hiddenCount?: number;
+  /** A one-line summary shown first in the subtitle (the AI's colours from its known cards). */
+  label?: string;
   prefsKey?: string;
 }) {
   const [prefs, setPrefs] = usePrefs(prefsKey, { layout: 'gallery', group: 'cmc', size: 150 });
@@ -131,7 +134,7 @@ export function PoolSheet({
           {title} <span className="muted-count">· {total} cards</span>
         </span>
       }
-      subtitle={[names.length ? typeSummary(names, meta) : '', hiddenCount ? `${hiddenCount} you haven’t seen` : ''].filter(Boolean).join(' · ') || undefined}
+      subtitle={[label ?? '', names.length ? typeSummary(names, meta) : '', hiddenCount ? `${hiddenCount} you haven’t seen` : ''].filter(Boolean).join(' · ') || undefined}
       footer={
         <button className="btn-wide" onClick={onClose}>
           Close

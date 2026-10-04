@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import '../deck/deck.css';
 import '../forge-theme.css';
 import './draft.css';
+import { aiLabelFrom } from '../../draft/aiLabel.ts';
 import { knownAiCards } from '../../draft/draft.ts';
 import { initialDeck } from '../../draft/deck.ts';
 import { SettingsDialog } from '../SettingsDialog.tsx';
@@ -96,6 +97,7 @@ export default function DraftApp({ onExit }: { onExit: () => void }) {
         deckColours={deckColoursOf(deck, (n) => ctx.facts.get(n)?.colors ?? '')}
         after={saved.after}
         known={known}
+        aiLabel={aiLabelFrom(known, ctx).text}
         meta={game.data.meta}
         cubeNames={ctx.cube.cards.map((c) => c.name)}
         title={saved.title || 'Practice draft'}
