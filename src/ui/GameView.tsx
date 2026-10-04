@@ -31,6 +31,8 @@ import { phaseLabel } from '../decisions.ts';
 import { BoardScenery } from './ambience/BoardScenery.tsx';
 import { WinChanceLine } from './winchance/WinChanceLine.tsx';
 import { decisionSpans } from '../winChance.ts';
+import { FilmRoom } from './filmroom/FilmRoom.tsx';
+import type { FilmMoment } from '../filmRoom.ts';
 
 export interface LiveInfo {
   url: string;
@@ -50,6 +52,15 @@ function safeDecisions(log: GameLog, cards?: Map<string, CardInfo>): Decision[] 
   }
 }
 
+/** The index of the decision at `frame`, or the last one starting before it. */
+function decisionAtFrame(decisions: readonly Decision[], frame: number): number {
+  let best = 0;
+  decisions.forEach((d, i) => {
+    if (d.frameIndex <= frame) best = i;
+  });
+  return best;
+}
+
 function guideNameNow(): string | null {
   try {
     const id = activeGuideId();
@@ -64,6 +75,7 @@ export function GameView({
   title,
   live,
   initialDecision,
+  initialFrame,
   initialTab = 'moment',
   onIndexChange,
   onClose,
@@ -75,6 +87,8 @@ export function GameView({
   title: string;
   live: LiveInfo | null;
   initialDecision: number | null;
+  /** Start on the decision at (or last before) this frame instead (the film room's moments). */
+  initialFrame?: number;
   initialTab?: CoachTab;
   onIndexChange?: (i: number) => void;
   onClose: () => void;
@@ -92,7 +106,9 @@ export function GameView({
   const decisions = useMemo(() => safeDecisions(log, cardMap.size ? cardMap : undefined), [log, cardMap]);
   const [mode, setMode] = useState<ScrubMode>(decisions.length === 0 && frames.length > 0 ? 'frames' : 'decisions');
   const [dIdx, setDIdx] = useState(() =>
-    initialDecision !== null ? Math.min(Math.max(0, initialDecision), Math.max(0, decisions.length - 1)) : live ? Math.max(0, decisions.length - 1) : 0,
+    initialFrame !== undefined
+      ? decisionAtFrame(decisions, initialFrame)
+      : initialDecision !== null ? Math.min(Math.max(0, initialDecision), Math.max(0, decisions.length - 1)) : live ? Math.max(0, decisions.length - 1) : 0,
   );
   const [fIdx, setFIdx] = useState(() => (live ? Math.max(0, frames.length - 1) : 0));
   const [tab, setTab] = useState<CoachTab>(initialTab);
@@ -227,6 +243,17 @@ export function GameView({
     },
     [mode],
   );
+  const jumpToFilm = useCallback(
+    (m: FilmMoment) => {
+      if (mode !== 'decisions') setMode('decisions');
+      setDIdx(decisionAtFrame(decisions, m.decision.frameIndex));
+      setPhoneTab('board');
+    },
+    [mode, decisions],
+  );
+  const filmRoom = live ? null : (
+    <FilmRoom log={log} decisions={decisions} onJump={jumpToFilm} current={decision?.frameIndex ?? null} onOpenSettings={onSettings} />
+  );
   const list = (
     <TimelineList
       extra={<WinChanceLine log={log} decisions={wcDecisions} current={frameIndex} onMarker={jumpToMarker} />}
@@ -255,6 +282,7 @@ export function GameView({
       onOpenSettings={onSettings}
       onOpenGuides={() => setGuidesOpen(true)}
       guideName={guideName}
+      filmRoom={filmRoom}
     />
   );
 
