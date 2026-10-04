@@ -357,4 +357,21 @@ describe('LiveLogBuilder across games', () => {
     expect(b.add(state('g2', 2), true)).toBe(true);
     expect(b.frames.map((f) => (f.body as { gameId: string }).gameId)).toEqual(['g2', 'g2']);
   });
+
+  it('an engine restarted under the same game id starts a new log; a verbatim re-delivery does not', () => {
+    const b = new LiveLogBuilder();
+    const f = (type: string, seq: number, t: number) => ({ v: 1, type, seq, t, body: { gameId: 'human-ws-0', n: t } }) as unknown as LoggedFrame;
+    b.add(f('hello_ok', 1, 1000), true);
+    b.add(f('state', 2, 1001), true);
+    b.add(f('state', 3, 1002), true);
+    // A reconnect: the same hello_ok and last state, byte for byte (M10) -- nothing new.
+    expect(b.add(f('hello_ok', 1, 1000), true)).toBe(false);
+    expect(b.add(f('state', 3, 1002), true)).toBe(false);
+    expect(b.frames).toHaveLength(3);
+    // The engine was stopped and started again: same id, a new hello_ok, a fresh seq series.
+    expect(b.add(f('hello_ok', 1, 9000), true)).toBe(true);
+    expect(b.add(f('state', 2, 9001), true)).toBe(true);
+    expect(b.frames.map((x) => `${x.type}@${x.seq}:${x.t}`)).toEqual(['hello_ok@1:9000', 'state@2:9001']);
+    expect(b.hello).toMatchObject({ n: 9000 });
+  });
 });

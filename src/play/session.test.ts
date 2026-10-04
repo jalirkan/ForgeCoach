@@ -394,6 +394,92 @@ describe('connectSeat — connection', () => {
     expect(s.log!.header.gameId).toBe('match-m1791019697368');
   });
 
+  it('an engine restarted with the SAME game id (a bare play.sh is always seed 0) is a new session, not a reconnect', () => {
+    const g1 = RECORDINGS['human-ability-42']!;
+    const h = harness({ backoffMs: 1 });
+    h.sock().open();
+    replay(h, g1); // to the end: over
+    expect(h.session.snapshot().over).not.toBeNull();
+    // The engine is stopped and started again (Ctrl-C, ./scripts/play.sh): same game id, a fresh seq series.
+    h.sock().drop(1000, 'game over');
+    expect(h.session.snapshot().status).toBe('closed');
+    h.session.reconnect();
+    h.sock().open();
+    const hello = g1.frames.find((f) => f.type === 'hello_ok')!;
+    const t0 = hello.t + 3_600_000;
+    h.sock().msg({ ...wire(hello), seq: 1, t: t0 });
+    const st = g1.frames.find((f) => f.type === 'state')!;
+    h.sock().msg({ ...wire(st), seq: 2, t: t0 + 5 });
+    const inp = g1.frames.find((f) => f.type === 'input')!;
+    h.sock().msg({ ...wire(inp), seq: 3, t: t0 + 6 });
+    h.flush();
+    const s = h.session.snapshot();
+    expect(s.over).toBeNull();
+    expect(s.previousLogs).toHaveLength(1);
+    expect(s.previousLogs[0]!.over).toEqual(g1.over);
+    expect(s.state).toEqual(st.body);
+    expect(s.input).toEqual(inp.body);
+    expect(s.log!.frames.filter((f) => f.dir === 's2c').map((f) => `${f.type}@${f.seq}`)).toEqual(['hello_ok@1', 'state@2', 'input@3']);
+    expect(h.session.act(A.ok())).toBe(true);
+  });
+
+  it('a mid-game drop to an engine restarted with the same game id shows the new game, not the old frozen one', () => {
+    const g1 = RECORDINGS['human-ability-42']!;
+    const h = harness({ backoffMs: 1 });
+    h.sock().open();
+    replay(h, { ...g1, frames: g1.frames.slice(0, 120) });
+    vi.useFakeTimers();
+    h.sock().drop(1006);
+    vi.advanceTimersByTime(10);
+    vi.useRealTimers();
+    h.sock().open();
+    const hello = g1.frames.find((f) => f.type === 'hello_ok')!;
+    h.sock().msg({ ...wire(hello), seq: 1, t: hello.t + 60_000 });
+    const st = g1.frames.find((f) => f.type === 'state')!;
+    h.sock().msg({ ...wire(st), seq: 2, t: hello.t + 60_001 });
+    const s = h.session.snapshot();
+    expect(s.state).toEqual(st.body);
+    expect(s.previousLogs).toHaveLength(1);
+    expect(s.log!.frames.filter((f) => f.dir === 's2c')).toHaveLength(2);
+  });
+
+  it('an ask open when the socket dropped is gone after the reconnect unless the bridge re-sends it (M19: a drop cancels parked asks)', () => {
+    const rec = RECORDINGS['human-ability-42']!;
+    const firstAsk = rec.frames.findIndex((f) => f.type === 'ask');
+    const lastBefore = (type: string) => [...rec.frames.slice(0, firstAsk)].reverse().find((f) => f.type === type && f.dir === 's2c')!;
+    for (const resent of [false, true]) {
+      const h = harness({ backoffMs: 1 });
+      h.sock().open();
+      for (const f of rec.frames.slice(0, firstAsk + 1)) {
+        if (f.dir === 's2c') h.sock().msg(wire(f));
+        else if (f.type === 'act') h.session.act(f.body as ActBody);
+        else if (f.type === 'answer') h.session.answer((f.body as AnswerBody).askId, (f.body as AnswerBody).value);
+      }
+      const ask = h.session.snapshot().ask as AskBody;
+      expect(ask).not.toBeNull();
+      vi.useFakeTimers();
+      h.sock().drop(1006);
+      vi.advanceTimersByTime(10);
+      vi.useRealTimers();
+      h.sock().open();
+      // The bridge's catch-up: the same hello_ok and state (M10), a fresh input, and the ask only if it still waits.
+      h.sock().msg(wire(rec.frames.find((f) => f.type === 'hello_ok')!));
+      h.sock().msg(wire(lastBefore('state')));
+      h.sock().msg({ ...wire(lastBefore('input')), seq: rec.frames[firstAsk]!.seq + 1 });
+      if (resent) h.sock().msg(wire(rec.frames[firstAsk]!));
+      h.flush();
+      const s = h.session.snapshot();
+      if (resent) {
+        expect(s.ask?.askId).toBe(ask.askId);
+        expect(h.session.act(A.ok())).toBe(false);
+        expect(h.session.answer(ask.askId, null)).toBe(true);
+      } else {
+        expect(s.ask).toBeNull();
+        expect(h.session.act(A.ok())).toBe(true);
+      }
+    }
+  });
+
   it('Forge’s “AI can’t play these cards well” reveal is answered at once and never shows or logs the AI’s cards', () => {
     const h = harness();
     h.sock().open();

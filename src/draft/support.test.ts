@@ -222,6 +222,14 @@ describe('pick prompt', () => {
     }
   });
 
+  it('names the format it is: a booster pick is never called a Winston draft', () => {
+    for (const format of ['grid', 'winston', 'booster'] as const) {
+      const d = newDraft({ cubeId: 'synergy', format, cube: names, seed: 3, youFirst: true, seats: 4, now: 1 });
+      const head = buildPickPrompt({ ctx, draft: d, infos: new Map() }).user.split('\n')[0]!;
+      expect(head).toMatch(new RegExp(`— ${format[0]!.toUpperCase()}${format.slice(1)} draft vs the AI$`));
+    }
+  });
+
   it('the guide section is the same whatever the AI picked, so it can’t carry hidden information', () => {
     const cards = labCards(ctx);
     let d = newDraft({ cubeId: 'synergy', format: 'winston', cube: names, seed: 9, youFirst: false, now: 1 });

@@ -259,3 +259,38 @@ describe('the "thinking…" state and the thinking cap (D346)', () => {
     expect(vi.mocked(askHelper).mock.calls[0]![2]).toMatchObject({ thinking: 'low' });
   });
 });
+
+describe('asking again while the first question is still out', () => {
+  const QOK: HelperStatus = { ...OK, state: 'ok', queue: { max: 4, length: 0 }, concurrency: 1, supersedes: true } as HelperStatus;
+
+  it('the first run, cancelled, never writes over the second one (its stop, its thinking line, its answer)', async () => {
+    h.helper = QOK;
+    h.fresh = true;
+    // The first question: out until it is aborted, then rejected as cancelled.
+    vi.mocked(askHelper).mockImplementationOnce(
+      (_p, _hs, opts) =>
+        new Promise((_res, rej) => {
+          opts!.signal!.addEventListener('abort', () => setTimeout(() => rej(Object.assign(new Error('Request cancelled.'), { kind: 'aborted' })), 0));
+        }),
+    );
+    const first = startAnswer('r1', async () => ({ system: 's', user: 'u' }));
+    await vi.waitFor(() => expect(getAnswer('r1')?.status).toBe('streaming'));
+    // The second: waits in the helper's queue until released.
+    let release!: () => void;
+    vi.mocked(askHelper).mockImplementationOnce(async (_p, hs, opts) => {
+      opts!.onQueued!(1);
+      await new Promise<void>((r) => (release = r));
+      opts!.onRunning!();
+      hs.onText('second');
+      return { text: 'second', stopReason: 'end_turn', refused: false, model: 'opus' };
+    });
+    const second = startAnswer('r1', async () => ({ system: 's', user: 'u' }));
+    await first;
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    expect(getAnswer('r1')).toMatchObject({ status: 'queued', queuePosition: 1 });
+    expect(answerBusy('r1')).toBe(true);
+    release();
+    await second;
+    expect(getAnswer('r1')).toMatchObject({ status: 'done', text: 'second' });
+  });
+});
