@@ -16,7 +16,7 @@
  * Labels are the engine's and are printed verbatim (a concealed card's option
  * is "???"; its name is never looked up).
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { AnswerValue, AnyCard, AskBody, AskOption, Card, GameStateBody, InputBody } from '../../protocol.ts';
 import { isHidden } from '../../protocol.ts';
@@ -25,6 +25,7 @@ import { prefetchCards, useCardInfo } from '../cardData.ts';
 import { IconCheck, IconChevronDown, IconEye, IconPlay, IconPlus, IconX, TypeGlyph } from '../Icons.tsx';
 import { ManaCost, Pip, SymbolText } from '../Mana.tsx';
 import { colorClass, cx, shortType, typeKind } from '../util.ts';
+import { useLongPress } from '../longPress.ts';
 import {
   amountCap,
   amountsTotal,
@@ -309,6 +310,27 @@ function PreviewBtn({ cardId, onPreview, label }: { cardId: number | undefined; 
   );
 }
 
+/**
+ * A choosable option. On touch, holding it opens the card's details (like a
+ * tile on the board) instead of choosing it; a tap still chooses.
+ */
+function OptButton({ cardId, onPreview, onClick, children, ...rest }: { cardId: number | undefined; onPreview?: (id: number) => void; onClick: () => void; children: ReactNode } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'type' | 'children'>) {
+  const { handlers, takeClick } = useLongPress(cardId !== undefined && onPreview ? () => onPreview(cardId) : null);
+  return (
+    <button
+      type="button"
+      {...rest}
+      {...handlers}
+      onClick={() => {
+        if (takeClick()) return;
+        onClick();
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 /** A card that is shown, not chosen: the whole card opens the preview. */
 function StaticCard({ cardId, onPreview, label, className, children }: { cardId: number | undefined; onPreview?: (id: number) => void; label: string; className?: string; children: ReactNode }) {
   if (cardId === undefined || !onPreview) return <div className={cx('ask-card is-static', className)}>{children}</div>;
@@ -359,13 +381,13 @@ function RowPicker({ options, chosen, max, onChange, onSendNow, onPreview, disab
         const showThumb = o.kind === 'card' || o.card !== undefined;
         return (
           <li key={o.id}>
-            <button
-              type="button"
+            <OptButton
+              cardId={o.cardId}
+              onPreview={onPreview}
               className={cx('ask-opt ask-row', on && 'is-on', (off || full) && 'is-off')}
               role={radio ? 'radio' : 'checkbox'}
               aria-checked={on}
               disabled={off}
-             
               onClick={() => onChange(toggleChoice(chosen, o.id, max))}
               onDoubleClick={() => {
                 if (radio && onSendNow && !off) onSendNow([o.id]);
@@ -384,7 +406,7 @@ function RowPicker({ options, chosen, max, onChange, onSendNow, onPreview, disab
               {tag?.(o)}
               {card && <ManaCost cost={card.manaCost} size="sm" />}
               <PreviewBtn cardId={o.cardId} onPreview={onPreview} label={o.label} />
-            </button>
+            </OptButton>
           </li>
         );
       })}
@@ -404,12 +426,12 @@ function CardPicker({ options, chosen, max, onChange, onSendNow, onPreview }: Pi
         const full = picked === 0 && max !== 1 && max >= 0 && chosen.length >= max;
         return (
           <li key={g.key}>
-            <button
-              type="button"
+            <OptButton
+              cardId={g.option.cardId}
+              onPreview={onPreview}
               className={cx('ask-opt ask-card', picked > 0 && 'is-on', full && 'is-off')}
               aria-pressed={picked > 0}
               aria-label={`${g.label}${g.ids.length > 1 ? `, ${g.ids.length} copies` : ''}${picked ? `, ${picked} chosen` : ''}`}
-             
               onClick={() => onChange(toggleGroup(chosen, g.ids, max))}
               onDoubleClick={() => {
                 if (max === 1 && onSendNow) onSendNow([g.ids[0]!]);
@@ -423,7 +445,7 @@ function CardPicker({ options, chosen, max, onChange, onSendNow, onPreview }: Pi
                 </span>
               )}
               <PreviewBtn cardId={g.option.cardId} onPreview={onPreview} label={g.label} />
-            </button>
+            </OptButton>
             {picked > 0 && g.ids.length > 1 && max !== 1 && (
               <button type="button" className="ask-card-minus" onClick={() => onChange(removeFromGroup(chosen, g.ids))} aria-label={`One fewer ${g.label}`}>
                 −

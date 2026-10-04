@@ -628,6 +628,12 @@ button.avatar.is-select {
   padding-left: max(10px, env(safe-area-inset-left));
   padding-right: max(12px, env(safe-area-inset-right));
 }
+/* Phones: the step strip above the top bar already clears the notch; the bar
+   under it must not pad for it a second time. */
+.game.play > .pstrip-bar ~ .topbar {
+  height: var(--top-h);
+  padding-top: 0;
+}
 .game.play .topbar-title {
   flex: 1 1 auto;
   min-width: 0;
@@ -1059,6 +1065,10 @@ button.avatar.is-select {
     padding: 2px 14px 0;
     -webkit-tap-highlight-color: transparent;
   }
+  /* a 44px target: 32px of header and 6px above and below */
+  .hand-dock-head {
+    min-height: 32px;
+  }
   .hand-dock-head::after {
     content: '';
     position: absolute;
@@ -1071,11 +1081,18 @@ button.avatar.is-select {
     font-size: 13px;
     padding: 0 2px;
   }
+  /* swiped sideways with momentum; a swipe never pulls the page or goes back a page */
   .hand-dock-row {
     padding: 4px 10px 8px;
     gap: 8px;
     scroll-padding-inline: 10px;
     touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .hand-dock-row::-webkit-scrollbar {
+    display: none;
   }
   .hand-dock-row > .bf-empty {
     padding: 4px;

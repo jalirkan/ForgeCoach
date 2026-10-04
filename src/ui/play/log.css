@@ -40,6 +40,12 @@
   box-shadow: -4px 4px 14px rgba(0, 0, 0, 0.4);
   -webkit-tap-highlight-color: transparent;
 }
+/* Touch: the tab is 30px wide; its target reaches 44px into the board. */
+@media (pointer: coarse) {
+  .log-tab-edge::after {
+    inset: -6px 0 -6px -14px;
+  }
+}
 /* Phones in landscape: at the board's right edge, clear of the dock column (play.css). */
 @media (max-width: 1023px) and (max-height: 560px) and (orientation: landscape) {
   .log-tab-edge {
