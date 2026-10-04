@@ -217,7 +217,7 @@ export function GameView({
   const dockTitle = decision ? stripRound(decision.label) : frame ? `${frame.state.activePlayer === log.seat ? 'Your' : "Opp's"} ${phaseLabel(frame.state.phase)}` : 'Nothing yet';
   const dockSub = decision ? `R${decision.state.round} · ${actionsSummary(decision)}` : frame ? `Round ${frame.state.round} · frame #${frame.frameIndex}` : '';
 
-  // The win-chance line (mtg-table D359; Settings → Show win chance): markers jump to a decision.
+  // The win-chance line (mtg-table D361; Settings → Show win chance): markers jump to a decision.
   const wcDecisions = useMemo(() => decisionSpans(log, decisions.map((d, i) => ({ frameIndex: d.frameIndex, id: i }))), [log, decisions]);
   const jumpToMarker = useCallback(
     (i: number) => {

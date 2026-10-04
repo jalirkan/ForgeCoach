@@ -82,7 +82,7 @@ export interface Settings {
   /** The site's look (absent = 'classic'). */
   skin?: Skin;
   /**
-   * Show the win chance (mtg-table D359): the local model's estimate, served by
+   * Show the win chance (mtg-table D361): the local model's estimate, served by
    * the coach helper's /eval. Off by default (absent = off); shown only while the
    * helper has a model (evalClient.ts).
    */

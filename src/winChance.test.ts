@@ -28,7 +28,7 @@ function sample(file: string): GameLog {
 
 /**
  * Written by mtg-table's own reader (tools/ml encode.read_games, eval_serve.is_decision and
- * eval_serve.request_for, D359) over the same two recordings: the decision rows a client
+ * eval_serve.request_for, D361) over the same two recordings: the decision rows a client
  * scores and the frames whose events the request carries, by seq. The helper's encoder is
  * held to dataset.py's rows there; this holds ForgeCoach's request to the helper's reader.
  */
@@ -38,7 +38,7 @@ const golden = JSON.parse(readFileSync(new URL('./testdata/winchance-requests.go
 
 const seqOf = (log: GameLog, frameIndex: number) => (log.frames[frameIndex] as { seq: number }).seq;
 
-describe('the positions and requests (mtg-table D359 parity)', () => {
+describe('the positions and requests (mtg-table D361 parity)', () => {
   for (const g of golden.logs) {
     it(`${g.file}: the decision rows mtg-table reads, and the history it reads`, () => {
       const log = sample(g.file);

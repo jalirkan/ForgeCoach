@@ -2,7 +2,7 @@
  * ForgeCoach — winChance.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The win chance over a game (D359 in mtg-table): which positions are scored,
+ * The win chance over a game (D361 in mtg-table): which positions are scored,
  * the request for each, the turn-to-turn change and the drops after the
  * player's decisions. Pure and DOM-free; evalClient.ts asks the helper.
  *

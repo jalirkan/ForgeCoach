@@ -164,7 +164,7 @@ engine review's decisions, with markers where it fell 8 points or more after
 one of your decisions (click one to go there). It is labelled **Win chance
 (local model, Forge-vs-Forge trained)**: a model mtg-table trains on your PC
 from games Forge's AI played against itself, served by the coach helper's
-`/eval` (mtg-table decision D359). It is off by default and hidden unless the
+`/eval` (mtg-table decision D361). It is off by default and hidden unless the
 helper has a model (`./scripts/play.sh --engine-only`, which loads
 `var/ml/models/night-1-eval.json` when it exists, or `--eval-model <path>`).
 It scores only the positions where you hold priority in a main phase or combat,

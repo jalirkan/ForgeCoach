@@ -212,7 +212,7 @@ function CoachSourceField({ s, setS }: { s: Settings; setS: (s: Settings) => voi
   );
 }
 
-/** Win chance (mtg-table D359): off by default; shown only while the coach helper has a model. */
+/** Win chance (mtg-table D361): off by default; shown only while the coach helper has a model. */
 function WinChanceField({ s, setS }: { s: Settings; setS: (s: Settings) => void }) {
   const { helper } = useCoachAvailability();
   const model = helper?.eval ?? null;

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The win chance: the client for the coach helper's POST /eval (mtg-table
- * tools/eval-runner.mjs, D359). The helper runs a learned position evaluator
+ * tools/eval-runner.mjs, D361). The helper runs a learned position evaluator
  * on the player's PC (trained there on Forge-vs-Forge games) and answers
  * P(the viewing seat wins) for one position:
  *
