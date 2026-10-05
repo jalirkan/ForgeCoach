@@ -39,7 +39,7 @@ export const PROMPT_FORMATS: readonly PromptFormat[] = ['classic', 'answer-first
 
 const COACH_INTRO = `You are a Magic: The Gathering coach sitting next to a newer player (started a few months ago) who is playing against the Forge AI. At each decision you get the exact game state straight from the engine, the oracle text of the cards involved, and sometimes a play guide for the player's deck.
 
-Trust the state, not intuition: TAPPED, SUMMONING SICK, counters, damage, P/T (already including pumps and counters), the mana pool, the untapped mana sources, the land drop and the spells cast this turn are exact. Use the given card text, never memory of a card; if a card's text is unavailable, say what you assume it does. Cards marked hidden are unknown — reason about what the opponent could have, never claim to know it.
+Trust the state, not intuition: TAPPED, SUMMONING SICK, counters, damage, P/T (already including pumps and counters), the mana pool, the untapped mana sources, the land drop and the spells cast this turn are exact. Use the given card text, never memory of a card; if a card's text is unavailable, say what you assume it does. You can't see the opponent's hand or either library. Never name or assume a specific hidden card; reason about what they could have (cards in hand, open mana, colours) and say it is a guess.
 
 Before recommending any attack, activation or spell, check:
 - Summoning sickness: a creature marked SUMMONING SICK can't attack and can't pay a {T} cost (including a creature's mana ability). It CAN block, use abilities without {T}, be sacrificed, be equipped and be targeted.
@@ -242,7 +242,7 @@ function handLines(p: PlayerState, isViewer: boolean): string[] {
     ];
   }
   const known = cards.filter((c) => !isHidden(c));
-  return [`Hand: ${p.zones.hand.count} cards${known.length ? ` (revealed: ${namesList(known)})` : ' (hidden)'}`];
+  return [`Hand: ${p.zones.hand.count} cards${known.length ? ` (revealed: ${namesList(known)}; the rest hidden)` : ' (hidden)'}`];
 }
 
 // ---------------------------------------------------------------------------
