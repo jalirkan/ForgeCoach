@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseMeta, type CubeMeta } from '../cube/meta.ts';
-import { colourBaselines, FORGE_CAVEAT, LAND_HIDDEN, labCardView, rateOf, RED_NOTE, VERDICT_WORDS, verdictOf, winLine, ZERO_HIDDEN } from './labStats.ts';
+import { baselineLine, colourBaselines, colourNote, colourSkew, fmt, FORGE_CAVEAT, LAND_HIDDEN, labCardView, rateOf, SMALL_SAMPLE_GAMES, smallSampleNote, VERDICT_WORDS, verdictOf, winLine, ZERO_HIDDEN } from './labStats.ts';
 
 const shipped = (id: string) => parseMeta(JSON.parse(readFileSync(new URL(`../../public/cubes/${id}.meta.json`, import.meta.url), 'utf8')));
 
@@ -54,12 +54,15 @@ describe('rates and verdicts', () => {
     }
   });
 
-  it('the words say Forge-vs-Forge, and the red over-flag', () => {
+  it('the words say Forge-vs-Forge; counts carry thousands separators', () => {
     expect(FORGE_CAVEAT).toMatch(/Forge-vs-Forge/);
     expect(FORGE_CAVEAT).toMatch(/Forge’s hands/);
-    expect(RED_NOTE).toMatch(/53–55%/);
     expect(VERDICT_WORDS.unclear).toMatch(/neither strong nor weak: the interval includes 50%/);
     expect(winLine(rateOf(6, 12)!)).toMatch(/^50% \(95% \d+–\d+%\) over 12 games$/);
+    expect(winLine(rateOf(2579, 4090)!)).toMatch(/ over 4,090 games$/);
+    expect(baselineLine({ colour: 'W', games: 6719, wins: 4374, p: 0.651, from: 'archetypes' })).toBe('W decks 65% over 6,719 games');
+    expect(fmt(5167)).toBe('5,167');
+    expect(fmt(999)).toBe('999');
   });
 });
 
@@ -72,7 +75,6 @@ describe('the card view', () => {
     expect(v.taken).toEqual({ picked: 9, seen: 10, p: 0.9 });
     expect(v.inDeck).toEqual({ inDecks: 8, picked: 9, p: 8 / 9 });
     expect(v.win!.n).toBe(40);
-    expect(v.red).toBe(true);
     expect(v.baselines.map((b) => b.colour)).toEqual(['R']);
     expect(labCardView(m, 'Blank', '')).toBeNull();
     expect(labCardView(m, 'Missing', '')).toBeNull();
@@ -186,5 +188,65 @@ describe('suspicious zeros are hidden', () => {
     expect(lands).toBe(81);
     expect(landHidden).toEqual(['Ancient Tomb']);
     expect(zero.sort()).toEqual(['Grumgully, the Generous', 'Soul-Scar Mage']);
+  });
+});
+
+describe('the colour note: computed from the meta, never a fixed colour', () => {
+  const base = (rows: Record<string, [number, number]>) => new Map(Object.entries(rows).map(([c, [wins, games]]) => [c, { colour: c, games, wins, p: wins / games, from: 'lab' as const }]));
+
+  it('names the colour furthest from 50%, with its rate and interval', () => {
+    const s = colourSkew(base({ W: [650, 1000], U: [440, 1000], R: [430, 1000] }))!;
+    expect(s.colour).toBe('W');
+    expect(s.rate.p).toBeCloseTo(0.65, 9);
+    const note = colourNote(s);
+    expect(note).toMatch(/^In this cube’s lab, White decks won 65% \(95% \d+–\d+%\) over 1,000 games, clearly above 50%/);
+    expect(note).toMatch(/compare a card with its colour baseline beside it, not with 50%/);
+    // A colour below 50% can be the furthest, and the note says "below".
+    const low = colourSkew(base({ W: [520, 1000], G: [400, 1000] }))!;
+    expect(low.colour).toBe('G');
+    expect(colourNote(low)).toMatch(/Green decks won 40% .* clearly below 50%/);
+  });
+
+  it('says nothing when the furthest colour’s interval includes 50%', () => {
+    expect(colourSkew(base({ W: [11, 20], U: [9, 20] }))).toBeNull();
+    expect(colourSkew(new Map())).toBeNull();
+  });
+
+  it('on the shipped metas (J075) it follows the data: white in synergy, the furthest colour, whichever it is', () => {
+    const pick = (id: string) => colourSkew(colourBaselines(shipped(id)));
+    expect(pick('synergy-cube-180')!.colour).toBe('W');
+    for (const id of ['modern-era-cube-180', 'pauper-cube-180', 'synergy-cube-180', 'vintage-cube-180']) {
+      const s = pick(id);
+      if (!s) continue;
+      expect(s.rate.lo > 0.5 || s.rate.hi < 0.5).toBe(true);
+      const all = [...colourBaselines(shipped(id)).values()];
+      for (const b of all) expect(Math.abs(b.wins / b.games - 0.5)).toBeLessThanOrEqual(Math.abs(s.rate.p - 0.5) + 1e-12);
+    }
+  });
+});
+
+describe('the small-sample sentence', () => {
+  it('names only the cards under the threshold, and is absent otherwise', () => {
+    const m = meta({
+      cards: {
+        Thin: { picked: 30, seen: 40, inDecks: 12, games: 12, wins: 6 },
+        Thick: { picked: 3000, seen: 4000, inDecks: 1500, games: 1500, wins: 800 },
+        Edge: { picked: 300, seen: 400, inDecks: SMALL_SAMPLE_GAMES, games: SMALL_SAMPLE_GAMES, wins: 50 },
+      },
+    } as never);
+    const v = (n: string) => labCardView(m, n, '');
+    expect(smallSampleNote([v('Thin'), v('Thick'), v('Edge'), null])).toBe(`Small sample: Thin has fewer than ${SMALL_SAMPLE_GAMES} games, so read its interval, not the rate.`);
+    expect(smallSampleNote([v('Thick'), v('Edge')])).toBeNull();
+    expect(smallSampleNote([v('Thin'), v('Thin')])).toMatch(/^Small samples: Thin, Thin have/);
+  });
+});
+
+describe('average pick in a Grid meta', () => {
+  it('is hidden: a Grid card is taken about when it shows up, so the average says little', () => {
+    const grid = meta({ sample: { drafts: 10, games: 100, format: 'grid' } });
+    expect(labCardView(grid, 'Bolt', 'R')!.avgPick).toBeNull();
+    expect(labCardView(grid, 'Bolt', 'R')!.taken).toEqual({ picked: 9, seen: 10, p: 0.9 });
+    expect(labCardView(meta({ sample: { drafts: 10, games: 100, format: 'winston' } }), 'Bolt', 'R')!.avgPick).toBe(2.4);
+    expect(labCardView(meta(), 'Bolt', 'R')!.avgPick).toBe(2.4);
   });
 });

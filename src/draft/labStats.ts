@@ -7,8 +7,10 @@
  *
  * WHAT IS SHOWN, only when the meta has it:
  *  - how the lab's drafters took it: `early.picks / early.of` when the lab
- *    writes it (see LAB_FIELDS_WANTED; not in schema 1 yet), else the average
- *    pick index and how often it was taken when seen (`pickRate`);
+ *    writes it (see LAB_FIELDS_WANTED; not in schema 1 yet), else how often
+ *    it was taken when seen, and the average pick index except in a Grid
+ *    meta (a Grid card is taken about when it shows up, so every card's
+ *    average sits near the middle and says little: J075 has 23–30 for all);
  *  - how often it made the final 40 when picked (`inDecks / picked`);
  *  - its decks' win rate with a 95% Wilson interval from `wins / games` (the
  *    decisive games of decks that ran it) and the game count.
@@ -20,9 +22,12 @@
  *    (below) 0.5. An interval that includes 0.5 says nothing either way.
  *  - The colour baseline sits beside the rate: the win rate of the lab's decks
  *    playing each of the card's colours (`colorBaselines` when the lab writes
- *    it, else summed from the meta's archetypes). Red decks win 53–55% in the
- *    lab, so its card test over-flags red cards as a group: a red card "above
- *    0.5" may only be riding its colour. The panel says so.
+ *    it, else summed from the meta's archetypes). When one colour's decks win
+ *    clearly away from 50% (its interval excludes 0.5), a card of that colour
+ *    "above 0.5" may only be riding its colour: the panel names the colour
+ *    furthest from 50% (`colourSkew`), computed from the meta, never fixed.
+ *  - "Small sample" is said only for cards with fewer than SMALL_SAMPLE_GAMES
+ *    games (`smallSampleNote`).
  */
 import type { CubeMeta, MetaCardStats } from '../cube/meta.ts';
 import { wilson } from '../bench/benchStats.ts';
@@ -66,8 +71,6 @@ export interface LabCardView {
   win: Rate | null;
   verdict: LabVerdict;
   baselines: ColourBaseline[];
-  /** The card is red: the red over-flag note applies. */
-  red: boolean;
   /** Why the deck numbers are hidden, when they are (see `deckNumbersHidden`). */
   hidden: string | null;
 }
@@ -187,7 +190,7 @@ export function labCardView(
   const inDecks = count(s.inDecks);
   const games = count(s.games);
   const wins = count(s.wins);
-  const avg = num(s.avgPickIndex);
+  const avg = meta?.sample?.format === 'grid' ? null : num(s.avgPickIndex);
   const hidden = deckNumbersHidden(s, opts.land === true, landsCounted(meta!));
   const win = !hidden && games !== null && wins !== null ? rateOf(wins, games) : null;
   const view: LabCardView = {
@@ -202,7 +205,6 @@ export function labCardView(
       .filter((c) => COLOURS.includes(c as (typeof COLOURS)[number]))
       .map((c) => baselines.get(c))
       .filter((b): b is ColourBaseline => !!b),
-    red: colors.includes('R'),
     hidden,
   };
   if (!view.early && view.avgPick === null && !view.taken && !view.inDeck && !view.win) return null;
@@ -221,13 +223,45 @@ export const VERDICT_WORDS: Record<LabVerdict, string> = {
 };
 
 export const FORGE_CAVEAT = 'Forge-vs-Forge games: these measure the card in Forge’s hands (its drafting, building and play), not in yours.';
-export const RED_NOTE = 'The lab’s card test currently over-flags red cards as a group (across its recent runs red decks won 53–55%): compare a red card with the red baseline beside it, not with 50%.';
 
-/** "41% of decks · 12 of 29 games won · 95% 25–59%" style line for the win rate. */
+/** A count with thousands separators: 5167 → "5,167". */
+export const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
+
+const COLOUR_NAMES: Record<string, string> = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green', C: 'Colourless' };
+
+/** The colour whose decks' win rate is furthest from 50%, with its Wilson 95% interval; null when that interval includes 50% (or there are no baselines). */
+export function colourSkew(baselines: Map<string, ColourBaseline>): (ColourBaseline & { rate: Rate }) | null {
+  let best: (ColourBaseline & { rate: Rate }) | null = null;
+  for (const b of baselines.values()) {
+    const rate = rateOf(b.wins, b.games);
+    if (!rate) continue;
+    if (!best || Math.abs(rate.p - 0.5) > Math.abs(best.rate.p - 0.5)) best = { ...b, rate };
+  }
+  return best && verdictOf(best.rate) !== 'unclear' ? best : null;
+}
+
+/** The panel's colour note, from `colourSkew`. */
+export function colourNote(s: ColourBaseline & { rate: Rate }): string {
+  const name = COLOUR_NAMES[s.colour] ?? s.colour;
+  const side = s.rate.p > 0.5 ? 'above' : 'below';
+  return `In this cube’s lab, ${name} decks won ${winLine(s.rate)}, clearly ${side} 50%: a ${name.toLowerCase()} card’s rate partly reflects its colour, so compare a card with its colour baseline beside it, not with 50%.`;
+}
+
+/** Below this many games a card's win rate is called a small sample. */
+export const SMALL_SAMPLE_GAMES = 100;
+
+/** The footer's sample sentence: names the cards with fewer than SMALL_SAMPLE_GAMES games, else null (the Forge-vs-Forge caveat stands alone). */
+export function smallSampleNote(views: ReadonlyArray<LabCardView | null>): string | null {
+  const small = views.filter((v): v is LabCardView => !!v?.win && v.win.n < SMALL_SAMPLE_GAMES).map((v) => v.name);
+  if (!small.length) return null;
+  return `Small sample${small.length === 1 ? '' : 's'}: ${small.join(', ')} ${small.length === 1 ? 'has' : 'have'} fewer than ${SMALL_SAMPLE_GAMES} games, so read ${small.length === 1 ? 'its' : 'their'} interval${small.length === 1 ? '' : 's'}, not the rate.`;
+}
+
+/** "41% (95% 25–59%) over 1,229 games" style line for the win rate. */
 export function winLine(r: Rate): string {
-  return `${pc(r.p)} (95% ${Math.round(r.lo * 100)}–${Math.round(r.hi * 100)}%) over ${r.n} game${r.n === 1 ? '' : 's'}`;
+  return `${pc(r.p)} (95% ${Math.round(r.lo * 100)}–${Math.round(r.hi * 100)}%) over ${fmt(r.n)} game${r.n === 1 ? '' : 's'}`;
 }
 
 export function baselineLine(b: ColourBaseline): string {
-  return `${b.colour} decks ${pc(b.p)} over ${b.games} game${b.games === 1 ? '' : 's'}`;
+  return `${b.colour} decks ${pc(b.p)} over ${fmt(b.games)} game${b.games === 1 ? '' : 's'}`;
 }
