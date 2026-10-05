@@ -9,7 +9,7 @@
  *
  *   {"schema":1,
  *    "cube":{"name","file","cards":[{"name","colors","mv","types","themes"}]},
- *    "sample":{"drafts","games","seedRange","aiProfile"},
+ *    "sample":{"drafts","games","seedRange","aiProfile","format"},
  *    "cards":{"<name>":{"picked","seen","pickRate","avgPickIndex","inDecks","inclusionRate",
  *                       "games","wins","winRate","winRateShrunk","ci":[lo,hi]}},
  *    "archetypes":[{"id":"BR-SAC","colors":"BR","primaryTheme":"SAC","decks","games","winRate","ci",
@@ -106,7 +106,7 @@ export interface MetaNoise {
 export interface CubeMeta {
   schema: 1;
   cube: { name?: string; file?: string; cards?: MetaCubeCard[] };
-  sample?: { drafts?: number; games?: number; seedRange?: unknown; aiProfile?: string };
+  sample?: { drafts?: number; games?: number; seedRange?: unknown; aiProfile?: string; format?: string };
   cards: Record<string, MetaCardStats>;
   archetypes: MetaArchetype[];
   pairs: MetaPair[];

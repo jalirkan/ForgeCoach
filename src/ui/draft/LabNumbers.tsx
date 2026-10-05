@@ -11,7 +11,7 @@
  */
 import { useMemo, useState } from 'react';
 import type { CubeContext } from '../../cube/score.ts';
-import { baselineLine, colourBaselines, FORGE_CAVEAT, labCardView, pc, RED_NOTE, VERDICT_WORDS, winLine, type LabCardView } from '../../draft/labStats.ts';
+import { baselineLine, colourBaselines, colourNote, colourSkew, fmt, FORGE_CAVEAT, labCardView, pc, smallSampleNote, VERDICT_WORDS, winLine, type LabCardView } from '../../draft/labStats.ts';
 import { cx, readLS, writeLS } from '../util.ts';
 
 const OPEN_KEY = 'forgecoach.draft.labNumbers';
@@ -24,8 +24,9 @@ export function LabNumbers({ names, ctx }: { names: readonly string[]; ctx: Cube
     () => names.map((n) => ({ name: n, view: labCardView(meta, n, ctx.facts.get(n)?.colors ?? '', baselines, { land: ctx.facts.get(n)?.land === true }) })),
     [names, meta, ctx, baselines],
   );
+  const skew = useMemo(() => colourSkew(baselines), [baselines]);
   if (!meta || !names.length) return null;
-  const anyRed = rows.some((r) => r.view?.red);
+  const small = smallSampleNote(rows.map((r) => r.view));
   const sample = meta.sample;
   return (
     <details
@@ -40,11 +41,11 @@ export function LabNumbers({ names, ctx }: { names: readonly string[]; ctx: Cube
       <summary className="labn-sum">
         <span className="fx-label">Lab numbers</span>
         <span className="labn-sub">
-          {names.length} card{names.length === 1 ? '' : 's'} · {sample?.drafts ?? '?'} lab drafts, {sample?.games ?? '?'} games
+          {names.length} card{names.length === 1 ? '' : 's'} · {typeof sample?.drafts === 'number' ? fmt(sample.drafts) : '?'} lab drafts, {typeof sample?.games === 'number' ? fmt(sample.games) : '?'} games
         </span>
       </summary>
       <p className="labn-caveat">{FORGE_CAVEAT}</p>
-      {anyRed && <p className="labn-caveat is-red">{RED_NOTE}</p>}
+      {skew && <p className="labn-caveat is-skew">{colourNote(skew)}</p>}
       <ul className="labn-rows">
         {rows.map((r) => (
           <li key={r.name} className="labn-row">
@@ -54,7 +55,7 @@ export function LabNumbers({ names, ctx }: { names: readonly string[]; ctx: Cube
         ))}
       </ul>
       <p className="labn-foot">
-        Win rate = decisive games won by lab decks that ran the card, with a 95% Wilson interval. “Strong” or “weak” only when the whole interval is clear of 50%. Samples are small: read the game counts. Colour
+        Win rate = decisive games won by lab decks that ran the card, with a 95% Wilson interval. “Strong” or “weak” only when the whole interval is clear of 50%.{small ? ` ${small}` : ''} Colour
         baselines: {[...baselines.values()][0]?.from === 'lab' ? 'the lab’s own per-colour figures' : 'summed from the lab’s archetypes'}.
       </p>
     </details>
@@ -68,7 +69,7 @@ function CardNumbers({ v }: { v: LabCardView }) {
         <div>
           <dt>Picked early</dt>
           <dd>
-            {pc(v.early.p)} <span className="labn-mute">({v.early.k} of {v.early.n}, {v.early.window})</span>
+            {pc(v.early.p)} <span className="labn-mute">({fmt(v.early.k)} of {fmt(v.early.n)}, {v.early.window})</span>
           </dd>
         </div>
       ) : (
@@ -78,7 +79,7 @@ function CardNumbers({ v }: { v: LabCardView }) {
             <dd>
               {v.taken ? (
                 <>
-                  taken {pc(v.taken.p)} of times seen <span className="labn-mute">({v.taken.picked}/{v.taken.seen})</span>
+                  taken {pc(v.taken.p)} of times seen <span className="labn-mute">({fmt(v.taken.picked)}/{fmt(v.taken.seen)})</span>
                 </>
               ) : null}
               {v.taken && v.avgPick !== null ? ' · ' : ''}
@@ -91,7 +92,7 @@ function CardNumbers({ v }: { v: LabCardView }) {
         <div>
           <dt>Made the 40</dt>
           <dd>
-            {pc(v.inDeck.p)} <span className="labn-mute">({v.inDeck.inDecks} of {v.inDeck.picked} times picked)</span>
+            {pc(v.inDeck.p)} <span className="labn-mute">({fmt(v.inDeck.inDecks)} of {fmt(v.inDeck.picked)} times picked)</span>
           </dd>
         </div>
       )}

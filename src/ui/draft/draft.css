@@ -2135,7 +2135,7 @@ button.seat-chip:hover {
   font: italic 13.5px/1.45 var(--serif);
   color: var(--text-2);
 }
-.labn-caveat.is-red {
+.labn-caveat.is-skew {
   color: var(--fx-danger-ink, var(--text-2));
 }
 .labn-rows {
