@@ -35,9 +35,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm install --no-save playwright-core@1.56.1
-      - run: npx playwright-core install --with-deps --only-shell chromium
+      # Full Chromium, not only the headless shell: the PWA test needs a secure
+      # non-loopback origin (--unsafely-treat-insecure-origin-as-secure), which the shell ignores.
+      - run: npx playwright-core install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e
+        env:
+          BUILD: '0'
+      # The installable site: manifest, icons, the service worker and what it never touches.
+      - run: npm run test:pwa
         env:
           BUILD: '0'
       - if: failure()

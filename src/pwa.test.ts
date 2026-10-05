@@ -5,10 +5,12 @@
  * The home-screen app: the manifest and index.html's links are relative, so the
  * one build installs from GitHub Pages (/ForgeCoach/) and from the engine
  * serving the site itself at its root (play.sh --lan, FORGECOACH_BASE=./), and
- * every icon they name exists at the size it claims.
+ * every icon they name is one the build draws (pwa/icons.ts) at the size it claims.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { deflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
+import { ANVIL_PATH, ICONS, renderIcon } from './pwa/icons.ts';
 
 const root = new URL('../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root));
@@ -36,9 +38,15 @@ function meta(name: string): string | null {
   return m ? m[1]! : null;
 }
 
+/** The bytes the build emits for an icon path (pwa/vitePlugin.ts), or null when it draws none there. */
+function iconBytes(path: string): { body: Uint8Array; type: string } | null {
+  const icon = ICONS.find((i) => i.path === path.replace(/^\.\//, ''));
+  return icon ? renderIcon(icon, (b) => new Uint8Array(deflateSync(b))) : null;
+}
+
 /** Width × height from a PNG's IHDR chunk. */
 function pngSize(path: string): string {
-  const b = read(path);
+  const b = Buffer.from(iconBytes(path)!.body);
   expect(b.subarray(1, 4).toString('latin1')).toBe('PNG');
   return `${b.readUInt32BE(16)}x${b.readUInt32BE(20)}`;
 }
@@ -67,13 +75,17 @@ describe('web app manifest', () => {
     });
   }
 
-  it('names icons that exist at the sizes they claim, with a maskable one', () => {
+  it('names icons the build draws, at the sizes and types they claim, with a maskable one', () => {
     for (const icon of manifest.icons) {
-      expect(existsSync(new URL(`public/${icon.src}`, root)), icon.src).toBe(true);
-      expect(pngSize(`public/${icon.src}`)).toBe(icon.sizes);
-      expect(icon.type).toBe('image/png');
+      const drawn = iconBytes(icon.src);
+      expect(drawn, icon.src).not.toBeNull();
+      expect(drawn!.type).toBe(icon.type);
+      if (icon.type === 'image/png') expect(pngSize(icon.src)).toBe(icon.sizes);
+      else expect(icon.sizes).toBe('any');
     }
-    expect(manifest.icons.some((i) => i.purpose === 'maskable')).toBe(true);
+    expect(manifest.icons.some((i) => i.purpose === 'maskable' && i.type === 'image/svg+xml')).toBe(true);
+    expect(manifest.icons.some((i) => i.purpose === 'maskable' && i.sizes === '512x512')).toBe(true);
+    expect(manifest.icons.some((i) => i.sizes === 'any' && i.type === 'image/svg+xml' && i.purpose === 'any')).toBe(true);
     expect(manifest.icons.some((i) => i.sizes === '512x512' && i.purpose !== 'maskable')).toBe(true);
     expect(manifest.icons.some((i) => i.sizes === '192x192')).toBe(true);
   });
@@ -89,7 +101,12 @@ describe('index.html for phones', () => {
     expect(isRelative(linkHref('manifest')!)).toBe(true);
     const touch = linkHref('apple-touch-icon')!;
     expect(isRelative(touch)).toBe(true);
-    expect(pngSize(`public/${touch.replace(/^\.\//, '')}`)).toBe('180x180');
+    expect(pngSize(touch)).toBe('180x180');
+  });
+
+  it('draws its favicon with the same anvil the icons are made from', () => {
+    const fav = decodeURIComponent(linkHref('icon')!);
+    expect(fav).toContain(ANVIL_PATH);
   });
 
   it('has the iOS home-screen tags', () => {

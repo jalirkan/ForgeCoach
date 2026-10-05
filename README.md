@@ -188,6 +188,20 @@ ForgeCoach itself, so the seat socket is on the same origin and no
 https-to-ws mixed content is involved. This is for your home network only (away
 from home, see below). The token is the key to your seat: don't share the link or post screenshots of it.
 
+### Install it as an app
+
+ForgeCoach is installable (a web app manifest, icons drawn in code, a small
+service worker): Chrome and Edge offer **Settings → Install ForgeCoach**,
+iPhone and iPad Safari use Share → Add to Home Screen. It then opens
+full-screen with its own icon, and the title bar takes the skin's colour.
+The service worker (`src/pwa/`) keeps only the site's own files — the page,
+its scripts and styles, the cube documents, the sample logs, the icons — so
+the page opens offline; it never touches the seat or observe sockets, the
+engine, the coach helper, Anthropic, Scryfall or the lab's data, and caches
+nothing at all on `127.0.0.1` / `localhost`. Browsers run service workers only
+on https (GitHub Pages, `tailscale serve`) or localhost; over plain http on
+the home network the page works as before, without one.
+
 ## Play away from home (Tailscale)
 
 The phone mode above only works on your home Wi-Fi. To play from anywhere, the
@@ -808,6 +822,23 @@ It needs `playwright-core` with a Chromium (see above). CI runs it in its own
 job after a build. The fake engine also runs on its own, for a browser or
 `npm run e2e`: `node e2e/fake-engine.mjs --port 8642` (POST `/control/drop`,
 `/control/restart`, `/control/reset?scene=main3`).
+
+### Installable site test (CI)
+
+`e2e/pwa.e2e.mjs` (`npm run test:pwa`) builds (BUILD=0 reuses `dist/`) and
+serves `dist/` from its own small server, which also answers `/health`, `/ws`,
+`/observe` and `/match` with 404s and logs what reaches it. On `127.0.0.1` it
+checks the manifest and every icon it names, that the service worker
+activates at the base, and that it caches and answers nothing there. On
+`forgecoach.test` (mapped to 127.0.0.1 and treated as a secure origin, like a
+phone on Tailscale) it checks the precached shell, that the engine's paths,
+the lab data and the loopback origin reach the server without the worker
+answering, that hashed assets come from the worker, the felt skin's theme
+colour, that Settings shows **Install ForgeCoach** only after
+`beforeinstallprompt` (and that it calls `prompt()`), and, with the server
+stopped, that the page reloads from the cache while `/health` fails. It needs
+the full Chromium (`npx playwright-core install chromium`, not
+`--only-shell`): the headless shell ignores the secure-origin switch.
 
 ### Engine review screen test
 

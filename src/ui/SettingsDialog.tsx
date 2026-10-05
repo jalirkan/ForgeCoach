@@ -2,7 +2,7 @@
  * ForgeCoach — ui/SettingsDialog.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { DEFAULT_COACH_SOURCE, DEFAULT_SKIN, MODELS, loadSettings, saveSettings, type CoachSource, type CoachThinking, type ModelId, type Settings, type Skin } from '../claude.ts';
 import { chooseSource, pageHelperTarget, type HelperStatus } from '../coachHelper.ts';
 import { useCoachAvailability } from './hooks.ts';
@@ -12,6 +12,7 @@ import { cx } from './util.ts';
 import { ScenerySettings } from './ambience/ScenerySettings.tsx';
 import { setFeedbackList, useFeedbackList } from './AdviceFeedback.tsx';
 import { exportFeedback } from '../feedback.ts';
+import { installOffer, onInstallChange, promptInstall } from '../pwa/install.ts';
 
 /** Coach thinking (D346): how long Claude Code on the PC may think before it answers. */
 const THINKING: Array<{ id: CoachThinking; label: string; hint: string }> = [
@@ -161,6 +162,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         </fieldset>
         <ScenerySettings />
         <AdviceFeedbackField />
+        <InstallField />
         {s.apiKey && (
           <button
             type="button"
@@ -237,6 +239,29 @@ function WinChanceField({ s, setS }: { s: Settings; setS: (s: Settings) => void 
         </span>
       </span>
     </label>
+  );
+}
+
+/** Install as an app: only where the browser offers it (Chromium's prompt, or the iOS Safari hint); nothing otherwise. */
+function InstallField() {
+  const offer = useSyncExternalStore(onInstallChange, () => installOffer());
+  if (!offer) return null;
+  return (
+    <div className="field" data-testid="install-field">
+      <span className="field-label">Install</span>
+      {offer === 'prompt' ? (
+        <>
+          <span className="field-help">Add ForgeCoach to your home screen or desktop: it opens full-screen, in its own window.</span>
+          <div className="field-row">
+            <button type="button" className="btn btn-sm" onClick={() => void promptInstall()}>
+              Install ForgeCoach
+            </button>
+          </div>
+        </>
+      ) : (
+        <span className="field-help">On iPhone and iPad: Share → Add to Home Screen. It then opens full-screen, like an app.</span>
+      )}
+    </div>
   );
 }
 
