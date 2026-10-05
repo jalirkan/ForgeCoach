@@ -1,0 +1,272 @@
+/*
+ * ForgeCoach — ui/lab/report.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The morning report (#lab/report), on top of ledger.css and lab.css: the
+ * window picker, the night's summary and tally, one card per job (verdict
+ * chip, decides / rule / verdict, headline numbers, what it unlocks, the plain
+ * summary) and the coach. Only the --lg-* / --lb-* tokens, so every skin
+ * (skins.css) recolours it. Green marks a pass, red a fail; no verdict stays
+ * neutral, never amber or green.
+ */
+
+.rp-since {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 16px;
+}
+.rp-since-label {
+  color: var(--lg-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.rp-since-at {
+  min-height: 36px;
+  max-width: 100%;
+}
+
+.rp-night {
+  margin-top: 18px;
+}
+.rp-summary {
+  margin: 0;
+  color: var(--lg-text);
+  font-family: var(--lg-serif);
+  font-size: 19px;
+  line-height: 1.4;
+}
+.rp-tally {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.rp-tally > div {
+  padding: 8px 10px;
+  border: 1px solid var(--lg-line);
+  border-radius: 4px;
+  background: var(--lg-surface);
+}
+.rp-tally dt {
+  color: var(--lg-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rp-tally dd {
+  margin: 2px 0 0;
+  color: var(--lg-text);
+  font-size: 20px;
+}
+.rp-tally .is-pass dd {
+  color: var(--lg-win);
+}
+.rp-tally .is-fail dd {
+  color: var(--lg-loss);
+}
+.rp-hint {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.rp-jobs {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rp-job {
+  min-width: 0;
+  padding: 14px 16px;
+  border-left: 3px solid var(--lg-line-2);
+}
+.rp-job.is-pass {
+  border-left-color: var(--lg-win);
+}
+.rp-job.is-fail {
+  border-left-color: var(--lg-loss);
+}
+.rp-job-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.rp-chip {
+  min-width: 70px;
+  justify-content: center;
+  align-self: center;
+}
+.rp-chip.is-pass {
+  border-color: rgba(111, 191, 115, 0.55);
+  color: var(--lg-win);
+  background: var(--lg-win-soft);
+}
+.rp-chip.is-fail {
+  border-color: rgba(224, 97, 79, 0.55);
+  color: var(--lg-loss);
+  background: var(--lg-loss-soft);
+}
+.rp-chip.is-none {
+  color: var(--lg-text-2);
+}
+.rp-title {
+  min-width: 0;
+  color: var(--lg-text);
+  font-family: var(--lg-serif);
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.rp-when {
+  margin-left: auto;
+  color: var(--lg-text-2);
+  font-size: 12px;
+}
+
+.rp-facts {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+.rp-facts > div {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+}
+.rp-facts dt {
+  color: var(--lg-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rp-facts dd {
+  margin: 0;
+  color: var(--lg-text);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.rp-nums {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.rp-nums li {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--lg-line);
+  border-radius: 4px;
+  background: var(--lg-bg);
+}
+.rp-num-v {
+  color: var(--lg-gold-2);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.rp-num-k {
+  color: var(--lg-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.rp-next {
+  margin-top: 12px;
+}
+.rp-next-h {
+  margin: 0 0 4px;
+  color: var(--lg-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rp-next ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rp-next p {
+  margin: 0;
+  font-size: 13.5px;
+}
+.rp-fu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 13.5px;
+}
+.rp-fu-name {
+  color: var(--lg-text);
+}
+.rp-fu-state {
+  color: var(--lg-text-2);
+}
+.rp-fu.is-ready .rp-fu-state {
+  color: var(--lb-amber);
+}
+.rp-fu.is-not-due .rp-fu-state {
+  color: var(--lg-muted);
+}
+.rp-fu-now {
+  color: var(--lg-gold-2);
+  font-size: 12.5px;
+}
+
+.rp-plain {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--lg-line);
+  color: var(--lg-text-2);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.rp-coach {
+  margin-top: 18px;
+}
+.rp-older {
+  margin: 14px 0 0;
+  font-size: 13.5px;
+}
+.rp-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--lg-gold-2);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .rp-tally {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rp-job {
+    padding: 12px 12px;
+  }
+  .rp-facts > div {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .rp-summary {
+    font-size: 17px;
+  }
+}

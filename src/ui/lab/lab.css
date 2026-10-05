@@ -25,6 +25,7 @@
 /* ---- lab tabs (#lab and #lab/ladder) ----------------------------------------- */
 .lb-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 16px;
   font-size: 13px;

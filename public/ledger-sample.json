@@ -1,0 +1,88 @@
+{
+  "note": "Hand-made sample for ForgeCoach #lab/report?src=sample. Every entry in it is made up: the job ids, titles, decisions, rules, numbers and follow-ups are invented to show the page, not results of the lab. The page moves its times so the newest entry ended two hours ago.",
+  "schema": 1,
+  "generatedAt": "2026-10-05T07:05:00.000Z",
+  "entries": [
+    {
+      "id": "J052",
+      "title": "Card-level allocation pilot",
+      "decides": "whether drafts keep card-level allocation",
+      "rule": "D358",
+      "ruleWritten": true,
+      "outcome": "done",
+      "cause": null,
+      "checked": true,
+      "headline": { "drafts": 120, "q.engine_errors": 0.004 },
+      "finished": "2026-10-03T05:40:00.000Z",
+      "followups": []
+    },
+    {
+      "id": "J058",
+      "title": "Evaluator v1 search bench",
+      "decides": "promote evaluator v1 to the search (gate 2)",
+      "rule": "D354, gate 2, REGRET_RULE",
+      "ruleWritten": true,
+      "outcome": "done",
+      "cause": null,
+      "checked": true,
+      "headline": { "games": 2400, "regret.mean": 0.031, "regret.hi": 0.044 },
+      "finished": "2026-10-04T21:15:00.000Z",
+      "followups": [{ "job": "J006", "template": null, "state": "queued" }]
+    },
+    {
+      "id": "J061",
+      "title": "Overnight queue, night 3",
+      "decides": "whether night 4 keeps exploration in 15% of drafts",
+      "rule": "D358",
+      "ruleWritten": true,
+      "outcome": "done",
+      "cause": null,
+      "checked": true,
+      "headline": { "drafts": 1840, "games": 5520, "q.engine_errors": 0.006, "q.recording_errors": 0.002 },
+      "finished": "2026-10-05T01:50:00.000Z",
+      "followups": [
+        { "job": "J004", "template": null, "state": "queued" },
+        { "job": null, "template": "morning-read", "state": "ready" }
+      ]
+    },
+    {
+      "id": "J062",
+      "title": "Matchup read, tau",
+      "decides": null,
+      "rule": null,
+      "ruleWritten": true,
+      "outcome": "failed",
+      "cause": "check",
+      "checked": true,
+      "headline": { "pairs": 32, "tau": 0.41 },
+      "finished": "2026-10-05T03:20:00.000Z",
+      "followups": [{ "job": "J007", "template": null, "state": "not-due" }]
+    },
+    {
+      "id": "J064",
+      "title": null,
+      "decides": null,
+      "rule": null,
+      "ruleWritten": false,
+      "outcome": "aborted",
+      "cause": null,
+      "checked": false,
+      "headline": { "games": 310 },
+      "finished": "2026-10-05T04:05:00.000Z",
+      "followups": []
+    },
+    {
+      "id": "J065",
+      "title": "Coach bench, held-out cases",
+      "decides": "whether the answer-first prompt becomes the default",
+      "rule": "D371",
+      "ruleWritten": true,
+      "outcome": "done",
+      "cause": null,
+      "checked": false,
+      "headline": { "cases": 60, "format_ok": 0.983, "regret.mean": 0.052 },
+      "finished": "2026-10-05T05:05:00.000Z",
+      "followups": [{ "job": null, "template": "morning-read", "state": "ready" }]
+    }
+  ]
+}
