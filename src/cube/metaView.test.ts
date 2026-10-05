@@ -45,37 +45,44 @@ describe('archetype names', () => {
 describe('archetype rows', () => {
   const rows = archetypeRows(synergy);
   it('has shares that sum to one', () => {
-    expect(rows).toHaveLength(27);
+    // J075's synergy meta (6,980 drafts) splits 13,960 decks into 58 archetypes.
+    expect(rows).toHaveLength(58);
     expect(rows.reduce((s, r) => s + r.share, 0)).toBeCloseTo(1, 6);
     const wu = rows.find((r) => r.id === 'WU-ETB')!;
     expect(wu.name).toBe('Azorius ETB');
-    expect(wu.decks).toBe(12);
-    expect(wu.share).toBeCloseTo(12 / 80, 6);
-    expect(wu.keyCards.slice(0, 3)).toEqual(['Lingering Souls', 'Bonesplitter', 'Thraben Inspector']);
+    expect(wu.decks).toBe(1342);
+    expect(wu.share).toBeCloseTo(1342 / 13960, 6);
+    expect(wu.keyCards.slice(0, 3)).toEqual(['Luminarch Aspirant', 'Blade Splicer', 'Sun Titan']);
     expect(wu.avgCurve.map((b) => b.mv)).toEqual(['1', '2', '3', '4', '5', '6+']);
     expect(wu.sampleDeck).toHaveLength(40);
   });
   it('shrinks a raw rate with the lab prior', () => {
+    // WU-ETB has 1,340 games now, so the prior barely moves it; the shrink is
+    // still applied, and pulls the rate toward the lab mean (0.4992).
     const wu = rows.find((r) => r.id === 'WU-ETB')!;
-    expect(wu.winRaw).toBeCloseTo(0.6429, 4);
-    expect(wu.win).toBeCloseTo(shrinkRate(0.6429, 28, 20, 0.4994), 6);
+    expect(wu.winRaw).toBeCloseTo(0.6149, 4);
+    expect(wu.win).toBeCloseTo(shrinkRate(0.6149, 1340, 20, 0.4992), 6);
     expect(wu.shrunk).toBe(true);
     expect(wu.win!).toBeLessThan(wu.winRaw!);
+    expect(wu.winRaw! - wu.win!).toBeLessThan(0.002);
+    // A thin archetype is pulled much harder: the property the shrink is for.
+    const thin = rows.filter((r) => r.games > 0 && r.games < 20 && r.winRaw !== null && Math.abs(r.winRaw - 0.5) > 0.1)[0]!;
+    expect(Math.abs(thin.winRaw! - thin.win!)).toBeGreaterThan(0.02);
   });
   it('prefers a shrunk rate in the data', () => {
     const m = parseMeta({ schema: 1, archetypes: [{ id: 'WU', colors: 'WU', decks: 1, games: 2, winRate: 1, winRateShrunk: 0.55 }] });
     expect(archetypeRows(m)[0]!.win).toBe(0.55);
   });
   it('sorts and searches', () => {
-    expect(sortArchetypes(rows, 'share')[0]!.id).toBe('WU-ETB');
+    expect(sortArchetypes(rows, 'share')[0]!.id).toBe('UG-ART'); // 1,589 decks, then WU-ETB's 1,342
     const byWin = sortArchetypes(rows, 'win');
     for (let i = 1; i < byWin.length; i++) expect(byWin[i - 1]!.win!).toBeGreaterThanOrEqual(byWin[i]!.win!);
     expect(sortArchetypes(rows, 'name', false)[0]!.name.localeCompare(sortArchetypes(rows, 'name', false)[1]!.name)).toBeLessThanOrEqual(0);
     expect(searchArchetypes(rows, 'azorius').every((r) => r.colors === 'WU')).toBe(true);
-    expect(searchArchetypes(rows, 'lingering souls').some((r) => r.id === 'WU-ETB')).toBe(true);
+    expect(searchArchetypes(rows, 'blade splicer').some((r) => r.id === 'WU-ETB')).toBe(true);
   });
   it('writes the subtitle from the sample', () => {
-    expect(metaSubtitle(synergy)).toBe('AI-vs-AI cube lab · 40 drafts · 95 games · 80 decks');
+    expect(metaSubtitle(synergy)).toBe('AI-vs-AI cube lab · 6,980 drafts · 6,971 games · 13,960 decks');
   });
 });
 
@@ -98,11 +105,14 @@ describe('cards', () => {
   it('covers the cube with stats', () => {
     expect(rows).toHaveLength(180);
     const ti = rows.find((r) => r.name === 'Thraben Inspector')!;
-    expect(ti).toMatchObject({ colors: 'W', mv: 1, games: 48, aiLimited: false });
-    expect(ti.shrunk).toBeCloseTo(0.6469, 4);
+    expect(ti).toMatchObject({ colors: 'W', mv: 1, games: 4090, aiLimited: false });
+    expect(ti.shrunk).toBeCloseTo(0.6299, 4);
   });
   it('shows no raw win rate for an unplayed card', () => {
-    expect(rows.find((r) => r.name === "Ajani's Pridemate")!.winRate).toBeNull();
+    // Soul-Scar Mage: picked 1,691 times in J075 but never built, so 0 games
+    // (its meta winRate reads 0, which must not show as a 0% raw rate).
+    expect(rows.find((r) => r.name === 'Soul-Scar Mage')!.games).toBe(0);
+    expect(rows.find((r) => r.name === 'Soul-Scar Mage')!.winRate).toBeNull();
   });
   it('sorts by shrunk rate, games and pick rate', () => {
     const s = sortCards(rows, 'shrunk');
@@ -123,10 +133,10 @@ describe('archetype detail', () => {
     const groups = groupDeck(wu.sampleDeck!, cubeCardIndex(synergy));
     expect(groups.reduce((s, g) => s + g.count, 0)).toBe(40);
     const lands = groups.find((g) => g.label === 'Lands')!;
-    expect(lands.entries[0]).toEqual({ name: 'Island', count: 8 });
-    expect(lands.entries).toContainEqual({ name: 'Plains', count: 7 });
+    expect(lands.entries[0]).toEqual({ name: 'Island', count: 9 });
+    expect(lands.entries).toContainEqual({ name: 'Plains', count: 8 });
     expect(groups.at(-1)!.label).toBe('Lands');
-    expect(groups.find((g) => g.label === 'Creatures')!.entries.some((e) => e.name === 'Thraben Inspector')).toBe(true);
+    expect(groups.find((g) => g.label === 'Creatures')!.entries.some((e) => e.name === 'Blade Splicer')).toBe(true);
   });
   it('finds pairs inside the colours, best lift first', () => {
     const pairs = pairsFor(synergy, 'WU');

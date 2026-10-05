@@ -135,26 +135,44 @@ function earlyOf(s: MetaCardStats): LabCardView['early'] {
   return r ? { ...r, window: typeof o.window === 'string' ? o.window.slice(0, 60) : 'early' } : null;
 }
 
-/** The panel's view of one card; null when the meta says nothing about it. `colors` is the card's colours (WUBRG letters, '' colourless). */
 /**
- * A suspicious zero is hidden, not shown. The lab's meta writer (mtg-table
- * tools/cubelab/meta.ts) counts only a played deck's NONLAND cards for
- * `inDecks`, `games` and `wins`, so every land reads "0 of N in the 40" and has
- * no games: a recording gap, not a 0%. A nonland card picked more than
- * SUSPECT_PICKS times and never in a deck is hidden too until that is checked.
+ * A suspicious zero is hidden, not shown. Metas written before mtg-table D380
+ * counted only a played deck's NONLAND cards for `inDecks`, `games` and `wins`,
+ * so a land there reads "0 of N in the 40" with no games: a recording gap, not a
+ * 0%. From D380 on lands are counted (`landsCounted`: some land in the meta has
+ * decks), so a land's numbers show, and a land never built is judged like any
+ * other card. A card picked more than SUSPECT_PICKS times and never built is a
+ * real zero (D380: the lab's deckbuilder leaves low-rated cards out), but its
+ * deck numbers describe Forge's builder more than the card, so they stay hidden.
  */
 export const SUSPECT_PICKS = 10;
-export const LAND_HIDDEN = 'The lab’s meta counts only nonland cards in decks, so a land’s deck numbers are not recorded.';
-export const ZERO_HIDDEN = 'Never in a deck though picked often: likely a gap in how the lab records decks, so the deck numbers are hidden.';
+export const LAND_HIDDEN = 'This meta predates the lab counting lands in decks, so a land’s deck numbers are not recorded.';
+export const ZERO_HIDDEN = 'Picked often but never built: the lab’s deckbuilder leaves it out on its rating, so its deck numbers say more about Forge’s builder than the card.';
 
-export function deckNumbersHidden(s: MetaCardStats, land: boolean): string | null {
-  if (land) return LAND_HIDDEN;
+export function deckNumbersHidden(s: MetaCardStats, land: boolean, landsCounted = false): string | null {
   const picked = count(s.picked);
   const inDecks = count(s.inDecks);
+  if (land && !landsCounted && !(inDecks !== null && inDecks > 0)) return LAND_HIDDEN;
   if (inDecks === 0 && picked !== null && picked > SUSPECT_PICKS) return ZERO_HIDDEN;
   return null;
 }
 
+const landsCountedCache = new WeakMap<CubeMeta, boolean>();
+/** Whether the meta counts lands in decks (D380 on): some land in its cube list was built at least once. */
+export function landsCounted(meta: CubeMeta): boolean {
+  let v = landsCountedCache.get(meta);
+  if (v === undefined) {
+    v = (meta.cube?.cards ?? []).some((c) => {
+      const types = Array.isArray(c.types) ? c.types.join(' ') : (c.types ?? '');
+      const n = count(meta.cards[c.name]?.inDecks);
+      return /\bLand\b/.test(types) && n !== null && n > 0;
+    });
+    landsCountedCache.set(meta, v);
+  }
+  return v;
+}
+
+/** The panel's view of one card; null when the meta says nothing about it. `colors` is the card's colours (WUBRG letters, '' colourless). */
 export function labCardView(
   meta: CubeMeta | null,
   name: string,
@@ -170,7 +188,7 @@ export function labCardView(
   const games = count(s.games);
   const wins = count(s.wins);
   const avg = num(s.avgPickIndex);
-  const hidden = deckNumbersHidden(s, opts.land === true);
+  const hidden = deckNumbersHidden(s, opts.land === true, landsCounted(meta!));
   const win = !hidden && games !== null && wins !== null ? rateOf(wins, games) : null;
   const view: LabCardView = {
     name,

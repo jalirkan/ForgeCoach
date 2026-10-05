@@ -293,25 +293,42 @@ describe('comparing cubes', () => {
 });
 
 describe('the shipped data', () => {
-  it('cannot tell any of the four shipped cubes from flat once games are counted in their match clumps', () => {
-    // Before clumping was modelled, synergy and pauper read “uneven” (true SD 6.6 [4.4, 9.0] and 7.0 [3.5, 10.4]).
+  it('tells all four shipped cubes from flat (J075: thousands of drafts, one game per deck)', () => {
+    // The metas before J075 (20–40 drafts, ~2.4 games per deck in Bo3 clumps)
+    // could not tell any cube from flat: design effect ~1.5, true-SD interval
+    // starting at 0. J075 (mtg-table D380) plays 5,000–8,000 drafts per cube,
+    // one game per deck, so a card's games equal its decks: no clumping
+    // (design effect 1.00) and an interval wholly above FLAT_SD for every cube.
     for (const id of ['synergy', 'modern-era', 'vintage', 'pauper'] as const) {
       const s = cubeSpread(loadRealMeta(id)).cards!;
       expect(s.noiseSource).toBe('clumps');
-      expect(s.designEffect).toBeGreaterThan(1.4);
-      expect(s.designEffect).toBeLessThan(1.6);
-      expect(s.verdict).toBe('unclear');
-      expect(s.trueSdCi[0]).toBe(0);
-      expect(readSpread(s).join(' ')).toMatch(/design effect 1\.\d\d×/);
-      // Taken as independent games, synergy still reads uneven: the clumping is what changes the verdict.
-      if (id === 'synergy') expect(cubeSpread(loadRealMeta(id), { designEffect: 1 }).cards!.verdict).toBe('uneven');
+      expect(s.designEffect).toBeGreaterThanOrEqual(1);
+      expect(s.designEffect).toBeLessThan(1.01);
+      expect(s.verdict).toBe('uneven');
+      expect(s.trueSdCi[0]).toBeGreaterThan(FLAT_SD);
+      expect(readSpread(s).join(' ')).toMatch(/design effect 1\.00×/);
+      // With one game per clump, forcing independent games changes nothing.
+      expect(cubeSpread(loadRealMeta(id), { designEffect: 1 }).cards!.verdict).toBe('uneven');
     }
   });
-  it('is too thin to separate the cubes', () => {
-    const rows = compareCubes(['synergy', 'modern-era', 'vintage', 'pauper'].map((id) => ({ id, title: id, meta: loadRealMeta(id as 'synergy'), source: 'shipped' as const })));
-    for (const r of rows.rows) {
+  it('separates the cubes: synergy is the most uneven, and the readings say only what the intervals allow', () => {
+    // Card true SD (95% interval), J075: synergy 8.9 [8.0, 10.0], modern-era
+    // 5.4 [4.8, 6.2], pauper 4.0 [3.4, 4.6], vintage 3.7 [3.1, 4.3]. Pauper
+    // and vintage overlap, so no reading ranks them against each other.
+    const c = compareCubes(['synergy', 'modern-era', 'vintage', 'pauper'].map((id) => ({ id, title: id, meta: loadRealMeta(id as 'synergy'), source: 'shipped' as const })));
+    for (const r of c.rows) {
       expect(r.spread).not.toBeNull();
       expect(r.spread!.trueSdCi[1]).toBeGreaterThan(r.spread!.trueSdCi[0]);
     }
+    expect([...c.readings].sort()).toEqual(
+      [
+        'modern-era is flatter than synergy.',
+        'pauper is flatter than modern-era.',
+        'pauper is flatter than synergy.',
+        'vintage is flatter than modern-era.',
+        'vintage is flatter than synergy.',
+      ].sort(),
+    );
+    expect(c.readings.join(' ')).not.toMatch(/(pauper is flatter than vintage|vintage is flatter than pauper)/);
   });
 });
