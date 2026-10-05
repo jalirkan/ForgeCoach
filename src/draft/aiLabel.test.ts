@@ -107,7 +107,9 @@ describe('the label comes from known cards only', () => {
 describe('Booster with three or more seats: the AI’s picks are never attributable', () => {
   for (const seats of [3, 8]) {
     it(`${seats} seats: swapping every AI pick, seen or not, with another bot’s leaves the label and the prompt unchanged`, () => {
-      let d = newDraft({ cubeId: 'synergy', format: 'booster', cube: names, seed: 13, youFirst: true, seats, now: 1 }) as BoosterDraft;
+      // Seed 14: with J075's synergy meta, seed 13's 3-seat table had the AI and
+      // its one bot both on White-Red, which left nothing to swap that reads differently.
+      let d = newDraft({ cubeId: 'synergy', format: 'booster', cube: names, seed: 14, youFirst: true, seats, now: 1 }) as BoosterDraft;
       // Into pack 2, so the AI has taken plenty you saw.
       while (!d.done && d.round < 1) d = aiStep(d, cards, undefined, 1) as BoosterDraft;
       d = aiStep(d, cards, undefined, 1) as BoosterDraft;
@@ -115,9 +117,14 @@ describe('Booster with three or more seats: the AI’s picks are never attributa
       expect(d.picks.ai.filter((n) => seen.has(n)).length).toBeGreaterThan(2);
       expect(knownAiCards(d)).toEqual([]);
       const swap = clone(d);
-      const bot = swap.bots[swap.bots.length - 1]!;
+      // Swap with a bot whose full list reads differently from the AI's, so the
+      // check below is not vacuous (which bot depends on the meta the draft AI rates by).
+      const full = aiLabelFrom(d.picks.ai, ctx).text;
+      const bi = swap.bots.findIndex((b) => aiLabelFrom(b, ctx).text !== full);
+      expect(bi).toBeGreaterThanOrEqual(0);
+      const bot = swap.bots[bi]!;
       expect(bot).toHaveLength(swap.picks.ai.length);
-      [swap.picks.ai, swap.bots[swap.bots.length - 1]] = [[...bot], [...swap.picks.ai]];
+      [swap.picks.ai, swap.bots[bi]] = [[...bot], [...swap.picks.ai]];
       for (const e of swap.log) if (e.who === 'ai') e.cards = [swap.picks.ai[e.at - 1]!];
       expect(swap.picks.ai).not.toEqual(d.picks.ai);
       // …and the full lists would read differently: the test is not vacuous.

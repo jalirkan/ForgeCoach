@@ -145,17 +145,46 @@ describe('suspicious zeros are hidden', () => {
     expect(v.win).not.toBeNull();
   });
 
-  it('the shipped metas count lands (D380): some land shows deck numbers', () => {
-    let shown = 0;
-    for (const id of ['modern-era-cube-180', 'vintage-cube-180']) {
+  it('a land never built, in a meta that counts lands: the zero rule and its reason, not the old land gap', () => {
+    const land = (name: string) => ({ name, types: ['Land'] });
+    const m = meta({
+      cube: { name: 'T', cards: [land('Arid Mesa'), land('Ancient Tomb'), land('Wasteland')] },
+      cards: {
+        'Arid Mesa': { picked: 23, seen: 25, inDecks: 18, games: 40, wins: 21 },
+        'Ancient Tomb': { picked: 30, seen: 40, inDecks: 0, games: 0, wins: 0 },
+        Wasteland: { picked: 3, seen: 40, inDecks: 0, games: 0, wins: 0 },
+      },
+    } as never);
+    expect(labCardView(m, 'Ancient Tomb', '', undefined, { land: true })!.hidden).toBe(ZERO_HIDDEN);
+    // Rarely picked and never built: a real 0 of 3, shown like a nonland card's.
+    expect(labCardView(m, 'Wasteland', '', undefined, { land: true })!.hidden).toBeNull();
+    expect(labCardView(m, 'Wasteland', '', undefined, { land: true })!.inDeck).toEqual({ inDecks: 0, picked: 3, p: 0 });
+  });
+
+  it('the shipped metas (J075, D380) show deck numbers for every land but one never built', () => {
+    // 81 lands across the four cubes; only vintage's Ancient Tomb (picked
+    // 2,386 times, never in a deck) is hidden, by the zero rule. Nonland zeros:
+    // synergy's Soul-Scar Mage and Grumgully, the Generous.
+    const landHidden: string[] = [];
+    const zero: string[] = [];
+    let lands = 0;
+    for (const id of ['modern-era-cube-180', 'pauper-cube-180', 'synergy-cube-180', 'vintage-cube-180']) {
       const m = shipped(id);
       for (const c of m.cube.cards ?? []) {
         const types = Array.isArray(c.types) ? c.types.join(' ') : (c.types ?? '');
-        if (!/Land/.test(types)) continue;
-        const v = labCardView(m, c.name, '', undefined, { land: true });
-        if (v && v.hidden === null && v.inDeck !== null) shown++;
+        const isLand = /\bLand\b/.test(types);
+        const v = labCardView(m, c.name, '', undefined, { land: isLand });
+        if (!v) continue;
+        expect(v.hidden).not.toBe(LAND_HIDDEN);
+        if (isLand) {
+          lands++;
+          if (v.hidden !== null) landHidden.push(c.name);
+          else expect(v.inDeck).not.toBeNull();
+        } else if (v.hidden === ZERO_HIDDEN) zero.push(c.name);
       }
     }
-    expect(shown).toBeGreaterThan(0);
+    expect(lands).toBe(81);
+    expect(landHidden).toEqual(['Ancient Tomb']);
+    expect(zero.sort()).toEqual(['Grumgully, the Generous', 'Soul-Scar Mage']);
   });
 });

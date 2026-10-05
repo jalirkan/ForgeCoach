@@ -71,17 +71,43 @@ describe('card value: the lab blended with the prior by games', () => {
     expect(cardValue(CARD, ctx)).toBe(expected(12, 40, prior));
   });
 
-  it('shipped metas: every card with no lab games sits on its prior (Council’s Judgment in vintage)', () => {
-    const ctx = context('vintage', loadRealMeta('vintage'));
-    const plain = context('vintage');
-    expect(ctx.meta!.meta.cards["Council's Judgment"]?.games ?? 0).toBe(0);
+  it('shipped metas: every card with no lab games sits on its prior (Soul-Scar Mage in synergy)', () => {
+    // J075's metas leave only three cube cards with no games (synergy's
+    // Soul-Scar Mage and Grumgully, vintage's Ancient Tomb): the old ~40-draft
+    // metas had 40+ per cube. Each still sits exactly on its prior.
     let zero = 0;
-    for (const [name, s] of Object.entries(ctx.meta!.meta.cards)) {
-      if ((s.games ?? 0) > 0 || !ctx.byName.has(name)) continue;
-      zero++;
+    for (const id of ['synergy', 'modern-era', 'vintage', 'pauper'] as const) {
+      const ctx = context(id, loadRealMeta(id));
+      const plain = context(id);
+      for (const [name, s] of Object.entries(ctx.meta!.meta.cards)) {
+        if ((s.games ?? 0) > 0 || !ctx.byName.has(name)) continue;
+        zero++;
+        expect(cardValue(name, ctx)).toBe(cardPrior(name, plain));
+      }
+    }
+    expect(zero).toBeGreaterThan(0);
+    const syn = context('synergy', loadRealMeta('synergy'));
+    expect(syn.meta!.meta.cards['Soul-Scar Mage']?.games ?? 0).toBe(0);
+    expect(cardValue('Soul-Scar Mage', syn)).toBe(cardPrior('Soul-Scar Mage', context('synergy')));
+  });
+
+  it('a shipped meta with many unplayed rows: each sits on its prior whatever its rates say', () => {
+    // Synthetic: the 50 least-played vintage rows set to 0 games, keeping the
+    // lab's winRate / winRateShrunk (which must be ignored at 0 games).
+    const m = structuredClone(loadRealMeta('vintage'));
+    const rows = Object.entries(m.cards).sort((x, y) => (x[1].games ?? 0) - (y[1].games ?? 0)).slice(0, 50);
+    for (const [, r] of rows) {
+      r.games = 0;
+      r.wins = 0;
+    }
+    const ctx = context('vintage', m);
+    const plain = context('vintage');
+    let checked = 0;
+    for (const [name] of rows) {
+      if (!ctx.byName.has(name)) continue;
+      checked++;
       expect(cardValue(name, ctx)).toBe(cardPrior(name, plain));
     }
-    expect(zero).toBeGreaterThan(40);
-    expect(cardValue("Council's Judgment", ctx)).toBe(cardPrior("Council's Judgment", plain));
+    expect(checked).toBeGreaterThan(40);
   });
 });

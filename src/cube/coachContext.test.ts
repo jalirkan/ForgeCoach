@@ -23,7 +23,13 @@ import { gunzipSync } from 'node:zlib';
 
 const meta = loadRealMeta('synergy');
 const OPP = [...meta.archetypes].filter((a) => a.id !== 'WU-ETB').sort((a, b) => (b.games ?? 0) - (a.games ?? 0))[0]!;
-const MINE = ['Thraben Inspector', 'Lingering Souls', 'Snapcaster Mage', 'Mentor of the Meek', 'Champion of Wits', 'Mind Stone'];
+// A white-blue hand built on WU-ETB's key cards in the shipped synergy meta
+// (J075): Lunarch Veteran, Blade Splicer, Sun Titan and Ledger Shredder are
+// four of them, and no other WU archetype lists as many. Mind Stone is a
+// colourless non-key card. Re-pick these if a new meta reshuffles key cards.
+const MINE = ['Lunarch Veteran', 'Blade Splicer', 'Sun Titan', 'Ledger Shredder', 'Champion of Wits', 'Mind Stone'];
+const ETB = meta.archetypes.find((a) => a.id === 'WU-ETB')!;
+const pctOf = (x: number) => `${Math.round(x * 100)}%`;
 const NOT_MINE = OPP.keyCards!.filter((k) => !MINE.includes(k)).slice(0, 4);
 
 const card = (id: number, name: string) => ({ id, name, types: 'Creature', tapped: false, counters: {} });
@@ -81,7 +87,7 @@ describe('closestArchetype / archetypeNamedIn', () => {
     expect(closestArchetype(meta, new Set(MINE))?.id).toBe('WU-ETB');
   });
   it('declines with too few cards', () => {
-    expect(closestArchetype(meta, new Set(['Thraben Inspector']))).toBeNull();
+    expect(closestArchetype(meta, new Set(['Blade Splicer']))).toBeNull();
   });
   it('names the opponent archetype only from the deck name', () => {
     expect(archetypeNamedIn(meta, `AI Drafter - ${OPP.id}`)?.id).toBe(OPP.id);
@@ -96,11 +102,11 @@ describe('buildCubeContext', () => {
   it('states the archetype, shrunk rate with interval, key cards, lands and the caveat', () => {
     expect(text).toMatch(/^# Cube context — Synergy Cube/);
     expect(text).toContain('most resembles WU-ETB');
-    expect(text).toMatch(/shrunk win rate \d+% \(95% interval 46%–79%\) over 28 games/);
+    expect(text).toMatch(new RegExp(`shrunk win rate \\d+% \\(95% interval ${pctOf(ETB.ci![0])}–${pctOf(ETB.ci![1])}\\) over ${ETB.games} games`));
     expect(text).toMatch(new RegExp(`Opponent's deck is named ${OPP.id}: shrunk win rate`));
-    expect(text).toContain('Thraben Inspector');
-    expect(text).toMatch(/Typical land count for WU-ETB: 17 \(average 16\.8\)/);
-    expect(text).toMatch(/AI-vs-AI Forge games \(95 in this cube's sample, 28 behind WU-ETB\); small samples are weak evidence\./);
+    expect(text).toMatch(/Key WU-ETB cards you have \(shrunk win rate\): .*Blade Splicer \d+% in \d+g/);
+    expect(text).toContain(`Typical land count for WU-ETB: ${Math.round(ETB.avgLands!)} (average ${Math.round(ETB.avgLands! * 10) / 10})`);
+    expect(text).toContain(`AI-vs-AI Forge games (${meta.sample!.games} in this cube's sample, ${ETB.games} behind WU-ETB); small samples are weak evidence.`);
     expect((text.match(/in \d+g/g) ?? []).length).toBeGreaterThan(0);
     // no more than five key cards
     expect(text.split('\n').find((l) => l.startsWith('Key '))!.split(';').length).toBeLessThanOrEqual(5);
@@ -113,10 +119,10 @@ describe('buildCubeContext', () => {
 
   it('calls out cards the AI plays poorly as unreliable', () => {
     const m = structuredClone(meta);
-    (m.cards['Thraben Inspector'] as Record<string, unknown>).remAIDeck = true;
+    (m.cards['Blade Splicer'] as Record<string, unknown>).remAIDeck = true;
     ((m.cube.cards ?? []).find((c) => c.name === 'Mind Stone') as unknown as Record<string, unknown>).remAIDeck = true;
     const t = buildCubeContext(fakeLog(), input(m))!;
-    expect(t).toMatch(/Thraben Inspector \d+% in \d+g, AI stats unreliable/);
+    expect(t).toMatch(/Blade Splicer \d+% in \d+g, AI stats unreliable/);
     expect(t).toMatch(/plays these poorly, so their lab stats are unreliable: .*Mind Stone/);
     expect(text).not.toContain('unreliable');
   });
@@ -128,7 +134,7 @@ describe('buildCubeContext', () => {
     expect(t.split('\n')).toHaveLength(2);
     expect(t).toMatch(/thin here \(its closest archetype \(WU-ETB\) has only 6 games\)/);
     expect(buildCubeContext(fakeLog(), input(null))).toMatch(/thin or missing/);
-    expect(buildCubeContext(fakeLog({ mine: ['Thraben Inspector'] }), input())).toMatch(/not yet clear/);
+    expect(buildCubeContext(fakeLog({ mine: ['Blade Splicer'] }), input())).toMatch(/not yet clear/);
   });
 
   it('is absent for a game with no cube', () => {
