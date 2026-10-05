@@ -46,6 +46,8 @@ const LabPage = lazy(() => import('./lab/LabPage.tsx'));
 const LadderPage = lazy(() => import('./lab/LadderPage.tsx'));
 // #lab/data[?src=…]: the lab warehouse at a glance (lazy).
 const DataPage = lazy(() => import('./lab/DataPage.tsx'));
+// #lab/report[?since=…][&src=…]: the morning report, the jobs that ended overnight (lazy).
+const ReportPage = lazy(() => import('./lab/ReportPage.tsx'));
 // The engine review of a loaded game (lazy; opened from the replay or the game-over card, or #sample=<id>&review=1).
 const ReviewApp = lazy(() => import('./review/ReviewApp.tsx'));
 // #practice[/<puzzle id>]: puzzles from the player's own games (lazy).
@@ -157,6 +159,8 @@ export function App() {
       <LadderPage />
     ) : /^#lab\/data\b/.test(hash) ? (
       <DataPage />
+    ) : /^#lab\/report\b/.test(hash) ? (
+      <ReportPage />
     ) : /^#lab\b/.test(hash) ? (
       <LabPage />
     ) : /^#cube\/[\w-]+/.test(hash) ? (
