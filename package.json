@@ -14,6 +14,7 @@
     "e2e:draft": "node e2e/draft.e2e.mjs",
     "e2e:practice": "node e2e/practice.e2e.mjs",
     "test:e2e": "node e2e/seat.e2e.mjs",
+    "test:pwa": "node e2e/pwa.e2e.mjs",
     "bench:coach": "node bench/coach/run.mjs"
   },
   "dependencies": {

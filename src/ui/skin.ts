@@ -40,7 +40,8 @@ export function applySkin(root: { setAttribute(name: string, value: string): voi
   meta?.setAttribute('content', THEME_COLOR[skin]);
 }
 
-const THEME_COLOR: Record<Skin, string> = { classic: '#0e1014', stack: '#121417', felt: '#1a312b' };
+/** Each skin's page background (`--bg` in ui/styles.css and ui/skins.css), for the browser's bar and the installed app's title bar. */
+export const THEME_COLOR: Record<Skin, string> = { classic: '#0e1014', stack: '#121417', felt: '#1a312b' };
 
 /** At start-up: apply the skin, and follow Settings when it is saved. */
 export function initSkin(): void {
