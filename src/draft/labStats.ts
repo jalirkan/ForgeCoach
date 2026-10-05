@@ -137,20 +137,22 @@ function earlyOf(s: MetaCardStats): LabCardView['early'] {
 
 /** The panel's view of one card; null when the meta says nothing about it. `colors` is the card's colours (WUBRG letters, '' colourless). */
 /**
- * A suspicious zero is hidden, not shown. The lab's meta writer (mtg-table
- * tools/cubelab/meta.ts) counts only a played deck's NONLAND cards for
- * `inDecks`, `games` and `wins`, so every land reads "0 of N in the 40" and has
- * no games: a recording gap, not a 0%. A nonland card picked more than
- * SUSPECT_PICKS times and never in a deck is hidden too until that is checked.
+ * A suspicious zero is hidden, not shown. Metas written before mtg-table D380
+ * counted only a played deck's NONLAND cards for `inDecks`, `games` and `wins`,
+ * so a land there reads "0 of N in the 40" with no games: a recording gap, not a
+ * 0%. From D380 on lands are counted, so a land with deck numbers shows them. A
+ * nonland card picked more than SUSPECT_PICKS times and never built is a real
+ * zero (D380: the lab's deckbuilder leaves low-rated cards out), but its deck
+ * numbers describe Forge's builder more than the card, so they stay hidden.
  */
 export const SUSPECT_PICKS = 10;
-export const LAND_HIDDEN = 'The lab’s meta counts only nonland cards in decks, so a land’s deck numbers are not recorded.';
-export const ZERO_HIDDEN = 'Never in a deck though picked often: likely a gap in how the lab records decks, so the deck numbers are hidden.';
+export const LAND_HIDDEN = 'This meta predates the lab counting lands in decks, so a land’s deck numbers are not recorded.';
+export const ZERO_HIDDEN = 'Picked often but never built: the lab’s deckbuilder leaves it out on its rating, so its deck numbers say more about Forge’s builder than the card.';
 
 export function deckNumbersHidden(s: MetaCardStats, land: boolean): string | null {
-  if (land) return LAND_HIDDEN;
   const picked = count(s.picked);
   const inDecks = count(s.inDecks);
+  if (land) return inDecks !== null && inDecks > 0 ? null : LAND_HIDDEN;
   if (inDecks === 0 && picked !== null && picked > SUSPECT_PICKS) return ZERO_HIDDEN;
   return null;
 }

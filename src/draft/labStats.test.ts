@@ -118,7 +118,7 @@ describe('colour baselines', () => {
 });
 
 describe('suspicious zeros are hidden', () => {
-  it('lands: the lab counts only nonland cards in decks, so no inclusion and no win rate', () => {
+  it('lands in a meta from before D380 (no land counted): no inclusion and no win rate', () => {
     const m = meta({ cards: { 'Arid Mesa': { picked: 23, seen: 25, avgPickIndex: 9, inDecks: 0, games: 0, wins: 0 } } } as never);
     const v = labCardView(m, 'Arid Mesa', '', undefined, { land: true })!;
     expect(v.inDeck).toBeNull();
@@ -137,15 +137,25 @@ describe('suspicious zeros are hidden', () => {
     expect(labCardView(m, 'Rare', 'B')!.hidden).toBeNull();
   });
 
-  it('no shipped land ever shows an inclusion or a win rate', () => {
+  it('lands counted in the meta (D380) show their numbers', () => {
+    const m = meta({ cards: { 'Arid Mesa': { picked: 23, seen: 25, avgPickIndex: 9, inDecks: 18, games: 40, wins: 21 } } } as never);
+    const v = labCardView(m, 'Arid Mesa', '', undefined, { land: true })!;
+    expect(v.hidden).toBeNull();
+    expect(v.inDeck).toEqual({ inDecks: 18, picked: 23, p: 18 / 23 });
+    expect(v.win).not.toBeNull();
+  });
+
+  it('the shipped metas count lands (D380): some land shows deck numbers', () => {
+    let shown = 0;
     for (const id of ['modern-era-cube-180', 'vintage-cube-180']) {
       const m = shipped(id);
       for (const c of m.cube.cards ?? []) {
         const types = Array.isArray(c.types) ? c.types.join(' ') : (c.types ?? '');
         if (!/Land/.test(types)) continue;
         const v = labCardView(m, c.name, '', undefined, { land: true });
-        if (v) expect(v.inDeck === null && v.win === null).toBe(true);
+        if (v && v.hidden === null && v.inDeck !== null) shown++;
       }
     }
+    expect(shown).toBeGreaterThan(0);
   });
 });
