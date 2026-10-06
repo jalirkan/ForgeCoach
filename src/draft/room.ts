@@ -15,6 +15,10 @@
  *     POST /room/<id>/join     {name?} → state
  *     POST /room/<id>/pick     {line, expect: state.version} → state | 409 {code: stale|turn|waiting|done, state}
  *     POST /room/<id>/deck     {name, main, sideboard?} → state | 409 {code: drafting|playing} | 400 {code: deck, problems}
+ *   coach helper, the owner's door only (mtg-table D408; /health "roomRevoke": 1):
+ *     POST /room/<id>/close        → {ok, id, closed}: gone for both seats (streams: `event: gone`)
+ *     POST /room/<id>/friend-link  → {ok, id, seat: 1, friendToken, roomPort, bases}: the old link stops
+ *                                    working (its streams: `event: revoked`)
  *
  * Phase 2 (mtg-table D404): once the draft is over each player hands the room
  * a deck — privately, checked by the room against that player's own picks
@@ -291,14 +295,14 @@ async function errorOf(r: Response, what: string): Promise<RoomError> {
 }
 
 /** The draft room on the coach helper: on (with its port) or not. */
-export async function roomSupport(opts: { fetch?: FetchLike; target?: HelperTarget } = {}): Promise<{ on: boolean; roomPort: number | null; reason?: string }> {
+export async function roomSupport(opts: { fetch?: FetchLike; target?: HelperTarget } = {}): Promise<{ on: boolean; roomPort: number | null; revoke?: boolean; reason?: string }> {
   const f = opts.fetch ?? realFetch;
   const t = opts.target ?? pageHelperTarget();
   try {
     const r = await f(`${t.baseUrl}/health`, { headers: t.token ? { [TOKEN_HEADER]: t.token } : {} });
     if (!r.ok) return { on: false, roomPort: null, reason: `the coach helper answered HTTP ${r.status}` };
     const j = (await r.json()) as Record<string, unknown>;
-    if (j.draftRoom === 1 && isInt(j.roomPort)) return { on: true, roomPort: j.roomPort };
+    if (j.draftRoom === 1 && isInt(j.roomPort)) return { on: true, roomPort: j.roomPort, revoke: j.roomRevoke === 1 };
     return { on: false, roomPort: null, reason: 'the coach helper runs without the draft room' };
   } catch {
     return { on: false, roomPort: null, reason: 'no coach helper on this machine' };
@@ -330,6 +334,68 @@ export async function createRoom(req: CreateRequest, opts: { fetch?: FetchLike; 
   const c = parseCreated(await r.json());
   if (!c) throw new RoomError('The coach helper answered something that is not a room.', r.status, 'bad');
   return c;
+}
+
+async function ownerCall(path: string, what: string, opts: { fetch?: FetchLike; target?: HelperTarget }): Promise<Record<string, unknown>> {
+  const f = opts.fetch ?? realFetch;
+  const t = opts.target ?? pageHelperTarget();
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (t.token) h[TOKEN_HEADER] = t.token;
+  let r: Response;
+  try {
+    r = await f(`${t.baseUrl}${path}`, { method: 'POST', headers: h, body: '{}' });
+  } catch {
+    throw new RoomError('Could not reach the coach helper on this machine (the room’s computer).', 0, 'offline');
+  }
+  if (r.status === 404) {
+    const e = await errorOf(r, what);
+    throw e.code === 'gone' ? e : new RoomError('This coach helper cannot do that: update mtg-table (D408).', 404, 'off');
+  }
+  if (!r.ok) throw await errorOf(r, what);
+  return (await r.json()) as Record<string, unknown>;
+}
+
+/**
+ * mtg-table D408, the room's owner only (through the coach helper on this
+ * machine, never the room's port): close the room for both seats, now and
+ * after a restart.
+ */
+export async function closeRoom(id: string, opts: { fetch?: FetchLike; target?: HelperTarget } = {}): Promise<void> {
+  if (!ROOM_ID.test(id)) throw new RoomError('Not a room id.', 0, 'bad');
+  const j = await ownerCall(`/room/${encodeURIComponent(id)}/close`, 'Closing the room', opts);
+  if (j.ok !== true) throw new RoomError('The coach helper did not close the room.', 0, 'bad');
+}
+
+/**
+ * mtg-table D408, the room's owner only: a new seat token for the friend. The
+ * old link stops working at once (and after a restart); the friend keeps
+ * their seat, name and picks. Returns the new links to send.
+ */
+export async function newFriendLink(id: string, opts: { fetch?: FetchLike; target?: HelperTarget } = {}): Promise<Array<{ label: string; url: string }>> {
+  if (!ROOM_ID.test(id)) throw new RoomError('Not a room id.', 0, 'bad');
+  const j = await ownerCall(`/room/${encodeURIComponent(id)}/friend-link`, 'Making a new link', opts);
+  const b = j.bases as Record<string, unknown> | undefined;
+  if (j.ok !== true || j.id !== id || !isStr(j.friendToken) || !ROOM_TOKEN.test(j.friendToken) || !b || !isStr(b.local) || !strs(b.lan, 32) || !(b.public === null || isStr(b.public))) {
+    throw new RoomError('The coach helper answered something that is not a new link.', 0, 'bad');
+  }
+  return friendLinks({ id, friendToken: j.friendToken, bases: { local: b.local, lan: b.lan, public: b.public } });
+}
+
+/** Why a stream is reconnecting when Cloudflare Access answered instead of the room (mtg-table D408). */
+export const SIGNIN_REDIRECT = 'a sign-in redirect';
+/** What a tunnel page says once its stream keeps failing: Access's session has most likely run out. */
+export const SIGNIN_EXPIRED = 'Reload this page — your Cloudflare sign-in may have expired. The room has kept every pick.';
+/** Failed reconnects in a row on a tunnel page before SIGNIN_EXPIRED is shown. */
+export const SIGNIN_AFTER = 3;
+
+/**
+ * The note for a room stream that is reconnecting: on a tunnel page, a
+ * sign-in redirect, or SIGNIN_AFTER failures in a row, say "reload"; else
+ * the reason as it is.
+ */
+export function reconnectNote(tunnel: boolean, failures: number, why: string | null): string | null {
+  if (tunnel && (why === SIGNIN_REDIRECT || failures >= SIGNIN_AFTER)) return SIGNIN_EXPIRED;
+  return why;
 }
 
 /** One seat's handle on a room: read, join, pick, and the live stream. */
@@ -423,13 +489,24 @@ export class RoomClient {
       ac = new AbortController();
       let r: Response;
       try {
-        r = await this.f(this.url('/events'), { headers: this.headers(false), signal: ac.signal });
+        // `manual`: behind a tunnel, an expired Cloudflare Access session answers with a login redirect,
+        // which a fetch cannot follow (mtg-table D408); the room itself never redirects.
+        r = await this.f(this.url('/events'), { headers: this.headers(false), signal: ac.signal, redirect: 'manual' });
       } catch {
         again('offline');
         return;
       }
+      if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400)) {
+        again(SIGNIN_REDIRECT);
+        return;
+      }
       if (r.status === 404 || r.status === 403) {
         const e = await errorOf(r, 'The room');
+        // Only the room's own refusals ({code: "gone" | "token"}) end the stream; anything else (Cloudflare's own page) is retried.
+        if (e.code !== 'gone' && e.code !== 'token') {
+          again(`HTTP ${r.status}`);
+          return;
+        }
         onStatus('gone', e.message);
         return;
       }
@@ -441,7 +518,13 @@ export class RoomClient {
       const parser = sseParser((ev, data) => {
         if (ev === 'gone') {
           stopped = true;
-          onStatus('gone', 'The room has expired.');
+          onStatus('gone', 'The room has expired, or its owner closed it.');
+          return;
+        }
+        if (ev === 'revoked') {
+          // mtg-table D408: the owner made a new link for this seat.
+          stopped = true;
+          onStatus('gone', 'The room’s owner made a new link for this seat, so this one no longer works. Ask them for the new link.');
           return;
         }
         if (ev !== 'state') return;

@@ -16,6 +16,13 @@
  * (`tableSeatUrl`): `ws(s)://<room host>/ws?seat=<token>`, never the table's
  * port by number. The room listener passes `/ws` through to the table on a
  * LAN; a Cloudflare tunnel routes `/ws` on its one hostname to it (D405).
+ *
+ * A tunnel page (mtg-table D408, `servedByTunnel`): the bridge serves its site
+ * over plain http only (`--lan`), so an `https:` page that is neither GitHub
+ * Pages, a dev server nor loopback came through a tunnel — and a tunnel
+ * carries only the draft room (mtg-table docs/cloudflare.md). Such a page is
+ * the room's, never the engine's, from its very first load (before this
+ * browser holds a seat there).
  */
 
 export const DEFAULT_SEAT_URL = 'ws://127.0.0.1:8642/ws';
@@ -42,6 +49,23 @@ function splitHost(host: string): { name: string; port: string } {
   return { name: (m?.[1] ?? host).toLowerCase(), port: m?.[2] ?? '' };
 }
 
+function isLoopbackName(name: string): boolean {
+  return name === 'localhost' || name.endsWith('.localhost') || /^127\./.test(name) || name === '[::1]' || name === '::1';
+}
+
+/**
+ * True when this page came through a tunnel (mtg-table D405/D408): `https:`,
+ * not GitHub Pages, not a dev server port, not loopback. The bridge never
+ * serves https, so this is the draft room's site on the tunnel's hostname.
+ */
+export function servedByTunnel(loc: Pick<PageLocation, 'protocol' | 'host'>): boolean {
+  if (loc.protocol !== 'https:') return false;
+  const { name, port } = splitHost(loc.host);
+  if (name === 'jalirkan.github.io' || name.endsWith('.github.io')) return false;
+  if (DEV_PORTS.has(port) || isLoopbackName(name)) return false;
+  return name.includes('.');
+}
+
 /**
  * True when this page was served by mtg-table's draft room (D400): the room's
  * default port, or an origin this browser holds a room seat on (`roomBases`,
@@ -50,14 +74,15 @@ function splitHost(host: string): { name: string; port: string } {
 export function servedByRoom(loc: PageLocation, roomBases: readonly string[] = []): boolean {
   if (loc.protocol !== 'http:' && loc.protocol !== 'https:') return false;
   if (splitHost(loc.host).port === String(DEFAULT_ROOM_PORT)) return true;
+  if (servedByTunnel(loc)) return true;
   const origin = `${loc.protocol}//${loc.host}`.toLowerCase();
   return roomBases.some((b) => b.replace(/\/+$/, '').toLowerCase() === origin);
 }
 
 /**
  * True when this page was served by something other than GitHub Pages, a
- * Vite dev server or the draft room over http(s) — i.e. by the mtg-table
- * bridge, whose own origin therefore answers the seat socket.
+ * Vite dev server, a tunnel or the draft room over http(s) — i.e. by the
+ * mtg-table bridge, whose own origin therefore answers the seat socket.
  */
 export function servedByEngine(loc: PageLocation, roomBases: readonly string[] = []): boolean {
   if (loc.protocol !== 'http:' && loc.protocol !== 'https:') return false;
