@@ -15,6 +15,12 @@
  * left to right, and turned for the left edge (40 × 160; flipped for the
  * right). These are generated here, never fetched: a pack's own URLs
  * still go through the manifest's URL rules.
+ *
+ * The full-area placeholder (spec 1.4, `#ambience` preview) is one
+ * 2048 × 745 picture of sparse marks scattered over the area, thicker at the
+ * rim and thin in the middle where cards sit, denser at each stage: inked
+ * vines (forest), dead branches (swamp), grass tufts (plains), sand and shells
+ * (island), lava cracks (mountain), grit (wastes).
  */
 import type { BuiltinOverlay } from '../../ambience/manifest.ts';
 
@@ -187,6 +193,121 @@ const EDGES: Record<string, () => string> = {
 
 /** An edge tile turned for the left edge: 40 × 160, the ground at the left (the renderer flips it for the right edge). */
 const vertical = (tile: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 160" width="40" height="160"><g transform="translate(40 0) rotate(90)">${tile}</g></svg>`;
+
+// ---------------------------------------------------------------------------
+// The full-area placeholder (spec 1.4).
+
+const AW = 2048;
+const AH = 745;
+
+/** A point over the area, mostly in the rim: the middle (where cards sit) is kept thin. */
+function rimPoint(r: () => number): [number, number] {
+  for (let i = 0; i < 6; i++) {
+    const x = r() * AW;
+    const y = r() * AH;
+    const inner = x > AW * 0.12 && x < AW * 0.88 && y > AH * 0.2 && y < AH * 0.78;
+    if (!inner || r() < 0.12) return [x, y];
+  }
+  return [r() * AW, r() < 0.5 ? r() * AH * 0.18 : AH - r() * AH * 0.2];
+}
+
+type Mark = (r: () => number, x: number, y: number, level: number) => string;
+
+const INK = '#141a12';
+
+const AREA_MARKS: Record<string, { n: number; mark: Mark; halo?: boolean; defs?: string }> = {
+  // Forest: heavily inked vines with a few leaves; thicker with the stage.
+  vine: {
+    n: 9,
+    mark: (r, x, y, lv) => {
+      const len = 60 + r() * 90;
+      const a = r() * 360;
+      const w = r1(2 + lv * 0.9);
+      const leafs = [0.35, 0.7, 1].map((t) => [t * len, (r() - 0.5) * 18, r() * 120 - 60, 0.9 + lv * 0.15] as [number, number, number, number]);
+      return `<g transform="translate(${r1(x)} ${r1(y)}) rotate(${Math.round(a)})"><path d="M0 0 C ${r1(len * 0.3)} ${r1(-20 - r() * 20)}, ${r1(len * 0.6)} ${r1(20 + r() * 20)}, ${r1(len)} 0" fill="none" stroke="${INK}" stroke-width="${r1(w + 2)}" stroke-linecap="round"/><path d="M0 0 C ${r1(len * 0.3)} -24, ${r1(len * 0.6)} 24, ${r1(len)} 0" fill="none" stroke="#3f6a35" stroke-width="${w}" stroke-linecap="round"/>${leaves(leafs, '#5c8f45', INK)}</g>`;
+    },
+  },
+  // Swamp: dead branches, forked, inked.
+  moss: {
+    n: 8,
+    mark: (r, x, y, lv) => {
+      const len = 50 + r() * 70 + lv * 10;
+      const w = r1(1.6 + lv * 0.6);
+      const f1 = r1(len * (0.4 + r() * 0.2));
+      const f2 = r1(len * (0.65 + r() * 0.2));
+      return `<g transform="translate(${r1(x)} ${r1(y)}) rotate(${Math.round(r() * 360)})" fill="none" stroke-linecap="round"><path d="M0 0 L${r1(len)} ${r1((r() - 0.5) * 14)} M${f1} 0 l${r1(18 + r() * 14)} ${r1(-14 - r() * 12)} M${f2} 0 l${r1(14 + r() * 10)} ${r1(10 + r() * 10)}" stroke="${INK}" stroke-width="${r1(+w + 2)}"/><path d="M0 0 L${r1(len)} 0" stroke="#4a4237" stroke-width="${w}"/></g>`;
+    },
+  },
+  // Plains: grass tufts, a fan of inked blades.
+  petals: {
+    n: 12,
+    mark: (r, x, y, lv) => {
+      const blades = 3 + lv;
+      let d = '';
+      for (let i = 0; i < blades; i++) {
+        const a = (-60 + (120 * i) / (blades - 1) + (r() - 0.5) * 12) * (Math.PI / 180);
+        const h = 18 + r() * 16 + lv * 3;
+        d += `M0 0 Q ${r1(Math.sin(a) * h * 0.4)} ${r1(-h * 0.6)} ${r1(Math.sin(a) * h)} ${r1(-Math.cos(a) * h)} `;
+      }
+      return `<g transform="translate(${r1(x)} ${r1(y)})" fill="none" stroke-linecap="round"><path d="${d}" stroke="${INK}" stroke-width="3.6"/><path d="${d}" stroke="#c9b45a" stroke-width="1.6"/></g>`;
+    },
+  },
+  // Island: soft sand drifts and a few shells.
+  frost: {
+    n: 10,
+    halo: true,
+    mark: (r, x, y, lv) => {
+      const sand = specks(Math.floor(r() * 1e6), 6 + lv * 3, ['#e9dcb8', '#d8c79c'], (q) => [x + (q() - 0.5) * 70, y + (q() - 0.5) * 26], 0.8, 2 + lv * 0.3, 0.35, 0.8);
+      const shell = r() < 0.35 + lv * 0.08 ? `<path transform="translate(${r1(x)} ${r1(y)}) rotate(${Math.round(r() * 360)}) scale(${r1(0.8 + lv * 0.15)})" d="M0 0 C -6 -2, -7 -9, 0 -11 C 7 -9, 6 -2, 0 0 Z M0 0 L-3 -9 M0 0 L0 -10 M0 0 L3 -9" fill="#f3e6cf" stroke="#b99f7a" stroke-width="0.8" opacity="0.9"/>` : '';
+      return sand + shell;
+    },
+  },
+  // Mountain: lava cracks, brighter with the stage.
+  ash: {
+    n: 8,
+    defs: '<filter id="lv" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter>',
+    mark: (r, x, y, lv) => {
+      let d = 'M0 0';
+      let cx = 0;
+      let cy = 0;
+      for (let i = 0; i < 4 + lv; i++) {
+        cx += 10 + r() * 16;
+        cy += (r() - 0.5) * 18;
+        d += ` L${r1(cx)} ${r1(cy)}`;
+      }
+      const glow = ['#7a2a10', '#c2471a', '#ff7a2a', '#ffb347'][Math.min(lv, 4) - 1];
+      return `<g transform="translate(${r1(x)} ${r1(y)}) rotate(${Math.round(r() * 360)})" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${d}" stroke="${glow}" stroke-width="${4 + lv}" opacity="0.5" filter="url(#lv)"/><path d="${d}" stroke="${INK}" stroke-width="3"/><path d="${d}" stroke="${glow}" stroke-width="${r1(0.8 + lv * 0.35)}"/></g>`;
+    },
+  },
+  // Wastes: grit.
+  dust: {
+    n: 10,
+    mark: (r, x, y, lv) => specks(Math.floor(r() * 1e6), 5 + lv * 2, ['#b9ab95', '#8f8574'], (q) => [x + (q() - 0.5) * 60, y + (q() - 0.5) * 30], 0.8, 2.2, 0.3, 0.75),
+  },
+};
+
+const areaCache = new Map<string, string>();
+
+/** The built-in full-area placeholder for a biome's accent kind at a density level (2–4), as a `data:` URL (2048 × 745). */
+export function builtinAreaSrc(kind: BuiltinOverlay, level: number): string {
+  const lv = Math.max(2, Math.min(4, Math.round(level)));
+  const key = `${kind}|${lv}`;
+  let url = areaCache.get(key);
+  if (!url) {
+    const spec = AREA_MARKS[kind] ?? AREA_MARKS.dust!;
+    const r = rng(kind.length * 977 + 13);
+    let body = '';
+    // Denser, thicker and brighter at each level: the same place, grown.
+    const n = Math.round(spec.n * (1 + (lv - 2) * 0.8));
+    for (let i = 0; i < n; i++) {
+      const [x, y] = rimPoint(r);
+      body += spec.mark(r, x, y, lv);
+    }
+    url = `data:image/svg+xml,${encodeURIComponent(svg(AW, AH, body, spec.defs ?? '', spec.halo ?? false).replace(/\s+/g, ' '))}`;
+    areaCache.set(key, url);
+  }
+  return url;
+}
 
 /** The shape a built-in piece is drawn in: a corner picture, a tile along the top or bottom edge, or one along a side edge. */
 export type BuiltinShape = 'corner' | 'h' | 'v';

@@ -743,6 +743,19 @@
   right: 0;
 }
 
+/* Full-area pieces (spec 1.4): their own layer at z-index -2, so they paint
+   beneath the strip (and its fade) as well as beneath the corner and edge
+   pieces and every card; still above the host's background. */
+.scn-ovl.scn-ovl-area {
+  z-index: -2;
+}
+.scn-ovl-at-area {
+  inset: 0;
+}
+.scn-ovl-at-area img {
+  object-fit: cover;
+}
+
 /* CSS motion on still pictures: small, slow, alternating. */
 .scn-ovl-sway,
 .scn-ovl-drift,
@@ -785,6 +798,42 @@
   }
   to {
     transform: scale(1.035);
+    opacity: 1;
+  }
+}
+/* A full-area picture moves less: it is the size of the area. */
+.scn-ovl-area .scn-ovl-sway {
+  animation-name: scn-area-sway;
+}
+.scn-ovl-area .scn-ovl-drift {
+  animation-name: scn-area-drift;
+}
+.scn-ovl-area .scn-ovl-breathe {
+  animation-name: scn-area-breathe;
+}
+@keyframes scn-area-sway {
+  from {
+    transform: rotate(-0.35deg);
+  }
+  to {
+    transform: rotate(0.35deg);
+  }
+}
+@keyframes scn-area-drift {
+  from {
+    transform: translate(-0.6%, 0.3%);
+  }
+  to {
+    transform: translate(0.6%, -0.4%);
+  }
+}
+@keyframes scn-area-breathe {
+  from {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  to {
+    transform: scale(1.012);
     opacity: 1;
   }
 }
