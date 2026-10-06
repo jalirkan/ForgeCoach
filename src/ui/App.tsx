@@ -25,6 +25,7 @@ import type { PlaySnapshot } from '../play/session.ts';
 import { ensureEngineAwake } from '../draft/launch.ts';
 import { readPlayProfile } from './PlayProfile.tsx';
 import { PlayView } from './play/PlayView.tsx';
+import { useFriendReview } from './play/useFriendReview.ts';
 import { hasSampleReview } from './review/samples.ts';
 
 // #deck: Draft & build, the deck assistant (lazy: its own bundle).
@@ -208,7 +209,7 @@ function MainApp({ hash }: { hash: string }) {
   const liveRef = useRef<LiveHandle | null>(null);
   const loadSeq = useRef(0);
   // The engine review screen, over whatever is open (the seat stays connected underneath).
-  const [engineReview, setEngineReview] = useState<{ log: GameLog; title: string; sampleId: string | null; autoSample?: boolean } | null>(null);
+  const [engineReview, setEngineReview] = useState<{ log: GameLog; title: string; sampleId: string | null; autoSample?: boolean; report?: unknown } | null>(null);
   const wantSampleReview = useRef(parseHash().review);
 
   // ---- Play: one seat connection while playUrl is set.
@@ -297,6 +298,12 @@ function MainApp({ hash }: { hash: string }) {
     setFriend(t);
     connect(t.url, false);
   }, [hash, connect]); // eslint-disable-line react-hooks/exhaustive-deps
+  // mtg-table D407: this player's own engine review of the finished game, from the room.
+  const openFriendReview = useCallback(
+    (l: GameLog, report: unknown) => setEngineReview({ log: l, title: `your game${friend?.gameNo ? ` ${friend.gameNo}` : ''} with ${friend?.opponent ?? 'your friend'}`, sampleId: null, report }),
+    [friend],
+  );
+  const friendReview = useFriendReview(friend, !!snap?.over, snap?.log ?? null, openFriendReview);
   const leaveFriend = useCallback(() => {
     const back = friend?.back ?? '#draft/friend';
     setFriend(null);
@@ -545,6 +552,7 @@ function MainApp({ hash }: { hash: string }) {
         onLeave={leaveFriend}
         onSettings={() => setSettingsOpen(true)}
         leaveLabel="Back to the room"
+        friendReview={friendReview}
       />
     );
   } else if (playing) {

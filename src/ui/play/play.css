@@ -569,6 +569,15 @@ button.avatar.is-select {
 .over-row .btn {
   height: 42px;
 }
+.over-match {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+  color: var(--text-2);
+  line-height: 1.45;
+}
+.over-review {
+  margin: 0;
+}
 .over-leave {
   margin: 4px auto 0;
   font-size: 13px;

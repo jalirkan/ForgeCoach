@@ -36,6 +36,7 @@ import { allCardNames, cx, readLS, stateCardNames, writeLS } from '../util.ts';
 import { AskDialog, OpeningDialog, openingKind } from './AskDialog.tsx';
 import { ActionBar } from './ActionBar.tsx';
 import { GameOverCard } from './GameOverCard.tsx';
+import type { FriendReviewView } from './useFriendReview.ts';
 import { FilmRoom } from '../filmroom/FilmRoom.tsx';
 import { HandDock } from './HandDock.tsx';
 import { LogDrawer, LogTab } from './LogDrawer.tsx';
@@ -46,7 +47,7 @@ import { PlayCoach } from './PlayCoach.tsx';
 import { CombatArrows } from './CombatArrows.tsx';
 import { combatLinks } from './combatLines.ts';
 import { selectionSummary } from './selection.ts';
-import { matchBox, type MatchBox } from '../../play/match.ts';
+import { matchBox, tableMatchLine, type MatchBox } from '../../play/match.ts';
 import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
 import { BoardScenery } from '../ambience/BoardScenery.tsx';
 import { WinChanceStrip } from '../winchance/WinChance.tsx';
@@ -94,6 +95,7 @@ export function PlayView({
   note = null,
   onDismissNote,
   leaveLabel,
+  friendReview = null,
 }: {
   session: PlaySession;
   snapshot: PlaySnapshot;
@@ -108,6 +110,8 @@ export function PlayView({
   onDismissNote?: () => void;
   /** A game between two people (mtg-table D402): what Leave says ("Back to the room"). */
   leaveLabel?: string;
+  /** mtg-table D407: this player's own engine review of a game with a friend, from the room. */
+  friendReview?: FriendReviewView | null;
 }) {
   const { state, input, ask, over, log, status } = snap;
   const seat = snap.seat ?? log?.seat ?? null;
@@ -306,6 +310,8 @@ export function PlayView({
   const [handCollapsed, setHandCollapsed] = useState(false);
   const [help, setHelp] = useState(false);
   const [concede, setConcede] = useState(false);
+  // The board's Concede: usable while an engine question is open too (its dialog offers it, and the top bar sits above it).
+  const canConcede = connected && !over && !!state;
   const [claim, setClaim] = useState(false);
   const [guidesOpen, setGuidesOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
@@ -666,6 +672,8 @@ export function PlayView({
                 {...(onEngineReview && !vsHuman ? { onEngineReview: () => log && onEngineReview(log) } : {})}
                 vsHuman={vsHuman}
                 {...(leaveLabel ? { leaveLabel } : {})}
+                matchLine={vsHuman ? tableMatchLine(match, over, seat, oppName) : null}
+                friendReview={vsHuman ? friendReview : null}
                 filmRoom={log ? <FilmRoom log={log} variant="over" onJump={(m) => onReview(log, m.decision.frameIndex)} onOpenSettings={onSettings} /> : null}
                 onNext={() => {
                   setWaitingNext(true);
@@ -681,10 +689,10 @@ export function PlayView({
             )}
           </div>
           {ask && (
-            <AskDialog ask={ask} state={state} onAnswer={(value: AnswerValue) => void session.answer(ask.askId, value)} onPreviewCard={previewId} />
+            <AskDialog ask={ask} state={state} onAnswer={(value: AnswerValue) => void session.answer(ask.askId, value)} onPreviewCard={previewId} onConcede={canConcede ? () => setConcede(true) : null} />
           )}
           {!ask && !over && input && openingKind(input, state) && (
-            <OpeningDialog key={input.prompt} input={input} state={state} seat={seat} onChoose={(b) => (b === 'ok' ? pressOk() : pressCancel())} onPreviewCard={previewId} />
+            <OpeningDialog key={input.prompt} input={input} state={state} seat={seat} onChoose={(b) => (b === 'ok' ? pressOk() : pressCancel())} onPreviewCard={previewId} onConcede={canConcede ? () => setConcede(true) : null} />
           )}
           <LogDrawer log={log} open={logOpen} onClose={closeLog} />
           <CardDetail card={detail?.card ?? null} state={detail?.state ?? null} seat={seat ?? 0} onClose={() => setDetail(null)} />

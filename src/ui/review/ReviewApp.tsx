@@ -74,6 +74,12 @@ export interface ReviewAppProps {
   onClose: () => void;
   closeLabel?: string;
   onSettings: () => void;
+  /**
+   * A report already in hand (mtg-table D407: this seat's own review of a game
+   * with a friend, from the draft room), shown at once. Parsed and matched to
+   * the log like any other.
+   */
+  report?: unknown;
 }
 
 interface Loaded {
@@ -89,7 +95,7 @@ function accept(report: ReviewReport, log: GameLog, source: string): Loaded {
   return { report, decisions: m.decisions, problems: [...report.warnings, ...m.problems], source };
 }
 
-export default function ReviewApp({ log, title, sampleId = null, autoSample = false, onClose, closeLabel, onSettings }: ReviewAppProps) {
+export default function ReviewApp({ log, title, sampleId = null, autoSample = false, onClose, closeLabel, onSettings, report = undefined }: ReviewAppProps) {
   const wide = useMediaQuery('(min-width: 1024px)');
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +151,16 @@ export default function ReviewApp({ log, title, sampleId = null, autoSample = fa
   useEffect(() => {
     if (autoSample) void openSample();
   }, [autoSample, openSample]);
+
+  // D407: a review handed in with the log (a game with a friend: the room's report of this seat).
+  useEffect(() => {
+    if (report === undefined || report === null) return;
+    try {
+      show(accept(parseReviewReport(report), log, 'your review from the room'));
+    } catch (e) {
+      setError(e instanceof ReviewReportError ? e.message : 'The room’s review could not be read.');
+    }
+  }, [report, log, show]);
 
   const runner = useReviewRun(log, (r) => {
     try {

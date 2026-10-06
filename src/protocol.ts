@@ -73,6 +73,10 @@
  *       two-person form (`opponentDeck`, `opponent: "human"`, no `aiDeck` /
  *       `aiProfile` / `aiPolicy`); the act `claimWin`; the session header's
  *       `humans: 2`. `opponentIsHuman` is the one reader of the form.
+ *   M60 a best of three at a table of two (D406): `hello_ok.gameNumber` /
+ *       `gameCount` and `match.games: 3` with `match.score` (`{you, opponent}`,
+ *       the games won before this one, `tableScoreOf` reads it); the session
+ *       header's `record`, the seat's consent to recording this game (D407).
  *
  * **Every M6 field is declared optional here**, and that is not defensiveness
  * for its own sake: fifteen committed recordings predate them,
@@ -209,8 +213,14 @@ export interface MatchSetup {
   opponentDeck?: MatchDeck;
   /** §2.1, amendment **M59** — `"human"` at a table of two; absent when the other seat is the AI. */
   opponent?: 'human';
-  /** `--games N`. Always present, unlike M41's `gameCount`. */
+  /** `--games N`. Always present, unlike M41's `gameCount`. At a table of two: 1, or 3 (M60). */
   games: number;
+  /**
+   * §2.1, amendment **M60** — a game of a best of three at a table of two: the
+   * games each side won BEFORE this one, from the viewing seat's side. Present
+   * exactly when `games` is 3. Read it through {@link tableScoreOf}.
+   */
+  score?: { you: number; opponent: number };
   /**
    * §2.1, amendment **M47** — the VIEWING seat's own Forge AI profile. Written
    * only by `mtgtable.RecordMatch` (AI vs AI, a spectated game), because only
@@ -245,6 +255,17 @@ export const AI_POLICY_IDS: readonly AiPolicy[] = ['plain', 'outlets', 'search']
 export function aiPolicyOf(hello: HelloOkBody | null | undefined): AiPolicy | null {
   const p = hello?.match?.aiPolicy;
   return typeof p === 'string' && (AI_POLICY_IDS as readonly string[]).includes(p) ? (p as AiPolicy) : null;
+}
+
+/**
+ * §2.1, amendment **M60** — the one reader of `hello_ok.match.score`: the games
+ * the viewing seat and the other person won before this one, or `null` when the
+ * stream does not say (not a best of three at a table, or a malformed value).
+ */
+export function tableScoreOf(hello: HelloOkBody | null | undefined): { you: number; opponent: number } | null {
+  const sc = hello?.match?.score;
+  const ok = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 2;
+  return sc && typeof sc === 'object' && ok(sc.you) && ok(sc.opponent) ? { you: sc.you, opponent: sc.opponent } : null;
 }
 
 /**
@@ -2008,6 +2029,12 @@ export interface SessionHeader {
   paceMs?: number;
   /** §8.1, amendment **M59** — `2` on a seat's log at a table of two; absent otherwise. */
   humans?: 2;
+  /**
+   * §8.1, amendment **M60** (D407) — at a table of two, whether this seat's
+   * player agreed to this game being recorded (the human test set and the
+   * automatic review); absent means not agreed.
+   */
+  record?: boolean;
   decks: DeckRef[];
 }
 
