@@ -13,7 +13,7 @@ import { apply, legalLines, newDraft, toAct, type GridDraft } from './draft.ts';
 import {
   cleanName, createRoom, cubeHash, forgetRoom, friendLinks, joinLink, lastOpponentEvent, loadRooms, ownerRoomBase, parseCreated, parseJoinHash,
   parseRoomState, replayMatches, RoomClient, RoomError, roomSupport, saveRoom, sseParser, toGridDraft, type RoomState, type SavedRoom,
-  closeRoom, newFriendLink, reconnectNote, SIGNIN_AFTER, SIGNIN_EXPIRED, SIGNIN_REDIRECT,
+  closeRoom, FUNNEL_LOST, newFriendLink, reconnectNote, SIGNIN_AFTER, SIGNIN_EXPIRED, SIGNIN_REDIRECT,
 } from './room.ts';
 
 interface GoldenCase {
@@ -430,5 +430,10 @@ describe('revoking, the owner only (mtg-table D408)', () => {
     expect(reconnectNote(true, SIGNIN_AFTER, 'offline')).toBe(SIGNIN_EXPIRED);
     expect(reconnectNote(false, 10, 'offline')).toBe('offline');
     expect(SIGNIN_EXPIRED).toMatch(/^Reload .*Cloudflare sign-in may have expired/);
+    // mtg-table D409: a Tailscale Funnel page has no sign-in to blame.
+    expect(reconnectNote(true, SIGNIN_AFTER, 'offline', true)).toBe(FUNNEL_LOST);
+    expect(reconnectNote(true, 1, SIGNIN_REDIRECT, true)).toBe(SIGNIN_REDIRECT);
+    expect(reconnectNote(true, SIGNIN_AFTER - 1, 'offline', true)).toBe('offline');
+    expect(FUNNEL_LOST).not.toMatch(/Cloudflare|sign-in/);
   });
 });

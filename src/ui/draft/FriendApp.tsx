@@ -36,6 +36,7 @@ import {
   saveRoom, type RoomState, type SavedRoom,
 } from '../../draft/room.ts';
 import { FRIEND_TABLE_HASH, loadFriendTable, saveFriendTable, tableFromRoom } from '../../play/friendTable.ts';
+import { isFunnelHost } from '../../play/seatUrl.ts';
 import { useCubeData } from '../deck/useCubeData.ts';
 import { IconChevronLeft } from '../Icons.tsx';
 import { SettingsDialog } from '../SettingsDialog.tsx';
@@ -408,9 +409,15 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
           {room.entry.friendLinks && !room.entry.friendLinks.some((l) => l.label === 'On your Wi-Fi' || l.label === 'Over the internet') && (
             <p className="fr-small">No Wi-Fi link: the draft room answers this computer only. For a friend on your network, restart it with ./scripts/play.sh --engine-only --lan --draft-room.</p>
           )}
-          {room.entry.friendLinks?.some((l) => l.label === 'Over the internet') && (
+          {room.entry.friendLinks?.some((l) => l.label === 'Over the internet' && isFunnelHost(new URL(l.url).host)) && (
             <p className="fr-small">
-              Over the internet, in two steps: first send your friend just the address ({new URL(room.entry.friendLinks.find((l) => l.label === 'Over the internet')!.url).origin}/) so they sign in with
+              Over the internet through Tailscale Funnel: send your friend just this one link. They open it in any browser — nothing to install, no sign-in.
+              There is no login in front of it, so whoever has the link has the seat: send it privately, and close the room when you are done.
+            </p>
+          )}
+          {room.entry.friendLinks?.some((l) => l.label === 'Over the internet' && !isFunnelHost(new URL(l.url).host)) && (
+            <p className="fr-small">
+              Over the internet, in two steps: first send your friend just the address ({new URL(room.entry.friendLinks.find((l) => l.label === 'Over the internet' && !isFunnelHost(new URL(l.url).host))!.url).origin}/) so they sign in with
               Cloudflare (their email, then the PIN it sends). Then send the link, to open in the same browser — the sign-in drops everything after the #.
             </p>
           )}

@@ -20,7 +20,7 @@ import { AI_OPPONENT_PHRASE, HUMAN_OPPONENT_PHRASE, systemFor } from '../opponen
 import { seatDisplayName } from './aiName.ts';
 import * as A from './acts.ts';
 import { connectSeat, REPLACED_DETAIL, SEAT_REPLACED_CLOSE_CODE, TABLE_UNREACHABLE_DETAIL, type SeatSocket } from './session.ts';
-import { DEFAULT_SEAT_URL, defaultSeatUrl, redactSeatUrl, servedByEngine, servedByRoom, servedByTunnel, tableSeatUrl } from './seatUrl.ts';
+import { DEFAULT_SEAT_URL, defaultSeatUrl, isFunnelHost, redactSeatUrl, servedByEngine, servedByRoom, servedByTunnel, tableSeatUrl } from './seatUrl.ts';
 import { clock, LOW_CLOCK_MS, tableLines } from './tableView.ts';
 import { FRIEND_ROOMS_KEY, FRIEND_TABLE_KEY, loadFriendTable, saveFriendTable, savedRoomBases, tableFromRoom } from './friendTable.ts';
 
@@ -183,6 +183,16 @@ describe('room page vs bridge page (seatUrl)', () => {
       expect(servedByTunnel({ protocol: 'https:', host }), host).toBe(false);
     }
     expect(servedByTunnel({ protocol: 'http:', host: 'room.example.net' })).toBe(false);
+  });
+  it('a Tailscale Funnel page (https://<machine>.<tailnet>.ts.net, mtg-table D409) is a tunnel page: the room, its seat on wss://<name>/ws', () => {
+    const loc = { protocol: 'https:', host: 'pc.tail1234.ts.net', search: '' };
+    expect(servedByTunnel(loc)).toBe(true);
+    expect(servedByRoom(loc)).toBe(true);
+    expect(servedByEngine(loc)).toBe(false);
+    expect(isFunnelHost(loc.host)).toBe(true);
+    expect(isFunnelHost('PC.tail1234.ts.net:443')).toBe(true);
+    for (const host of ['play.example.com', 'ts.net', 'evil.ts.net.example.com', 'x.ts.network']) expect(isFunnelHost(host), host).toBe(false);
+    expect(tableSeatUrl('https://pc.tail1234.ts.net', TOKEN)).toBe(`wss://pc.tail1234.ts.net/ws?seat=${TOKEN}`);
   });
   it('the bridge on its own port is still the bridge', () => {
     const loc = { protocol: 'http:', host: '192.168.1.20:8642', search: '?token=x' };
