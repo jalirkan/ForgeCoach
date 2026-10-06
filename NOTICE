@@ -105,7 +105,7 @@ public/samples/ and src/play/testdata/ recordings above.
 Board scenery art pack
 ----------------------
 Settings → Board scenery → "ForgeCoach art" loads the pack published at
-https://github.com/jalirkan/forgecoach-scenery (tag pack-v1), licensed
+https://github.com/jalirkan/forgecoach-scenery (tag pack-v2), licensed
 CC BY 4.0, from cdn.jsdelivr.net. The art is not part of this repository;
 its provenance and model-licence notes are in that repository's
 PROVENANCE.txt.

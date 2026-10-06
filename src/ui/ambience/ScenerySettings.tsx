@@ -15,7 +15,7 @@ type Choice = 'off' | 'procedural' | 'forgecoach' | 'pack';
 const CHOICES: Array<{ id: Choice; label: string; hint: string }> = [
   { id: 'off', label: 'Off', hint: 'A plain board' },
   { id: 'procedural', label: 'Built-in', hint: 'Drawn in code' },
-  { id: 'forgecoach', label: 'ForgeCoach art', hint: 'Painted lands, downloaded once' },
+  { id: 'forgecoach', label: 'ForgeCoach art', hint: 'Painted lands, accents and effects' },
   { id: 'pack', label: 'Art pack', hint: 'From a URL you serve' },
 ];
 
