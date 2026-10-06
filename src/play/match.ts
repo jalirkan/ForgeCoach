@@ -9,9 +9,11 @@
  *
  * The score is only claimed when this session saw every earlier game of the
  * match (a page reload mid-match loses them): otherwise it is null and the
- * box says only which game it is.
+ * box says only which game it is. At a table of two (mtg-table M60) each game
+ * of the best of three is a session of its own, and the handshake says the
+ * score before it (`match.score`, `tableScoreOf`): that plus this game's result.
  */
-import type { HelloOkBody, OverBody } from '../protocol.ts';
+import { tableScoreOf, type HelloOkBody, type OverBody } from '../protocol.ts';
 
 export interface MatchBox {
   /** 1-based; null when the stream predates M41 and does not say. */
@@ -43,7 +45,15 @@ export function matchBox(hello: HelloOkBody | null, over: OverBody | null, previ
     want--;
   }
   let score: MatchBox['score'] = null;
-  if (earlier.length === game - 1) {
+  const before = tableScoreOf(hello);
+  if (before) {
+    score = { me: before.you, opp: before.opponent };
+    const w = over?.winner;
+    if (w !== undefined && w !== null) {
+      if (w === seat) score.me++;
+      else score.opp++;
+    }
+  } else if (earlier.length === game - 1) {
     score = { me: 0, opp: 0 };
     for (const g of [...earlier, { hello, over, seat }]) {
       const w = g.over?.winner;
@@ -53,4 +63,21 @@ export function matchBox(hello: HelloOkBody | null, over: OverBody | null, previ
     }
   }
   return { game, of, score };
+}
+
+/**
+ * mtg-table D406: at a table of two, where the best of three stands once this
+ * game is over, and what comes next — in the room, a deck for the next game
+ * (the same or sideboarded), or nothing more when the match is decided.
+ */
+export function tableMatchLine(match: MatchBox | null, over: OverBody | null, seat: number | null, oppName: string): string | null {
+  if (!match || !match.score || match.game === null || !over) return null;
+  const { me, opp } = match.score;
+  const need = Math.floor(match.of / 2) + 1;
+  if (me >= need) return `You win the match ${me} – ${opp}.`;
+  if (opp >= need) return `${oppName} wins the match ${opp} – ${me}.`;
+  const draw = over.winner === null;
+  const next = match.game + (draw ? 0 : 1);
+  const choose = draw ? 'a coin toss decides who chooses to play or draw' : over.winner === seat ? `${oppName} chooses to play or draw` : 'you choose to play or draw';
+  return `Game ${match.game} of ${match.of} · you ${me} – ${opp} ${oppName}. Next, game ${next}: back in the room each of you hands in a deck — the same, or sideboarded from your picks — and ${choose}.`;
 }

@@ -20,10 +20,18 @@
  * in, the room starts a game between the two on the owner's engine and hands
  * this seat its own seat token for it; Take your seat goes to the board.
  *
+ * Phase 3 (mtg-table D406, D407): the room runs a best of three. After each
+ * game both players hand in a deck again — the same, or sideboarded from their
+ * own picks — and the loser of the game chooses to play or draw in the next.
+ * Each player chooses, game by game, whether their seat is recorded (the human
+ * test set on the owner's computer, and their own engine review); the owner
+ * picks the default when making the room. A player's review is theirs alone:
+ * the room hands it to this seat only, and it opens here.
+ *
  * The coach is optional and private: it runs in this browser, through this
  * player's own helper or key, and nothing it says goes to the room.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../deck/deck.css';
 import '../forge-theme.css';
 import './draft.css';
@@ -43,6 +51,10 @@ import { DeckEditor } from './DeckEditor.tsx';
 import { PickScreen } from './PickScreen.tsx';
 import { RoomOwnerControls } from './RoomOwnerControls.tsx';
 import { startingDeck, useFriendRoom } from './useFriendRoom.ts';
+import { loadFriendReview } from '../play/useFriendReview.ts';
+import type { GameLog } from '../../log.ts';
+
+const ReviewApp = lazy(() => import('../review/ReviewApp.tsx'));
 
 const NAME_KEY = 'forgecoach.friendName';
 
@@ -159,6 +171,7 @@ function Lobby({ go, onExit }: { go: (h: string, replace?: boolean) => void; onE
   const [cubeId, setCubeId] = useState(CUBES[0]?.id ?? 'synergy');
   const [name, setName] = useState(readName);
   const [first, setFirst] = useState<'random' | '0' | '1'>('random');
+  const [record, setRecord] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const data = useCubeData(cubeId);
@@ -176,7 +189,7 @@ function Lobby({ go, onExit }: { go: (h: string, replace?: boolean) => void; onE
         return;
       }
       const info = cubeInfo(cubeId);
-      const c = await createRoom({ cubeId, cubeTitle: info?.title ?? cubeId, cards: names, name: clean, ...(first === 'random' ? {} : { firstSeat: Number(first) as 0 | 1 }) });
+      const c = await createRoom({ cubeId, cubeTitle: info?.title ?? cubeId, cards: names, name: clean, ...(first === 'random' ? {} : { firstSeat: Number(first) as 0 | 1 }), record });
       keepName(clean);
       const entry: SavedRoom = {
         id: c.id, base: ownerRoomBase(location, c.roomPort), token: c.token, seat: 0, cubeId, cubeTitle: info?.title ?? cubeId,
@@ -273,7 +286,13 @@ function Lobby({ go, onExit }: { go: (h: string, replace?: boolean) => void; onE
             <option value="1">My friend</option>
           </select>
         </label>
-        <p className="fr-small">18 grids of 9 cards, all face up. In each grid one of you takes a row or a column, the other takes a line from what is left, and the first pick alternates.</p>
+        <label className="fr-check">
+          <input type="checkbox" checked={record} onChange={(e) => setRecord(e.target.checked)} aria-label="Record our games by default" />
+          <span>
+            Record our games by default — for the human test set on this computer, and each player’s own engine review. Each of you can still turn your own seat off, game by game; nothing leaves this computer.
+          </span>
+        </label>
+        <p className="fr-small">18 grids of 9 cards, all face up. In each grid one of you takes a row or a column, the other takes a line from what is left, and the first pick alternates. Then a best of three with your decks, sideboarding between games.</p>
         {error && <p className="fr-error" role="alert">{error}</p>}
         <div className="fr-actions">
           <button className="btn-gold" disabled={busy || !names || !clean} onClick={() => void create()}>
@@ -361,6 +380,19 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
     void cubeHash(names).then((h) => setSameCube(h === state.cube.hash));
   }, [names, state?.cube.hash]); // eslint-disable-line react-hooks/exhaustive-deps
   const replay = useMemo(() => (state?.done && names ? replayMatches(state, names) : null), [state, names]);
+  // D407: this seat's own engine review of a finished game, opened over the room.
+  const [review, setReview] = useState<{ log: GameLog; report: unknown; title: string } | null>(null);
+  const [reviewNote, setReviewNote] = useState<string | null>(null);
+  const openReview = useCallback(
+    (matchId: string, n: number) => {
+      setReviewNote(null);
+      void loadFriendReview({ base: room.entry.base, id: room.entry.id, token: room.entry.token }, matchId, null).then((r) => {
+        if ('error' in r) setReviewNote(r.error);
+        else setReview({ log: r.log, report: r.report, title: `game ${n} with ${room.opponent}` });
+      });
+    },
+    [room.entry.base, room.entry.id, room.entry.token, room.opponent],
+  );
 
   // The draft is over: the pool goes to the deck assistant once, like a draft against the AI.
   useEffect(() => {
@@ -371,6 +403,13 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
     room.update({ poolId: pool.id });
   }, [state?.done]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  if (review) {
+    return (
+      <Suspense fallback={<div className="fx dr-wait"><span className="spinner spinner-lg" /></div>}>
+        <ReviewApp log={review.log} title={review.title} report={review.report} onClose={() => setReview(null)} closeLabel="Back to the room" onSettings={onSettings} />
+      </Suspense>
+    );
+  }
   if (link === 'gone' && !state) {
     return <Message title="This room is gone" text={note ?? 'The room expired, or this link is not right for it.'} onBack={() => go('#draft/friend')} />;
   }
@@ -482,11 +521,12 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
             Copy the list
           </button>
           <button className="btn-gold" onClick={() => go(roomHash(state.id, state.you, true))}>
-            {room.entry.deck ? 'Edit your deck' : 'Build your deck'}
+            {state.match && !state.match.over && (state.games ?? []).some((x) => x.match === state.match!.n) ? 'Sideboard: edit your deck' : room.entry.deck ? 'Edit your deck' : 'Build your deck'}
           </button>
         </div>
       </section>
-      <HandIn state={state} room={room} deckText={md} opponent={opponent} />
+      {reviewNote && <p className="fr-error" role="alert">{reviewNote}</p>}
+      <HandIn state={state} room={room} deckText={md} opponent={opponent} onOpenReview={openReview} />
     </div>
   );
 }
@@ -509,15 +549,37 @@ function deckLine(d: { ready: boolean; name: string | null; cards: number | null
   return 'not handed in yet';
 }
 
-function HandIn({ state, room, deckText: md, opponent }: { state: RoomState; room: ReturnType<typeof useFriendRoom>; deckText: ReturnType<typeof toMatchDeck>; opponent: string }) {
+/** D406: a finished game, as one line from this seat's side. */
+function playedLine(g: { winner: 0 | 1 | null; reason: string | null }, you: 0 | 1, opponent: string): string {
+  if (g.winner === null) return 'a draw — played again';
+  const how = g.reason === 'Conceded' ? ' (conceded)' : '';
+  return g.winner === you ? `you won${g.reason === 'Conceded' ? ` (${opponent} conceded)` : ''}` : `${opponent} won${how}`;
+}
+
+const REVIEW_WORDS: Record<string, string> = {
+  off: 'not recorded — no engine review',
+  waiting: 'your engine review: waiting to be queued',
+  queued: 'your engine review: queued (it runs when the room’s computer is idle)',
+  running: 'your engine review: running…',
+  done: 'your engine review is ready',
+  failed: 'your engine review failed',
+};
+
+function HandIn({ state, room, deckText: md, opponent, onOpenReview }: {
+  state: RoomState; room: ReturnType<typeof useFriendRoom>; deckText: ReturnType<typeof toMatchDeck>; opponent: string;
+  onOpenReview: (matchId: string, game: number) => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [problems, setProblems] = useState<string[] | null>(null);
+  const [saving, setSaving] = useState(false);
+  // The box follows the click at once; the room's answer (its state) settles it.
+  const [wantRecord, setWantRecord] = useState<boolean | null>(null);
   const client = useMemo(() => new RoomClient(room.entry.base, room.entry.id, room.entry.token), [room.entry.base, room.entry.id, room.entry.token]);
   const back = roomHash(state.id, state.you);
   const offered = tableFromRoom(room.entry.base, state, back);
   const kept = loadFriendTable();
-  // A game this browser saw end: its token is spent.
-  const spent = !!offered && !!kept && kept.url === offered.url && kept.over === true;
+  // A game this browser saw end, or one the room has scored: its token is spent.
+  const spent = !!offered && ((!!kept && kept.url === offered.url && kept.over === true) || !!state.game?.result);
   const table = spent ? null : offered;
   // Keep the seat for #play/friend the moment the room hands it over (a reload, the board, a dropped phone).
   useEffect(() => {
@@ -541,12 +603,20 @@ function HandIn({ state, room, deckText: md, opponent }: { state: RoomState; roo
       </section>
     );
   }
-  const mine = state.decks[state.you];
-  const theirs = state.decks[(1 - state.you) as 0 | 1];
+  const you = state.you;
+  const them = (1 - you) as 0 | 1;
+  const mine = state.decks[you];
+  const theirs = state.decks[them];
   const g = state.game ?? null;
+  const m = state.match ?? null;
+  const games = state.games ?? [];
+  const bo3 = state.match !== undefined;
   // While a game runs the room refuses a deck (409 "playing"); it says so, and the button stays for after it.
-  const playing = g?.state === 'starting';
+  const playing = g?.state === 'starting' || (g?.state === 'ready' && !g.result && !spent);
   const size = md.main.reduce((n, [k]) => n + k, 0);
+  const next = m?.next ?? { game: 1, chooser: null, newMatch: true };
+  const midMatch = !!m && !m.over && games.some((x) => x.match === m.n);
+  const record = state.record ?? null;
   const handIn = async () => {
     setBusy(true);
     setProblems(null);
@@ -561,36 +631,71 @@ function HandIn({ state, room, deckText: md, opponent }: { state: RoomState; roo
       setBusy(false);
     }
   };
+  const setRecord = async (v: boolean) => {
+    setWantRecord(v);
+    setSaving(true);
+    try {
+      room.take(await client.setRecord(v));
+    } catch (e) {
+      setProblems([e instanceof RoomError ? e.message : 'Your choice did not reach the room. Try again.']);
+    } finally {
+      setSaving(false);
+      setWantRecord(null);
+    }
+  };
+  const chooserWords = next.chooser === null ? (next.game === 1 ? 'A coin toss decides who chooses to play or draw.' : 'The last game was a draw: a coin toss decides who chooses to play or draw.')
+    : next.chooser === you ? `You lost the last game, so you choose to play or draw.` : `${opponent} lost the last game, so ${opponent} chooses to play or draw.`;
+  const handLabel = busy ? 'Handing in…' : mine.ready ? 'Hand in again (changed)'
+    : m?.over ? 'Hand in a deck for a new match'
+    : midMatch ? `Keep this deck for game ${next.game}`
+    : g?.state === 'ready' && !bo3 ? 'Hand in a deck for a rematch' : 'Hand in this deck';
   return (
     <section className="panel fr-panel" aria-label="Play the two decks">
-      <div className="fx-label">Play the two decks</div>
+      <div className="fx-label">{bo3 ? 'Best of three' : 'Play the two decks'}</div>
+      {m && (
+        <p className="fr-score" role="status" aria-label="Match score">
+          {m.over
+            ? m.winner === you ? `You won the match ${m.wins[you]} – ${m.wins[them]}.` : `${opponent} won the match ${m.wins[them]} – ${m.wins[you]}.`
+            : `Match ${m.n}: you ${m.wins[you]} – ${m.wins[them]} ${opponent}.`}
+        </p>
+      )}
       <p>
-        Hand your deck to the room: it is checked against your own picks (basic lands are free) and stays private — {opponent} sees its name and size, never the list. When both decks are in, the room starts a game between you on its computer’s Forge.
+        {midMatch
+          ? <>Game {next.game} next. Sideboard if you like — edit your deck above with any of your own picks and basic lands — or keep it; when both decks are in, the game starts. {chooserWords}</>
+          : <>Hand your deck to the room: it is checked against your own picks (basic lands are free) and stays private — {opponent} sees its name and size, never the list. When both decks are in, the room starts {bo3 ? 'game 1 of a best of three' : 'a game'} between you on its computer’s Forge.{bo3 ? ` Between games you may sideboard. ${chooserWords}` : ''}</>}
       </p>
       <ul className="fr-rooms">
         <li>
-          <span>You: {deckLine(mine, g?.state)}</span>
+          <span>You: {deckLine(mine, playing ? g?.state : undefined)}</span>
         </li>
         <li>
           <span>
-            {opponent}: {deckLine(theirs, g?.state)}
+            {opponent}: {deckLine(theirs, playing ? g?.state : undefined)}
           </span>
         </li>
       </ul>
+      {record && (
+        <label className="fr-check">
+          <input type="checkbox" checked={wantRecord ?? record.you} disabled={saving} onChange={(e) => void setRecord(e.target.checked)} aria-label="Record my seat of the next game" />
+          <span>
+            Record my seat of {playing ? 'the following' : `game ${next.game}`} — for the human test set on the room’s computer, and my own engine review (only I see it). {record.default ? 'The room records by default.' : 'The room does not record by default.'} Nothing leaves that computer.
+          </span>
+        </label>
+      )}
       {g?.state === 'starting' && (
         <p role="status">
-          <span className="spinner spinner-sm" /> Starting game {g.n} on the room’s computer… (10–30 seconds)
+          <span className="spinner spinner-sm" /> Starting game {g.game ?? g.n} on the room’s computer… (10–30 seconds)
         </p>
       )}
-      {spent && <p className="fr-small">Game {g!.n} is over. For a rematch, both of you hand in a deck again — the same or changed.</p>}
+      {spent && !bo3 && <p className="fr-small">Game {g!.n} is over. For a rematch, both of you hand in a deck again — the same or changed.</p>}
       {(g?.state === 'failed' || g?.state === 'unavailable') && (
         <p className="fr-error" role="alert">
-          Game {g.n} did not start: {g.error ?? 'the engine did not start'}. Hand in both decks again to retry.
+          Game {g.game ?? g.n} {g.error && /without a result/.test(g.error) ? 'ended without a result' : 'did not start'}: {g.error ?? 'the engine did not start'}. Hand in both decks again to {g.error && /without a result/.test(g.error) ? 'play it again' : 'retry'}.
         </p>
       )}
       {problems && (
         <div className="fr-error" role="alert">
-          <p>The room refused this deck:</p>
+          <p>The room refused this:</p>
           <ul>
             {problems.slice(0, 8).map((p) => (
               <li key={p}>{p}</li>
@@ -601,17 +706,39 @@ function HandIn({ state, room, deckText: md, opponent }: { state: RoomState; roo
       <div className="fr-actions">
         {table && (
           <button className="btn-gold" onClick={() => (location.hash = FRIEND_TABLE_HASH)}>
-            Take your seat — game {g!.n}
+            Take your seat — game {g!.game ?? g!.n}
           </button>
         )}
         {!playing && (
           <button className={table ? 'btn-line' : 'btn-gold'} disabled={busy || size < 40} onClick={() => void handIn()} title={size < 40 ? 'A deck has at least 40 cards' : undefined}>
-            {busy ? 'Handing in…' : mine.ready ? 'Hand in again (changed)' : g?.state === 'ready' ? 'Hand in a deck for a rematch' : 'Hand in this deck'}
+            {handLabel}
           </button>
         )}
       </div>
       {size < 40 && !playing && <p className="fr-small">Your main deck has {size} cards; a deck needs at least 40.</p>}
       {table && <p className="fr-small">The seat is yours alone: it opens with a token the room gave this browser for this game. If you lose the connection, take your seat again — {opponent} waits, and may claim the win after two minutes.</p>}
+      {games.length > 0 && (
+        <>
+          <div className="fx-label">Games</div>
+          <ul className="fr-rooms fr-games" aria-label="Games played">
+            {games.map((x) => (
+              <li key={x.matchId}>
+                <span>
+                  {games.some((y) => y.match !== x.match) ? `Match ${x.match} · ` : ''}Game {x.game}: {playedLine(x, you, opponent)} · <span className="fr-small">{REVIEW_WORDS[x.review] ?? x.review}</span>
+                </span>
+                {x.review === 'done' && (
+                  <span className="fr-room-btns">
+                    <button className="btn-line" onClick={() => onOpenReview(x.matchId, x.game)}>
+                      Open your review
+                    </button>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="fr-small">Your engine review is built from your own seat of the game and only you see it; {opponent} never does, and you never see theirs.</p>
+        </>
+      )}
     </section>
   );
 }

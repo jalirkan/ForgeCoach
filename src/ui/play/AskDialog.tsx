@@ -16,7 +16,7 @@
  * Labels are the engine's and are printed verbatim (a concealed card's option
  * is "???"; its name is never looked up).
  */
-import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { AnswerValue, AnyCard, AskBody, AskOption, Card, GameStateBody, InputBody } from '../../protocol.ts';
 import { isHidden } from '../../protocol.ts';
@@ -69,11 +69,25 @@ export interface AskDialogProps {
   onAnswer: (value: AnswerValue) => void;
   /** Open the card detail for a card id (option cards, revealed cards). */
   onPreviewCard?: (cardId: number) => void;
+  /** Ask to concede the game (the board's confirmation); shown in the question's head when given. */
+  onConcede?: (() => void) | null;
 }
 
-export function AskDialog(props: AskDialogProps) {
+/**
+ * The board's Concede, offered inside an engine question too: the question is
+ * modal, so a keyboard or screen-reader player could not otherwise reach the
+ * board's own button while it is open (the top bar is lifted above the scrim
+ * for a pointer, ask.css).
+ */
+const ConcedeContext = createContext<(() => void) | null>(null);
+
+export function AskDialog({ onConcede = null, ...props }: AskDialogProps) {
   // Remount per askId: a new question never inherits the last one's draft.
-  return <AskDialogInner key={props.ask.askId} {...props} />;
+  return (
+    <ConcedeContext.Provider value={onConcede}>
+      <AskDialogInner key={props.ask.askId} {...props} />
+    </ConcedeContext.Provider>
+  );
 }
 
 export interface OpeningDialogProps {
@@ -85,6 +99,8 @@ export interface OpeningDialogProps {
   /** Answer with the engine's OK (`buttonOk`) or Cancel (`buttonCancel`) button. */
   onChoose: (button: 'ok' | 'cancel') => void;
   onPreviewCard?: (cardId: number) => void;
+  /** Ask to concede the game, as {@link AskDialogProps.onConcede}. */
+  onConcede?: (() => void) | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,6 +128,7 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
   const [minimized, setMinimized] = useState(false);
   const [started] = useState(() => Date.now());
   const box = useRef<HTMLElement>(null);
+  const concede = useContext(ConcedeContext);
   const enter = useRef(onEnter);
   enter.current = onEnter;
 
@@ -205,6 +222,11 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
             </h2>
             {detail && <div className="ask-detail">{detail}</div>}
           </div>
+          {concede && (
+            <button type="button" className="btn btn-quiet btn-sm ask-concede" onClick={concede} title="Concede this game (you are asked to confirm)">
+              Concede…
+            </button>
+          )}
           <button type="button" className="icon-btn ask-min" onClick={() => setMinimized(true)} title="Peek at the board (Esc)" aria-label="Minimise to see the board">
             <IconChevronDown size={18} />
           </button>
@@ -1298,7 +1320,15 @@ function handOf(state: GameStateBody | null, seat: number | null | undefined): C
   return (p?.zones.hand.cards ?? []).filter((c): c is Card => !isHidden(c));
 }
 
-export function OpeningDialog({ input, state, seat, onChoose, onPreviewCard }: OpeningDialogProps) {
+export function OpeningDialog({ onConcede = null, ...props }: OpeningDialogProps) {
+  return (
+    <ConcedeContext.Provider value={onConcede}>
+      <OpeningDialogInner {...props} />
+    </ConcedeContext.Provider>
+  );
+}
+
+function OpeningDialogInner({ input, state, seat, onChoose, onPreviewCard }: OpeningDialogProps) {
   const kind = openingKind(input, state);
   const hand = useMemo(() => handOf(state, seat), [state, seat]);
   const [sent, setSent] = useState(false);

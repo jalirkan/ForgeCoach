@@ -211,7 +211,10 @@ describe('the friend table this browser holds (friendTable)', () => {
 
   it('a ready game with this seat’s token is a table; anything else is not', () => {
     const t = tableFromRoom('http://192.168.1.20:8644', room({ n: 2, state: 'ready', tablePort: 8646, token: TOKEN }), '#draft/friend/r/rAbCdEfGh/1', 5);
-    expect(t).toEqual({ room: 'rAbCdEfGh', seat: 1, game: 2, url: TABLE_URL, opponent: 'Ana', back: '#draft/friend/r/rAbCdEfGh/1', savedAt: 5 });
+    expect(t).toEqual({ room: 'rAbCdEfGh', seat: 1, game: 2, url: TABLE_URL, opponent: 'Ana', back: '#draft/friend/r/rAbCdEfGh/1', savedAt: 5, matchId: null, gameNo: null });
+    // mtg-table D406: a room server that runs a best of three says the game's match id and its number in the match.
+    const t3 = tableFromRoom('http://192.168.1.20:8644', room({ n: 4, state: 'ready', tablePort: 8646, token: TOKEN, matchId: 'm1791307365620', game: 2 }), '#x', 5);
+    expect([t3?.matchId, t3?.gameNo, t3?.game]).toEqual(['m1791307365620', 2, 4]);
     expect(tableFromRoom('http://h:8644', room({ n: 1, state: 'starting', tablePort: null, token: null }), '#x')).toBeNull();
     expect(tableFromRoom('http://h:8644', room({ n: 1, state: 'ready', tablePort: 8646, token: null }), '#x')).toBeNull();
     expect(tableFromRoom('https://play.example.com', room({ n: 1, state: 'ready', tablePort: 8646, token: TOKEN }), '#x')?.url).toBe(`wss://play.example.com/ws?seat=${TOKEN}`);

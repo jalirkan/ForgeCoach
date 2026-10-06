@@ -39,6 +39,9 @@ export interface FriendTable {
   savedAt: number;
   /** This browser saw the game end: the token is spent, the room screen offers no seat for it. */
   over?: boolean;
+  /** mtg-table D406/D407: the game's match id (its review and its log in the room), and its number in the match. */
+  matchId?: string | null;
+  gameNo?: number | null;
 }
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -71,6 +74,8 @@ export function loadFriendTable(s?: KV | null): FriendTable | null {
       back: isStr(o.back) && o.back.startsWith('#draft/friend') ? o.back : '#draft/friend',
       savedAt: typeof o.savedAt === 'number' ? o.savedAt : 0,
       ...(o.over === true ? { over: true } : {}),
+      matchId: isStr(o.matchId) && /^m[0-9]{13}$/.test(o.matchId) ? o.matchId : null,
+      gameNo: Number.isInteger(o.gameNo) ? o.gameNo! : null,
     };
   } catch {
     return null;
@@ -105,7 +110,7 @@ export function clearFriendTable(s?: KV | null): void {
  */
 export function tableFromRoom(
   roomBase: string,
-  room: { id: string; you: 0 | 1; seats: Array<{ name: string }>; game?: { n: number; state: string; tablePort: number | null; token?: string | null } | null },
+  room: { id: string; you: 0 | 1; seats: Array<{ name: string }>; game?: { n: number; state: string; tablePort: number | null; token?: string | null; matchId?: string | null; game?: number | null } | null },
   back: string,
   now = Date.now(),
 ): FriendTable | null {
@@ -113,7 +118,8 @@ export function tableFromRoom(
   if (!g || g.state !== 'ready' || !g.token) return null;
   const url = tableSeatUrl(roomBase, g.token);
   if (!url) return null;
-  return { room: room.id, seat: room.you, game: g.n, url, opponent: room.seats[1 - room.you]?.name || 'your friend', back, savedAt: now };
+  return { room: room.id, seat: room.you, game: g.n, url, opponent: room.seats[1 - room.you]?.name || 'your friend', back, savedAt: now,
+    matchId: g.matchId ?? null, gameNo: g.game ?? null };
 }
 
 /** The room listeners this browser holds a seat on (their `base`), for telling a room page from the bridge's. */
