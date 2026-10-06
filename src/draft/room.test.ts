@@ -13,6 +13,7 @@ import { apply, legalLines, newDraft, toAct, type GridDraft } from './draft.ts';
 import {
   cleanName, createRoom, cubeHash, forgetRoom, friendLinks, joinLink, lastOpponentEvent, loadRooms, ownerRoomBase, parseCreated, parseJoinHash,
   parseRoomState, replayMatches, RoomClient, RoomError, roomSupport, saveRoom, sseParser, toGridDraft, type RoomState, type SavedRoom,
+  closeRoom, newFriendLink, reconnectNote, SIGNIN_AFTER, SIGNIN_EXPIRED, SIGNIN_REDIRECT,
 } from './room.ts';
 
 interface GoldenCase {
@@ -124,7 +125,9 @@ const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { sta
 describe('the calls', () => {
   it('roomSupport reads /health', async () => {
     const on = fakeFetch(() => json({ ok: true, draftRoom: 1, roomPort: 8644 }));
-    expect(await roomSupport({ fetch: on.f, target: { baseUrl: 'http://127.0.0.1:8643', token: null } })).toEqual({ on: true, roomPort: 8644 });
+    expect(await roomSupport({ fetch: on.f, target: { baseUrl: 'http://127.0.0.1:8643', token: null } })).toEqual({ on: true, roomPort: 8644, revoke: false });
+    const rv = fakeFetch(() => json({ ok: true, draftRoom: 1, roomPort: 8644, roomRevoke: 1 }));
+    expect((await roomSupport({ fetch: rv.f, target: { baseUrl: 'http://127.0.0.1:8643', token: null } })).revoke).toBe(true);
     const off = fakeFetch(() => json({ ok: true }));
     expect((await roomSupport({ fetch: off.f, target: { baseUrl: 'http://127.0.0.1:8643', token: null } })).on).toBe(false);
     const down = fakeFetch(() => Promise.reject(new Error('refused')));
@@ -421,5 +424,76 @@ describe('the friend’s name in place of the AI', () => {
     expect(fr.user).toContain("## Sam's picks (3, all face up)");
     expect(fr.user).not.toMatch(/the AI/);
     for (const n of d.picks.ai) expect(fr.user).toContain(n);
+  });
+});
+
+describe('revoking, the owner only (mtg-table D408)', () => {
+  const target = { baseUrl: 'http://127.0.0.1:8643', token: null };
+  function streamResponse(chunks: string[], end = true): Response {
+    const enc = new TextEncoder();
+    let i = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(ctrl) {
+        if (i < chunks.length) ctrl.enqueue(enc.encode(chunks[i++]!));
+        else if (end) ctrl.close();
+      },
+    });
+    return new Response(body, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  }
+  const timers = () => {
+    const pending: Array<{ f: () => void; ms: number }> = [];
+    return { pending, t: { setTimeout: (f: () => void, ms: number) => { pending.push({ f, ms }); return pending.length; }, clearTimeout: () => {} } };
+  };
+  it('closeRoom and newFriendLink post to the coach helper, never the room port; the new links come from the answer', async () => {
+    const ff = fakeFetch((url) => url.endsWith('/close')
+      ? json({ ok: true, id: 'rAbcdEFG1', closed: true })
+      : json({ ok: true, id: 'rAbcdEFG1', seat: 1, friendToken: 'c'.repeat(22), roomPort: 8644, bases: { local: 'http://127.0.0.1:8644', lan: [], public: 'https://play.example.com' } }));
+    const links = await newFriendLink('rAbcdEFG1', { fetch: ff.f, target });
+    expect(links.map((l) => l.label)).toEqual(['Over the internet', 'On this computer (another browser)']);
+    expect(links[0]!.url).toBe(`https://play.example.com/#draft/friend/join?room=rAbcdEFG1&t=${'c'.repeat(22)}`);
+    await closeRoom('rAbcdEFG1', { fetch: ff.f, target });
+    expect(ff.calls.map((c) => [c.url, c.init.method])).toEqual([
+      ['http://127.0.0.1:8643/room/rAbcdEFG1/friend-link', 'POST'], ['http://127.0.0.1:8643/room/rAbcdEFG1/close', 'POST']]);
+  });
+  it('a gone room, an old helper, no helper and a bad answer are each told apart', async () => {
+    await expect(closeRoom('rAbcdEFG1', { fetch: fakeFetch(() => json({ ok: false, code: 'gone', message: 'no such room' }, 404)).f, target })).rejects.toMatchObject({ code: 'gone' });
+    await expect(closeRoom('rAbcdEFG1', { fetch: fakeFetch(() => json({ type: 'error', message: 'not found' }, 404)).f, target })).rejects.toMatchObject({ code: 'off' });
+    await expect(newFriendLink('rAbcdEFG1', { fetch: fakeFetch(() => Promise.reject(new Error('x'))).f, target })).rejects.toMatchObject({ code: 'offline' });
+    await expect(newFriendLink('rAbcdEFG1', { fetch: fakeFetch(() => json({ ok: true, id: 'rAbcdEFG1', friendToken: 'bad' })).f, target })).rejects.toMatchObject({ code: 'bad' });
+    await expect(closeRoom('../x', { fetch: fakeFetch(() => json({})).f, target })).rejects.toMatchObject({ code: 'bad' });
+  });
+  it('a stream whose link was replaced is gone, and says why; one the owner closed says so', async () => {
+    const s1 = stateOf(fresh(), 1, 1);
+    for (const [ev, want] of [['revoked', /new link for this seat/], ['gone', /owner closed it/]] as const) {
+      const st: string[] = [];
+      const tt = timers();
+      new RoomClient('http://h:8644', 'rAbcdEFG1', 'a'.repeat(22), fakeFetch(() => streamResponse([`event: state\ndata: ${JSON.stringify(s1)}\n\n`, `event: ${ev}\ndata: {}\n\n`])).f)
+        .stream(() => {}, (x, why) => st.push(`${x}:${why ?? ''}`), tt.t);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(st.at(-1)).toMatch(want);
+      expect(st.at(-1)).toMatch(/^gone:/);
+      expect(tt.pending).toEqual([]);
+    }
+  });
+  it('behind a tunnel: a sign-in redirect or Cloudflare\'s own 403 is retried, never "gone"; the note says reload', async () => {
+    const ff = fakeFetch((_u, init) => {
+      expect(init.redirect).toBe('manual');
+      return new Response(null, { status: 302, headers: { Location: 'https://team.cloudflareaccess.com/cdn-cgi/access/login' } });
+    });
+    const st: string[] = [];
+    const tt = timers();
+    new RoomClient('https://play.example.com', 'rAbcdEFG1', 'a'.repeat(22), ff.f).stream(() => {}, (x, why) => st.push(`${x}:${why}`), tt.t);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(st).toEqual([`reconnecting:${SIGNIN_REDIRECT}`]);
+    const cf = fakeFetch(() => new Response('<html>Forbidden', { status: 403, headers: { 'Content-Type': 'text/html' } }));
+    const st2: string[] = [];
+    new RoomClient('https://play.example.com', 'rAbcdEFG1', 'a'.repeat(22), cf.f).stream(() => {}, (x, why) => st2.push(`${x}:${why}`), timers().t);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(st2).toEqual(['reconnecting:HTTP 403']);
+    expect(reconnectNote(true, 1, SIGNIN_REDIRECT)).toBe(SIGNIN_EXPIRED);
+    expect(reconnectNote(true, SIGNIN_AFTER - 1, 'offline')).toBe('offline');
+    expect(reconnectNote(true, SIGNIN_AFTER, 'offline')).toBe(SIGNIN_EXPIRED);
+    expect(reconnectNote(false, 10, 'offline')).toBe('offline');
+    expect(SIGNIN_EXPIRED).toMatch(/^Reload .*Cloudflare sign-in may have expired/);
   });
 });

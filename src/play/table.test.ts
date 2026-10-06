@@ -20,7 +20,7 @@ import { AI_OPPONENT_PHRASE, HUMAN_OPPONENT_PHRASE, systemFor } from '../opponen
 import { seatDisplayName } from './aiName.ts';
 import * as A from './acts.ts';
 import { connectSeat, REPLACED_DETAIL, SEAT_REPLACED_CLOSE_CODE, TABLE_UNREACHABLE_DETAIL, type SeatSocket } from './session.ts';
-import { DEFAULT_SEAT_URL, defaultSeatUrl, redactSeatUrl, servedByEngine, servedByRoom, tableSeatUrl } from './seatUrl.ts';
+import { DEFAULT_SEAT_URL, defaultSeatUrl, redactSeatUrl, servedByEngine, servedByRoom, servedByTunnel, tableSeatUrl } from './seatUrl.ts';
 import { clock, LOW_CLOCK_MS, tableLines } from './tableView.ts';
 import { FRIEND_ROOMS_KEY, FRIEND_TABLE_KEY, loadFriendTable, saveFriendTable, savedRoomBases, tableFromRoom } from './friendTable.ts';
 
@@ -167,11 +167,22 @@ describe('room page vs bridge page (seatUrl)', () => {
     expect(servedByEngine(room)).toBe(false);
     expect(defaultSeatUrl(room)).toBe(DEFAULT_SEAT_URL);
   });
-  it('a room on another port (or behind a tunnel) is known by the rooms this browser holds a seat in', () => {
-    const loc = { protocol: 'https:', host: 'room.example.net', search: '' };
+  it('a room on another port is known by the rooms this browser holds a seat in', () => {
+    const loc = { protocol: 'http:', host: 'room.example.net:9644', search: '' };
     expect(servedByEngine(loc)).toBe(true);
-    expect(servedByEngine(loc, ['https://room.example.net/'])).toBe(false);
-    expect(servedByRoom(loc, ['https://other.example.net'])).toBe(false);
+    expect(servedByEngine(loc, ['http://room.example.net:9644/'])).toBe(false);
+    expect(servedByRoom(loc, ['http://other.example.net:9644'])).toBe(false);
+  });
+  it('a tunnel page (https, not GitHub Pages, not loopback) is the room from its first load, never the bridge (mtg-table D408)', () => {
+    const loc = { protocol: 'https:', host: 'room.example.net', search: '' };
+    expect(servedByTunnel(loc)).toBe(true);
+    expect(servedByRoom(loc)).toBe(true);
+    expect(servedByEngine(loc)).toBe(false);
+    expect(defaultSeatUrl(loc)).toBe(DEFAULT_SEAT_URL);
+    for (const host of ['jalirkan.github.io', 'localhost:5173', '127.0.0.1:8644', 'localhost', 'x.localhost', '[::1]:8643', 'intranet']) {
+      expect(servedByTunnel({ protocol: 'https:', host }), host).toBe(false);
+    }
+    expect(servedByTunnel({ protocol: 'http:', host: 'room.example.net' })).toBe(false);
   });
   it('the bridge on its own port is still the bridge', () => {
     const loc = { protocol: 'http:', host: '192.168.1.20:8642', search: '?token=x' };

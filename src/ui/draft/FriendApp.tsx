@@ -49,6 +49,7 @@ import { IconChevronLeft } from '../Icons.tsx';
 import { SettingsDialog } from '../SettingsDialog.tsx';
 import { DeckEditor } from './DeckEditor.tsx';
 import { PickScreen } from './PickScreen.tsx';
+import { RoomOwnerControls } from './RoomOwnerControls.tsx';
 import { startingDeck, useFriendRoom } from './useFriendRoom.ts';
 import { loadFriendReview } from '../play/useFriendReview.ts';
 import type { GameLog } from '../../log.ts';
@@ -245,6 +246,16 @@ function Lobby({ go, onExit }: { go: (h: string, replace?: boolean) => void; onE
                     Open
                   </button>
                 </span>
+                {/* mtg-table D408: the owner's revokes, for a room this browser made. */}
+                <RoomOwnerControls
+                  entry={r}
+                  onLinks={(friendLinks) => saveRoom({ ...r, friendLinks, savedAt: Date.now() })}
+                  onClosed={() => {
+                    forgetRoom(r.id);
+                    setRooms(loadRooms());
+                  }}
+                  showLinks={(links) => links.map((l) => <CopyLink key={l.url} label={l.label} url={l.url} />)}
+                />
               </li>
             ))}
           </ul>
@@ -428,15 +439,29 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
           <p className="fr-lede">Send your friend one of these links. It opens the draft in their browser; they type a name and join. The draft starts as soon as they are in.</p>
         </div>
         <section className="panel fr-panel">
-          {(entry.friendLinks ?? []).length ? (
-            entry.friendLinks!.map((l) => <CopyLink key={l.url} label={l.label} url={l.url} />)
+          {(room.entry.friendLinks ?? []).length ? (
+            room.entry.friendLinks!.map((l) => <CopyLink key={l.url} label={l.label} url={l.url} />)
           ) : (
             <p>This browser did not make the room, so it has no link for the other seat.</p>
           )}
-          {entry.friendLinks && !entry.friendLinks.some((l) => l.label === 'On your Wi-Fi') && (
+          {room.entry.friendLinks && !room.entry.friendLinks.some((l) => l.label === 'On your Wi-Fi' || l.label === 'Over the internet') && (
             <p className="fr-small">No Wi-Fi link: the draft room answers this computer only. For a friend on your network, restart it with ./scripts/play.sh --engine-only --lan --draft-room.</p>
           )}
+          {room.entry.friendLinks?.some((l) => l.label === 'Over the internet') && (
+            <p className="fr-small">
+              Over the internet, in two steps: first send your friend just the address ({new URL(room.entry.friendLinks.find((l) => l.label === 'Over the internet')!.url).origin}/) so they sign in with
+              Cloudflare (their email, then the PIN it sends). Then send the link, to open in the same browser — the sign-in drops everything after the #.
+            </p>
+          )}
           <p className="fr-small">Anyone with the link can take that seat, so send it to your friend only. The room expires a day after its last pick.</p>
+          <RoomOwnerControls
+            entry={room.entry}
+            onLinks={(friendLinks) => room.update({ friendLinks })}
+            onClosed={() => {
+              forgetRoom(room.entry.id);
+              go('#draft/friend');
+            }}
+          />
           {linkNote && <p className="fr-error">{linkNote}</p>}
         </section>
       </div>

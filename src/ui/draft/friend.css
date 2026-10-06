@@ -114,3 +114,9 @@
 .aibanner.is-friend .aibanner-mark {
   font-weight: 700;
 }
+/* mtg-table D408: the owner's revokes under a room. */
+.fr-owner {
+  flex-basis: 100%;
+  display: grid;
+  gap: 6px;
+}

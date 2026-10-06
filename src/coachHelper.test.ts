@@ -12,6 +12,7 @@ import {
   helperThinking,
   peekHelper,
   TOKEN_HEADER,
+  tunnelCoachMessage,
   type HelperStatus,
   type HelperTarget,
 } from './coachHelper.ts';
@@ -98,6 +99,11 @@ describe('helperTarget', () => {
     expect(helperPortFromSearch('?token=x')).toBeNull();
     expect(helperPortFromSearch('?coachPort=65536')).toBeNull();
   });
+  it('a tunnel page (mtg-table D408) never probes the tunnel host: only the visitor’s own helper, no token', () => {
+    expect(helperTarget(loc('https:', 'play.example.com', '?token=x&coachPort=8653'))).toEqual({ baseUrl: 'http://127.0.0.1:8643', token: null, tunnel: true });
+    expect(helperTarget(loc('https:', 'play.example.com'), 'stored').token).toBeNull();
+    expect(helperTarget(loc('http:', '192.168.1.20:8642')).tunnel).toBeUndefined();
+  });
   it('?coach= overrides the base URL', () => {
     expect(helperTarget(loc('http:', 'localhost:5173', '?coach=http://127.0.0.1:8653/'))).toEqual({ baseUrl: 'http://127.0.0.1:8653', token: null });
     expect(helperTarget(loc('http:', 'localhost:5173', '?coach=javascript:alert(1)')).baseUrl).toBe('http://127.0.0.1:8643');
@@ -134,6 +140,19 @@ describe('detectHelper', () => {
   it('reports not running when nothing answers', async () => {
     const { f } = fakeFetch(() => Promise.reject(new TypeError('Failed to fetch')));
     expect(await detectHelper({ fetch: f, target })).toMatchObject({ state: 'down', reason: 'not_running' });
+  });
+
+  it('on a tunnel page, a missing or refusing helper is explained for the friend: their own key or their own helper', async () => {
+    const tunnelTarget = { baseUrl: 'http://127.0.0.1:8643', token: null, tunnel: true as const };
+    const none = await detectHelper({ fetch: fakeFetch(() => Promise.reject(new TypeError('Failed to fetch'))).f, target: tunnelTarget, force: true });
+    expect(none).toMatchObject({ state: 'down', reason: 'not_running' });
+    expect(none.state === 'down' && none.message).toMatch(/Cloudflare tunnel.*own Anthropic API key in Settings.*own mtg-table coach helper/);
+    const refused = await detectHelper({ fetch: fakeFetch(() => json({ type: 'error', message: 'origin not allowed' }, 403)).f, target: tunnelTarget, force: true });
+    expect(refused).toMatchObject({ state: 'down', reason: 'unauthorized' });
+    expect(refused.state === 'down' && refused.message).toMatch(/wsAllowedOrigins/);
+    const ready = await detectHelper({ fetch: fakeFetch(() => json({ ok: true, helper: 1, claude: '2.1.7', models: [] })).f, target: tunnelTarget, force: true });
+    expect(ready.state).toBe('ok');
+    expect(tunnelCoachMessage('play.example.com')).toContain('https://play.example.com');
   });
 
   it('gives up after the timeout', async () => {
