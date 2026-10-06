@@ -28,8 +28,15 @@
  *    furthest from 50% (`colourSkew`), computed from the meta, never fixed.
  *  - "Small sample" is said only for cards with fewer than SMALL_SAMPLE_GAMES
  *    games (`smallSampleNote`).
+ *  - Lab strength (the matchup model, card-power.json): points per copy with a
+ *    95% interval from the posterior SD; strong (weak) only when the interval is
+ *    clear of 0 (`powerVerdict`). A card Forge's AI never builds is "not rated",
+ *    never given a number (`powerRow`); lands get no row.
  */
 import type { CubeMeta, MetaCardStats } from '../cube/meta.ts';
+import { nightsLabel, pointsLine, signed, type CardPowerData } from '../cube/cardPower.ts';
+
+export { pointsLine, signed };
 import { wilson } from '../bench/benchStats.ts';
 
 /** Fields the panel would use if the lab's meta.json carried them (schema-1 additions; see the PR). */
@@ -264,4 +271,58 @@ export function winLine(r: Rate): string {
 
 export function baselineLine(b: ColourBaseline): string {
   return `${b.colour} decks ${pc(b.p)} over ${fmt(b.games)} game${b.games === 1 ? '' : 's'}`;
+}
+
+// ---------------------------------------------------------------------------
+// The matchup model's card strength (cube/cardPower.ts, mtg-table J062 M0)
+
+/** One card's lab strength for the panel: points per copy with a 95% interval, or why there is none. */
+export interface PowerView {
+  /** Win-rate points per copy at even odds, against the average nonland card. */
+  points: number;
+  lo: number;
+  hi: number;
+  games: number;
+  verdict: LabVerdict;
+  /** Forge's AI builds it only sometimes (AI:RemoveDeck:Random): rated, with a note. */
+  random: boolean;
+}
+
+export type PowerRow = { kind: 'rated'; view: PowerView } | { kind: 'unrated' } | null;
+
+/** Strong / weak only when the 95% interval of the points excludes 0. */
+export function powerVerdict(lo: number, hi: number): LabVerdict {
+  if (lo > 0) return 'strong';
+  if (hi < 0) return 'weak';
+  return 'unclear';
+}
+
+/**
+ * The panel's lab-strength row for a card: rated (points, 95% interval, verdict),
+ * unrated (Forge's AI never builds it: the model's number is only its feature
+ * prior, never shown), or null (no data, or a land: power is measured against
+ * the average nonland card).
+ */
+export function powerRow(data: CardPowerData | null, name: string, land: boolean): PowerRow {
+  const c = data?.cards.get(name);
+  if (!data || !c || land || c.land) return null;
+  if (c.unrated || c.power === null || c.sd === null) return { kind: 'unrated' };
+  const k = data.pointsPerLogit;
+  const lo = k * (c.power - 1.96 * c.sd);
+  const hi = k * (c.power + 1.96 * c.sd);
+  return { kind: 'rated', view: { points: k * c.power, lo, hi, games: c.games, verdict: powerVerdict(lo, hi), random: c.ai === 'random' } };
+}
+
+export const POWER_VERDICT_WORDS: Record<LabVerdict, string> = {
+  strong: 'stronger than the average card: the interval is above 0',
+  weak: 'weaker than the average card: the interval is below 0',
+  unclear: 'not shown stronger or weaker: the interval includes 0',
+};
+
+export const UNRATED_WORDS = 'Not rated: Forge’s AI never builds this card (AI:RemoveDeck:All), so the lab has no games of it to rate.';
+export const RANDOM_WORDS = 'Forge’s AI builds it only some of the time (AI:RemoveDeck:Random).';
+
+/** The panel's footnote for the lab-strength row. */
+export function powerNote(data: CardPowerData): string {
+  return `Lab strength = the lab’s matchup model (${data.source.job}, ${nightsLabel(data)}, ${fmt(data.source.games)} games): a card’s own effect per copy on its deck’s win chance, in win-rate points at even odds against the average nonland card of the lab’s cubes, with a 95% interval. It credits the card, not the deck it sat in, so it predicts held-out games better than the win rates above.`;
 }
