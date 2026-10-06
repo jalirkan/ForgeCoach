@@ -328,7 +328,10 @@ export function ownerRoomBase(loc: PageLoc, roomPort: number): string {
   return `http://127.0.0.1:${roomPort}`;
 }
 
-/** The friend's links, best first: the LAN addresses, a public URL, then this machine. */
+/**
+ * The friend's links, best first: the LAN addresses, a public URL, then this machine.
+ * A public URL is a Cloudflare tunnel (D408) or Tailscale Funnel (D409, `*.ts.net`): both "Over the internet".
+ */
 export function friendLinks(c: Pick<CreatedRoom, 'bases' | 'id' | 'friendToken'>): Array<{ label: string; url: string }> {
   const out: Array<{ label: string; url: string }> = [];
   for (const b of c.bases.lan) out.push({ label: 'On your Wi-Fi', url: joinLink(b, c.id, c.friendToken) });
@@ -466,16 +469,20 @@ export async function newFriendLink(id: string, opts: { fetch?: FetchLike; targe
 export const SIGNIN_REDIRECT = 'a sign-in redirect';
 /** What a tunnel page says once its stream keeps failing: Access's session has most likely run out. */
 export const SIGNIN_EXPIRED = 'Reload this page — your Cloudflare sign-in may have expired. The room has kept every pick.';
+/** What a Tailscale Funnel page (mtg-table D409: no sign-in) says once its stream keeps failing. */
+export const FUNNEL_LOST = 'Reload this page — the connection to the room keeps dropping (is the room’s owner still running it?). The room has kept every pick.';
 /** Failed reconnects in a row on a tunnel page before SIGNIN_EXPIRED is shown. */
 export const SIGNIN_AFTER = 3;
 
 /**
  * The note for a room stream that is reconnecting: on a tunnel page, a
- * sign-in redirect, or SIGNIN_AFTER failures in a row, say "reload"; else
- * the reason as it is.
+ * sign-in redirect, or SIGNIN_AFTER failures in a row, say "reload" (on a
+ * Tailscale Funnel page, `funnel`, without blaming a sign-in it does not
+ * have); else the reason as it is.
  */
-export function reconnectNote(tunnel: boolean, failures: number, why: string | null): string | null {
-  if (tunnel && (why === SIGNIN_REDIRECT || failures >= SIGNIN_AFTER)) return SIGNIN_EXPIRED;
+export function reconnectNote(tunnel: boolean, failures: number, why: string | null, funnel = false): string | null {
+  if (tunnel && funnel && failures >= SIGNIN_AFTER) return FUNNEL_LOST;
+  if (tunnel && !funnel && (why === SIGNIN_REDIRECT || failures >= SIGNIN_AFTER)) return SIGNIN_EXPIRED;
   return why;
 }
 

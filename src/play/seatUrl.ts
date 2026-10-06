@@ -22,7 +22,9 @@
  * Pages, a dev server nor loopback came through a tunnel — and a tunnel
  * carries only the draft room (mtg-table docs/cloudflare.md). Such a page is
  * the room's, never the engine's, from its very first load (before this
- * browser holds a seat there).
+ * browser holds a seat there). Tailscale Funnel (mtg-table D409,
+ * `https://<machine>.<tailnet>.ts.net`) is the same kind of page, without a
+ * sign-in (`isFunnelHost`).
  */
 
 export const DEFAULT_SEAT_URL = 'ws://127.0.0.1:8642/ws';
@@ -64,6 +66,15 @@ export function servedByTunnel(loc: Pick<PageLocation, 'protocol' | 'host'>): bo
   if (name === 'jalirkan.github.io' || name.endsWith('.github.io')) return false;
   if (DEV_PORTS.has(port) || isLoopbackName(name)) return false;
   return name.includes('.');
+}
+
+/**
+ * True for a Tailscale Funnel name (mtg-table D409): `<machine>.<tailnet>.ts.net`.
+ * Funnel has no sign-in in front of it, so a page there never needs Cloudflare's
+ * "your sign-in may have expired" advice; it is a tunnel page all the same.
+ */
+export function isFunnelHost(host: string): boolean {
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net$/.test(splitHost(host).name);
 }
 
 /**
