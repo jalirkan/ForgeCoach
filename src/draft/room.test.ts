@@ -167,6 +167,59 @@ describe('the calls', () => {
   });
 });
 
+describe('Phase 2: decks and the game (mtg-table D404)', () => {
+  const T = 'c'.repeat(22);
+  const done = () => {
+    let d = fresh();
+    while (!d.done) d = apply(d, { kind: 'line', line: legalLines(d)[0]! }, 0) as GridDraft;
+    return d;
+  };
+  const d404 = (game: unknown, extra: Partial<RoomState> = {}) =>
+    stateOf(done(), 0, 60, {
+      decks: [{ ready: true, name: 'Mine', cards: 40 }, { ready: false, name: null, cards: null }],
+      yourDeck: { name: 'Mine', main: [[17, 'Island'], [23, 'Opt']], sideboard: [] },
+      game: game as RoomState['game'],
+      ...extra,
+    });
+
+  it('reads decks, yourDeck and game; a room server before D404 sends none of them', () => {
+    expect(parseRoomState(JSON.parse(JSON.stringify(stateOf(done(), 0, 60))))?.game).toBeUndefined();
+    const ready = parseRoomState(JSON.parse(JSON.stringify(d404({ n: 1, state: 'ready', error: null, matchId: 'm1791307365620', tablePort: 8646, token: T }))));
+    expect(ready?.game).toEqual({ n: 1, state: 'ready', error: null, matchId: 'm1791307365620', tablePort: 8646, token: T });
+    expect(ready?.decks?.[1]).toEqual({ ready: false, name: null, cards: null });
+    // A starting game carries no token key at all on the wire: it reads as null.
+    expect(parseRoomState(JSON.parse(JSON.stringify(d404({ n: 2, state: 'starting', error: null, matchId: null, tablePort: null }))))?.game?.token).toBeNull();
+    for (const bad of [
+      d404({ n: 1, state: 'playing', error: null, matchId: null, tablePort: null, token: null }),
+      d404({ n: 1, state: 'ready', error: null, matchId: null, tablePort: 70000, token: T }),
+      d404({ n: 1, state: 'ready', error: null, matchId: null, tablePort: 8646, token: 'short' }),
+      d404(null, { decks: [{ ready: true, name: 'x', cards: 40 }] as never }),
+      d404(null, { yourDeck: { name: 'x', main: [['17', 'Island']], sideboard: [] } as never }),
+    ]) expect(parseRoomState(JSON.parse(JSON.stringify(bad)))).toBeNull();
+  });
+
+  it('submitDeck posts the deck to /deck behind the seat token; a refused deck carries every problem', async () => {
+    const after = d404(null);
+    const ff = fakeFetch((_url, init) => {
+      const b = JSON.parse(init.body as string) as { name: string };
+      if (b.name === 'Bad') return json({ ok: false, code: 'deck', message: 'Opt: you drafted it 1 time', problems: ['Opt: you drafted it 1 time', '39 main-deck cards'], state: after }, 400);
+      return json(after);
+    });
+    const c = new RoomClient('http://192.168.1.5:8644', 'rAbcdEFG1', 'a'.repeat(22), ff.f);
+    const s = await c.submitDeck({ name: 'Mine', main: [[17, 'Island'], [23, 'Opt']], sideboard: [] });
+    expect(s.yourDeck?.name).toBe('Mine');
+    expect(ff.calls[0]!.url).toBe('http://192.168.1.5:8644/room/rAbcdEFG1/deck');
+    expect(ff.calls[0]!.init.method).toBe('POST');
+    expect((ff.calls[0]!.init.headers as Record<string, string>)['X-Room-Token']).toBe('a'.repeat(22));
+    expect(JSON.parse(ff.calls[0]!.init.body as string)).toEqual({ name: 'Mine', main: [[17, 'Island'], [23, 'Opt']] });
+    const err = (await c.submitDeck({ name: 'Bad', main: [[1, 'Opt']], sideboard: [[1, 'Bolt']] }).catch((e: unknown) => e)) as RoomError;
+    expect(err.code).toBe('deck');
+    expect(err.problems).toEqual(['Opt: you drafted it 1 time', '39 main-deck cards']);
+    expect(err.state?.version).toBe(60);
+    expect(JSON.parse(ff.calls[1]!.init.body as string).sideboard).toEqual([[1, 'Bolt']]);
+  });
+});
+
 describe('the event stream', () => {
   it('parses server-sent events across chunk boundaries, comments and CRLF', () => {
     const got: Array<[string, string]> = [];

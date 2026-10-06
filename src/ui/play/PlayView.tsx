@@ -2,7 +2,8 @@
  * ForgeCoach — ui/play/PlayView.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Playing a game against the Forge AI from the player's seat: the replay
+ * Playing a game against the Forge AI — or, at a table of two (mtg-table
+ * M59), against a friend through the engine, either seat — from the player's seat: the replay
  * board made interactive, an action bar that always has one obvious primary
  * button, your hand along the bottom, and the coach beside the board.
  *
@@ -14,13 +15,14 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActBody, AnswerValue, AnyCard, Card, GameStateBody } from '../../protocol.ts';
-import { isHidden, MANA_COLORS, undoOf } from '../../protocol.ts';
+import { isHidden, MANA_COLORS, opponentIsHuman, undoOf } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import type { PlaySession, PlaySnapshot } from '../../play/session.ts';
 import { activeGuideId, listGuides } from '../../guide.ts';
 import { canPay, chosenColors, turnFacts, untappedManaSources } from '../../state.ts';
 import { cardIndex } from '../../decisions.ts';
 import { seatDisplayName } from '../../play/aiName.ts';
+import { tableLines } from '../../play/tableView.ts';
 import { Board } from '../Board.tsx';
 import { CardDetail, HoverPreview } from '../CardDetail.tsx';
 import { BoardStateRef, CardActionsContext, PlayContext, type CardActions, type PlayInteraction } from '../cardContext.ts';
@@ -66,6 +68,18 @@ function guideNameNow(): string | null {
   }
 }
 
+/** `Date.now()`, refreshed every second while `on` (a table's clocks). */
+function useTicker(on: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!on) return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [on]);
+  return now;
+}
+
 function isLandCard(c: Card): boolean {
   return /\bland\b/i.test(c.types ?? '');
 }
@@ -79,6 +93,7 @@ export function PlayView({
   onSettings,
   note = null,
   onDismissNote,
+  leaveLabel,
 }: {
   session: PlaySession;
   snapshot: PlaySnapshot;
@@ -91,6 +106,8 @@ export function PlayView({
   /** A note from starting the engine (the helper's warning that a picked AI profile was not applied), until dismissed. */
   note?: string | null;
   onDismissNote?: () => void;
+  /** A game between two people (mtg-table D402): what Leave says ("Back to the room"). */
+  leaveLabel?: string;
 }) {
   const { state, input, ask, over, log, status } = snap;
   const seat = snap.seat ?? log?.seat ?? null;
@@ -289,6 +306,7 @@ export function PlayView({
   const [handCollapsed, setHandCollapsed] = useState(false);
   const [help, setHelp] = useState(false);
   const [concede, setConcede] = useState(false);
+  const [claim, setClaim] = useState(false);
   const [guidesOpen, setGuidesOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const closeLog = useCallback(() => setLogOpen(false), []);
@@ -411,8 +429,12 @@ export function PlayView({
   const players = log?.hello?.players ?? state?.players ?? [];
   const opp = players.find((p) => p.id !== seat);
   const hello = log?.hello ?? null;
+  // M59: at a table of two the other seat is a person, named as they named themselves in the room.
+  const vsHuman = opponentIsHuman(hello) || snap.table !== null;
   // M56: the AI the player chose in match setup, by the picker's name; "Forge AI" (the engine's) before it.
-  const oppName = seatDisplayName(hello, opp, 'Forge AI');
+  const oppName = seatDisplayName(hello, opp, vsHuman ? 'Your opponent' : 'Forge AI');
+  const tableNow = useTicker(snap.table !== null && !over);
+  const tableNotes = over ? [] : tableLines(snap.table, snap.tableSkewMs, tableNow, vsHuman && opp?.name ? oppName : undefined);
   const gameNo = hello?.gameNumber && (hello.gameCount ?? hello.match?.games) ? `Game ${hello.gameNumber} of ${hello.gameCount ?? hello.match?.games}` : null;
   const myDeck = hello?.match?.yourDeck?.name ?? null;
   const myMove = !!(ask || (input && view.mode !== 'waiting' && view.mode !== 'yield' && !over));
@@ -439,7 +461,9 @@ export function PlayView({
 
   // Phase stops can be changed while this is a live seat with nothing else open (M33).
   const stripInteractive = connected && !!state && !ask && !over;
-  const strip = (variant: 'bar' | 'side') => <PhaseStrip state={state} seat={seat} interactive={stripInteractive} onAct={act} variant={variant} />;
+  const strip = (variant: 'bar' | 'side') => (
+    <PhaseStrip state={state} seat={seat} interactive={stripInteractive} onAct={act} variant={variant} {...(vsHuman ? { oppLabel: oppName } : {})} />
+  );
   const toggleCoach = () =>
     setCoachOpen((o) => {
       writeLS(COACH_OPEN_KEY, o ? '0' : '1');
@@ -566,6 +590,22 @@ export function PlayView({
             {!wide && wcModel && <WinChanceStrip {...winChance} compact />}
             {!connected && snap.detail && status !== 'connecting' ? (
               <div className="live-banner play-banner">{snap.detail}</div>
+            ) : tableNotes.length ? (
+              <div className="play-table-lines" role="status" aria-live="polite">
+                {tableNotes.map((l) => (
+                  <div key={l.who} className={cx('live-banner play-banner play-table', `is-${l.tone}`)}>
+                    {l.text}
+                    {l.canClaim && (
+                      <>
+                        {' '}
+                        <button type="button" className="btn btn-primary btn-sm play-claim" onClick={() => setClaim(true)} disabled={!connected}>
+                          Claim the win
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : note ? (
               <div className="live-banner play-banner play-note" role="status">
                 {note}{' '}
@@ -623,7 +663,9 @@ export function PlayView({
                 connected={connected}
                 waitingNext={waitingNext}
                 onReview={() => log && onReview(log)}
-                {...(onEngineReview ? { onEngineReview: () => log && onEngineReview(log) } : {})}
+                {...(onEngineReview && !vsHuman ? { onEngineReview: () => log && onEngineReview(log) } : {})}
+                vsHuman={vsHuman}
+                {...(leaveLabel ? { leaveLabel } : {})}
                 filmRoom={log ? <FilmRoom log={log} variant="over" onJump={(m) => onReview(log, m.decision.frameIndex)} onOpenSettings={onSettings} /> : null}
                 onNext={() => {
                   setWaitingNext(true);
@@ -684,6 +726,30 @@ export function PlayView({
             }
           >
             <p className="muted">There’s no undo. You can still review the game afterwards.</p>
+          </Sheet>
+          <Sheet
+            open={claim}
+            onClose={() => setClaim(false)}
+            title="Claim the win?"
+            width={420}
+            footer={
+              <>
+                <button className="btn btn-quiet" onClick={() => setClaim(false)}>
+                  Keep waiting
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setClaim(false);
+                    act({ action: 'claimWin' });
+                  }}
+                >
+                  Claim the win
+                </button>
+              </>
+            }
+          >
+            <p className="muted">{oppName} has been gone too long. Claiming ends the game as their concession; if they come back, the game is over.</p>
           </Sheet>
         </PlayContext.Provider>
       </BoardStateRef.Provider>

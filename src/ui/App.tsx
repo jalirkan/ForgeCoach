@@ -18,8 +18,10 @@ import { SettingsDialog } from './SettingsDialog.tsx';
 import { IconUpload } from './Icons.tsx';
 import { readLS, writeLS } from './util.ts';
 import { defaultSeatUrl, servedByEngine, tokenFromSearch } from '../play/session.ts';
-import { SEAT_TOKEN_KEY } from '../play/seatUrl.ts';
+import { redactSeatUrl, SEAT_TOKEN_KEY } from '../play/seatUrl.ts';
+import { FRIEND_TABLE_HASH, loadFriendTable, saveFriendTable, savedRoomBases, type FriendTable } from '../play/friendTable.ts';
 import { usePlaySession } from './play/usePlaySession.ts';
+import type { PlaySnapshot } from '../play/session.ts';
 import { ensureEngineAwake } from '../draft/launch.ts';
 import { readPlayProfile } from './PlayProfile.tsx';
 import { PlayView } from './play/PlayView.tsx';
@@ -67,7 +69,8 @@ const SEAT_URL_KEY = 'forgecoach.seatUrl';
  */
 const ENGINE_SERVED = (() => {
   try {
-    return servedByEngine(window.location);
+    // Not a page the draft room served (D400: its port, or a room this browser holds a seat in).
+    return servedByEngine(window.location, savedRoomBases());
   } catch {
     return false;
   }
@@ -185,10 +188,10 @@ export function App() {
   if (page) {
     return <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>{page}</Suspense>;
   }
-  return <MainApp />;
+  return <MainApp hash={hash} />;
 }
 
-function MainApp() {
+function MainApp({ hash }: { hash: string }) {
   const [log, setLog] = useState<GameLog | null>(null);
   const [title, setTitle] = useState('');
   const [sampleId, setSampleId] = useState<string | null>(null);
@@ -226,10 +229,17 @@ function MainApp() {
   }, [playUrl, snap]);
   const playRef = useRef(play);
   playRef.current = play;
-  const connect = useCallback((url: string) => {
+  const connect = useCallback((url: string, remember = true) => {
     // Same engine: retry now on the session we have (its URL is its identity).
     if (playRef.current.session && playRef.current.snapshot?.url === url) {
       playRef.current.session.reconnect();
+      return;
+    }
+    // A friend's table (remember=false) carries its seat token: never the remembered seat, never the Play box's.
+    if (!remember) {
+      setPlayStarted(false);
+      setReview(null);
+      setPlayUrl(url);
       return;
     }
     // Never remember an engine-served seat: its URL carries the pairing token.
@@ -273,6 +283,31 @@ function MainApp() {
     },
     [connect],
   );
+  // #play/friend: a game between two people the draft room started (mtg-table D402/D404). The seat
+  // comes from play/friendTable.ts; nothing is woken (the room started the engine) and nothing remembered.
+  const [friend, setFriend] = useState<FriendTable | null>(null);
+  useEffect(() => {
+    if (hash !== FRIEND_TABLE_HASH) return;
+    const t = loadFriendTable();
+    if (!t || t.over) {
+      location.replace(t?.back ?? '#draft/friend');
+      return;
+    }
+    stopLive();
+    setFriend(t);
+    connect(t.url, false);
+  }, [hash, connect]); // eslint-disable-line react-hooks/exhaustive-deps
+  const leaveFriend = useCallback(() => {
+    const back = friend?.back ?? '#draft/friend';
+    setFriend(null);
+    setPlayUrl(null);
+    setPlayStarted(false);
+    setReview(null);
+    // The game is over: its token is spent. Mid-game the seat stays this browser's, to come back to.
+    if (friend && playRef.current.snapshot?.over) saveFriendTable({ ...friend, over: true });
+    location.hash = back;
+  }, [friend]);
+
   const stopPlay = useCallback(() => {
     wakeRef.current?.abort();
     wakeRef.current = null;
@@ -384,7 +419,7 @@ function MainApp() {
   // never take the seat (it admits one client) unless asked to.
   useEffect(() => {
     try {
-      const elsewhere = /^#deck\b/.test(location.hash) || parseHash().sample !== null;
+      const elsewhere = /^#deck\b/.test(location.hash) || /^#play\/friend\b/.test(location.hash) || parseHash().sample !== null;
       if ((ENGINE_SERVED && !elsewhere) || new URLSearchParams(location.search).get('play') === '1') startPlay(initialSeatUrl());
     } catch {
       /* ignore */
@@ -498,7 +533,18 @@ function MainApp() {
         onClose={() => setReview(null)}
         closeLabel="Back to the table"
         onSettings={() => setSettingsOpen(true)}
-        onEngineReview={() => setEngineReview({ log: review, title: review.header.gameId, sampleId: null })}
+        {...(friend ? {} : { onEngineReview: () => setEngineReview({ log: review, title: review.header.gameId, sampleId: null }) })}
+      />
+    );
+  } else if (playing && friend) {
+    main = (
+      <PlayView
+        session={play.session!}
+        snapshot={snap!}
+        onReview={openReview}
+        onLeave={leaveFriend}
+        onSettings={() => setSettingsOpen(true)}
+        leaveLabel="Back to the room"
       />
     );
   } else if (playing) {
@@ -514,6 +560,8 @@ function MainApp() {
         onDismissNote={() => setPlayNote(null)}
       />
     );
+  } else if (friend) {
+    main = <FriendTableWait friend={friend} snap={snap} onRetry={() => play.session?.reconnect()} onLeave={leaveFriend} />;
   } else if (showGame && log) {
     main = (
       <GameView
@@ -580,6 +628,31 @@ function MainApp() {
         </div>
       )}
     </>
+  );
+}
+
+/** Taking a seat at a friend's table (#play/friend) before the first frame. */
+function FriendTableWait({ friend, snap, onRetry, onLeave }: { friend: FriendTable; snap: PlaySnapshot | null; onRetry: () => void; onLeave: () => void }) {
+  const stuck = snap && (snap.status === 'closed' || snap.status === 'refused' || snap.status === 'error');
+  return (
+    <div className="live-wait">
+      {!stuck && <span className="spinner spinner-lg" />}
+      <h2>{stuck ? 'Not at the table yet' : `Sitting down with ${friend.opponent}…`}</h2>
+      <p className="muted">
+        <code>{redactSeatUrl(friend.url)}</code>
+      </p>
+      {snap?.detail && <p className="small">{snap.detail}</p>}
+      <div className="friend-wait-actions">
+        {stuck && (
+          <button className="btn btn-primary" onClick={onRetry}>
+            Retry
+          </button>
+        )}
+        <button className="btn btn-quiet" onClick={onLeave}>
+          Back to the room
+        </button>
+      </div>
+    </div>
   );
 }
 

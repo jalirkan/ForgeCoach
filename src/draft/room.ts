@@ -14,6 +14,16 @@
  *     GET  /room/<id>/events   → text/event-stream: `event: state` now and after every change, `event: gone`
  *     POST /room/<id>/join     {name?} → state
  *     POST /room/<id>/pick     {line, expect: state.version} → state | 409 {code: stale|turn|waiting|done, state}
+ *     POST /room/<id>/deck     {name, main, sideboard?} → state | 409 {code: drafting|playing} | 400 {code: deck, problems}
+ *
+ * Phase 2 (mtg-table D404): once the draft is over each player hands the room
+ * a deck — privately, checked by the room against that player's own picks
+ * (basic lands free). The state then says `decks` (the other seat's by name
+ * and count only), `yourDeck` (this seat's own list) and `game`: when both
+ * decks are in, the room starts a game between the two seats on the owner's
+ * engine (D402) and hands each seat its own seat token for that game, in its
+ * own stream only (`game.token`, while `ready`). play/friendTable.ts turns it
+ * into the table's seat URL.
  *
  * The join link carries the friend's token in the #fragment
  * (`#draft/friend/join?room=<id>&t=<token>`), which no server and no Referer
@@ -29,10 +39,12 @@
 import type { DeckState } from './deck.ts';
 import { apply, newDraft, type DraftEvent, type GridDraft } from './draft.ts';
 import { pageHelperTarget, TOKEN_HEADER, type HelperTarget } from '../coachHelper.ts';
-import { servedByEngine } from '../play/seatUrl.ts';
+import { DEFAULT_ROOM_PORT, servedByEngine } from '../play/seatUrl.ts';
+import { FRIEND_ROOMS_KEY } from '../play/friendTable.ts';
+import type { MatchDeck } from './launch.ts';
 
+export { DEFAULT_ROOM_PORT };
 export const ROOM_TOKEN_HEADER = 'X-Room-Token';
-export const DEFAULT_ROOM_PORT = 8644;
 export const ROOM_ID = /^r[A-Za-z0-9_-]{8}$/;
 export const ROOM_TOKEN = /^[A-Za-z0-9_-]{22,64}$/;
 export const MAX_NAME = 24;
@@ -55,6 +67,31 @@ export interface RoomEvent {
   cards: string[];
 }
 
+/** D404: one seat's deck as the other seat sees it — whether it is in, its name and main-deck count; never the list. */
+export interface RoomDeckInfo {
+  ready: boolean;
+  name: string | null;
+  cards: number | null;
+}
+
+/** D404: this seat's own deck as the room holds it. */
+export interface RoomOwnDeck {
+  name: string;
+  main: Array<[number, string]>;
+  sideboard: Array<[number, string]>;
+}
+
+/** D404: the game the room started between the two seats. */
+export interface RoomGame {
+  n: number;
+  state: 'starting' | 'ready' | 'failed' | 'unavailable';
+  error: string | null;
+  matchId: string | null;
+  tablePort: number | null;
+  /** THIS seat's seat token for this game, only while `ready`. */
+  token: string | null;
+}
+
 export interface RoomState {
   v: 1;
   id: string;
@@ -74,6 +111,12 @@ export interface RoomState {
   createdAt: string;
   expiresAt: string;
   seed: number | null;
+  /** D404 (absent from a room server before it): both seats' decks, the other's by name and count only. */
+  decks?: [RoomDeckInfo, RoomDeckInfo];
+  /** D404: this seat's own deck, or null before it is handed in. */
+  yourDeck?: RoomOwnDeck | null;
+  /** D404: the game between the two seats, or null. */
+  game?: RoomGame | null;
 }
 
 export interface RoomBases {
@@ -124,6 +167,27 @@ export function parseRoomState(x: unknown): RoomState | null {
     if (!q || !isInt(q.n) || !isSeat(q.seat) || !isInt(q.grid) || !isInt(q.line) || q.line < 0 || q.line > 5 || !strs(q.cards, 3)) return null;
   }
   if (!isStr(o.createdAt) || !isStr(o.expiresAt) || !(o.seed === null || isInt(o.seed))) return null;
+  // D404's keys: absent from an older room server; wrong is wrong.
+  if (o.decks !== undefined) {
+    if (!Array.isArray(o.decks) || o.decks.length !== 2) return null;
+    for (const d of o.decks as unknown[]) {
+      const q = d as Record<string, unknown> | null;
+      if (!q || typeof q.ready !== 'boolean' || !(q.name === null || isStr(q.name)) || !(q.cards === null || isInt(q.cards))) return null;
+    }
+  }
+  if (o.yourDeck !== undefined && o.yourDeck !== null) {
+    const y = o.yourDeck as Record<string, unknown>;
+    const rows = (r: unknown) => Array.isArray(r) && r.length <= 400 && r.every((e) => Array.isArray(e) && e.length === 2 && isInt(e[0]) && isStr(e[1]));
+    if (typeof y !== 'object' || !isStr(y.name) || !rows(y.main) || !rows(y.sideboard)) return null;
+  }
+  if (o.game !== undefined && o.game !== null) {
+    const g = o.game as Record<string, unknown>;
+    if (typeof g !== 'object' || !isInt(g.n) || !['starting', 'ready', 'failed', 'unavailable'].includes(g.state as string)) return null;
+    if (!(g.error === null || g.error === undefined || isStr(g.error)) || !(g.matchId === null || g.matchId === undefined || isStr(g.matchId))) return null;
+    if (!(g.tablePort === null || g.tablePort === undefined || (isInt(g.tablePort) && g.tablePort > 0 && g.tablePort < 65536))) return null;
+    if (!(g.token === null || g.token === undefined || (isStr(g.token) && ROOM_TOKEN.test(g.token)))) return null;
+    o.game = { n: g.n, state: g.state, error: g.error ?? null, matchId: g.matchId ?? null, tablePort: g.tablePort ?? null, token: g.token ?? null };
+  }
   return x as RoomState;
 }
 
@@ -206,6 +270,8 @@ export class RoomError extends Error {
     readonly status: number,
     readonly code: string,
     readonly state: RoomState | null = null,
+    /** D404: every problem with a refused deck. */
+    readonly problems: string[] = [],
   ) {
     super(message);
   }
@@ -220,7 +286,8 @@ async function errorOf(r: Response, what: string): Promise<RoomError> {
   }
   const code = isStr(body.code) ? body.code : String(r.status);
   const msg = isStr(body.message) ? body.message : `${what} failed (HTTP ${r.status})`;
-  return new RoomError(msg, r.status, code, parseRoomState(body.state));
+  const problems = strs(body.problems, 50) ? body.problems.map((p) => p.slice(0, 300)) : [];
+  return new RoomError(msg, r.status, code, parseRoomState(body.state), problems);
 }
 
 /** The draft room on the coach helper: on (with its port) or not. */
@@ -309,6 +376,25 @@ export class RoomClient {
   /** Take a line. `expect` is the version the player saw; a stale view comes back as RoomError code "stale" with the current state. */
   pick(line: number, expect: number): Promise<RoomState> {
     return this.call('/pick', { method: 'POST', headers: this.headers(true), body: JSON.stringify({ line, expect }) }, 'The pick');
+  }
+
+  /**
+   * D404: hand the room this seat's deck for the next game. The room checks it
+   * against this seat's own picks; a wrong one comes back as RoomError code
+   * "deck" (its first problem as the message, all of them in `problems`).
+   */
+  async submitDeck(deck: MatchDeck): Promise<RoomState> {
+    let r: Response;
+    const body = JSON.stringify({ name: deck.name, main: deck.main, ...(deck.sideboard?.length ? { sideboard: deck.sideboard } : {}) });
+    try {
+      r = await this.f(this.url('/deck'), { method: 'POST', headers: this.headers(true), body });
+    } catch {
+      throw new RoomError('The room’s computer cannot be reached.', 0, 'offline');
+    }
+    if (!r.ok) throw await errorOf(r, 'Handing in the deck');
+    const s = parseRoomState(await r.json());
+    if (!s) throw new RoomError('The room answered something that is not a room.', r.status, 'bad');
+    return s;
   }
 
   /**
@@ -486,7 +572,7 @@ export function lastOpponentEvent(s: RoomState): RoomEvent | null {
 // ---------------------------------------------------------------------------
 // The rooms this browser holds a seat in
 
-export const FRIEND_KEY = 'forgecoach.friendRooms.v1';
+export const FRIEND_KEY = FRIEND_ROOMS_KEY;
 
 export interface SavedRoom {
   id: string;

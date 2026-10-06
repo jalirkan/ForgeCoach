@@ -21,8 +21,9 @@
  *   - an inbound `ping` is answered with a `pong` (§2.5); we also ping every
  *     `pingMs` as a keepalive (the server's `pong` is `seq: 0`, never logged);
  *   - backoff 250 ms doubling to a 5 s ceiling, giving up after 12 attempts;
- *   - a close code ≥ 4000 is the server saying no (M13: 4001, one seat) — it
- *     is terminal, never retried;
+ *   - a close code ≥ 4000 is the server saying no (M13: 4001, one seat; M59:
+ *     4002, this seat's token was opened in another window) — it is terminal,
+ *     never retried;
  *   - a close after `over` is the end, not a hiccup — not retried;
  *   - acts are NEVER queued across a disconnect: a click is a statement about
  *     the board the user was looking at. While the socket is not open an act
@@ -34,6 +35,13 @@
  * The Origin of the page must be on mtg-table's `wsAllowedOrigins` (M50; the
  * defaults include https://jalirkan.github.io and http://localhost:*), else the
  * upgrade is a 403 the browser reports as a plain failed connection.
+ *
+ * A table of two (mtg-table M59, D402/D403): the same seat, on the table port
+ * behind a seat token, either seat. The bridge adds a `table` frame — who is
+ * there, whose decision it is and its clock, whether this seat may claim the
+ * win — kept here as `table` with the bridge's clock offset (`tableSkewMs`), so
+ * a countdown runs on the bridge's time. An absent player's asks are never
+ * answered for them (D403): on a reconnect the bridge re-sends them unchanged.
  */
 import { PROTOCOL_VERSION } from '../protocol.ts';
 import type {
@@ -45,6 +53,7 @@ import type {
   InputBody,
   NoticeBody,
   OverBody,
+  TableBody,
 } from '../protocol.ts';
 import type { GameLog, LoggedFrame } from '../log.ts';
 import { LiveLogBuilder } from '../live.ts';
@@ -58,6 +67,8 @@ export { DEFAULT_SEAT_URL, defaultSeatUrl, servedByEngine, redactSeatUrl, tokenF
 export type { PageLocation } from './seatUrl.ts';
 /** mtg-table's "one client at a time" refusal (protocol amendment M13). */
 export const SEAT_REFUSED_CLOSE_CODE = 4001;
+/** M59: at a table of two, this seat's token was opened in another window, which took the seat. */
+export const SEAT_REPLACED_CLOSE_CODE = 4002;
 
 export type SeatStatus =
   | 'idle'
@@ -107,6 +118,10 @@ export interface PlaySnapshot {
   attempts: number;
   /** The seat URL this session connects to. */
   url: string;
+  /** M59 — a table of two: the last `table` frame (null against the AI). */
+  table: TableBody | null;
+  /** The bridge's clock minus this browser's when that frame came (`deadline - (Date.now() + tableSkewMs)` is the time left). */
+  tableSkewMs: number;
 }
 
 export interface PlaySession {
@@ -146,6 +161,11 @@ export interface SeatOptions {
   /** Keepalive ping interval while open (default 25 s; 0 disables). */
   pingMs?: number;
   now?: () => number;
+  /**
+   * The seat is a table of two (mtg-table D402): its unreachable/closed texts
+   * speak of the friend's game, not of starting an engine here.
+   */
+  table?: boolean;
 }
 
 /** `WebSocket.OPEN`, spelled out so this module needs no DOM at runtime. */
@@ -156,6 +176,9 @@ const CLOSE_WAIT_MS = 1_000;
 
 export const REFUSED_DETAIL =
   'Another window is the player (probably the mtg-table board tab) — close it and retry';
+export const REPLACED_DETAIL = 'This seat was opened in another window or device, which has it now. Retry here to take it back.';
+export const TABLE_UNREACHABLE_DETAIL =
+  'Could not reach the game on the room’s computer. The game may be over, or the engine there stopped. Check with whoever made the room.';
 
 /** What to tell the user when the seat socket cannot be reached at all. */
 export function unreachableDetail(rawUrl: string, retryInMs: number | null): string {
@@ -219,6 +242,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
   const maxAttempts = opts.maxAttempts ?? 12;
   const pingMs = opts.pingMs ?? 25_000;
   const now = opts.now ?? (() => Date.now());
+  const isTable = opts.table === true;
 
   const builder = new LiveLogBuilder();
   const previousLogs: GameLog[] = [];
@@ -238,6 +262,8 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
   let ask: AskBody | null = null;
   let over: OverBody | null = null;
   let inputSeen = false;
+  let table: TableBody | null = null;
+  let tableSkewMs = 0;
   let notices: SessionNotice[] = [];
   let clientNoticeSeq = 0;
   /** Every askId answered this game — never answer one twice (§2.3). */
@@ -271,6 +297,8 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     inputSeen,
     attempts,
     url,
+    table,
+    tableSkewMs,
   });
 
   const snapshot = (): PlaySnapshot => {
@@ -382,6 +410,11 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
         over = f.body as OverBody;
         ask = null;
         break;
+      case 'table':
+        // M59: cached by the bridge and re-sent on a reconnect; the latest wins.
+        table = f.body as TableBody;
+        tableSkewMs = f.t - now();
+        break;
       case 'ping':
         sendFrame('pong', {});
         return;
@@ -467,7 +500,9 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     if (attempts >= maxAttempts) {
       setStatus(
         'closed',
-        everOpened
+        isTable
+          ? `${TABLE_UNREACHABLE_DETAIL} Gave up after ${attempts.toString()} attempts — press Retry.`
+          : everOpened
           ? `Lost the engine at ${redactSeatUrl(url)} and ${attempts.toString()} reconnects failed. Is the bridge still running? Press Retry.`
           : `${unreachableDetail(url, null)} Gave up after ${attempts.toString()} attempts — press Retry.`,
       );
@@ -479,7 +514,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
       open();
     }, wait);
     if (!everOpened) {
-      setStatus('error', unreachableDetail(url, wait));
+      setStatus('error', isTable ? `${TABLE_UNREACHABLE_DETAIL} Retrying in ${(Math.round(wait / 100) / 10).toString()} s.` : unreachableDetail(url, wait));
     } else {
       setStatus(
         'error',
@@ -566,7 +601,14 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
       }
       if (code >= 4000) {
         // M13: the server said no. Retrying would fight a bridge that already answered.
-        setStatus('refused', code === SEAT_REFUSED_CLOSE_CODE ? REFUSED_DETAIL : `${REFUSED_DETAIL} (close ${code.toString()}${reason ? ` — ${reason}` : ''})`);
+        setStatus(
+          'refused',
+          code === SEAT_REPLACED_CLOSE_CODE
+            ? REPLACED_DETAIL
+            : code === SEAT_REFUSED_CLOSE_CODE
+              ? REFUSED_DETAIL
+              : `${REFUSED_DETAIL} (close ${code.toString()}${reason ? ` — ${reason}` : ''})`,
+        );
         return;
       }
       if (over !== null) {

@@ -5,6 +5,10 @@
  * The result, and what next: review this game, the next game of the match
  * (act newGame continue), or a fresh match (act newGame restart — protocol
  * §2.2 / M38: only `restart` produces a game once `matchOver` is true).
+ *
+ * At a table of two (mtg-table M59) there is one game and no engine review:
+ * the bridge refuses `newGame`, and a rematch is two more decks handed to the
+ * room (D404), so the card offers the review and the way back to the room.
  */
 import type { ReactNode } from 'react';
 import type { OverBody } from '../../protocol.ts';
@@ -30,6 +34,8 @@ export function GameOverCard({
   onReconnect,
   onLeave,
   filmRoom = null,
+  vsHuman = false,
+  leaveLabel = 'Back to start',
 }: {
   over: OverBody;
   seat: number | null;
@@ -49,6 +55,9 @@ export function GameOverCard({
   onLeave: () => void;
   /** The film room (ui/filmroom): the game's turning points, under the actions. */
   filmRoom?: ReactNode;
+  /** A game between two people (M59): no next game, no new match. */
+  vsHuman?: boolean;
+  leaveLabel?: string;
 }) {
   const won = over.winner !== null && over.winner === seat;
   const draw = over.winner === null;
@@ -79,6 +88,7 @@ export function GameOverCard({
               Engine review: grade every decision
             </button>
           )}
+          {!vsHuman && (
           <div className="over-row">
             <button className="btn btn-quiet" onClick={onNext} disabled={!connected || over.matchOver || waitingNext} title={over.matchOver ? 'The match is over — start a new match instead' : 'The next game of this match'}>
               {waitingNext ? <span className="spinner spinner-sm" /> : null} Next game
@@ -87,7 +97,9 @@ export function GameOverCard({
               New match
             </button>
           </div>
-          {!connected && (
+          )}
+          {vsHuman && <p className="tiny muted">A rematch: both of you hand the room a deck again — the same or changed.</p>}
+          {!connected && !vsHuman && (
             <p className="tiny muted">
               The engine has disconnected — start it again to play on.
               {onReconnect && (
@@ -101,7 +113,7 @@ export function GameOverCard({
             </p>
           )}
           <button className="link-btn over-leave" onClick={onLeave}>
-            Back to start
+            {leaveLabel}
           </button>
         </div>
         {filmRoom}

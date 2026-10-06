@@ -65,6 +65,7 @@ import {
   type ReviewReport,
 } from './gameReview.ts';
 import { evalPoints, pct, type WinPoint } from './winChance.ts';
+import { systemFor } from './opponent.ts';
 
 export type FilmSource = 'eval' | 'review' | 'heuristic';
 
@@ -438,7 +439,7 @@ export function filmPrompt(
     '# Question',
     `This is turning point #${m.rank} of the game (turn ${m.turn}, ${phaseLabel(d.state.phase)}). What happened here, what should I have considered instead, and what is the rule of thumb?`,
   );
-  return { system: FILM_SYSTEM, user: lines.join('\n') };
+  return { system: systemFor(FILM_SYSTEM, log), user: lines.join('\n') };
 }
 
 /** The answer store key for a moment (a new source or score is a new question). */

@@ -19,6 +19,7 @@ import type { GameLog } from './log.ts';
 import type { CardInfo } from './cards.ts';
 import type { Prompt } from './prompt.ts';
 import { buildCubeContext, type CubeCoachInput } from './cube/coachContext.ts';
+import { systemFor } from './opponent.ts';
 
 // ---------------------------------------------------------------------------
 // Card helpers shared with prompt.ts
@@ -483,5 +484,5 @@ export function buildReviewPrompt(log: GameLog, cards: Map<string, CardInfo>, op
   if (cubeSection) parts.push('', cubeSection);
   if (opts?.guide && opts.guide.trim()) parts.push('', '# My deck play guide', opts.guide.trim());
   parts.push('', '# Question', 'Review this game for me: what went well, and the (at most three) mistakes that cost the most, each tied to a general rule.');
-  return { system: REVIEW_SYSTEM, user: parts.join('\n') };
+  return { system: systemFor(REVIEW_SYSTEM, log), user: parts.join('\n') };
 }

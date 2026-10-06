@@ -13,11 +13,17 @@
  *                                        this browser's storage and dropped from
  *                                        the address bar)
  *   #draft/friend/r/<id>/<seat>[/build]  a room this browser holds a seat in
+ *   #play/friend                         the game the room started (App.tsx, mtg-table D402/D404)
+ *
+ * Phase 2 (mtg-table D404): once the deck is built, Hand in this deck sends it
+ * to the room, which checks it against this player's own picks. When both are
+ * in, the room starts a game between the two on the owner's engine and hands
+ * this seat its own seat token for it; Take your seat goes to the board.
  *
  * The coach is optional and private: it runs in this browser, through this
  * player's own helper or key, and nothing it says goes to the room.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../deck/deck.css';
 import '../forge-theme.css';
 import './draft.css';
@@ -27,8 +33,9 @@ import { newPool, savePool } from '../../cube/pools.ts';
 import { deckCount, toMatchDeck } from '../../draft/deck.ts';
 import {
   cleanName, createRoom, cubeHash, forgetRoom, friendLinks, loadRooms, ownerRoomBase, parseJoinHash, replayMatches, RoomClient, RoomError, roomSupport,
-  saveRoom, type SavedRoom,
+  saveRoom, type RoomState, type SavedRoom,
 } from '../../draft/room.ts';
+import { FRIEND_TABLE_HASH, loadFriendTable, saveFriendTable, tableFromRoom } from '../../play/friendTable.ts';
 import { useCubeData } from '../deck/useCubeData.ts';
 import { IconChevronLeft } from '../Icons.tsx';
 import { SettingsDialog } from '../SettingsDialog.tsx';
@@ -453,8 +460,133 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
             {room.entry.deck ? 'Edit your deck' : 'Build your deck'}
           </button>
         </div>
-        <p className="fr-small">Playing the two decks against each other through Forge comes next. For now, copy your list, or open the pool in Draft &amp; build.</p>
       </section>
+      <HandIn state={state} room={room} deckText={md} opponent={opponent} />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 (mtg-table D404): the deck goes to the room, the room starts the game
+
+/** One seat's deck as the room says it: handed in for the next game, or in the game being started or played (its name and size only). */
+function deckLine(d: { ready: boolean; name: string | null; cards: number | null }, game: string | undefined) {
+  const what = d.name ? (
+    <>
+      <i>{d.name}</i>
+      {d.cards !== null ? ` (${d.cards} cards)` : ''}
+    </>
+  ) : (
+    'a deck'
+  );
+  if (d.ready) return <>handed in {what}</>;
+  if (d.name && (game === 'starting' || game === 'ready')) return <>playing {what}</>;
+  return 'not handed in yet';
+}
+
+function HandIn({ state, room, deckText: md, opponent }: { state: RoomState; room: ReturnType<typeof useFriendRoom>; deckText: ReturnType<typeof toMatchDeck>; opponent: string }) {
+  const [busy, setBusy] = useState(false);
+  const [problems, setProblems] = useState<string[] | null>(null);
+  const client = useMemo(() => new RoomClient(room.entry.base, room.entry.id, room.entry.token), [room.entry.base, room.entry.id, room.entry.token]);
+  const back = roomHash(state.id, state.you);
+  const offered = tableFromRoom(room.entry.base, state, back);
+  const kept = loadFriendTable();
+  // A game this browser saw end: its token is spent.
+  const spent = !!offered && !!kept && kept.url === offered.url && kept.over === true;
+  const table = spent ? null : offered;
+  // Keep the seat for #play/friend the moment the room hands it over (a reload, the board, a dropped phone).
+  useEffect(() => {
+    if (!table) return;
+    const cur = loadFriendTable();
+    if (!cur || cur.url !== table.url) saveFriendTable(table);
+  }, [table?.url]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Straight to the board when the game this screen watched start becomes ready.
+  const seen = useRef(state.game?.state ?? null);
+  useEffect(() => {
+    const was = seen.current;
+    seen.current = state.game?.state ?? null;
+    if (was === 'starting' && state.game?.state === 'ready' && table) location.hash = FRIEND_TABLE_HASH;
+  }, [state.game?.state, table]);
+
+  if (state.decks === undefined) {
+    return (
+      <section className="panel fr-panel">
+        <div className="fx-label">Play the two decks</div>
+        <p className="fr-small">The room’s computer runs an mtg-table that does not take decks yet. Update it to play these decks against each other through Forge; for now, copy your list.</p>
+      </section>
+    );
+  }
+  const mine = state.decks[state.you];
+  const theirs = state.decks[(1 - state.you) as 0 | 1];
+  const g = state.game ?? null;
+  // While a game runs the room refuses a deck (409 "playing"); it says so, and the button stays for after it.
+  const playing = g?.state === 'starting';
+  const size = md.main.reduce((n, [k]) => n + k, 0);
+  const handIn = async () => {
+    setBusy(true);
+    setProblems(null);
+    try {
+      room.take(await client.submitDeck(md));
+    } catch (e) {
+      if (e instanceof RoomError) {
+        if (e.state) room.take(e.state);
+        setProblems(e.problems.length ? e.problems : [e.message]);
+      } else setProblems(['The deck did not reach the room. Try again.']);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="panel fr-panel" aria-label="Play the two decks">
+      <div className="fx-label">Play the two decks</div>
+      <p>
+        Hand your deck to the room: it is checked against your own picks (basic lands are free) and stays private — {opponent} sees its name and size, never the list. When both decks are in, the room starts a game between you on its computer’s Forge.
+      </p>
+      <ul className="fr-rooms">
+        <li>
+          <span>You: {deckLine(mine, g?.state)}</span>
+        </li>
+        <li>
+          <span>
+            {opponent}: {deckLine(theirs, g?.state)}
+          </span>
+        </li>
+      </ul>
+      {g?.state === 'starting' && (
+        <p role="status">
+          <span className="spinner spinner-sm" /> Starting game {g.n} on the room’s computer… (10–30 seconds)
+        </p>
+      )}
+      {spent && <p className="fr-small">Game {g!.n} is over. For a rematch, both of you hand in a deck again — the same or changed.</p>}
+      {(g?.state === 'failed' || g?.state === 'unavailable') && (
+        <p className="fr-error" role="alert">
+          Game {g.n} did not start: {g.error ?? 'the engine did not start'}. Hand in both decks again to retry.
+        </p>
+      )}
+      {problems && (
+        <div className="fr-error" role="alert">
+          <p>The room refused this deck:</p>
+          <ul>
+            {problems.slice(0, 8).map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="fr-actions">
+        {table && (
+          <button className="btn-gold" onClick={() => (location.hash = FRIEND_TABLE_HASH)}>
+            Take your seat — game {g!.n}
+          </button>
+        )}
+        {!playing && (
+          <button className={table ? 'btn-line' : 'btn-gold'} disabled={busy || size < 40} onClick={() => void handIn()} title={size < 40 ? 'A deck has at least 40 cards' : undefined}>
+            {busy ? 'Handing in…' : mine.ready ? 'Hand in again (changed)' : g?.state === 'ready' ? 'Hand in a deck for a rematch' : 'Hand in this deck'}
+          </button>
+        )}
+      </div>
+      {size < 40 && !playing && <p className="fr-small">Your main deck has {size} cards; a deck needs at least 40.</p>}
+      {table && <p className="fr-small">The seat is yours alone: it opens with a token the room gave this browser for this game. If you lose the connection, take your seat again — {opponent} waits, and may claim the win after two minutes.</p>}
+    </section>
   );
 }
