@@ -280,7 +280,14 @@ lab (`tools/cubelab.sh`: Forge AIs drafting and playing the cube): card win
 rates, archetypes, card pairs, land counts, splash results. Samples are small,
 so everything weighs the lab by its games (a card's raw win rate counts
 games ÷ (games + 80) against the page's own estimate; a card with no lab games
-is the page's estimate alone; `src/cube/score.ts` says why 80). Import a newer
+is the page's estimate alone; `src/cube/score.ts` says why 80). Beside them,
+`card-power.json` holds the lab's matchup model for every card of the seven
+cubes (mtg-table job J062, nights 1–2): each card's own effect per copy on its
+deck's win chance, which predicts held-out games better than the win rates
+(log-loss 0.6525 against 0.6690). Where it rates a card, the card's value uses
+it, weighted by how sure the model is; the pick screen's Lab numbers show it
+as points per copy with a 95% interval. A card Forge's AI never builds is
+shown as not rated. Import a newer
 `meta.json` from the chip in the header (or drop it on the page); it is kept in
 this browser. Without any meta the assistant works from card text, mana value
 and the cube's themes.

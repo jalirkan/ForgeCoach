@@ -8,14 +8,15 @@
  * here it is built from what src/cube already knows (cube/facts.ts: Scryfall,
  * else the meta's card list, else the document) plus a rating:
  *
- *   - a card the cube's meta.json has games for: src/cube's card value, the
- *     lab's win rate blended with the no-meta estimate by games (score.ts);
+ *   - a card the matchup model rates (card-power.json) or the cube's meta.json
+ *     has games for: src/cube's card value, the lab's strength blended with the
+ *     no-meta estimate by how sure the lab is (score.ts);
  *   - otherwise src/cube's no-meta estimate (card text, themes, body), which
  *     sits on the same 0–100 scale as the lab's ratings;
  *   - `unrated` (40, the lab's default) when nothing is known about the card.
  */
 import type { CubeContext } from '../cube/score.ts';
-import { cardPrior, cardValue, metaValue } from '../cube/score.ts';
+import { cardPrior, cardValue, metaValue, powerValue } from '../cube/score.ts';
 import type { Colour } from '../cube/colors.ts';
 import { DEFAULT_WEIGHTS, type Weights } from './weights.ts';
 
@@ -38,7 +39,7 @@ export interface LabCard {
 
 /** Where a card's rating came from. */
 export function ratingOf(name: string, ctx: CubeContext, w: Weights = DEFAULT_WEIGHTS): number {
-  if (metaValue(name, ctx)) return cardValue(name, ctx);
+  if (powerValue(name, ctx) || metaValue(name, ctx)) return cardValue(name, ctx);
   if (!ctx.byName.has(name) || !ctx.facts.has(name)) return w.unrated;
   return cardPrior(name, ctx);
 }
