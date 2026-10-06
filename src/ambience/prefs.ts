@@ -33,7 +33,7 @@ export const SCENERY_KEY = 'forgecoach.scenery';
  * caching. A new pack version is a new tag, so this URL never changes under a
  * cached copy.
  */
-export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v1/pack/';
+export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v2/pack/';
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'off', packUrl: '', motion: 'system', accents: true };
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
