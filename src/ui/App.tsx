@@ -30,6 +30,8 @@ const DeckApp = lazy(() => import('./deck/DeckApp.tsx'));
 
 // #draft: a cube draft against the AI (lazy: its own bundle, with the deck assistant's builder).
 const DraftApp = lazy(() => import('./draft/DraftApp.tsx'));
+// #draft/friend: Draft with a friend, a two-person grid draft held by mtg-table's draft room (lazy).
+const FriendApp = lazy(() => import('./draft/FriendApp.tsx'));
 // #cube/<id>: a cube's own page (its cards in the cube section's collection view).
 const CubePage = lazy(() => import('./draft/CubePage.tsx'));
 
@@ -165,6 +167,13 @@ export function App() {
       <LabPage />
     ) : /^#cube\/[\w-]+/.test(hash) ? (
       <CubePage id={hash.slice(6)} onExit={() => (history.length > 1 ? history.back() : (location.hash = '#draft/setup'))} />
+    ) : /^#draft\/friend\b/.test(hash) ? (
+      <FriendApp
+        onExit={() => {
+          history.replaceState(null, '', location.pathname + location.search);
+          setHash('');
+        }}
+      />
     ) : /^#draft\b/.test(hash) ? (
       <DraftApp
         onExit={() => {

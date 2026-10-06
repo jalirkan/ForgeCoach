@@ -78,6 +78,9 @@ export default function DraftApp({ onExit }: { onExit: () => void }) {
         onPaper={() => {
           location.hash = '#deck';
         }}
+        onFriend={() => {
+          location.hash = '#draft/friend';
+        }}
       />
     );
   } else if (!draft || !ctx) {

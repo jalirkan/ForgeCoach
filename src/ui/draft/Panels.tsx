@@ -52,13 +52,13 @@ export function Dock({ primary, secondary, status, waiting, pool, onPool }: { pr
   );
 }
 
-/** `d`: the draft the event belongs to, so a 3+ seat Booster pick names no card (`describeEvent`). */
-export function AiBanner({ e, d }: { e: DraftEvent | null; d?: Draft }) {
+/** `d`: the draft the event belongs to, so a 3+ seat Booster pick names no card (`describeEvent`). `them`: the other seat's name (a friend's), "AI" by default. */
+export function AiBanner({ e, d, them }: { e: DraftEvent | null; d?: Draft; them?: string }) {
   if (!e || e.who !== 'ai') return null;
   return (
-    <div className={cx('aibanner', e.kind !== 'pass' && 'is-take')} role="status" key={e.n}>
-      <span className="aibanner-mark">AI</span>
-      <span>{describeEvent(e, d)}</span>
+    <div className={cx('aibanner', e.kind !== 'pass' && 'is-take', them && 'is-friend')} role="status" key={e.n}>
+      <span className="aibanner-mark">{them ? (them[0] ?? '?').toUpperCase() : 'AI'}</span>
+      <span>{describeEvent(e, d, them)}</span>
     </div>
   );
 }

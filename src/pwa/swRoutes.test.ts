@@ -16,6 +16,8 @@ const SITES: Array<{ name: string; ctx: RouteContext; at: string }> = [
   { name: 'engine on the LAN', ctx: { origin: 'http://192.168.1.5:8642', base: './' }, at: 'http://192.168.1.5:8642/' },
   { name: 'engine, scope URL', ctx: { origin: 'http://192.168.1.5:8642', base: 'http://192.168.1.5:8642/' }, at: 'http://192.168.1.5:8642/' },
   { name: 'Tailscale serve', ctx: { origin: 'https://pc.tail1234.ts.net', base: './' }, at: 'https://pc.tail1234.ts.net/' },
+  // mtg-table D400: the draft room's listener serves the site to a friend on the LAN.
+  { name: 'draft room on the LAN', ctx: { origin: 'http://192.168.1.5:8644', base: './' }, at: 'http://192.168.1.5:8644/' },
 ];
 
 const nav = (ctx: RouteContext): RouteContext => ({ ...ctx, mode: 'navigate' });
@@ -70,6 +72,18 @@ for (const { name, ctx, at } of SITES) {
       for (const p of ['/health', '/match', '/review', '/review/abc', '/eval', '/coach', '/vision', '/engine/start', 'health', 'match', 'review/r1', 'eval', 'coach', 'engine/start', 'api/x']) {
         expect(get(p), p).toBe('passthrough');
         expect(get(p, nav(ctx)), p).toBe('passthrough');
+      }
+    });
+
+    it("never takes the draft room's endpoints (D400), on the page's own origin or the room listener's", () => {
+      for (const p of ['/room', '/room/rAbcdEFG1', '/room/rAbcdEFG1/events', '/room/rAbcdEFG1/join', '/room/rAbcdEFG1/pick', 'room/rAbcdEFG1', 'room/rAbcdEFG1/events']) {
+        expect(get(p), p).toBe('passthrough');
+        expect(get(p, nav(ctx)), p).toBe('passthrough');
+        expect(route(new URL(p, at).href, 'POST', ctx), p).toBe('passthrough');
+      }
+      for (const u of ['http://127.0.0.1:8644/room/rAbcdEFG1/events', 'http://192.168.1.5:8644/room/rAbcdEFG1', 'https://draft.example.com/room/rAbcdEFG1/events', 'http://127.0.0.1:8643/room']) {
+        if (new URL(u).origin === new URL(ctx.origin).origin) continue;
+        expect(route(u, 'GET', ctx), u).toBe('passthrough');
       }
     });
 

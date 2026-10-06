@@ -21,6 +21,9 @@
  *   - the engine's endpoints when the engine serves the site itself and the
  *     page's origin IS the engine (/ws, /observe, /health, /match, /review,
  *     /eval, /coach, /vision, /engine/…): same-origin, but not on the list;
+ *   - the draft room's endpoints (mtg-table D400: /room, /room/<id>/events,
+ *     /join, /pick) on the room listener's own origin, which serves the site
+ *     to a friend on the LAN (port 8644), and from any other page;
  *   - anything naming the lab's live data (lab-status, status.json,
  *     ladder.json, warehouse.json, ledger.json), wherever it is served from;
  *   - same-origin paths outside the base, and any file not on the static list.
@@ -47,7 +50,7 @@ const HELPER_PORT = '8643';
 const LAB_DATA = /lab-status|(?:^|[/=])(?:status|ladder|warehouse|ledger)\.json(?:$|[?#&])/i;
 
 /** First path segments under the base that belong to the engine or the helper, never to the site. */
-const ENGINE_PATHS = new Set(['ws', 'observe', 'health', 'match', 'review', 'eval', 'coach', 'vision', 'engine', 'api', 'sw.js']);
+const ENGINE_PATHS = new Set(['ws', 'observe', 'health', 'match', 'review', 'eval', 'coach', 'vision', 'engine', 'room', 'api', 'sw.js']);
 
 /** The static folders under the base whose files are not content-hashed. */
 const STATIC_DIRS = ['cubes/', 'samples/', 'icons/'];

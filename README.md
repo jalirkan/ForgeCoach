@@ -290,6 +290,39 @@ and the cube's themes.
 `./scripts/play.sh --engine-only --deck decks/<name>.dck --mirror` (or
 `--ai-deck decks/<other>.dck`) — and press **Play vs Forge**.
 
+## Draft with a friend
+
+You and a friend grid-draft a cube, each in your own browser. The draft
+lives on your PC, which checks every pick (mtg-table's draft room, D400). Its
+wire format is in `docs/draft-room.md` in mtg-table.
+
+1. On your PC, start the engine with the draft room. Add `--lan` if your friend
+   is on your Wi-Fi:
+
+   ```bash
+   ./scripts/play.sh --engine-only --lan --draft-room
+   ```
+
+   Add `--pause-lab` to stop the overnight lab from starting new jobs while you
+   play. A lab job that is already running carries on.
+2. Open **Draft vs AI → Draft with a friend** (`#draft/friend`), pick a cube,
+   type your name and press **Create room**.
+3. Copy your friend's link (**On your Wi-Fi**) and send it. It opens the draft
+   from your PC (`http://<your PC's address>:8644/#draft/friend/join?…`). Your
+   friend types a name and presses **Join**.
+4. Draft on the usual pick screen, with your friend in the AI's seat. All 18
+   grids are face up, so each of you sees the other's picks. The coach, the
+   hints and the lab numbers are yours alone: they run in your browser.
+5. When the draft is over, each of you builds a deck from your own pool in the
+   deck editor. The pool is also saved to **Draft & build**. The page re-deals
+   the draft from the seed the room reveals at the end, and confirms that every
+   pick was the cube's.
+
+A dropped connection or a reload picks the draft up where it was: the link is
+kept in this browser. The link is the seat, so send it to your friend only. A
+room expires a day after its last pick. Playing the two decks against each
+other through Forge comes next.
+
 ## Overnight lab on your PC
 
 The metagame and deck-assistant numbers come from mtg-table's cube lab: Forge
