@@ -25,11 +25,6 @@ The drafting AI in src/draft/ (rng.ts, weights.ts, pick.ts, draft.ts, and the
 card model in cards.ts) is ported from mtg-table's cube lab, tools/cubelab/
 (rng.ts, weights.ts, pick.ts, draft.ts, cards.ts): the seeded generator, the
 pick scorer and the Grid and Winston rules, stepped one decision at a time.
-The cube lab's numbers are mtg-table's output, not code: the per-cube
-public/cubes/<cube>.meta.json files, and public/cubes/card-power.json, made by
-scripts/card-power.ts from its lab job J062's matchup-model card strengths
-(results/J062/power.tsv on mtg-table's pc-results branch, copied as
-src/cube/testdata/J062-power.tsv).
 
 
 2. Forge (Card-Forge/forge)

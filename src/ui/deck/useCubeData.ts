@@ -6,14 +6,12 @@
  * imported file wins over the one shipped beside the document), and card
  * data from Scryfall through cards.ts. The scoring context is rebuilt when
  * card data arrives, so the page works from the first paint (document
- * colours only) and sharpens a moment later. The matchup model's card
- * strengths (card-power.json, one file for every cube) are loaded once.
+ * colours only) and sharpens a moment later.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CardInfo } from '../../cards.ts';
 import { getCards } from '../../cards.ts';
 import { cubeInfo, loadCubeDoc, loadShippedMeta } from '../../cube/cubes.ts';
-import { loadCardPower, type CardPowerData } from '../../cube/cardPower.ts';
 import type { Cube } from '../../cube/parseCube.ts';
 import { metaMatchesCube, type CubeMeta } from '../../cube/meta.ts';
 import { getImportedMeta, setImportedMeta } from '../../cube/metaStore.ts';
@@ -42,15 +40,6 @@ export function useCubeData(cubeId: string | null): CubeData {
   const [imported, setImported] = useState<CubeMeta | null>(null);
   const [infos, setInfos] = useState<Map<string, CardInfo> | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [power, setPower] = useState<CardPowerData | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    loadCardPower(BASE).then((p) => live && setPower(p));
-    return () => {
-      live = false;
-    };
-  }, []);
 
   useEffect(() => {
     setCube(null);
@@ -81,7 +70,7 @@ export function useCubeData(cubeId: string | null): CubeData {
 
   const meta = imported ?? shipped;
   const metaSource: MetaSource = imported ? 'imported' : shipped ? 'shipped' : null;
-  const ctx = useMemo(() => (cube ? makeContext(cube, infos, meta, power) : null), [cube, infos, meta, power]);
+  const ctx = useMemo(() => (cube ? makeContext(cube, infos, meta) : null), [cube, infos, meta]);
   const cardsReady = !!infos && [...infos.values()].some((i) => i.found);
 
   const importMeta = useCallback(

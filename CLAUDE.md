@@ -43,13 +43,8 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   theme codes, lowercase tags, prices, lands groups, archetypes), `colors.ts`,
   `facts.ts` (what a card is: Scryfall → lab meta → document), `meta.ts` (the
   cube lab's `meta.json`, schema 1; pair `gain` = lift − 1; tolerates 3-colour
-  archetypes and 18-land rows), `cardPower.ts` (the cube lab's matchup-model
-  card strengths, mtg-table J062 M0: `public/cubes/card-power.json`, schema 1,
-  strict validator, `fromPowerTsv` for `scripts/card-power.ts`; power in logits
-  per copy with its posterior SD; `unrated: "limited"` = Forge's
-  AI:RemoveDeck:All, never a number), `score.ts` (card value = the matchup
-  model's power where it rates a nonland card, weight 1 − (sd/τ)², else the
-  meta's win rate by games, blended with a no-meta prior; synergy), `builder.ts` (best 40s, reasons,
+  archetypes and 18-land rows), `score.ts` (card value = lab win rate blended
+  with a no-meta prior by games; synergy), `builder.ts` (best 40s, reasons,
   cuts, swaps, thin-pool 18-land / three-colour builds, text and `.dck`
   export), `pick.ts` (Grid / Winston advice), `deckPrompt.ts` (deterministic
   deckbuilding coach prompt), `pools.ts` (saved pools, paste parser),
@@ -72,13 +67,10 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   avg pick — or `early` when the lab writes it —, made the 40, deck win rate
   with a Wilson 95% interval, strong/weak only when the interval excludes 0.5,
   per-colour baselines from `colorBaselines` or the archetypes, the
-  Forge-vs-Forge caveat and the red over-flag note; the lab strength line from
-  `card-power.json`: points per copy ± a 95% interval, stronger/weaker only when
-  it excludes 0, "not rated" for AI:RemoveDeck:All, no line for lands — also for
-  the cubes with no meta; UI `ui/draft/LabNumbers.tsx`),
+  Forge-vs-Forge caveat and the red over-flag note; UI `ui/draft/LabNumbers.tsx`),
   `pick.ts`, `draft.ts` are mtg-table's cube-lab drafting AI (`tools/cubelab`)
   stepped one decision at a time, plus Booster (2–8 seats); `cards.ts` (the
-  AI's card view from `cube/` facts, lab ratings); `deck.ts` (the post-draft
+  AI's card view from `cube/` facts, meta ratings); `deck.ts` (the post-draft
   deck: main, side, basics); `poolView.ts` (collection grouping, curve, colour
   counts); `aiFlags.ts` (AI:RemoveDeck from the cube docs); `pickPrompt.ts`;
   `store.ts` (the draft in localStorage); `launch.ts` (mtg-table's match
@@ -122,10 +114,8 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 - `practice/puzzles.ts` — practice puzzles from the player's own games (pure, tested): the film room's turning points plus the engine review's graded calls, one per decision; options are the report's own tokens when graded, else read from the viewer's state (main: playable lands, spells the untapped mana covers, what was played; attack: untapped non-sick creatures); `checkAnswer` (engine: best / tie / close — an interval including zero is never a mistake — / worse only when the interval excludes zero; ungraded: only "as in the game" / "different"); the book in localStorage (`forgecoach.practice.v1`, no boards: the log is re-read); `puzzlePrompt` = film prompt + practice section. UI: `ui/practice/` (`PracticeApp`, lazy `#practice[/<id>]`; `practiceData.ts`: Your record scan, samples, `rememberGame` called by the film room for saved games).
 - `ui/review/` — the engine review screen (lazy `ReviewApp`, opened from GameView's top bar, the game-over card, or `#sample=<id>&review=1`): timeline, `OptionBars`, the replay `Board` at `stateFrame`, the coach via `startAnswer`. Sample report: `public/samples/human-auto-42.review.json` (engine-made); tests also use the hand-made `src/testdata/human-auto-42.review.handmade.json`.
 - `ambience/` — board scenery (pure, tested in node): `model.ts` (lands → biomes per player, slots by first appearance, growth stages; `SceneryTracker`), `events.ts` (land / creature / attack / damage events), `effects.ts` (spec 1.2 one-shot effects: event → cue, pack or built-in, `EffectQueue` concurrency cap, `effectGate`: live play and normal replay steps fire, jumps and scrubbing cancel), `manifest.ts` (art-pack `scenery.json` schema 1, spec 1.3, strict validator incl. `effects` and `overlay`), `pack.ts` (load, preload, fall back to procedural), `prefs.ts` (off by default; Settings, `?scenery=`; `accents`, `?accents=`), `layout.ts`, `sim.ts` (made-up states for `#ambience`), `overlay.ts` (spec 1.3 board accents: corner / edge pieces split by slot, mirrored for the opponent, width fit, caps, built-in placeholders). UI: `ui/ambience/` — `BoardScenery` (the one overlay hook on PlayView / GameView; lazy-loads `SceneryLayer`, which portals a `SceneryStrip` and, with Settings → Board accents on, a `SceneryOverlay` into each `.battlefield`, both at z-index −1 beneath the cards), `procedural.tsx` (built-in art and effect presets), `SceneryEffects.tsx` (effect renderer), `SceneryOverlay.tsx` + `overlayArt.ts` (accents and their built-in art), `AmbiencePage` (`#ambience` preview, no engine). Contract for art packs: `docs/scenery-pack-spec.md`. Packs are never committed here.
-- `public/cubes/` — the seven cube documents (Justin's), the cube lab's
-  `<cube>.meta.json` beside four of them, and `card-power.json` (every card of
-  the seven, from mtg-table's pc-results `results/J062/power.tsv`, kept as
-  `src/cube/testdata/J062-power.tsv`; regenerate with `node scripts/card-power.ts`).
+- `public/cubes/` — the four cube documents (Justin's) and the cube lab's
+  `<cube>.meta.json` beside each.
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.
 - `bench/` — `src/bench/coachBench.ts` (cases, legal choices, scoring, reports), `src/bench/grade.ts` (engine-graded regret tables, low-information rule, held-out set) and `bench/coach/` (cases, logs, card snapshot, the `npm run bench:coach` CLI): the coach benchmark. CI runs its dry run in `npm test`; real runs need the helper or a key; regret tables come from mtg-table's `tools/coach-grade.sh` (README § Coach benchmark, *Engine-graded regret*). Regret's yardstick is "best against Forge Default"; held-out cases (`holdout: true`) are never used to tune the prompt. Transient failures are retried; a call that still fails is a transport error, reported apart from format failures, and a run with any is not to be compared.
 
