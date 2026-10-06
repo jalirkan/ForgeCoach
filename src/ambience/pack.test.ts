@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { fetchManifest, isLocalNetworkHost, manifestUrlFor, resolveScenery, type FetchLike } from './pack.ts';
-import { DEFAULT_PREFS, effectivePrefs, loadSceneryPrefs, reducedMotion, saveSceneryPrefs, sceneryParam } from './prefs.ts';
+import { DEFAULT_PREFS, FORGECOACH_PACK_URL, effectivePrefs, loadSceneryPrefs, reducedMotion, saveSceneryPrefs, sceneryParam } from './prefs.ts';
 
 const manifest = {
   schema: 1,
@@ -122,6 +122,7 @@ describe('prefs', () => {
     expect(sceneryParam('?scenery=http%3A%2F%2F127.0.0.1%3A8650%2F', '')).toBe('http://127.0.0.1:8650/');
     expect(sceneryParam('', '#ambience?scenery=procedural')).toBe('procedural');
     expect(effectivePrefs(DEFAULT_PREFS, '?scenery=procedural', '').mode).toBe('procedural');
+    expect(effectivePrefs(DEFAULT_PREFS, '', '#ambience?scenery=forgecoach')).toMatchObject({ mode: 'pack', packUrl: FORGECOACH_PACK_URL });
     expect(effectivePrefs({ ...DEFAULT_PREFS, mode: 'procedural' }, '?scenery=off', '').mode).toBe('off');
     expect(effectivePrefs(DEFAULT_PREFS, '?scenery=http://h/p/', '')).toMatchObject({ mode: 'pack', packUrl: 'http://h/p/' });
     expect(effectivePrefs(DEFAULT_PREFS, '', '')).toBe(DEFAULT_PREFS);
