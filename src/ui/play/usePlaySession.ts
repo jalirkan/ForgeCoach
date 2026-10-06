@@ -31,7 +31,8 @@ const held = new Map<string, Held>();
 function acquire(url: string): PlaySession {
   let h = held.get(url);
   if (!h) {
-    h = { session: connectSeat(url), refs: 0, closeTimer: null };
+    // A table of two (mtg-table D402) is reached with a seat token in `?seat=`.
+    h = { session: connectSeat(url, /[?&]seat=/.test(url) ? { table: true } : {}), refs: 0, closeTimer: null };
     held.set(url, h);
   }
   if (h.closeTimer !== null) {

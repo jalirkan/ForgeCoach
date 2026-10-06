@@ -19,6 +19,7 @@ import type { ChosenColors, ManaSource } from './state.ts';
 import { chosenColors, chosenColorSource, colorName, infoFor, instantSpeedOptions, turnFacts, untappedManaSources } from './state.ts';
 import { formatCardTexts, isBasicLandName, visibleName } from './review.ts';
 import { buildCubeContext, type CubeCoachInput } from './cube/coachContext.ts';
+import { systemFor } from './opponent.ts';
 
 export interface Prompt {
   system: string;
@@ -662,7 +663,7 @@ export function buildCoachPrompt(
   lines.push('# Question');
   lines.push(questionFor(d, seat, byId));
 
-  return { system: coachSystem(opts?.format ?? 'classic'), user: lines.join('\n') };
+  return { system: systemFor(coachSystem(opts?.format ?? 'classic'), log), user: lines.join('\n') };
 }
 
 /** One paste-able block for the Claude app (system + user, clearly separated). */

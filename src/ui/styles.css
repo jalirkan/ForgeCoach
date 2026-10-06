@@ -2550,6 +2550,13 @@ textarea:focus {
 .live-wait p {
   margin: 0;
 }
+.friend-wait-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
 
 /* ------------------------------------------------------------------ */
 /* Phone */

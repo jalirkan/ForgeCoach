@@ -30,6 +30,8 @@ export interface FriendRoom {
   opponent: string;
   setDeck: (d: DeckState) => void;
   update: (patch: Partial<SavedRoom>) => void;
+  /** Show a state the room answered with (a newer version wins). */
+  take: (s: RoomState) => void;
 }
 
 export function useFriendRoom(entry0: SavedRoom): FriendRoom {
@@ -135,7 +137,7 @@ export function useFriendRoom(entry0: SavedRoom): FriendRoom {
     };
   }, [draft, state, entry.hints, entry.side, entry.deck, data, busy, theirs, act, update, setDeck]);
 
-  return { entry, state, link, note, draft, data, game, opponent, setDeck, update };
+  return { entry, state, link, note, draft, data, game, opponent, setDeck, update, take };
 }
 
 /** The deck to start from once the draft is over: the saved one, else the whole pool with the side column set aside. */

@@ -6,6 +6,16 @@
  * itself (`play.sh --engine-only --lan`, opened from a phone as
  * http://<desktop-ip>:<port>/?token=<T>), the seat is on the same origin:
  * ws://<host>/ws?token=<T>. Otherwise it is the local default.
+ *
+ * mtg-table's draft room serves the same site on its own port (8644,
+ * `--room-site-dir`, D400) — a page that is NOT the bridge: no seat lives on
+ * its origin, and its coach helper is the viewer's own (127.0.0.1:8643), never
+ * the room owner's. `servedByRoom` tells the two apart; `servedByEngine` is
+ * false for a room page. A game between two people (mtg-table D402/D404) has
+ * its seats behind a seat token per player per game, on the room's own origin
+ * (`tableSeatUrl`): `ws(s)://<room host>/ws?seat=<token>`, never the table's
+ * port by number. The room listener passes `/ws` through to the table on a
+ * LAN; a Cloudflare tunnel routes `/ws` on its one hostname to it (D405).
  */
 
 export const DEFAULT_SEAT_URL = 'ws://127.0.0.1:8642/ws';
@@ -21,6 +31,9 @@ export interface PageLocation {
   search: string;
 }
 
+/** The draft room's default port (mtg-table D400); a page served there is the room's, not the bridge's. */
+export const DEFAULT_ROOM_PORT = 8644;
+
 /** Ports where Vite's dev server / preview run; never the bridge. */
 const DEV_PORTS = new Set(['5173', '5174', '4173']);
 
@@ -30,16 +43,48 @@ function splitHost(host: string): { name: string; port: string } {
 }
 
 /**
- * True when this page was served by something other than GitHub Pages or a
- * Vite dev server over http(s) — i.e. by the mtg-table bridge, whose own
- * origin therefore answers the seat socket.
+ * True when this page was served by mtg-table's draft room (D400): the room's
+ * default port, or an origin this browser holds a room seat on (`roomBases`,
+ * the saved rooms' `base`, for a room on another port or behind a tunnel).
  */
-export function servedByEngine(loc: PageLocation): boolean {
+export function servedByRoom(loc: PageLocation, roomBases: readonly string[] = []): boolean {
+  if (loc.protocol !== 'http:' && loc.protocol !== 'https:') return false;
+  if (splitHost(loc.host).port === String(DEFAULT_ROOM_PORT)) return true;
+  const origin = `${loc.protocol}//${loc.host}`.toLowerCase();
+  return roomBases.some((b) => b.replace(/\/+$/, '').toLowerCase() === origin);
+}
+
+/**
+ * True when this page was served by something other than GitHub Pages, a
+ * Vite dev server or the draft room over http(s) — i.e. by the mtg-table
+ * bridge, whose own origin therefore answers the seat socket.
+ */
+export function servedByEngine(loc: PageLocation, roomBases: readonly string[] = []): boolean {
   if (loc.protocol !== 'http:' && loc.protocol !== 'https:') return false;
   const { name, port } = splitHost(loc.host);
   if (name === 'jalirkan.github.io' || name.endsWith('.github.io')) return false;
   if (DEV_PORTS.has(port)) return false;
+  if (servedByRoom(loc, roomBases)) return false;
   return true;
+}
+
+/**
+ * The seat of a game between two people (mtg-table D402/D404): `/ws` on the
+ * room's own origin — `roomBase`, the room listener as this browser reaches
+ * it (the page's origin when the room served it, or a tunnel's `https://` name)
+ * — with the token as `?seat=` (a browser websocket sets no header). The room
+ * passes it through to the table port; a tunnel routes it there (D405).
+ */
+export function tableSeatUrl(roomBase: string, token: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(roomBase);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+  const scheme = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${scheme}//${u.host}/ws?seat=${encodeURIComponent(token)}`;
 }
 
 /** The pairing token in the page URL, or null. */
@@ -55,7 +100,7 @@ export function defaultSeatUrl(loc: PageLocation): string {
   return `${scheme}//${loc.host}/ws${token === null ? '' : `?token=${encodeURIComponent(token)}`}`;
 }
 
-/** The URL with any `token` value replaced, safe to show on screen. */
+/** The URL with any `token` (pairing) or `seat` (a table's seat token) value replaced, safe to show on screen. */
 export function redactSeatUrl(url: string): string {
-  return url.replace(/([?&]token=)[^&#\s]*/gi, '$1…');
+  return url.replace(/([?&](?:token|seat)=)[^&#\s]*/gi, '$1…');
 }

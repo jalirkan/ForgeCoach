@@ -25,6 +25,7 @@ import type {
   ClickAbilityAct,
   ClickCardAct,
   ClickPlayerAct,
+  ClaimWinAct,
   ConcedeAct,
   ManaColor,
   NewGameAct,
@@ -67,6 +68,8 @@ export const undo = (): UndoAct => ({ action: 'undo' });
 export const alphaStrike = (): AlphaStrikeAct => ({ action: 'alphaStrike' });
 /** Concede the game. Always allowed (§5.4: concede is reachable from every UI state). */
 export const concede = (): ConcedeAct => ({ action: 'concede' });
+/** M59 — at a table of two, once the other player has been away past the grace: claim the win. Allowed whenever concede is. */
+export const claimWin = (): ClaimWinAct => ({ action: 'claimWin' });
 /** M3's spelling of `newGame {mode:"continue"}`. Prefer {@link newGame}. */
 export const nextGame = (): NextGameAct => ({ action: 'nextGame' });
 /** After `over`: the next game of the match (`continue`) or a fresh match (`restart`). */
@@ -120,7 +123,10 @@ const BETWEEN_GAMES = new Set<ActBody['action']>(['newGame', 'nextGame']);
  *    engine's game thread is parked on the question, and an act behind it is
  *    a click on a board that is about to change (the board's `askOpen`);
  *  - before the engine's first `input` of the game only `concede` (M42's
- *    pre-input guard, which the bridge answers with `Not yet`).
+ *    pre-input guard, which the bridge answers with `Not yet`);
+ *  - `claimWin` (M59, a table of two) goes wherever `concede` goes: it is
+ *    the absent player's concede, and the bridge itself refuses it ("Not
+ *    yet") before the grace has run out.
  */
 export function whyNotAct(view: GuardView, body: ActBody): string | null {
   if (view.status !== 'open') return `not connected to the engine (${view.status}) — ${body.action} was not sent`;
@@ -128,7 +134,7 @@ export function whyNotAct(view: GuardView, body: ActBody): string | null {
     return BETWEEN_GAMES.has(body.action) ? null : 'the game is over';
   }
   if (BETWEEN_GAMES.has(body.action)) return 'a new game can only be started after this one is over';
-  if (body.action === 'concede') return null;
+  if (body.action === 'concede' || body.action === 'claimWin') return null;
   if (view.ask !== null) return 'answer the open question first';
   if (view.inputSeen === false) return 'the engine has not asked you anything yet';
   return null;

@@ -27,6 +27,7 @@ export function PhaseStrip({
   interactive,
   onAct,
   variant,
+  oppLabel = 'Forge',
 }: {
   state: GameStateBody | null;
   seat: number | null;
@@ -35,6 +36,8 @@ export function PhaseStrip({
   onAct: (body: ActBody) => void;
   /** bar: a phone's row across the top; side: the same row in the desktop sidebar, under the turn and priority. */
   variant: 'bar' | 'side';
+  /** Whose priority it is when it is not yours: "Forge" against the AI, the friend's name at a table of two (M59). */
+  oppLabel?: string;
 }) {
   const [pending, setPending] = useState<Map<string, boolean>>(() => new Map());
   useEffect(() => setPending((p) => (p.size ? settlePending(p, state, seat) : p)), [state, seat]);
@@ -95,7 +98,7 @@ export function PhaseStrip({
           <span className="grow" />
           <span className={cx('pside-prio', model.priority === 'you' && 'is-you')} role="status">
             <span className="pside-prio-dot" aria-hidden="true" />
-            {model.priority === 'you' ? 'Your priority' : model.priority === 'opp' ? 'Forge' : '—'}
+            {model.priority === 'you' ? 'Your priority' : model.priority === 'opp' ? oppLabel : '—'}
           </span>
         </header>
       )}

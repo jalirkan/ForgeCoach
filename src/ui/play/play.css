@@ -141,6 +141,28 @@
 .play-banner {
   flex: none;
 }
+/* A table of two (mtg-table M59): the other player thinking or away, and this seat's own clock. */
+.play-table-lines {
+  flex: none;
+}
+.play-table {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.play-table.is-thinking {
+  color: var(--info);
+}
+.play-table.is-away {
+  color: var(--text);
+  background: var(--info-soft);
+}
+.play-table.is-low {
+  color: var(--bad);
+  background: var(--bad-soft);
+  font-weight: 600;
+}
 .topbar .btn.is-on {
   border-color: rgba(227, 178, 95, 0.5);
   color: var(--accent-2);
@@ -1234,7 +1256,8 @@ button.avatar.is-select {
     grid-template-rows: auto auto minmax(0, 1fr);
   }
   .game.play.is-narrow > .topbar,
-  .game.play.is-narrow > .play-banner {
+  .game.play.is-narrow > .play-banner,
+  .game.play.is-narrow > .play-table-lines {
     grid-column: 1 / -1;
   }
   .game.play.is-narrow > .play-stage {

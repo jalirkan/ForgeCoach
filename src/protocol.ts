@@ -65,6 +65,15 @@
  *       absent from every older stream and from AI-vs-AI recordings.
  *       `aiPolicyOf` is its one reader.
  *
+ * 2026-10-06 — **a table of two** (`docs/protocol.md` §2, §2.1, §2.2, §8.1):
+ *   M59 `MtgTable --humans 2`: two people, no AI, each seat its own stream on
+ *       the table port behind a seat token. A new s→c frame, `table` — who is
+ *       at the table, whose decision it is and its clock, and whether this
+ *       seat may claim the win (`TableBody`); `hello_ok.match` in its
+ *       two-person form (`opponentDeck`, `opponent: "human"`, no `aiDeck` /
+ *       `aiProfile` / `aiPolicy`); the act `claimWin`; the session header's
+ *       `humans: 2`. `opponentIsHuman` is the one reader of the form.
+ *
  * **Every M6 field is declared optional here**, and that is not defensiveness
  * for its own sake: fifteen committed recordings predate them,
  * `web/test/render.test.tsx` folds every frame of all of them, and a required
@@ -84,7 +93,10 @@ export type Direction = 's2c' | 'c2s';
 // §1 Envelope
 // ---------------------------------------------------------------------------
 
-/** §2. The ten frame types: 6 server→client, 4 client→server (ping/pong both). */
+/**
+ * §2. The frame types: 7 server→client, 4 client→server (ping/pong both).
+ * `table` (amendment M59) is sent only at a table of two.
+ */
 export const FRAME_TYPES = [
   'hello_ok',
   'state',
@@ -92,6 +104,7 @@ export const FRAME_TYPES = [
   'ask',
   'notice',
   'over',
+  'table',
   'act',
   'answer',
   'resync',
@@ -179,10 +192,23 @@ export interface MatchDeck {
 export interface MatchSetup {
   /** The VIEWING seat's deck; `path` is the one §8.1's header already carries. */
   yourDeck: MatchDeck & { path: string };
-  /** The other seat's deck: `{name, cards}` and NOTHING else (hard rule 8). */
-  aiDeck: MatchDeck;
-  /** A Forge AI profile: `Default` / `Cautious` / `Reckless` / `Experimental` in 2.0.14. */
-  aiProfile: string;
+  /**
+   * The other seat's deck: `{name, cards}` and NOTHING else (hard rule 8).
+   * Absent at a table of two (M59), where it is {@link opponentDeck}.
+   */
+  aiDeck?: MatchDeck;
+  /**
+   * A Forge AI profile: `Default` / `Cautious` / `Reckless` / `Experimental` in
+   * 2.0.14. Absent at a table of two (M59): the other seat is a person.
+   */
+  aiProfile?: string;
+  /**
+   * §2.1, amendment **M59** — at a table of two, the other PERSON's deck:
+   * `{name, cards}` and nothing else, exactly as `aiDeck` (hard rule 8).
+   */
+  opponentDeck?: MatchDeck;
+  /** §2.1, amendment **M59** — `"human"` at a table of two; absent when the other seat is the AI. */
+  opponent?: 'human';
   /** `--games N`. Always present, unlike M41's `gameCount`. */
   games: number;
   /**
@@ -221,6 +247,19 @@ export function aiPolicyOf(hello: HelloOkBody | null | undefined): AiPolicy | nu
   return typeof p === 'string' && (AI_POLICY_IDS as readonly string[]).includes(p) ? (p as AiPolicy) : null;
 }
 
+/**
+ * §2.1, amendment **M59** — the one reader of the two-person form: is the other
+ * seat a person? True when `hello_ok.match.opponent` is `"human"` (or, for a
+ * stream without a match block, when `players[]` marks no seat an AI and there
+ * are two of them). Everything a client says about "the AI" hangs on this.
+ */
+export function opponentIsHuman(hello: HelloOkBody | null | undefined): boolean {
+  if (hello === null || hello === undefined) return false;
+  if (hello.match?.opponent === 'human') return true;
+  return hello.match === undefined && Array.isArray(hello.players) && hello.players.length === 2
+    && hello.players.every((p) => p.isAi === false);
+}
+
 /** What one seat's plate says about the match (M44). */
 export interface SeatMatch {
   /** This seat's deck name, or `null` when the wire does not say. */
@@ -251,7 +290,7 @@ export function seatMatchOf(hello: HelloOkBody | null | undefined, playerId: num
   const player = hello.players.find((p) => p.id === playerId);
   if (player === undefined) return null;
   const mine = playerId === hello.you;
-  const deck = mine ? m.yourDeck : m.aiDeck;
+  const deck = mine ? m.yourDeck : (m.opponentDeck ?? m.aiDeck);   // M59: a person's deck at a table of two
   const name = typeof deck?.name === 'string' && deck.name.trim() !== '' ? deck.name : null;
   const raw = mine ? m.yourProfile : m.aiProfile;
   const profile = player.isAi && typeof raw === 'string' && raw !== '' ? raw : null;
@@ -1587,6 +1626,48 @@ export interface OverBody {
 }
 
 // ---------------------------------------------------------------------------
+// §2.6 table (s→c) — amendment M59, a table of two only
+// ---------------------------------------------------------------------------
+
+/** One seat of {@link TableBody}. Times are the bridge's epoch ms, as the envelope's `t`. */
+export interface TableSeat {
+  /** 0 or 1: the table's seat, which is also the order the decks were given in. */
+  seat: number;
+  /** The player id of `hello_ok.players[]`; `null` before the game exists. */
+  playerId: number | null;
+  /** The name the player gave the room. */
+  name: string;
+  /** A socket holds this seat now. */
+  connected: boolean;
+  /** The engine is waiting on this seat (an input is up, or an ask is parked). */
+  deciding: boolean;
+  /** When this seat's decision clock runs out; `null` when it is not deciding, is away, or the clock is off. */
+  decisionDeadline: number | null;
+  /** Since when this seat's person has been gone; `null` while they are here. */
+  awaySince: number | null;
+}
+
+/**
+ * §2.6, amendment **M59** — sent to each seat at a table of two whenever any of
+ * it changes, cached and re-sent on a reconnect like a `state`. Count down with
+ * `deadline - t` (the envelope's `t` is the same clock), never with the
+ * client's own.
+ */
+export interface TableBody {
+  /** This stream's seat (0 or 1). */
+  you: number;
+  seats: TableSeat[];
+  /** The decision clock (0 = off). */
+  decisionTimeoutMs: number;
+  /** How long a player may be away before the other may claim the win. */
+  graceMs: number;
+  /** When THIS seat may claim the win (the other seat away since `awaySince + graceMs`); `null` when it may not. */
+  claimWinAt: number | null;
+  /** This seat may send `act: claimWin` now. */
+  canClaimWin: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // §2.2 act, §2.3 answer (client→server)
 // ---------------------------------------------------------------------------
 
@@ -1625,8 +1706,10 @@ export const ACT_ACTIONS = [
   'setYield',
   /** M6 — one act for all three of `YieldController`'s mechanisms (report 11 §4). */
   'yieldTo',
-  /** M6 — `nextGameDecision(CONTINUE | NEW)`; valid only after `over` (§7). */
+  /** M6 — `nextGameDecision(CONTINUE | NEW)`; valid only after `over` (§7). Refused at a table of two (M59). */
   'newGame',
+  /** M59 — at a table of two, once the other player has been away past the grace: end the game, a win. */
+  'claimWin',
 ] as const;
 export type ActAction = (typeof ACT_ACTIONS)[number];
 
@@ -1669,6 +1752,14 @@ export interface AlphaStrikeAct {
 }
 export interface ConcedeAct {
   action: 'concede';
+}
+/**
+ * §2.2, amendment **M59** — at a table of two only: the other player has been
+ * away for `table.graceMs`, so this seat claims the win (the bridge concedes
+ * for them). Refused with `notice {title: "Not yet"}` before that.
+ */
+export interface ClaimWinAct {
+  action: 'claimWin';
 }
 /** M3's bare act; superseded by {@link NewGameAct}. Nothing sends it any more. */
 export interface NextGameAct {
@@ -1788,6 +1879,7 @@ export type ActBody =
   | UndoAct
   | AlphaStrikeAct
   | ConcedeAct
+  | ClaimWinAct
   | NextGameAct
   | NewGameAct
   | SetPhaseStopAct
@@ -1831,6 +1923,7 @@ export type InputFrame = Envelope<'input', InputBody>;
 export type AskFrame = Envelope<'ask', AskBody>;
 export type NoticeFrame = Envelope<'notice', NoticeBody>;
 export type OverFrame = Envelope<'over', OverBody>;
+export type TableFrame = Envelope<'table', TableBody>;
 export type ActFrame = Envelope<'act', ActBody>;
 export type AnswerFrame = Envelope<'answer', AnswerBody>;
 export type ResyncFrame = Envelope<'resync', EmptyBody>;
@@ -1843,7 +1936,8 @@ export type ServerFrame =
   | InputFrame
   | AskFrame
   | NoticeFrame
-  | OverFrame;
+  | OverFrame
+  | TableFrame;
 
 export type ClientFrame = ActFrame | AnswerFrame | ResyncFrame;
 
@@ -1912,6 +2006,8 @@ export interface SessionHeader {
    * stretched for a watcher. Absent means engine speed.
    */
   paceMs?: number;
+  /** §8.1, amendment **M59** — `2` on a seat's log at a table of two; absent otherwise. */
+  humans?: 2;
   decks: DeckRef[];
 }
 
