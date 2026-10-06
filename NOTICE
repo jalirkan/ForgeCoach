@@ -101,3 +101,11 @@ from mtg-table's fixture corpus (fixtures/games/human-auto-2026, human-auto-7,
 human-number-7, human-scry-7, human-sideboard-7, human-trample-7 and
 human-yield-13), gzipped and otherwise unchanged; its cases also use the
 public/samples/ and src/play/testdata/ recordings above.
+
+Board scenery art pack
+----------------------
+Settings → Board scenery → "ForgeCoach art" loads the pack published at
+https://github.com/jalirkan/forgecoach-scenery (tag pack-v1), licensed
+CC BY 4.0, from cdn.jsdelivr.net. The art is not part of this repository;
+its provenance and model-licence notes are in that repository's
+PROVENANCE.txt.

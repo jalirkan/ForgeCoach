@@ -2,23 +2,39 @@
  * ForgeCoach — ui/ambience/ScenerySettings.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Settings → Board scenery: off (the default), the built-in scenery, or a
- * pack URL; board accents (spec 1.3, on by default with the scenery); and motion. Applies at once (its own storage key), so it needs no
+ * Settings → Board scenery: off (the default), the built-in scenery,
+ * ForgeCoach's own art pack (a pack at FORGECOACH_PACK_URL), or a pack URL; board accents (spec 1.3, on by default with the scenery); and motion. Applies at once (its own storage key), so it needs no
  * part in the dialog's Save. Checking a pack loads the validator lazily.
  */
 import { useState } from 'react';
-import { loadSceneryPrefs, saveSceneryPrefs, type MotionPref, type SceneryMode, type SceneryPrefs } from '../../ambience/prefs.ts';
+import { FORGECOACH_PACK_URL, loadSceneryPrefs, saveSceneryPrefs, type MotionPref, type SceneryPrefs } from '../../ambience/prefs.ts';
 import { cx } from '../util.ts';
 
-const MODES: Array<{ id: SceneryMode; label: string; hint: string }> = [
+type Choice = 'off' | 'procedural' | 'forgecoach' | 'pack';
+
+const CHOICES: Array<{ id: Choice; label: string; hint: string }> = [
   { id: 'off', label: 'Off', hint: 'A plain board' },
   { id: 'procedural', label: 'Built-in', hint: 'Drawn in code' },
+  { id: 'forgecoach', label: 'ForgeCoach art', hint: 'Painted lands, downloaded once' },
   { id: 'pack', label: 'Art pack', hint: 'From a URL you serve' },
 ];
+
+/** Which radio is on: ForgeCoach's own pack is a pack at its fixed URL. */
+export function sceneryChoice(p: SceneryPrefs): Choice {
+  if (p.mode !== 'pack') return p.mode;
+  return p.packUrl.trim() === FORGECOACH_PACK_URL ? 'forgecoach' : 'pack';
+}
+
+function applyChoice(p: SceneryPrefs, c: Choice): SceneryPrefs {
+  if (c === 'forgecoach') return { ...p, mode: 'pack', packUrl: FORGECOACH_PACK_URL };
+  if (c === 'pack') return { ...p, mode: 'pack', packUrl: p.packUrl.trim() === FORGECOACH_PACK_URL ? '' : p.packUrl };
+  return { ...p, mode: c };
+}
 
 export function ScenerySettings() {
   const [p, setP] = useState<SceneryPrefs>(() => loadSceneryPrefs());
   const [check, setCheck] = useState<{ busy: boolean; lines: string[]; ok: boolean | null }>({ busy: false, lines: [], ok: null });
+  const choice = sceneryChoice(p);
   const set = (next: SceneryPrefs) => {
     setP(next);
     saveSceneryPrefs(next);
@@ -34,15 +50,20 @@ export function ScenerySettings() {
     <fieldset className="field">
       <legend className="field-label">Board scenery</legend>
       <div className="model-grid" role="radiogroup" aria-label="Board scenery">
-        {MODES.map((o) => (
-          <label key={o.id} className={cx('model-opt', p.mode === o.id && 'is-on')}>
-            <input type="radio" name="sceneryMode" value={o.id} checked={p.mode === o.id} onChange={() => set({ ...p, mode: o.id })} />
+        {CHOICES.map((o) => (
+          <label key={o.id} className={cx('model-opt', choice === o.id && 'is-on')}>
+            <input type="radio" name="sceneryMode" value={o.id} checked={choice === o.id} onChange={() => set(applyChoice(p, o.id))} />
             <span className="model-name">{o.label}</span>
             <span className="model-hint">{o.hint}</span>
           </label>
         ))}
       </div>
-      {p.mode === 'pack' && (
+      {choice === 'forgecoach' && (
+        <span className="field-help">
+          Art by the ForgeCoach project, CC BY 4.0 (<a href="https://github.com/jalirkan/forgecoach-scenery" target="_blank" rel="noreferrer">forgecoach-scenery</a>), loaded from jsDelivr.
+        </span>
+      )}
+      {choice === 'pack' && (
         <div className="field-row">
           <input
             type="url"
@@ -58,7 +79,7 @@ export function ScenerySettings() {
           </button>
         </div>
       )}
-      {check.lines.length > 0 && p.mode === 'pack' && (
+      {check.lines.length > 0 && choice === 'pack' && (
         <ul className={cx('field-help', check.ok ? 'is-ok' : 'danger')} style={{ margin: '4px 0 0', paddingLeft: 18 }}>
           {check.lines.map((l, i) => (
             <li key={i}>{l}</li>

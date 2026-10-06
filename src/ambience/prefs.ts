@@ -9,7 +9,7 @@
  *
  * `?scenery=<url>` (in the page query, or in the hash's query, e.g.
  * `#ambience?scenery=…`) overrides the stored choice for this page load:
- * `procedural` and `off` are words, anything else is a pack URL.
+ * `procedural`, `forgecoach` and `off` are words, anything else is a pack URL.
  * `?accents=off` (or `on`) does the same for the board accents (spec 1.3), a
  * sub-toggle of the scenery: on by default whenever the scenery is on.
  */
@@ -26,6 +26,14 @@ export interface SceneryPrefs {
 }
 
 export const SCENERY_KEY = 'forgecoach.scenery';
+
+/**
+ * ForgeCoach's own art pack (CC BY 4.0, github.com/jalirkan/forgecoach-scenery),
+ * served by jsDelivr from a fixed tag: CORS, the right MIME types and long
+ * caching. A new pack version is a new tag, so this URL never changes under a
+ * cached copy.
+ */
+export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v1/pack/';
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'off', packUrl: '', motion: 'system', accents: true };
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
@@ -91,6 +99,7 @@ export function effectivePrefs(stored: SceneryPrefs, search: string, hash: strin
   if (!p) return withAccents;
   if (p === 'off') return { ...withAccents, mode: 'off' };
   if (p === 'procedural' || p === 'builtin') return { ...withAccents, mode: 'procedural' };
+  if (p === 'forgecoach') return { ...withAccents, mode: 'pack', packUrl: FORGECOACH_PACK_URL };
   return { ...withAccents, mode: 'pack', packUrl: p };
 }
 
