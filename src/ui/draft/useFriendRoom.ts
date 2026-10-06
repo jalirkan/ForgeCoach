@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { initialDeck, type DeckState } from '../../draft/deck.ts';
 import type { DraftAction, DraftEvent, GridDraft } from '../../draft/draft.ts';
-import { RoomClient, RoomError, saveRoom, toGridDraft, type RoomState, type SavedRoom } from '../../draft/room.ts';
+import { reconnectNote, RoomClient, RoomError, saveRoom, toGridDraft, type RoomState, type SavedRoom } from '../../draft/room.ts';
+import { servedByTunnel } from '../../play/seatUrl.ts';
 import type { SavedDraft } from '../../draft/store.ts';
 import { useCubeData, type CubeData } from '../deck/useCubeData.ts';
 import type { DraftGame } from './useDraftGame.ts';
@@ -52,9 +53,19 @@ export function useFriendRoom(entry0: SavedRoom): FriendRoom {
 
   useEffect(() => {
     setLink('connecting');
+    // mtg-table D408: on a page that came through a Cloudflare tunnel, a sign-in redirect or a few failed
+    // reconnects in a row most likely mean the Access session ran out: say "reload".
+    let tunnel = false;
+    try {
+      tunnel = typeof location !== 'undefined' && servedByTunnel(location);
+    } catch {
+      /* no page */
+    }
+    let failures = 0;
     return client.stream(take, (st, why) => {
       setLink(st);
-      setNote(st === 'live' ? null : (why ?? null));
+      failures = st === 'reconnecting' ? failures + 1 : 0;
+      setNote(st === 'live' ? null : st === 'reconnecting' ? reconnectNote(tunnel, failures, why ?? null) : (why ?? null));
     });
   }, [client, take]);
 

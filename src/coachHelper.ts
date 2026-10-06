@@ -39,7 +39,7 @@
  * DOM-light: `fetch` and the page location are injectable for tests.
  */
 import { CoachError, type AskPrompt, type CoachResult, type ModelId, type Settings, type StreamHandlers } from './claude.ts';
-import { SEAT_TOKEN_KEY, servedByEngine, tokenFromSearch } from './play/seatUrl.ts';
+import { SEAT_TOKEN_KEY, servedByEngine, servedByTunnel, tokenFromSearch } from './play/seatUrl.ts';
 
 export const HELPER_PORT = 8643;
 export const DEFAULT_HELPER_URL = `http://127.0.0.1:${HELPER_PORT}`;
@@ -69,6 +69,12 @@ export function helperModel(id: ModelId | string): HelperModel {
 export interface HelperTarget {
   baseUrl: string;
   token: string | null;
+  /**
+   * mtg-table D408: this page came through the room owner's Cloudflare tunnel.
+   * Their helper is never reachable from it, so only the visitor's own
+   * (127.0.0.1) is tried, and a missing one is explained in those terms.
+   */
+  tunnel?: true;
 }
 
 export interface HelperLocation {
@@ -113,6 +119,8 @@ export function helperTarget(loc: HelperLocation, storedToken: string | null = n
   const engine = servedByEngine(loc);
   const token = engine ? (tokenFromSearch(loc.search) ?? storedToken ?? null) : null;
   if (override && /^https?:\/\/[^\s]+$/i.test(override)) return { baseUrl: override.replace(/\/+$/, ''), token };
+  // A tunnel page (D408): never the tunnel's host (no helper is there, and it would be mixed content); the visitor's own.
+  if (servedByTunnel(loc)) return { baseUrl: DEFAULT_HELPER_URL, token: null, tunnel: true };
   if (engine) {
     const name = loc.hostname.includes(':') && !loc.hostname.startsWith('[') ? `[${loc.hostname}]` : loc.hostname;
     return { baseUrl: `http://${name}:${helperPortFromSearch(loc.search) ?? HELPER_PORT}`, token };
@@ -252,6 +260,22 @@ export function forgetHelper(baseUrl?: string): void {
 
 const NOT_RUNNING = 'The coach helper isn’t running. Start `./scripts/play.sh` in mtg-table (it starts the helper), with Claude Code installed and logged in.';
 
+/** mtg-table D408: what a friend on a tunnel page needs for a coach. */
+export function tunnelCoachMessage(host: string | null = null): string {
+  const page = host ? `https://${host}` : 'this page’s address';
+  return 'This page comes through your friend’s Cloudflare tunnel, so the coach can’t use their computer. '
+    + 'To get advice, add your own Anthropic API key in Settings (coach source: API key), '
+    + `or run your own mtg-table coach helper on this computer with ${page} in its config.json wsAllowedOrigins.`;
+}
+
+function tunnelHost(): string | null {
+  try {
+    return typeof location === 'undefined' ? null : location.host;
+  } catch {
+    return null;
+  }
+}
+
 /** Is the coach helper there, and is Claude Code ready behind it? Never throws. */
 export function detectHelper(opts: DetectOptions = {}): Promise<HelperStatus> {
   const target = opts.target ?? pageHelperTarget();
@@ -274,7 +298,11 @@ function defaultFetch(): FetchFn {
 
 async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: () => number): Promise<HelperStatus> {
   const baseUrl = target.baseUrl;
-  const down = (reason: 'not_running' | 'not_ready' | 'unauthorized', message: string): HelperStatus => ({ state: 'down', baseUrl, reason, message, checkedAt: now() });
+  const down = (reason: 'not_running' | 'not_ready' | 'unauthorized', message: string): HelperStatus => ({
+    state: 'down', baseUrl, reason, checkedAt: now(),
+    // D408: on a tunnel page, a helper that is not there (or refuses this page's origin) is explained for the friend.
+    message: target.tunnel && reason !== 'not_ready' ? tunnelCoachMessage(tunnelHost()) : message,
+  });
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
