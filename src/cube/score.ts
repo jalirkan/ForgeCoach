@@ -31,6 +31,19 @@
  * deep those themes are, its type, mana value and body, and what its oracle
  * text does (removal, card draw, tokens) when the document has no tag.
  *
+ * HUMAN DATA (docs/human-blend.md). Where the cube ships 17Lands numbers
+ * (cube/human.ts) and a nonland card has a row, the value mixes them in, each
+ * estimate weighted by its precision in lab-game units:
+ *
+ *   h = 50 + 250 · D · (p − avg),  H = 0.375 · n / (D² · p(1−p)),  D = 0.8
+ *   value = (K·prior + g·lab + H·h) / (K + g + H)
+ *
+ * p is the card's GIH win rate over n games in hand, avg the format's pooled
+ * GIH win rate, D the fixed Arena-vs-paper discount. H runs to the thousands,
+ * so human data leads where it exists. `labValue` is the value without it —
+ * what the Draft vs AI drafter rates cards by (draft/cards.ts), which stays in
+ * parity with mtg-table's cube lab.
+ *
  * Synergy, with the cards it would be played beside:
  *   themes — for each of the card's themes among the deck's top themes,
  *            2 · √min(8, other cards sharing it);
@@ -43,6 +56,7 @@ import { cardFacts } from './facts.ts';
 import type { CardInfo } from '../cards.ts';
 import { indexMeta, type CubeMeta, type MetaIndex, type MetaPair } from './meta.ts';
 import { shrinkage, shrinkRate } from './metaView.ts';
+import type { HumanCards } from './human.ts';
 
 export interface CubeContext {
   cube: Cube;
@@ -50,17 +64,23 @@ export interface CubeContext {
   byName: Map<string, CubeCard>;
   facts: Map<string, CardFacts>;
   meta: MetaIndex | null;
+  /** 17Lands human numbers for this cube (cube/human.ts), when it ships them. */
+  human: HumanCards | null;
   /** How many cube cards carry each theme. */
   themeSupport: Map<string, number>;
   /** Theme code → its name ("SAC" → "Sacrifice"). */
   themeName: Map<string, string>;
   /** Cached values. */
   values: Map<string, number>;
+  labValues: Map<string, number>;
   priors: Map<string, number>;
 }
 
-/** Builds the scoring context. `infos` is Scryfall data by name (missing entries fall back to meta or the document). */
-export function makeContext(cube: Cube, infos: Map<string, CardInfo> | null, meta: CubeMeta | null): CubeContext {
+/**
+ * Builds the scoring context. `infos` is Scryfall data by name (missing entries fall back to meta or the document);
+ * `human` the cube's 17Lands numbers, when it ships them (cubes.ts `humanData`).
+ */
+export function makeContext(cube: Cube, infos: Map<string, CardInfo> | null, meta: CubeMeta | null, human: HumanCards | null = null): CubeContext {
   const byName = new Map(cube.cards.map((c) => [c.name, c]));
   const metaCards = new Map((meta?.cube.cards ?? []).map((c) => [c.name, c]));
   const facts = new Map<string, CardFacts>();
@@ -68,7 +88,7 @@ export function makeContext(cube: Cube, infos: Map<string, CardInfo> | null, met
   const themeSupport = new Map<string, number>();
   for (const c of cube.cards) for (const t of c.themes) themeSupport.set(t, (themeSupport.get(t) ?? 0) + 1);
   const themeName = new Map(cube.themes.map((t) => [t.code, t.name]));
-  return { cube, byName, facts, meta: meta ? indexMeta(meta) : null, themeSupport, themeName, values: new Map(), priors: new Map() };
+  return { cube, byName, facts, meta: meta ? indexMeta(meta) : null, human, themeSupport, themeName, values: new Map(), labValues: new Map(), priors: new Map() };
 }
 
 const REMOVAL_TEXT =
@@ -164,15 +184,87 @@ export function metaValue(name: string, ctx: CubeContext): { value: number; weig
   return { value: 50 + VALUE_PER_RATE * (raw - 0.5), weight: games / (games + META_STRENGTH), winRate: shown, rawRate: raw, games };
 }
 
-/** A card's value (0–100): the lab's games blended with the prior, weight games / (games + META_STRENGTH). */
-export function cardValue(name: string, ctx: CubeContext): number {
-  const hit = ctx.values.get(name);
+/** A card's value without human data (0–100): the lab's games blended with the prior, weight games / (games + META_STRENGTH). */
+export function labValue(name: string, ctx: CubeContext): number {
+  const hit = ctx.labValues.get(name);
   if (hit !== undefined) return hit;
   const prior = cardPrior(name, ctx);
   const m = metaValue(name, ctx);
   const v = m ? Math.round(clamp(m.weight * m.value + (1 - m.weight) * prior, 5, 98) * 10) / 10 : prior;
+  ctx.labValues.set(name, v);
+  return v;
+}
+
+/** The fixed Arena-vs-paper discount on the human part (docs/human-blend.md). */
+export const HUMAN_DISCOUNT = 0.8;
+/** Lab games' per-game variance in rate units, 0.25 × design effect 1.5 (as META_STRENGTH): the unit of H. */
+const LAB_GAME_VARIANCE = 0.375;
+
+/**
+ * The human (17Lands) opinion of a card on the value scale, and its precision in lab games.
+ * Null without a human row, for a land, or when the row is degenerate (p of 0 or 1).
+ */
+export function humanValue(name: string, ctx: CubeContext, discount = HUMAN_DISCOUNT): { value: number; games: number; rate: number; avg: number; weight: number } | null {
+  const d = ctx.human;
+  const c = d?.cards[name];
+  if (!d || !c || c.gih <= 0 || d.gih.games <= 0) return null;
+  const f = ctx.facts.get(name);
+  if (f?.land || ctx.byName.get(name)?.land) return null;
+  const p = c.gihW / c.gih;
+  if (!(p > 0 && p < 1)) return null;
+  const avg = d.gih.wins / d.gih.games;
+  return { value: 50 + VALUE_PER_RATE * discount * (p - avg), games: c.gih, rate: p, avg, weight: (LAB_GAME_VARIANCE * c.gih) / (discount * discount * p * (1 - p)) };
+}
+
+/**
+ * A card's value (0–100). Without human data for it, `labValue`; with it, the prior, the lab and the
+ * human value weighted by precision (see the header). The deck assistant and pick advice use this.
+ */
+export function cardValue(name: string, ctx: CubeContext): number {
+  const hit = ctx.values.get(name);
+  if (hit !== undefined) return hit;
+  const v = blendedValue(name, ctx, HUMAN_DISCOUNT) ?? labValue(name, ctx);
   ctx.values.set(name, v);
   return v;
+}
+
+/** The precision-weighted blend of prior, lab and human value with discount `discount`; null without human data for the card. */
+export function blendedValue(name: string, ctx: CubeContext, discount: number): number | null {
+  const h = humanValue(name, ctx, discount);
+  if (!h) return null;
+  const prior = cardPrior(name, ctx);
+  const m = metaValue(name, ctx);
+  const g = m ? m.games : 0;
+  const num = META_STRENGTH * prior + (m ? g * m.value : 0) + h.weight * h.value;
+  return Math.round(clamp(num / (META_STRENGTH + g + h.weight), 5, 98) * 10) / 10;
+}
+
+/** The same context without human data (shared caches stay valid): what the Draft vs AI opponent builds its deck with. */
+export function labOnly(ctx: CubeContext): CubeContext {
+  return ctx.human ? { ...ctx, human: null, values: new Map() } : ctx;
+}
+
+/** True when `cardValue` used the cube's human data for this card. */
+export const usesHumanData = (name: string, ctx: CubeContext): boolean => humanValue(name, ctx) !== null;
+
+const pc1 = (x: number) => `${(x * 100).toFixed(1)}%`;
+
+/** One card's value source, for the card info sheet: "value uses human data (17Lands): …", or null without it. */
+export function humanValueLine(name: string, ctx: CubeContext): string | null {
+  const h = humanValue(name, ctx);
+  if (!h) return null;
+  const m = metaValue(name, ctx);
+  const share = h.weight / (META_STRENGTH + (m ? m.games : 0) + h.weight);
+  return `value uses human data (17Lands): ${pc1(h.rate)} win when drawn against the format’s ${pc1(h.avg)}, ${Math.round(h.games).toLocaleString('en-US')} games, ${Math.round(share * 100)}% of the weight, discounted ×${HUMAN_DISCOUNT} for the Arena cube`;
+}
+
+/** A note for advice over several cards: how many of their values use human data; null when none do. */
+export function humanValueNote(names: Iterable<string>, ctx: CubeContext): string | null {
+  if (!ctx.human) return null;
+  const all = [...new Set(names)];
+  const k = all.filter((n) => usesHumanData(n, ctx)).length;
+  if (!k) return null;
+  return `${k === all.length ? (k === 1 ? 'The card’s value uses' : `All ${k} cards’ values use`) : `${k} of these ${all.length} cards’ values use`} human data (17Lands, Arena cube).`;
 }
 
 /** The deck's top themes: by how many of the cards carry each (value breaks ties), at most `n`. */

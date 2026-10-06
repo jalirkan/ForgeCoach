@@ -56,16 +56,38 @@ export interface GameStats {
   games: number;
   wins: number;
   badRows: number;
+  /** With a half: games left out because their draft is in the other half, or has no draft id. */
+  otherHalf: number;
+  noDraftId: number;
   events: Record<string, number>;
   cards: Map<string, Counts>;
 }
 
+/** 32-bit FNV-1a over a string's UTF-8 bytes. */
+export function fnv1a32(s: string): number {
+  let h = 0x811c9dc5;
+  for (const b of new TextEncoder().encode(s)) {
+    h ^= b;
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/** Which half a draft's games go to (docs/human-blend.md): FNV-1a-32(draft_id) & 1. */
+export const halfOf = (draftId: string): 0 | 1 => (fnv1a32(draftId) & 1) as 0 | 1;
+
 const blank = (): Counts => ({ gp: 0, gpW: 0, gih: 0, gihW: 0, oh: 0, ohW: 0, gns: 0, gnsW: 0 });
 const some = (v: string | undefined) => v !== undefined && v !== '' && v !== '0' && v !== '0.0';
 
-/** A streaming accumulator over one or more files' rows (each file starts with `header`). */
+/**
+ * A streaming accumulator over one or more files' rows (each file starts with `header`).
+ * With `half` (0 or 1) only the games of drafts in that half count (`halfOf`), so the
+ * two halves split the data by draft; games with no draft id go to neither.
+ */
 export class GameCounter {
-  readonly stats: GameStats = { games: 0, wins: 0, badRows: 0, events: {}, cards: new Map() };
+  readonly stats: GameStats = { games: 0, wins: 0, badRows: 0, otherHalf: 0, noDraftId: 0, events: {}, cards: new Map() };
+  private draft = -1;
+  constructor(readonly half: 0 | 1 | null = null) {}
   private cols: Array<{ c: Counts; deck: number; oh?: number; drawn?: number; tutored?: number }> = [];
   private won = -1;
   private event = -1;
@@ -77,6 +99,8 @@ export class GameCounter {
     if (won === undefined) throw new Error('not a 17Lands game-data file: no `won` column');
     this.won = won;
     this.event = ix.get('event_type') ?? -1;
+    this.draft = ix.get('draft_id') ?? -1;
+    if (this.half !== null && this.draft < 0) throw new Error('splitting by half needs a `draft_id` column');
     this.width = cells.length;
     this.cols = [];
     for (const c of cells) {
@@ -94,6 +118,17 @@ export class GameCounter {
     if (cells.length !== this.width || (w !== 'True' && w !== 'False')) {
       s.badRows++;
       return;
+    }
+    if (this.half !== null) {
+      const id = cells[this.draft] ?? '';
+      if (!id) {
+        s.noDraftId++;
+        return;
+      }
+      if (halfOf(id) !== this.half) {
+        s.otherHalf++;
+        return;
+      }
     }
     const won = w === 'True' ? 1 : 0;
     s.games++;

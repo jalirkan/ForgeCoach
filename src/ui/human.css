@@ -65,3 +65,12 @@
   flex: 1 1 100%;
   margin-top: 0;
 }
+
+/* The card info sheet's "value uses human data (17Lands)" line, under the value. */
+.ci-human-value {
+  display: block;
+  margin-top: 2px;
+  padding-left: 6px;
+  border-left: 2px solid rgba(132, 176, 214, 0.75);
+  color: var(--muted, inherit);
+}

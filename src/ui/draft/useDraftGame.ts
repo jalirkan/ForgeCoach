@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildDecks } from '../../cube/builder.ts';
 import { cubeInfo } from '../../cube/cubes.ts';
 import { newPool, savePool } from '../../cube/pools.ts';
+import { labOnly } from '../../cube/score.ts';
 import { aiDeckName } from '../../draft/aiLabel.ts';
 import { labCards } from '../../draft/cards.ts';
 import { initialDeck, matchDeck, type DeckState } from '../../draft/deck.ts';
@@ -138,7 +139,8 @@ export function useDraftGame(): DraftGame {
     const label = draft.format === 'grid' ? 'Grid' : draft.format === 'winston' ? 'Winston' : 'Booster';
     const p = newPool(draft.cubeId, `${saved.title || info?.title || draft.cubeId} · ${label} vs AI`);
     const pool = savePool({ ...p, cards: [...draft.picks.you], opp: knownAiCards(draft), format: draft.format === 'booster' ? null : draft.format, updatedAt: Date.now() });
-    const ai = buildDecks(ctx, draft.picks.ai)[0];
+    // The AI's deck from lab values only (no 17Lands data), as its picks.
+    const ai = buildDecks(labOnly(ctx), draft.picks.ai)[0];
     const side = saved.side ?? [];
     const deck = initialDeck(draft.picks.you);
     for (const n of side) {

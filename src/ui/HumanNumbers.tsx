@@ -18,6 +18,16 @@ import './human.css';
 const BASE = import.meta.env.BASE_URL;
 const cache = new Map<string, Promise<HumanCards | null>>();
 
+/** The shipped human numbers for a cube, loaded once per page (null when none ship or they are unreadable). */
+export function humanCardsFor(info: { id: string; file: string; humanData?: boolean }): Promise<HumanCards | null> {
+  let p = cache.get(info.id);
+  if (!p) {
+    p = loadHumanCards(info, BASE);
+    cache.set(info.id, p);
+  }
+  return p;
+}
+
 /** The cube's human numbers, or null (none ship, still loading, or unreadable). */
 export function useHumanCards(cubeId: string | null | undefined): HumanCards | null {
   const [data, setData] = useState<HumanCards | null>(null);
@@ -25,13 +35,8 @@ export function useHumanCards(cubeId: string | null | undefined): HumanCards | n
     setData(null);
     const info = cubeId ? cubeInfo(cubeId) : undefined;
     if (!info?.humanData) return;
-    let p = cache.get(info.id);
-    if (!p) {
-      p = loadHumanCards(info, BASE);
-      cache.set(info.id, p);
-    }
     let live = true;
-    p.then((d) => live && setData(d));
+    humanCardsFor(info).then((d) => live && setData(d));
     return () => {
       live = false;
     };

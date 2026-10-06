@@ -4,7 +4,8 @@
  *
  * Loads a cube for the deck assistant: its document, the cube-lab meta (an
  * imported file wins over the one shipped beside the document), and card
- * data from Scryfall through cards.ts. The scoring context is rebuilt when
+ * data from Scryfall through cards.ts, and the cube's 17Lands human numbers
+ * when it ships them (cube/human.ts; score.ts blends them into card values). The scoring context is rebuilt when
  * card data arrives, so the page works from the first paint (document
  * colours only) and sharpens a moment later.
  */
@@ -17,6 +18,8 @@ import { metaMatchesCube, type CubeMeta } from '../../cube/meta.ts';
 import { getImportedMeta, setImportedMeta } from '../../cube/metaStore.ts';
 import { makeContext, type CubeContext } from '../../cube/score.ts';
 import { prefetchCards } from '../cardData.ts';
+import { humanCardsFor } from '../HumanNumbers.tsx';
+import type { HumanCards } from '../../cube/human.ts';
 
 export type MetaSource = 'imported' | 'shipped' | null;
 
@@ -39,6 +42,7 @@ export function useCubeData(cubeId: string | null): CubeData {
   const [shipped, setShipped] = useState<CubeMeta | null>(null);
   const [imported, setImported] = useState<CubeMeta | null>(null);
   const [infos, setInfos] = useState<Map<string, CardInfo> | null>(null);
+  const [human, setHuman] = useState<HumanCards | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,6 +50,7 @@ export function useCubeData(cubeId: string | null): CubeData {
     setShipped(null);
     setImported(null);
     setInfos(null);
+    setHuman(null);
     setError(null);
     const info = cubeId ? cubeInfo(cubeId) : undefined;
     if (!info) return;
@@ -63,6 +68,7 @@ export function useCubeData(cubeId: string | null): CubeData {
       .catch((e: unknown) => live && setError(e instanceof Error ? e.message : String(e)));
     loadShippedMeta(info, BASE).then((m) => live && setShipped(m));
     getImportedMeta(info.id).then((m) => live && setImported(m));
+    if (info.humanData) humanCardsFor(info).then((h) => live && setHuman(h));
     return () => {
       live = false;
     };
@@ -70,7 +76,7 @@ export function useCubeData(cubeId: string | null): CubeData {
 
   const meta = imported ?? shipped;
   const metaSource: MetaSource = imported ? 'imported' : shipped ? 'shipped' : null;
-  const ctx = useMemo(() => (cube ? makeContext(cube, infos, meta) : null), [cube, infos, meta]);
+  const ctx = useMemo(() => (cube ? makeContext(cube, infos, meta, human) : null), [cube, infos, meta, human]);
   const cardsReady = !!infos && [...infos.values()].some((i) => i.found);
 
   const importMeta = useCallback(

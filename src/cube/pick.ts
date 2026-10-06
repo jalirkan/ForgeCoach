@@ -31,7 +31,7 @@
 import { castableIn, splashColourOf } from './facts.ts';
 import { colourLabel, wubrg } from './colors.ts';
 import { SPLASH_MIN } from './builder.ts';
-import { cardValue, synergyOf, themeCountsOf, topThemes, type CubeContext } from './score.ts';
+import { cardValue, humanValueNote, synergyOf, themeCountsOf, topThemes, type CubeContext } from './score.ts';
 
 export interface PickParts {
   card: number;
@@ -181,7 +181,11 @@ export function recommendGrid(slots: Array<string | null>, pool: string[], ctx: 
     options.push({ line, cards, mine: Math.round(mine * 10) / 10, reply, total: Math.round(total * 10) / 10, reasons: [] });
   }
   options.sort((a, b) => b.total - a.total || (a.line.id < b.line.id ? -1 : 1));
-  for (const o of options) o.reasons = gridReasons(o, options, mineOf, pair, ctx);
+  for (const o of options) {
+    o.reasons = gridReasons(o, options, mineOf, pair, ctx);
+    const note = humanValueNote(o.cards, ctx);
+    if (note) o.reasons.push(note);
+  }
   return { first, options, best: options[0] ?? null };
 }
 
@@ -277,6 +281,8 @@ export function recommendWinston(input: WinstonInput, ctx: CubeContext): Winston
   reasons.push(
     `Passing: ${ahead.length ? ahead.join(', ') + ', ' : ''}the blind top card ≈ ${Math.round(blind)}; less ${r1(0.25 * theirs)} for what the opponent gets if they take this pile plus a card.`,
   );
+  const note = humanValueNote(pile, ctx);
+  if (note) reasons.push(note);
   reasons.push(action === 'take' ? `Take it: ${r1(take)} beats ${r1(pass)}${margin ? ` by more than the pile-${pileIndex} margin of ${margin}` : ''}.` : `Pass: ${r1(take)} is not ${margin ? `${margin} better than` : 'better than'} ${r1(pass)}.`);
   return { action, take: r1(take), pass: r1(pass), margin, reasons, cards };
 }
