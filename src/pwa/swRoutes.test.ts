@@ -43,6 +43,7 @@ for (const { name, ctx, at } of SITES) {
     it('keeps unhashed static files network-first: cubes, samples, icons, manifest', () => {
       expect(get('cubes/vintage.md')).toBe('network-first');
       expect(get('cubes/vintage.meta.json')).toBe('network-first');
+      expect(get('cubes/vintage-cube-180.human.json')).toBe('network-first');
       expect(get('samples/human-auto-42.jsonl.gz')).toBe('network-first');
       expect(get('samples/human-auto-42.review.json')).toBe('network-first');
       expect(get('icons/icon-192.png')).toBe('network-first');

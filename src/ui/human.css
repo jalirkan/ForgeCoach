@@ -1,0 +1,67 @@
+/*
+ * ForgeCoach — ui/human.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * 17Lands human numbers (HumanNumbers.tsx): a cool slate-blue rule and label,
+ * so they never read as the Forge lab's gold figures beside them.
+ */
+.hx,
+.hx-note {
+  --hx-rgb: 132, 176, 214;
+  --hx-ink: #a9c8e4;
+}
+.hx {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  margin-top: 6px;
+  padding: 4px 0 4px 8px;
+  border-left: 2px solid rgba(var(--hx-rgb), 0.75);
+  background: rgba(var(--hx-rgb), 0.06);
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.hx-label {
+  font: 600 10.5px/1.6 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hx-ink);
+}
+.hx-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--text);
+}
+.hx-rate.is-strong {
+  color: var(--ok, #8fbf7a);
+}
+.hx-rate.is-weak {
+  color: var(--fx-danger-ink, #d77b70);
+}
+.hx-verdict,
+.hx-mute {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.hx-note {
+  margin: 8px 0 0;
+  padding-left: 8px;
+  border-left: 2px solid rgba(var(--hx-rgb), 0.75);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.hx-note b {
+  color: var(--hx-ink);
+  font-weight: 600;
+}
+.hx-note a {
+  color: var(--hx-ink);
+}
+/* In the card info sheet's stats list (deck/sheets.tsx). */
+.ci-stats dd > .hx {
+  flex: 1 1 100%;
+  margin-top: 0;
+}

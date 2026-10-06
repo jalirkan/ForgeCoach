@@ -112,7 +112,7 @@ export default function DraftApp({ onExit }: { onExit: () => void }) {
       />
     );
   } else {
-    body = <DeckEditor ctx={ctx} pool={draft.picks.you} deck={deck ?? initialDeck(draft.picks.you)} onDeck={game.setDeck} onSubmit={() => go('match')} onBack={() => go('setup')} />;
+    body = <DeckEditor ctx={ctx} cubeId={draft.cubeId} pool={draft.picks.you} deck={deck ?? initialDeck(draft.picks.you)} onDeck={game.setDeck} onSubmit={() => go('match')} onBack={() => go('setup')} />;
   }
   return (
     <>

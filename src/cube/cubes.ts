@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The cubes this page knows (public/cubes/<file>.md, with an optional
- * <file>.meta.json from mtg-table's cube lab beside it), and loading them.
+ * <file>.meta.json from mtg-table's cube lab beside it, and for the cube
+ * 17Lands covers a <file>.human.json, cube/human.ts), and loading them.
  * `fetch` is injected so tests run in node.
  */
 import { parseCube, type Cube } from './parseCube.ts';
@@ -19,12 +20,14 @@ export interface CubeInfo {
   accent: string;
   /** False when no cube lab meta.json ships beside the document (yet). */
   labData?: boolean;
+  /** True when 17Lands human card numbers ship beside the document (<file>.human.json, cube/human.ts). */
+  humanData?: boolean;
 }
 
 export const CUBES: CubeInfo[] = [
   { id: 'synergy', file: 'synergy-cube-180', title: 'Synergy Cube', blurb: 'Nine overlapping themes, tight power band, no combos.', accent: 'BR' },
   { id: 'modern-era', file: 'modern-era-cube-180', title: 'Modern-Era Cube', blurb: 'Ten guild archetypes with a few famous bombs.', accent: 'UG' },
-  { id: 'vintage', file: 'vintage-cube-180', title: 'Vintage Cube', blurb: 'Power, Moxen and cheat decks, cut to 180 for two.', accent: 'UR' },
+  { id: 'vintage', file: 'vintage-cube-180', title: 'Vintage Cube', blurb: 'Power, Moxen and cheat decks, cut to 180 for two.', accent: 'UR', humanData: true },
   { id: 'pauper', file: 'pauper-cube-180', title: 'Pauper Cube', blurb: 'All commons: blink, ninjas, tokens, sacrifice.', accent: 'WG' },
   { id: 'omega', file: 'omega-cube-180', title: 'Omega Cube', blurb: 'The greatest hits at one fair power level: no Power, no cheats.', accent: 'WB', labData: false },
   { id: 'fair-fight', file: 'fair-fight-cube-180', title: 'Fair Fight Cube', blurb: 'Every rarity at a Pauper power level: no bombs, answers for everything.', accent: 'RW', labData: false },
