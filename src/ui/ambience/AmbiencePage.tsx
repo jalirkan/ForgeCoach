@@ -6,8 +6,9 @@
  * that "play" lands (and fake creatures and attacks) for either side, undo
  * and reset, a stage slider, reduced motion, buttons that fire each effect
  * (spec 1.2) for either side, the board accents (spec 1.3) with their own
- * toggle, and a pack URL with its validation and its effect files listed —
- * how an art pack is tried with no engine running.
+ * toggle, the full-area accent (spec 1.4) with a built-in placeholder, and a
+ * pack URL with its validation and its effect files listed, or a pasted
+ * manifest previewed as is — how an art pack is tried with no engine running.
  *
  * Everything here is made up in the page (ambience/sim.ts). It never opens a
  * socket to the engine.
@@ -19,7 +20,7 @@ import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '..
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
 import { SIM_PLAYERS, simLog, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
 import { browserLoader, checkEffectFiles, fetchManifest, manifestUrlFor, preloadPack, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
-import { validateManifest, EFFECT_EVENTS, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
+import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
 import { currentPrefs, loadSceneryPrefs, saveSceneryPrefs } from '../../ambience/prefs.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
@@ -68,10 +69,13 @@ export default function AmbiencePage() {
   const [usePack, setUsePack] = useState(initial.mode === 'pack');
   const [eventsLog, setEventsLog] = useState<string[]>([]);
   const [accents, setAccents] = useState(initial.accents);
+  // Spec 1.4: preview the built-in full-area placeholder where the pack gives none; and a pasted manifest previewed as is.
+  const [areaPreview, setAreaPreview] = useState(false);
+  const [pastedPack, setPastedPack] = useState<ScenePack | null>(null);
 
   const log = useMemo(() => simLog(plays), [plays]);
   const scenery = useMemo(() => sceneryFromLog(log, Infinity), [log]);
-  const pack = usePack && packState.status === 'ok' ? packState.pack : null;
+  const pack = pastedPack ?? (usePack && packState.status === 'ok' ? packState.pack : null);
   const fx = useSceneryFx(pack, reduced);
   const lastState = log.frames.at(-1)!.body as GameStateBody;
   const creaturesOf = (player: number) => (lastState.players.find((x) => x.id === player)?.zones.battlefield?.cards ?? []).filter((c) => /Creature/.test((c as Card).types)).map((c) => c.id);
@@ -182,7 +186,7 @@ export default function AmbiencePage() {
                   fx={fx.fx.get(SIM_PLAYERS[1])}
                   stageOverride={stage || null}
                 />
-                {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[1])} pack={pack} edge="top" reduced={reduced} stageOverride={stage || null} />}
+                {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[1])} pack={pack} edge="top" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} />}
               </>
             }
             plays={plays}
@@ -204,7 +208,7 @@ export default function AmbiencePage() {
                   fx={fx.fx.get(SIM_PLAYERS[0])}
                   stageOverride={stage || null}
                 />
-                {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[0])} pack={pack} edge="bottom" reduced={reduced} stageOverride={stage || null} />}
+                {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[0])} pack={pack} edge="bottom" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} />}
               </>
             }
             plays={plays}
@@ -293,7 +297,21 @@ export default function AmbiencePage() {
                 ))}
               </div>
               <span className="amb-hint">
-                Corner and edge pieces in each side's area, beneath the cards (spec 1.3). Corners only under 600 px wide; none under 300. At most {MAX_OVERLAY_PIECES} per side, {MAX_OVERLAY_ANIMATED} moving.
+                Corner and edge pieces in each side's area, beneath the cards (spec 1.3), and a full-area piece beneath the strip (1.4). Corners only under 600 px wide; none under 300. At most {MAX_OVERLAY_PIECES} per side, {MAX_OVERLAY_ANIMATED} moving.
+              </span>
+            </div>
+            <div className="amb-field">
+              <span>Full-area accent</span>
+              <div className="amb-seg" role="radiogroup" aria-label="Full-area accent">
+                {([false, true] as const).map((on) => (
+                  <button key={String(on)} role="radio" aria-checked={areaPreview === on} className={areaPreview === on ? 'is-on' : ''} onClick={() => setAreaPreview(on)} data-area-toggle={on ? 'builtin' : 'pack'} disabled={!accents}>
+                    {on ? 'Built-in placeholder' : 'Pack only'}
+                  </button>
+                ))}
+              </div>
+              <span className="amb-hint">
+                Spec 1.4: one transparent picture scattered over the whole area, from stage 2, thicker each stage. <i>Built-in placeholder</i> adds ForgeCoach's own where the pack has none (preview only; the board never shows it). Hidden under {AREA_MIN_WIDTH_PX} px unless the piece sets <code>minWidthPx</code>.
+                {pack && hasAreaPieces(pack) ? ' This pack has full-area pieces.' : ''}
               </span>
             </div>
             <div className="amb-field">
@@ -316,6 +334,8 @@ export default function AmbiencePage() {
             setUsePack={setUsePack}
             onLoad={() => loadPack(url || DEFAULT_PACK_URL)}
             onSave={() => saveSceneryPrefs({ ...loadSceneryPrefs(), mode: usePack && url ? 'pack' : 'procedural', packUrl: url, motion, accents })}
+            pastedPack={pastedPack}
+            setPastedPack={setPastedPack}
           />
         </aside>
       </main>
@@ -376,14 +396,16 @@ function MockSide({ title, player, top, slots, creatures, strip, plays }: { titl
   );
 }
 
-/** One line per biome: its stage layers, and its accent pieces per stage (spec 1.3). */
+/** One line per biome: its stage layers, and its accent pieces per stage (spec 1.3; 1.4: which stages have a full-area piece). */
 function* packSummary(pack: ScenePack): Generator<string> {
   for (const [b, v] of Object.entries(pack.biomes) as [Biome, NonNullable<ScenePack['biomes'][Biome]>][]) {
     yield `${BIOME_LABEL[b]}: ${v.stages.length} stage${v.stages.length === 1 ? '' : 's'}, ${v.stages.map((s) => s.layers.length).join('/')} layers`;
   }
   for (const [b, v] of Object.entries(pack.overlays ?? {}) as [Biome, NonNullable<NonNullable<ScenePack['overlays']>[Biome]>][]) {
     const bytes = overlayBytes(v);
-    yield `${BIOME_LABEL[b]} accents: ${v.stages.map((s) => s.length).join('/')} pieces${bytes ? ` · ${(bytes / 1048576).toFixed(1)} MB declared` : ''}`;
+    const areaStages = v.stages.flatMap((s, i) => (s.some((p) => p.anchor === 'area') ? [i + 1] : []));
+    const area = areaBytes(v);
+    yield `${BIOME_LABEL[b]} accents: ${v.stages.map((s) => s.length).join('/')} pieces${bytes ? ` · ${(bytes / 1048576).toFixed(1)} MB declared` : ''}${areaStages.length ? ` · full-area at stage ${areaStages.join(', ')}${area ? ` (${(area / 1048576).toFixed(1)} MB declared)` : ''}` : ''}`;
   }
 }
 
@@ -397,6 +419,8 @@ function PackCard({
   setUsePack,
   onLoad,
   onSave,
+  pastedPack,
+  setPastedPack,
 }: {
   url: string;
   setUrl: (s: string) => void;
@@ -405,6 +429,8 @@ function PackCard({
   setUsePack: (b: boolean) => void;
   onLoad: () => void;
   onSave: () => void;
+  pastedPack: ScenePack | null;
+  setPastedPack: (p: ScenePack | null) => void;
 }) {
   const [saved, setSaved] = useState(false);
   const [paste, setPaste] = useState('');
@@ -414,12 +440,16 @@ function PackCard({
     try {
       raw = JSON.parse(paste);
     } catch (e) {
-      return { errors: [`Not valid JSON: ${e instanceof Error ? e.message : String(e)}`], warnings: [], summary: null };
+      return { errors: [`Not valid JSON: ${e instanceof Error ? e.message : String(e)}`], warnings: [], summary: null, pack: null };
     }
     const r = validateManifest(raw, manifestUrlFor(url || DEFAULT_PACK_URL) ?? DEFAULT_PACK_URL);
     const summary = r.pack ? [...packSummary(r.pack)].join(' · ') || 'effects only' : null;
-    return { errors: r.errors, warnings: r.warnings, summary };
+    return { errors: r.errors, warnings: r.warnings, summary, pack: r.pack };
   }, [paste, url]);
+  // A previewed paste follows the text as it is edited; invalid text keeps the last good one.
+  useEffect(() => {
+    if (pastedPack && pasted?.pack) setPastedPack(pasted.pack);
+  }, [pasted]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="amb-card">
       <h2>Art pack</h2>
@@ -492,6 +522,17 @@ function PackCard({
             ))}
           </ul>
         )}
+        <div className="amb-row">
+          <button className="btn btn-quiet btn-sm" onClick={() => setPastedPack(pasted?.pack ?? null)} disabled={!pasted?.pack} data-paste-preview>
+            {pastedPack ? 'Update the preview' : 'Preview this manifest'}
+          </button>
+          {pastedPack && (
+            <button className="btn btn-quiet btn-sm" onClick={() => setPastedPack(null)}>
+              Stop previewing
+            </button>
+          )}
+        </div>
+        {pastedPack && <span className="amb-hint">The table shows the pasted manifest (not saved; files load from the pack URL).</span>}
         <span className="amb-hint">
           Relative paths resolve against the pack URL. At most {MAX_LAYERS} layers per stage. The spec: docs/scenery-pack-spec.md.
         </span>

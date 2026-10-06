@@ -2,12 +2,14 @@
  * ForgeCoach — ambience/manifest.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The scenery asset pack's manifest (`scenery.json`, schema 1, spec 1.3; the
+ * The scenery asset pack's manifest (`scenery.json`, schema 1, spec 1.4; the
  * contract is docs/scenery-pack-spec.md) and its strict validator. DOM-free.
  * Spec 1.2 adds optional one-shot `effects` (creature enters, attack, damage,
  * landfall, stage up), globally and per biome; spec 1.3 adds optional board
  * accents (`overlay` per stage: corner and edge pieces in the player's area,
- * outside the strip). A 1.1 or 1.2 pack reads as before.
+ * outside the strip); spec 1.4 adds one more accent piece, the full-area
+ * piece (`anchor: "area"`: one transparent picture across the whole player
+ * area, beneath the strip). A 1.1, 1.2 or 1.3 pack reads as before.
  *
  * A pack is untrusted input, served from wherever the user pointed the page:
  * every string is cleaned and clipped, every number range-checked, every URL
@@ -22,7 +24,7 @@ import { BIOMES, MAX_STAGES, type Biome } from './model.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
-export const SPEC_VERSION = '1.3';
+export const SPEC_VERSION = '1.4';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */
@@ -358,10 +360,14 @@ export function effectUrls(pack: ScenePack): { biome: Biome | null; event: Effec
 // ---------------------------------------------------------------------------
 // Board accents (spec 1.3)
 
-/** Where an accent piece hugs the player's area. Corners take a picture; edges take a band. */
-export const OVERLAY_ANCHORS = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'top-edge', 'bottom-edge', 'left-edge', 'right-edge'] as const;
+/**
+ * Where an accent piece hugs the player's area. Corners take a picture; edges
+ * take a band; `area` (spec 1.4) takes one picture across the whole area.
+ */
+export const OVERLAY_ANCHORS = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'top-edge', 'bottom-edge', 'left-edge', 'right-edge', 'area'] as const;
 export type OverlayAnchor = (typeof OVERLAY_ANCHORS)[number];
-export const isOverlayCorner = (a: OverlayAnchor) => !a.endsWith('-edge');
+export const isOverlayArea = (a: OverlayAnchor) => a === 'area';
+export const isOverlayCorner = (a: OverlayAnchor) => !a.endsWith('-edge') && a !== 'area';
 /** An edge band: the picture repeats along the edge (seamless art), or is stretched to it. */
 export const OVERLAY_TILES = ['repeat', 'stretch'] as const;
 export type OverlayTile = (typeof OVERLAY_TILES)[number];
@@ -383,6 +389,37 @@ export const MAX_OVERLAY_ANIMATED = 3;
 export const MAX_OVERLAY_BYTES = 2 * 1024 * 1024;
 /** Defaults by kind of anchor: a corner's width, or an edge band's thickness, as a fraction of the area's width, and its pixel cap. */
 export const OVERLAY_DEFAULTS = { corner: { size: 0.18, maxPx: 280 }, edge: { size: 0.05, maxPx: 72 } } as const;
+
+/** Spec 1.4: how a full-area picture fills the player's area (CSS object-fit). */
+export const AREA_FITS = ['cover', 'contain'] as const;
+export type AreaFit = (typeof AREA_FITS)[number];
+/** At most this many full-area pieces per stage (the first kept), and so per player area. */
+export const MAX_AREA_PIECES = 1;
+/** The declared `bytes` of one biome's full-area files: a budget of their own, on top of {@link MAX_OVERLAY_BYTES} (a warning). */
+export const MAX_AREA_BYTES = 3 * 1024 * 1024;
+/** Below this player-area width a full-area piece is not drawn, unless the piece sets its own `minWidthPx`. */
+export const AREA_MIN_WIDTH_PX = 600;
+/** `minWidthPx`'s range: never under the width where every accent hides. */
+export const AREA_MIN_WIDTH_RANGE = [300, 4096] as const;
+
+/** A fraction rectangle of the picture, from its top-left. */
+export interface AreaRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Spec 1.4: a full-area piece's own fields (only `anchor: "area"` pieces have them). */
+export interface OverlayArea {
+  fit: AreaFit;
+  /** The part of the picture that must stay visible (fractions of the picture), or null: crop by `position` alone. */
+  safe: AreaRect | null;
+  /** Where the picture sits (contain) or which part is kept (cover) when there is no `safe` rect: CSS object-position, by name. */
+  position: Anchor;
+  /** Not drawn when the player's area is narrower than this. */
+  minWidthPx: number;
+}
 
 const OVERLAY_EXT = /\.(webp|avif)$/i;
 
@@ -408,6 +445,10 @@ export interface OverlayPiece {
   /** On the opponent's side, flip vertically so the piece hugs their (top) edge. */
   mirror: boolean;
   bytes: number | null;
+  /** Spec 1.4, `anchor: "area"` only (absent on every other piece). */
+  area?: OverlayArea;
+  /** The built-in full-area placeholder's density, 2–4 (never from a pack). */
+  builtinLevel?: number;
 }
 
 /** One biome's accents, per stage (`stages[0]` is stage 1), already combined across stages (replace / add). */
@@ -416,6 +457,74 @@ export interface PackOverlayBiome {
 }
 
 export type PackOverlays = Partial<Record<Biome, PackOverlayBiome>>;
+
+function parseMirror(v: Obj, path: string, warn: string[]): boolean {
+  if (v.mirror === undefined || v.mirror === null) return true;
+  if (typeof v.mirror === 'boolean') return v.mirror;
+  warn.push(`${path}.mirror: not true or false; using true`);
+  return true;
+}
+
+function parseBytes(v: Obj, path: string, warn: string[]): number | null {
+  if (v.bytes === undefined || v.bytes === null) return null;
+  const bytes = int(v.bytes, 0, 1e9);
+  if (bytes === null) warn.push(`${path}.bytes: a whole number of bytes; ignored`);
+  return bytes;
+}
+
+/** A `safe` rect: four fractions of the picture, from its top-left, inside it and not too thin. */
+function parseSafe(v: unknown, path: string, warn: string[]): AreaRect | null {
+  if (v === undefined || v === null) return null;
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object { x, y, w, h }; ignored`);
+    return null;
+  }
+  const x = num(v.x ?? 0, 0, 1);
+  const y = num(v.y ?? 0, 0, 1);
+  const w = num(v.w ?? 1, 0.05, 1);
+  const h = num(v.h ?? 1, 0.05, 1);
+  if (x === null || y === null || w === null || h === null) {
+    warn.push(`${path}: x and y are 0–1, w and h 0.05–1 (fractions of the picture); ignored`);
+    return null;
+  }
+  if (x + w > 1.0001 || y + h > 1.0001) {
+    warn.push(`${path}: the rect runs past the picture (x + w and y + h at most 1); ignored`);
+    return null;
+  }
+  return { x, y, w, h };
+}
+
+/** Spec 1.4: a full-area piece. `size`, `maxPx` and `tile` are for corners and edges only. */
+function parseAreaPiece(v: Obj, id: string, src: string | null, src2x: string | null, path: string, warn: string[]): OverlayPiece {
+  for (const k of ['size', 'maxPx', 'tile'] as const) if (v[k] !== undefined && v[k] !== null) warn.push(`${path}.${k}: only for corners and edges; ignored`);
+  let fit: AreaFit = 'cover';
+  if (v.fit !== undefined && v.fit !== null) fit = oneOf(v.fit, AREA_FITS, 'cover', `${path}.fit`, warn);
+  const safe = parseSafe(v.safe, `${path}.safe`, warn);
+  if (safe && fit === 'contain') warn.push(`${path}.safe: with fit "contain" the whole picture shows; ignored`);
+  const [lo, hi] = AREA_MIN_WIDTH_RANGE;
+  return {
+    id,
+    anchor: 'area',
+    src,
+    src2x,
+    builtin: null,
+    size: 1,
+    maxPx: hi,
+    tile: 'stretch',
+    opacity: ranged(v.opacity, 0, 1, 1, `${path}.opacity`, warn),
+    blend: oneOf(v.blend, BLEND_MODES, 'normal', `${path}.blend`, warn),
+    motion: oneOf(v.motion, OVERLAY_MOTIONS, 'none', `${path}.motion`, warn),
+    periodMs: ranged(v.periodMs, 2000, 60000, 9000, `${path}.periodMs`, warn, true),
+    mirror: parseMirror(v, path, warn),
+    bytes: parseBytes(v, path, warn),
+    area: {
+      fit,
+      safe: fit === 'contain' ? null : safe,
+      position: oneOf(v.position, ANCHORS, 'center', `${path}.position`, warn),
+      minWidthPx: ranged(v.minWidthPx, lo, hi, AREA_MIN_WIDTH_PX, `${path}.minWidthPx`, warn, true),
+    },
+  };
+}
 
 function parseOverlayPiece(v: unknown, base: string, path: string, warn: string[]): OverlayPiece | null {
   if (!isObj(v)) {
@@ -436,6 +545,7 @@ function parseOverlayPiece(v: unknown, base: string, path: string, warn: string[
   const opt: string[] = [];
   const src2x = layerUrl(v.src2x, base, OVERLAY_EXT, '.webp or .avif', `${path}.src2x`, opt, true);
   for (const o of opt) warn.push(`${o}; ignored`);
+  if (isOverlayArea(anchor!)) return parseAreaPiece(v, id!, src, src2x, path, warn);
   const corner = isOverlayCorner(anchor!);
   const d = corner ? OVERLAY_DEFAULTS.corner : OVERLAY_DEFAULTS.edge;
   let tile: OverlayTile = 'repeat';
@@ -443,16 +553,8 @@ function parseOverlayPiece(v: unknown, base: string, path: string, warn: string[
     if (corner) warn.push(`${path}.tile: only for edges; ignored`);
     else tile = oneOf(v.tile, OVERLAY_TILES, 'repeat', `${path}.tile`, warn);
   }
-  let mirror = true;
-  if (v.mirror !== undefined && v.mirror !== null) {
-    if (typeof v.mirror === 'boolean') mirror = v.mirror;
-    else warn.push(`${path}.mirror: not true or false; using true`);
-  }
-  let bytes: number | null = null;
-  if (v.bytes !== undefined && v.bytes !== null) {
-    bytes = int(v.bytes, 0, 1e9);
-    if (bytes === null) warn.push(`${path}.bytes: a whole number of bytes; ignored`);
-  }
+  const mirror = parseMirror(v, path, warn);
+  const bytes = parseBytes(v, path, warn);
   return {
     id: id!,
     anchor: anchor!,
@@ -476,7 +578,8 @@ function parseOverlayPiece(v: unknown, base: string, path: string, warn: string[
  * keeps the previous stage's pieces; `replace` (the default) lists the
  * stage's complete set; `add` adds to the previous stage's (a repeated id
  * replaces that piece, in its place). Then the caps: at most
- * {@link MAX_OVERLAY_PIECES} pieces (the first kept) and
+ * {@link MAX_OVERLAY_PIECES} pieces (the first kept), of which at most
+ * {@link MAX_AREA_PIECES} full-area piece (spec 1.4; the first kept), and
  * {@link MAX_OVERLAY_ANIMATED} moving ones (the rest drawn still). Pure;
  * `warn` gets one line per cap hit, `path` naming the biome.
  */
@@ -496,6 +599,12 @@ export function combineOverlayStages(lists: ({ mode: OverlayMode; pieces: Overla
       }
     }
     const sp = `${path}.stages[${i}].overlay`;
+    const areas = cur.filter((p) => p.anchor === 'area');
+    if (areas.length > MAX_AREA_PIECES) {
+      if (l) warn.push(`${sp}: ${areas.length} full-area pieces in this stage; at most ${MAX_AREA_PIECES} shows (${areas.slice(MAX_AREA_PIECES).map((p) => `"${p.id}"`).join(', ')} dropped)`);
+      const keep = new Set(areas.slice(0, MAX_AREA_PIECES));
+      cur = cur.filter((p) => p.anchor !== 'area' || keep.has(p));
+    }
     if (cur.length > MAX_OVERLAY_PIECES) {
       if (l) warn.push(`${sp}: ${cur.length} pieces in this stage; at most ${MAX_OVERLAY_PIECES} show, the rest dropped`);
       cur = cur.slice(0, MAX_OVERLAY_PIECES);
@@ -513,11 +622,20 @@ export function combineOverlayStages(lists: ({ mode: OverlayMode; pieces: Overla
   return out;
 }
 
-/** The declared bytes of a biome's accent files (each file once). */
-export function overlayBytes(b: PackOverlayBiome | undefined): number {
+function declaredBytes(b: PackOverlayBiome | undefined, area: boolean): number {
   const seen = new Map<string, number>();
-  for (const st of b?.stages ?? []) for (const p of st) if (p.src && p.bytes !== null) seen.set(p.src, p.bytes);
+  for (const st of b?.stages ?? []) for (const p of st) if (p.src && p.bytes !== null && (p.anchor === 'area') === area) seen.set(p.src, p.bytes);
   return [...seen.values()].reduce((n, x) => n + x, 0);
+}
+
+/** The declared bytes of a biome's corner and edge files (each file once); full-area pieces have their own budget ({@link areaBytes}). */
+export function overlayBytes(b: PackOverlayBiome | undefined): number {
+  return declaredBytes(b, false);
+}
+
+/** Spec 1.4: the declared bytes of a biome's full-area files (each file once). */
+export function areaBytes(b: PackOverlayBiome | undefined): number {
+  return declaredBytes(b, true);
 }
 
 function parseOverlayBiome(v: Obj, base: string, path: string, warn: string[]): PackOverlayBiome | null {
@@ -553,6 +671,8 @@ function parseOverlayBiome(v: Obj, base: string, path: string, warn: string[]): 
   const out = { stages };
   const bytes = overlayBytes(out);
   if (bytes > MAX_OVERLAY_BYTES) warn.push(`${path}: ${(bytes / 1048576).toFixed(1)} MB of accents declared; the budget is ${MAX_OVERLAY_BYTES / 1048576} MB per biome (pieces kept)`);
+  const area = areaBytes(out);
+  if (area > MAX_AREA_BYTES) warn.push(`${path}: ${(area / 1048576).toFixed(1)} MB of full-area accents declared; their budget is ${MAX_AREA_BYTES / 1048576} MB per biome (pieces kept)`);
   return out;
 }
 
@@ -566,6 +686,11 @@ function parseOverlays(raw: Obj, base: string, warn: string[]): PackOverlays | n
     if (o) out[b] = o;
   }
   return Object.keys(out).length ? out : null;
+}
+
+/** Spec 1.4: does any biome of the pack have a full-area piece? */
+export function hasAreaPieces(pack: ScenePack | null | undefined): boolean {
+  return Object.values(pack?.overlays ?? {}).some((b) => b?.stages.some((s) => s.some((p) => p.anchor === 'area')));
 }
 
 /** Does any biome of the pack have an accent piece? */
@@ -615,7 +740,7 @@ export interface ScenePack {
   biomes: Partial<Record<Biome, PackBiome>>;
   /** Spec 1.2: one-shot effects, or undefined / null when the pack has none (the built-in placeholders play). */
   effects?: PackEffectSet | null;
-  /** Spec 1.3: board accents per biome, or undefined / null when the pack has none. */
+  /** Spec 1.3: board accents per biome (1.4: full-area pieces too), or undefined / null when the pack has none. */
   overlays?: PackOverlays | null;
 }
 
