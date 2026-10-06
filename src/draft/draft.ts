@@ -555,10 +555,11 @@ export function eventsAfter(d: Draft, after: number): DraftEvent[] {
  * One event in words, as the player may know it: the AI's Winston takes say
  * how many cards and only name the ones the player had seen. Pass the draft:
  * in a Booster of three or more seats an AI pick is only "The pack moved on".
+ * `them`: the other seat's name (Draft with a friend: the friend's), "AI" by default.
  */
-export function describeEvent(e: DraftEvent, d?: Draft): string {
+export function describeEvent(e: DraftEvent, d?: Draft, them = 'AI'): string {
   if (e.who === 'ai' && e.kind === 'pick' && d && !aiPicksAttributable(d)) return 'The pack moved on';
-  const who = e.who === 'you' ? 'You' : 'AI';
+  const who = e.who === 'you' ? 'You' : them;
   const n = e.cards.length;
   const cards = `${n} card${n === 1 ? '' : 's'}`;
   switch (e.kind) {

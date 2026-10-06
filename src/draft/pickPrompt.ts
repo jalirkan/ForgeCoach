@@ -52,7 +52,17 @@ export interface PickPromptInput {
   draft: Draft;
   infos: Map<string, CardInfo>;
   question?: string;
+  /** Draft with a friend (draft/room.ts): the other drafter is this person, not the AI. */
+  opponent?: string;
 }
+
+/** The system prompt when the other drafter is a person (a two-player Grid draft, every card face up). */
+export const PICK_SYSTEM_FRIEND = PICK_SYSTEM.replace(
+  "against an AI drafter (Grid or Winston, two players; or Booster, two to eight drafters, the player against seat 1's AI)",
+  'against another person (a two-player Grid draft, every card face up)',
+)
+  .replace('so what the AI takes is what the player will face', 'so what the opponent takes is what the player will face')
+  .replace('(what the AI gets if the player passes it)', '(what the opponent gets if the player passes it)');
 
 /** The cards a pick prompt needs text for: the choice and the player's pool. */
 export function pickPromptCards(d: Draft): string[] {
@@ -60,7 +70,8 @@ export function pickPromptCards(d: Draft): string[] {
   return [...new Set([...choice, ...d.picks.you])];
 }
 
-export function buildPickPrompt({ ctx, draft: d, infos, question }: PickPromptInput): Prompt {
+export function buildPickPrompt({ ctx, draft: d, infos, question, opponent }: PickPromptInput): Prompt {
+  if (opponent) return buildFriendPrompt({ ctx, draft: d, infos, question, opponent });
   const you = d.picks.you;
   const aiKnown = knownAiCards(d);
   const lines: string[] = [];
@@ -118,4 +129,19 @@ export function bestBoosterPick(pack: string[], pool: string[], ctx: CubeContext
   const ranked = pack.map((n) => ({ name: n, value: pickValue(n, pool, ctx, prof).total })).sort((a, b) => b.value - a.value || (a.name < b.name ? -1 : 1));
   const top = ranked[0]!;
   return { name: top.name, value: top.value, ranked };
+}
+
+/**
+ * The pick prompt for a draft against a friend: the same sections, with the
+ * other drafter named as a person. A Grid draft is face up, so their whole
+ * pool is known and goes in.
+ */
+function buildFriendPrompt({ ctx, draft: d, infos, question, opponent }: PickPromptInput & { opponent: string }): Prompt {
+  const base = buildPickPrompt({ ctx, draft: d, infos, question });
+  const user = base.user
+    .replace(/ draft vs the AI$/m, ` draft vs ${opponent} (a person)`)
+    .replace(/; the AI holds (\d+)\./, `; ${opponent} holds $1.`)
+    .replace(/AI's likely answer/g, 'their likely answer')
+    .replace(/^## What you know the AI has \((\d+) of (\d+)\)$/m, `## ${opponent}'s picks ($2, all face up)`);
+  return { system: PICK_SYSTEM_FRIEND, user };
 }

@@ -113,6 +113,7 @@ export function DraftSetup({
   onBegin,
   onExit,
   onPaper,
+  onFriend,
   hints,
 }: {
   resume: Draft | null;
@@ -121,6 +122,8 @@ export function DraftSetup({
   onBegin: (o: StartOptions) => void;
   onExit: () => void;
   onPaper: () => void;
+  /** Draft with a friend (#draft/friend); no link when absent. */
+  onFriend?: () => void;
   hints: boolean;
 }) {
   const [cubeId, setCubeId] = useState(CUBES[0]?.id ?? 'synergy');
@@ -159,7 +162,13 @@ export function DraftSetup({
         <button className="link-back" onClick={onExit}>
           <IconChevronLeft size={14} /> Back to the start
         </button>
-        <span />
+        {onFriend ? (
+          <button className="link-back" onClick={onFriend}>
+            Draft with a friend
+          </button>
+        ) : (
+          <span />
+        )}
         <button className="link-back is-right" onClick={onPaper}>
           Paper draft helper
         </button>

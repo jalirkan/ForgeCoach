@@ -41,7 +41,14 @@ function hashOf(s: string): string {
   return (h >>> 0).toString(36);
 }
 
-export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: DraftGame; draft: Draft; onLeave: () => void; onSettings: () => void }) {
+/**
+ * `opponent`: Draft with a friend (draft/room.ts) — the friend's name, in place of
+ * the AI everywhere the screen names the other seat. Absent: Draft vs AI, unchanged.
+ * `notice`: a line over the offer (the room's connection state).
+ */
+export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, notice }: { game: DraftGame; draft: Draft; onLeave: () => void; onSettings: () => void; opponent?: string; notice?: string | null }) {
+  const them = opponent ?? 'the AI';
+  const Them = opponent ?? 'The AI';
   const ctx = game.data.ctx!;
   const meta = useCubeMeta(ctx)!;
   const hints = game.saved?.hints ?? true;
@@ -103,7 +110,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
     const g = d as GridDraft;
     const n = g.slots.filter(Boolean).length;
     offer = `${n} cards on offer · you pick ${g.firstLine === null ? 'first' : 'second'}`;
-    if (!mine) waiting = 'The AI picks a line…';
+    if (!mine) waiting = `${Them} picks a line…`;
     const lineN = sel !== null ? GRID_LINES[sel]!.slots.filter((i) => g.slots[i]).length : 0;
     status = sel !== null ? `${lineN} card${lineN === 1 ? '' : 's'} selected · ${lineName(sel)}` : mine ? 'Choose a row or a column' : null;
     primary = { label: sel === null ? 'Take line' : `Take ${sel < 3 ? 'row' : 'column'}`, onClick: () => sel !== null && game.act({ kind: 'line', line: sel }), disabled: !mine || sel === null, kbd: 'Enter' };
@@ -179,7 +186,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
 
   const seats: Seat[] = [
     { id: 'you', label: 'You', active: mine },
-    { id: 'ai', label: 'Forge AI', bot: true, active: !mine && !d.done, onClick: () => setAiOpen(true) },
+    { id: 'ai', label: opponent ?? 'Forge AI', bot: !opponent, active: !mine && !d.done, onClick: () => setAiOpen(true) },
     ...(d.format === 'booster' ? d.bots.map((_, i) => ({ id: `bot${i + 2}`, label: `Bot ${i + 2}`, bot: true })) : []),
   ];
   const lastBlind = d.log[d.log.length - 1];
@@ -219,7 +226,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
             items={[
               { label: 'Ask the coach', onClick: () => setCoach(true), disabled: !mine },
               { label: 'Hints', checked: hints, onClick: () => game.update({ hints: !hints }) },
-              { label: d.format === 'grid' ? 'The AI’s picks' : 'What you know the AI has', onClick: () => setAiOpen(true) },
+              { label: d.format === 'grid' ? `${Them}’s picks` : `What you know ${them} has`, onClick: () => setAiOpen(true) },
               { label: 'Guide', onClick: () => setGuide(true) },
               { label: 'Coach settings', onClick: onSettings },
               { label: 'Leave the table', onClick: onLeave, danger: true },
@@ -234,7 +241,8 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
             <SizeSlider value={offerPrefs.size} onChange={(size) => setOfferPrefs({ size })} min={90} max={240} />
           </div>
         )}
-        <AiBanner e={game.aiNote} d={d} />
+        {notice && <div className="aibanner is-you" role="status">{notice}</div>}
+        <AiBanner e={game.aiNote} d={d} them={opponent} />
         {lastBlind?.who === 'you' && lastBlind.kind === 'blind' && <div className="aibanner is-you">You took the top card blind: {lastBlind.cards[0]}</div>}
         {status && <p className="pk-status">{sel !== null || pick ? <span className="dot" /> : null}{status}</p>}
         {d.format === 'grid' ? (
@@ -272,25 +280,25 @@ export function PickScreen({ game, draft: d, onLeave, onSettings }: { game: Draf
         onClose={() => setAiOpen(false)}
         names={known}
         meta={meta}
-        title={d.format === 'grid' ? 'The AI’s picks' : 'What you know the AI has'}
+        title={d.format === 'grid' ? `${Them}’s picks` : `What you know ${them} has`}
         hiddenCount={d.picks.ai.length - known.length}
         label={`Looks like: ${aiLabelFrom(known, ctx).text}`}
         onInfo={setInfo}
         prefsKey="ai-sheet"
       />
       <CubeGuideSheet open={guide} onClose={() => setGuide(false)} cubeId={d.cubeId} meta={game.data.meta} colors={guide ? poolColours(d.picks.you, ctx) : ''} onInfo={setInfo} />
-      <PickCoach open={coach} onClose={() => setCoach(false)} game={game} d={d} advice={advice} onSettings={onSettings} />
+      <PickCoach open={coach} onClose={() => setCoach(false)} game={game} d={d} advice={advice} onSettings={onSettings} opponent={opponent} />
       <CardInfoSheet name={info} ctx={ctx} pool={d.picks.you} onClose={() => setInfo(null)} />
     </div>
   );
 }
 
-function PickCoach({ open, onClose, game, d, advice, onSettings }: { open: boolean; onClose: () => void; game: DraftGame; d: Draft; advice: { title: string; lines: string[] } | null; onSettings: () => void }) {
+function PickCoach({ open, onClose, game, d, advice, onSettings, opponent }: { open: boolean; onClose: () => void; game: DraftGame; d: Draft; advice: { title: string; lines: string[] } | null; onSettings: () => void; opponent?: string }) {
   const ctx = game.data.ctx!;
   const [q, setQ] = useState('');
   const key = `pick:${d.id}:${d.log.length}:${hashOf(q.trim())}`;
   const answer = useAnswer(key);
-  const makePrompt = useCallback(async () => buildPickPrompt({ ctx, draft: d, infos: await cardsForPrompt(pickPromptCards(d)), question: q }), [ctx, d, q]);
+  const makePrompt = useCallback(async () => buildPickPrompt({ ctx, draft: d, infos: await cardsForPrompt(pickPromptCards(d)), question: q, opponent }), [ctx, d, q, opponent]);
   return (
     <Sheet open={open} onClose={onClose} width={620} className="fx fx-sheet" title={<span className="serif-title">Ask the coach</span>} subtitle={progress(d).label}>
       {advice && (
@@ -309,7 +317,11 @@ function PickCoach({ open, onClose, game, d, advice, onSettings }: { open: boole
       <AnswerBox
         answer={answer}
         askLabel="Ask the coach"
-        idleText="The coach reads this pick, your pool, what you know the AI has and every card’s text. It never sees the AI’s hidden picks."
+        idleText={
+          opponent
+            ? `The coach reads this pick, your pool, ${opponent}’s picks (a grid draft is face up) and every card’s text. Its advice stays in this browser: ${opponent} never sees it.`
+            : 'The coach reads this pick, your pool, what you know the AI has and every card’s text. It never sees the AI’s hidden picks.'
+        }
         onAsk={() => void startAnswer(key, makePrompt)}
         onStop={() => stopAnswer(key)}
         makePrompt={makePrompt}

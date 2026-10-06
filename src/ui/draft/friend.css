@@ -1,0 +1,96 @@
+/*
+ * ForgeCoach — ui/draft/friend.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * Draft with a friend (FriendApp.tsx): the lobby, the join screen, the
+ * waiting room with the friend's links, the end of the draft. Everything else
+ * is the set-up screen's and the pick screen's own styles.
+ */
+.fr .setup-head {
+  max-width: 720px;
+}
+.fr-title {
+  margin: 4px 0 6px;
+  font-family: var(--serif, Georgia, serif);
+  font-size: clamp(26px, 5vw, 38px);
+  font-weight: 500;
+  color: var(--gold);
+}
+.fr-lede {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.fr-panel {
+  max-width: 720px;
+  margin: 18px 0 0;
+  display: grid;
+  gap: 12px;
+}
+.fr-field {
+  display: grid;
+  gap: 4px;
+}
+.fr-field > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.fr-field input,
+.fr-field select {
+  max-width: 360px;
+}
+.fr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.fr-small {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.fr-error {
+  margin: 0;
+  color: var(--fx-danger, #d46a5a);
+  line-height: 1.45;
+}
+.fr-link {
+  display: grid;
+  gap: 4px;
+}
+.fr-link-row {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+.fr-link-row input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 12.5px;
+}
+.fr-rooms {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.fr-rooms li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.fr-room-btns {
+  display: flex;
+  gap: 8px;
+}
+.aibanner.is-friend .aibanner-mark {
+  font-weight: 700;
+}

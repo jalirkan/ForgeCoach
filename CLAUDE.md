@@ -32,7 +32,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 - `play/seatUrl.ts` — `defaultSeatUrl(location)` / `servedByEngine(location)`: when the mtg-table bridge serves this site itself (`--lan`, phone play), the seat is same-origin `ws://<host>/ws?token=<T>`; the token is redacted from on-screen text. Site builds with `FORGECOACH_BASE=./` for any path.
 - `play/aiName.ts` — what the board calls the AI seat: the opponent-AI picker's name for `hello_ok.match.aiPolicy` (mtg-table amendment M56, read with `aiPolicyOf`), else the engine's own name (older engines).
 - `ui/` — React components; `main.tsx` mounts the app.
-- `pwa/` — the installable site. `icons.ts` draws the icons in code from the favicon's anvil (SVG text; PNGs by a tiny scanline rasterizer + PNG encoder) — no image files are committed; `vitePlugin.ts` (in `vite.config.ts`) emits them under `icons/` at build time (and serves them in dev) and builds `sw.ts` into `sw.js` as a standalone chunk with its precache list (the shell) and a version filled in. `swRoutes.ts` `route(url, method, {origin, base, mode})` is the worker's one routing rule set (tested under `/ForgeCoach/` and an engine origin): page network-first, hashed `assets/` cache-first, cubes/samples/icons/manifest network-first, everything else **passthrough (no respondWith)** — non-GET, cross-origin (Anthropic, Scryfall, raw.githubusercontent), loopback hosts, port 8643, the engine's `/ws` `/observe` `/health` `/match` `/review` `/eval` `/coach`…, and the lab's data. Keep `swRoutes.ts` out of the app's imports (sw.js must stay one chunk; the build fails otherwise). `register.ts` registers it in production builds at `BASE_URL`; `install.ts` keeps `beforeinstallprompt` for Settings → Install (iOS Safari: a Share → Add to Home Screen line; nothing elsewhere). `ui/skin.ts` `THEME_COLOR` sets `<meta name="theme-color">` per skin (tested against the `--bg` tokens). E2E: `e2e/pwa.e2e.mjs` (`npm run test:pwa`, needs full Chromium).
+- `pwa/` — the installable site. `icons.ts` draws the icons in code from the favicon's anvil (SVG text; PNGs by a tiny scanline rasterizer + PNG encoder) — no image files are committed; `vitePlugin.ts` (in `vite.config.ts`) emits them under `icons/` at build time (and serves them in dev) and builds `sw.ts` into `sw.js` as a standalone chunk with its precache list (the shell) and a version filled in. `swRoutes.ts` `route(url, method, {origin, base, mode})` is the worker's one routing rule set (tested under `/ForgeCoach/` and an engine origin): page network-first, hashed `assets/` cache-first, cubes/samples/icons/manifest network-first, everything else **passthrough (no respondWith)** — non-GET, cross-origin (Anthropic, Scryfall, raw.githubusercontent), loopback hosts, port 8643, the engine's `/ws` `/observe` `/health` `/match` `/review` `/eval` `/coach`…, the draft room's `/room/…` (D400, also on the room listener's own origin, which serves the site to a friend), and the lab's data. Keep `swRoutes.ts` out of the app's imports (sw.js must stay one chunk; the build fails otherwise). `register.ts` registers it in production builds at `BASE_URL`; `install.ts` keeps `beforeinstallprompt` for Settings → Install (iOS Safari: a Share → Add to Home Screen line; nothing elsewhere). `ui/skin.ts` `THEME_COLOR` sets `<meta name="theme-color">` per skin (tested against the `--bg` tokens). E2E: `e2e/pwa.e2e.mjs` (`npm run test:pwa`, needs full Chromium).
 - `ui/skin.ts` + `ui/skins.css` — the skins (Settings → Look, `claude.ts` `skin`: `classic` | `stack` | `felt`; `?skin=` previews): `data-skin` on `<html>`, tokens plus a few skin-scoped rules. Classic has no rules (renders as before); never redraw cards in a skin.
 - `ui/play/` — the play screen: `PlayView` (board), `ActionBar`, `HandDock`,
   `AskDialog` + `askModel` (engine questions), `PlayCoach` + `liveDecision`
@@ -79,8 +79,34 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   `{"aiProfile"}` only when `/health` has `engine_start_profile: 1`, D381 —
   picker `ui/PlayProfile.tsx`, the helper's warnings shown on the board). Hidden information:
   the player only ever sees `knownAiCards`, never the AI's list.
+- `draft/room.ts` — Draft with a friend: the client for mtg-table's draft room
+  (D400, mtg-table `docs/draft-room.md`). It holds:
+  - room creation: `createRoom` through the coach helper's `POST /room` (the
+    owner's door) and `roomSupport` (`/health` `draftRoom`, `roomPort`);
+  - `RoomClient`, the calls to the room listener (8644): get, join, and a pick
+    with `expect: version` — a stale view is a `RoomError` that carries the
+    current state;
+  - the live stream: SSE read through `fetch` so the seat token can travel in
+    the `X-Room-Token` header and never in a URL; it reconnects with backoff
+    and reports `gone`;
+  - checks on what the server sends: a strict `parseRoomState`, and `cubeHash`
+    against the room's;
+  - join links, with the token in the `#fragment` (`#draft/friend/join?room=&t=`):
+    `joinLink`, `parseJoinHash`, `friendLinks`, `ownerRoomBase`;
+  - the pick-screen adapter: `toGridDraft` (you = this seat, `ai` = the friend);
+  - the end-of-draft check: `replayMatches`, which re-deals the revealed seed
+    with draft.ts and replays every pick;
+  - the seats this browser holds, in localStorage `forgecoach.friendRooms.v1`.
+
+  `draft/testdata/grid-golden.json` is the Grid cross-check. It is the same file
+  as mtg-table's `fixtures/draft-room/grid-golden.json`, and both draft.ts and
+  mtg-table's `tools/draft-room.mjs` must reproduce it.
 - `ui/draft/` — Draft vs AI screens (lazy, `#draft`, `#draft/build`,
-  `#draft/match`) and the cube pages (`#cube/<id>`): `PickScreen`,
+  `#draft/match`), Draft with a friend (`FriendApp`, lazy, `#draft/friend[/join?…|/r/<id>/<seat>[/build]]`;
+  `useFriendRoom`: one seat as a `DraftGame`, so `PickScreen` (its `opponent` prop
+  names the friend instead of the AI) and `DeckEditor` are reused unchanged; the
+  e2e is `e2e/friend.e2e.mjs`, two browser contexts against the real room) and the
+  cube pages (`#cube/<id>`): `PickScreen`,
   `DeckEditor`, `Setup` (table and match set-up), `Collection` (the shared
   Stacks / Gallery / List view, also used by the deck assistant), `DCard`.
   `ui/forge-theme.css` holds the `.fx` tokens and type the cube section,
