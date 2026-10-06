@@ -100,6 +100,51 @@ that every AI rating and a seeded AI draft are identical with and without the
 human file. The AI's drafting is therefore unchanged by construction; this
 test does not measure whether human data would make the AI draft better.
 
-## Results
+## Results (run 2026-10-06)
 
-_To be filled in after the run._
+Reproduce: download the two files, then
+
+```bash
+npm run human-cards -- --updated 2025-11-23 --half 0 --out OUT game_data_public.Cube_-_Powered.*.csv.gz
+npm run human-cards -- --updated 2025-11-23 --half 1 --out OUT game_data_public.Cube_-_Powered.*.csv.gz
+npm run human-blend -- OUT/vintage-cube-180.human.half0.json OUT/vintage-cube-180.human.half1.json
+```
+
+The halves: 147,565 and 147,410 games (294,975 in all, as the shipped file; no
+row lacked a draft id). In each fold 131 nonland Vintage cards have 500+ games
+in hand in half B, and all 131 have 500+ in half A too.
+
+| Fold | A → B | rho(today, B) | rho(blend, B) | difference | 95% interval |
+|---|---|---|---|---|---|
+| 1 | half 0 → half 1 | 0.462 | 0.908 | +0.446 | [+0.328, +0.574] |
+| 2 | half 1 → half 0 | 0.461 | 0.908 | +0.447 | [+0.332, +0.571] |
+
+**Decision: adopt.** The lower end of the interval is above 0 in both folds.
+
+For information only (not used for the decision; fold 1, fold 2 alike within
+0.01): the blend with D = 0.6 ranks at 0.915, with D = 1.0 at 0.899; the
+equal-weight blend at 0.74–0.75; human only (half A's GIH WR) at 0.920, the
+split-half reliability on these cards; the lab value alone at 0.46–0.48; the
+prior alone at 0.26–0.29. So the discount barely matters for ranking, the
+precision weights matter a lot (half-and-half loses a third of the gain), and
+the prior and lab pull the blend slightly below human data alone. None of
+these was used to change the formula.
+
+What this does and does not show:
+
+- It shows the blend predicts how Arena's human players do with a card in
+  data it did not see far better than today's value. It does not show that
+  paper-cube decks built with it win more: the target is Arena's Powered Cube
+  population, and the ×0.8 discount is a guess at the Arena-to-paper gap, not
+  a measurement.
+- A correction to the text above: the lab's game counts are larger than the
+  "K + g ≈ 100–300" estimated there (median 1,418 lab games for the cards with
+  human rows), so human data gets 66–100% of the weight (median 91%), not
+  nearly all of it. The formula is unchanged.
+- Lands: the test only covered nonland cards, so the shipped blend applies
+  only to them; lands keep today's value (the formula is otherwise as written).
+- What changes for the user (Vintage only): 131 nonland cards' values are blended, moving by 6.8
+  points on average (from −28 to +17); the other 49 Vintage cards and every
+  other cube keep today's values. The Draft vs AI opponent's ratings, picks
+  and deck are unchanged (a test drafts every format with and without the
+  human file).

@@ -6,14 +6,15 @@
  */
 import { describe, expect, it } from 'vitest';
 import { parseHumanCards } from '../../src/cube/human.ts';
-import { coverage, GameCounter, humanFile, splitCsvLine } from './stats.ts';
+import { coverage, fnv1a32, GameCounter, halfOf, humanFile, splitCsvLine } from './stats.ts';
 
 const HEADER =
   'expansion,event_type,draft_id,won,' +
   ['Bolt', 'Jace, the Mind Sculptor', 'Fire // Ice'].flatMap((n) => ['opening_hand_', 'drawn_', 'tutored_', 'deck_', 'sideboard_'].map((p) => (n.includes(',') ? `"${p}${n}"` : `${p}${n}`))).join(',');
 
 // per card: opening_hand, drawn, tutored, deck, sideboard
-const row = (event: string, won: string, ...cards: number[][]) => ['Cube_-_Powered', event, 'abc', won, ...cards.flatMap((c) => c.map(String))].join(',');
+const row = (event: string, won: string, ...cards: number[][]) => rowIn('abc', event, won, ...cards);
+const rowIn = (draft: string, event: string, won: string, ...cards: number[][]) => ['Cube_-_Powered', event, draft, won, ...cards.flatMap((c) => c.map(String))].join(',');
 
 const CSV = [
   HEADER,
@@ -27,8 +28,8 @@ const CSV = [
   row('PremierDraft', '', [1, 0, 0, 1, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]),
 ];
 
-function count(lines = CSV) {
-  const g = new GameCounter();
+function count(lines = CSV, half: 0 | 1 | null = null) {
+  const g = new GameCounter(half);
   g.header(splitCsvLine(lines[0]!));
   for (const l of lines.slice(1)) g.row(splitCsvLine(l));
   return g.stats;
@@ -52,6 +53,27 @@ describe('GameCounter', () => {
     // Tutored alone is neither in hand nor "never seen".
     expect(s.cards.get('Jace, the Mind Sculptor')).toEqual({ gp: 2, gpW: 1, gih: 1, gihW: 1, oh: 0, ohW: 0, gns: 0, gnsW: 0 });
     expect(s.cards.get('Fire // Ice')).toEqual({ gp: 1, gpW: 1, gih: 0, gihW: 0, oh: 0, ohW: 0, gns: 1, gnsW: 1 });
+  });
+
+  it('splits games into two halves by draft id (docs/human-blend.md)', () => {
+    // FNV-1a 32-bit reference values.
+    expect(fnv1a32('')).toBe(0x811c9dc5);
+    expect(fnv1a32('a')).toBe(0xe40c292c);
+    expect(fnv1a32('foobar')).toBe(0xbf9cf968);
+    const ids = ['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8'];
+    const lines = [HEADER, ...ids.map((id, i) => rowIn(id, 'PremierDraft', i % 3 ? 'True' : 'False', [1, 0, 0, 1, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0])), rowIn('', 'PremierDraft', 'True', [1, 0, 0, 1, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0])];
+    const all = count(lines);
+    const h0 = count(lines, 0);
+    const h1 = count(lines, 1);
+    expect(h0.games + h1.games).toBe(all.games - 1);
+    expect(h0.wins + h1.wins).toBe(all.wins - 1);
+    expect(h0.games).toBe(ids.filter((id) => halfOf(id) === 0).length);
+    expect(h0.games).toBeGreaterThan(0);
+    expect(h1.games).toBeGreaterThan(0);
+    expect(h0.noDraftId).toBe(1);
+    expect(h0.otherHalf).toBe(h1.games);
+    expect(h0.cards.get('Bolt')!.gih + h1.cards.get('Bolt')!.gih).toBe(all.cards.get('Bolt')!.gih - 1);
+    expect(() => new GameCounter(0).header(['won', 'deck_Bolt'])).toThrow(/draft_id/);
   });
 
   it('refuses a file without a result column', () => {
