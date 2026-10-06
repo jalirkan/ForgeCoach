@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.3)
+# Scenery pack spec (schema 1, version 1.4)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -20,6 +20,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.1 | Sprite `fit` and `anchor`; the moving-layer budget warning; Local Network Access notes (§5). |
 | 1.2 | Optional one-shot **`effects`** (§2, *Effects*): creature enters, attack, damage to a player or a creature, landfall and stage up, for the whole pack or per biome; their budgets (§3) and reduced-motion behaviour (§4). An optional top-level `spec` field. A pack may now have effects and no stage art. |
 | 1.3 | Optional **board accents** (§2, *Board accents*): per biome and stage, an `overlay` list of corner and edge pieces drawn in the player's area outside the strip, with `overlayMode` (`replace` / `add`) across stages; their budgets (§3); the rendering rules (beneath the cards, small widths, reduced motion, Settings → Board accents). A pack may have accents and no stage art. |
+| 1.4 | One more accent piece, the **full-area** piece (§2, *Full-area accents*): `anchor: "area"`, one transparent picture across the whole player area, beneath the strip and the cards, with `fit`, an optional `safe` rect or `position`, `minWidthPx`; at most one per stage; its own budget (§3). Every other piece and every 1.0–1.3 pack is unchanged. |
 
 ## 1. How the scenery works
 
@@ -49,6 +50,7 @@ other game information.
 - **Bloom.** When a stage adds layers, the new layers *bloom in*. A layer whose `id` is also in the previous stage stays where it is and does not bloom again. Every land arrival also flashes its slot with a soft glow.
 - **Events.** The scenery engine also emits *creature entered* (with the creature's colours), *attack declared* and *damage dealt* (to a player or to a creature). Each plays a short one-shot **effect**: the pack's own (§2, *Effects*), or else a built-in placeholder.
 - **Accents (1.3).** Besides the strip, each player's area can carry a few **accents**: pictures in its corners and bands along its edges (vines creeping in as the forest grows, frost and spray for islands, ash for mountains). They grow with the same stages, sit beneath every card and control, and are a separate setting (Settings → Board accents, on whenever the scenery is on).
+- **Full-area accents (1.4).** One more kind of accent: a single transparent picture over the whole player area, for sparse marks scattered beneath the cards (vines, dead branches, grass, sand and shells, lava) that thicken with the stage. It sits under the strip as well as under the cards, and the same setting covers it.
 - **Hidden information.** Only the viewing seat's redacted battlefield is read, so the scenery never shows anything the board does not.
 
 ## 2. Manifest format
@@ -64,7 +66,7 @@ and a key under `effects` that is not an effect event.
 | Field | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `schema` | `1` | — | **Required.** |
-| `spec` | `"1.3"` | — | The version the pack was written for. Informational; a newer minor version than this ForgeCoach reads gets a warning (its new fields are ignored). |
+| `spec` | `"1.4"` | — | The version the pack was written for. Informational; a newer minor version than this ForgeCoach reads gets a warning (its new fields are ignored). |
 | `name` | string ≤ 80 | "Untitled pack" | Shown on `#ambience`. |
 | `author`, `license` | string ≤ 80 | — | Shown on `#ambience`. |
 | `strip` | object | see below | Applies to the whole strip. |
@@ -363,7 +365,7 @@ accents, so older packs look as they did.
 | Field | Type / range | Default | Notes |
 | --- | --- | --- | --- |
 | `id` | `[A-Za-z0-9][\w.-]*`, ≤ 40 | — | **Required**, unique within the stage. A piece kept from the stage before (same `id`, same anchor) stays put; a new one fades in. |
-| `anchor` | one of the eight above | — | **Required.** An unknown anchor drops the piece, with a warning. |
+| `anchor` | one of the eight above, or `area` (1.4, *Full-area accents*) | — | **Required.** An unknown anchor drops the piece, with a warning. |
 | `src` | URL (`.webp` or `.avif`) | — | **Required.** A transparent **still**. Same URL rules as layers. |
 | `src2x` | URL (`.webp` or `.avif`) | — | The 2x file. |
 | `size` | 0.02–1 | corners 0.18, edges 0.05 | As a fraction of the area's **width**: a corner's box width, or an edge band's thickness. |
@@ -384,7 +386,7 @@ bad `id`, `anchor` or `src` is dropped with a warning.
 - **≤ 6 pieces per stage** (after `add`): the first six are kept, the rest dropped, with a warning. On the board, **≤ 6 pieces per player area** across all its biomes: the dominant biome's pieces come first, so a minor biome's are the ones cut.
 - **≤ 3 moving pieces per stage** (a `motion` other than `none`): the rest are drawn still, with a warning; again ≤ 3 per player area on the board.
 - **CSS motion on a still does not count against the strip's 2 moving layers** (§3): those are decoded video and sprite sheets, the expensive kind. A swaying accent is a transform on a picture already decoded, so it is cheap; that is why up to 3 may move.
-- **≤ 2 MB of declared accent files per biome**: a warning past it (pieces kept).
+- **≤ 2 MB of declared accent files per biome**: a warning past it (pieces kept). From 1.4 this counts corner and edge files; full-area files have their own budget.
 
 **Rendering rules** (what ForgeCoach guarantees, so art can rely on it):
 - **Never over the game.** Accents are drawn beneath everything in the area: every card (names, costs, power and toughness, counters), every label, the action bar and the ask dialogs. They sit in the same layer as the strip, above the board's background and the strip, below all content. They never take clicks or taps, and screen readers skip them.
@@ -453,6 +455,138 @@ still counts once), under the 2 MB (2,097,152-byte) budget.
 `src/ambience/overlay.test.ts` validates this exact block. If you change it,
 it must stay error- and warning-free.
 
+### Full-area accents (1.4)
+
+A full-area piece is one more piece in a stage's `overlay` list, with
+`anchor: "area"`: a single transparent picture stretched over the **whole
+player area**, for marks scattered beneath the cards rather than tucked into
+a corner. Everything in *Board accents* above holds for it (`overlay`,
+`overlayMode`, ids, `add` replacing by id, mirroring, Settings → Board
+accents) except what this section changes.
+
+**The picture.** A transparent WebP (or AVIF) still, about **2048 × 745**
+(the player area's shape on a desktop board, about 2.75 : 1), with `src2x` at
+4096 × 1490 if you want it sharp on high-density screens. Draw it for your own
+side: the player's outer edge, where their strip is, at the **bottom**. Keep it
+sparse; most of it should be clear.
+
+**The area's shape changes.** The player area is wide on a desktop and much
+squarer on a phone or with the coach panel open, so the picture is fitted:
+
+- `fit: "cover"` (the default) fills the area and crops what does not fit:
+  the top and bottom on a wide area, the sides on a narrow one.
+  - With a `safe` rect, ForgeCoach crops only outside it, keeping it as near the
+    middle as the crop allows. If the area's shape would cut into the rect, the
+    picture is drawn `contain` instead, for that size. So the rect is a promise:
+    it is always visible whole.
+  - With no `safe` rect, `position` says which part is kept (as a layer's
+    `anchor`: `bottom` keeps the outer edge).
+- `fit: "contain"` always shows the whole picture, as large as fits, placed by
+  `position`; the rest of the area stays clear. A `safe` rect is ignored
+  with `contain` (a warning), since everything is visible.
+
+**Where cards are.** ForgeCoach does not move the picture to follow cards:
+cards are drawn over it wherever they sit. Steer the marks round the usual
+card rows (the middle of the area, and the land row near the outer edge) and
+keep them at the rim and in the gaps, as the mock-ups do.
+
+**The piece.**
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `id` | as other pieces | — | **Required**, unique within the stage. Give the area piece the same `id` in every stage (e.g. `"scatter"`) so `overlayMode: "add"` swaps the picture in place. |
+| `anchor` | `"area"` | — | **Required.** |
+| `src` | URL (`.webp` or `.avif`) | — | **Required.** A transparent still, about 2048 × 745. |
+| `src2x` | URL (`.webp` or `.avif`) | — | The 2x file, about 4096 × 1490. |
+| `fit` | `cover` \| `contain` | `cover` | How the picture fills the area (above). `fill` is not offered: it would stretch the marks. |
+| `safe` | `{ "x", "y", "w", "h" }` | — | `cover` only. The part of the picture that must stay visible, as fractions of the picture from its **top-left** (`x`, `y` 0–1; `w`, `h` 0.05–1; `x + w` and `y + h` at most 1). A missing key takes 0 for `x`/`y` and 1 for `w`/`h`. |
+| `position` | as a layer's `anchor` (`center`, `bottom`, `top-left`, …) | `center` | Where the picture sits with `contain`, or which part `cover` keeps when there is no `safe` rect. |
+| `opacity` | 0–1 | 1 | |
+| `blend` | as layers | `normal` | |
+| `motion` | `none` \| `sway` \| `drift` \| `breathe` | `none` | CSS only, smaller than a corner's, as the picture is the size of the area: `sway` turns ±0.35° about the outer edge's middle, `drift` shifts ±0.6%, `breathe` grows 1.2% and brightens a little. |
+| `periodMs` | 2000–60000 (whole) | 9000 | |
+| `mirror` | boolean | `true` | On the opponent's side the picture is flipped vertically, so its outer edge is their (top) edge. Left and right do not swap. `false`: drawn as is. |
+| `minWidthPx` | 300–4096 (whole) | 600 | Not drawn when the player's area is narrower than this, in CSS px. |
+| `bytes` | whole number | — | The size of `src` + `src2x`, for the full-area budget (§3). |
+
+`size`, `maxPx` and `tile` are for corners and edges: on an area piece they
+are ignored, with a warning. A piece with a bad `id` or `src` is dropped, as
+other pieces are; out-of-range numbers and unknown names fall back to their
+defaults with a warning.
+
+**What is enforced, and how.**
+- **At most one full-area piece per stage** (after `add`): the first is kept, the others dropped, with a warning naming them.
+- **It counts as one piece** toward the ≤ 6 per stage and per player area.
+- **It counts toward the ≤ 3 moving pieces** when it has a `motion`. CSS motion on a still is still not one of the strip's 2 moving layers.
+- **Several biomes:** the area belongs to the **dominant** biome (the most land weight; ties go to the earlier slot), like the long edges. So a player shows at most one full-area picture, and it changes biome when another biome overtakes.
+- **≤ 3 MB of declared full-area files per biome**: a budget of its own, on top of the corner-and-edge 2 MB (a warning past it; pieces kept). The corner-and-edge budget no longer counts full-area files.
+
+**Which stages.** Any stage may carry one, 1 to 6, and a biome may have a
+full-area piece and no corners or edges. The intended use is stages 2 to 4,
+the picture getting thicker each stage (thicker vines, more sand, brighter
+lava, more branches); leave stage 1 without one (`"overlay": []`) so a first
+land is quiet. A stage without `overlay` keeps the previous stage's pieces,
+the area piece included.
+
+**Rendering rules** (in addition to those of *Board accents*):
+- **Z-order**, bottom to top: the area's background, **the full-area piece**, the strip (with its fade) and effects, the corner and edge pieces, then every card, label and control. So the strip paints over the picture's bottom band (on your side, the outer quarter or so of the area, where the strip is solid) and the picture shows through as the strip fades; keep what matters above that band.
+- **Clipped to the area**, never takes clicks or taps, and screen readers skip it, as other accents.
+- **Small screens.** Hidden under `minWidthPx` (600 px by default). Between 300 and 600 px, where only corners show, an area piece whose `minWidthPx` allows it still shows, but still (no motion). Under 300 px, no accents at all.
+- **Reduced motion** (`prefers-reduced-motion`, or Settings → Motion → Stills only): drawn still, and it appears without fading in. A hidden tab pauses its motion.
+- **Settings.** Settings → Board accents (and `?accents=`) turns it on and off with the other accents.
+- **Load.** It loads in the background like other accent files; a picture that fails is simply not drawn.
+- **Built-in placeholder.** ForgeCoach's built-in accents have no full-area piece on the board. `#ambience` can show a built-in placeholder (View → Full-area accent → Built-in placeholder) to preview the layer with no pack.
+
+### Worked example: a full-area scatter for the forest
+
+The forest keeps the built-in strip here (no `layers`), with no accents at
+stage 1, a full-area scatter from stage 2 that thickens at each stage, and a
+corner vine joining it at stage 3.
+
+<!-- example-area -->
+```json
+{
+  "schema": 1,
+  "spec": "1.4",
+  "name": "Justin's greenwood scatter",
+  "biomes": {
+    "forest": {
+      "stages": [
+        { "overlay": [] },
+        {
+          "overlay": [
+            { "id": "scatter", "anchor": "area", "src": "forest/area-s2.webp", "fit": "cover", "safe": { "x": 0.08, "y": 0.1, "w": 0.84, "h": 0.8 }, "opacity": 0.9, "bytes": 280000 }
+          ]
+        },
+        {
+          "overlayMode": "add",
+          "overlay": [
+            { "id": "scatter", "anchor": "area", "src": "forest/area-s3.webp", "src2x": "forest/area-s3@2x.webp", "fit": "cover", "safe": { "x": 0.08, "y": 0.1, "w": 0.84, "h": 0.8 }, "opacity": 0.9, "bytes": 950000 },
+            { "id": "vine-bl", "anchor": "bottom-left", "src": "forest/ov-vine-bl.webp", "size": 0.14, "maxPx": 200, "motion": "sway", "periodMs": 11000, "bytes": 380000 }
+          ]
+        },
+        {
+          "overlayMode": "add",
+          "overlay": [
+            { "id": "scatter", "anchor": "area", "src": "forest/area-s4.webp", "src2x": "forest/area-s4@2x.webp", "fit": "cover", "safe": { "x": 0.08, "y": 0.1, "w": 0.84, "h": 0.8 }, "opacity": 0.95, "motion": "breathe", "periodMs": 14000, "minWidthPx": 720, "bytes": 1150000 }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+Stage 2 is one sparse scatter; stage 3 swaps it for a thicker one (same `id`,
+`add`) and adds a corner vine; stage 4 swaps in the richest scatter, which
+breathes slowly and shows only from 720 px. The `safe` rect keeps the middle
+84% × 80% of the picture in view however the area is cropped. The forest
+declares 2,380,000 bytes of full-area files (under the 3 MB, 3,145,728-byte,
+budget) and 380,000 of corner files (under the 2 MB).
+
+`src/ambience/overlay-area.test.ts` validates this exact block. If you change
+it, it must stay error- and warning-free.
+
 
 ## 3. Files and budgets
 
@@ -486,6 +620,12 @@ Budgets for board accents (1.3), counted apart from the scenery's 6 MB and the e
 - **Left and right edges:** about **256 × 2048**, the root at the outer side; seamless top to bottom when tiled.
 - Stills only: no animated WebP, no video, no sprite sheets.
 
+Budgets for full-area accents (1.4), an extension of the accents' budget: their own **≤ 3 MB per biome**, on top of the 2 MB for corners and edges, and apart from the scenery's 6 MB and the effects' 4 MB:
+- **≤ 3 MB per biome** of full-area files (declare `bytes`, `src` + `src2x`; the validator warns past it). Three stages at about 250–400 KB for 1x and 0.6–1 MB for 2x fit.
+- **One picture per stage**, about **2048 × 745** transparent WebP (quality 75–85) or AVIF; the 2x about 4096 × 1490. Sparse art compresses well: most of the picture should be fully transparent.
+- It counts as one of the ≤ 6 pieces, and as one of the ≤ 3 moving pieces when it moves.
+- Stills only, as other accents.
+
 The whole pack should stay ≤ 30 MB, effects and accents included.
 
 A narrow slot is about 130 px wide on a phone; a lone slot on a desktop can be
@@ -516,6 +656,7 @@ A narrow slot is about 130 px wide on a phone; a lone slot on a desktop can be
   Every moving layer therefore needs a poster that looks complete on its own.
 - **Effects and motion.** Effects are the board's punctuation: short, soft at the edges, and gone. No strobing (no more than one bright peak per effect), no full-strip white flashes, nothing that hides a card. They play only for live play and for stepping a replay at normal speed: jumping, going back or scrubbing quickly cancels them, and a hidden tab pauses them.
 - **Effects with reduced motion.** Each effect's `reduced` says what shows instead: `glow` (the default, a still soft glow in the effect's colour at its anchor, for the effect's length), `poster` (its `poster` still), or `skip` (nothing).
+- **Full-area accents (1.4).** Sparse and stylised: heavily inked marks (vines, dead branches, grass) or soft ones (sand and shells, lava glow), mostly clear between them, with the middle of the area (where cards sit) the thinnest. Cards and their text must read over it on every skin; no large bright areas. Each stage is the same scatter grown (thicker vines, more sand, brighter lava, more branches), not a new picture.
 - **Accents (1.3).** Quiet, low-contrast, mostly at the very edge: they frame the area, they are not a picture in it. The inner part of a corner picture (toward the area's middle) should fade to nothing. Cards are drawn over them, so keep fine detail at the rim, where cards rarely sit. Keep motion as small as the strip's idle.
 - **Levelling up with mana.** The art direction for every biome: each stage is more intricate, vivid and fantastical than the last, and the final stage is dreamlike. A `stageUp` effect is the moment to show that: it plays when a land lifts a claimed slot to its next stage.
 
@@ -564,9 +705,10 @@ board's fallback note say so, with these steps.
 4. Drag **Stage** to see every stage of every claimed biome without playing more lands.
 5. Switch **Motion** to *Stills only* to check posters and reduced motion.
 6. **Creature enters** and **Attack** under *Play* change the made-up game, and fire the effects the engine derives from it. The event list shows what the engine emitted.
-7. **View → Board accents** turns the accents on and off on the preview (Settings → Board accents does it on the board). Narrow the window under 600 px to see the corners-only fit. The pasted-manifest check and the pack status list each biome's accent pieces per stage and their declared size.
+7. **View → Board accents** turns the accents on and off on the preview (Settings → Board accents does it on the board). Narrow the window under 600 px to see the corners-only fit. The pasted-manifest check and the pack status list each biome's accent pieces per stage and their declared size, and the stages with a full-area piece (1.4).
+   **View → Full-area accent → Built-in placeholder** shows ForgeCoach's own full-area scatter (from stage 2) where the pack has none, to see the layer beneath the strip with no pack.
 8. The **Effects** card fires each effect for either side directly: creature enters, attack, damage (player), damage (creature), landfall, stage up. It plays on that side's largest biome, so play a land first. Its **Pack effects** status lists what the pack supplies for each event and biome (else the built-in), and **Check effect files** fetches each effect file and measures it against the 4 MB budget.
-9. **Check a manifest by pasting it** validates JSON as you type, before any file is served.
+9. **Check a manifest by pasting it** validates JSON as you type, before any file is served. **Preview this manifest** then draws the table with the pasted manifest (files from the pack URL, or absolute URLs), so a new piece such as a full-area accent can be tried before the pack's `scenery.json` is changed; **Stop previewing** goes back.
 10. **Use on the board** saves the choice. Settings → Board scenery does the same, and so does `?scenery=<url>` on any ForgeCoach URL. The play board and the replay board (`#sample=human-auto-42`) then show the pack.
 11. Press **Reload** after changing files. The preview loads the pack fresh each time; the board caches it per page load.
 

@@ -64,7 +64,7 @@ describe('spec 1.3 overlay: validation', () => {
       BASE,
     );
     const w = r.warnings.join('\n');
-    expect(w).toContain('biomes.forest.stages[0].overlay[0].anchor: "middle" is not one of top-left, top-right, bottom-left, bottom-right, top-edge, bottom-edge, left-edge, right-edge; piece dropped');
+    expect(w).toContain('biomes.forest.stages[0].overlay[0].anchor: "middle" is not one of top-left, top-right, bottom-left, bottom-right, top-edge, bottom-edge, left-edge, right-edge, area; piece dropped');
     expect(w).toContain('overlay[1].src: expected .webp or .avif (a transparent still); piece dropped');
     expect(w).toContain('overlay[2].src: the javascript: scheme is not allowed');
     expect(w).toContain('overlay[3].tile: only for edges; ignored');
