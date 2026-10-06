@@ -39,6 +39,7 @@ export function DeckEditor({
   onSubmit,
   onBack,
   kicker = 'Draft complete',
+  cubeId,
 }: {
   ctx: CubeContext;
   pool: string[];
@@ -47,6 +48,8 @@ export function DeckEditor({
   onSubmit: () => void;
   onBack: () => void;
   kicker?: string;
+  /** For the card sheet's 17Lands numbers (cubes.ts `humanData`). */
+  cubeId?: string;
 }) {
   const meta = useCubeMeta(ctx)!;
   const [prefs, setPrefs] = usePrefs('deck-main', { layout: 'stacks', group: 'cmc', size: 104 });
@@ -177,7 +180,7 @@ export function DeckEditor({
           Submit deck · {count}
         </button>
       </div>
-      <CardInfoSheet name={info} ctx={ctx} pool={pool} onClose={() => setInfo(null)} />
+      <CardInfoSheet name={info} ctx={ctx} pool={pool} onClose={() => setInfo(null)} cubeId={cubeId} />
     </div>
   );
 }

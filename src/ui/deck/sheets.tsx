@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The deck assistant's two sheets: a searchable card picker (for grid slots
- * and Winston piles) and a card's details (image, text, value, lab numbers).
+ * and Winston piles) and a card's details (image, text, value, lab numbers,
+ * and 17Lands human numbers for the cube 17Lands covers).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CubeContext } from '../../cube/score.ts';
@@ -14,6 +15,7 @@ import { ManaCost, SymbolText } from '../Mana.tsx';
 import { Sheet } from '../Sheet.tsx';
 import { IconTrash } from '../Icons.tsx';
 import { colorClass, cx } from '../util.ts';
+import { HumanCardFacts, HumanSourceNote, useHumanCards } from '../HumanNumbers.tsx';
 
 const norm = (s: string) => s.toLowerCase().replace(/[’']/g, "'");
 
@@ -104,8 +106,9 @@ export function CardPicker({
   );
 }
 
-export function CardInfoSheet({ name, ctx, pool, onClose }: { name: string | null; ctx: CubeContext; pool: string[]; onClose: () => void }) {
+export function CardInfoSheet({ name, ctx, pool, onClose, cubeId }: { name: string | null; ctx: CubeContext; pool: string[]; onClose: () => void; cubeId?: string | null }) {
   const info = useCardInfo(name);
+  const human = useHumanCards(cubeId);
   const card = name ? ctx.byName.get(name) : undefined;
   const img = info?.image?.normal ?? info?.faces?.[0]?.image?.normal;
   const m = name ? metaValue(name, ctx) : null;
@@ -177,6 +180,14 @@ export function CardInfoSheet({ name, ctx, pool, onClose }: { name: string | nul
                   </dd>
                 </>
               )}
+              {human && (
+                <>
+                  <dt>17Lands</dt>
+                  <dd>
+                    <HumanCardFacts data={human} name={name} />
+                  </dd>
+                </>
+              )}
               {card?.price !== undefined && (
                 <>
                   <dt>Price</dt>
@@ -184,6 +195,7 @@ export function CardInfoSheet({ name, ctx, pool, onClose }: { name: string | nul
                 </>
               )}
             </dl>
+            {human && <HumanSourceNote data={human} />}
           </div>
         </div>
       )}

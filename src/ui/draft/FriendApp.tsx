@@ -407,6 +407,7 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
     return (
       <DeckEditor
         ctx={ctx}
+        cubeId={state.cube.id}
         pool={pool}
         deck={deck}
         onDeck={room.setDeck}

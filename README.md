@@ -285,6 +285,28 @@ is the page's estimate alone; `src/cube/score.ts` says why 80). Import a newer
 this browser. Without any meta the assistant works from card text, mana value
 and the cube's themes.
 
+**Human card data (17Lands, Arena cube).** The Vintage Cube also ships
+`vintage-cube-180.human.json`: how each card did in real people's games, from
+[17Lands](https://www.17lands.com/public_datasets)' public game data for
+Arena's Powered Cube (CC BY 4.0; 17Lands does not endorse ForgeCoach). The
+pick screen's Lab numbers panel and every card info sheet show it on its own
+blue-ruled line, e.g. "Humans: 57.1% win when drawn [56.2, 58.0], 14,210
+games", called strong or weak only when the whole 95% interval is clear of the
+format's average (about 56%, not 50%: 17Lands users win more than half their
+games). 17Lands players draft the Arena version of the cube, so the card list
+and power level differ slightly from the paper cube. Only the Vintage Cube gets
+it: 152 of its 180 cards are in 17Lands' data, while the other cubes share
+12–58% of their cards with a powered environment unlike theirs. The numbers
+are display only; the builder and pick advice do not use them. To regenerate
+(`--updated` is the dataset's "Last Updated" date on 17Lands' page):
+
+```bash
+B=https://17lands-public.s3.amazonaws.com/analysis_data/game_data
+curl -O $B/game_data_public.Cube_-_Powered.PremierDraft.csv.gz
+curl -O $B/game_data_public.Cube_-_Powered.TradDraft.csv.gz
+npm run human-cards -- --updated 2025-11-23 game_data_public.Cube_-_Powered.*.csv.gz
+```
+
 **Play the deck vs Forge.** Download the `.dck`, save it in mtg-table's
 `decks/` folder, start the engine with it —
 `./scripts/play.sh --engine-only --deck decks/<name>.dck --mirror` (or

@@ -54,6 +54,22 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   with their "two photos / two copies?" questions, `planAdd`).
   Test data: `cube/testdata/` (Scryfall snapshots of the four cubes, a fake
   meta fixture, helpers).
+- `cube/human.ts` — human card numbers from 17Lands (CC BY 4.0, credited in
+  NOTICE and on screen): `public/cubes/<file>.human.json` (schema 1: source,
+  release date, cube, `minGih`, totals, the pooled GIH average, and per card
+  only counts — gih/gihW, oh/ohW, gns/gnsW — keyed by the cube's own names).
+  Strict validator, `loadHumanCards` (only cubes with `CubeInfo.humanData`;
+  injected fetch), `humanCardView` (GIH WR with a Wilson 95% interval, OH WR,
+  IWD; strong/weak only when the interval excludes the **format's average**,
+  not 50%), the words and the Arena caveat. Only the Vintage cube ships one
+  (Arena's Powered Cube: 152/180 cards; the generator's `MIN_COVERAGE` 0.75
+  keeps the unpowered cubes out). Generator: `scripts/human-cards/`
+  (`npm run human-cards -- --updated <date> <game_data…csv.gz>`, local copies
+  of 17Lands' files; `stats.ts` counts as mtg-table `tools/ml/cards17l.py`,
+  D396). UI: `ui/HumanNumbers.tsx` (`useHumanCards`, `HumanCardFacts`,
+  `HumanSourceNote`) + `ui/human.css` (a blue rule, never the lab's gold) in
+  the pick screen's Lab numbers panel and `CardInfoSheet` (its `cubeId` prop).
+  Display only: `score.ts` and the pick/builder advice do not read it.
 - `ui/deck/` — the Draft & build screens (lazy-loaded from `#deck`):
   `DeckApp` (home, pools, workspace, meta import), `PoolView`, `BuildView`
   (builds, score, swaps, export, coach via `answers.ts` `startAnswer`),
@@ -141,7 +157,8 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 - `ui/review/` — the engine review screen (lazy `ReviewApp`, opened from GameView's top bar, the game-over card, or `#sample=<id>&review=1`): timeline, `OptionBars`, the replay `Board` at `stateFrame`, the coach via `startAnswer`. Sample report: `public/samples/human-auto-42.review.json` (engine-made); tests also use the hand-made `src/testdata/human-auto-42.review.handmade.json`.
 - `ambience/` — board scenery (pure, tested in node): `model.ts` (lands → biomes per player, slots by first appearance, growth stages; `SceneryTracker`), `events.ts` (land / creature / attack / damage events), `effects.ts` (spec 1.2 one-shot effects: event → cue, pack or built-in, `EffectQueue` concurrency cap, `effectGate`: live play and normal replay steps fire, jumps and scrubbing cancel), `manifest.ts` (art-pack `scenery.json` schema 1, spec 1.4, strict validator incl. `effects` and `overlay`; 1.4's full-area piece `anchor: "area"` with `fit` / `safe` / `position` / `minWidthPx`, one per stage, its own 3 MB per biome), `pack.ts` (load, preload, fall back to procedural), `prefs.ts` (off by default; Settings, `?scenery=`; `accents`, `?accents=`), `layout.ts`, `sim.ts` (made-up states for `#ambience`), `overlay.ts` (spec 1.3 board accents: corner / edge pieces split by slot, mirrored for the opponent, width fit, caps, built-in placeholders; 1.4 full-area pieces: the dominant biome's, `areaPlacement` = the cover / contain crop that keeps the `safe` rect, `builtinAreaPiece` = `#ambience`'s placeholder only, never on the board). Backward compatibility: `testdata/pack-v2.golden.json` is the 1.3 engine's output for pack-v2's manifest and the built-ins (`overlay-area.test.ts`). UI: `ui/ambience/` — `BoardScenery` (the one overlay hook on PlayView / GameView; lazy-loads `SceneryLayer`, which portals a `SceneryStrip` and, with Settings → Board accents on, a `SceneryOverlay` into each `.battlefield`, both at z-index −1 beneath the cards), `procedural.tsx` (built-in art and effect presets), `SceneryEffects.tsx` (effect renderer), `SceneryOverlay.tsx` + `overlayArt.ts` (accents and their built-in art; a full-area piece goes in its own layer at z-index −2, beneath the strip and its fade), `AmbiencePage` (`#ambience` preview, no engine; View → Full-area accent shows the built-in placeholder; a pasted manifest can be previewed). Contract for art packs: `docs/scenery-pack-spec.md`. Packs are never committed here.
 - `public/cubes/` — the four cube documents (Justin's) and the cube lab's
-  `<cube>.meta.json` beside each.
+  `<cube>.meta.json` beside each; `vintage-cube-180.human.json` (17Lands,
+  `cube/human.ts`).
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.
 - `bench/` — `src/bench/coachBench.ts` (cases, legal choices, scoring, reports), `src/bench/grade.ts` (engine-graded regret tables, low-information rule, held-out set) and `bench/coach/` (cases, logs, card snapshot, the `npm run bench:coach` CLI): the coach benchmark. CI runs its dry run in `npm test`; real runs need the helper or a key; regret tables come from mtg-table's `tools/coach-grade.sh` (README § Coach benchmark, *Engine-graded regret*). Regret's yardstick is "best against Forge Default"; held-out cases (`holdout: true`) are never used to tune the prompt. Transient failures are retried; a call that still fails is a transport error, reported apart from format failures, and a run with any is not to be compared.
 

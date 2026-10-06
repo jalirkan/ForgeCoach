@@ -91,7 +91,7 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
       {view === 'guide' ? (
         <>
           <CubeGuideView cubeId={info.id} onInfo={setCard} headless />
-          {ctx && <CardInfoSheet name={card} ctx={ctx} pool={[]} onClose={() => setCard(null)} />}
+          {ctx && <CardInfoSheet name={card} ctx={ctx} pool={[]} onClose={() => setCard(null)} cubeId={info.id} />}
         </>
       ) : !ctx || !meta ? (
         <div className="dr-wait">
@@ -144,7 +144,7 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
               </div>
             </section>
           )}
-          <CardInfoSheet name={card} ctx={ctx} pool={[]} onClose={() => setCard(null)} />
+          <CardInfoSheet name={card} ctx={ctx} pool={[]} onClose={() => setCard(null)} cubeId={info.id} />
         </>
       )}
     </div>

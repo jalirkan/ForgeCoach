@@ -16,7 +16,8 @@
     "e2e:friend": "node e2e/friend.e2e.mjs",
     "test:e2e": "node e2e/seat.e2e.mjs",
     "test:pwa": "node e2e/pwa.e2e.mjs",
-    "bench:coach": "node bench/coach/run.mjs"
+    "bench:coach": "node bench/coach/run.mjs",
+    "human-cards": "node scripts/human-cards/run.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

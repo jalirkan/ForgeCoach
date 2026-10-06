@@ -265,7 +265,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
             ))}
           </div>
         )}
-        <LabNumbers names={offerNames} ctx={ctx} />
+        <LabNumbers names={offerNames} ctx={ctx} cubeId={d.cubeId} />
       </section>
 
       <div className="pk-divider" aria-hidden="true" />
@@ -288,7 +288,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
       />
       <CubeGuideSheet open={guide} onClose={() => setGuide(false)} cubeId={d.cubeId} meta={game.data.meta} colors={guide ? poolColours(d.picks.you, ctx) : ''} onInfo={setInfo} />
       <PickCoach open={coach} onClose={() => setCoach(false)} game={game} d={d} advice={advice} onSettings={onSettings} opponent={opponent} />
-      <CardInfoSheet name={info} ctx={ctx} pool={d.picks.you} onClose={() => setInfo(null)} />
+      <CardInfoSheet name={info} ctx={ctx} pool={d.picks.you} onClose={() => setInfo(null)} cubeId={d.cubeId} />
     </div>
   );
 }

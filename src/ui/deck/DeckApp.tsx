@@ -308,7 +308,7 @@ function Workspace({
             {tab === 'build' && <BuildView ctx={ctx} pool={pool} format={pool.format} onInfo={setInfo} onSettings={onSettings} metaChip={metaChip} />}
             {tab === 'grid' && <GridView ctx={ctx} pool={pool} onChange={onChange} onInfo={setInfo} />}
             {tab === 'winston' && <WinstonView ctx={ctx} pool={pool} onChange={onChange} onInfo={setInfo} />}
-            <CardInfoSheet name={info} ctx={ctx} pool={pool.cards} onClose={() => setInfo(null)} />
+            <CardInfoSheet name={info} ctx={ctx} pool={pool.cards} onClose={() => setInfo(null)} cubeId={pool.cubeId} />
           </>
         )}
       </main>

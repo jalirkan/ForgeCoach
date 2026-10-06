@@ -8,8 +8,9 @@
  *
  * The worker caches only the app shell and static, same-origin files under the
  * site's base: Vite's hashed build output (assets/), the cube documents
- * (cubes/), the sample logs (samples/), the icons and the manifest. Everything
- * else is `passthrough` — the worker does not call respondWith at all, so the
+ * and their data (cubes/: the lab's .meta.json, 17Lands' .human.json), the
+ * sample logs (samples/), the icons and the manifest. Everything else is
+ * `passthrough` — the worker does not call respondWith at all, so the
  * request goes to the network exactly as without a worker. That includes, and
  * the tests pin each one down:
  *   - any non-GET request, and anything that is not http(s) (ws:, wss:);
