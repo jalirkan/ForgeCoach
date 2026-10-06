@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { HelloOkBody, OverBody } from '../protocol.ts';
-import { matchBox } from './match.ts';
+import { matchBox, tableMatchLine } from './match.ts';
 
 const hello = (gameNumber?: number, gameCount?: number, games?: number): HelloOkBody =>
   ({
@@ -50,5 +50,24 @@ describe('matchBox', () => {
 
   it('knows the match length from M44 when M41 is absent, but not which game', () => {
     expect(matchBox(hello(undefined, undefined, 3), null, [], 0)).toEqual({ game: null, of: 3, score: null });
+  });
+
+  it('at a table of two (M60): the score before this game from the handshake, plus this game', () => {
+    const h = { ...hello(2, 3), match: { yourDeck: { name: 'a', path: 'p', cards: 40 }, opponentDeck: { name: 'b', cards: 40 }, opponent: 'human', games: 3, score: { you: 0, opponent: 1 } } } as unknown as HelloOkBody;
+    expect(matchBox(h, null, [], 1)).toEqual({ game: 2, of: 3, score: { me: 0, opp: 1 } });
+    expect(matchBox(h, { winner: 1, reason: 'AllOpponentsLost', matchOver: true } as OverBody, [], 1)).toEqual({ game: 2, of: 3, score: { me: 1, opp: 1 } });
+    expect(matchBox(h, { winner: 0, reason: 'Conceded', matchOver: true } as OverBody, [], 1)).toEqual({ game: 2, of: 3, score: { me: 0, opp: 2 } });
+  });
+
+  it('tableMatchLine (mtg-table D406): where the best of three stands, and who chooses next', () => {
+    const box = (game: number, me: number, opp: number) => ({ game, of: 3, score: { me, opp } });
+    const over = (winner: number | null) => ({ winner, reason: 'x', matchOver: true }) as OverBody;
+    expect(tableMatchLine(box(1, 0, 1), over(1), 0, 'Sam')).toMatch(/^Game 1 of 3 · you 0 – 1 Sam\. Next, game 2: .*you choose to play or draw\.$/);
+    expect(tableMatchLine(box(1, 1, 0), over(0), 0, 'Sam')).toMatch(/Sam chooses to play or draw/);
+    expect(tableMatchLine(box(2, 1, 0), over(null), 0, 'Sam')).toMatch(/game 2: .*a coin toss decides/);
+    expect(tableMatchLine(box(3, 2, 1), over(0), 0, 'Sam')).toBe('You win the match 2 – 1.');
+    expect(tableMatchLine(box(2, 0, 2), over(1), 0, 'Sam')).toBe('Sam wins the match 2 – 0.');
+    expect(tableMatchLine(null, over(1), 0, 'Sam')).toBeNull();
+    expect(tableMatchLine({ game: 1, of: 3, score: null }, over(1), 0, 'Sam')).toBeNull();
   });
 });

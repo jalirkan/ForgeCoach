@@ -188,7 +188,8 @@ describe('Phase 2: decks and the game (mtg-table D404)', () => {
   it('reads decks, yourDeck and game; a room server before D404 sends none of them', () => {
     expect(parseRoomState(JSON.parse(JSON.stringify(stateOf(done(), 0, 60))))?.game).toBeUndefined();
     const ready = parseRoomState(JSON.parse(JSON.stringify(d404({ n: 1, state: 'ready', error: null, matchId: 'm1791307365620', tablePort: 8646, token: T }))));
-    expect(ready?.game).toEqual({ n: 1, state: 'ready', error: null, matchId: 'm1791307365620', tablePort: 8646, token: T });
+    // A D404 room server says nothing of D406's number in the match or result: read as null.
+    expect(ready?.game).toEqual({ n: 1, state: 'ready', error: null, matchId: 'm1791307365620', tablePort: 8646, token: T, game: null, result: null });
     expect(ready?.decks?.[1]).toEqual({ ready: false, name: null, cards: null });
     // A starting game carries no token key at all on the wire: it reads as null.
     expect(parseRoomState(JSON.parse(JSON.stringify(d404({ n: 2, state: 'starting', error: null, matchId: null, tablePort: null }))))?.game?.token).toBeNull();
@@ -220,6 +221,70 @@ describe('Phase 2: decks and the game (mtg-table D404)', () => {
     expect(err.problems).toEqual(['Opt: you drafted it 1 time', '39 main-deck cards']);
     expect(err.state?.version).toBe(60);
     expect(JSON.parse(ff.calls[1]!.init.body as string).sideboard).toEqual([[1, 'Bolt']]);
+  });
+});
+
+describe('Phase 3: best of three, consent and each seat\'s own review (mtg-table D406, D407)', () => {
+  const T = 'c'.repeat(22);
+  const done = () => {
+    let d = fresh();
+    while (!d.done) d = apply(d, { kind: 'line', line: legalLines(d)[0]! }, 0) as GridDraft;
+    return d;
+  };
+  const MID = 'm1791307365620';
+  const d406 = (extra: Record<string, unknown> = {}) =>
+    stateOf(done(), 0, 61, {
+      decks: [{ ready: false, name: null, cards: null }, { ready: true, name: 'Theirs', cards: 40 }],
+      yourDeck: { name: 'Mine', main: [[17, 'Island'], [23, 'Opt']], sideboard: [] },
+      game: { n: 1, state: 'ready', error: null, matchId: MID, tablePort: 8646, token: T, game: 1, result: { winner: 1, reason: 'Conceded' } } as never,
+      ...({ match: { n: 1, bestOf: 3, wins: [0, 1], over: false, winner: null, next: { game: 2, chooser: 0, newMatch: false } },
+        games: [{ match: 1, game: 1, matchId: MID, winner: 1, reason: 'Conceded', recorded: true, review: 'running' }],
+        record: { you: true, default: false } } as Partial<RoomState>),
+      ...(extra as Partial<RoomState>),
+    });
+
+  it('reads the match, every finished game (this seat\'s consent and review) and this seat\'s consent', () => {
+    const s = parseRoomState(JSON.parse(JSON.stringify(d406())));
+    expect(s?.game?.result).toEqual({ winner: 1, reason: 'Conceded' });
+    expect(s?.game?.game).toBe(1);
+    expect(s?.match).toEqual({ n: 1, bestOf: 3, wins: [0, 1], over: false, winner: null, next: { game: 2, chooser: 0, newMatch: false } });
+    expect(s?.games?.[0]).toEqual({ match: 1, game: 1, matchId: MID, winner: 1, reason: 'Conceded', recorded: true, review: 'running' });
+    expect(s?.record).toEqual({ you: true, default: false });
+    for (const bad of [
+      d406({ match: { n: 1, bestOf: 3, wins: [0], over: false, winner: null, next: { game: 2, chooser: 0, newMatch: false } } }),
+      d406({ match: { n: 1, bestOf: 3, wins: [0, 1], over: 'no', winner: null, next: { game: 2, chooser: 0, newMatch: false } } }),
+      d406({ match: { n: 1, bestOf: 3, wins: [0, 1], over: false, winner: null, next: { game: 2, chooser: 2, newMatch: false } } }),
+      d406({ games: [{ match: 1, game: 1, matchId: '../x', winner: 1, reason: null, recorded: true, review: 'done' }] }),
+      d406({ games: [{ match: 1, game: 1, matchId: MID, winner: 1, reason: null, recorded: true, review: 'leaked' }] }),
+      d406({ record: { you: 'yes', default: false } }),
+      d406({ game: { n: 1, state: 'ready', error: null, matchId: MID, tablePort: 8646, token: T, game: 1, result: { winner: 3 } } }),
+    ]) expect(parseRoomState(JSON.parse(JSON.stringify(bad)))).toBeNull();
+  });
+
+  it('setRecord posts this seat\'s consent; a deck may carry it; review and seatLog read this seat\'s own', async () => {
+    const after = d406();
+    const ff = fakeFetch((url) => {
+      if (url.endsWith(`/review/${MID}`)) return json({ ok: true, matchId: MID, match: 1, game: 1, state: 'done', report: { v: 1, kind: 'game-review' } });
+      if (url.endsWith('/review/m1791307365621')) return json({ ok: true, matchId: 'm1791307365621', match: 1, game: 2, state: 'running', stage: 'triage', report: { leak: 1 } });
+      if (url.endsWith('/review/m1791307365622')) return json({ ok: true, matchId: 'm1791307365622', game: 3, state: 'mine?' });
+      if (url.endsWith(`/log/${MID}`)) return new Response('{"v":1,"kind":"session"}\n', { status: 200 });
+      if (url.endsWith('/log/m1791307365621')) return json({ ok: false, code: 'log', message: 'no recorded log of yours for that game' }, 404);
+      return json(after);
+    });
+    const c = new RoomClient('http://192.168.1.5:8644', 'rAbcdEFG1', 'a'.repeat(22), ff.f);
+    await c.setRecord(false);
+    expect(ff.calls[0]!.url).toBe('http://192.168.1.5:8644/room/rAbcdEFG1/record');
+    expect(JSON.parse(ff.calls[0]!.init.body as string)).toEqual({ record: false });
+    await c.submitDeck({ name: 'Mine', main: [[17, 'Island'], [23, 'Opt']], sideboard: [] }, true);
+    expect(JSON.parse(ff.calls[1]!.init.body as string)).toEqual({ name: 'Mine', main: [[17, 'Island'], [23, 'Opt']], record: true });
+    const r = await c.review(MID);
+    expect([r.state, r.game, r.report]).toEqual(['done', 1, { v: 1, kind: 'game-review' }]);
+    expect((ff.calls[2]!.init.headers as Record<string, string>)['X-Room-Token']).toBe('a'.repeat(22));
+    const running = await c.review('m1791307365621');
+    expect([running.state, running.stage, running.report]).toEqual(['running', 'triage', null]);
+    await expect(c.review('m1791307365622')).rejects.toMatchObject({ code: 'bad' });
+    expect(await c.seatLog(MID)).toBe('{"v":1,"kind":"session"}\n');
+    await expect(c.seatLog('m1791307365621')).rejects.toMatchObject({ code: 'log', status: 404 });
   });
 });
 

@@ -18,6 +18,20 @@
   animation: fade 0.15s ease-out;
 }
 
+/*
+ * The board's Concede stays usable while an engine question is open: the play
+ * screen's top bar (its Concede, and the phone's More menu with Concede in it)
+ * is lifted above this layer's scrim, and the question offers Concede itself.
+ */
+body:has(.ask-layer) .game.play .topbar {
+  z-index: 95;
+}
+.ask-concede {
+  flex: none;
+  align-self: flex-start;
+  margin-right: 2px;
+}
+
 .ask-dialog {
   position: relative;
   width: min(560px, 100%);

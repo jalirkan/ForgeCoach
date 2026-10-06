@@ -14,11 +14,23 @@
  *     GET  /room/<id>/events   → text/event-stream: `event: state` now and after every change, `event: gone`
  *     POST /room/<id>/join     {name?} → state
  *     POST /room/<id>/pick     {line, expect: state.version} → state | 409 {code: stale|turn|waiting|done, state}
- *     POST /room/<id>/deck     {name, main, sideboard?} → state | 409 {code: drafting|playing} | 400 {code: deck, problems}
+ *     POST /room/<id>/deck     {name, main, sideboard?, record?} → state | 409 {code: drafting|playing} | 400 {code: deck, problems}
+ *     POST /room/<id>/record   {record} → state   (D407: this seat's consent for its next game)
+ *     GET  /room/<id>/review/<matchId> → {state, report?}   (D407: this seat's own engine review)
+ *     GET  /room/<id>/log/<matchId>    → this seat's own frame log of that game (the review's frames)
  *   coach helper, the owner's door only (mtg-table D408; /health "roomRevoke": 1):
  *     POST /room/<id>/close        → {ok, id, closed}: gone for both seats (streams: `event: gone`)
  *     POST /room/<id>/friend-link  → {ok, id, seat: 1, friendToken, roomPort, bases}: the old link stops
  *                                    working (its streams: `event: revoked`)
+ *
+ * Phase 3 (mtg-table D406, D407): the room runs a best of three, one engine
+ * start per game. `match` is the score and what the next game is (its number,
+ * and who chooses to play or draw: the previous game's loser); `games` every
+ * finished game with THIS seat's consent and review. Sideboarding is a deck
+ * handed in again, checked against this seat's picks. Each player opts their
+ * own seat in or out of recording (the human test set and the engine's
+ * review), game by game; the default is the owner's, chosen when making the
+ * room. A review is built from this seat's own log and only this seat gets it.
  *
  * Phase 2 (mtg-table D404): once the draft is over each player hands the room
  * a deck — privately, checked by the room against that player's own picks
@@ -45,6 +57,9 @@ import { apply, newDraft, type DraftEvent, type GridDraft } from './draft.ts';
 import { pageHelperTarget, TOKEN_HEADER, type HelperTarget } from '../coachHelper.ts';
 import { DEFAULT_ROOM_PORT, servedByEngine } from '../play/seatUrl.ts';
 import { FRIEND_ROOMS_KEY } from '../play/friendTable.ts';
+import { fetchSeatLog, fetchSeatReview, REVIEW_STATES, SeatReviewError, type RoomReview, type RoomReviewState } from '../play/friendReview.ts';
+
+export { REVIEW_STATES, type RoomReview, type RoomReviewState };
 import type { MatchDeck } from './launch.ts';
 
 export { DEFAULT_ROOM_PORT };
@@ -94,6 +109,33 @@ export interface RoomGame {
   tablePort: number | null;
   /** THIS seat's seat token for this game, only while `ready`. */
   token: string | null;
+  /** D406: its number in the match (null from a room before it). */
+  game: number | null;
+  /** D406: how it ended; null while it is played. `winner` null: a draw. */
+  result: { winner: 0 | 1 | null; reason: string | null } | null;
+}
+
+/** D406: the best of three between the two seats. */
+export interface RoomMatch {
+  n: number;
+  bestOf: number;
+  wins: [number, number];
+  over: boolean;
+  winner: 0 | 1 | null;
+  /** The game the next pair of decks starts, and who chooses to play or draw in it (null: a coin toss). */
+  next: { game: number; chooser: 0 | 1 | null; newMatch: boolean };
+}
+
+
+/** D406/D407: one finished game of the room; `recorded` and `review` are THIS seat's. */
+export interface RoomPlayed {
+  match: number;
+  game: number;
+  matchId: string;
+  winner: 0 | 1 | null;
+  reason: string | null;
+  recorded: boolean;
+  review: RoomReviewState;
 }
 
 export interface RoomState {
@@ -121,7 +163,15 @@ export interface RoomState {
   yourDeck?: RoomOwnDeck | null;
   /** D404: the game between the two seats, or null. */
   game?: RoomGame | null;
+  /** D406: the match (null before its first game); absent from a room server before D406. */
+  match?: RoomMatch | null;
+  /** D406/D407: every finished game. */
+  games?: RoomPlayed[];
+  /** D407: this seat's consent for its next game, and the room's default. */
+  record?: { you: boolean; default: boolean };
 }
+
+
 
 export interface RoomBases {
   local: string;
@@ -190,7 +240,36 @@ export function parseRoomState(x: unknown): RoomState | null {
     if (!(g.error === null || g.error === undefined || isStr(g.error)) || !(g.matchId === null || g.matchId === undefined || isStr(g.matchId))) return null;
     if (!(g.tablePort === null || g.tablePort === undefined || (isInt(g.tablePort) && g.tablePort > 0 && g.tablePort < 65536))) return null;
     if (!(g.token === null || g.token === undefined || (isStr(g.token) && ROOM_TOKEN.test(g.token)))) return null;
-    o.game = { n: g.n, state: g.state, error: g.error ?? null, matchId: g.matchId ?? null, tablePort: g.tablePort ?? null, token: g.token ?? null };
+    // D406: its number in the match and its result.
+    if (!(g.game === null || g.game === undefined || (isInt(g.game) && g.game >= 1 && g.game <= 9))) return null;
+    let result: RoomGame['result'] = null;
+    if (g.result !== null && g.result !== undefined) {
+      const r = g.result as Record<string, unknown>;
+      if (typeof r !== 'object' || !(r.winner === null || isSeat(r.winner)) || !(r.reason === null || r.reason === undefined || isStr(r.reason))) return null;
+      result = { winner: r.winner as 0 | 1 | null, reason: isStr(r.reason) ? r.reason.slice(0, 40) : null };
+    }
+    o.game = { n: g.n, state: g.state, error: g.error ?? null, matchId: g.matchId ?? null, tablePort: g.tablePort ?? null, token: g.token ?? null, game: g.game ?? null, result };
+  }
+  // D406 / D407's keys: absent from an older room server; wrong is wrong.
+  if (o.match !== undefined && o.match !== null) {
+    const m = o.match as Record<string, unknown>;
+    const nx = m.next as Record<string, unknown> | undefined;
+    const wins = m.wins as unknown[];
+    if (typeof m !== 'object' || !isInt(m.n) || !isInt(m.bestOf) || !Array.isArray(wins) || wins.length !== 2 || !wins.every((w) => isInt(w) && w >= 0 && w <= 5)) return null;
+    if (typeof m.over !== 'boolean' || !(m.winner === null || isSeat(m.winner))) return null;
+    if (!nx || typeof nx !== 'object' || !isInt(nx.game) || !(nx.chooser === null || isSeat(nx.chooser)) || typeof nx.newMatch !== 'boolean') return null;
+  }
+  if (o.games !== undefined) {
+    if (!Array.isArray(o.games) || o.games.length > 50) return null;
+    for (const e of o.games as unknown[]) {
+      const q = e as Record<string, unknown> | null;
+      if (!q || !isInt(q.match) || !isInt(q.game) || !isStr(q.matchId) || !/^m[0-9]{13}$/.test(q.matchId) || !(q.winner === null || isSeat(q.winner))) return null;
+      if (!(q.reason === null || isStr(q.reason)) || typeof q.recorded !== 'boolean' || !REVIEW_STATES.includes(q.review as RoomReviewState)) return null;
+    }
+  }
+  if (o.record !== undefined) {
+    const r = o.record as Record<string, unknown> | null;
+    if (!r || typeof r.you !== 'boolean' || typeof r.default !== 'boolean') return null;
   }
   return x as RoomState;
 }
@@ -318,6 +397,8 @@ export interface CreateRequest {
   cards: string[];
   name: string;
   firstSeat?: 0 | 1;
+  /** D407: the room's default for recording each seat's games (each player can still opt out). */
+  record?: boolean;
 }
 
 /** POST /room through the coach helper (the owner's door). */
@@ -456,9 +537,9 @@ export class RoomClient {
    * against this seat's own picks; a wrong one comes back as RoomError code
    * "deck" (its first problem as the message, all of them in `problems`).
    */
-  async submitDeck(deck: MatchDeck): Promise<RoomState> {
+  async submitDeck(deck: MatchDeck, record?: boolean): Promise<RoomState> {
     let r: Response;
-    const body = JSON.stringify({ name: deck.name, main: deck.main, ...(deck.sideboard?.length ? { sideboard: deck.sideboard } : {}) });
+    const body = JSON.stringify({ name: deck.name, main: deck.main, ...(deck.sideboard?.length ? { sideboard: deck.sideboard } : {}), ...(record === undefined ? {} : { record }) });
     try {
       r = await this.f(this.url('/deck'), { method: 'POST', headers: this.headers(true), body });
     } catch {
@@ -468,6 +549,29 @@ export class RoomClient {
     const s = parseRoomState(await r.json());
     if (!s) throw new RoomError('The room answered something that is not a room.', r.status, 'bad');
     return s;
+  }
+
+  /** D407: this seat's consent to recording its next game (the human test set and its own engine review). */
+  setRecord(record: boolean): Promise<RoomState> {
+    return this.call('/record', { method: 'POST', headers: this.headers(true), body: JSON.stringify({ record }) }, 'Saving your choice');
+  }
+
+  /** D407: this seat's own engine review of one finished game of the room (play/friendReview.ts). */
+  async review(matchId: string): Promise<RoomReview> {
+    try {
+      return await fetchSeatReview({ base: this.base, id: this.id, token: this.token }, matchId, this.f);
+    } catch (e) {
+      throw e instanceof SeatReviewError ? new RoomError(e.message, e.status, e.code) : e;
+    }
+  }
+
+  /** D407: this seat's own frame log of a recorded game (the frames its review numbers), as text. */
+  async seatLog(matchId: string): Promise<string> {
+    try {
+      return await fetchSeatLog({ base: this.base, id: this.id, token: this.token }, matchId, this.f);
+    } catch (e) {
+      throw e instanceof SeatReviewError ? new RoomError(e.message, e.status, e.code) : e;
+    }
   }
 
   /**
