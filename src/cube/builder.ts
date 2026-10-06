@@ -30,7 +30,7 @@
 import { BASIC_OF, BASIC_NAMES, COLOURS, colourLabel, colourPairs, type Colour } from './colors.ts';
 import { castableIn, splashColourOf } from './facts.ts';
 import { findArchetype, type LandStat, type MetaArchetype } from './meta.ts';
-import { cardValue, isInteraction, metaValue, pairsAmong, pct, synergyOf, themeCountsOf, topThemes, type CubeContext } from './score.ts';
+import { cardValue, humanValueNote, isInteraction, metaValue, pairsAmong, pct, synergyOf, themeCountsOf, topThemes, type CubeContext } from './score.ts';
 
 export const DECK_SIZE = 40;
 export const DEFAULT_CURVE = [3, 6, 5, 4, 3, 2];
@@ -454,6 +454,8 @@ function reasonsFor(b: DeckBuild, env: Env, ctx: CubeContext, arch: MetaArchetyp
     return m && m.games >= 15 && m.winRate >= 0.52 ? `${s} (${pct(m.winRate)} in the lab)` : s;
   });
   if (bestText.length) r.push(`Best cards: ${bestText.join(', ')}.`);
+  const human = humanValueNote(b.spells, ctx);
+  if (human) r.push(human);
   for (const p of b.pairs.slice(0, 3)) if (p.lift > 0.02) r.push(`${p.a} + ${p.b}: ${pct(p.lift, true)} together (${p.games} games).`);
   if (arch && typeof arch.winRate === 'number' && (arch.games ?? 0) >= 10) r.push(`The lab’s ${arch.id} decks won ${pct(arch.winRate)} of ${arch.games} games${arch.ci ? ` (likely ${pct(arch.ci[0])}–${pct(arch.ci[1])})` : ''}.`);
   const diffs = b.curve.map((c, i) => c - (b.curveTarget[i] ?? 0));

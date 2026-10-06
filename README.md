@@ -297,7 +297,16 @@ games). 17Lands players draft the Arena version of the cube, so the card list
 and power level differ slightly from the paper cube. Only the Vintage Cube gets
 it: 152 of its 180 cards are in 17Lands' data, while the other cubes share
 12–58% of their cards with a powered environment unlike theirs. The numbers
-are display only; the builder and pick advice do not use them. To regenerate
+also feed the card value the builder, swaps and pick advice use (the deck
+assistant and your pick helper in Draft vs AI): for a nonland card with
+human numbers, the value mixes them in by precision, discounted ×0.8 for the
+Arena/paper gap, and the card sheet and the advice say "value uses human data
+(17Lands)". A pre-registered split-half test decided it
+([docs/human-blend.md](docs/human-blend.md)): built from half of 17Lands'
+drafts, the blend ranks cards against the other half at rho 0.91, against 0.46
+for the lab-only value, in both folds. Lands, cards without data and other
+cubes keep the lab value, and the Forge AI drafter never uses human data (it
+stays in parity with mtg-table's cube lab). To regenerate
 (`--updated` is the dataset's "Last Updated" date on 17Lands' page):
 
 ```bash
@@ -306,6 +315,9 @@ curl -O $B/game_data_public.Cube_-_Powered.PremierDraft.csv.gz
 curl -O $B/game_data_public.Cube_-_Powered.TradDraft.csv.gz
 npm run human-cards -- --updated 2025-11-23 game_data_public.Cube_-_Powered.*.csv.gz
 ```
+
+The split-half test: `npm run human-cards -- … --half 0|1 --out DIR` writes each
+half, `npm run human-blend -- DIR/*.half0.json DIR/*.half1.json` runs it.
 
 **Play the deck vs Forge.** Download the `.dck`, save it in mtg-table's
 `decks/` folder, start the engine with it —

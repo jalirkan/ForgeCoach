@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CubeContext } from '../../cube/score.ts';
-import { cardPrior, cardValue, metaValue, pct } from '../../cube/score.ts';
+import { cardPrior, cardValue, humanValueLine, metaValue, pct } from '../../cube/score.ts';
 import { pickValue, poolProfile, type PoolProfile } from '../../cube/pick.ts';
 import { useCardInfo } from '../cardData.ts';
 import { ManaCost, SymbolText } from '../Mana.tsx';
@@ -140,6 +140,7 @@ export function CardInfoSheet({ name, ctx, pool, onClose, cubeId }: { name: stri
                   (prior {cardPrior(name, ctx)}
                   {m ? `, lab ${pct(m.rawRate)} in ${m.games} games weighted ${Math.round(m.weight * 100)}%` : ', no lab games'})
                 </span>
+                {humanValueLine(name, ctx) && <span className="ci-human-value small">{humanValueLine(name, ctx)}</span>}
               </dd>
               {pv && (
                 <>

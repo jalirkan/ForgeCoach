@@ -44,7 +44,12 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   `facts.ts` (what a card is: Scryfall → lab meta → document), `meta.ts` (the
   cube lab's `meta.json`, schema 1; pair `gain` = lift − 1; tolerates 3-colour
   archetypes and 18-land rows), `score.ts` (card value = lab win rate blended
-  with a no-meta prior by games; synergy), `builder.ts` (best 40s, reasons,
+  with a no-meta prior by games — `labValue` — plus, for a nonland card with
+  17Lands numbers, the human GIH WR relative to the format average, ×0.8,
+  weighted by precision — `cardValue`; adopted by the pre-registered
+  split-half test in `docs/human-blend.md`, `npm run human-blend`; synergy;
+  the Draft vs AI drafter's ratings and deck use `labValue`/`labOnly`, never
+  human data), `builder.ts` (best 40s, reasons,
   cuts, swaps, thin-pool 18-land / three-colour builds, text and `.dck`
   export), `pick.ts` (Grid / Winston advice), `deckPrompt.ts` (deterministic
   deckbuilding coach prompt), `pools.ts` (saved pools, paste parser),
@@ -69,7 +74,11 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   D396). UI: `ui/HumanNumbers.tsx` (`useHumanCards`, `HumanCardFacts`,
   `HumanSourceNote`) + `ui/human.css` (a blue rule, never the lab's gold) in
   the pick screen's Lab numbers panel and `CardInfoSheet` (its `cubeId` prop).
-  Display only: `score.ts` and the pick/builder advice do not read it.
+  `--half 0|1 --out DIR` splits by draft id for the split-half test
+  (`blendTest.ts`, `blendCli.ts`, `npm run human-blend`). `score.ts`
+  `cardValue` blends it in (see `cube/` above; `ui/deck/useCubeData.ts` loads it
+  into the context via `humanCardsFor`); the card sheet shows
+  `humanValueLine`, grid/Winston/booster/builder reasons `humanValueNote`.
 - `ui/deck/` — the Draft & build screens (lazy-loaded from `#deck`):
   `DeckApp` (home, pools, workspace, meta import), `PoolView`, `BuildView`
   (builds, score, swaps, export, coach via `answers.ts` `startAnswer`),
