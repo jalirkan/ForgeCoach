@@ -6,7 +6,6 @@ import { mapScryfallCard, type CardInfo, type ScryfallCard } from '../../cards.t
 import { parseCube, type Cube } from '../parseCube.ts';
 import { parseMeta, type CubeMeta } from '../meta.ts';
 import { makeContext, type CubeContext } from '../score.ts';
-import { parseCardPower, type CardPowerData } from '../cardPower.ts';
 
 export type CubeId = 'synergy' | 'modern-era' | 'vintage' | 'pauper' | 'omega' | 'fair-fight' | 'peasant';
 
@@ -38,14 +37,9 @@ export function loadRealMeta(id: CubeId): CubeMeta {
   return parseMeta(JSON.parse(readFileSync(new URL(`../../../public/cubes/${id}-cube-180.meta.json`, import.meta.url), 'utf8')));
 }
 
-export function context(id: CubeId, meta: CubeMeta | null = null, withInfos = true, power: CardPowerData | null = null): CubeContext {
+export function context(id: CubeId, meta: CubeMeta | null = null, withInfos = true): CubeContext {
   const cube = loadCube(id);
-  return makeContext(cube, withInfos ? loadInfos(id, cube) : null, meta, power);
-}
-
-/** The matchup model's card strengths, as shipped in public/cubes/card-power.json. */
-export function loadPower(): CardPowerData {
-  return parseCardPower(JSON.parse(readFileSync(new URL('../../../public/cubes/card-power.json', import.meta.url), 'utf8')));
+  return makeContext(cube, withInfos ? loadInfos(id, cube) : null, meta);
 }
 
 /** A deterministic pseudo-random generator (mulberry32). */

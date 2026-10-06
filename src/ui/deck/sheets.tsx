@@ -7,8 +7,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CubeContext } from '../../cube/score.ts';
-import { cardPrior, cardValue, metaValue, pct, powerValue } from '../../cube/score.ts';
-import { pointsLine } from '../../cube/cardPower.ts';
+import { cardPrior, cardValue, metaValue, pct } from '../../cube/score.ts';
 import { pickValue, poolProfile, type PoolProfile } from '../../cube/pick.ts';
 import { useCardInfo } from '../cardData.ts';
 import { ManaCost, SymbolText } from '../Mana.tsx';
@@ -110,7 +109,6 @@ export function CardInfoSheet({ name, ctx, pool, onClose }: { name: string | nul
   const card = name ? ctx.byName.get(name) : undefined;
   const img = info?.image?.normal ?? info?.faces?.[0]?.image?.normal;
   const m = name ? metaValue(name, ctx) : null;
-  const pw = name ? powerValue(name, ctx) : null;
   const stats = name ? ctx.meta?.meta.cards[name] : undefined;
   const pv = name ? pickValue(name, pool, ctx) : null;
   return (
@@ -137,11 +135,7 @@ export function CardInfoSheet({ name, ctx, pool, onClose }: { name: string | nul
                 <b>{cardValue(name, ctx)}</b>{' '}
                 <span className="muted">
                   (prior {cardPrior(name, ctx)}
-                  {pw
-                    ? `, lab strength ${pointsLine(pw)} per copy weighted ${Math.round(pw.weight * 100)}%`
-                    : m
-                      ? `, lab ${pct(m.rawRate)} in ${m.games} games weighted ${Math.round(m.weight * 100)}%`
-                      : ', no lab games'})
+                  {m ? `, lab ${pct(m.rawRate)} in ${m.games} games weighted ${Math.round(m.weight * 100)}%` : ', no lab games'})
                 </span>
               </dd>
               {pv && (

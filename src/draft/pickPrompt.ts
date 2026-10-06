@@ -12,8 +12,7 @@ import type { CardInfo } from '../cards.ts';
 import type { Prompt } from '../prompt.ts';
 import { colourLabel } from '../cube/colors.ts';
 import { GRID_LINES, pickValue, poolColours, poolProfile, recommendGrid, recommendWinston } from '../cube/pick.ts';
-import { cardValue, metaValue, pct, powerValue, type CubeContext } from '../cube/score.ts';
-import { pointsLine } from '../cube/cardPower.ts';
+import { cardValue, metaValue, pct, type CubeContext } from '../cube/score.ts';
 import { guideFor, guidePromptSection } from '../cube/guides/index.ts';
 import { aiLabelFrom } from './aiLabel.ts';
 import { knownAiCards, progress, type Draft } from './draft.ts';
@@ -21,7 +20,7 @@ import { knownAiCards, progress, type Draft } from './draft.ts';
 export const PICK_SYSTEM = `You are a Magic: The Gathering draft coach sitting beside a player in a cube draft against an AI drafter (Grid or Winston, two players; or Booster, two to eight drafters, the player against seat 1's AI). Both players will build 40-card decks from what they draft and play each other, so what the AI takes is what the player will face.
 
 How to work:
-- Use the card text given, never memory of a card. Card values are the page's estimate (0-100, about 50 = filler, 70 = strong); "lab" numbers come from Forge AIs drafting and playing this cube — small samples, treat them as hints. "Lab strength" is the lab's matchup model: a card's own effect per copy on a deck's win chance, in win-rate points against an average card, with a 95% interval; call a card strong or weak on it only when the interval excludes 0.
+- Use the card text given, never memory of a card. Card values are the page's estimate (0-100, about 50 = filler, 70 = strong); "lab" numbers come from Forge AIs drafting and playing this cube — small samples, treat them as hints.
 - Weigh raw power, the player's colours and how committed they are, synergy with their pool, mana fixing, curve, and denial (what the AI gets if the player passes it).
 - The page's pick helper gives a call with numbers. Agree or disagree with it plainly, and say why.
 
@@ -41,8 +40,6 @@ function oracle(name: string, info: CardInfo | undefined): string {
 function cardLine(name: string, ctx: CubeContext): string {
   const f = ctx.facts.get(name);
   const bits = [f && !f.land ? `MV ${f.mv}` : 'land', `value ${cardValue(name, ctx)}`];
-  const pw = powerValue(name, ctx);
-  if (pw) bits.push(`lab strength ${pointsLine(pw)} per copy`);
   const m = metaValue(name, ctx);
   if (m && m.games > 0) bits.push(`lab ${pct(m.winRate)} in ${m.games} games`);
   const themes = ctx.byName.get(name)?.themes ?? [];

@@ -14,13 +14,12 @@ import { BASIC_NAMES, COLOURS, BASIC_OF, colourLabel } from './colors.ts';
 import { CURVE_LABELS, PART_LABEL, sideboard, type DeckBuild, type ScoreParts } from './builder.ts';
 import { findArchetype } from './meta.ts';
 import { guideForTitle, guidePromptSection } from './guides/index.ts';
-import { cardValue, metaValue, pairsAmong, pairWeight, pct, powerValue, type CubeContext } from './score.ts';
-import { pointsLine } from './cardPower.ts';
+import { cardValue, metaValue, pairsAmong, pairWeight, pct, type CubeContext } from './score.ts';
 
 export const DECK_SYSTEM = `You are a Magic: The Gathering deckbuilding coach for a two-player cube draft (Grid or Winston), 40-card decks, best of three. The player drafted the pool below; the page proposed a build with a score and its reasons. Help them end up with the strongest deck for real games.
 
 How to work:
-- Use the card text given, never memory of a card. Card values are the page's estimate (0-100, about 50 = filler, 70 = strong); "lab" numbers come from Forge AIs drafting and playing this cube — small samples with wide intervals, so treat them as hints, not facts. "Lab strength" is the lab's matchup model: a card's own effect per copy on a deck's win chance, in win-rate points against an average card, with a 95% interval; call a card strong or weak on it only when the interval excludes 0.
+- Use the card text given, never memory of a card. Card values are the page's estimate (0-100, about 50 = filler, 70 = strong); "lab" numbers come from Forge AIs drafting and playing this cube — small samples with wide intervals, so treat them as hints, not facts.
 - Judge the deck as it will play: curve and early plays, removal count, threats, how it wins, mana (sources per colour, splash sources, 16 vs 17 lands), and which synergies are real (an enabler with too few payoffs is not a synergy).
 - You cannot edit the deck. Suggest changes as swaps the player can make: "−Card Out / +Card In — reason". At most three, each with a concrete reason; say when the page's build is already right.
 - Only pool cards can go in the deck (basic lands are free). Keep it at exactly 40 cards.
@@ -53,8 +52,6 @@ function cardLine(name: string, ctx: CubeContext): string {
   const f = ctx.facts.get(name);
   const card = ctx.byName.get(name);
   const bits = [f && !f.land ? `MV ${f.mv}` : 'land', `value ${cardValue(name, ctx)}`];
-  const pw = powerValue(name, ctx);
-  if (pw) bits.push(`lab strength ${pointsLine(pw)} per copy`);
   const m = metaValue(name, ctx);
   if (m && m.games > 0) bits.push(`lab ${pct(m.winRate)} in ${m.games} games`);
   const tags = [...(card?.themes ?? []), ...(card?.tags ?? [])];

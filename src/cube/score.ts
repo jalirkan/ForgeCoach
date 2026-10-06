@@ -26,27 +26,6 @@
  * its shrinkage when a card row has no wins or raw rate. Replace this with
  * the lab's deckmate-adjusted value once meta.json carries one.
  *
- * That value now ships beside the metas: the matchup model's per-copy card
- * strength (cube/cardPower.ts, mtg-table J062's M0, public/cubes/card-power.json;
- * it predicts held-out games better than the metas' rates: log-loss 0.6525
- * against 0.6690). Where it has a rated nonland card, it replaces the meta's
- * rate:
- *
- *   value = w · (50 + POWER_VALUE_PER_LOGIT · power) + (1 − w) · prior,
- *   w = 1 − (sdPost / tau)²  (0 to 1)
- *
- * The posterior is already shrunk toward the lab's own feature prior; w is the
- * share of the prior's variance the games removed, so a card the model barely
- * saw (sdPost near tau) falls back to this page's prior, and a well-measured
- * one (Wurmcoil Engine, sdPost 0.017 against tau 0.06) is 92 % lab. One logit
- * per copy counts as one unit of win rate did (POWER_VALUE_PER_LOGIT = 250 =
- * VALUE_PER_RATE): over the four metas' nonland cards with 200+ games the two
- * have the same spread (SD 0.062 logits against 0.059 in rate, a fitted 238),
- * so the balance the builder strikes between card value and synergy holds. A
- * card Forge's AI never builds (AI:RemoveDeck:All, `unrated`) has no power and
- * takes the meta route below; so do lands (power is measured against the
- * average NONLAND card) and every card when no card-power file loaded.
- *
  * The prior needs no meta: the card's
  * tags (removal, counter…), how many of the cube's themes it sits in and how
  * deep those themes are, its type, mana value and body, and what its oracle
@@ -63,7 +42,6 @@ import type { CardFacts } from './facts.ts';
 import { cardFacts } from './facts.ts';
 import type { CardInfo } from '../cards.ts';
 import { indexMeta, type CubeMeta, type MetaIndex, type MetaPair } from './meta.ts';
-import type { CardPowerData } from './cardPower.ts';
 import { shrinkage, shrinkRate } from './metaView.ts';
 
 export interface CubeContext {
@@ -72,8 +50,6 @@ export interface CubeContext {
   byName: Map<string, CubeCard>;
   facts: Map<string, CardFacts>;
   meta: MetaIndex | null;
-  /** The matchup model's card strengths (card-power.json), or null. */
-  power: CardPowerData | null;
   /** How many cube cards carry each theme. */
   themeSupport: Map<string, number>;
   /** Theme code → its name ("SAC" → "Sacrifice"). */
@@ -84,7 +60,7 @@ export interface CubeContext {
 }
 
 /** Builds the scoring context. `infos` is Scryfall data by name (missing entries fall back to meta or the document). */
-export function makeContext(cube: Cube, infos: Map<string, CardInfo> | null, meta: CubeMeta | null, power: CardPowerData | null = null): CubeContext {
+export function makeContext(cube: Cube, infos: Map<string, CardInfo> | null, meta: CubeMeta | null): CubeContext {
   const byName = new Map(cube.cards.map((c) => [c.name, c]));
   const metaCards = new Map((meta?.cube.cards ?? []).map((c) => [c.name, c]));
   const facts = new Map<string, CardFacts>();
@@ -92,7 +68,7 @@ export function makeContext(cube: Cube, infos: Map<string, CardInfo> | null, met
   const themeSupport = new Map<string, number>();
   for (const c of cube.cards) for (const t of c.themes) themeSupport.set(t, (themeSupport.get(t) ?? 0) + 1);
   const themeName = new Map(cube.themes.map((t) => [t.code, t.name]));
-  return { cube, byName, facts, meta: meta ? indexMeta(meta) : null, power, themeSupport, themeName, values: new Map(), priors: new Map() };
+  return { cube, byName, facts, meta: meta ? indexMeta(meta) : null, themeSupport, themeName, values: new Map(), priors: new Map() };
 }
 
 const REMOVAL_TEXT =
@@ -188,33 +164,12 @@ export function metaValue(name: string, ctx: CubeContext): { value: number; weig
   return { value: 50 + VALUE_PER_RATE * (raw - 0.5), weight: games / (games + META_STRENGTH), winRate: shown, rawRate: raw, games };
 }
 
-/** Value-scale points per logit of matchup-model power (see the header). */
-export const POWER_VALUE_PER_LOGIT = 250;
-
-/**
- * The matchup model's opinion of a card on the value scale, and how much to trust it.
- * Null without a card-power file, for a card it lacks, an unrated card (AI:RemoveDeck:All)
- * and a land. `points` and its 95% interval are win-rate points per copy at even odds.
- */
-export function powerValue(name: string, ctx: CubeContext): { value: number; weight: number; power: number; sd: number; points: number; lo: number; hi: number; games: number } | null {
-  const d = ctx.power;
-  const c = d?.cards.get(name);
-  if (!d || !c || c.unrated || c.land || c.power === null || c.sd === null) return null;
-  if (ctx.facts.get(name)?.land || ctx.byName.get(name)?.land) return null;
-  const weight = clamp(1 - (c.sd / d.source.tau) ** 2, 0, 1);
-  const k = d.pointsPerLogit;
-  return {
-    value: 50 + POWER_VALUE_PER_LOGIT * c.power, weight, power: c.power, sd: c.sd,
-    points: k * c.power, lo: k * (c.power - 1.96 * c.sd), hi: k * (c.power + 1.96 * c.sd), games: c.games,
-  };
-}
-
-/** A card's value (0–100): the matchup model's strength, else the lab's games, blended with the prior (see the header). */
+/** A card's value (0–100): the lab's games blended with the prior, weight games / (games + META_STRENGTH). */
 export function cardValue(name: string, ctx: CubeContext): number {
   const hit = ctx.values.get(name);
   if (hit !== undefined) return hit;
   const prior = cardPrior(name, ctx);
-  const m = powerValue(name, ctx) ?? metaValue(name, ctx);
+  const m = metaValue(name, ctx);
   const v = m ? Math.round(clamp(m.weight * m.value + (1 - m.weight) * prior, 5, 98) * 10) / 10 : prior;
   ctx.values.set(name, v);
   return v;
