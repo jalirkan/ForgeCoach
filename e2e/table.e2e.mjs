@@ -53,7 +53,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { freePort, launchBrowser, loadPlaywright } from './harness.mjs';
+import { launchBrowser, loadPlaywright } from './harness.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MTG = path.resolve(process.env.MTG_TABLE ?? path.join(ROOT, '..', 'mtg-table'));
@@ -135,22 +135,23 @@ async function step(page) {
   return false;
 }
 
-/** Both players pass priority until the round reaches `n` (or the time runs out); returns whether a "… is thinking" line showed. */
-async function playTo(pages, n, ms = 180_000) {
+/**
+ * Both players pass priority until each has pressed `n` engine buttons (or the time runs out) -- decisions
+ * for the engine review to grade; returns the presses and whether a "… is thinking" line showed.
+ */
+async function playTo(pages, n, ms = 120_000) {
   const t = Date.now();
   let thinking = false;
-  while (Date.now() - t < ms) {
-    let r = 0;
-    for (const p of pages) r = Math.max(r, await roundOf(p));
-    if (r >= n) return { reached: true, thinking };
+  const pressed = pages.map(() => 0);
+  while (Date.now() - t < ms && pressed.some((k) => k < n)) {
     let any = false;
-    for (const p of pages) {
+    for (const [i, p] of pages.entries()) {
       if (await p.locator('.play-table.is-thinking').count()) thinking = true;
-      if (await step(p)) any = true;
+      if (await step(p)) { pressed[i]++; any = true; await sleep(300); }
     }
     if (!any) await sleep(250);
   }
-  return { reached: false, thinking };
+  return { reached: pressed.every((k) => k >= n), pressed, thinking };
 }
 
 /** Both pages on the board of a new game of the room (their hash goes to #play/friend), its first frame in. */
@@ -177,7 +178,7 @@ async function backToRoom(page) {
 /** The build on a port of its own (step 9: a page that is neither the room's nor the bridge's, as GitHub Pages is). */
 async function serveSite(dir) {
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.gz': 'application/gzip', '.md': 'text/markdown' };
-  const port = await freePort();
+  // A preview port (play/seatUrl.ts DEV_PORTS): a page there is not taken for one the engine served.
   const srv = createServer((req, res) => {
     const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     let f = path.join(dir, p.endsWith('/') ? `${p}index.html` : p);
@@ -185,7 +186,12 @@ async function serveSite(dir) {
     res.writeHead(200, { 'Content-Type': types[path.extname(f)] ?? 'application/octet-stream' });
     res.end(readFileSync(f));
   });
-  await new Promise((r) => srv.listen(port, '127.0.0.1', r));
+  let port = 0;
+  for (const p of [4173, 5174, 5173]) {
+    const ok = await new Promise((r) => { srv.once('error', () => r(false)); srv.listen(p, '127.0.0.1', () => r(true)); });
+    if (ok) { port = p; break; }
+  }
+  if (!port) throw new Error('no preview port (4173, 5174, 5173) is free for step 9');
   return { url: `http://127.0.0.1:${port}/`, close: () => srv.close() };
 }
 
@@ -285,8 +291,8 @@ async function main() {
       check(at < 0, `${n}: nothing on the board calls the opponent "Forge AI"${at < 0 ? '' : `: …${text.slice(Math.max(0, at - 80), at + 40).replace(/\s+/g, ' ')}…`}`);
       check(!(await p.content()).includes(seats[n === 'host' ? 0 : 1].token), `${n}: the room token is nowhere on the page`);
     }
-    const g1 = await playTo(both, 3);
-    check(g1.reached, `both players passed priority into round 3 (round ${Math.max(await roundOf(host), await roundOf(friend))})`);
+    const g1 = await playTo(both, 6);
+    check(g1.reached, `both players answered the engine (kept, passed priority) at least six times each (${g1.pressed.join(' + ')}; round ${Math.max(await roundOf(host), await roundOf(friend))})`);
     check(g1.thinking, 'a board said the other player is thinking');
     await host.screenshot({ path: path.join(OUT, 'table-2-host.png') });
     await friend.screenshot({ path: path.join(OUT, 'table-3-friend.png') });
@@ -306,7 +312,7 @@ async function main() {
     const fm = await friend.locator('.over-match').innerText().catch(() => '');
     check(/Game 1 of 3 · you 1 – 0 Sam/.test(hm) && /Sam chooses to play or draw/.test(hm), `the host’s card: the score, and that Sam chooses next (${hm})`);
     check(/Game 1 of 3 · you 0 – 1 Justin/.test(fm) && /you choose to play or draw/.test(fm), `the friend’s card: the score, and that they choose next (${fm})`);
-    await friend.locator('.over-review').waitFor({ timeout: 20_000 }).catch(() => {});
+    await friend.locator('.over-review', { hasText: 'not recorded' }).waitFor({ timeout: 20_000 }).catch(() => {});
     const fr = await friend.locator('.over-review').innerText().catch(() => '');
     check(/not recorded/.test(fr), `the friend’s card: not recorded, so no engine review (${fr})`);
     await host.locator('.over-review, .over-actions button:has-text("Your engine review")').first().waitFor({ timeout: 20_000 }).catch(() => {});
@@ -318,6 +324,7 @@ async function main() {
     // ---- 5. between games: the score in the room, sideboarding
     await backToRoom(host);
     await backToRoom(friend);
+    for (const p of both) await p.locator('.fr-score', { hasText: '1 – 0' }).or(p.locator('.fr-score', { hasText: '0 – 1' })).waitFor({ timeout: 15_000 }).catch(() => {});
     check((await host.locator('.fr-score').innerText()) === 'Match 1: you 1 – 0 Sam.', `the host’s room: ${await host.locator('.fr-score').innerText()}`);
     check((await friend.locator('.fr-score').innerText()) === 'Match 1: you 0 – 1 Justin.', `the friend’s room: ${await friend.locator('.fr-score').innerText()}`);
     check((await friend.getByText('You lost the last game, so you choose to play or draw.').count()) === 1, 'the friend’s room says they choose to play or draw in game 2');
@@ -339,7 +346,11 @@ async function main() {
     await friend.getByText(/you lost the last game/i).waitFor({ timeout: 60_000 });
     check((await host.getByText(/you lost the last game/i).count()) === 0, 'game 2: the friend alone is asked "you lost the last game: play or draw?"');
     await friend.locator('.ask-dialog .ask-opt.is-default').first().click();
-    await host.locator('.ask-layer').waitFor({ timeout: 60_000 });
+    // Forge asks the player who goes first to keep or mulligan first: the friend keeps, then the host is asked.
+    for (let i = 0; i < 240 && !(await visible(host.locator('.ask-layer'))); i++) {
+      if (!(await step(friend))) await sleep(250);
+    }
+    await host.locator('.ask-layer').waitFor({ timeout: 30_000 });
     await host.screenshot({ path: path.join(OUT, 'table-5-dialog.png') });
     await concedeFromBoard(host);
     check(true, 'the host conceded with real clicks on the board’s Concede while its opening dialog was open');
@@ -367,6 +378,8 @@ async function main() {
     await host.screenshot({ path: path.join(OUT, 'table-6-match.png') });
     await backToRoom(host);
     await backToRoom(friend);
+    // The room scores a game from the bridge's result.json within its 2 s poll.
+    for (const p of both) await p.locator('.fr-score', { hasText: 'won the match' }).waitFor({ timeout: 15_000 }).catch(() => {});
     check((await host.locator('.fr-score').innerText()) === 'Sam won the match 2 – 1.', `the host’s room: ${await host.locator('.fr-score').innerText()}`);
     check((await friend.locator('.fr-score').innerText()) === 'You won the match 2 – 1.', `the friend’s room: ${await friend.locator('.fr-score').innerText()}`);
     check((await host.getByRole('button', { name: 'Hand in a deck for a new match' }).count()) === 1, 'after the match, a deck starts a new one');

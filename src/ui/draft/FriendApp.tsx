@@ -572,6 +572,8 @@ function HandIn({ state, room, deckText: md, opponent, onOpenReview }: {
   const [busy, setBusy] = useState(false);
   const [problems, setProblems] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
+  // The box follows the click at once; the room's answer (its state) settles it.
+  const [wantRecord, setWantRecord] = useState<boolean | null>(null);
   const client = useMemo(() => new RoomClient(room.entry.base, room.entry.id, room.entry.token), [room.entry.base, room.entry.id, room.entry.token]);
   const back = roomHash(state.id, state.you);
   const offered = tableFromRoom(room.entry.base, state, back);
@@ -630,6 +632,7 @@ function HandIn({ state, room, deckText: md, opponent, onOpenReview }: {
     }
   };
   const setRecord = async (v: boolean) => {
+    setWantRecord(v);
     setSaving(true);
     try {
       room.take(await client.setRecord(v));
@@ -637,6 +640,7 @@ function HandIn({ state, room, deckText: md, opponent, onOpenReview }: {
       setProblems([e instanceof RoomError ? e.message : 'Your choice did not reach the room. Try again.']);
     } finally {
       setSaving(false);
+      setWantRecord(null);
     }
   };
   const chooserWords = next.chooser === null ? (next.game === 1 ? 'A coin toss decides who chooses to play or draw.' : 'The last game was a draw: a coin toss decides who chooses to play or draw.')
@@ -672,7 +676,7 @@ function HandIn({ state, room, deckText: md, opponent, onOpenReview }: {
       </ul>
       {record && (
         <label className="fr-check">
-          <input type="checkbox" checked={record.you} disabled={saving} onChange={(e) => void setRecord(e.target.checked)} aria-label="Record my seat of the next game" />
+          <input type="checkbox" checked={wantRecord ?? record.you} disabled={saving} onChange={(e) => void setRecord(e.target.checked)} aria-label="Record my seat of the next game" />
           <span>
             Record my seat of {playing ? 'the following' : `game ${next.game}`} — for the human test set on the room’s computer, and my own engine review (only I see it). {record.default ? 'The room records by default.' : 'The room does not record by default.'} Nothing leaves that computer.
           </span>
