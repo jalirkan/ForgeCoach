@@ -25,6 +25,11 @@
  * Archetypes come from any table with a Pair/Colours column (signposts are the
  * cube cards its cells name), or from the "Decks this cube wants you to find"
  * bullets ("**Rakdos or Mardu sacrifice:** Viscera Seer, …").
+ *
+ * A cube may have none of that: a plain list of names under "## The list"
+ * with no "### Section (N)" heading reads as one section, "Cards" (a friend's
+ * export, one name per line). A "## Not in Forge …" section lists, one "- "
+ * bullet each, the cube's cards the engine has no script for yet (`forgeMissing`).
  */
 import { guildColours, wubrg } from './colors.ts';
 
@@ -81,6 +86,8 @@ export interface Cube {
   themes: CubeTheme[];
   archetypes: CubeArchetype[];
   hasPrices: boolean;
+  /** Cube cards the document says Forge has no card script for yet ("## Not in Forge …"); absent when it says nothing. */
+  forgeMissing?: string[];
   warnings: string[];
 }
 
@@ -208,6 +215,9 @@ export function parseCube(text: string): Cube {
   let inList = false;
   let section: CubeSection | null = null;
   let table: { header: string[] } | null = null;
+  // A list with no "### Section (N)" heading: one section, as long as it turns out to be.
+  let implicit: CubeSection | null = null;
+  const forgeLines: string[] = [];
 
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trimEnd();
@@ -257,6 +267,12 @@ export function parseCube(text: string): Cube {
       continue;
     }
 
+    if (/^not (yet )?in forge/i.test(h2)) {
+      const b = /^\s*[-*]\s+(.+)$/.exec(line);
+      if (b?.[1]) forgeLines.push(b[1].trim());
+      continue;
+    }
+
     // "## Decks this cube wants you to find" bullets.
     if (/^decks this cube/i.test(h2)) {
       const b = /^\s*[-*]\s+\*\*(.+?):?\*\*:?\s*(.*)$/.exec(line);
@@ -270,10 +286,17 @@ export function parseCube(text: string): Cube {
       sections.push(section);
       continue;
     }
-    if (!inList || !section || !line.trim()) continue;
+    if (!inList || !line.trim()) continue;
+    if (!section) {
+      // Before any heading: a plain list, one name per line ("- " bullets too). Notes in italics or quotes are not cards.
+      if (sections.length > 0 || /^\s*(>|\*[^*\s]|_|\|)/.test(line)) continue;
+      implicit = { name: 'Cards', kind: 'colorless', expected: 0, parsed: 0 };
+      section = implicit;
+      sections.push(section);
+    }
 
     const pairM = /^([WUBRG]{2}):\s*/.exec(line);
-    let body = pairM ? line.slice(pairM[0].length) : line;
+    let body = pairM ? line.slice(pairM[0].length) : section === implicit ? line.replace(/^\s*[-*]\s+/, '') : line;
     let group: string | undefined;
     let groupTags: ItemTags = { name: '', themes: [], tags: [] };
     const groupM = /^([A-Z][A-Za-z ]*?)(?:\s*\(([^)]*)\))?:\s*(.*)$/.exec(body);
@@ -316,6 +339,7 @@ export function parseCube(text: string): Cube {
     }
     if (unknown.size) warnings.push(`tags not in the theme table, ignored: ${[...unknown].sort().join(', ')}`);
   }
+  if (implicit) implicit.expected = implicit.parsed;
   for (const s of sections) if (s.parsed !== s.expected) warnings.push(`${s.name}: parsed ${s.parsed}, the heading says ${s.expected}`);
   const seen = new Set<string>();
   for (const c of cards) {
@@ -340,5 +364,12 @@ export function parseCube(text: string): Cube {
     if (a.from === 'table') fromTable.set(arch, true);
     archetypes.push(arch);
   }
-  return { title, cards, sections, themes, archetypes, hasPrices: cards.some((c) => c.price !== undefined), warnings };
+  const out: Cube = { title, cards, sections, themes, archetypes, hasPrices: cards.some((c) => c.price !== undefined), warnings };
+  if (forgeLines.length) {
+    const known = new Set(names);
+    out.forgeMissing = forgeLines.filter((n) => known.has(n));
+    const strangers = forgeLines.filter((n) => !known.has(n));
+    if (strangers.length) warnings.push(`not in Forge, but not in the list either: ${strangers.join(', ')}`);
+  }
+  return out;
 }

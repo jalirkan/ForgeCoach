@@ -5,12 +5,20 @@ import { readFileSync } from 'node:fs';
 import { mapScryfallCard, type CardInfo, type ScryfallCard } from '../../cards.ts';
 import { parseCube, type Cube } from '../parseCube.ts';
 import { parseMeta, type CubeMeta } from '../meta.ts';
+import { cubeInfo } from '../cubes.ts';
 import { makeContext, type CubeContext } from '../score.ts';
 
-export type CubeId = 'synergy' | 'modern-era' | 'vintage' | 'pauper' | 'omega' | 'fair-fight' | 'peasant';
+export type CubeId = 'synergy' | 'modern-era' | 'vintage' | 'pauper' | 'omega' | 'fair-fight' | 'peasant' | 'evybaby';
+
+/** A cube's file stem under public/cubes/, from the registry. */
+export const cubeFile = (id: CubeId): string => cubeInfo(id)?.file ?? `${id}-cube-180`;
+
+export function loadCubeText(id: CubeId): string {
+  return readFileSync(new URL(`../../../public/cubes/${cubeFile(id)}.md`, import.meta.url), 'utf8');
+}
 
 export function loadCube(id: CubeId): Cube {
-  return parseCube(readFileSync(new URL(`../../../public/cubes/${id}-cube-180.md`, import.meta.url), 'utf8'));
+  return parseCube(loadCubeText(id));
 }
 
 export function loadInfos(id: CubeId, cube: Cube): Map<string, CardInfo> {
@@ -34,7 +42,7 @@ export function loadMeta(): CubeMeta {
 
 /** The cube lab's real meta for a cube, as shipped in public/cubes/. */
 export function loadRealMeta(id: CubeId): CubeMeta {
-  return parseMeta(JSON.parse(readFileSync(new URL(`../../../public/cubes/${id}-cube-180.meta.json`, import.meta.url), 'utf8')));
+  return parseMeta(JSON.parse(readFileSync(new URL(`../../../public/cubes/${cubeFile(id)}.meta.json`, import.meta.url), 'utf8')));
 }
 
 export function context(id: CubeId, meta: CubeMeta | null = null, withInfos = true): CubeContext {

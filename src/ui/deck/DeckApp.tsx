@@ -138,8 +138,8 @@ function DeckHome({
                   <span className="cube-title">{c.title}</span>
                   <span className="cube-blurb">{c.blurb}</span>
                   <span className="cube-meta">
-                    <span>180 cards</span>
-                    <span>Lab data</span>
+                    <span>{c.size} cards</span>
+                    {c.labData !== false && <span>Lab data</span>}
                   </span>
                 </span>
                 <span className="sample-go">

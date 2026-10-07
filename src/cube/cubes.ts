@@ -15,6 +15,10 @@ export interface CubeInfo {
   /** File stem under public/cubes/. */
   file: string;
   title: string;
+  /** The name in the cube pages' crumbs, when "title minus ' Cube'" reads badly. */
+  short?: string;
+  /** Cards in the document (one of each). */
+  size: number;
   blurb: string;
   /** Mana colours for the tile art. */
   accent: string;
@@ -24,14 +28,19 @@ export interface CubeInfo {
   humanData?: boolean;
 }
 
+/** The crumb name: `short`, else the title without " Cube". */
+export const cubeShortName = (c: Pick<CubeInfo, 'title' | 'short'>): string => c.short ?? c.title.replace(/ Cube$/, '');
+
 export const CUBES: CubeInfo[] = [
-  { id: 'synergy', file: 'synergy-cube-180', title: 'Synergy Cube', blurb: 'Nine overlapping themes, tight power band, no combos.', accent: 'BR' },
-  { id: 'modern-era', file: 'modern-era-cube-180', title: 'Modern-Era Cube', blurb: 'Ten guild archetypes with a few famous bombs.', accent: 'UG' },
-  { id: 'vintage', file: 'vintage-cube-180', title: 'Vintage Cube', blurb: 'Power, Moxen and cheat decks, cut to 180 for two.', accent: 'UR', humanData: true },
-  { id: 'pauper', file: 'pauper-cube-180', title: 'Pauper Cube', blurb: 'All commons: blink, ninjas, tokens, sacrifice.', accent: 'WG' },
-  { id: 'omega', file: 'omega-cube-180', title: 'Omega Cube', blurb: 'The greatest hits at one fair power level: no Power, no cheats.', accent: 'WB', labData: false },
-  { id: 'fair-fight', file: 'fair-fight-cube-180', title: 'Fair Fight Cube', blurb: 'Every rarity at a Pauper power level: no bombs, answers for everything.', accent: 'RW', labData: false },
-  { id: 'peasant', file: 'peasant-cube-180', title: 'Peasant Cube', blurb: 'Commons and uncommons: ten guild decks from the most-followed peasant cube.', accent: 'BG', labData: false },
+  { id: 'synergy', file: 'synergy-cube-180', title: 'Synergy Cube', size: 180, blurb: 'Nine overlapping themes, tight power band, no combos.', accent: 'BR' },
+  { id: 'modern-era', file: 'modern-era-cube-180', title: 'Modern-Era Cube', size: 180, blurb: 'Ten guild archetypes with a few famous bombs.', accent: 'UG' },
+  { id: 'vintage', file: 'vintage-cube-180', title: 'Vintage Cube', size: 180, blurb: 'Power, Moxen and cheat decks, cut to 180 for two.', accent: 'UR', humanData: true },
+  { id: 'pauper', file: 'pauper-cube-180', title: 'Pauper Cube', size: 180, blurb: 'All commons: blink, ninjas, tokens, sacrifice.', accent: 'WG' },
+  { id: 'omega', file: 'omega-cube-180', title: 'Omega Cube', size: 180, blurb: 'The greatest hits at one fair power level: no Power, no cheats.', accent: 'WB', labData: false },
+  { id: 'fair-fight', file: 'fair-fight-cube-180', title: 'Fair Fight Cube', size: 180, blurb: 'Every rarity at a Pauper power level: no bombs, answers for everything.', accent: 'RW', labData: false },
+  { id: 'peasant', file: 'peasant-cube-180', title: 'Peasant Cube', size: 180, blurb: 'Commons and uncommons: ten guild decks from the most-followed peasant cube.', accent: 'BG', labData: false },
+  // Evan's own list, as he titled it (public/cubes/evybaby-cube-360.md): no themes, archetypes, guide or lab data.
+  { id: 'evybaby', file: 'evybaby-cube-360', title: "Evybaby's New Cube", short: 'Evybaby', size: 360, blurb: 'Evan’s cube: 360 cards, Avatar to Middle-earth to pizza, with shocks, surveil lands and fetches.', accent: 'WUBRG', labData: false },
 ];
 
 export function cubeInfo(id: string): CubeInfo | undefined {

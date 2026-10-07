@@ -20,7 +20,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';
 import type { CubeMeta } from '../../cube/meta.ts';
 import { aiFlagsFromDoc, noFlags, withMetaFlags, type AiFlags } from '../../draft/aiFlags.ts';
-import { deckCount, exportList, mainNames, toMatchDeck, type DeckState } from '../../draft/deck.ts';
+import { deckCount, exportList, forForge, mainNames, toMatchDeck, type DeckState } from '../../draft/deck.ts';
 import { boosterPackSize, BOOSTER_PACKS, progress, SEAT_OPTIONS, type Draft, type Format } from '../../draft/draft.ts';
 import {
   AI_POLICIES,
@@ -58,6 +58,7 @@ export const CUBE_ART: Record<string, string> = {
   omega: 'Baneslayer Angel',
   'fair-fight': 'Skyclave Apparition',
   peasant: 'Mayhem Devil',
+  evybaby: 'Brazen Borrower',
 };
 
 export function Seg<T extends string | number | boolean>({ value, options, onChange, label }: { value: T; options: Array<[T, string]>; onChange: (v: T) => void; label: string }) {
@@ -140,7 +141,7 @@ export function DraftSetup({
   useEffect(() => prefetchCards(Object.values(CUBE_ART)), []);
   const cube = cubeInfo(cubeId) ?? CUBES[0]!;
   const seats = format === 'booster' ? players : 2;
-  const packSize = boosterPackSize(seats, 180);
+  const packSize = boosterPackSize(seats, cube.size);
   const begin = () => onBegin({ cubeId, format, youFirst: first === 'toss' ? Math.random() < 0.5 : first === 'you', hints: hintsOn, seats, timer, title: title.trim() || 'Practice draft' });
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
@@ -229,12 +230,12 @@ export function DraftSetup({
             </div>
             <button className="cube-pick" onClick={() => setPicker(true)}>
               <span>
-                {cube.title} · 180 cards
+                {cube.title} · {cube.size} cards
               </span>
               <IconChevronRight size={16} />
             </button>
             <p className="setup-small">
-              Packs and piles are built from this cube, with its lab data.{' '}
+              Packs and piles are built from this cube{cube.labData === false ? '' : ', with its lab data'}.{' '}
               <a className="setup-link" href={`#cube/${cube.id}`}>
                 See the list
               </a>
@@ -360,7 +361,7 @@ export function DraftSetup({
               <span className="ctile-body">
                 <span className="ctile-t">{c.title}</span>
                 <span className="ctile-d">{c.blurb}</span>
-                <span className="ctile-m">180 cards{c.labData === false ? '' : ' · lab data'}</span>
+                <span className="ctile-m">{c.size} cards{c.labData === false ? '' : ' · lab data'}</span>
               </span>
             </button>
           ))}
@@ -398,6 +399,7 @@ export function MatchSetup({
   aiLabel,
   meta,
   cubeNames,
+  forgeMissing,
   title,
   onBack,
   onAbandon,
@@ -412,6 +414,8 @@ export function MatchSetup({
   aiLabel: string;
   meta: CubeMeta | null;
   cubeNames: string[];
+  /** The cube's cards Forge has no script for yet (cube/parseCube.ts): kept out of what the engine is handed. */
+  forgeMissing?: string[];
   title: string;
   onBack: () => void;
   onAbandon: () => void;
@@ -430,10 +434,13 @@ export function MatchSetup({
   const flags = useAiFlags(draft.cubeId, meta, cubeNames);
   const cube = cubeInfo(draft.cubeId);
   const deckName = draftDeckName(title, deckColours);
-  const yours = useMemo(() => (deck ? toMatchDeck(deckName, deck) : null), [deck, deckName]);
+  const forge = useMemo(() => (deck ? forForge(toMatchDeck(deckName, deck), forgeMissing) : null), [deck, deckName, forgeMissing]);
+  const yours = forge?.deck ?? null;
+  const blocked = forge?.blocked ?? [];
   // Your own deck only: the AI's list never reaches the export.
   const exported = useMemo(() => (deck ? exportList(deckName, deck) : null), [deck, deckName]);
-  const ai = after?.aiDeck ?? null;
+  // The AI's deck is built without them (useDraftGame.ts); its sideboard is cleaned here for a draft saved before that.
+  const ai = useMemo(() => (after?.aiDeck ? forForge(after.aiDeck, forgeMissing).deck : null), [after?.aiDeck, forgeMissing]);
 
   useEffect(() => {
     let live = true;
@@ -455,7 +462,7 @@ export function MatchSetup({
   }, [ai, flags, known]);
   const weakTotal = weak.length;
 
-  const ready = !!yours && !!ai && deckSize(yours) >= 40;
+  const ready = !!yours && !!ai && deckSize(yours) >= 40 && blocked.length === 0;
   const canBegin = ready && supported === true && !busy;
   const takeSeat = () => {
     // The engine restarted on the new decks: take the seat again; the next hello_ok is this match.
@@ -488,7 +495,9 @@ export function MatchSetup({
 
   const note = busy
     ? 'Starting the engine on both decks… this takes 10–20 seconds, longer on a busy machine.'
-    : !ready
+    : blocked.length
+      ? `Forge 2.0.14 has no card script yet for ${blocked.join(', ')}: move ${blocked.length === 1 ? 'it' : 'them'} to your sideboard to play here (Export to another game keeps ${blocked.length === 1 ? 'it' : 'them'}).`
+      : !ready
       ? 'Your deck needs at least 40 cards.'
       : status === null
         ? 'Looking for the match launcher on this computer…'

@@ -92,6 +92,24 @@ describe('the Omega document', () => {
   });
 });
 
+describe('a cube with no sections, themes or archetypes (a friend\'s plain list)', () => {
+  it('names under "## The list" with no heading are one section, "Cards"; notes are not cards', () => {
+    const c = parseCube(['# Plain Cube', '', '## The list', '*Exported today.*', '> a quote', 'Lightning Bolt', 'Isamaru, Hound of Konda', '- Lórien Revealed', '* Opt', '', 'Counterspell', '', '## Afterword', 'Not a card'].join('\n'));
+    expect(c.cards.map((x) => x.name)).toEqual(['Lightning Bolt', 'Isamaru, Hound of Konda', 'Lórien Revealed', 'Opt', 'Counterspell']);
+    expect(c.sections).toEqual([{ name: 'Cards', kind: 'colorless', expected: 5, parsed: 5 }]);
+    expect(c.cards[0]).toMatchObject({ section: 'Cards', sectionKind: 'colorless', colorHint: '', land: false, themes: [], tags: [] });
+    expect(c.themes).toEqual([]);
+    expect(c.archetypes).toEqual([]);
+    expect(c.warnings).toEqual([]);
+    expect(c.forgeMissing).toBeUndefined();
+  });
+  it('"## Not in Forge …" names the cube cards Forge has no script for; a stranger is a warning', () => {
+    const c = parseCube(['# X', '## The list', '### Red (2)', 'Lightning Bolt · Twisted Fates', '## Not in Forge 2.0.14', 'Intro line.', '- Twisted Fates', '- Black Lotus', '## Next', '- Lightning Bolt'].join('\n'));
+    expect(c.forgeMissing).toEqual(['Twisted Fates']);
+    expect(c.warnings).toEqual(['not in Forge, but not in the list either: Black Lotus']);
+  });
+});
+
 describe('parseCube helpers', () => {
   it('splitItem', () => {
     expect(splitItem('Lightning Helix — removal LIFE SPL')).toEqual({ name: 'Lightning Helix', themes: ['LIFE', 'SPL'], tags: ['removal'] });

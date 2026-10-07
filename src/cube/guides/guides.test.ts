@@ -19,10 +19,18 @@ import { archetypeLab, guideLabFacts, LAB_MIN_GAMES, topArchetype } from './lab.
 
 const doc = (id: string) => readFileSync(new URL(`../../../public/cubes/${id}-cube-180.md`, import.meta.url), 'utf8');
 
+/** Cubes with no guide: Evan's list has no archetypes to write one from (its How to draft tab says so). */
+const NO_GUIDE = ['evybaby'];
+
 describe('every cube has a guide, and every card a guide names is in its cube', () => {
   it('one guide per listed cube, found by id and by the document title', () => {
-    expect(GUIDES.map((g) => g.cubeId).sort()).toEqual(CUBES.map((c) => c.id).sort());
-    for (const c of CUBES) {
+    const guided = CUBES.filter((c) => !NO_GUIDE.includes(c.id));
+    expect(GUIDES.map((g) => g.cubeId).sort()).toEqual(guided.map((c) => c.id).sort());
+    for (const c of NO_GUIDE) {
+      expect(guideFor(c)).toBeNull();
+      expect(guideForTitle(loadCube(c as CubeId).title)).toBeNull();
+    }
+    for (const c of guided) {
       expect(guideFor(c.id)?.cubeId).toBe(c.id);
       expect(guideForTitle(loadCube(c.id as CubeId).title)?.cubeId).toBe(c.id);
     }

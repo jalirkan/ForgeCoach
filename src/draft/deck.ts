@@ -86,6 +86,21 @@ export function matchDeck(name: string, b: DeckBuild, pool: string[]): MatchDeck
   return { name: safeDeckName(name), main: mainDeck(b), sideboard: counted(sideboard(b, pool)) };
 }
 
+/**
+ * A launcher deck the engine can load, for a cube whose document lists cards
+ * Forge has no script for yet (cube/parseCube.ts `forgeMissing`): those cards
+ * leave the sideboard (the launcher refuses a deck that names one anywhere);
+ * any in the main deck are named in `blocked` for the player to take out.
+ * The export (`exportList`) keeps everything, for other games.
+ */
+export function forForge(d: MatchDeck, missing: Iterable<string> | undefined): { deck: MatchDeck; blocked: string[] } {
+  const out = new Set(missing ?? []);
+  if (!out.size) return { deck: d, blocked: [] };
+  const deck: MatchDeck = { ...d, main: d.main };
+  if (d.sideboard) deck.sideboard = d.sideboard.filter(([, n]) => !out.has(n));
+  return { deck, blocked: d.main.filter(([, n]) => out.has(n)).map(([, n]) => n) };
+}
+
 /** This player's deck as the shared export's deck (cube/deckExport.ts): exactly the deck on screen, its sideboard the rest of the pool. */
 export function exportList(name: string, d: DeckState): DeckList {
   return makeDeckList(name, counted(mainNames(d)), counted(d.side));

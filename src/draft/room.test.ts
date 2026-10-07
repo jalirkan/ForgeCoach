@@ -9,6 +9,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import golden from './testdata/grid-golden.json';
+import { loadCube } from '../cube/testdata/load.ts';
 import { apply, legalLines, newDraft, toAct, type GridDraft } from './draft.ts';
 import {
   cleanName, createRoom, cubeHash, forgetRoom, friendLinks, joinLink, lastOpponentEvent, loadRooms, ownerRoomBase, parseCreated, parseJoinHash,
@@ -17,7 +18,7 @@ import {
 } from './room.ts';
 
 interface GoldenCase {
-  cube: 'big' | 'small';
+  cube: 'big' | 'small' | 'evybaby';
   seed: number;
   firstSeat: 0 | 1;
   grids: number;
@@ -25,7 +26,7 @@ interface GoldenCase {
   log: Array<{ n: number; seat: 0 | 1; grid: number; line: number; cards: string[] }>;
   picks: [string[], string[]];
 }
-const G = golden as unknown as { cubes: Record<string, string[]>; cases: GoldenCase[] };
+const G = golden as unknown as { cubes: Record<string, string[]>; hashes: Record<string, string>; cases: GoldenCase[] };
 
 describe('the golden grid draft (mtg-table tools/draft-room.mjs reproduces the same file)', () => {
   it.each(G.cases.map((c) => [`${c.cube} seed ${c.seed} first ${c.firstSeat}`, c] as const))('%s: draft.ts deals and drafts it exactly', (_, c) => {
@@ -43,6 +44,16 @@ describe('the golden grid draft (mtg-table tools/draft-room.mjs reproduces the s
     expect(G.cases.some((c) => c.seed > 2 ** 32)).toBe(true);
     expect(new Set(G.cases.map((c) => c.firstSeat))).toEqual(new Set([0, 1]));
     expect(G.cases.some((c) => c.grids < 18)).toBe(true);
+  });
+  it('the room hash of every golden cube, by WebCrypto here and node:crypto in the room (names with diacritics too)', async () => {
+    expect(Object.keys(G.hashes).sort()).toEqual(Object.keys(G.cubes).sort());
+    for (const [k, names] of Object.entries(G.cubes)) expect(await cubeHash(names), k).toBe(G.hashes[k]);
+  });
+  it("Evybaby's New Cube: the golden's names are the shipped document's, both openers drafted to the end", () => {
+    expect(G.cubes.evybaby).toEqual(loadCube('evybaby').cards.map((c) => c.name));
+    expect(G.cubes.evybaby).toHaveLength(360);
+    expect(G.cubes.evybaby).toContain('Troll of Khazad-dûm');
+    expect(new Set(G.cases.filter((c) => c.cube === 'evybaby').map((c) => c.firstSeat))).toEqual(new Set([0, 1]));
   });
 });
 
