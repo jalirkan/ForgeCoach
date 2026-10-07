@@ -12,9 +12,13 @@ import type { GameLog } from '../log.ts';
 import { cardIndex, cardName, phaseLabel } from '../decisions.ts';
 import { chosenColors, manaSummary, turnFacts, type ManaSource } from '../state.ts';
 import { cachedMap, useCardsVersion } from './cardData.ts';
-import { useCardActions, usePlay } from './cardContext.ts';
+import { BoardMarksContext, useBoardMarks, useCardActions, usePlay, type BoardMarks, type CardCombatMark } from './cardContext.ts';
+import { combatMarks } from './play/combatLines.ts';
+import { StackPanel } from './StackPanel.tsx';
+import { BoardArrows } from './BoardArrows.tsx';
+import { stackEntries, stackMarks, type StackEntry } from './stackModel.ts';
 import { CardBack, CardTile, LandPile, displayName } from './CardTile.tsx';
-import { IconHeart, IconLayers, IconShield, IconSword } from './Icons.tsx';
+import { IconHeart, IconShield, IconSword } from './Icons.tsx';
 import { Pip } from './Mana.tsx';
 import { ZoneViewer, type ViewableZone } from './ZoneViewer.tsx';
 import { groupLands, pileWeight } from './landPiles.ts';
@@ -31,9 +35,16 @@ interface BoardProps {
   hideHand?: boolean;
   /** Drawn over the table, scrolling with it (play: the combat lines). */
   overlay?: ReactNode;
+  /** Play draws the stack in its own floating panel (StackPanel `float`); the board then leaves it out of the midline. */
+  stackElsewhere?: boolean;
+  /** Combat badges with this browser's unconfirmed clicks folded in (play); else the wire's own bands. */
+  combatMarks?: ReadonlyMap<number, CardCombatMark>;
 }
 
-export function Board({ log, state, frameIndex, seat, hideHand, overlay }: BoardProps) {
+export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackElsewhere, combatMarks: combatOverride }: BoardProps) {
+  const stack = useMemo(() => stackEntries(state, seat), [state, seat]);
+  const combat = useMemo(() => combatOverride ?? combatMarks(state), [combatOverride, state]);
+  const marks = useMemo<BoardMarks>(() => ({ stack: stackMarks(stack), combat }), [stack, combat]);
   const me = state.players.find((p) => p.id === seat) ?? state.players[0];
   const opps = state.players.filter((p) => p !== me);
   const byId = useMemo(() => {
@@ -50,14 +61,17 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay }: Board
     );
   }
   return (
-    <div className="board">
-      {opps.map((p) => (
-        <PlayerArea key={p.id} player={p} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} top />
-      ))}
-      <Midline state={state} seat={seat} />
-      <PlayerArea player={me} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} hideHand={hideHand} />
-      {overlay}
-    </div>
+    <BoardMarksContext.Provider value={marks}>
+      <div className="board">
+        {opps.map((p) => (
+          <PlayerArea key={p.id} player={p} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} top />
+        ))}
+        <Midline state={state} seat={seat} stack={stackElsewhere ? [] : stack} />
+        <PlayerArea player={me} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} hideHand={hideHand} />
+        {overlay}
+      </div>
+      <BoardArrows entries={stack} version={state} />
+    </BoardMarksContext.Provider>
   );
 }
 
@@ -273,6 +287,8 @@ function PlayerHeader({
   const priority = state.priority === player.id;
   const z = player.zones;
   const otherCounters = Object.entries(player.counters ?? {}).filter(([k, n]) => n > 0 && k !== 'POISON');
+  // A zone holding a card the engine wants clicked (a graveyard target): outlined, like a tile.
+  const picks = (zone: 'library' | 'graveyard' | 'exile' | 'command') => !!play && z[zone].cards.some((c) => play.mark(c) === 'select');
   return (
     <div className={cx('phead', active && 'is-active', targetable && 'is-targetable')} data-phead-player={player.id}>
       <div className="phead-id">
@@ -318,10 +334,10 @@ function PlayerHeader({
             Hand <OppHand n={z.hand.count} /> <b>{z.hand.count}</b>
           </span>
         )}
-        <ZonePill label="Library" short="Lib" n={z.library.count} onClick={z.library.cards.length > 0 ? () => setZone('library') : undefined} />
-        <ZonePill label="Graveyard" short="GY" n={z.graveyard.count} onClick={() => setZone('graveyard')} />
-        <ZonePill label="Exile" short="Ex" n={z.exile.count} onClick={() => setZone('exile')} />
-        {z.command.count > 0 && <ZonePill label="Command" n={z.command.count} onClick={() => setZone('command')} />}
+        <ZonePill label="Library" short="Lib" n={z.library.count} onClick={z.library.cards.length > 0 ? () => setZone('library') : undefined} pick={picks('library')} />
+        <ZonePill label="Graveyard" short="GY" n={z.graveyard.count} onClick={() => setZone('graveyard')} pick={picks('graveyard')} />
+        <ZonePill label="Exile" short="Ex" n={z.exile.count} onClick={() => setZone('exile')} pick={picks('exile')} />
+        {z.command.count > 0 && <ZonePill label="Command" n={z.command.count} onClick={() => setZone('command')} pick={picks('command')} />}
         {otherCounters.map(([k, n]) => (
           <span key={k} className="zone-pill zone-static">
             {k.toLowerCase()} <b>{n}</b>
@@ -368,7 +384,7 @@ function sortSources(s: ManaSource[]): ManaSource[] {
   return [...s].sort((a, b) => a.colors.length - b.colors.length || order.indexOf(a.colors[0] ?? 'C') - order.indexOf(b.colors[0] ?? 'C'));
 }
 
-function ZonePill({ label, short, n, onClick }: { label: string; short?: string; n: number; onClick?: () => void }) {
+function ZonePill({ label, short, n, onClick, pick }: { label: string; short?: string; n: number; onClick?: () => void; pick?: boolean }) {
   // Narrow screens show the short label (Lib, GY); the long one stays for screen readers.
   const text = short ? (
     <>
@@ -388,7 +404,7 @@ function ZonePill({ label, short, n, onClick }: { label: string; short?: string;
     );
   }
   return (
-    <button className="zone-pill" onClick={onClick} disabled={n === 0} title={label}>
+    <button className={cx('zone-pill', pick && 'is-pick')} onClick={onClick} disabled={n === 0} title={pick ? `${label}: holds a card to choose` : label} data-zone-pill={label.toLowerCase()}>
       {text} <b>{n}</b>
     </button>
   );
@@ -416,11 +432,11 @@ const STEPS: { label: string; phases: string[] }[] = [
   { label: 'End', phases: ['END_OF_TURN', 'CLEANUP'] },
 ];
 
-function Midline({ state, seat }: { state: GameStateBody; seat: number }) {
+function Midline({ state, seat, stack }: { state: GameStateBody; seat: number; stack: StackEntry[] }) {
   return (
     <div className="midline">
       <PhaseHeader state={state} seat={seat} />
-      {state.stack.length > 0 && <StackPanel state={state} seat={seat} />}
+      {stack.length > 0 && <StackPanel entries={stack} state={state} variant="inline" />}
       {state.combat && state.combat.bands.length > 0 && <CombatPanel state={state} seat={seat} />}
     </div>
   );
@@ -476,65 +492,10 @@ function CardRef({ card, state }: { card: AnyCard | undefined; state: GameStateB
   );
 }
 
-function StackPanel({ state, seat }: { state: GameStateBody; seat: number }) {
-  const idx = useMemo(() => cardIndex(state), [state]);
-  const items = [...state.stack].reverse();
-  const playerName = (id: number | null) => (id === null ? 'someone' : id === seat ? 'You' : state.players.find((p) => p.id === id)?.name ?? 'Opponent');
-  return (
-    <div className="mid-panel stack-panel">
-      <div className="mid-title">
-        <IconLayers size={14} /> Stack <span className="bf-count">{items.length}</span>
-        <span className="muted mid-hint">top resolves first</span>
-      </div>
-      <StackTargets items={items} seat={seat} />
-      <ol className="stack-list">
-        {items.map((it, i) => {
-          const src = it.sourceCardId !== null ? idx.get(it.sourceCardId) : undefined;
-          const targets = [
-            ...it.targetPlayerIds.map((id) => playerName(id)),
-            ...it.targetCardIds.map((id) => cardName(idx.get(id))),
-          ];
-          return (
-            <li key={it.id} className={cx('stack-item', i === 0 && 'is-top', it.controller === seat ? 'is-mine' : 'is-theirs')}>
-              <div className="stack-line">
-                <CardRef card={src} state={state} />
-                <span className="muted">· {playerName(it.controller)}</span>
-              </div>
-              {it.text && <div className="stack-text">{it.text}</div>}
-              {targets.length > 0 && <div className="stack-targets">→ {targets.join(', ')}</div>}
-            </li>
-          );
-        })}
-      </ol>
-    </div>
-  );
-}
-
-/**
- * The Stack skin outlines each permanent a stack item targets, dashed, in its
- * caster's colour (the topmost item wins). Only public stack data; the rules
- * match nothing in the other skins.
- */
-function StackTargets({ items, seat }: { items: GameStateBody['stack']; seat: number }) {
-  const css = useMemo(() => {
-    const seen = new Set<number>();
-    const rules: string[] = [];
-    for (const it of items) {
-      for (const id of it.targetCardIds) {
-        if (!Number.isInteger(id) || seen.has(id)) continue;
-        seen.add(id);
-        const who = it.controller === seat ? 'you' : 'them';
-        rules.push(`:root[data-skin='stack'] .board [data-card-id="${id}"] .tile-card{outline:2px dashed var(--skin-${who});outline-offset:3px}`);
-      }
-    }
-    return rules.join('\n');
-  }, [items, seat]);
-  return css ? <style>{css}</style> : null;
-}
-
 function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {
   const idx = useMemo(() => cardIndex(state), [state]);
   const play = usePlay();
+  const marks = useBoardMarks();
   // In play, blockers you have clicked but not yet confirmed (the engine reports them on confirm).
   const blockersOf = (b: { attackerIds: number[]; blockerIds: number[] }) => {
     const extra = play ? b.attackerIds.flatMap((a) => play.blockersFor(a)).filter((id) => !b.blockerIds.includes(id)) : [];
@@ -551,8 +512,15 @@ function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {
         <IconSword size={14} /> Combat
       </div>
       <ul className="combat-list">
-        {state.combat!.bands.map((b, i) => (
+        {state.combat!.bands.map((b, i) => {
+          const n = b.attackerIds.map((id) => marks?.combat?.get(id)?.n).find((x) => x !== undefined);
+          return (
           <li key={i} className="combat-band">
+            {n !== undefined && (
+              <span className="cmb-num" aria-label={`Pair ${n}`}>
+                {n}
+              </span>
+            )}
             <div className="combat-side combat-att">
               {b.attackerIds.map((id) => (
                 <CardRef key={id} card={idx.get(id)} state={state} />
@@ -574,7 +542,8 @@ function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {
               )}
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );

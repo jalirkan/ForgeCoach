@@ -47,7 +47,8 @@ export function prefetchCards(names: string[]): void {
 }
 
 export function useCardsVersion(): number {
-  return useSyncExternalStore(subscribe, () => version);
+  const snap = () => version;
+  return useSyncExternalStore(subscribe, snap, snap);
 }
 
 /** Cached card info for a name (undefined until it arrives). */

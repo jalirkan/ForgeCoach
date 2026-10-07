@@ -2,7 +2,8 @@
  * ForgeCoach — ambience/prefs.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Whether the board shows scenery, and from where: off (the default), the
+ * Whether the board shows scenery, and from where: ForgeCoach's own art pack
+ * (the default), off, the
  * built-in procedural scenery, or an asset pack at a URL. Kept tiny and
  * import-free so the board can ask "is it on?" without loading the scenery
  * bundle. Storage is injected for tests.
@@ -34,7 +35,8 @@ export const SCENERY_KEY = 'forgecoach.scenery';
  * cached copy.
  */
 export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v2/pack/';
-export const DEFAULT_PREFS: SceneryPrefs = { mode: 'off', packUrl: '', motion: 'system', accents: true };
+/** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
+export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true };
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
 

@@ -230,11 +230,11 @@ export function describeInput(
       ...v,
       mode: 'pay',
       title: pay.forName ? `Pay for ${pay.forName}` : 'Pay the mana cost',
-      detail: 'Tap your lands to pay' + (ok.enabled ? `, or press ${ok.label || 'Auto'} to let Forge pick.` : '.'),
+      detail: 'Tap your lands (they glow) to pay' + (ok.enabled ? ', or Auto pay to let Forge pick them.' : '.'),
       payCost: pay.cost,
       payFor: pay.forName,
-      ok: btn(ok, ok.enabled ? 'pay automatically' : null),
-      cancel: btn(cancel, 'don’t cast it'),
+      ok: btn(ok, ok.enabled ? 'auto pay' : null),
+      cancel: btn(cancel, 'cancel'),
       primary: ok.enabled ? 'ok' : null,
       needClick: !ok.enabled,
     };
@@ -258,10 +258,10 @@ export function describeInput(
     return {
       ...v,
       mode: 'block',
-      title: m ? `Block ${m[1]}?` : 'Declare blockers',
+      title: 'Declare blockers',
       detail: m
-        ? 'Tap one of your creatures to block it, or tap another attacker to switch. Confirm when done.'
-        : 'Tap your creature, then the attacker it should block. Confirm when done.',
+        ? `Now blocking ${m[1]} (outlined). Click your creature to block it — or click another attacker first to block that one. Then confirm.`
+        : 'Click an attacker, then click your creature that blocks it. Then confirm.',
       ok: btn(ok, 'confirm blocks'),
       cancel: btn(cancel, null),
       primary: ok.enabled ? 'ok' : null,
@@ -322,9 +322,13 @@ export function describeInput(
     const n = input.selectable.max;
     const what = input.selectable.mode === 'players' ? 'a player' : n > 1 ? `up to ${n}` : 'one';
     // "Source (12)\nWhat to do": headline the instruction, name the source.
-    const lines = p.split('\n').map((l) => l.trim()).filter(Boolean);
-    const source = lines.length > 1 ? lines[0]!.replace(/\s*\(\d+\)\s*$/, '') : null;
-    const ask = lines.length > 1 ? lines[lines.length - 1]! : lines[0] ?? 'Make a choice';
+    // InputSelectTargets: "Host - Select up to two target …\nTargeted:\n<names>\n(1 more can be targeted)".
+    const all = p.split('\n').map((l) => l.trim()).filter(Boolean);
+    const cut = all.findIndex((l) => /^Targeted:/i.test(l));
+    const lines = (cut >= 0 ? all.slice(0, cut) : all).filter((l) => !/^\(\d+ more can be targeted\)$/i.test(l));
+    const dash = lines.length === 1 ? /^(.+?) - (.+)$/.exec(lines[0]!) : null;
+    const source = dash ? dash[1]!.replace(/\s*\(\d+\)\s*$/, '') : lines.length > 1 ? lines[0]!.replace(/\s*\(\d+\)\s*$/, '') : null;
+    const ask = dash ? dash[2]! : lines.length > 1 ? lines[lines.length - 1]! : lines[0] ?? 'Make a choice';
     const how = selecting ? `Tap ${what} of the highlighted ${input.selectable.mode === 'players' ? 'players' : 'cards'}.` : 'Tap a card or player to choose it.';
     return {
       ...v,

@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { AnyCard, CombatBand, GameStateBody } from '../../protocol.ts';
-import { combatLinks, curveBetween, lanes } from './combatLines.ts';
+import { combatLinks, combatMarks, curveBetween, lanes } from './combatLines.ts';
 
 function creature(id: number, controller: number): AnyCard {
   return {
@@ -158,5 +158,52 @@ describe('lanes', () => {
         { kind: 'attack', from: { card: 8 }, to: { player: 0 }, n: 0, pending: false },
       ]),
     ).toEqual([0, 1, 0]);
+  });
+});
+
+describe('combatMarks: an attacker and its blockers share a numbered badge', () => {
+  it('numbers every attacker in band order, blocked or not, and gives each blocker its attacker’s number', () => {
+    const m = combatMarks(state([creature(1, 0), creature(2, 0), creature(3, 0)], [creature(9, 1), creature(8, 1), creature(7, 1)], [band([9], [1, 2]), band([7], []), band([8], [3])]));
+    expect([...m].map(([id, k]) => [id, k.n, k.role])).toEqual([
+      [9, 1, 'attacker'],
+      [7, 2, 'attacker'],
+      [8, 3, 'attacker'],
+      [1, 1, 'blocker'],
+      [2, 1, 'blocker'],
+      [3, 3, 'blocker'],
+    ]);
+    expect(m.get(9)!.defender).toEqual({ kind: 'player', id: 0 });
+  });
+
+  it('the badges agree with the block lines’ numbers', () => {
+    const s = state([creature(1, 0), creature(3, 0)], [creature(9, 1), creature(8, 1)], [band([9], [1]), band([8], [3])]);
+    const m = combatMarks(s);
+    for (const l of combatLinks(s)) if (l.kind === 'block' && 'card' in l.to) expect(m.get(l.from.card)!.n).toBe(m.get(l.to.card)!.n);
+  });
+
+  it('a planeswalker defender is kept, so the defending player can read what attacks what', () => {
+    const pw = { ...creature(5, 0), types: 'Legendary Planeswalker - Elspeth' } as AnyCard;
+    const m = combatMarks(state([pw], [creature(9, 1)], [band([9], [], { kind: 'card', id: 5 })]));
+    expect(m.get(9)!.defender).toEqual({ kind: 'card', id: 5 });
+  });
+
+  it('folds in this browser’s unconfirmed blocks and attackers, marked pending, and the current attacker', () => {
+    const s = state([creature(1, 0), creature(2, 0)], [creature(9, 1), creature(8, 1)], [band([9], []), band([8], [])]);
+    const m = combatMarks(s, new Map([[1, 8]]), new Set(), 8);
+    expect(m.get(1)).toMatchObject({ n: 2, role: 'blocker', pending: true });
+    expect(m.get(8)).toMatchObject({ n: 2, role: 'attacker', pending: false, current: true });
+    expect(m.get(9)).toMatchObject({ n: 1, current: false });
+    expect(m.has(2)).toBe(false);
+    const atk = combatMarks(state([creature(1, 0), creature(2, 0)], [], null), new Map(), new Set([2, 1]));
+    expect([...atk].map(([id, k]) => [id, k.n, k.pending])).toEqual([
+      [2, 1, true],
+      [1, 2, true],
+    ]);
+  });
+
+  it('never marks a concealed card', () => {
+    const m = combatMarks(state([hidden(1, 0)], [creature(9, 1)], [band([9], [1])]));
+    expect(m.has(1)).toBe(false);
+    expect(m.get(9)!.n).toBe(1);
   });
 });
