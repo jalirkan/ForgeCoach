@@ -143,16 +143,18 @@ async function step(page) {
 async function playTo(pages, n, ms = 120_000) {
   const t = Date.now();
   let thinking = false;
+  let stackSeen = false;
   const pressed = pages.map(() => 0);
   while (Date.now() - t < ms && pressed.some((k) => k < n)) {
     let any = false;
     for (const [i, p] of pages.entries()) {
       if (await p.locator('.play-table.is-thinking').count()) thinking = true;
+      if (await p.locator('.stackp-float [data-stack-n="1"]').count()) stackSeen = true;
       if (await step(p)) { pressed[i]++; any = true; await sleep(300); }
     }
     if (!any) await sleep(250);
   }
-  return { reached: pressed.every((k) => k >= n), pressed, thinking };
+  return { reached: pressed.every((k) => k >= n), pressed, thinking, stackSeen };
 }
 
 /** Both pages on the board of a new game of the room (their hash goes to #play/friend), its first frame in. */
@@ -305,6 +307,14 @@ async function main() {
     const g1 = await playTo(both, 6);
     check(g1.reached, `both players answered the engine (kept, passed priority) at least six times each (${g1.pressed.join(' + ')}; round ${Math.max(await roundOf(host), await roundOf(friend))})`);
     check(g1.thinking, 'a board said the other player is thinking');
+    // Board parity (endstep-style): each seat has the decision panel bottom-left and a hand it can read.
+    for (const [n, p] of [['host', host], ['friend', friend]]) {
+      const eyebrow = (await p.locator('.actionbar .ab-eyebrow').first().innerText().catch(() => '')).toLowerCase();
+      check(/decision|waiting/.test(eyebrow), `${n}: the decision panel heads the dock (${eyebrow || 'none'})`);
+      const w = await p.locator('.hand-dock .tile .tile-slot').first().evaluate((el) => el.getBoundingClientRect().width).catch(() => 0);
+      check(w >= 120, `${n}: hand cards are whole and readable (${Math.round(w)} px wide)`);
+    }
+    if (g1.stackSeen) check(true, 'a board showed the stack panel while something was on the stack');
     await host.screenshot({ path: path.join(OUT, 'table-2-host.png') });
     await friend.screenshot({ path: path.join(OUT, 'table-3-friend.png') });
     // The friend reloads: the same seat comes back by its token, and its Game Log keeps the turns before
