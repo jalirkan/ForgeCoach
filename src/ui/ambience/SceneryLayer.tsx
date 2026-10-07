@@ -9,6 +9,9 @@
  * frames up to the board's frame (the viewer's redacted states). With the
  * board accents on (spec 1.3, Settings → Board accents), each battlefield also
  * gets its accent layer (SceneryOverlay), beneath the cards like the strip.
+ * With Settings → Fill each side (spec 1.5, on by default), the strip grows
+ * into the player's whole half of the board, and each card row gets a soft
+ * dark scrim beneath it (HalfScrim), so the cards read as on the plain board.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -20,7 +23,9 @@ import { sceneryEvents } from '../../ambience/events.ts';
 import { cachedMap, useCardsVersion } from '../cardData.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
-import { accentsOn } from '../../ambience/prefs.ts';
+import { accentsOn, fillOn } from '../../ambience/prefs.ts';
+import { HalfScrim } from './HalfScrim.tsx';
+import { halfUrls } from '../../ambience/manifest.ts';
 import { effectGate } from '../../ambience/effects.ts';
 import { browserLoader, preloadEffects, preloadOverlays } from '../../ambience/pack.ts';
 import { useReducedMotion, useSceneryFx, useSceneryLoad, useSceneryPrefs, type PlaceCard } from './useScenery.ts';
@@ -141,6 +146,20 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     });
   }, [load?.pack, accents]);
 
+  // Stage-1 half pictures (spec 1.5) warm the cache when the scenery fills the halves; later stages load when shown.
+  const fill = fillOn(prefs);
+  useEffect(() => {
+    if (!fill || !load?.pack) return;
+    const urls = halfUrls(load.pack).filter((u) => u.stage === 1);
+    if (!urls.length) return;
+    const loader = browserLoader();
+    void (async () => {
+      // A phone-shaped viewport warms the phone pictures, where the pack has them.
+      const narrow = window.innerWidth < 700;
+      for (const u of urls) await loader(narrow && u.phone ? u.phone : u.url, 'image').catch(() => {});
+    })();
+  }, [load?.pack, fill]);
+
   useLayoutEffect(() => {
     const next = findTargets(anchor.current, log, seat, state);
     for (const t of next) t.el.classList.add('scn-host');
@@ -154,6 +173,7 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
         targets.map((t) =>
           createPortal(
             <>
+              {fill && slotsOf(scenery, t.playerId).length > 0 && <HalfScrim host={t.el} version={frameIndex} />}
               <SceneryStrip
                 slots={slotsOf(scenery, t.playerId)}
                 pack={load.pack}
@@ -161,6 +181,7 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
                 reduced={reduced}
                 pulses={fx.pulses.get(t.playerId)}
                 fx={fx.fx.get(t.playerId)}
+                fill={fill ? 'half' : 'strip'}
               />
               {accents && <SceneryOverlay slots={slotsOf(scenery, t.playerId)} pack={load.pack} edge={t.top ? 'top' : 'bottom'} reduced={reduced} />}
             </>,

@@ -196,6 +196,10 @@ const scenarios = [
 
       // Round 1: Mountain, Raging Goblin (pay Auto), pass to resolve it, Memnite, attack with the Goblin.
       await u.mode('main');
+      // The decision panel bottom-left and a hand you can read: whole cards, at least 120 px wide.
+      check((await page.locator('.actionbar .ab-eyebrow').innerText()).toLowerCase().includes('decision'), 'the decision panel says DECISION');
+      const handW = await page.locator('.hand-dock .tile .tile-slot').first().evaluate((el) => el.getBoundingClientRect().width);
+      check(handW >= 120, `hand cards are readable (${Math.round(handW)} px wide)`);
       check(engine.game.players[0].hand.length === 6, 'six cards after the London mulligan');
       await sent(engine, 'clickCard', () => u.click(mine(engine, 'Mountain')));
       await engine.waitFor(() => engine.game.players[0].battlefield.length === 1, 'the Mountain on the battlefield');
@@ -204,6 +208,11 @@ const scenarios = [
       await sent(engine, 'buttonOk', () => u.ok());
       await u.mode('stack');
       check((await page.locator('.ab-title-text').innerText()).includes('Raging Goblin'), 'your Raging Goblin is on the stack');
+      // The stack panel (endstep-style): numbered, the top resolves next, its kind and controller.
+      const top = page.locator('.stackp-float [data-stack-n="1"]');
+      await top.waitFor({ timeout: STEP_MS });
+      const topText = await top.innerText();
+      check(/Raging Goblin/.test(topText) && /Spell/i.test(topText) && /You/.test(topText) && /next/i.test(topText), `the stack panel shows 1 · Raging Goblin · Spell · You · next (${topText})`);
       await sent(engine, 'buttonOk', () => u.ok());
       await u.mode('main');
       await sent(engine, 'clickCard', () => u.click(mine(engine, 'Memnite')));
@@ -226,11 +235,20 @@ const scenarios = [
       await sent(engine, 'buttonOk', () => u.ok());
       await u.mode('stack');
       check((await page.locator('.ab-title-text').innerText()).includes('Goblin Guide'), 'the AI’s Goblin Guide is on the stack');
+      check(/Goblin Guide[\s\S]*Forge AI/.test(await page.locator('.stackp-float [data-stack-n="1"]').innerText()), 'the stack panel names the AI’s Goblin Guide and who cast it');
       await sent(engine, 'buttonOk', () => u.ok());
       await u.mode('block');
       const memnite = mine(engine, 'Memnite', 'battlefield');
+      // Who blocks whom: the attacker your block goes to is marked, and the blocker takes its number.
+      const current = page.locator('.player-top .tile.is-pair-current .tile-pair');
+      await current.waitFor({ timeout: STEP_MS });
+      const pairN = (await current.innerText()).trim();
       await sent(engine, 'clickCard', () => u.click(memnite));
       await engine.waitFor(() => [...engine.game.blocks.values()].flat().includes(memnite), 'Memnite blocking');
+      const blockerBadge = page.locator(`.player-me .tile[data-card-id="${memnite}"] .tile-pair.pair-blocker`);
+      await blockerBadge.waitFor({ timeout: STEP_MS });
+      check((await blockerBadge.innerText()).trim() === pairN, `Memnite wears its attacker's number ${pairN}`);
+      check((await page.locator('.actionbar [data-engine-button="ok"]').innerText()).includes('Confirm blocks'), 'the panel says Confirm blocks');
       await sent(engine, 'buttonOk', () => u.ok());
 
       // Round 2: Mountain, Shock (a choose_entities ask) at the AI for the win.

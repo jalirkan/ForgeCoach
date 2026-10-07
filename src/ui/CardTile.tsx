@@ -16,7 +16,7 @@ import { isHidden } from '../protocol.ts';
 import type { CardInfo } from '../cards.ts';
 import { useCardInfo } from './cardData.ts';
 import { createLongPress, pressBuzz, pressTimers } from './longPress.ts';
-import { useBoardStateRef, useCardActions, usePlay, type PlayInteraction, type PlayMark } from './cardContext.ts';
+import { useBoardMarks, useBoardStateRef, useCardActions, usePlay, type CardStackMarks, type PlayInteraction, type PlayMark } from './cardContext.ts';
 import { PILE_SHOWN, pilePlan } from './landPiles.ts';
 import { ManaCost } from './Mana.tsx';
 import { IconInfo, IconShield, IconSword, TypeGlyph } from './Icons.tsx';
@@ -260,7 +260,35 @@ function counterText(k: string, n: number): string {
   return `${counterLabel(k)} ${n}`;
 }
 
+/** The stack's numbers on a board card: filled where it is the source, ringed where it is targeted. */
+export function StackBadges({ marks }: { marks: CardStackMarks | undefined }) {
+  if (!marks || (marks.sources.length === 0 && marks.targets.length === 0)) return null;
+  return (
+    <span className="tile-stackmarks">
+      {marks.sources.map((n) => (
+        <span key={`s${n}`} className="smk smk-src" title={`Source of stack item ${n}`}>
+          {n}
+        </span>
+      ))}
+      {marks.targets.map((n) => (
+        <span key={`t${n}`} className="smk smk-tgt" title={`Targeted by stack item ${n}`}>
+          {n}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function mergeMarks(all: (CardStackMarks | undefined)[]): CardStackMarks | undefined {
+  const got = all.filter((m): m is CardStackMarks => !!m);
+  if (got.length === 0) return undefined;
+  return { sources: [...new Set(got.flatMap((m) => m.sources))].sort((a, b) => a - b), targets: [...new Set(got.flatMap((m) => m.targets))].sort((a, b) => a - b) };
+}
+
 function TileInner({ card, attachments, inHand, side }: TileProps) {
+  const boardMarks = useBoardMarks();
+  const stackMarks = inHand ? undefined : boardMarks?.stack.get(card.id);
+  const combatMark = inHand ? undefined : boardMarks?.combat?.get(card.id);
   const name = card.name || card.alt?.name || '';
   const info = useCardInfo(name || null);
   const { open, handlers, mark, hint, chosen, playing } = useOpen(card);
@@ -292,6 +320,9 @@ function TileInner({ card, attachments, inHand, side }: TileProps) {
         mark === 'act' && 'is-act',
         hint && 'is-hint',
         attachments && attachments.length > 0 && 'has-attach',
+        stackMarks && (stackMarks.targets.length > 0 ? 'is-stack-target' : stackMarks.sources.length > 0 && 'is-stack-source'),
+        combatMark && `is-pair-${combatMark.role}`,
+        combatMark?.current && 'is-pair-current',
       )}
       role="button"
       tabIndex={0}
@@ -317,6 +348,16 @@ function TileInner({ card, attachments, inHand, side }: TileProps) {
             >
               <IconInfo size={12} />
             </button>
+          )}
+          <StackBadges marks={stackMarks} />
+          {combatMark && (
+            <span
+              className={cx('tile-pair', `pair-${combatMark.role}`, combatMark.pending && 'is-pending', combatMark.current && 'is-current')}
+              title={combatMark.role === 'attacker' ? `Attacker ${combatMark.n}${combatMark.current ? ' — the one your blocks go to now' : ''}` : `Blocks attacker ${combatMark.n}`}
+              aria-label={combatMark.role === 'attacker' ? `Attacker ${combatMark.n}` : `Blocks attacker ${combatMark.n}`}
+            >
+              {combatMark.n}
+            </span>
           )}
           {(attacking || blocking) && (
             <span className={cx('tile-flag', attacking ? 'flag-attack' : 'flag-block')} title={attacking ? 'Attacking' : 'Blocking'}>
@@ -483,6 +524,8 @@ function PileStack({ cards, side }: { cards: Card[]; side?: TileSide }) {
   }, []);
   const info = useCardInfo(top.name || null);
   const { handlers, mark } = useOpen(top, onClicked);
+  const boardMarks = useBoardMarks();
+  const stackMarks = boardMarks ? mergeMarks(ids.map((id) => boardMarks.stack.get(id))) : undefined;
   const kind = typeKind(top.types || info?.typeLine);
   const colors = cardColors(top, info?.producedMana, info?.colors);
   const shown = Math.min(cards.length, PILE_SHOWN);
@@ -507,6 +550,7 @@ function PileStack({ cards, side }: { cards: Card[]; side?: TileSide }) {
           </div>
         ))}
         <div className="tile-ovl">
+          <StackBadges marks={stackMarks} />
           <span className="pile-count" title={`${cards.length} ${displayName(top)}`}>
             ×{cards.length}
           </span>

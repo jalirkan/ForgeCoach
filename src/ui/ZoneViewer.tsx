@@ -9,9 +9,10 @@
  * card is a card back, and a library shows only the cards this seat may see.
  */
 import { useMemo, useState } from 'react';
-import type { Card, PlayerState } from '../protocol.ts';
+import type { AnyCard, Card, PlayerState } from '../protocol.ts';
 import { isHidden } from '../protocol.ts';
 import { CardBack, CardTile } from './CardTile.tsx';
+import { PlayContext, usePlay, type PlayInteraction } from './cardContext.ts';
 import { Sheet } from './Sheet.tsx';
 import { cx, readLS, writeLS } from './util.ts';
 import { sortZone, typeSummary, ZONE_SORTS, type ZoneSort } from './zoneView.ts';
@@ -28,6 +29,23 @@ export function ZoneViewer({ player, zone, mine, onClose }: { player: PlayerStat
     const s = readLS(SORT_KEY);
     return ZONE_SORTS.some((z) => z.id === s) ? (s as ZoneSort) : 'recency';
   });
+  // In play, a card here the engine may take (a flashback in your graveyard, a target) is a
+  // click like a tile on the board; the viewer then closes, so the payment or the next
+  // question is not behind it.
+  const play = usePlay();
+  const closingPlay = useMemo<PlayInteraction | null>(
+    () =>
+      play
+        ? {
+            ...play,
+            click: (c: AnyCard) => {
+              onClose();
+              play.click(c);
+            },
+          }
+        : null,
+    [play, onClose],
+  );
   const raw = zone ? player.zones[zone].cards : [];
   const cards = useMemo(() => sortZone(raw, sort), [raw, sort]);
   const count = zone ? player.zones[zone].count : 0;
@@ -82,9 +100,11 @@ export function ZoneViewer({ player, zone, mine, onClose }: { player: PlayerStat
       {cards.length === 0 ? (
         <p className="muted zv-empty">{zone === 'library' ? 'You can’t see any of these cards.' : 'Nothing here.'}</p>
       ) : (
-        <div className="zv-grid">
-          {cards.map((c) => (isHidden(c) ? <CardBack key={c.id} /> : <CardTile key={c.id} card={c as Card} inHand />))}
-        </div>
+        <PlayContext.Provider value={closingPlay}>
+          <div className="zv-grid">
+            {cards.map((c) => (isHidden(c) ? <CardBack key={c.id} /> : <CardTile key={c.id} card={c as Card} inHand />))}
+          </div>
+        </PlayContext.Provider>
       )}
     </Sheet>
   );

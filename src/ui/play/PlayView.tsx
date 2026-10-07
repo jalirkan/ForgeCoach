@@ -44,8 +44,12 @@ import { PhaseStrip } from './PhaseStrip.tsx';
 import { cardRole, describeInput, handNeeded, noticeLine, playerClickable, type ClickContext } from './inputView.ts';
 import { lastStateFrame } from './liveDecision.ts';
 import { PlayCoach } from './PlayCoach.tsx';
+import { ZonePickPanel } from './ZonePickPanel.tsx';
+import { StackPanel } from '../StackPanel.tsx';
+import { stackEntries } from '../stackModel.ts';
+import { zonePick } from './zonePick.ts';
 import { CombatArrows } from './CombatArrows.tsx';
-import { combatLinks } from './combatLines.ts';
+import { combatLinks, combatMarks } from './combatLines.ts';
 import { selectionSummary } from './selection.ts';
 import { matchBox, tableMatchLine, type MatchBox } from '../../play/match.ts';
 import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
@@ -240,10 +244,13 @@ export function PlayView({
           return n;
         });
       } else if (view.mode === 'block' && isMyCreature(c)) {
+        // Forge's InputBlock: a click on a creature already blocking the current attacker takes the block
+        // back; on a free creature it blocks the current attacker; on one blocking another attacker it does nothing.
         setChosenBlk((m) => {
           const n = new Map(m);
-          if (n.has(c.id)) n.delete(c.id);
-          else n.set(c.id, view.blockingAttackerId);
+          const now = view.blockingAttackerId;
+          if (!n.has(c.id)) n.set(c.id, now);
+          else if (n.get(c.id) === now || now === null) n.delete(c.id);
           return n;
         });
       }
@@ -272,7 +279,14 @@ export function PlayView({
 
   // ---- the selection under way (dims the rest of the board) and the combat lines
   const selection = useMemo(() => selectionSummary(view, { attackers: chosenAtk.size, blockers: chosenBlk.size }), [view, chosenAtk, chosenBlk]);
+  // Cards the engine wants clicked that the board has no tile for (a graveyard target): their own panel.
+  const offBoard = useMemo(() => (ask || over ? null : zonePick(input, state, seat, view.mode)), [ask, over, input, state, seat, view.mode]);
   const links = useMemo(() => combatLinks(state, view.mode === 'block' ? chosenBlk : undefined), [state, view.mode, chosenBlk]);
+  // Every attacker and its blockers share a number on the board (endstep-style), clicks not yet confirmed included.
+  const pairs = useMemo(
+    () => combatMarks(state, view.mode === 'block' ? chosenBlk : undefined, view.mode === 'attack' ? chosenAtk : undefined, view.mode === 'block' ? view.blockingAttackerId : null),
+    [state, view.mode, view.blockingAttackerId, chosenBlk, chosenAtk],
+  );
 
   // ---- interaction context for tiles and avatars
   const ctx: ClickContext = useMemo(() => ({ view, input, state, seat }), [view, input, state, seat]);
@@ -331,6 +345,25 @@ export function PlayView({
   const [guidesOpen, setGuidesOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const closeLog = useCallback(() => setLogOpen(false), []);
+  // An engine question that arrives while a card's details, the log or a help sheet is open must not
+  // land behind it (they sit on the same layer): close them, and the question is the one thing on screen.
+  const askId = ask?.askId ?? null;
+  // The stack panel folds to its heading; a new item on the stack opens it again.
+  const [stackFolded, setStackFolded] = useState(false);
+  const stackSize = state?.stack.length ?? 0;
+  const lastStackSize = useRef(stackSize);
+  useEffect(() => {
+    if (stackSize > lastStackSize.current) setStackFolded(false);
+    lastStackSize.current = stackSize;
+  }, [stackSize]);
+  useEffect(() => {
+    if (askId === null) return;
+    setDetail(null);
+    setHelp(false);
+    setGuidesOpen(false);
+    setLogOpen(false);
+    setMenu(false);
+  }, [askId]);
   const [guideName, setGuideName] = useState<string | null>(guideNameNow);
   const [waitingNext, setWaitingNext] = useState(false);
   useEffect(() => {
@@ -461,6 +494,12 @@ export function PlayView({
   const myMove = !!(ask || (input && view.mode !== 'waiting' && view.mode !== 'yield' && !over));
   const match = matchBox(hello, over, snap.previousLogs, seat);
 
+  // The stack: always in view while it is not empty, in one place over the board (endstep-style).
+  const stackNow = useMemo(() => stackEntries(state, seat), [state, seat]);
+  const stackPanel =
+    state && stackNow.length > 0 ? <StackPanel entries={stackNow} state={state} variant="float" folded={stackFolded} onFold={setStackFolded} /> : null;
+  const zonePanel = offBoard ? <ZonePickPanel key={input?.prompt ?? ''} pick={offBoard} view={view} state={state} seat={seat} onOk={pressOk} onCancel={pressCancel} /> : null;
+
   const board =
     state && log && seat !== null ? (
       <Board
@@ -469,6 +508,8 @@ export function PlayView({
         frameIndex={Math.max(0, frameIndex)}
         seat={seat}
         hideHand
+        stackElsewhere
+        combatMarks={pairs}
         overlay={<><CombatArrows links={links} version={state} /><BoardScenery log={log} frameIndex={Math.max(0, frameIndex)} seat={seat} /></>}
       />
     ) : (
@@ -643,7 +684,11 @@ export function PlayView({
             {wide ? (
               <div className={cx('play-cols', coachOpen && 'has-coach')}>
                 <main className="play-main">
-                  <div className="play-board">{board}</div>
+                  <div className={cx('play-board', stackPanel && !stackFolded && 'has-stack')}>
+                    {board}
+                    {stackPanel}
+                    {zonePanel}
+                  </div>
                   {dock}
                 </main>
                 {/* One sidebar: the turn and its steps, then the coach (foldable). */}
@@ -664,7 +709,9 @@ export function PlayView({
             ) : (
               <>
                 {!phoneCoach && <LogTab variant="edge" onClick={() => setLogOpen(true)} open={logOpen} />}
-                <div className="play-stage">
+                <div className={cx('play-stage', stackPanel && !phoneCoach && 'has-stack', stackFolded && 'is-stack-folded')}>
+                  {!phoneCoach && stackPanel}
+                  {!phoneCoach && zonePanel}
                   <main className="phone-main play-phone-main" aria-hidden={phoneCoach || undefined}>
                     {board}
                   </main>

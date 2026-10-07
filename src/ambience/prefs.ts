@@ -2,7 +2,8 @@
  * ForgeCoach — ambience/prefs.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Whether the board shows scenery, and from where: off (the default), the
+ * Whether the board shows scenery, and from where: ForgeCoach's own art pack
+ * (the default), off, the
  * built-in procedural scenery, or an asset pack at a URL. Kept tiny and
  * import-free so the board can ask "is it on?" without loading the scenery
  * bundle. Storage is injected for tests.
@@ -12,6 +13,9 @@
  * `procedural`, `forgecoach` and `off` are words, anything else is a pack URL.
  * `?accents=off` (or `on`) does the same for the board accents (spec 1.3), a
  * sub-toggle of the scenery: on by default whenever the scenery is on.
+ * `?fill=off` (or `on`) does the same for "Fill each side" (spec 1.5): the
+ * scenery fills each player's whole half of the board (on by default), or,
+ * off, keeps to the strip along their land row.
  */
 
 export type SceneryMode = 'off' | 'procedural' | 'pack';
@@ -23,6 +27,8 @@ export interface SceneryPrefs {
   motion: MotionPref;
   /** Board accents (corner and edge pieces in the player's area); only drawn when the scenery is on. */
   accents: boolean;
+  /** Spec 1.5: the scenery fills each player's whole half (true), or only the strip along their land row. */
+  fill: boolean;
 }
 
 export const SCENERY_KEY = 'forgecoach.scenery';
@@ -34,7 +40,8 @@ export const SCENERY_KEY = 'forgecoach.scenery';
  * cached copy.
  */
 export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v2/pack/';
-export const DEFAULT_PREFS: SceneryPrefs = { mode: 'off', packUrl: '', motion: 'system', accents: true };
+/** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
+export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true };
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -57,6 +64,7 @@ export function loadSceneryPrefs(s?: Store | null): SceneryPrefs {
     if (typeof v.packUrl === 'string') out.packUrl = v.packUrl.slice(0, 512);
     if (v.motion === 'system' || v.motion === 'reduce' || v.motion === 'full') out.motion = v.motion;
     if (typeof v.accents === 'boolean') out.accents = v.accents;
+    if (typeof v.fill === 'boolean') out.fill = v.fill;
   } catch {
     /* corrupt or blocked storage → defaults */
   }
@@ -91,10 +99,17 @@ export function sceneryParam(search: string, hash: string, name = 'scenery'): st
   return null;
 }
 
-/** The stored prefs with the page's `?scenery=` and `?accents=` applied. */
+/** An on / off page parameter: true, false, or null when absent or not a switch word. */
+function switchParam(search: string, hash: string, name: string): boolean | null {
+  const v = sceneryParam(search, hash, name);
+  return v === 'off' || v === '0' ? false : v === 'on' || v === '1' ? true : null;
+}
+
+/** The stored prefs with the page's `?scenery=`, `?accents=` and `?fill=` applied. */
 export function effectivePrefs(stored: SceneryPrefs, search: string, hash: string): SceneryPrefs {
-  const a = sceneryParam(search, hash, 'accents');
-  const withAccents = a === 'off' || a === '0' ? { ...stored, accents: false } : a === 'on' || a === '1' ? { ...stored, accents: true } : stored;
+  const a = switchParam(search, hash, 'accents');
+  const f = switchParam(search, hash, 'fill');
+  const withAccents = a === null && f === null ? stored : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }) };
   const p = sceneryParam(search, hash);
   if (!p) return withAccents;
   if (p === 'off') return { ...withAccents, mode: 'off' };
@@ -116,6 +131,11 @@ export function currentPrefs(): SceneryPrefs {
   } catch {
     return stored;
   }
+}
+
+/** Does the scenery fill each player's half (spec 1.5)? Only with the scenery on and "Fill each side" on. */
+export function fillOn(p: SceneryPrefs): boolean {
+  return p.mode !== 'off' && p.fill;
 }
 
 /** Stills only? `system` follows the OS's prefers-reduced-motion. */

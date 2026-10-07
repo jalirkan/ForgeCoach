@@ -143,7 +143,8 @@ describe('describeInput', () => {
     expect(a.cancel.meaning).toBe('attack with everything');
     const b = describeInput(input('Select creatures to block Aerial Doombot (56) or select another attacker to declare blockers for.'), state({ activePlayer: OPP }), ME);
     expect(b.mode).toBe('block');
-    expect(b.title).toBe('Block Aerial Doombot?');
+    expect(b.title).toBe('Declare blockers');
+    expect(b.detail).toContain('Now blocking Aerial Doombot');
     expect(b.blockingAttackerId).toBe(56);
   });
 
@@ -200,6 +201,34 @@ describe('cardRole', () => {
     const c = ctxFor(input('Priority: Human\nTurn: 4 (Forge AI)\nPhase: Beginning of Combat Step\nStack: Empty'), st);
     expect(cardRole(hand1!, c)).toBeNull();
     expect(cardRole(hand2!, c)).toBe('act');
+  });
+
+  it('a hand ability such as cycling is a click at instant speed too (the full-game playtest: Krosan Tusker)', () => {
+    const tusker = card(31, ME, 'hand', 'Creature - Boar Beast', { keywords: ['CYCLING'] });
+    const ninja = card(32, ME, 'hand', 'Creature - Ninja', { keywords: ['NINJUTSU'] });
+    const st = state({ activePlayer: OPP, phase: 'COMBAT_BEGIN' });
+    const c = ctxFor(input('Priority: Human\nTurn: 4 (Forge AI)\nPhase: Beginning of Combat Step\nStack: Empty'), st);
+    expect(cardRole(tusker, c)).toBe('act');
+    expect(cardRole(ninja, c)).toBe('act');
+    expect(cardRole(hand1!, c)).toBeNull();
+  });
+
+  it('a graveyard card you can play from there (flashback, unearth) is a click; others open details', () => {
+    const strands = card(40, ME, 'graveyard', 'Instant', { keywords: ['FLASHBACK'] });
+    const unearth = card(41, ME, 'graveyard', 'Creature - Zombie', { keywords: ['UNEARTH'] });
+    const plain = card(42, ME, 'graveyard', 'Instant');
+    const theirs = card(43, OPP, 'graveyard', 'Instant', { keywords: ['FLASHBACK'] });
+    const main = ctxFor(input(PRIORITY));
+    expect(cardRole(strands, main)).toBe('act');
+    expect(cardRole(unearth, main)).toBe('act');
+    expect(cardRole(plain, main)).toBeNull();
+    expect(cardRole(theirs, main)).toBeNull();
+    const st = state({ activePlayer: OPP, phase: 'COMBAT_DECLARE_BLOCKERS' });
+    const oppTurn = ctxFor(input('Priority: Human\nTurn: 4 (Forge AI)\nPhase: Declare Blockers Step\nStack: Empty'), st);
+    expect(cardRole(strands, oppTurn)).toBe('act');
+    // Paying, attacking, targeting: not a play from the graveyard.
+    const pay = ctxFor(input('Card 7 - Creature 2 / 2\n\nPay Mana Cost: {1}{W}', { buttons: { ok: { label: 'Auto', enabled: true }, cancel: { label: 'Cancel', enabled: true } } }));
+    expect(cardRole(strands, pay)).toBeNull();
   });
 
   it("the engine's explicit selection wins", () => {

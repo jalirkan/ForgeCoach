@@ -28,8 +28,9 @@ describe('manifestUrlFor', () => {
 });
 
 describe('resolveScenery', () => {
-  it('is off by default and procedural when chosen', async () => {
-    expect(await resolveScenery(DEFAULT_PREFS, { fetch: serve(manifest), load: okLoad })).toBeNull();
+  it('is ForgeCoach art by default, off when chosen, and procedural when chosen', async () => {
+    expect(DEFAULT_PREFS).toMatchObject({ mode: 'pack', packUrl: FORGECOACH_PACK_URL });
+    expect(await resolveScenery({ ...DEFAULT_PREFS, mode: 'off' }, { fetch: serve(manifest), load: okLoad })).toBeNull();
     expect((await resolveScenery({ ...DEFAULT_PREFS, mode: 'procedural' }, { fetch: serve(manifest), load: okLoad }))!.source).toBe('procedural');
   });
 
@@ -109,8 +110,8 @@ describe('prefs', () => {
     const m = new Map<string, string>();
     const s = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
     expect(loadSceneryPrefs(s)).toEqual(DEFAULT_PREFS);
-    saveSceneryPrefs({ mode: 'pack', packUrl: 'http://127.0.0.1:8650/', motion: 'reduce', accents: false }, s);
-    expect(loadSceneryPrefs(s)).toEqual({ mode: 'pack', packUrl: 'http://127.0.0.1:8650/', motion: 'reduce', accents: false });
+    saveSceneryPrefs({ mode: 'pack', packUrl: 'http://127.0.0.1:8650/', motion: 'reduce', accents: false, fill: false }, s);
+    expect(loadSceneryPrefs(s)).toEqual({ mode: 'pack', packUrl: 'http://127.0.0.1:8650/', motion: 'reduce', accents: false, fill: false });
     // Prefs saved before spec 1.3 have no accents field: on.
     m.set('forgecoach.scenery', '{"mode":"procedural","packUrl":"","motion":"system"}');
     expect(loadSceneryPrefs(s).accents).toBe(true);

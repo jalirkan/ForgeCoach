@@ -21,6 +21,9 @@ keeps its original copyright and licence header. The sample logs in
 public/samples/ are recordings from mtg-table's fixture corpus, gzipped.
 In play mode ForgeCoach takes the player's seat on mtg-table's bridge; the play
 keyboard (src/ui/play/playKeys.ts) is adapted from mtg-table's web/src/keys.ts.
+The play board's stack panel and its lines (src/ui/StackPanel.tsx,
+src/ui/stackModel.ts, src/ui/arrows.ts) are adapted from mtg-table's
+web/src/render/StackPanel.tsx and web/src/render/arrows.ts.
 The drafting AI in src/draft/ (rng.ts, weights.ts, pick.ts, draft.ts, and the
 card model in cards.ts) is ported from mtg-table's cube lab, tools/cubelab/
 (rng.ts, weights.ts, pick.ts, draft.ts, cards.ts): the seeded generator, the

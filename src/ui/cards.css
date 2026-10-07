@@ -781,3 +781,89 @@
   box-shadow: 1px 0 0 var(--surface-2);
   background: linear-gradient(135deg, #3a4250, #262c36);
 }
+
+/* ------------------------------------------------------------------ */
+/* Combat pairs (endstep-style): an attacker and its blockers share a number */
+
+.tile-pair {
+  position: absolute;
+  top: -10px;
+  left: -8px;
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--bg);
+  border: 2.5px solid var(--bad);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.tile-pair.pair-blocker {
+  border-color: var(--info);
+}
+.tile-pair.is-pending {
+  border-style: dashed;
+}
+.tile-pair.is-current {
+  background: var(--bad);
+  color: #fff;
+}
+.tile.is-tapped .tile-pair {
+  top: calc(50% - var(--cw) / 2 - 10px);
+  left: calc(50% - var(--ch) / 2 - 8px);
+}
+.board .tile.is-pair-attacker .tile-card {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bad) 85%, transparent), 0 0 14px color-mix(in srgb, var(--bad) 35%, transparent);
+}
+.board .tile.is-pair-blocker .tile-card {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--info) 85%, transparent), 0 0 14px color-mix(in srgb, var(--info) 35%, transparent);
+}
+/* The attacker a block click goes to right now: unmistakable. */
+.board .tile.is-pair-current .tile-card {
+  box-shadow: 0 0 0 3px var(--bad), 0 0 24px color-mix(in srgb, var(--bad) 60%, transparent) !important;
+}
+.board .tile.is-pair-current .tile-slot::after {
+  content: 'Blocking this';
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  z-index: 7;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bad);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.cmb-num {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid var(--bad);
+  font-weight: 800;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg);
+}
+.combat-band:has(.cmb-num) {
+  grid-template-columns: auto minmax(0, 1.2fr) auto minmax(0, 1fr);
+}
+@media (max-width: 560px) {
+  .combat-band:has(.cmb-num) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
