@@ -288,6 +288,7 @@ function mergeMarks(all: (CardStackMarks | undefined)[]): CardStackMarks | undef
 function TileInner({ card, attachments, inHand, side }: TileProps) {
   const boardMarks = useBoardMarks();
   const stackMarks = inHand ? undefined : boardMarks?.stack.get(card.id);
+  const combatMark = inHand ? undefined : boardMarks?.combat?.get(card.id);
   const name = card.name || card.alt?.name || '';
   const info = useCardInfo(name || null);
   const { open, handlers, mark, hint, chosen, playing } = useOpen(card);
@@ -320,6 +321,8 @@ function TileInner({ card, attachments, inHand, side }: TileProps) {
         hint && 'is-hint',
         attachments && attachments.length > 0 && 'has-attach',
         stackMarks && (stackMarks.targets.length > 0 ? 'is-stack-target' : stackMarks.sources.length > 0 && 'is-stack-source'),
+        combatMark && `is-pair-${combatMark.role}`,
+        combatMark?.current && 'is-pair-current',
       )}
       role="button"
       tabIndex={0}
@@ -347,6 +350,15 @@ function TileInner({ card, attachments, inHand, side }: TileProps) {
             </button>
           )}
           <StackBadges marks={stackMarks} />
+          {combatMark && (
+            <span
+              className={cx('tile-pair', `pair-${combatMark.role}`, combatMark.pending && 'is-pending', combatMark.current && 'is-current')}
+              title={combatMark.role === 'attacker' ? `Attacker ${combatMark.n}${combatMark.current ? ' — the one your blocks go to now' : ''}` : `Blocks attacker ${combatMark.n}`}
+              aria-label={combatMark.role === 'attacker' ? `Attacker ${combatMark.n}` : `Blocks attacker ${combatMark.n}`}
+            >
+              {combatMark.n}
+            </span>
+          )}
           {(attacking || blocking) && (
             <span className={cx('tile-flag', attacking ? 'flag-attack' : 'flag-block')} title={attacking ? 'Attacking' : 'Blocking'}>
               {attacking ? <IconSword size={11} /> : <IconShield size={11} />}

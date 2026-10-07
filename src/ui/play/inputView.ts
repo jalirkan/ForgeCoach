@@ -258,10 +258,10 @@ export function describeInput(
     return {
       ...v,
       mode: 'block',
-      title: m ? `Block ${m[1]}?` : 'Declare blockers',
+      title: 'Declare blockers',
       detail: m
-        ? 'Tap one of your creatures to block it, or tap another attacker to switch. Confirm when done.'
-        : 'Tap your creature, then the attacker it should block. Confirm when done.',
+        ? `Now blocking ${m[1]} (outlined). Click your creature to block it — or click another attacker first to block that one. Then confirm.`
+        : 'Click an attacker, then click your creature that blocks it. Then confirm.',
       ok: btn(ok, 'confirm blocks'),
       cancel: btn(cancel, null),
       primary: ok.enabled ? 'ok' : null,

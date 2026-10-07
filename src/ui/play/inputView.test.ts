@@ -143,7 +143,8 @@ describe('describeInput', () => {
     expect(a.cancel.meaning).toBe('attack with everything');
     const b = describeInput(input('Select creatures to block Aerial Doombot (56) or select another attacker to declare blockers for.'), state({ activePlayer: OPP }), ME);
     expect(b.mode).toBe('block');
-    expect(b.title).toBe('Block Aerial Doombot?');
+    expect(b.title).toBe('Declare blockers');
+    expect(b.detail).toContain('Now blocking Aerial Doombot');
     expect(b.blockingAttackerId).toBe(56);
   });
 

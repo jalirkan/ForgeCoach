@@ -34,8 +34,8 @@ describe('selectionSummary', () => {
     const zero = selectionSummary(v, none);
     expect(zero).toMatchObject({ active: true, count: 0, confirm: 'No blocks' });
     const two = selectionSummary(v, { attackers: 0, blockers: 2 });
-    expect(two).toMatchObject({ count: 2, confirm: 'Done blocking', line: '2 blockers assigned — click more or confirm' });
-    expect(selectionSummary(v, { attackers: 0, blockers: 1 }).line).toBe('1 blocker assigned — click more or confirm');
+    expect(two).toMatchObject({ count: 2, confirm: 'Confirm blocks', line: '2 blockers assigned — same number = who blocks whom' });
+    expect(selectionSummary(v, { attackers: 0, blockers: 1 }).line).toBe('1 blocker assigned — same number = who blocks whom');
   });
 
   it('counts attackers', () => {

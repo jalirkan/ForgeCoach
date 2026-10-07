@@ -61,12 +61,10 @@ export function combatLinks(state: GameStateBody | null, pending: ReadonlyMap<nu
     if (atk === null || confirmed.has(blocker) || !seen.has(blocker) || !seen.has(atk)) continue;
     push(blocks, atk, { id: blocker, pending: true });
   }
-  let n = 0;
-  const attackerOrder = [...new Set([...bands.flatMap((b) => b.attackerIds), ...blocks.keys()])];
-  for (const atk of attackerOrder) {
+  const numbers = attackerNumbers(bands, blocks.keys(), seen);
+  for (const [atk, n] of numbers) {
     const bl = blocks.get(atk);
     if (!bl || bl.length === 0) continue;
-    n++;
     for (const b of bl) out.push({ kind: 'block', from: { card: b.id }, to: { card: atk }, n, pending: b.pending });
   }
   for (const b of bands) {
@@ -80,6 +78,62 @@ export function combatLinks(state: GameStateBody | null, pending: ReadonlyMap<nu
       }
     }
   }
+  return out;
+}
+
+/**
+ * One number per attacker (endstep-style), in the engine's band order, then
+ * any attacker only this browser's clicks know of: the attacker and every
+ * creature blocking it wear the same number.
+ */
+function attackerNumbers(bands: readonly { attackerIds: number[] }[], extra: Iterable<number>, seen: Map<number, Card>): Map<number, number> {
+  const m = new Map<number, number>();
+  for (const id of [...bands.flatMap((b) => b.attackerIds), ...extra]) if (seen.has(id) && !m.has(id)) m.set(id, m.size + 1);
+  return m;
+}
+
+export interface CombatMark {
+  /** The pair's number: the attacker's, shared by its blockers. */
+  n: number;
+  role: 'attacker' | 'blocker';
+  /** Only this browser's clicks say so (the engine reports a declaration on confirm). */
+  pending: boolean;
+  /** The attacker a block click goes to right now (Forge's "current attacker"). */
+  current: boolean;
+  /** What an attacker attacks: a player id or a planeswalker / battle id, when the wire says. */
+  defender: { kind: 'player' | 'card'; id: number } | null;
+}
+
+/**
+ * The numbered badges for combat: every attacker and its blockers share a
+ * number. `pending` maps a blocker this browser clicked to its attacker;
+ * `pendingAttackers` are attackers clicked but not confirmed; `current` is
+ * the attacker the block prompt names.
+ */
+export function combatMarks(
+  state: GameStateBody | null,
+  pending: ReadonlyMap<number, number | null> = new Map(),
+  pendingAttackers: ReadonlySet<number> = new Set(),
+  current: number | null = null,
+): Map<number, CombatMark> {
+  const out = new Map<number, CombatMark>();
+  if (!state) return out;
+  const seen = visibleOnBattlefield(state);
+  const bands = state.combat?.bands ?? [];
+  const confirmedAtk = new Set(bands.flatMap((b) => b.attackerIds));
+  const pendingBlk = [...pending].filter(([b, a]) => a !== null && seen.has(b) && seen.has(a)) as [number, number][];
+  const numbers = attackerNumbers(bands, [...pendingAttackers, ...pendingBlk.map(([, a]) => a)], seen);
+  const defenderOf = new Map<number, CombatMark['defender']>();
+  for (const b of bands) for (const a of b.attackerIds) defenderOf.set(a, b.defender ? { kind: b.defender.kind, id: b.defender.id } : null);
+  for (const [id, n] of numbers) out.set(id, { n, role: 'attacker', pending: !confirmedAtk.has(id), current: id === current, defender: defenderOf.get(id) ?? null });
+  for (const b of bands)
+    for (const blk of b.blockerIds) {
+      const a = b.attackerIds.find((x) => numbers.has(x));
+      if (a !== undefined && seen.has(blk) && !out.has(blk)) out.set(blk, { n: numbers.get(a)!, role: 'blocker', pending: false, current: false, defender: null });
+    }
+  for (const [blk, a] of pendingBlk) if (!out.has(blk) && numbers.has(a)) out.set(blk, { n: numbers.get(a)!, role: 'blocker', pending: true, current: false, defender: null });
+  // The current attacker of a block prompt, even before anything blocks it.
+  if (current !== null && seen.has(current) && !out.has(current)) out.set(current, { n: numbers.size + 1, role: 'attacker', pending: true, current: true, defender: null });
   return out;
 }
 

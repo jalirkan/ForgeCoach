@@ -12,7 +12,8 @@ import type { GameLog } from '../log.ts';
 import { cardIndex, cardName, phaseLabel } from '../decisions.ts';
 import { chosenColors, manaSummary, turnFacts, type ManaSource } from '../state.ts';
 import { cachedMap, useCardsVersion } from './cardData.ts';
-import { BoardMarksContext, useCardActions, usePlay, type BoardMarks } from './cardContext.ts';
+import { BoardMarksContext, useBoardMarks, useCardActions, usePlay, type BoardMarks, type CardCombatMark } from './cardContext.ts';
+import { combatMarks } from './play/combatLines.ts';
 import { StackPanel } from './StackPanel.tsx';
 import { BoardArrows } from './BoardArrows.tsx';
 import { stackEntries, stackMarks, type StackEntry } from './stackModel.ts';
@@ -36,11 +37,14 @@ interface BoardProps {
   overlay?: ReactNode;
   /** Play draws the stack in its own floating panel (StackPanel `float`); the board then leaves it out of the midline. */
   stackElsewhere?: boolean;
+  /** Combat badges with this browser's unconfirmed clicks folded in (play); else the wire's own bands. */
+  combatMarks?: ReadonlyMap<number, CardCombatMark>;
 }
 
-export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackElsewhere }: BoardProps) {
+export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackElsewhere, combatMarks: combatOverride }: BoardProps) {
   const stack = useMemo(() => stackEntries(state, seat), [state, seat]);
-  const marks = useMemo<BoardMarks>(() => ({ stack: stackMarks(stack) }), [stack]);
+  const combat = useMemo(() => combatOverride ?? combatMarks(state), [combatOverride, state]);
+  const marks = useMemo<BoardMarks>(() => ({ stack: stackMarks(stack), combat }), [stack, combat]);
   const me = state.players.find((p) => p.id === seat) ?? state.players[0];
   const opps = state.players.filter((p) => p !== me);
   const byId = useMemo(() => {
@@ -491,6 +495,7 @@ function CardRef({ card, state }: { card: AnyCard | undefined; state: GameStateB
 function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {
   const idx = useMemo(() => cardIndex(state), [state]);
   const play = usePlay();
+  const marks = useBoardMarks();
   // In play, blockers you have clicked but not yet confirmed (the engine reports them on confirm).
   const blockersOf = (b: { attackerIds: number[]; blockerIds: number[] }) => {
     const extra = play ? b.attackerIds.flatMap((a) => play.blockersFor(a)).filter((id) => !b.blockerIds.includes(id)) : [];
@@ -507,8 +512,15 @@ function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {
         <IconSword size={14} /> Combat
       </div>
       <ul className="combat-list">
-        {state.combat!.bands.map((b, i) => (
+        {state.combat!.bands.map((b, i) => {
+          const n = b.attackerIds.map((id) => marks?.combat?.get(id)?.n).find((x) => x !== undefined);
+          return (
           <li key={i} className="combat-band">
+            {n !== undefined && (
+              <span className="cmb-num" aria-label={`Pair ${n}`}>
+                {n}
+              </span>
+            )}
             <div className="combat-side combat-att">
               {b.attackerIds.map((id) => (
                 <CardRef key={id} card={idx.get(id)} state={state} />
@@ -530,7 +542,8 @@ function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {
               )}
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
