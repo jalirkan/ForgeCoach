@@ -478,12 +478,22 @@ function coachSample(s, w) {
     .evaluate(() => document.querySelector('.play-coach')?.innerText ?? '')
     .then((text) => {
       const has = /keep your mana up/i.test(text) || (opts.coach === 'real' && /\S{40,}/.test(text.replace(/\s+/g, '')));
-      if (has) w.seenAnswer = true;
+      if (has) {
+        w.seenAnswer = true;
+        w.answerSockets = s.tap.sockets;
+      }
       if (st.activePlayer !== s.tap.seat && w.seenAnswer) {
         w.samples++;
-        if (!has) {
+        // A new plan being written ("Thinking…") is not a blank: a question is on its way.
+        const inFlight = s.coach.some((q) => q.end === null);
+        if (!has && !inFlight) {
           w.blanks++;
-          if (w.blanks === 1) void s.finding({ kind: 'coach-blank', what: `during the opponent's turn ${st.turn} the coach panel shows no advice (it had answered before)` });
+          // A reload since the last advice is its own case: the page's advice lives in memory.
+          const reloaded = s.tap.sockets > (w.answerSockets ?? 0);
+          if (w.blanks === 1 || (reloaded && !w.toldReload)) {
+            if (reloaded) w.toldReload = true;
+            void s.finding({ kind: 'coach-blank', what: `during the opponent's turn ${st.turn} the coach panel shows no advice (it had answered before${reloaded ? '; the page was reloaded since' : ''})` });
+          }
         }
       }
     })
@@ -498,15 +508,24 @@ function coachSummary(game, seats, w) {
   const qs = all.filter((c) => !c.over);
   const perRound = {};
   for (const q of qs) perRound[q.round ?? 0] = (perRound[q.round ?? 0] ?? 0) + 1;
-  const over = Object.entries(perRound).filter(([r, n]) => Number(r) > 0 && n > 1);
+  // Auto-coach asks one plan per turn cycle: per planned turn, one question (the fake helper says which
+  // turn each plans); a question about a moment is never auto-coach's (the monkey never asks).
+  const typeOfQ = (q) => (s.helperAsks ?? []).find((a) => Math.abs(a.at - q.start) < 1500)?.type ?? null;
+  const byPlan = {};
+  for (const q of qs) {
+    const t = /^plan my turn (\d+)/.exec(typeOfQ(q) ?? '')?.[1];
+    const k = t ? `plan ${t}` : `other ${typeOfQ(q) ?? '?'}`;
+    (byPlan[k] ??= []).push(q);
+  }
+  const over = Object.entries(byPlan).filter(([k, l]) => l.length > 1 || k.startsWith('other'));
   if (opts.coach === 'fake' && over.length) {
-    // What each question was ("plan my turn 7", "attack"), from the fake helper's own record of it.
-    const typeOf = (q) => (s.helperAsks ?? []).find((a) => Math.abs(a.at - q.start) < 1500)?.type ?? null;
-    const detail = (r) => qs.filter((q) => String(q.round ?? 0) === r).map((q) => `T${q.turn} ${q.phase ?? '?'}${q.mine ? ' (yours)' : ''}${q.sockets > 1 ? ' after a reload' : ''}${typeOf(q) ? ` [${typeOf(q)}]` : ''}`).join(' + ');
-    game.findings.push({ game: game.id, seat: s.label, kind: 'coach-cadence', what: `auto-coach asked more than once in a turn cycle: ${over.map(([r, n]) => `round ${r}: ${n} (${detail(r)})`).join(', ')}`, shot: null });
+    const words = (l) => l.map((q) => `T${q.turn} ${q.phase ?? '?'}${q.sockets > 1 ? ' after a reload' : ''}`).join(' + ');
+    game.findings.push({ game: game.id, seat: s.label, kind: 'coach-cadence', what: `auto-coach asked more than once per turn cycle: ${over.map(([k, l]) => `${k} ×${l.length} (${words(l)})`).join(', ')}`, shot: null });
   }
   let lat = qs.filter((q) => q.end && !q.failed).map((q) => q.end - q.start);
   let source = 'page';
+  let firstText = [];
+  let promptKB = [];
   // The real helper's own log says how long each answer took ("done …; 24449 ms"); the page cannot always
   // tell (a streamed answer the board stops reading after its end shows as aborted).
   if (opts.coach === 'real') {
@@ -514,11 +533,15 @@ function coachSummary(game, seats, w) {
     const lines = existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter((l) => /POST \/coach /.test(l)) : [];
     const fresh = lines.slice(coachLogSeen);
     coachLogSeen = lines.length;
-    lat = fresh.map((l) => /-> 200 \(done [^)]*?(\d+) ms\)/.exec(l)?.[1]).filter(Boolean).map(Number);
+    const done = fresh.filter((l) => /-> 200 \(done /.test(l));
+    lat = done.map((l) => /(\d+) ms\)\s*$/.exec(l)?.[1]).filter(Boolean).map(Number);
+    // mtg-table D410's timing line: the prompt's size and the first word's wait, per answer.
+    firstText = done.map((l) => /first text (\d+) ms/.exec(l)?.[1]).filter(Boolean).map(Number);
+    promptKB = done.map((l) => /([\d.]+) KB prompt/.exec(l)?.[1]).filter(Boolean).map(Number);
     source = 'helper log';
   }
   const list = qs.map((q) => ({ at: Math.round((q.start - game.t0) / 100) / 10, ms: q.end ? q.end - q.start : null, turn: q.turn, phase: q.phase, stopped: q.failed ?? null, type: (s.helperAsks ?? []).find((a) => Math.abs(a.at - q.start) < 1500)?.type ?? null }));
-  return { questions: qs.length, afterOver: all.length - qs.length, list, answered: lat.length, latencySource: source, perRound, latencyMs: lat, stopped: qs.filter((q) => q.failed).length, blankSamples: w.blanks, oppTurnSamples: w.samples };
+  return { questions: qs.length, afterOver: all.length - qs.length, list, answered: lat.length, latencySource: source, ...(firstText.length ? { firstTextMs: firstText } : {}), ...(promptKB.length ? { promptKB } : {}), perRound, latencyMs: lat, stopped: qs.filter((q) => q.failed).length, blankSamples: w.blanks, oppTurnSamples: w.samples };
 }
 
 // ---------------------------------------------------------------------------
