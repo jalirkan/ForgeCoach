@@ -26,7 +26,7 @@ import { tableLines } from '../../play/tableView.ts';
 import { Board } from '../Board.tsx';
 import { CardDetail, HoverPreview } from '../CardDetail.tsx';
 import { BoardStateRef, CardActionsContext, PlayContext, type CardActions, type PlayInteraction } from '../cardContext.ts';
-import { cachedMap, prefetchCards, useCardsVersion } from '../cardData.ts';
+import { cachedMap, prefetchCards, safeCached, useCardsVersion } from '../cardData.ts';
 import { GuideSheet } from '../GuideSheet.tsx';
 import { useMediaQuery } from '../hooks.ts';
 import { IconFlag, IconGear, IconKeyboard, IconMore, IconSpark, IconX } from '../Icons.tsx';
@@ -289,7 +289,12 @@ export function PlayView({
   );
 
   // ---- interaction context for tiles and avatars
-  const ctx: ClickContext = useMemo(() => ({ view, input, state, seat }), [view, input, state, seat]);
+  // `oracle`: the cached card text, for an older engine's graveyard fallback (cardsVersion re-reads it).
+  const ctx: ClickContext = useMemo(
+    () => ({ view, input, state, seat, oracle: (name: string) => safeCached(name)?.oracleText }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [view, input, state, seat, cardsVersion],
+  );
   const play = useMemo<PlayInteraction>(
     () => ({
       mark: (c: AnyCard) => cardRole(c, ctx),

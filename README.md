@@ -987,8 +987,10 @@ job after a build. The fake engine also runs on its own, for a browser or
 `e2e/playtest/` plays complete games through the real UI. A monkey reads
 what the engine offers at every decision from the protocol stream: the ask
 and its options, the input's buttons and selectable cards, and at priority
-the seat's own cards, with Forge's card scripts saying which can be activated
-or cast from where. It finds the on-screen control for one of them and clicks
+the seat's own cards: outside the battlefield the engine's own list of what a
+click would play (`state.playable`, mtg-table M61) when the engine sends one,
+else Forge's card scripts saying which can be activated or cast from where.
+It finds the on-screen control for one of them and clicks
 it: board tiles, attached chips, the hand, the zone picker and viewer,
 dialogs, the decision panel, combat and mana payment. Its choices are seeded:
 sometimes Forge's own default, sometimes random among the legal options,

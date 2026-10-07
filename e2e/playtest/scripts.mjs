@@ -4,9 +4,11 @@
  *
  * What a card can do outside "cast it from your hand", from Forge's own card
  * scripts (res/cardsfolder/cardsfolder.zip in the Forge release the engine
- * runs). At priority the protocol does not list what is playable (mtg-table
- * protocol §3.2: `abilities` is `[]` in every recording; Forge's
- * InputPassPriority judges any click), so the playtest's priority candidates —
+ * runs). An engine before mtg-table M61 does not list what is playable
+ * (protocol §3.2: `abilities` is `[]` in every recording; Forge's
+ * InputPassPriority judges any click; since M61 `state.playable` lists the
+ * cards outside the battlefield, and the monkey uses that instead), so the
+ * playtest's priority candidates —
  * the cards whose click the engine may accept — come from here: activated
  * abilities on the battlefield (Equip, Crew…), abilities usable from the hand
  * (cycling, channel, ninjutsu…), and casting or activating from the graveyard

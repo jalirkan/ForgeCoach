@@ -4,8 +4,10 @@
  *
  * A UI-only player. At every decision it reads what the engine offers from
  * the protocol stream (tap.mjs: the open ask and its options, the input's
- * buttons and selectable cards; at priority, the seat's own cards, with
- * Forge's card scripts saying which can be activated or cast from where),
+ * buttons and selectable cards; at priority, the seat's own cards — outside
+ * the battlefield the engine's own `state.playable` (mtg-table M61) when it
+ * sends one, else Forge's card scripts saying which can be activated or cast
+ * from where),
  * finds the on-screen control for each option and clicks one. It never
  * sends a frame: a click either reaches the wire as the app's own act or
  * answer, or it is a finding.
@@ -165,7 +167,7 @@ export class Monkey {
       const peek = document.querySelector('.ask-peek');
       const eot = document.querySelector('.ab-eot');
       const pips = [...document.querySelectorAll('.ab-pool-pip')].map((el) => ({ t: tag(el), vis: vis(el) }));
-      const pills = [...document.querySelectorAll('[data-zone-pill]')].map((el) => ({ t: tag(el), zone: el.getAttribute('data-zone-pill'), player: Number(el.closest('[data-phead-player]')?.getAttribute('data-phead-player') ?? -1), enabled: !el.disabled, vis: vis(el), pick: el.classList.contains('is-pick') }));
+      const pills = [...document.querySelectorAll('[data-zone-pill]')].map((el) => ({ t: tag(el), zone: el.getAttribute('data-zone-pill'), player: Number(el.closest('[data-phead-player]')?.getAttribute('data-phead-player') ?? -1), enabled: !el.disabled, vis: vis(el), pick: el.classList.contains('is-pick'), playable: el.getAttribute('data-playable') === 'true' }));
       return {
         cards,
         buttons,
@@ -720,6 +722,9 @@ export class Monkey {
     const s = this.tap.state;
     const me = this.tap.me();
     if (!s || !me) return [];
+    // An engine with mtg-table M61 says itself which cards outside the battlefield a click plays:
+    // those are the candidates there, each one the board must offer (Cauldron Familiar in the graveyard included).
+    if (Array.isArray(s.playable)) return [...this.listedCandidates(s.playable, me), ...this.battlefieldCandidates(me)];
     const myTurn = s.activePlayer === this.tap.seat;
     const mainEmpty = myTurn && (s.phase === 'MAIN1' || s.phase === 'MAIN2') && s.stack.length === 0;
     const untapped = me.zones.battlefield.cards.filter((c) => !c.hidden && !c.tapped && isLand(c)).length + Object.values(me.manaPool ?? {}).reduce((a, b) => a + b, 0);
@@ -737,15 +742,7 @@ export class Monkey {
       }
       if (fl?.hand?.length) out.push({ c, zone: 'hand', why: `hand ability (${fl.hand.join(', ')})`, w: 1.2, need: true, rare: 'hand-ability' });
     }
-    for (const c of me.zones.battlefield.cards) {
-      if (c.hidden || c.controller !== this.tap.seat) continue;
-      const fl = this.scripts.get(c.name);
-      const abil = (fl?.bf ?? []).filter((x) => x !== 'mana');
-      if (abil.length) {
-        const equip = abil.includes('Equip');
-        out.push({ c, zone: 'battlefield', why: `ability (${abil.join(', ')})`, w: equip ? 3 : 2.2, need: true, rare: equip ? (c.attachedToId ? 'equip-attached' : 'equip') : 'activate', attached: !!c.attachedToId });
-      }
-    }
+    out.push(...this.battlefieldCandidates(me));
     for (const c of me.zones.graveyard.cards) {
       if (c.hidden) continue;
       const fl = this.scripts.get(c.name);
@@ -756,11 +753,47 @@ export class Monkey {
     return out;
   }
 
-  /** A graveyard card's control: the zone viewer opened from the player's graveyard pill. */
-  async graveyardControl(dom, c) {
-    const pill = dom.pills.find((p) => p.zone === 'graveyard' && p.player === this.tap.seat && p.vis && p.enabled);
+  /** M61: the engine's own list, one candidate per card (hand, graveyard, exile, command, library). */
+  listedCandidates(list, me) {
+    const out = [];
+    for (const e of list) {
+      const c = me.zones[e.zone]?.cards.find((x) => x.id === e.cardId && !x.hidden);
+      if (!c) continue;
+      const what = e.abilities.map((a) => a.label.split(/[.:]/)[0]).join('; ').slice(0, 80);
+      if (e.zone === 'hand') {
+        const land = isLand(c);
+        out.push({ c, zone: 'hand', why: land ? 'land' : e.abilities.some((a) => a.isSpell) ? 'spell' : `hand ability (${what})`, w: land ? 5 : 2.5, need: true, x: /\{X\}/.test(c.manaCost ?? '') });
+      } else {
+        out.push({ c, zone: e.zone, why: `from the ${e.zone} (${what})`, w: 2, need: true, rare: e.zone === 'graveyard' ? 'graveyard-cast' : `${e.zone}-play` });
+      }
+    }
+    return out;
+  }
+
+  /** Activated abilities of the seat's permanents, from Forge's card scripts. */
+  battlefieldCandidates(me) {
+    const out = [];
+    for (const c of me.zones.battlefield.cards) {
+      if (c.hidden || c.controller !== this.tap.seat) continue;
+      const fl = this.scripts.get(c.name);
+      const abil = (fl?.bf ?? []).filter((x) => x !== 'mana');
+      if (abil.length) {
+        const equip = abil.includes('Equip');
+        out.push({ c, zone: 'battlefield', why: `ability (${abil.join(', ')})`, w: equip ? 3 : 2.2, need: true, rare: equip ? (c.attachedToId ? 'equip-attached' : 'equip') : 'activate', attached: !!c.attachedToId });
+      }
+    }
+    return out;
+  }
+
+  /** A card's control in a zone the board shows behind a pill (graveyard, exile, command, library): its viewer. */
+  async zoneControl(dom, c, zone = 'graveyard') {
+    const pill = dom.pills.find((p) => p.zone === zone && p.player === this.tap.seat && p.vis && p.enabled);
     if (!pill) return null;
-    await this.click(pill.t, 'your graveyard');
+    // M61: the board marks a pill whose zone holds a card you can play; a listed card behind an unmarked pill is a finding too.
+    if (Array.isArray(this.tap.state?.playable) && !pill.playable && !pill.pick) {
+      await this.unreachable(`your ${zone} pill is not marked though ${c.name} (${c.id}) in it is playable`, { input: this.tap.input, cardId: c.id, card: c, key: `pill|${zone}|${c.id}` });
+    }
+    await this.click(pill.t, `your ${zone}`);
     await sleep(300);
     const d2 = await this.dom();
     return { dom: d2, ctl: this.cardControls(d2, c.id)[0] ?? null };
@@ -775,15 +808,16 @@ export class Monkey {
     const turnKey = `${this.tap.gameId}:${s?.turn}`;
     const used = this.turnClicks.get(turnKey) ?? 0;
     const cands = this.priorityCandidates();
-    // Reachability: each candidate needs a marked control (the graveyard's through its viewer, checked when chosen).
+    // Reachability: each candidate needs a marked control (a pill zone's through its viewer, checked when chosen).
     // A board a moment behind the wire gets 1.5 s to catch up before a missing control counts.
-    if (cands.some((k) => k.zone !== 'graveyard' && !this.cardControls(dom, k.c.id).length)) {
+    const behindPill = (k) => k.zone !== 'hand' && k.zone !== 'battlefield';
+    if (cands.some((k) => !behindPill(k) && !this.cardControls(dom, k.c.id).length)) {
       await sleep(1500);
       if (this.tap.input !== i || this.tap.ask) return 'moved-on';
       dom = await this.dom();
     }
     for (const k of cands) {
-      if (k.zone === 'graveyard') continue;
+      if (behindPill(k)) continue;
       if (!this.cardControls(dom, k.c.id).length) {
         await this.unreachable(`${k.c.name} (${k.c.id}, ${k.zone}${k.attached ? ', attached' : ''}): ${k.why} — no clickable control at "${firstLine(i.prompt)}" (${s?.phase})`, { input: i, cardId: k.c.id, card: k.c, key: `cand|${k.c.id}|${k.why}` });
       }
@@ -817,17 +851,17 @@ export class Monkey {
     if (k.x) this.count('rare', 'x-spell');
     let d = dom;
     let ctl = this.cardControls(dom, k.c.id)[0];
-    if (k.zone === 'graveyard') {
-      const g = await this.graveyardControl(dom, k.c);
+    if (behindPill(k)) {
+      const g = await this.zoneControl(dom, k.c, k.zone);
       if (g) {
         d = g.dom;
         ctl = g.ctl;
       }
       if (!ctl) {
         this.deadEnds.add(k.c.id);
-        await this.unreachable(`${k.c.name} (${k.c.id}) in your graveyard: ${k.why} — the graveyard shows no playable control at "${firstLine(i.prompt)}" (${s?.phase})`, { input: i, cardId: k.c.id, card: k.c, key: `gy|${k.c.id}|${k.why}` });
+        await this.unreachable(`${k.c.name} (${k.c.id}) in your ${k.zone}: ${k.why} — the ${k.zone} shows no playable control at "${firstLine(i.prompt)}" (${s?.phase})`, { input: i, cardId: k.c.id, card: k.c, key: `gy|${k.c.id}|${k.why}` });
         await this.page.keyboard.press('Escape').catch(() => {});
-        return 'priority:gy-unreachable';
+        return k.zone === 'graveyard' ? 'priority:gy-unreachable' : `priority:${k.zone}-unreachable`;
       }
     }
     if (!ctl) return 'priority:skip';

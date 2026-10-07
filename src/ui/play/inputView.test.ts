@@ -231,6 +231,60 @@ describe('cardRole', () => {
     expect(cardRole(strands, pay)).toBeNull();
   });
 
+  it("the engine's playable list (mtg-table M61) decides cards outside the battlefield: Cauldron Familiar from the graveyard", () => {
+    const familiar = card(50, ME, 'graveyard', 'Creature - Cat', { name: 'Cauldron Familiar' });
+    const strands = card(51, ME, 'graveyard', 'Instant', { keywords: ['FLASHBACK'] });
+    const exiled = card(52, ME, 'exile', 'Creature - Human', { name: 'Adventurer' });
+    const theirs = card(53, OPP, 'graveyard', 'Creature - Cat', { name: 'Cauldron Familiar' });
+    const ability = { abilityId: 9, label: 'Return Cauldron Familiar from your graveyard to the battlefield.', isSpell: false };
+    const st = state({
+      playable: [
+        { cardId: 50, zone: 'graveyard', abilities: [ability] },
+        { cardId: 52, zone: 'exile', abilities: [{ abilityId: 10, label: 'Cast Adventurer', isSpell: true }] },
+        { cardId: 1, zone: 'hand', abilities: [{ abilityId: 11, label: 'Cast Card 1', isSpell: true }] },
+        // A broken or hostile list naming the opponent's card is not believed.
+        { cardId: 53, zone: 'graveyard', abilities: [ability] },
+      ],
+    });
+    const main = ctxFor(input(PRIORITY), st);
+    expect(cardRole(familiar, main)).toBe('act');
+    expect(cardRole(exiled, main)).toBe('act');
+    expect(cardRole(hand1!, main)).toBe('act');
+    // Not listed: the engine would not play it now, keyword or not.
+    expect(cardRole(hand2!, main)).toBeNull();
+    expect(cardRole(strands, main)).toBeNull();
+    expect(cardRole(theirs, main)).toBeNull();
+    // The battlefield keeps its own rule.
+    expect(cardRole(land!, main)).toBe('act');
+    // At instant speed on their turn, the list still decides.
+    const opp = state({ activePlayer: OPP, phase: 'COMBAT_BEGIN', playable: [{ cardId: 50, zone: 'graveyard', abilities: [ability] }] });
+    const c = ctxFor(input('Priority: Human\nTurn: 4 (Forge AI)\nPhase: Beginning of Combat Step\nStack: Empty'), opp);
+    expect(cardRole(familiar, c)).toBe('act');
+    expect(cardRole(hand2!, c)).toBeNull();
+    // Paying: the list is not about that.
+    const pay = ctxFor(input('Card 7 - Creature 2 / 2\n\nPay Mana Cost: {1}{W}', { buttons: { ok: { label: 'Auto', enabled: true }, cancel: { label: 'Cancel', enabled: true } } }), st);
+    expect(cardRole(familiar, pay)).toBeNull();
+  });
+
+  it('an older engine (no list, or null off priority) falls back: keywords, then the cached oracle text', () => {
+    const familiar = card(50, ME, 'graveyard', 'Creature - Cat', { name: 'Cauldron Familiar' });
+    const pyro = card(54, ME, 'graveyard', 'Creature - Human Shaman', { name: 'Seasoned Pyromancer' });
+    const raise = card(55, ME, 'graveyard', 'Sorcery', { name: 'Raise Dead' });
+    const oracle: Record<string, string> = {
+      'Cauldron Familiar': 'When Cauldron Familiar enters, each opponent loses 1 life and you gain 1 life.\nSacrifice a Food: Return Cauldron Familiar from your graveyard to the battlefield.',
+      'Seasoned Pyromancer': 'When Seasoned Pyromancer enters, discard two cards, then draw two cards.\n{3}{R}{R}, Exile Seasoned Pyromancer from your graveyard: Create two 1/1 red Elemental creature tokens.',
+      'Raise Dead': 'Return target creature card from your graveyard to your hand.',
+    };
+    const withOracle = { ...ctxFor(input(PRIORITY), state({ playable: null })), oracle: (n: string) => oracle[n] };
+    expect(cardRole(familiar, withOracle)).toBe('act');
+    expect(cardRole(pyro, withOracle)).toBe('act');
+    expect(cardRole(raise, withOracle)).toBeNull();
+    // No text cached yet: today's keyword rule only.
+    expect(cardRole(familiar, ctxFor(input(PRIORITY)))).toBeNull();
+    // The hand keeps today's rule too.
+    expect(cardRole(hand2!, withOracle)).toBe('act');
+  });
+
   it("the engine's explicit selection wins", () => {
     const i = input('Select target creature', { buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: true } }, selectable: { cardIds: [5], min: 1, max: 1, mode: 'cards' } });
     const c = ctxFor(i);

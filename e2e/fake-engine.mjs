@@ -34,6 +34,11 @@
  *   - observers get the seat's cached hello_ok, state, over-or-latest input
  *     and open ask, then every later s2c frame; they are never answered.
  *
+ * With `playable: true` it also writes mtg-table M61's `state.playable` (the
+ * seat's cards outside the battlefield a click would play, null off its
+ * priority); without it, it is an engine from before M61. Scene `graveyard`
+ * is `main3` with Cauldron Familiar in your graveyard.
+ *
  * Test hooks: `dropSeat()` (the TCP connection cut, the browser sees 1006),
  * `restart()` (a new process under the same game id: every socket cut, an
  * optional down time, then a fresh session whose seq series starts at 1),
@@ -42,7 +47,7 @@
  * the record of every frame a client sent (`received`) and every connection.
  *
  * Run it on its own to point a browser (or e2e/play.e2e.mjs) at it:
- *   node e2e/fake-engine.mjs [--port 8642] [--scene pregame|main3] [--drop-mode default|reask]
+ *   node e2e/fake-engine.mjs [--port 8642] [--scene pregame|main3|graveyard] [--drop-mode default|reask] [--playable]
  * with POST /control/drop, /control/restart[?scene=…], /control/reset[?scene=…]
  * and GET /control/log.
  */
@@ -64,6 +69,12 @@ const DEFS = {
   Memnite: { setCode: 'SOM', manaCost: '{0}', types: 'Artifact Creature - Construct', power: '1', toughness: '1', keywords: [], cost: 0 },
   'Hill Giant': { setCode: 'M10', manaCost: '{3}{R}', types: 'Creature - Giant', power: '3', toughness: '3', keywords: [], cost: 4 },
   Shock: { setCode: 'M21', manaCost: '{R}', types: 'Instant', cost: 1, burn: 2 },
+  // An activated ability from the graveyard that is no keyword (the full-game playtest's finding).
+  // The fake model asks no Food for it.
+  'Cauldron Familiar': {
+    setCode: 'ELD', manaCost: '{B}', types: 'Creature - Cat', power: '1', toughness: '1', keywords: [], cost: 1,
+    fromGraveyard: 'Sacrifice a Food: Return Cauldron Familiar from your graveyard to the battlefield.',
+  },
 };
 
 const HAND = ['Mountain', 'Raging Goblin', 'Memnite', 'Shock', 'Mountain', 'Hill Giant', 'Mountain'];
@@ -135,8 +146,11 @@ function inputBody(prompt, ok, cancel, extra = {}) {
 // One game: the rules model and its script. `out(type, body)` puts a frame on the wire.
 
 class Game {
-  constructor({ out, aiLife = 3, scene = 'pregame' }) {
+  constructor({ out, aiLife = 3, scene = 'pregame', playable = false }) {
     this.out = out;
+    /** Amendment M61: write `state.playable` (null off the seat's priority), as an engine since 2026-10-07 does. */
+    this.playableOn = playable;
+    this.atPriority = false;
     this.nextId = 1;
     this.players = [
       { id: HUMAN, name: 'Human', isAi: false, life: 20, hand: [], battlefield: [], graveyard: [], library: [] },
@@ -252,8 +266,27 @@ class Game {
       combat: this.phase && this.phase.startsWith('COMBAT') ? { bands } : null,
       yield: null,
       undo: { can: false, depth: 0 },
+      ...(this.playableOn ? { playable: this.atPriority && this.priority === HUMAN && !this.gameOver ? this.playableNow() : null } : {}),
       events: this.events.splice(0),
     };
+  }
+
+  /** M61: your cards outside the battlefield a click would play now (mana not predicted, as Forge's click does not). */
+  playableNow() {
+    const me = this.players[HUMAN];
+    const mainOk = this.active === HUMAN && (this.phase === 'MAIN1' || this.phase === 'MAIN2') && this.stack.length === 0;
+    const out = [];
+    for (const c of me.hand) {
+      const d = DEFS[c.name];
+      if (d.land ? mainOk && !this.landPlayed : /Instant/.test(d.types) || mainOk) {
+        out.push({ cardId: c.id, zone: 'hand', abilities: [{ abilityId: 1000 + c.id, label: d.land ? `Play ${c.name}` : `Cast ${c.name}`, isSpell: !d.land }] });
+      }
+    }
+    for (const c of me.graveyard) {
+      const d = DEFS[c.name];
+      if (d.fromGraveyard) out.push({ cardId: c.id, zone: 'graveyard', abilities: [{ abilityId: 2000 + c.id, label: d.fromGraveyard, isSpell: false }] });
+    }
+    return out;
   }
 
   emitState() {
@@ -262,6 +295,7 @@ class Game {
 
   input(body, pending) {
     this.pending = pending;
+    this.atPriority = pending?.kind === 'priority';
     this.out('input', body);
   }
 
@@ -298,6 +332,13 @@ class Game {
     this.turn = 3;
     this.events = [];
     this.startTurn(HUMAN, { draw: false, keepTurn: true });
+  }
+
+  /** `main3`, with Cauldron Familiar in your graveyard. */
+  sceneGraveyard() {
+    const f = this.make('Cauldron Familiar', HUMAN, 'graveyard');
+    this.players[HUMAN].graveyard.push(f);
+    this.sceneMain3();
   }
 
   // ---- pre-game
@@ -346,6 +387,7 @@ class Game {
   /** Your priority in a main phase; after a pass with an empty stack, combat (main 1) or the end of the turn (main 2). */
   humanMain() {
     this.priority = HUMAN;
+    this.atPriority = true;
     this.emitState();
     this.priorityInput({
       resume: () => this.humanMain(),
@@ -355,6 +397,11 @@ class Game {
   }
 
   priorityInput(callbacks) {
+    // As the bridge flushes a state when priority comes to the seat: M61's list is in the frame before the prompt.
+    if (this.playableOn && !this.atPriority) {
+      this.atPriority = true;
+      this.emitState();
+    }
     this.input(inputBody(this.priorityPrompt(), button('OK', true), button('End Turn', true)), { kind: 'priority', ...callbacks });
   }
 
@@ -373,6 +420,7 @@ class Game {
   }
 
   beginCombat() {
+    this.atPriority = false;
     const able = this.players[HUMAN].battlefield.filter((c) => this.canAttack(c));
     if (!able.length) {
       this.phase = 'MAIN2';
@@ -766,6 +814,13 @@ class Game {
 
   clickInPriority(cardId) {
     const c = this.find(cardId);
+    if (c && c.owner === HUMAN && c.zone === 'graveyard' && DEFS[c.name].fromGraveyard) {
+      // Its one ability from the graveyard: back to the battlefield (Forge plays a lone ability without a menu).
+      this.move(c, 'battlefield');
+      c.sick = true;
+      this.emitState();
+      return this.priorityInput(this.pending);
+    }
     const mainOk = this.active === HUMAN && (this.phase === 'MAIN1' || this.phase === 'MAIN2') && this.stack.length === 0;
     if (c && c.owner === HUMAN && c.zone === 'hand') {
       const d = DEFS[c.name];
@@ -787,8 +842,9 @@ class Game {
 // The bridge: sockets, the session's frames, catch-ups.
 
 export class FakeEngine {
-  constructor({ gameId = 'human-ws-0', gameCount = 3, scene = 'pregame', dropMode = 'default', aiLife = 3, verbose = false } = {}) {
+  constructor({ gameId = 'human-ws-0', gameCount = 3, scene = 'pregame', dropMode = 'default', aiLife = 3, verbose = false, playable = false } = {}) {
     this.baseGameId = gameId;
+    this.playable = playable;
     this.gameCount = gameCount;
     this.dropMode = dropMode;
     this.aiLife = aiLife;
@@ -845,7 +901,7 @@ export class FakeEngine {
       ],
       match: { yourDeck: { name: 'Mono-Red Test', path: 'decks/e2e-red.dck', cards: 40 }, aiDeck: { name: 'Red Probe', cards: 40 }, aiProfile: 'Default', games: this.gameCount },
     });
-    const game = new Game({ out: (type, body) => this.emit(type, body), aiLife: this.aiLife, scene: 'none' });
+    const game = new Game({ out: (type, body) => this.emit(type, body), aiLife: this.aiLife, scene: 'none', playable: this.playable });
     this.game = game;
     game.gameId = this.gameId;
     game.matchOverIf = (winner) => {
@@ -853,6 +909,7 @@ export class FakeEngine {
       return this.wins[winner] >= Math.floor(this.gameCount / 2) + 1;
     };
     if (scene === 'main3') game.sceneMain3();
+    else if (scene === 'graveyard') game.sceneGraveyard();
     else game.scenePregame();
   }
 
@@ -1128,6 +1185,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const i = args.indexOf(`--${name}`);
     return i >= 0 ? args[i + 1] : dflt;
   };
-  const e = await startFakeEngine({ port: Number(opt('port', 8642)), scene: opt('scene', 'pregame'), dropMode: opt('drop-mode', 'default'), verbose: true });
+  const e = await startFakeEngine({ port: Number(opt('port', 8642)), scene: opt('scene', 'pregame'), dropMode: opt('drop-mode', 'default'), playable: args.includes('--playable'), verbose: true });
   console.log(`fake engine: seat ${e.seatUrl}, observer ${e.observeUrl}, health http://127.0.0.1:${e.port}/health`);
 }

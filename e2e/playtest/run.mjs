@@ -567,8 +567,10 @@ async function runFake(app) {
   if (helper) cleanups.push(() => helper.close());
   for (let i = 0; i < opts.games; i++) {
     const rand = rng(opts.seed * 7919 + i);
-    const engine = await startFakeEngine({ dropMode: 'default' });
-    const game = { id: i + 1, mode: 'fake', seed: opts.seed, decks: { mine: 'fake (Mountains and goblins)', theirs: 'fake' }, findings: [], shots: 0, t0: Date.now() };
+    // Every other game an engine with mtg-table M61 (`state.playable`), its graveyard holding Cauldron Familiar.
+    const m61 = i % 2 === 1;
+    const engine = await startFakeEngine({ dropMode: 'default', ...(m61 ? { playable: true, scene: 'graveyard' } : {}) });
+    const game = { id: i + 1, mode: 'fake', seed: opts.seed, decks: { mine: `fake (Mountains and goblins${m61 ? '; M61, Cauldron Familiar in the graveyard' : ''})`, theirs: 'fake' }, findings: [], shots: 0, t0: Date.now() };
     const s = await newSeatPage('solo', app, phoneFor('solo', i));
     game.viewport = s.phone ? 'phone' : 'desktop';
     if (helper) s.helperAsks = helper.asks;
