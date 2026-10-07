@@ -39,7 +39,8 @@ export function startFakeHelper({ port = 0, answerMs = 50 } = {}) {
           /* counted anyway */
         }
         const at = Date.now();
-        asks.push({ at, supersedes: j.supersedes ?? null, userLen: (j.user ?? '').length, head: String(j.user ?? '').slice(0, 400) });
+        const type = /^Decision type: (.+)$/m.exec(String(j.user ?? ''))?.[1] ?? null;
+        asks.push({ at, supersedes: j.supersedes ?? null, userLen: (j.user ?? '').length, type });
         res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
         const text = '**Answer:** Pass and keep your mana up.\n\n**Rule:** hold up interaction when you are ahead.\n\n**Confidence:** medium — a fake helper said so.';
         setTimeout(() => {

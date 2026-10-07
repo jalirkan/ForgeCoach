@@ -119,6 +119,8 @@ export class Monkey {
    */
   async dom() {
     return this.page.evaluate(() => {
+      // Tags from an earlier look must not outlive it: a stale pt7 would take a click meant for this one's.
+      for (const el of document.querySelectorAll('[data-pt]')) el.removeAttribute('data-pt');
       let n = 0;
       const tag = (el) => {
         const t = `pt${++n}`;

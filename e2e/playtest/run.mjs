@@ -34,7 +34,8 @@
  *                            table on N+4 (default 8642, play.sh's own; the PC job uses another
  *                            so it never meets a game Justin is playing)
  *
- * Environment: MTG_TABLE (default ../mtg-table), FORGE_JAR (play.sh's), FORGE_RES (Forge's
+ * Environment: PLAYTEST_DEBUG_CLICKS=1 prints every click the page receives (what the monkey hit);
+ * MTG_TABLE (default ../mtg-table), FORGE_JAR (play.sh's), FORGE_RES (Forge's
  * res/ for the card scripts; default: beside FORGE_JAR), SITE_DIR (a built site to serve
  * instead of building one).
  *
@@ -247,11 +248,18 @@ async function newSeatPage(label, appOrigin, phone = false) {
     return route.abort('connectionrefused');
   });
   const page = await ctx.newPage();
+  if (env.PLAYTEST_DEBUG_CLICKS) {
+    await page.addInitScript(() => {
+      document.addEventListener('click', (e) => console.log(`[click] ${(e.target.closest('button,[role=button]') ?? e.target).outerHTML.slice(0, 140)}`), true);
+    });
+    page.on('console', (m) => m.text().startsWith('[click]') && console.log(`  ${label} ${new Date().toISOString().slice(11, 23)} ${m.text()}`));
+  }
   const tap = new SeatTap(label);
   tap.attach(page);
   const coach = [];
   page.on('request', (r) => {
-    if (/\/coach$/.test(new URL(r.url()).pathname) && r.method() === 'POST') coach.push({ start: Date.now(), end: null, round: tap.state?.round ?? null, turn: tap.state?.turn ?? null, active: tap.state?.activePlayer ?? null, req: r });
+    // After `over` it is the film room's question about a turning point, not auto-coach's.
+    if (/\/coach$/.test(new URL(r.url()).pathname) && r.method() === 'POST') coach.push({ start: Date.now(), end: null, round: tap.state?.round ?? null, turn: tap.state?.turn ?? null, phase: tap.state?.phase ?? null, mine: tap.state ? tap.state.activePlayer === tap.seat : null, sockets: tap.sockets, over: !!tap.over, req: r });
   });
   page.on('requestfinished', (r) => {
     const c = coach.find((x) => x.req === r);
@@ -486,12 +494,16 @@ let coachLogSeen = 0;
 
 function coachSummary(game, seats, w) {
   const s = seats[0];
-  const qs = s.coach.filter((c) => c.start >= game.t0);
+  const all = s.coach.filter((c) => c.start >= game.t0);
+  const qs = all.filter((c) => !c.over);
   const perRound = {};
   for (const q of qs) perRound[q.round ?? 0] = (perRound[q.round ?? 0] ?? 0) + 1;
   const over = Object.entries(perRound).filter(([r, n]) => Number(r) > 0 && n > 1);
   if (opts.coach === 'fake' && over.length) {
-    game.findings.push({ game: game.id, seat: s.label, kind: 'coach-cadence', what: `auto-coach asked more than once in a turn cycle: ${over.map(([r, n]) => `round ${r}: ${n}`).join(', ')}`, shot: null });
+    // What each question was ("plan my turn 7", "attack"), from the fake helper's own record of it.
+    const typeOf = (q) => (s.helperAsks ?? []).find((a) => Math.abs(a.at - q.start) < 1500)?.type ?? null;
+    const detail = (r) => qs.filter((q) => String(q.round ?? 0) === r).map((q) => `T${q.turn} ${q.phase ?? '?'}${q.mine ? ' (yours)' : ''}${q.sockets > 1 ? ' after a reload' : ''}${typeOf(q) ? ` [${typeOf(q)}]` : ''}`).join(' + ');
+    game.findings.push({ game: game.id, seat: s.label, kind: 'coach-cadence', what: `auto-coach asked more than once in a turn cycle: ${over.map(([r, n]) => `round ${r}: ${n} (${detail(r)})`).join(', ')}`, shot: null });
   }
   let lat = qs.filter((q) => q.end && !q.failed).map((q) => q.end - q.start);
   let source = 'page';
@@ -505,7 +517,8 @@ function coachSummary(game, seats, w) {
     lat = fresh.map((l) => /-> 200 \(done [^)]*?(\d+) ms\)/.exec(l)?.[1]).filter(Boolean).map(Number);
     source = 'helper log';
   }
-  return { questions: qs.length, answered: lat.length, latencySource: source, perRound, latencyMs: lat, stopped: qs.filter((q) => q.failed).length, blankSamples: w.blanks, oppTurnSamples: w.samples };
+  const list = qs.map((q) => ({ at: Math.round((q.start - game.t0) / 100) / 10, ms: q.end ? q.end - q.start : null, turn: q.turn, phase: q.phase, stopped: q.failed ?? null, type: (s.helperAsks ?? []).find((a) => Math.abs(a.at - q.start) < 1500)?.type ?? null }));
+  return { questions: qs.length, afterOver: all.length - qs.length, list, answered: lat.length, latencySource: source, perRound, latencyMs: lat, stopped: qs.filter((q) => q.failed).length, blankSamples: w.blanks, oppTurnSamples: w.samples };
 }
 
 // ---------------------------------------------------------------------------
@@ -535,6 +548,7 @@ async function runFake(app) {
     const game = { id: i + 1, mode: 'fake', seed: opts.seed, decks: { mine: 'fake (Mountains and goblins)', theirs: 'fake' }, findings: [], shots: 0, t0: Date.now() };
     const s = await newSeatPage('solo', app, phoneFor('solo', i));
     game.viewport = s.phone ? 'phone' : 'desktop';
+    if (helper) s.helperAsks = helper.asks;
     const url = `${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}${helper ? `&coach=${encodeURIComponent(helper.url)}` : ''}`;
     s.finding = watchPage(game, s);
     await s.page.goto(url);
@@ -594,6 +608,7 @@ async function runSolo(app) {
     }
     const s = await newSeatPage('solo', app, phoneFor('solo', i));
     game.viewport = s.phone ? 'phone' : 'desktop';
+    if (helperFake) s.helperAsks = helperFake.asks;
     s.finding = watchPage(game, s);
     // The seat and the helper by URL (the page's defaults are 8642/8643): a fake helper for the coach checks.
     const url = `${app}?play=1&seat=${encodeURIComponent(`ws://127.0.0.1:${PORTS.engine}/ws`)}&coach=${encodeURIComponent(helperFake ? helperFake.url : helper)}`;
