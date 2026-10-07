@@ -17,6 +17,9 @@
  *                  the win chance (POST /eval, evalClient.ts); read even when "ok" is false,
  *                  since the win chance does not need Claude Code.
  *                  D362 adds "vision":1: the helper takes POST /vision (photo to pool).
+ *                  D410 adds "replaceRunning":1: a /coach with "supersedes" and
+ *                  "replaceRunning": true also ends the RUNNING question with that key
+ *                  (its claude killed), so one key holds at most one question.
  *   POST /coach  {"system","user","model"?:"opus"|"sonnet"|"haiku","supersedes"?:"<key>",
  *                 "thinking"?:"off"|"low"|"default"}   (D346: send "thinking" only to a
  *                 helper whose /health lists it; absent = "default", anything else is 400)
@@ -172,6 +175,8 @@ export type HelperStatus =
       queue?: HelperQueue | null;
       /** It honours a "supersedes" key on /coach. */
       supersedes?: boolean;
+      /** mtg-table D410: "replaceRunning" with a key also ends the running question with that key. */
+      replaceRunning?: boolean;
       /** D346: the "thinking" values /coach accepts; [] from an older helper (send none). */
       thinking?: HelperThinking[];
       /** D361: the helper serves the win chance (POST /eval). */
@@ -323,6 +328,7 @@ async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: (
       concurrency?: unknown;
       queue?: unknown;
       supersedes?: unknown;
+      replaceRunning?: unknown;
       thinking?: unknown;
       vision?: unknown;
     };
@@ -338,6 +344,7 @@ async function probe(target: HelperTarget, f: FetchFn, timeoutMs: number, now: (
         concurrency: typeof b.concurrency === 'number' && b.concurrency >= 1 ? Math.floor(b.concurrency) : 1,
         queue: helperQueue(b.queue),
         supersedes: b.supersedes === 1 || b.supersedes === true,
+        replaceRunning: b.replaceRunning === 1 || b.replaceRunning === true,
         thinking: Array.isArray(b.thinking) ? HELPER_THINKING.filter((t) => (b.thinking as unknown[]).includes(t)) : [],
         eval: helperEvalOf(b),
         vision: b.vision === 1 || b.vision === true,
@@ -396,6 +403,12 @@ export interface AskHelperOptions {
    * (an older one ignores unknown fields, so it is harmless either way).
    */
   supersedes?: string;
+  /**
+   * mtg-table D410: with `supersedes`, also end a RUNNING question with the same key
+   * (the live coach: one question per seat). Send it only to a helper whose /health
+   * has `replaceRunning` (an older one ignores the field and keeps the running one).
+   */
+  replaceRunning?: boolean;
   /** D346: cap Claude Code's thinking. Send it only to a helper whose /health lists the value (`helperThinking`). */
   thinking?: HelperThinking;
   /** D325: the question is waiting; `position` questions are ahead of it. */
@@ -430,6 +443,7 @@ export async function askHelper(prompt: AskPrompt, h: StreamHandlers, opts: AskH
         ...(images ? { images: images.map((im) => ({ mediaType: im.mediaType, data: im.data })) } : {}),
         ...(model ? { model } : {}),
         ...(opts.supersedes ? { supersedes: opts.supersedes } : {}),
+        ...(opts.supersedes && opts.replaceRunning ? { replaceRunning: true } : {}),
         ...(opts.thinking ? { thinking: opts.thinking } : {}),
       }),
       signal: opts.signal,

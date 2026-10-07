@@ -161,11 +161,11 @@ describe('settings', () => {
       getItem: (k: string) => mem.get(k) ?? null,
       setItem: (k: string, v: string) => void mem.set(k, v),
     });
-    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
     expect(hasKey()).toBe(false);
     saveSettings({ apiKey: ' sk-ant-abc ', model: 'claude-haiku-4-5', coachSource: 'helper' });
-    expect(JSON.parse(mem.get(SETTINGS_KEY)!)).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5', coachSource: 'helper', answerFirst: false, coachThinking: 'default', skin: 'stack', winChance: false });
-    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5', coachSource: 'helper', answerFirst: false, coachThinking: 'default', skin: 'stack', winChance: false });
+    expect(JSON.parse(mem.get(SETTINGS_KEY)!)).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5', coachSource: 'helper', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5', coachSource: 'helper', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
     expect(hasKey()).toBe(true);
     mem.set(SETTINGS_KEY, JSON.stringify({ apiKey: 'k', model: 'gpt-4', coachSource: 'cloud' }));
     expect(loadSettings().model).toBe('claude-opus-5-5');
@@ -175,7 +175,7 @@ describe('settings', () => {
     mem.set(SETTINGS_KEY, JSON.stringify({ apiKey: 'k', answerFirst: 'yes' }));
     expect(loadSettings().answerFirst).toBe(false);
     mem.set(SETTINGS_KEY, '{not json');
-    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
   });
   it('migrates settings saved before the coach source existed to auto, keeping key and model', () => {
     const mem = new Map<string, string>([[SETTINGS_KEY, JSON.stringify({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5' })]]);
@@ -183,13 +183,13 @@ describe('settings', () => {
       getItem: (k: string) => mem.get(k) ?? null,
       setItem: (k: string, v: string) => void mem.set(k, v),
     });
-    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
     const seen = vi.fn();
     const off = onSettingsChange(seen);
     saveSettings({ ...loadSettings(), coachSource: 'apiKey' });
     off();
     expect(seen).toHaveBeenCalledTimes(1);
-    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5', coachSource: 'apiKey', answerFirst: false, coachThinking: 'default', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5', coachSource: 'apiKey', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
   });
   it('keeps the coach thinking choice (D346), and reads a missing or bad one as default', () => {
     const mem = new Map<string, string>();
@@ -240,7 +240,7 @@ describe('settings', () => {
   });
   it('works without localStorage', () => {
     vi.stubGlobal('localStorage', undefined);
-    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
     expect(() => saveSettings({ apiKey: 'x', model: 'claude-opus-5-5', coachSource: 'auto' })).not.toThrow();
   });
 });

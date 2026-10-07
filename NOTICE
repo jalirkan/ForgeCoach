@@ -131,3 +131,13 @@ https://github.com/jalirkan/forgecoach-scenery (tag pack-v2), licensed
 CC BY 4.0, from cdn.jsdelivr.net. The art is not part of this repository;
 its provenance and model-licence notes are in that repository's
 PROVENANCE.txt.
+
+html-to-image (bubkoo/html-to-image)
+------------------------------------
+
+    Source:   https://github.com/bubkoo/html-to-image
+    Licence:  MIT
+    Copyright (c) 2017-2025 W.Y.
+
+Report a bug (src/bug/shot.ts) loads it on demand to draw the visible page
+into a screenshot. It is bundled unchanged from npm as its own chunk.

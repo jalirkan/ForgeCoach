@@ -33,10 +33,15 @@ export interface Prompt {
  * How the coach lays out its answer:
  * - 'classic' (default): **Play:** first, then why, the rule, the confidence and the rest;
  * - 'answer-first': a one-line **Answer:**, its **Confidence:** and **Rule:** first, so the
- *   play can be shown as soon as that line has streamed, then the explanation.
+ *   play can be shown as soon as that line has streamed, then the explanation;
+ * - 'short': live play's default (Settings → Coach style): command lines ("Play:",
+ *   "Mana:", "Attack:", "Block:", "Hold:" …) and one short "Why:", then a "---" line,
+ *   then **Rule:**, **Confidence:** and at most three sentences of details, which the
+ *   play screen keeps behind More (coachAnswer.ts `parseTerseAnswer`). Its system
+ *   prompt is shorter too, so it is read and answered sooner.
  */
-export type PromptFormat = 'classic' | 'answer-first';
-export const PROMPT_FORMATS: readonly PromptFormat[] = ['classic', 'answer-first'];
+export type PromptFormat = 'classic' | 'answer-first' | 'short';
+export const PROMPT_FORMATS: readonly PromptFormat[] = ['classic', 'answer-first', 'short'];
 
 const COACH_INTRO = `You are a Magic: The Gathering coach sitting next to a newer player (started a few months ago) who is playing against the Forge AI. At each decision you get the exact game state straight from the engine, the oracle text of the cards involved, and sometimes a play guide for the player's deck.
 
@@ -68,8 +73,30 @@ const F_TAIL = [
   '**Assumptions:** only if something is ambiguous or a card\'s text is unavailable — state it rather than guessing.',
 ];
 
+// The short style's system prompt: the same facts to trust and pitfalls to check, said briefly.
+const SHORT_INTRO = `You coach a newer Magic: The Gathering player in a live game against the Forge AI, from the exact engine state, the cards' oracle text and maybe a play guide.
+
+Trust the state (TAPPED, SUMMONING SICK, counters, P/T, mana pool, untapped sources, land drop, spells cast) and the given card text, never memory. You can't see the opponent's hand or either library: never name or assume a hidden card.
+
+Check: SUMMONING SICK can't attack or pay {T} (can block). {T} abilities once per untap; others repeat while paid. Mana = listed untapped sources + pool, one each, colours matter. One land drop a turn. "Whenever you cast an instant or sorcery" ignores creatures and abilities. Equip is sorcery speed. Count lethal both ways before attacks and blocks.
+
+`;
+
+const SHORT_FORMAT = [
+  'Answer format — commands, not prose; the player has seconds to read. No preamble, no restating the board, no hedging. Only these lines, each starting with its label, in the order to do them:',
+  '- `Play: <action>` — one line per action, e.g. "Play: Land — Mountain", "Play: Cast Shock → their Grizzly Bears". Leave it out when there is nothing to play.',
+  '- `Mana: <sources>` right after each Play line that costs mana, e.g. "Mana: R from Mountain, 1 from Swamp".',
+  '- `Attack: <creatures> → <player or planeswalker>` / `Block: <your creature> → <their attacker>` / `Hold: <what to keep back, or "pass">` / `Keep` or `Mulligan: <why in a few words>` / `Choose: <option>` — whichever the decision needs.',
+  '- `Why: <one short phrase, under 12 words>` — exactly one, last.',
+  'Then a line with only `---`, then:',
+  F_RULE,
+  F_CONFIDENCE,
+  '**Details:** at most three short sentences: the tempting wrong play, what the opponent can do next.',
+];
+
 /** The coach's system prompt for a layout (`COACH_SYSTEM` is the classic one). */
 export function coachSystem(format: PromptFormat = 'classic'): string {
+  if (format === 'short') return `${SHORT_INTRO}${SHORT_FORMAT.join('\n')}`;
   const lines =
     format === 'answer-first'
       ? [
@@ -476,6 +503,23 @@ function targetQuestion(d: Decision, byId: Map<number, AnyCard>): string {
   return `The engine wants me to choose a target${src ? ` for ${src.split(' — ').slice(0, 2).join(' — ')}` : ''}. What does this spell or ability do to its target, which of the legal targets above is best and why (whose it is, and what choosing it changes this turn and on the opponent's next turn), and which tempting targets are wrong? Name the one target to pick.`;
 }
 
+/**
+ * Auto-coach's question (once per turn cycle, at the opponent's end step, or at
+ * the start of my own turn when that step was missed): a plan for my turn.
+ */
+export interface PlanAsk {
+  /** The turn the plan is for (the engine's turn number). */
+  forTurn: number;
+}
+
+function planQuestion(d: Decision, seat: number, plan: PlanAsk): string {
+  const s = d.state;
+  if (s.activePlayer === seat) {
+    return `It is my turn ${s.turn} (${phaseLabel(s.phase)}). Plan the rest of my turn: land drop, spells and abilities in order with the mana that pays each, attacks, and what to hold back for the opponent's turn.`;
+  }
+  return `It is the opponent's ${phaseLabel(s.phase)}; my turn ${plan.forTurn} is next. Plan my turn: land drop, spells and abilities in order with the mana that pays each, attacks, and what to hold back for the opponent's next turn. In my untap step everything I control untaps, and then I draw a card I can't know yet: plan with the known hand, and add one "If you draw <a land / a creature …>:" line only when that card would change the plan. If something is worth doing now, before my turn (an instant, an ability), put it first.`;
+}
+
 function questionFor(d: Decision, seat: number, byId: Map<number, AnyCard>): string {
   const s = d.state;
   const mine = s.activePlayer === seat;
@@ -507,8 +551,12 @@ function questionFor(d: Decision, seat: number, byId: Map<number, AnyCard>): str
 // ---------------------------------------------------------------------------
 // Card names
 
-/** Every card name whose oracle text the coach prompt for this decision will include. */
-export function coachCardNames(log: GameLog, d: Decision): string[] {
+/**
+ * Every card name whose oracle text the coach prompt for this decision will include
+ * (the short style leaves out some of the graveyard's: `shortCardNames`).
+ * `graveyard: false` leaves out the viewing seat's graveyard.
+ */
+export function coachCardNames(log: GameLog, d: Decision, opts: { graveyard?: boolean } = {}): string[] {
   const seat = log.seat;
   const s = d.state;
   const out = new Set<string>();
@@ -526,7 +574,7 @@ export function coachCardNames(log: GameLog, d: Decision): string[] {
   (s.stackCards ?? []).forEach(add);
   for (const p of opps) p.zones.hand.cards.forEach(add); // only revealed ones survive `add`
   for (const p of s.players) p.zones.command.cards.forEach(add);
-  me?.zones.graveyard.cards.forEach(add);
+  if (opts.graveyard !== false) me?.zones.graveyard.cards.forEach(add);
   add(d.input?.focusCard);
   if (isTargetInput(d.input)) {
     // The spell or ability being targeted: often on its way to the stack and in no zone yet.
@@ -543,6 +591,20 @@ export function coachCardNames(log: GameLog, d: Decision): string[] {
     for (const o of [...(a.options ?? []), ...(a.targets ?? []), ...(a.cards ?? [])]) add(o.card);
   }
   return [...out];
+}
+
+/** Text that does something from a graveyard (flashback, escape, "return … from your graveyard" …). */
+const WORKS_FROM_GRAVEYARD = /graveyard|flashback|escape|unearth|disturb|embalm|eternalize|retrace|jump-start|aftermath|scavenge|encore|harmonize|mayhem/i;
+
+/**
+ * The short style's card text (live play): the same names, less the cards that are
+ * only in my graveyard and whose text does nothing from there. Their names stay in
+ * the state table; this keeps a long game's prompt from growing with the graveyard.
+ */
+export function shortCardNames(log: GameLog, d: Decision, cards: Map<string, CardInfo>): string[] {
+  const all = coachCardNames(log, d);
+  const elsewhere = new Set(coachCardNames(log, d, { graveyard: false }));
+  return all.filter((n) => elsewhere.has(n) || WORKS_FROM_GRAVEYARD.test(infoFor(n, cards)?.oracleText ?? 'graveyard'));
 }
 
 // ---------------------------------------------------------------------------
@@ -603,7 +665,7 @@ export function buildCoachPrompt(
   log: GameLog,
   d: Decision,
   cards: Map<string, CardInfo>,
-  opts?: { guide?: string; cube?: CubeCoachInput; format?: PromptFormat },
+  opts?: { guide?: string; cube?: CubeCoachInput; format?: PromptFormat; plan?: PlanAsk },
 ): Prompt {
   const s = d.state;
   const seat = log.seat;
@@ -621,7 +683,7 @@ export function buildCoachPrompt(
   if (playDraw) lines.push('Pre-game · play or draw (no opening hand dealt yet)');
   else if (pregame) lines.push('Pre-game · opening hand (keep or mulligan)');
   else lines.push(`Round ${round} (turn ${s.turn}) · ${phaseLabel(s.phase)} · ${whose}${prio}`);
-  lines.push(`Decision type: ${d.kind}`);
+  lines.push(opts?.plan ? `Decision type: plan my turn ${opts.plan.forTurn}` : `Decision type: ${d.kind}`);
   if (d.input?.prompt) lines.push(`Engine prompt: ${d.input.prompt.replace(/\s*\n\s*/g, ' / ').trim()}`);
   if (d.ask) lines.push(...askLines(d.ask, byId));
   else if (d.kind === 'choice' && isTargetInput(d.input)) lines.push(...targetLines(d, seat, byId));
@@ -638,7 +700,7 @@ export function buildCoachPrompt(
   const combat = combatLines(s, seat, byId);
   if (combat.length) lines.push(...combat);
 
-  const names = coachCardNames(log, d);
+  const names = opts?.format === 'short' ? shortCardNames(log, d, cards) : coachCardNames(log, d);
   const seen = new Map<string, Card>();
   for (const c of byId.values()) {
     const n = visibleName(c);
@@ -661,7 +723,7 @@ export function buildCoachPrompt(
 
   lines.push('');
   lines.push('# Question');
-  lines.push(questionFor(d, seat, byId));
+  lines.push(opts?.plan ? planQuestion(d, seat, opts.plan) : questionFor(d, seat, byId));
 
   return { system: systemFor(coachSystem(opts?.format ?? 'classic'), log), user: lines.join('\n') };
 }

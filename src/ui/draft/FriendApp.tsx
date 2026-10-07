@@ -54,6 +54,8 @@ import { RoomOwnerControls } from './RoomOwnerControls.tsx';
 import { startingDeck, useFriendRoom } from './useFriendRoom.ts';
 import { loadFriendReview } from '../play/useFriendReview.ts';
 import type { GameLog } from '../../log.ts';
+import { BugFab, useBugContext } from '../bug/BugReport.tsx';
+import { EMPTY_SNAPSHOT } from '../../bug/report.ts';
 
 const ReviewApp = lazy(() => import('../review/ReviewApp.tsx'));
 
@@ -130,6 +132,8 @@ export default function FriendApp({ onExit }: { onExit: () => void }) {
     window.scrollTo(0, 0);
   }, []);
   const route = routeOf(hash);
+  // Report a bug (mtg-table D411): from a room's page it goes to the room (its owner's machine).
+  useBugContext(() => ({ ...EMPTY_SNAPSHOT, surface: 'room', extra: { screen: route.kind }, room: route.kind === 'room' ? { id: route.id, seat: route.seat } : null }));
   let body;
   if (route.kind === 'join') body = <JoinScreen hash={hash} go={go} />;
   else if (route.kind === 'room') {
@@ -144,6 +148,7 @@ export default function FriendApp({ onExit }: { onExit: () => void }) {
     <>
       {body}
       <SettingsDialog open={settings} onClose={() => setSettings(false)} />
+      <BugFab />
     </>
   );
 }
@@ -394,6 +399,9 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
     },
     [room.entry.base, room.entry.id, room.entry.token, room.opponent],
   );
+
+  // Report a bug (mtg-table D411): this seat's view of the room (a Grid draft hides nothing; the other deck is a name and a count).
+  useBugContext(() => ({ ...EMPTY_SNAPSHOT, surface: 'room', extra: { screen: build ? 'build' : 'room', link, note, opponent, state }, room: { id: entry.id, seat: entry.seat } }));
 
   // The draft is over: the pool goes to the deck assistant once, like a draft against the AI.
   useEffect(() => {

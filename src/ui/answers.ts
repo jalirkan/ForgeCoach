@@ -38,6 +38,53 @@ export interface Answer {
    * while queued, and for the API key (which streams its own thinking).
    */
   thinkingSince: number | null;
+  /** How long it took (set when it ends): see `AnswerTiming`. */
+  timing?: AnswerTiming | null;
+}
+
+/**
+ * One question's numbers, measured in the browser: the prompt's size (system +
+ * user, UTF-8 bytes), the wait in the coach helper's queue (from the request to
+ * its `running` line; 0 when it never waited), the first word and the whole
+ * answer, in ms from the request. Logged once per question (`onAnswerTiming`).
+ */
+export interface AnswerTiming {
+  key: string;
+  source: ActiveSource;
+  promptBytes: number;
+  queueMs: number;
+  firstTextMs: number | null;
+  totalMs: number;
+  outcome: 'done' | 'stopped' | 'error';
+}
+
+type TimingListener = (t: AnswerTiming) => void;
+const timingListeners = new Set<TimingListener>();
+/** Called with each question's timing when it ends. With no listener, the browser console gets one line. */
+export function onAnswerTiming(l: TimingListener): () => void {
+  timingListeners.add(l);
+  return () => timingListeners.delete(l);
+}
+function reportTiming(t: AnswerTiming) {
+  if (timingListeners.size) {
+    for (const l of timingListeners) l(t);
+    return;
+  }
+  if (typeof window === 'undefined') return;
+  const s = (ms: number | null) => (ms === null ? 'none' : `${(ms / 1000).toFixed(1)} s`);
+  console.info(`[coach] ${t.outcome} via ${t.source}: ${(t.promptBytes / 1024).toFixed(1)} KB prompt; queued ${s(t.queueMs)}; first text ${s(t.firstTextMs)}; total ${s(t.totalMs)}`);
+}
+
+/**
+ * Slots (the live coach's "one question per seat"): the key of the question
+ * now in each slot. Starting a question in a slot stops the one before it.
+ */
+const slots = new Map<string, string>();
+
+/** The key of the question still preparing, queued or streaming in `slot`, or null. */
+export function slotKey(slot: string): string | null {
+  const k = slots.get(slot);
+  return k !== undefined && controllers.has(k) ? k : null;
 }
 
 const answers = new Map<string, Answer>();
@@ -108,6 +155,7 @@ export function clearAnswers(): void {
   for (const c of controllers.values()) c.abort();
   controllers.clear();
   answers.clear();
+  slots.clear();
   snapVersion++;
   notify();
 }
@@ -126,10 +174,35 @@ export interface StartOptions {
    * takes the coach helper only when its /health says it reads them.
    */
   need?: SourceNeed;
+  /**
+   * At most one question at a time in this slot (the live coach: one per seat for
+   * auto-coach's plan, one for the player's own asks): starting this one stops the
+   * slot's earlier question, which keeps the text it had ('superseded').
+   */
+  slot?: string;
+  /**
+   * With `supersedes`: also end the helper's RUNNING question with that key
+   * (mtg-table D410), when the helper offers it — so a lost disconnect can never
+   * leave a stale question running ahead of this one.
+   */
+  replaceRunning?: boolean;
+  /**
+   * At most this much thinking for Claude Code on the PC, whatever Settings says
+   * above it (the live coach's short style: 'low' — measured, Opus's first word
+   * came about twice as fast late in a game). Settings' own lower value wins.
+   */
+  thinkingCap?: 'low' | 'off';
 }
+
+const THINKING_ORDER = { off: 0, low: 1, default: 2 } as const;
 
 export async function startAnswer(key: string, makePrompt: () => Promise<AskPrompt>, opts: StartOptions = {}): Promise<void> {
   const now = opts.now ?? Date.now;
+  if (opts.slot) {
+    const prev = slots.get(opts.slot);
+    if (prev !== undefined && prev !== key && controllers.has(prev)) stopAnswer(prev, 'superseded');
+    slots.set(opts.slot, key);
+  }
   controllers.get(key)?.abort();
   const ctrl = new AbortController();
   controllers.set(key, ctrl);
@@ -158,7 +231,8 @@ export async function startAnswer(key: string, makePrompt: () => Promise<AskProm
     return;
   }
   // D346: a thinking cap goes only to a helper that lists it, so learn what it lists first.
-  const wantThinking = settings.coachThinking ?? 'default';
+  const setThinking = settings.coachThinking ?? 'default';
+  const wantThinking = opts.thinkingCap && THINKING_ORDER[opts.thinkingCap] < THINKING_ORDER[setThinking] ? opts.thinkingCap : setThinking;
   if (source === 'helper' && wantThinking !== 'default' && !(helper?.state === 'ok' && helperFresh())) {
     own({ status: 'preparing', source });
     helper = await detectHelper();
@@ -166,15 +240,36 @@ export async function startAnswer(key: string, makePrompt: () => Promise<AskProm
   }
   const thinking = source === 'helper' ? helperThinking(helper, wantThinking) : undefined;
   own({ status: 'preparing', source });
+  let t0: number | null = null;
+  let tRunning = 0;
+  let tFirst: number | null = null;
+  let promptBytes = 0;
+  // Once per question, when it ends after its request went out (a question stopped while its prompt was built has none).
+  const timed = (outcome: AnswerTiming['outcome']) => {
+    if (t0 === null) return;
+    const timing: AnswerTiming = { key, source, promptBytes, queueMs: tRunning - t0, firstTextMs: tFirst === null ? null : tFirst - t0, totalMs: now() - t0, outcome };
+    t0 = null;
+    const a = answers.get(key);
+    // A stopped one is still this key's answer (stopAnswer leaves it in place); a newer run's is not.
+    if (a && (mine() || controllers.get(key) === undefined)) answers.set(key, { ...a, timing });
+    reportTiming(timing);
+  };
   try {
     const prompt = await makePrompt();
     if (ctrl.signal.aborted) return;
-    own({ status: 'streaming', thinkingSince: source === 'helper' ? now() : null });
+    t0 = now();
+    tRunning = t0;
+    promptBytes = utf8Bytes(prompt.system) + utf8Bytes(prompt.user);
+    own({ status: 'streaming', thinkingSince: source === 'helper' ? now() : null, timing: null });
     const handlers: StreamHandlers = {
-      onText: (d) => own({ status: 'streaming', queuePosition: null, thinkingSince: null, text: (answers.get(key)?.text ?? '') + d }),
+      onText: (d) => {
+        if (tFirst === null) tFirst = now();
+        own({ status: 'streaming', queuePosition: null, thinkingSince: null, text: (answers.get(key)?.text ?? '') + d });
+      },
       onThinking: (d) => own({ status: 'streaming', queuePosition: null, thinking: (answers.get(key)?.thinking ?? '') + d }),
     };
     const supersedes = opts.supersedes && helper?.state === 'ok' && helper.supersedes ? opts.supersedes : undefined;
+    const replaceRunning = !!(supersedes && opts.replaceRunning && helper?.state === 'ok' && helper.replaceRunning);
     const res: CoachResult =
       source === 'helper'
         ? await askHelper(prompt, handlers, {
@@ -182,11 +277,13 @@ export async function startAnswer(key: string, makePrompt: () => Promise<AskProm
             model: settings.model,
             target: pageHelperTarget(),
             ...(supersedes ? { supersedes } : {}),
+            ...(replaceRunning ? { replaceRunning } : {}),
             ...(thinking ? { thinking } : {}),
             onQueued: (n) => {
               if (!ctrl.signal.aborted) own({ status: 'queued', queuePosition: n, thinkingSince: null });
             },
             onRunning: () => {
+              tRunning = now();
               if (!ctrl.signal.aborted) own({ status: 'streaming', queuePosition: null, thinkingSince: answers.get(key)?.text ? null : now() });
             },
           })
@@ -200,6 +297,7 @@ export async function startAnswer(key: string, makePrompt: () => Promise<AskProm
       fallbackFrom: res.fallbackFrom ?? null,
       thinkingSince: null,
     });
+    timed('done');
   } catch (e) {
     if (answers.get(key)?.thinkingSince != null) own({ thinkingSince: null });
     if (ctrl.signal.aborted) {
@@ -210,16 +308,21 @@ export async function startAnswer(key: string, makePrompt: () => Promise<AskProm
       else if (kind === 'superseded') own({ status: 'stopped', queuePosition: null, stopReasonNote: 'superseded' });
       else own({ status: 'error', error: e instanceof Error ? e.message : String(e), errorKind: kind });
     }
+    timed(answers.get(key)?.status === 'error' ? 'error' : 'stopped');
   } finally {
     if (controllers.get(key) === ctrl) controllers.delete(key);
   }
+}
+
+function utf8Bytes(s: string): number {
+  return new TextEncoder().encode(s).length;
 }
 
 function safeSettings(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default' };
+    return { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short' };
   }
 }
 

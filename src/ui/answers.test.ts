@@ -251,6 +251,20 @@ describe('the "thinking…" state and the thinking cap (D346)', () => {
     expect(vi.mocked(askHelper).mock.calls[2]![2]).not.toHaveProperty('thinking');
   });
 
+  it('a thinkingCap (the live coach\'s short style) lowers Settings to it, never raises it', async () => {
+    h.fresh = true;
+    h.helper = TOK;
+    h.settings = { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', coachThinking: 'default' };
+    await startAnswer('c1', async () => ({ system: 's', user: 'u' }), { thinkingCap: 'low' });
+    expect(vi.mocked(askHelper).mock.calls[0]![2]).toMatchObject({ thinking: 'low' });
+    h.settings = { ...h.settings, coachThinking: 'off' };
+    await startAnswer('c2', async () => ({ system: 's', user: 'u' }), { thinkingCap: 'low' });
+    expect(vi.mocked(askHelper).mock.calls[1]![2]).toMatchObject({ thinking: 'off' });
+    h.settings = { ...h.settings, coachThinking: 'default' };
+    await startAnswer('c3', async () => ({ system: 's', user: 'u' }));
+    expect(vi.mocked(askHelper).mock.calls[2]![2]).not.toHaveProperty('thinking');
+  });
+
   it('with the helper source and nothing known, it asks /health first so the cap can go along', async () => {
     h.fresh = false;
     h.helper = TOK; // what detection finds

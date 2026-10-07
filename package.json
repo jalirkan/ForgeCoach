@@ -15,6 +15,7 @@
     "e2e:practice": "node e2e/practice.e2e.mjs",
     "e2e:friend": "node e2e/friend.e2e.mjs",
     "e2e:table": "node e2e/table.e2e.mjs",
+    "e2e:bug": "node e2e/bug.e2e.mjs",
     "test:e2e": "node e2e/seat.e2e.mjs",
     "test:pwa": "node e2e/pwa.e2e.mjs",
     "playtest": "node --experimental-transform-types --no-warnings e2e/playtest/run.mjs",
@@ -24,6 +25,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
+    "html-to-image": "^1.11.13",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

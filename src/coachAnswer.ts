@@ -87,3 +87,89 @@ export function statedOf(text: string): { confidence?: StatedConfidence; rule?: 
   if (p.rule) out.rule = p.rule;
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// The short style (prompt.ts 'short', live play's default)
+
+/** One command line of a short answer: "Play: Cast Shock → their Bears" is {label: 'Play', text: 'Cast Shock → their Bears'}. */
+export interface TerseLine {
+  label: string;
+  text: string;
+}
+
+export interface TerseAnswerParts {
+  /** The command lines before the "---", in order (Play, Mana, Attack, Block, Hold, Keep, If you draw …). */
+  commands: TerseLine[];
+  /** The one short reason ("Why:"), or null. */
+  why: string | null;
+  rule: string | null;
+  confidence: StatedConfidence | null;
+  confidenceWhy: string | null;
+  /** What goes behind "More": everything after the "---" but the rule and confidence lines. */
+  more: string;
+  /** True when the answer reads as the short style (at least one command or a Why line). */
+  terse: boolean;
+  /** The "---" has arrived: the main lines are finished. */
+  mainDone: boolean;
+}
+
+// "Play: …", "**Mana:** …", "- Block: …", "If you draw a land: …". A label is a few words starting with a letter.
+const COMMAND = /^\s*(?:[-*>]\s+|\d+[.)]\s+)?(?:\*\*|__)?\s*([A-Za-z][A-Za-z /'’-]{0,30}?)\s*(?:\*\*|__)?\s*:\s*(?:\*\*|__)?\s*(.*?)\s*$/;
+const BARE = /^\s*(?:[-*>]\s+)?(?:\*\*|__)?\s*(keep|mulligan|pass)\s*(?:\*\*|__)?\s*\.?\s*$/i;
+const SEPARATOR = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
+const MORE_LABELS = new Set(['rule', 'confidence', 'details', 'detail', 'trap', 'their turn', 'alternative', 'assumptions']);
+
+/**
+ * Reads a short-style answer. The main view shows `commands` and `why`; `more`
+ * (with the rule and confidence) stays behind a toggle, so the details never
+ * stream into the main view. While streaming (`complete` false) the last line
+ * is shown as it grows, but only once its label and colon have arrived.
+ * A Rule or Confidence line before the "---" is read too, never shown as a command.
+ */
+export function parseTerseAnswer(text: string, opts: { complete?: boolean } = {}): TerseAnswerParts {
+  const complete = opts.complete ?? true;
+  const lines = text.replace(/\r/g, '').split('\n');
+  const sep = lines.findIndex((l) => SEPARATOR.test(l));
+  const main = sep >= 0 ? lines.slice(0, sep) : lines;
+  const tail = sep >= 0 ? lines.slice(sep + 1) : [];
+  const commands: TerseLine[] = [];
+  let why: string | null = null;
+  const moreFromMain: string[] = [];
+  for (let i = 0; i < main.length; i++) {
+    const raw = main[i]!;
+    if (!raw.trim()) continue;
+    const partial = !complete && sep < 0 && i === main.length - 1;
+    const bare = BARE.exec(raw);
+    if (bare) {
+      if (!partial) commands.push({ label: bare[1]![0]!.toUpperCase() + bare[1]!.slice(1).toLowerCase(), text: '' });
+      continue;
+    }
+    const m = COMMAND.exec(raw);
+    if (!m) {
+      if (!partial) moreFromMain.push(raw);
+      continue;
+    }
+    const label = clean(m[1]!).replace(/\s+/g, ' ');
+    const value = clean(m[2] ?? '');
+    const key = label.toLowerCase();
+    if (key === 'why') {
+      if (why === null && value) why = value;
+    } else if (MORE_LABELS.has(key)) {
+      moreFromMain.push(raw);
+    } else if (value || !partial) {
+      commands.push({ label: label[0]!.toUpperCase() + label.slice(1), text: value });
+    }
+  }
+  const stated = parseCoachAnswer([...moreFromMain, ...tail].join('\n'), { complete });
+  const more = stated.body.trim();
+  return {
+    commands,
+    why,
+    rule: stated.rule,
+    confidence: stated.confidence,
+    confidenceWhy: stated.confidenceWhy,
+    more,
+    terse: commands.length > 0 || why !== null,
+    mainDone: sep >= 0 || complete,
+  };
+}
