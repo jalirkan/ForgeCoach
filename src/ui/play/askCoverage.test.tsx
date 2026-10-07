@@ -343,3 +343,21 @@ describe('ask coverage: a card choice in any zone has something to click', () =>
     expect(html).toContain('data-card-id="52"');
   });
 });
+
+describe('ordering simultaneous triggers (endstep-style tiles)', () => {
+  test('every item to order: tiles first to last, with OK and OK & remember', () => {
+    const f = FIXTURE_ASKS.find((a) => a.id === 'sample-handwritten#a13')!;
+    const html = render(f.ask, f.state);
+    expect(html).toContain('ask-otiles');
+    expect(html).toMatch(/>First<[\s\S]*>Last</);
+    const order = [...html.matchAll(/data-option-id="(\d+)"/g)].map((m) => Number(m[1]));
+    expect(order).toEqual([0, 1, 2]);
+    expect(html).toContain('OK &amp; remember');
+    expect(html).toMatch(/aria-label="Move [^"]+ later"/);
+  });
+
+  test('a partial order (choose some) keeps the list editor', () => {
+    const f = FIXTURE_ASKS.find((a) => a.id === 'human-auto-42#a15')!;
+    expect(render(f.ask, f.state)).not.toContain('ask-otiles');
+  });
+});

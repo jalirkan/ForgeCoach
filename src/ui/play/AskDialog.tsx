@@ -877,26 +877,55 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
       );
     }
 
-    case 'order':
+    case 'order': {
+      // Everything must be ordered (Forge's simultaneous triggers): tiles from first to last, endstep-style.
+      const all = askOptions(ask);
+      const { lo, hi } = orderBounds(ask);
+      const tiles = lo === all.length && hi === all.length && all.length >= 2;
+      const ordered = draft.shape === 'order' ? draft.ordered : [];
+      const sendOrder = (remember: boolean) => {
+        const d: AskDraft = { shape: 'order', ordered, remember };
+        if (validateDraft(ask, d).ok) send(answerFromDraft(ask, d));
+      };
       return (
         <AskShell
           {...common}
-          eyebrow={ask.sideboardMode ? 'Sideboard' : 'Order'}
+          eyebrow={ask.sideboardMode ? 'Sideboard' : nameOf(ask.referenceCardId) ? `Resolving · ${nameOf(ask.referenceCardId)}` : 'Order'}
           title={tidy(ask.prompt)}
-          detail={ask.referenceCardId !== null && nameOf(ask.referenceCardId) ? `For ${nameOf(ask.referenceCardId)}` : undefined}
+          detail={tiles ? `${tidy(ask.destLabel) || 'First'}: the tile on the left. Drag a tile, or use ‹ › under it.` : ask.referenceCardId !== null && nameOf(ask.referenceCardId) ? `For ${nameOf(ask.referenceCardId)}` : undefined}
           peek={tidy(ask.prompt)}
           hint={v.ok ? '' : v.hint}
-          onEnter={confirm}
+          onEnter={tiles ? () => sendOrder(false) : confirm}
+          wide={tiles && all.length > 2}
           footer={
-            <>
-              {skipBtn}
-              {primary('Confirm')}
-            </>
+            tiles ? (
+              <>
+                {skipBtn}
+                {ask.showRemember && (
+                  <button type="button" className="btn btn-quiet ask-btn" disabled={!v.ok || sent} onClick={() => sendOrder(true)} data-answer="confirm" title="Use this order now and every time these abilities trigger together">
+                    OK &amp; remember
+                  </button>
+                )}
+                <button type="button" className="btn btn-primary ask-btn" disabled={!v.ok || sent} onClick={() => sendOrder(false)} data-answer="confirm" data-autofocus="">
+                  OK
+                </button>
+              </>
+            ) : (
+              <>
+                {skipBtn}
+                {primary('Confirm')}
+              </>
+            )
           }
         >
-          <OrderBody ask={ask} draft={draft} setDraft={setDraft} onPreview={onPreviewCard} />
+          {tiles ? (
+            <OrderTiles options={all} ordered={ordered} firstLabel={tidy(ask.destLabel)} nameOf={nameOf} onChange={(next) => setDraft({ shape: 'order', ordered: next, remember: false })} onPreview={onPreviewCard} />
+          ) : (
+            <OrderBody ask={ask} draft={draft} setDraft={setDraft} onPreview={onPreviewCard} />
+          )}
         </AskShell>
       );
+    }
 
     case 'manipulate_list': {
       const order = draft.shape === 'indices' ? draft.indices : [];
@@ -1112,6 +1141,99 @@ function MoveBtns({ disabled, first, last, label, onMove }: { disabled?: boolean
       <button type="button" className="icon-btn" disabled={disabled || last} onClick={() => onMove(1)} aria-label={`Move ${label} down`}>
         <IconChevronDown size={16} />
       </button>
+    </span>
+  );
+}
+
+/**
+ * Simultaneous triggers (endstep-style): one tile per item from FIRST (left) to
+ * LAST, each with its position, the card's art and the engine's label; drag a
+ * tile onto another, or move it with ‹ › under it. Answers address options by
+ * id (§5.1), so the order is the list of ids as shown.
+ */
+export function OrderTiles({
+  options,
+  ordered,
+  firstLabel,
+  nameOf = () => null,
+  onChange,
+  onPreview,
+}: {
+  options: AskOption[];
+  ordered: number[];
+  firstLabel: string;
+  /** A visible card's name by id (never a concealed one's). */
+  nameOf?: (id: number | undefined) => string | null;
+  onChange: (next: number[]) => void;
+  onPreview?: (id: number) => void;
+}) {
+  const [drag, setDrag] = useState<number | null>(null);
+  const byId = new Map(options.map((o) => [o.id, o]));
+  return (
+    <div className="ask-otiles-wrap">
+      <div className="ask-otiles-axis" aria-hidden="true">
+        <span>First</span>
+        <span className="ask-otiles-line" />
+        <span>Last</span>
+      </div>
+      <ol className="ask-otiles" aria-label="Order, first to last">
+        {ordered.map((id, i) => {
+          const o = byId.get(id);
+          if (!o) return null;
+          return (
+            <li
+              key={id}
+              className={cx('ask-otile', i === 0 && 'is-first', drag === id && 'is-dragging')}
+              draggable
+              onDragStart={(e) => {
+                setDrag(id);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragEnd={() => setDrag(null)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (drag !== null) onChange(moveItem(ordered, ordered.indexOf(drag), i));
+                setDrag(null);
+              }}
+              data-option-id={id}
+            >
+              {i === 0 && <span className="ask-otile-flag">{firstLabel || 'First'}</span>}
+              <span className="ask-otile-pos">{i + 1}</span>
+              <span className="ask-otile-art">
+                <Thumb name={nameOf(o.cardId) ?? lookupName(o)} card={visibleCard(o.card)} hidden={optionIsHidden(o)} />
+              </span>
+              <OtileLabel label={o.label} name={nameOf(o.cardId)} />
+              <PreviewBtn cardId={o.cardId} onPreview={onPreview} label={o.label} />
+              <span className="ask-otile-move">
+                <button type="button" className="icon-btn" disabled={i === 0} onClick={() => onChange(moveItem(ordered, i, i - 1))} aria-label={`Move ${o.label} earlier`}>
+                  ‹
+                </button>
+                <button type="button" className="icon-btn" disabled={i === ordered.length - 1} onClick={() => onChange(moveItem(ordered, i, i + 1))} aria-label={`Move ${o.label} later`}>
+                  ›
+                </button>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+/** "Quake, Agent of S.H.I.E.L.D. - Seismic Takedown — …": the source's name bold, then the ability (the label stays verbatim). */
+function OtileLabel({ label, name }: { label: string; name: string | null }) {
+  const cut = name && label.startsWith(`${name} - `) ? name.length : -1;
+  if (cut < 0) {
+    return (
+      <span className="ask-otile-label">
+        <Label text={label} />
+      </span>
+    );
+  }
+  return (
+    <span className="ask-otile-label">
+      <b className="ask-otile-name">{label.slice(0, cut)}</b> - <Label text={label.slice(cut + 3)} />
     </span>
   );
 }
