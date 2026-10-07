@@ -529,6 +529,72 @@ button.dcard:hover {
   --w: var(--cw);
 }
 
+/* The hint's "why this line" popover (GridHint.tsx), over the cards. */
+.ghint-pop {
+  position: absolute;
+  z-index: 20;
+  top: calc(var(--arrow) + var(--gap) + 2px);
+  left: calc(var(--arrow) + var(--gap));
+  width: min(420px, calc(100% - var(--arrow) - var(--gap)));
+  max-height: calc(100% - var(--arrow) - var(--gap) - 10px);
+  overflow-y: auto;
+  padding: 10px 12px 12px;
+  border: 1px solid rgba(var(--fx-gold-hi-rgb), 0.55);
+  border-radius: 6px;
+  background: var(--fx-panel);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  font: 13px/1.4 var(--font);
+  text-align: left;
+}
+.ghint-pop.is-low {
+  top: auto;
+  bottom: 10px;
+}
+.ghint-title {
+  font: 600 16px/1.2 var(--serif);
+  color: var(--gold-hi);
+  margin-bottom: 6px;
+}
+.ghint-title .fx-label {
+  margin-right: 4px;
+}
+.ghint-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.ghint-cards li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+}
+.ghint-name {
+  font-weight: 600;
+  min-width: 0;
+}
+.ghint-val {
+  font: 12px/1.4 var(--mono);
+  color: var(--gold);
+}
+.ghint-why {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+}
+.ghint-note {
+  margin: 8px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--line-2);
+  font-size: 12px;
+  color: var(--muted);
+}
+.ghint-note.is-close {
+  color: var(--text);
+}
+
 /* ------------------------------------------------------------------ */
 /* Winston board */
 

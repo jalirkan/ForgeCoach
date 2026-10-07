@@ -189,7 +189,8 @@ export function recommendGrid(slots: Array<string | null>, pool: string[], ctx: 
   return { first, options, best: options[0] ?? null };
 }
 
-function fitText(name: string, pair: string, ctx: CubeContext): string {
+/** How a card sits in the pool's colour pair: "on colour (Rakdos)", "your dual", "a splash", "off colour", "colourless" ('' without a pair). */
+export function fitText(name: string, pair: string, ctx: CubeContext): string {
   const f = ctx.facts.get(name);
   if (!f || pair.length < 2) return '';
   if (f.land) return [...pair].every((c) => f.produces.includes(c)) ? 'your dual' : '';

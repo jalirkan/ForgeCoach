@@ -15,6 +15,7 @@ import { GRID_LINES, poolColours, recommendGrid, recommendWinston } from '../../
 import { humanValueNote } from '../../cube/score.ts';
 import { aiLabelFrom } from '../../draft/aiLabel.ts';
 import { canPass, expectedPicks, knownAiCards, lineName, progress, toAct, yourPack, type BoosterDraft, type Draft, type GridDraft, type WinstonDraft } from '../../draft/draft.ts';
+import { gridBlurb } from '../../draft/gridBlurb.ts';
 import { bestBoosterPick, buildPickPrompt, pickPromptCards } from '../../draft/pickPrompt.ts';
 import { startAnswer, stopAnswer, useAnswer } from '../answers.ts';
 import { cardsForPrompt, prefetchCards } from '../cardData.ts';
@@ -86,7 +87,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
     if (d.format === 'grid') {
       const a = recommendGrid(d.slots, d.picks.you, ctx, known);
       if (!a.best) return null;
-      return { title: `Take the ${a.best.line.label.toLowerCase()}`, lines: a.best.reasons, line: GRID_LINES.findIndex((l) => l.id === a.best!.line.id), take: null, card: null };
+      return { title: `Take the ${a.best.line.label.toLowerCase()}`, lines: a.best.reasons, line: GRID_LINES.findIndex((l) => l.id === a.best!.line.id), take: null, card: null, why: gridBlurb(a, d.picks.you, ctx, them) };
     }
     if (d.format === 'booster') {
       const b = bestBoosterPick(yourPack(d), d.picks.you, ctx, known);
@@ -98,7 +99,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
     if (!pile.length) return null;
     const a = recommendWinston({ pile, pileIndex: (d.look + 1) as 1 | 2 | 3, sizes: d.piles.map((p) => p.length) as [number, number, number], pool: d.picks.you, oppPool: known, seen: d.seen.you }, ctx);
     return { title: a.action === 'take' ? `Take pile ${d.look + 1}` : `Pass pile ${d.look + 1}`, lines: a.reasons, line: null, take: a.action === 'take', card: null };
-  }, [mine, d, ctx, known]);
+  }, [mine, d, ctx, known, them]);
 
   // The decision: title, mono line, actions.
   const pr = progress(d);
@@ -248,7 +249,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
         {lastBlind?.who === 'you' && lastBlind.kind === 'blind' && <div className="aibanner is-you">You took the top card blind: {lastBlind.cards[0]}</div>}
         {status && <p className="pk-status">{sel !== null || pick ? <span className="dot" /> : null}{status}</p>}
         {d.format === 'grid' ? (
-          <GridBoard d={d} mine={mine} selected={sel} preview={preview} hint={hints ? (advice?.line ?? null) : null} aiLine={game.aiLine} onSelect={setSel} onPreview={setPreview} onInfo={setInfo} />
+          <GridBoard d={d} mine={mine} selected={sel} preview={preview} hint={hints ? (advice?.line ?? null) : null} aiLine={game.aiLine} onSelect={setSel} onPreview={setPreview} onInfo={setInfo} why={hints && advice && 'why' in advice ? advice.why : null} />
         ) : d.format === 'winston' ? (
           <WinstonBoard d={d} mine={mine} hintTake={hints && advice ? advice.take : null} onInfo={setInfo} />
         ) : (
