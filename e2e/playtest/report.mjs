@@ -80,6 +80,7 @@ export function writeReport(out, report) {
     if (f.prompt) md.push(`  - prompt: \`${String(f.prompt).replace(/\n/g, ' ⏎ ').slice(0, 200)}\``);
     if (f.ask) md.push(`  - ask: ${f.ask.kind} "${f.ask.prompt ?? ''}" [${(f.ask.options ?? []).join(' | ')}]`);
     if (f.card) md.push(`  - card: ${JSON.stringify(f.card)}`);
+    if (f.ui) md.push(`  - board: ${JSON.stringify(f.ui)}`);
     if (f.shot) md.push(`  - screenshot: [${f.shot}](${f.shot})`);
   }
   md.push('');

@@ -11,7 +11,7 @@ import { SeatTap, namesIn } from './tap.mjs';
 import { parseScript } from './scripts.mjs';
 import { parseDck } from './decks.mjs';
 import { manaValue } from './monkey.mjs';
-import { logCovers } from './checks.mjs';
+import { hiddenLeaks, logCovers } from './checks.mjs';
 import { findingShape } from './report.mjs';
 
 const input = (prompt, over = {}) => ({
@@ -93,6 +93,16 @@ describe('decks', () => {
     expect(manaValue('{2}{R}{R}')).toBe(4);
     expect(manaValue('{X}{U}')).toBe(1);
     expect(manaValue(null)).toBe(0);
+  });
+});
+
+describe('hidden information in the page', () => {
+  const page = (text) => ({ evaluate: async () => text });
+  it('a hidden card’s name on the page is a leak; one this seat was shown, or a basic land type, is not', async () => {
+    const text = 'Opponent hand 7 · Options · Savannah Land — Forest · Lightning Bolt was revealed · Counterspell';
+    const leaks = await hiddenLeaks(page(text), new Set(['Counterspell', 'Lightning Bolt', 'Forest', 'Opt', 'Brainstorm']), new Set(['Lightning Bolt']));
+    expect(leaks).toHaveLength(1);
+    expect(leaks[0]).toMatch(/^"Counterspell" is in the page/);
   });
 });
 

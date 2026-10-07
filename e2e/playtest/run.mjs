@@ -19,7 +19,8 @@
  *   --seed N                 every choice replays from it (decks, the monkey, the draft)
  *   --decks SPEC             solo: cube | cube:<id> | dck | dck:<name>, comma-separated
  *                            (default cube,dck); table: the room's cube, cube:<id>
- *   --turn-cap N             rounds before a game counts as stuck in a loop (default 30)
+ *   --turn-cap N             rounds before a game counts as stuck in a loop (default 40: a 40-card
+ *                            deck runs out by about round 34, so a game past 40 is not ending)
  *   --coach off|fake|real    fake: a helper that answers at once (the panel and auto-coach
  *                            cadence are checked); real: the PC's helper (latency recorded)
  *   --reload 0|1             reload one seat mid-game and check the log and the seat (default 1)
@@ -43,6 +44,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
+import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchBrowser, loadPlaywright, rng, waitHttp } from '../harness.mjs';
@@ -62,7 +64,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Options
 
 function parseArgs(argv) {
-  const o = { mode: 'fake', games: 3, seed: 1, decks: null, turnCap: 30, coach: 'off', reload: 1, out: null, headless: true, stallS: 150, gameMinutes: 30, aiProfile: null, portBase: 8642, maxShots: 300, viewport: 'desktop' };
+  const o = { mode: 'fake', games: 3, seed: 1, decks: null, turnCap: 40, coach: 'off', reload: 1, out: null, headless: true, stallS: 150, gameMinutes: 30, aiProfile: null, portBase: 8642, maxShots: 300, viewport: 'desktop' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = () => argv[++i];
@@ -172,13 +174,14 @@ function makeFinding(game, seat) {
       kind: rec.kind,
       what: rec.what,
       ...(rec.why ? { why: rec.why } : {}),
-      frame: tap.frames.length,
+      frame: tap.gameFrames().length,
       seq: tap.frames.at(-1)?.seq ?? null,
       turn: tap.state?.turn ?? null,
       phase: tap.state?.phase ?? null,
       prompt: rec.input?.prompt ?? tap.input?.prompt ?? null,
       ask: rec.ask ? { kind: rec.ask.kind, askId: rec.ask.askId, prompt: rec.ask.prompt ?? rec.ask.title ?? null, options: (rec.ask.options ?? rec.ask.targets ?? rec.ask.cards ?? []).slice(0, 12).map((o) => o.label) } : null,
       card: rec.card ? { id: rec.card.id, name: rec.card.name, zone: rec.card.zone, attachedToId: rec.card.attachedToId ?? null } : rec.cardId ? { id: rec.cardId } : null,
+      ...(rec.ui ? { ui: rec.ui } : {}),
       at: Math.round((Date.now() - game.t0) / 1000),
       shot: null,
     };
@@ -396,6 +399,11 @@ async function playGame(game, seats, { scripts, askModel, rand, hiddenFor, allow
     const file = `trace-g${game.id}-${s.label}.jsonl`;
     writeFileSync(path.join(OUT, file), s.monkey.trace.map((x) => JSON.stringify(x)).join('\n') + '\n');
     (game.traces ??= {})[s.label] = file;
+    // The seat's own frames, both directions, as the socket carried them (a finding's "frame N" indexes the s2c ones).
+    const frames = `frames-g${game.id}-${s.label}.jsonl.gz`;
+    const lines = [...s.tap.gameFrames().map((f) => ({ ...f, dir: 's2c' })), ...s.tap.sent.filter((f) => f.at >= game.t0).map((f) => ({ ...f, dir: 'c2s' }))].sort((a, b) => a.at - b.at);
+    writeFileSync(path.join(OUT, frames), gzipSync(lines.map((x) => JSON.stringify(x)).join('\n') + '\n'));
+    (game.frameLogs ??= {})[s.label] = frames;
   }
   if (opts.coach !== 'off') game.coach = coachSummary(game, seats, coachWatch);
   return game;
@@ -716,7 +724,7 @@ async function runTable(scratch) {
         const st2 = (await roomCall(base, id, tokH)).body;
         if (st2.match?.over) {
           match.result = `${st2.match.winner === 0 ? 'host' : 'friend'} won ${Math.max(...st2.match.wins)} – ${Math.min(...st2.match.wins)}`;
-          if (!/wins the match|won the match/i.test(hm)) match.findings.push({ kind: 'match-card', what: `the match is over (${match.result}) and the host's card says "${hm}"` });
+          if (!/wins? the match|won the match/i.test(hm)) match.findings.push({ kind: 'match-card', what: `the match is over (${match.result}) and the host's card says "${hm}"` });
           break;
         }
         if (g === 3) {

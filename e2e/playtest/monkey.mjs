@@ -224,6 +224,29 @@ export class Monkey {
     // Once per game per card and reason (not per step), else per text.
     const key = `${this.tap.gameId}|${extra.key ?? what}`;
     if (this.seenUnreach.has(key)) return;
+    // Only a question still open is judged: one the engine replaced while we looked is not a finding.
+    if (extra.input && this.tap.input !== extra.input) return;
+    if (extra.ask && this.tap.ask?.askId !== extra.ask.askId) return;
+    // What the board shows for it, to tell a missing control from one drawn but not marked.
+    extra.ui = await this.page
+      .evaluate((id) => {
+        const game = document.querySelector('.game.play');
+        const els = id === undefined ? [] : [...document.querySelectorAll(`[data-card-id="${id}"], [data-card-ids*="${id}"]`)];
+        return {
+          board: game ? [...game.classList].filter((c) => c.startsWith('mode-') || c === 'is-selecting').join(' ') : null,
+          primary: (() => {
+            const b = document.querySelector('[data-primary]');
+            return b ? `${b.textContent.trim().slice(0, 40)}${b.disabled ? ' (disabled)' : ''}` : null;
+          })(),
+          dialog: !!document.querySelector('.ask-layer'),
+          card: els.map((el) => {
+            const r = el.getBoundingClientRect();
+            const st = getComputedStyle(el);
+            return { where: el.closest('.hand-dock') ? 'hand' : el.closest('.zone-viewer') ? 'viewer' : el.className.split(' ')[0], mark: el.getAttribute('data-mark'), w: Math.round(r.width), h: Math.round(r.height), opacity: st.opacity, hidden: !!el.closest('[aria-hidden="true"]') };
+          }),
+        };
+      }, extra.cardId)
+      .catch(() => null);
     this.seenUnreach.add(key);
     await this.finding({ kind: 'unreachable-option', what, ...extra });
   }
@@ -510,12 +533,16 @@ export class Monkey {
   }
 
   async answerInput(dom) {
+    const input = this.tap.input;
     const kind = this.inputKind();
     this.count('modes', kind);
     // The board can lag the wire by a frame: wait for it to show this input's buttons.
     await sleep(100);
     dom = await this.dom();
+    // The moment moved on while we looked (Forge's "Waiting for …" came in): nothing to judge.
+    if (this.tap.input !== input || !this.tap.deciding() || this.tap.ask) return 'moved-on';
     await this.checkInputReach(dom, kind);
+    if (this.tap.input !== input) return 'moved-on';
     switch (kind) {
       case 'opening':
         return this.opening(dom);
@@ -743,6 +770,12 @@ export class Monkey {
     const used = this.turnClicks.get(turnKey) ?? 0;
     const cands = this.priorityCandidates();
     // Reachability: each candidate needs a marked control (the graveyard's through its viewer, checked when chosen).
+    // A board a moment behind the wire gets 1.5 s to catch up before a missing control counts.
+    if (cands.some((k) => k.zone !== 'graveyard' && !this.cardControls(dom, k.c.id).length)) {
+      await sleep(1500);
+      if (this.tap.input !== i || this.tap.ask) return 'moved-on';
+      dom = await this.dom();
+    }
     for (const k of cands) {
       if (k.zone === 'graveyard') continue;
       if (!this.cardControls(dom, k.c.id).length) {
