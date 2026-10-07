@@ -1,0 +1,157 @@
+/*
+ * ForgeCoach — ui/bug/bug.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The "Report a bug" panel and its buttons (mtg-table D410), on the base tokens.
+ */
+.bug-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.bug-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.bug-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.bug-panel input[type='text'],
+.bug-panel textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+.bug-panel textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+.bug-panel input[type='text']:focus,
+.bug-panel textarea:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+.bug-sev {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bug-sev-opt {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.bug-sev-opt.is-on {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.bug-shot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bug-check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13.5px;
+}
+.bug-panel .bug-check input[type='checkbox'] {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+.bug-thumb {
+  max-width: 100%;
+  max-height: 160px;
+  align-self: flex-start;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+}
+.bug-file {
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.bug-file input {
+  display: none;
+}
+.bug-adds {
+  font-size: 13px;
+  color: var(--text-2);
+}
+.bug-adds summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.bug-adds ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.bug-route {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.bug-route.is-friend {
+  color: var(--text-2);
+  background: var(--info-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+.bug-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bad);
+}
+.bug-sent p {
+  margin: 0 0 8px;
+}
+.bug-sent-head {
+  font-weight: 600;
+  color: var(--ok);
+}
+.bug-id {
+  user-select: all;
+  font-size: 13px;
+}
+.bug-fab {
+  position: fixed;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  box-shadow: var(--shadow);
+  opacity: 0.75;
+  cursor: pointer;
+}
+.bug-fab:hover,
+.bug-fab:focus-visible {
+  opacity: 1;
+  color: var(--text);
+}

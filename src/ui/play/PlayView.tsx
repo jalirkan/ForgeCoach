@@ -53,6 +53,11 @@ import { BoardScenery } from '../ambience/BoardScenery.tsx';
 import { WinChanceStrip } from '../winchance/WinChance.tsx';
 import { useLiveWinChance, useWinChanceModel } from '../winchance/useWinChance.ts';
 
+import { BugButton, BugMenuItem, useBugContext } from '../bug/BugReport.tsx';
+import { gameFacts } from '../../bug/report.ts';
+import { tableRoom } from '../../bug/deliver.ts';
+import { loadFriendTable } from '../../play/friendTable.ts';
+import { redactSeatUrl } from '../../play/seatUrl.ts';
 import './play.css';
 import './controls.css';
 import './log.css';
@@ -120,6 +125,16 @@ export function PlayView({
 
   if (import.meta.env.DEV) (window as unknown as { __forgecoach?: unknown }).__forgecoach = snap;
   const view = useMemo(() => describeInput(input, state, seat, { ask, over: !!over }), [input, state, seat, ask, over]);
+  // Report a bug (mtg-table D410): this seat's game as it stands, read only when a report is made.
+  useBugContext(() => ({
+    surface: snap.table ? 'table' : 'play',
+    game: gameFacts(state, seat, { gameId: state?.gameId ?? log?.hello?.gameId ?? null, status, gameNumber: log?.hello?.gameNumber ?? null, vsHuman: snap.table !== null }),
+    ask,
+    input,
+    log,
+    extra: { seat: redactSeatUrl(snap.url), mode: view.mode, notices: snap.notices.slice(-10), table: snap.table, previousGames: snap.previousLogs.length, attempts: snap.attempts, detail: snap.detail },
+    room: snap.table ? tableRoom(loadFriendTable()) : null,
+  }));
 
   // ---- card data
   const names = useMemo(() => (log ? allCardNames(log, Math.max(0, log.frames.length - 40)) : []), [log]);
@@ -539,6 +554,7 @@ export function PlayView({
       {wide ? (
         <>
           <LogTab variant="button" onClick={() => setLogOpen(true)} open={logOpen} />
+          <BugButton />
           <button className="icon-btn" onClick={() => setConcede(true)} aria-label="Concede" title="Concede" disabled={!connected || !!over || !state}>
             <IconFlag size={17} />
           </button>
@@ -569,6 +585,7 @@ export function PlayView({
                 <button role="menuitem" onClick={() => { setMenu(false); onSettings(); }}>
                   <IconGear size={16} /> Settings
                 </button>
+                <BugMenuItem onPick={() => setMenu(false)} />
                 {finePointer && (
                   <button role="menuitem" onClick={() => { setMenu(false); setHelp(true); }}>
                     <IconKeyboard size={16} /> Keyboard

@@ -33,6 +33,8 @@ import { WinChanceLine } from './winchance/WinChanceLine.tsx';
 import { decisionSpans } from '../winChance.ts';
 import { FilmRoom } from './filmroom/FilmRoom.tsx';
 import type { FilmMoment } from '../filmRoom.ts';
+import { BugButton, useBugContext } from './bug/BugReport.tsx';
+import { gameFacts } from '../bug/report.ts';
 
 export interface LiveInfo {
   url: string;
@@ -185,6 +187,16 @@ export function GameView({
   const frame = mode === 'frames' ? frames[fIdx] ?? null : null;
   const state = decision?.state ?? frame?.state ?? frames[frames.length - 1]?.state ?? null;
   const frameIndex = decision?.frameIndex ?? frame?.frameIndex ?? 0;
+  // Report a bug (mtg-table D410): the replay at the moment shown, its log up to that frame.
+  useBugContext(() => ({
+    surface: 'replay',
+    game: gameFacts(state, log.seat, { gameId: state?.gameId ?? log.header?.gameId ?? null, frameIndex, gameNumber: log.hello?.gameNumber ?? null }),
+    ask: null,
+    input: null,
+    log: { ...log, frames: log.frames.slice(0, frameIndex + 1) },
+    extra: { title, mode, decision: mode === 'decisions' ? dIdx : null, decisions: decisions.length, frames: log.frames.length, live: live ? { status: live.status, url: live.url, detail: live.detail ?? null } : null },
+    room: null,
+  }));
 
   const switchMode = useCallback(
     (m: ScrubMode) => {
@@ -327,6 +339,7 @@ export function GameView({
               </button>
             )}
             <LogTab variant="button" onClick={() => setLogOpen(true)} open={logOpen} />
+            <BugButton />
             <button className="icon-btn" onClick={onSettings} aria-label="Settings">
               <IconGear size={18} />
             </button>

@@ -27,6 +27,7 @@ import { readPlayProfile } from './PlayProfile.tsx';
 import { PlayView } from './play/PlayView.tsx';
 import { useFriendReview } from './play/useFriendReview.ts';
 import { hasSampleReview } from './review/samples.ts';
+import { BugReportHost } from './bug/BugReport.tsx';
 
 // #deck: Draft & build, the deck assistant (lazy: its own bundle).
 const DeckApp = lazy(() => import('./deck/DeckApp.tsx'));
@@ -186,10 +187,21 @@ export function App() {
         }}
       />
     ) : null;
+  // Report a bug (Shift+B, and the screens' bug buttons; mtg-table D410) over whichever page is open.
   if (page) {
-    return <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>{page}</Suspense>;
+    return (
+      <>
+        <Suspense fallback={<div className="live-wait"><span className="spinner spinner-lg" /></div>}>{page}</Suspense>
+        <BugReportHost />
+      </>
+    );
   }
-  return <MainApp hash={hash} />;
+  return (
+    <>
+      <MainApp hash={hash} />
+      <BugReportHost />
+    </>
+  );
 }
 
 function MainApp({ hash }: { hash: string }) {
