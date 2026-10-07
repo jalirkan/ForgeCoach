@@ -16,7 +16,7 @@ import { isHidden } from '../protocol.ts';
 import type { CardInfo } from '../cards.ts';
 import { useCardInfo } from './cardData.ts';
 import { createLongPress, pressBuzz, pressTimers } from './longPress.ts';
-import { useBoardStateRef, useCardActions, usePlay, type PlayMark } from './cardContext.ts';
+import { useBoardStateRef, useCardActions, usePlay, type PlayInteraction, type PlayMark } from './cardContext.ts';
 import { PILE_SHOWN, pilePlan } from './landPiles.ts';
 import { ManaCost } from './Mana.tsx';
 import { IconInfo, IconShield, IconSword, TypeGlyph } from './Icons.tsx';
@@ -56,6 +56,29 @@ export function tileSig(c: AnyCard | undefined): string {
 /** Whose side a permanent is drawn on: framed gold (yours) or crimson (theirs). */
 export type TileSide = 'me' | 'opp';
 
+/**
+ * What a click (or Enter) on a card does: in play, a card the play context
+ * marks (`act`: a click plausibly drives it; `select`: the engine is asking
+ * for it) sends `act: clickCard` through the context; everything else, and
+ * every card in a replay or a watch view (no play context), opens its
+ * details. Tiles, land piles and the aura / equipment chips under a host all
+ * go through here.
+ */
+export function activateCard(
+  card: AnyCard,
+  play: PlayInteraction | null,
+  open: () => void,
+  onClicked?: (card: AnyCard) => void,
+): 'act' | 'open' {
+  if (play && play.mark(card)) {
+    onClicked?.(card);
+    play.click(card);
+    return 'act';
+  }
+  open();
+  return 'open';
+}
+
 function useOpen(card: AnyCard, onClicked?: (card: AnyCard) => void) {
   const actions = useCardActions();
   const stateRef = useBoardStateRef();
@@ -74,11 +97,8 @@ function useOpen(card: AnyCard, onClicked?: (card: AnyCard) => void) {
   useEffect(() => () => press.cancel(), [press]);
   const activate = useCallback(() => {
     if (press.takeClick()) return;
-    if (play && mark) {
-      onClicked?.(cardRef.current);
-      play.click(cardRef.current);
-    } else open();
-  }, [play, mark, open, onClicked, press]);
+    activateCard(cardRef.current, play, open, onClicked);
+  }, [play, open, onClicked, press]);
   // Enter activates a focused tile. In play, Space is left to the table's
   // primary button (click a land, then Space = OK); in replay it opens too.
   const onKey = useCallback(
@@ -366,32 +386,51 @@ function hostEffect(info: CardInfo | undefined): string | null {
 /**
  * An aura or equipment, tucked under its host: the edge of the card showing
  * below it, labelled with its name and what it does to the host.
+ *
+ * It is a card of its own for clicks: the same play context as a tile decides
+ * what a click does (`activateCard`), so in play an equipment you control can
+ * be clicked to Equip or to use its ability, and an attached card the engine
+ * asks for (a target, "choose an artifact to sacrifice") can be chosen; it then
+ * carries the same `is-act` / `is-select` marks as a tile. Long-press (touch)
+ * and right-click always open its details; Enter acts like a click. With no
+ * play context (replay, watch) a click opens details, as before. Its own
+ * events never reach the host tile.
  */
 const AttachmentChip = memo(
   function AttachmentChip({ card }: { card: Card }) {
     const info = useCardInfo(card.name || null);
-    const { open, onKey, onEnter, onLeave } = useOpen(card);
+    const { handlers, mark, playing } = useOpen(card);
     const colors = cardColors(card, info?.producedMana, info?.colors);
     const effect = hostEffect(info);
+    // The host tile must not see the chip's click, press or context menu (its
+    // own long-press would start). Keys: in replay none leaves the chip (as
+    // before); in play Enter is stopped by the shared key handler and other
+    // keys (Space = OK) bubble on as from a tile.
+    const stop =
+      <E extends { stopPropagation(): void }>(h: (e: E) => void) =>
+      (e: E) => {
+        e.stopPropagation();
+        h(e);
+      };
+    const what = mark === 'select' ? ', selectable' : '';
     return (
       <span
-        className={cx('attach-chip', colorClass(colors), card.tapped && 'is-tapped')}
+        className={cx('attach-chip', colorClass(colors), card.tapped && 'is-tapped', mark === 'select' && 'is-select', mark === 'act' && 'is-act')}
         role="button"
         tabIndex={0}
-        aria-label={`Attached: ${displayName(card)}${effect ? ` — ${effect}` : ''}`}
+        aria-label={`Attached: ${displayName(card)}${card.tapped ? ', tapped' : ''}${what}${effect ? ` — ${effect}` : ''}`}
         title={`${displayName(card)}${effect ? ` — ${effect}` : ''}`}
         data-card-id={card.id}
-        onClick={(e) => {
-          e.stopPropagation();
-          open();
-        }}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          onKey(e);
-        }}
-        onPointerEnter={onEnter}
-        onPointerLeave={onLeave}
-        onPointerDown={(e) => e.stopPropagation()}
+        data-mark={mark ?? undefined}
+        onClick={stop(handlers.onClick)}
+        onKeyDown={playing ? handlers.onKeyDown : stop(handlers.onKeyDown)}
+        onPointerEnter={handlers.onPointerEnter}
+        onPointerLeave={handlers.onPointerLeave}
+        onPointerDown={stop(handlers.onPointerDown)}
+        onPointerMove={stop(handlers.onPointerMove)}
+        onPointerUp={stop(handlers.onPointerUp)}
+        onPointerCancel={stop(handlers.onPointerCancel)}
+        onContextMenu={stop(handlers.onContextMenu)}
       >
         <span className="attach-name">{displayName(card)}</span>
         {effect && <span className="attach-effect">{effect}</span>}
