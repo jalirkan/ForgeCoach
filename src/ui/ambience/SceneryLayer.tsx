@@ -154,7 +154,9 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     if (!urls.length) return;
     const loader = browserLoader();
     void (async () => {
-      for (const u of urls) await loader(u.url, 'image').catch(() => {});
+      // A phone-shaped viewport warms the phone pictures, where the pack has them.
+      const narrow = window.innerWidth < 700;
+      for (const u of urls) await loader(narrow && u.phone ? u.phone : u.url, 'image').catch(() => {});
     })();
   }, [load?.pack, fill]);
 

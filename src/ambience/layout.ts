@@ -23,7 +23,7 @@
  * units, so the crop follows the slot's size with no script).
  */
 import type { SlotState } from './model.ts';
-import { DEFAULT_HALF_LAYOUT, halfAt, type Anchor, type AreaRect, type Fit, type FocalPoint, type ScenePack } from './manifest.ts';
+import { DEFAULT_HALF_LAYOUT, halfAt, type Anchor, type AreaRect, type Fit, type FocalPoint, type HalfPicture, type PackHalf, type ScenePack } from './manifest.ts';
 
 export interface SlotLayout {
   slot: SlotState;
@@ -168,18 +168,39 @@ export interface HalfArt {
   aspect: number;
   focal: FocalPoint;
   safe: AreaRect | null;
-  /** `half`: a spec 1.5 half picture; `strip`: an older pack's (or the built-in) strip art, cover-cropped. */
-  source: 'half' | 'strip';
+  /** `half` / `phone`: a spec 1.5 half picture (desktop or phone shape); `strip`: an older pack's (or the built-in) strip art, cover-cropped. */
+  source: 'half' | 'phone' | 'strip';
+  /** The picture to draw (null for strip art: the stage's layers). */
+  picture?: HalfPicture | null;
 }
 
 /** Strip art (older packs, the built-in scenery) is 4:1 (the spec's 2048 × 512 backdrops), its horizon ~57% up: anchored there. */
-export const STRIP_ART: HalfArt = { aspect: 4, focal: { x: 0.5, y: 0.43 }, safe: null, source: 'strip' };
+export const STRIP_ART: HalfArt = { aspect: 4, focal: { x: 0.5, y: 0.43 }, safe: null, source: 'strip', picture: null };
 
-/** The frame for a biome at a stage: its half picture's when the pack has one (spec 1.5), else the strip art's. */
-export function halfArt(pack: ScenePack | null, biome: SlotState['biome'], stage: number): HalfArt {
-  const h = halfAt(pack?.biomes[biome], Math.max(1, stage));
+const shape = (p: HalfPicture) => Math.round((p.width / p.height) * 10000) / 10000;
+
+/**
+ * Which picture of a stage's `half` a panel of `panelAspect` (width / height)
+ * shows: the phone picture when the panel's shape is nearer the phone's than
+ * the desktop's (on a log scale: 1:1 is as far from 4:1 as from 1:4), else
+ * the desktop picture. Unknown shape: the desktop picture.
+ */
+export function pickHalfPicture(h: PackHalf, panelAspect: number | null): { picture: HalfPicture; phone: boolean } {
+  if (!h.phone || !(panelAspect !== null && panelAspect > 0)) return { picture: h, phone: false };
+  const d = (p: HalfPicture) => Math.abs(Math.log(panelAspect / shape(p)));
+  return d(h.phone) < d(h) ? { picture: h.phone, phone: true } : { picture: h, phone: false };
+}
+
+/** The frame for a picture of a stage's `half`, or the strip art's. */
+export function halfArtOf(h: PackHalf | null, panelAspect: number | null = null): HalfArt {
   if (!h) return STRIP_ART;
-  return { aspect: Math.round((h.width / h.height) * 10000) / 10000, focal: h.focal, safe: h.safe, source: 'half' };
+  const { picture, phone } = pickHalfPicture(h, panelAspect);
+  return { aspect: shape(picture), focal: picture.focal, safe: picture.safe, source: phone ? 'phone' : 'half', picture };
+}
+
+/** The frame for a biome at a stage in a panel of `panelAspect`: its half picture when the pack has one (spec 1.5), else the strip art. */
+export function halfArt(pack: ScenePack | null, biome: SlotState['biome'], stage: number, panelAspect: number | null = null): HalfArt {
+  return halfArtOf(halfAt(pack?.biomes[biome], Math.max(1, stage)), panelAspect);
 }
 
 /**

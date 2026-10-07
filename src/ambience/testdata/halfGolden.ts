@@ -46,8 +46,8 @@ export function halfGolden(manifest: unknown | null, base = 'https://example.tes
     for (const box of HALF_BOXES) {
       const spans = halfSpans(layout, box.w, pack?.half?.seamRatio);
       boards[`${b.name}|${box.name}`] = layout.map((l, i) => {
-        const art = halfArt(pack, l.slot.biome, l.stage);
         const span = spans[i]!;
+        const art = halfArt(pack, l.slot.biome, l.stage, span.width / box.h);
         const f = halfFrame({ w: span.width, h: box.h }, art);
         // One compact row per slot: biome, stage, share, span (left, width px), art, frame (left, top, width, height as fractions of the slot).
         return [l.slot.biome, l.stage, l.share, span.left, span.width, art.source, f.left, f.top, f.width, f.height];

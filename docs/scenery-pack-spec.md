@@ -21,7 +21,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.2 | Optional one-shot **`effects`** (§2, *Effects*): creature enters, attack, damage to a player or a creature, landfall and stage up, for the whole pack or per biome; their budgets (§3) and reduced-motion behaviour (§4). An optional top-level `spec` field. A pack may now have effects and no stage art. |
 | 1.3 | Optional **board accents** (§2, *Board accents*): per biome and stage, an `overlay` list of corner and edge pieces drawn in the player's area outside the strip, with `overlayMode` (`replace` / `add`) across stages; their budgets (§3); the rendering rules (beneath the cards, small widths, reduced motion, Settings → Board accents). A pack may have accents and no stage art. |
 | 1.4 | One more accent piece, the **full-area** piece (§2, *Full-area accents*): `anchor: "area"`, one transparent picture across the whole player area, beneath the strip and the cards, with `fit`, an optional `safe` rect or `position`, `minWidthPx`; at most one per stage; its own budget (§3). Every other piece and every 1.0–1.3 pack is unchanged. |
-| 1.5 | The **half board** (§2, *The half board*): the scenery fills each player's whole half of the board (Settings → Fill each side, on by default), split side by side in proportion to their lands, each biome at its own stage, both halves upright with a mist band along the centre line, and a soft dark scrim under the card rows. Optional per-stage **`half`** pictures (one opaque picture per stage, sized for a half, with `focal` and `safe` for the crop) and a top-level **`half`** layout (`seamRatio`, `minShare`, `mist`); their budget (§3). A 1.0–1.4 pack fills the half with its strip art, cover-cropped. |
+| 1.5 | The **half board** (§2, *The half board*): the scenery fills each player's whole half of the board (Settings → Fill each side, on by default), split side by side in proportion to their lands, each biome at its own stage, both halves upright with a mist band along the centre line, and a soft dark scrim under the card rows. Optional per-stage **`half`** pictures (an opaque desktop picture and an optional portrait `phone` one, with the scene's `subjectBand` — and optional `focal` / `safe` — for the crop) and a top-level **`half`** layout (`seamRatio`, `minShare`, `mist`); their budget (§3). A 1.0–1.4 pack fills the half with its strip art, cover-cropped. |
 
 ## 1. How the scenery works
 
@@ -614,13 +614,14 @@ draws, and what a pack can give it:
   of the width wide (capped at 14% of the viewport on phones), with a breath
   of mist in it.
 - **The crop.** Each panel shows its picture whole-height or whole-width,
-  whichever covers it (`cover`): the `focal` point as near the panel's middle
-  as the picture allows, and the `safe` rect kept whole whenever the panel's
-  shape allows (when it cannot, the view centres on the rect). A desktop half
-  is about 2.7–5 : 1, so a 3 : 1 picture loses a little of its top and bottom
-  or sides; a phone's half is near 1 : 1, so it shows about the middle third of
-  the width, and a narrow panel of a split less. One picture per biome per
-  half, chosen by `srcset` for the screen's density (1x or 2x, never more).
+  whichever covers it (`cover`): the subject band whole whenever the panel's
+  shape allows (when it cannot, the view centres on it), its middle as near
+  the panel's middle as the picture allows. A desktop half is about 2.7–5 : 1,
+  so a 16 : 5 picture loses a little of its sides or of its top and bottom; a
+  phone's half is near 1 : 1, so it shows the phone picture (4 : 5) with a
+  little of its sky and ground cut, or, with no phone picture, about the
+  middle third of the desktop picture. One picture per biome per half, chosen
+  by `srcset` for the screen's density (1x or 2x, never more).
 - **The card-row scrim.** Under each row of cards (and under the "No
   permanents" note) ForgeCoach draws a soft dark band: the board's own
   background colour, opaque within 6 px of the cards, then feathered from 0.85
@@ -642,21 +643,32 @@ its panel with its stage's strip layers in a 4 : 1 frame (the spec's 2048 ×
 y 0.43 }, no safe rect. Every layer keeps its place in that frame, so loops
 and objects stay registered to the backdrop. A 1.0–1.4 pack needs no change.
 
-**A pack's half pictures.** Give a stage a `half` object: one **opaque**
+**A pack's half pictures.** Give a stage a `half` object, beside its strip
+`layers` (so the pack still loads on a client without 1.5): an **opaque**
 picture painted for a whole half, used instead of the stage's still layers
-when the half is filled. The stage's moving layers (video, sprite) still play
-over it, in its frame. A stage may have a `half` and no `layers`: the strip
-(Fill each side off) then shows the half picture, cover-cropped about its
-middle. A stage with both keeps its `layers` for the strip.
+when the half is filled, and optionally a portrait **`phone`** picture of the
+same scene. Each panel shows the picture whose shape is nearer its own (on a
+log scale, so with 16 : 5 and 4 : 5 pictures a panel narrower than about
+1.6 : 1 takes the phone one): a phone's half, and a narrow panel of a split on
+a desktop, take the phone picture; a desktop half takes the desktop one. A
+stage may have a `half` and no `layers`: the strip (Fill each side off) then
+shows the desktop picture, cover-cropped about its middle.
 
 | Field | Type / range | Default | Notes |
 | --- | --- | --- | --- |
-| `src` | URL (`.webp` `.avif` `.png` `.jpg`) | — | **Required.** The 1x picture, opaque. Same URL rules as layers. |
-| `src2x` | URL | — | The 2x file (used through `srcset`). |
-| `width`, `height` | 64–16384 (whole), a shape between 1 : 2 and 8 : 1 | 1728 × 576 | The 1x file's pixel size. Only its shape is used, to crop before the file loads; give both. |
-| `focal` | `{ "x", "y" }`, 0–1 | `{ "x": 0.5, "y": 0.475 }` | The subject's centre, as fractions of the picture from its top-left: kept as near the panel's middle as the picture allows. The default is the middle of §5's subject band (35–60% down), centred. |
-| `safe` | `{ "x", "y", "w", "h" }` | — | The part that must stay visible, as for full-area accents (fractions from the top-left; `x + w`, `y + h` ≤ 1). For §5's frames, the subject band across the middle half: `{ "x": 0.25, "y": 0.35, "w": 0.5, "h": 0.25 }`. |
-| `bytes` | whole number | — | `src` + `src2x`, for the budget (§3). |
+| `src` | URL (`.webp` `.avif` `.png` `.jpg`) | — | **Required.** The desktop picture at 1x, opaque. Same URL rules as layers. |
+| `src2x` | URL | — | Its 2x file (used through `srcset`). |
+| `phone` | `{ "src", "src2x", … }` | — | The phone picture: `src` **required**, `src2x` optional; it may also carry its own `width`, `height`, `subjectBand`, `focal`, `safe` (below). A bad `phone.src` drops only the phone picture. |
+| `subjectBand` | `[top, bottom]`, 0–1, at least 0.05 apart | `[0.35, 0.60]` | §5's subject band: where the scene's subject lies, as fractions of the picture's height from the top. The crop keeps it whole whenever the panel's shape allows (across the middle half of the width), and centres on it. On `phone`, the default is the desktop band mapped into the phone picture as if it were outpainted evenly up and down (16 : 5 → 4 : 5: `y ↦ 0.25 + y / 2`, so `[0.425, 0.55]`); give `phone.subjectBand` when the outpainting is not even. |
+| `width`, `height` | 64–16384 (whole), a shape between 1 : 4 and 8 : 1 | 2048 × 640 (desktop), 1024 × 1280 (`phone`) | The 1x file's pixel size. Only its shape is used, to crop before the file loads; give them when the files are not pack-v3's sizes. |
+| `focal` | `{ "x", "y" }`, 0–1 | the band's middle, centred | Optional, finer than the band: the point kept as near the panel's middle as the picture allows. |
+| `safe` | `{ "x", "y", "w", "h" }` | the band across the middle half: `{ x 0.25, y top, w 0.5, h bottom − top }` | Optional, finer than the band: the part kept whole whenever the panel's shape allows (as for full-area accents). |
+| `bytes` | whole number | — | Every file of this `half` (`src`, `src2x`, `phone.src`, `phone.src2x`), for the budget (§3). |
+
+**Loops on phones.** A stage's moving layers (video, sprite) play over the
+**desktop** picture, in its frame; over the **phone** picture none play: the
+loops are cut for the desktop's shape, and a phone saves their bytes and
+battery. So a pack needs no phone loops.
 
 **Top-level `half`** (the layout; every field optional):
 
@@ -671,13 +683,15 @@ dropped when it has none), and out-of-range numbers fall back to their
 defaults with a warning. A picture that fails to load on the board falls back
 to the stage's strip art, cropped.
 
-**How to paint one** (§5): 3 : 1, **3456 × 1152** with a **1728 × 576** copy
-(`src2x` and `src`); the horizon about **57% up**; the scene's subject in the
-band **35–60% down**, centred enough that the **middle half of the width**
-tells the story (a phone shows only that); the **bottom ~30% calm** (the land
-row and the scrim sit there); no text, no faces. Each stage the same place
-grown, as for the strip. Opaque: no alpha; the mist and the scrim are
-ForgeCoach's.
+**How to paint them** (§5, pack-v3): the desktop picture **16 : 5, 2048 ×
+640** with a **4096 × 1280** `src2x`; the phone picture **4 : 5, 1024 × 1280**
+with a **2048 × 2560** `src2x`, made from the same stage (outpainted up into
+sky and down into calm ground); the horizon about **57% up** the desktop
+picture; the subject in the **subject band** (35–60% down), centred enough
+that the **middle half of the width** tells the story; the **bottom ~30%
+calm** (the land row and the scrim sit there); no text, no faces. Each stage
+the same place grown, as for the strip. Opaque: no alpha; the mist and the
+scrim are ForgeCoach's.
 
 ### Worked example: half pictures for the island
 
@@ -695,14 +709,24 @@ ForgeCoach's.
       "label": "Moonlit cove",
       "bloom": { "kind": "fade", "durationMs": 1400, "staggerMs": 120 },
       "stages": [
-        { "half": { "src": "island/s1-half.webp", "src2x": "island/s1-half@2x.webp", "width": 1728, "height": 576, "focal": { "x": 0.5, "y": 0.47 }, "safe": { "x": 0.25, "y": 0.35, "w": 0.5, "h": 0.25 }, "bytes": 1300000 } },
-        { "half": { "src": "island/s2-half.webp", "src2x": "island/s2-half@2x.webp", "width": 1728, "height": 576, "focal": { "x": 0.5, "y": 0.47 }, "safe": { "x": 0.25, "y": 0.35, "w": 0.5, "h": 0.25 }, "bytes": 1500000 } },
-        { "half": { "src": "island/s3-half.webp", "src2x": "island/s3-half@2x.webp", "width": 1728, "height": 576, "focal": { "x": 0.55, "y": 0.45 }, "safe": { "x": 0.25, "y": 0.35, "w": 0.5, "h": 0.25 }, "bytes": 1700000 } },
         {
-          "half": { "src": "island/s4-half.webp", "src2x": "island/s4-half@2x.webp", "width": 1728, "height": 576, "focal": { "x": 0.5, "y": 0.45 }, "safe": { "x": 0.25, "y": 0.35, "w": 0.5, "h": 0.25 }, "bytes": 1900000 },
+          "layers": [{ "id": "sky", "kind": "image", "src": "island/s1-sky.webp", "src2x": "island/s1-sky@2x.webp", "depth": 0, "z": 0, "idle": false }],
+          "half": { "src": "island/s1-half.webp", "src2x": "island/s1-half@2x.webp", "phone": { "src": "island/s1-phone.webp", "src2x": "island/s1-phone@2x.webp" }, "subjectBand": [0.35, 0.6], "bytes": 1700000 }
+        },
+        {
+          "layers": [{ "id": "sky", "kind": "image", "src": "island/s2-sky.webp", "src2x": "island/s2-sky@2x.webp", "depth": 0, "z": 0, "idle": false }],
+          "half": { "src": "island/s2-half.webp", "src2x": "island/s2-half@2x.webp", "phone": { "src": "island/s2-phone.webp", "src2x": "island/s2-phone@2x.webp" }, "subjectBand": [0.35, 0.6], "bytes": 1800000 }
+        },
+        {
+          "layers": [{ "id": "sky", "kind": "image", "src": "island/s3-sky.webp", "src2x": "island/s3-sky@2x.webp", "depth": 0, "z": 0, "idle": false }],
+          "half": { "src": "island/s3-half.webp", "src2x": "island/s3-half@2x.webp", "phone": { "src": "island/s3-phone.webp", "src2x": "island/s3-phone@2x.webp", "subjectBand": [0.4, 0.58] }, "subjectBand": [0.33, 0.6], "bytes": 1900000 }
+        },
+        {
           "layers": [
+            { "id": "sky", "kind": "image", "src": "island/s4-sky.webp", "src2x": "island/s4-sky@2x.webp", "depth": 0, "z": 0, "idle": false },
             { "id": "motes", "kind": "video", "src": "island/s4-motes.webm", "fallback": "island/s4-motes.mp4", "poster": "island/s4-motes.webp", "blend": "screen", "z": 10, "depth": 0.4 }
-          ]
+          ],
+          "half": { "src": "island/s4-half.webp", "src2x": "island/s4-half@2x.webp", "phone": { "src": "island/s4-phone.webp", "src2x": "island/s4-phone@2x.webp" }, "subjectBand": [0.35, 0.6], "bytes": 2000000 }
         }
       ]
     }
@@ -710,13 +734,12 @@ ForgeCoach's.
 }
 ```
 
-Every stage is one opaque half picture; stage 3's subject sits a little right
-of centre, so its focal point moves with it. Stage 4 adds its loop (screen
-blend) over the picture, in the picture's frame. With Fill each side off the
-strip shows each half picture cropped about its middle, and the loop over
-stage 4. The island declares 6.4 MB of half pictures, under the 8 MB
-(8,388,608-byte) budget. A pack can keep its 1.4 strip art beside these: give
-each stage its `layers` as before and the `half` too.
+Every stage keeps its strip `sky` (so a client older than 1.5 draws the
+strip as before) and adds its `half`: the desktop and phone pictures and the
+subject band. Stage 3's outpainting is not even, so its phone picture says
+where its band lies. Stage 4's loop plays over the desktop picture (screen
+blend), not over the phone one. The island declares 7.4 MB of half pictures
+(desktop and phone, 1x and 2x), under the 8 MB (8,388,608-byte) budget.
 
 `src/ambience/half.test.ts` validates this exact block. If you change it, it
 must stay error- and warning-free.
@@ -761,10 +784,10 @@ Budgets for full-area accents (1.4), an extension of the accents' budget: their 
 - Stills only, as other accents.
 
 Budgets for half pictures (1.5), counted apart from the strip's 6 MB, the effects' 4 MB and the accents:
-- **≤ 8 MB per biome** of half pictures (declare `bytes`, `src` + `src2x`, each file once however many stages repeat it; the validator warns past it).
-- **One picture per stage**, opaque WebP (quality 80–85) or AVIF: **1728 × 576** at 1x and **3456 × 1152** as `src2x` (3 : 1). About 0.3–0.5 MB for 1x and 1–1.4 MB for 2x fit four stages in the budget.
-- The board loads only the pictures it shows (stage 1's warm in the background); the browser picks 1x or 2x by the screen's density, never more.
-- Moving layers over a half picture count against the 2 moving layers per stage as before.
+- **≤ 8 MB per biome** of half pictures, **phone pictures and both 2x files included** (declare `bytes` on each `half`; a `half` repeated across stages counts once; the validator warns past it). Four stages at about 1.6–2 MB each (desktop 1x ~0.35 MB, 2x ~0.8 MB; phone 1x ~0.25 MB, 2x ~0.55 MB) fit.
+- **Per stage**: a desktop picture, opaque WebP (quality 80–85) or AVIF, **2048 × 640** at 1x and **4096 × 1280** as `src2x` (16 : 5); and optionally a phone picture, **1024 × 1280** and **2048 × 2560** (4 : 5).
+- A device loads only the pictures its panels show, one per biome per half (stage 1's warm in the background, the phone ones on a phone-sized screen); the browser picks 1x or 2x by the screen's density, never more.
+- No phone loops: moving layers play only over the desktop picture, and count against the 2 moving layers per stage as before.
 
 The whole pack should stay ≤ 30 MB, effects and accents included (half pictures count apart: up to 40 MB more for five biomes).
 

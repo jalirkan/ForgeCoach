@@ -109,22 +109,32 @@ export interface FocalPoint {
   y: number;
 }
 
-/**
- * Spec 1.5: one picture that fills a player's whole half of the board at a
- * stage (art direction §5: 3:1, horizon ~57% up, the subject in the band
- * 35–60% down, the bottom ~30% calm). Cover-cropped to the half: the focal
- * point kept as near the middle as the picture allows, the safe rect kept
- * whole whenever the half's shape allows it.
- */
-export interface PackHalf {
+/** Spec 1.5: one picture for a half, at one shape (the desktop's, or the phone's). */
+export interface HalfPicture {
   src: string;
   src2x: string | null;
   /** The 1x file's pixel size: only its shape (width / height) is used, to crop before the file loads. */
   width: number;
   height: number;
+  /** §5's subject band: the scene's subject lies between these fractions of the height, from the top. */
+  subjectBand: [number, number];
+  /** Kept as near the panel's middle as the picture allows (default: the band's middle, centred). */
   focal: FocalPoint;
-  /** The part that must stay visible (fractions from the top-left), or null: crop by the focal point alone. */
-  safe: AreaRect | null;
+  /** Kept whole whenever the panel's shape allows (default: the subject band across the middle half). */
+  safe: AreaRect;
+}
+
+/**
+ * Spec 1.5: the pictures that fill a player's whole half of the board at a
+ * stage (art direction §5; pack-v3: desktop halves 16:5, 2048 × 640, and
+ * phone halves 4:5, 1024 × 1280, outpainted up into sky and down into calm
+ * ground). Cover-cropped to each panel: the phone picture where the panel's
+ * shape is nearer its own, else the desktop one.
+ */
+export interface PackHalf extends HalfPicture {
+  /** The portrait picture for phones, or null (the desktop picture is cropped). */
+  phone: HalfPicture | null;
+  /** Declared size of every file of this `half` (src, src2x, phone src and src2x), for the budget. */
   bytes: number | null;
 }
 
@@ -140,11 +150,12 @@ export interface PackHalfLayout {
 
 /** The default half layout (§5: ~10% seams, no panel under ~15%). */
 export const DEFAULT_HALF_LAYOUT: PackHalfLayout = { seamRatio: 0.1, minShare: 0.15, mist: 0.16 };
-/** The default focal point: the middle of §5's subject band (35–60% down), centred. */
-export const DEFAULT_HALF_FOCAL: FocalPoint = { x: 0.5, y: 0.475 };
-/** The default half picture's size when the pack does not say (§5's 1728 × 576 copies, 3:1). */
-export const DEFAULT_HALF_SIZE = { width: 1728, height: 576 } as const;
-/** Declared half-picture files per biome (`src` + `src2x`, every stage) past this get a warning. */
+/** §5's subject band: 35–60% down the picture. */
+export const DEFAULT_SUBJECT_BAND: [number, number] = [0.35, 0.6];
+/** The default sizes when the pack does not say (pack-v3: desktop 16:5, phone 4:5). */
+export const DEFAULT_HALF_SIZE = { width: 2048, height: 640 } as const;
+export const DEFAULT_PHONE_SIZE = { width: 1024, height: 1280 } as const;
+/** Declared half-picture files per biome (desktop and phone, 1x and 2x, every stage) past this get a warning. */
 export const MAX_HALF_BYTES = 8 * 1024 * 1024;
 const HALF_EXT = /\.(webp|avif|png|jpe?g)$/i;
 
@@ -946,37 +957,71 @@ function parseLayer(v: unknown, base: string, path: string, warn: string[]): Pac
   };
 }
 
-/** Spec 1.5: a stage's `half` picture, or null (dropped with a warning when unusable). */
+const HALF_EXT_NAME = '.webp, .avif, .png or .jpg';
+
+/** One picture of a `half` (the desktop fields, or `phone`); null when its `src` is unusable (warned). */
+function parseHalfPicture(v: Obj, base: string, path: string, warn: string[], size: { width: number; height: number }, band0: [number, number] | null): HalfPicture | null {
+  const problems: string[] = [];
+  const src = layerUrl(v.src, base, HALF_EXT, HALF_EXT_NAME, `${path}.src`, problems, false);
+  if (problems.length) {
+    warn.push(...problems.map((p) => `${p}; picture dropped`));
+    return null;
+  }
+  const opt: string[] = [];
+  const src2x = layerUrl(v.src2x, base, HALF_EXT, HALF_EXT_NAME, `${path}.src2x`, opt, true);
+  for (const o of opt) warn.push(`${o}; ignored`);
+  let { width, height } = size;
+  if (v.width !== undefined || v.height !== undefined) {
+    const w = int(v.width, 64, 16384);
+    const h = int(v.height, 64, 16384);
+    if (w === null || h === null || w / h < 0.25 || w / h > 8) warn.push(`${path}: width and height are the 1x file's pixels (64–16384, a shape between 1:4 and 8:1); using ${width} × ${height}`);
+    else [width, height] = [w, h];
+  }
+  let band: [number, number] = band0 ?? DEFAULT_SUBJECT_BAND;
+  if (v.subjectBand !== undefined && v.subjectBand !== null) {
+    const sb: unknown[] = Array.isArray(v.subjectBand) ? v.subjectBand : [];
+    const ok = sb.length === 2 && sb.every((x) => num(x, 0, 1) !== null) && Number(sb[1]) - Number(sb[0]) >= 0.05;
+    if (!ok) warn.push(`${path}.subjectBand: [top, bottom], fractions 0–1 of the height from the top, at least 0.05 apart; using [${band.join(', ')}]`);
+    else band = [Number(sb[0]), Number(sb[1])];
+  }
+  let focal: FocalPoint = { x: 0.5, y: +((band[0] + band[1]) / 2).toFixed(4) };
+  if (v.focal !== undefined && v.focal !== null) {
+    const f = isObj(v.focal) ? { x: num(v.focal.x ?? focal.x, 0, 1), y: num(v.focal.y ?? focal.y, 0, 1) } : null;
+    if (!f || f.x === null || f.y === null) warn.push(`${path}.focal: { x, y }, fractions 0–1 of the picture from its top-left; using the subject band’s middle`);
+    else focal = { x: f.x, y: f.y };
+  }
+  const safe = parseSafe(v.safe, `${path}.safe`, warn) ?? { x: 0.25, y: band[0], w: 0.5, h: +(band[1] - band[0]).toFixed(4) };
+  return { src: src!, src2x, width, height, subjectBand: band, focal, safe };
+}
+
+/**
+ * The phone picture's default subject band: the desktop picture's middle half
+ * of the width, outpainted evenly up and down to 4:5, puts the desktop band
+ * in the phone picture's middle (the desktop's height is 1/2 of the phone's
+ * for 16:5 → 4:5, so y ↦ 0.25 + y / 2 then). A pack whose outpainting is not
+ * even gives `phone.subjectBand`.
+ */
+function phoneBand(desk: HalfPicture): [number, number] {
+  const k = Math.min(1, (desk.height / desk.width) * 2 / (DEFAULT_PHONE_SIZE.height / DEFAULT_PHONE_SIZE.width));
+  const map = (y: number) => +((1 - k) / 2 + y * k).toFixed(4);
+  return [map(desk.subjectBand[0]), map(desk.subjectBand[1])];
+}
+
+/** Spec 1.5: a stage's `half` pictures, or null (dropped with a warning when unusable). */
 function parseHalf(v: unknown, base: string, path: string, warn: string[]): PackHalf | null {
   if (v === undefined || v === null) return null;
   if (!isObj(v)) {
     warn.push(`${path}: not an object; ignored`);
     return null;
   }
-  const problems: string[] = [];
-  const src = layerUrl(v.src, base, HALF_EXT, '.webp, .avif, .png or .jpg', `${path}.src`, problems, false);
-  if (problems.length) {
-    warn.push(...problems.map((p) => `${p}; half picture dropped`));
-    return null;
+  const desk = parseHalfPicture(v, base, path, warn, DEFAULT_HALF_SIZE, null);
+  if (!desk) return null;
+  let phone: HalfPicture | null = null;
+  if (v.phone !== undefined && v.phone !== null) {
+    if (!isObj(v.phone)) warn.push(`${path}.phone: not an object { src, src2x }; ignored`);
+    else phone = parseHalfPicture(v.phone, base, `${path}.phone`, warn, DEFAULT_PHONE_SIZE, phoneBand(desk));
   }
-  const opt: string[] = [];
-  const src2x = layerUrl(v.src2x, base, HALF_EXT, '.webp, .avif, .png or .jpg', `${path}.src2x`, opt, true);
-  for (const o of opt) warn.push(`${o}; ignored`);
-  let width: number = DEFAULT_HALF_SIZE.width;
-  let height: number = DEFAULT_HALF_SIZE.height;
-  if (v.width !== undefined || v.height !== undefined) {
-    const w = int(v.width, 64, 16384);
-    const h = int(v.height, 64, 16384);
-    if (w === null || h === null || w / h < 0.5 || w / h > 8) warn.push(`${path}: width and height are the 1x file's pixels (64–16384, a shape between 1:2 and 8:1); using ${width} × ${height}`);
-    else [width, height] = [w, h];
-  }
-  let focal = { ...DEFAULT_HALF_FOCAL };
-  if (v.focal !== undefined && v.focal !== null) {
-    const f = isObj(v.focal) ? { x: num(v.focal.x ?? DEFAULT_HALF_FOCAL.x, 0, 1), y: num(v.focal.y ?? DEFAULT_HALF_FOCAL.y, 0, 1) } : null;
-    if (!f || f.x === null || f.y === null) warn.push(`${path}.focal: { x, y }, fractions 0–1 of the picture from its top-left; using the default`);
-    else focal = { x: f.x, y: f.y };
-  }
-  return { src: src!, src2x, width, height, focal, safe: parseSafe(v.safe, `${path}.safe`, warn), bytes: parseBytes(v, path, warn) };
+  return { ...desk, phone, bytes: parseBytes(v, path, warn) };
 }
 
 /** Spec 1.5: the declared bytes of a biome's half pictures (each file once). */
@@ -1023,15 +1068,15 @@ export function hasHalfArt(pack: ScenePack | null | undefined): boolean {
 }
 
 /** Every half picture a pack names, stage 1 first (background preload order). */
-export function halfUrls(pack: ScenePack): { biome: Biome; stage: number; url: string }[] {
-  const out: { biome: Biome; stage: number; url: string }[] = [];
+export function halfUrls(pack: ScenePack): { biome: Biome; stage: number; url: string; phone: string | null }[] {
+  const out: { biome: Biome; stage: number; url: string; phone: string | null }[] = [];
   const seen = new Set<string>();
   for (let stage = 1; stage <= MAX_STAGES; stage++) {
     for (const biome of BIOMES) {
       const h = pack.biomes[biome]?.stages[stage - 1]?.half;
       if (!h || seen.has(h.src)) continue;
       seen.add(h.src);
-      out.push({ biome, stage, url: h.src });
+      out.push({ biome, stage, url: h.src, phone: h.phone?.src ?? null });
     }
   }
   return out;

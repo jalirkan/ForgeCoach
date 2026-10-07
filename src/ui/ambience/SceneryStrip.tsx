@@ -20,10 +20,10 @@
  * built-in scenery). Both halves upright; each fades into a mist band along
  * the centre line. The effects keep their strip-sized box at the outer edge.
  */
-import { createContext, memo, useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Biome, SlotState } from '../../ambience/model.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, halfAt, layersAt, type PackBiome, type PackHalf, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
-import { frameAspect, halfFrameCss, halfLayout, objectPosition, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt } from '../../ambience/layout.ts';
+import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt } from '../../ambience/layout.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import './scenery.css';
@@ -117,6 +117,26 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   );
 });
 
+/** A panel's shape (width / height), measured only when a choice hangs on it (a stage with a phone picture); null otherwise. Rounded, so a flex transition re-renders rarely. */
+function usePanelAspect(ref: React.RefObject<HTMLDivElement | null>, on: boolean): number | null {
+  const [aspect, setAspect] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!on || !el) return setAspect(null);
+    const read = (w: number, h: number) => setAspect(w > 0 && h > 0 ? Math.round((w / h) * 20) / 20 : null);
+    const r = el.getBoundingClientRect();
+    read(r.width, r.height);
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver((e) => {
+      const c = e[0]?.contentRect;
+      if (c) read(c.width, c.height);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, on]);
+  return aspect;
+}
+
 const PROCEDURAL_BLOOM = { kind: 'rise' as const, durationMs: 1400, staggerMs: 140 };
 
 function Slot({ slot, stage, grow, first, pack, reduced, paused, pulse, half = false }: { slot: SlotState; stage: number; grow: number; first: boolean; pack: PackBiome | undefined; reduced: boolean; paused: boolean; pulse: number; half?: boolean }) {
@@ -124,24 +144,27 @@ function Slot({ slot, stage, grow, first, pack, reduced, paused, pulse, half = f
   const settled = useContext(Settled);
   const withered = stage <= 0;
   const drawn = Math.max(1, stage);
-  // The half (spec 1.5): the stage's half picture, unless it failed to load (then the strip art, cropped).
+  // The half (spec 1.5): the stage's half picture (the phone one in a portrait-ish panel), unless it failed to load (then the strip art, cropped).
   const [failedHalf, setFailedHalf] = useState<string | null>(null);
   const picture: PackHalf | null = half ? halfAt(pack, drawn) : null;
-  const usePicture = picture && failedHalf !== picture.src ? picture : null;
-  const art: HalfArt | null = !half ? null : usePicture ? { aspect: usePicture.width / usePicture.height, focal: usePicture.focal, safe: usePicture.safe, source: 'half' } : STRIP_ART;
+  const ref = useRef<HTMLDivElement>(null);
+  const panelAspect = usePanelAspect(ref, !!picture?.phone);
+  const chosen = half ? halfArtOf(picture, panelAspect) : null;
+  const art: HalfArt | null = !chosen ? null : chosen.picture && failedHalf === chosen.picture.src ? STRIP_ART : chosen;
+  const pic = art?.picture ?? null;
   const layers: { id: string; z: number; depth: number; blend?: string; opacity?: number; node: ReactNode }[] = useMemo(() => {
     if (pack) {
-      // With its half picture, the stage's still layers give way to it; its loops and sprites play over it.
-      const own = layersAt(pack, drawn).filter((l) => !usePicture || l.kind !== 'image');
+      // With a half picture, the stage's still layers give way to it; its loops and sprites play over the desktop picture (none over the phone one: they are cut for the desktop's shape).
+      const own = layersAt(pack, drawn).filter((l) => !pic || (l.kind !== 'image' && art?.source !== 'phone'));
       const list: { id: string; z: number; depth: number; blend?: string; opacity?: number; node: ReactNode }[] = own.map((l) => ({ id: l.id, z: l.z, depth: l.depth, blend: l.blend, opacity: l.opacity, node: <PackLayerView layer={l} idle={pack.idle} reduced={reduced} paused={paused} /> }));
-      if (usePicture) {
-        const src = usePicture.src;
-        list.unshift({ id: 'half', z: -100, depth: 0, blend: 'normal', opacity: 1, node: <img className="scn-half-img" src={src} srcSet={usePicture.src2x ? `${src} 1x, ${usePicture.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onError={() => setFailedHalf(src)} /> });
+      if (pic) {
+        const src = pic.src;
+        list.unshift({ id: 'half', z: -100, depth: 0, blend: 'normal', opacity: 1, node: <img className="scn-half-img" src={src} srcSet={pic.src2x ? `${src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onError={() => setFailedHalf(src)} /> });
       }
       return list;
     }
     return proceduralLayers(slot.biome, drawn, uid).map((l: DrawLayer) => ({ ...l }));
-  }, [pack, drawn, slot.biome, uid, reduced, paused, usePicture]);
+  }, [pack, drawn, slot.biome, uid, reduced, paused, pic, art?.source]);
   const bloom = pack?.bloom ?? PROCEDURAL_BLOOM;
   const sorted = [...layers].sort((a, b) => a.z - b.z);
   const stack = sorted.map((l, i) => (
@@ -150,7 +173,7 @@ function Slot({ slot, stage, grow, first, pack, reduced, paused, pulse, half = f
     </Layer>
   ));
   return (
-    <div className={['scn-slot', first && 'is-first', withered && 'is-withered'].filter(Boolean).join(' ')} style={{ flexGrow: grow }} data-biome={slot.biome} data-stage={stage} data-art={art?.source}>
+    <div ref={ref} className={['scn-slot', first && 'is-first', withered && 'is-withered'].filter(Boolean).join(' ')} style={{ flexGrow: grow }} data-biome={slot.biome} data-stage={stage} data-art={art?.source}>
       {art ? (
         <div className="scn-frame" style={halfFrameCss(art)}>
           {stack}

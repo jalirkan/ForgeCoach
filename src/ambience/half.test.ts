@@ -11,8 +11,8 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HALF_FOCAL, DEFAULT_HALF_LAYOUT, halfAt, halfBytes, halfUrls, hasHalfArt, layersAt, MAX_HALF_BYTES, validateManifest } from './manifest.ts';
-import { halfArt, halfFrame, halfFrameCss, halfLayout, halfSpans, STRIP_ART, type HalfArt } from './layout.ts';
+import { DEFAULT_HALF_LAYOUT, halfAt, halfBytes, halfUrls, hasHalfArt, layersAt, MAX_HALF_BYTES, validateManifest } from './manifest.ts';
+import { halfArt, halfArtOf, halfFrame, pickHalfPicture, halfFrameCss, halfLayout, halfSpans, STRIP_ART, type HalfArt } from './layout.ts';
 import { contrast, hexRgb, over, scrimRects, SCRIM_EDGE_ALPHA, type Rgb } from './scrim.ts';
 import { DEFAULT_PREFS, effectivePrefs, fillOn, loadSceneryPrefs } from './prefs.ts';
 import { halfGolden } from './testdata/halfGolden.ts';
@@ -24,13 +24,32 @@ const half = (extra: Record<string, unknown> = {}) => ({ src: 'island/s1-half.we
 const packWith = (stages: unknown[], top: Record<string, unknown> = {}) => ({ schema: 1, spec: '1.5', ...top, biomes: { island: { stages } } });
 
 describe('spec 1.5: validation', () => {
-  it('reads a half picture, with defaults', () => {
-    const r = validateManifest(packWith([{ half: half() }, { half: half({ src: 'island/s2-half.webp', src2x: 'island/s2-half@2x.webp', width: 3456, height: 1152, focal: { x: 0.4, y: 0.5 }, safe: { x: 0.2, y: 0.3, w: 0.5, h: 0.3 }, bytes: 900000 }) }]), BASE);
+  it('reads the art session’s shape: desktop and phone pictures and the subject band, with defaults', () => {
+    const r = validateManifest(
+      packWith([
+        { half: half() },
+        { half: half({ src: 'island/s2-half.webp', src2x: 'island/s2-half@2x.webp', phone: { src: 'island/s2-phone.webp', src2x: 'island/s2-phone@2x.webp' }, subjectBand: [0.3, 0.6], bytes: 900000 }) },
+        { half: half({ width: 3456, height: 1152, focal: { x: 0.4, y: 0.5 }, safe: { x: 0.2, y: 0.3, w: 0.5, h: 0.3 }, phone: { src: 'p.webp', width: 1080, height: 1350, subjectBand: [0.4, 0.7] } }) },
+      ]),
+      BASE,
+    );
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual([]);
-    const [s1, s2] = r.pack!.biomes.island!.stages;
-    expect(s1!.half).toEqual({ src: 'http://127.0.0.1:8650/island/s1-half.webp', src2x: null, width: 1728, height: 576, focal: DEFAULT_HALF_FOCAL, safe: null, bytes: null });
-    expect(s2!.half).toEqual({ src: 'http://127.0.0.1:8650/island/s2-half.webp', src2x: 'http://127.0.0.1:8650/island/s2-half@2x.webp', width: 3456, height: 1152, focal: { x: 0.4, y: 0.5 }, safe: { x: 0.2, y: 0.3, w: 0.5, h: 0.3 }, bytes: 900000 });
+    const [s1, s2, s3] = r.pack!.biomes.island!.stages;
+    expect(s1!.half).toEqual({ src: 'http://127.0.0.1:8650/island/s1-half.webp', src2x: null, width: 2048, height: 640, subjectBand: [0.35, 0.6], focal: { x: 0.5, y: 0.475 }, safe: { x: 0.25, y: 0.35, w: 0.5, h: 0.25 }, phone: null, bytes: null });
+    expect(s2!.half).toEqual({
+      src: 'http://127.0.0.1:8650/island/s2-half.webp',
+      src2x: 'http://127.0.0.1:8650/island/s2-half@2x.webp',
+      width: 2048,
+      height: 640,
+      subjectBand: [0.3, 0.6],
+      focal: { x: 0.5, y: 0.45 },
+      safe: { x: 0.25, y: 0.3, w: 0.5, h: 0.3 },
+      // The phone picture: 4:5 by default, the desktop band mapped into its middle (even outpainting): y ↦ 0.25 + y / 2.
+      phone: { src: 'http://127.0.0.1:8650/island/s2-phone.webp', src2x: 'http://127.0.0.1:8650/island/s2-phone@2x.webp', width: 1024, height: 1280, subjectBand: [0.4, 0.55], focal: { x: 0.5, y: 0.475 }, safe: { x: 0.25, y: 0.4, w: 0.5, h: 0.15 } },
+      bytes: 900000,
+    });
+    expect(s3!.half).toMatchObject({ width: 3456, height: 1152, focal: { x: 0.4, y: 0.5 }, safe: { x: 0.2, y: 0.3, w: 0.5, h: 0.3 }, phone: { width: 1080, height: 1350, subjectBand: [0.4, 0.7], focal: { x: 0.5, y: 0.55 } } });
     expect(r.pack!.half).toEqual(DEFAULT_HALF_LAYOUT);
     expect(hasHalfArt(r.pack)).toBe(true);
   });
@@ -56,8 +75,9 @@ describe('spec 1.5: validation', () => {
         [
           { half: { src: 'javascript:alert' }, layers: [{ id: 'sky', kind: 'image', src: 'island/a.webp' }] },
           { half: half({ src: 'island/b.gif' }) },
-          { half: half({ width: 100, height: 4000, focal: { x: 2 }, safe: { x: 0.8, w: 0.5 }, src2x: 'data:x' }) },
+          { half: half({ width: 100, height: 4000, focal: { x: 2 }, safe: { x: 0.8, w: 0.5 }, src2x: 'data:x', subjectBand: [0.6, 0.3], phone: { src: 'p.gif' } }) },
           { half: 'island.webp', layers: [{ id: 'sky', kind: 'image', src: 'island/a.webp' }] },
+          { half: half({ phone: 'p.webp' }) },
         ],
         { half: { seamRatio: 0.9, minShare: 0.01, mist: -1 } },
       ),
@@ -65,19 +85,23 @@ describe('spec 1.5: validation', () => {
     );
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual([
-      'biomes.island.stages[0].half.src: the javascript: scheme is not allowed (http, https or relative only); half picture dropped',
-      'biomes.island.stages[1].half.src: expected .webp, .avif, .png or .jpg; half picture dropped',
+      'biomes.island.stages[0].half.src: the javascript: scheme is not allowed (http, https or relative only); picture dropped',
+      'biomes.island.stages[1].half.src: expected .webp, .avif, .png or .jpg; picture dropped',
       'biomes.island.stages[1]: needs a "layers" list or a usable "half" picture; stage dropped',
       'biomes.island.stages[2].half.src2x: the data: scheme is not allowed (http, https or relative only); ignored',
-      "biomes.island.stages[2].half: width and height are the 1x file's pixels (64–16384, a shape between 1:2 and 8:1); using 1728 × 576",
-      'biomes.island.stages[2].half.focal: { x, y }, fractions 0–1 of the picture from its top-left; using the default',
+      "biomes.island.stages[2].half: width and height are the 1x file's pixels (64–16384, a shape between 1:4 and 8:1); using 2048 × 640",
+      'biomes.island.stages[2].half.subjectBand: [top, bottom], fractions 0–1 of the height from the top, at least 0.05 apart; using [0.35, 0.6]',
+      'biomes.island.stages[2].half.focal: { x, y }, fractions 0–1 of the picture from its top-left; using the subject band’s middle',
       'biomes.island.stages[2].half.safe: the rect runs past the picture (x + w and y + h at most 1); ignored',
+      'biomes.island.stages[2].half.phone.src: expected .webp, .avif, .png or .jpg; picture dropped',
       'biomes.island.stages[3].half: not an object; ignored',
+      'biomes.island.stages[4].half.phone: not an object { src, src2x }; ignored',
       'half.seamRatio: 0.9 is out of range 0–0.3; using 0.1',
       'half.minShare: 0.01 is out of range 0.05–0.3; using 0.15',
       'half.mist: -1 is out of range 0–0.4; using 0.16',
     ]);
-    expect(r.pack!.biomes.island!.stages.map((s) => !!s.half)).toEqual([false, true, false]);
+    expect(r.pack!.biomes.island!.stages.map((s) => !!s.half)).toEqual([false, true, false, true]);
+    expect(r.pack!.biomes.island!.stages[1]!.half!.phone).toBeNull();
   });
 
   it('warns past the 8 MB budget for half pictures, counting each file once', () => {
@@ -213,9 +237,23 @@ describe('spec 1.5: the cover crop', () => {
 
   it('uses the pack’s half picture where it has one, else the strip art', () => {
     const pack = validateManifest(packWith([{ half: half({ width: 2000, height: 1000, focal: { x: 0.6, y: 0.4 } }) }]), BASE).pack!;
-    expect(halfArt(pack, 'island', 4)).toEqual({ aspect: 2, focal: { x: 0.6, y: 0.4 }, safe: null, source: 'half' });
+    expect(halfArt(pack, 'island', 4)).toMatchObject({ aspect: 2, focal: { x: 0.6, y: 0.4 }, safe: { x: 0.25, y: 0.35, w: 0.5, h: 0.25 }, source: 'half' });
     expect(halfArt(pack, 'forest', 1)).toBe(STRIP_ART);
     expect(halfArt(null, 'island', 1)).toBe(STRIP_ART);
+  });
+
+  it('picks the phone picture for a panel nearer its shape, the desktop one otherwise', () => {
+    const h = validateManifest(packWith([{ half: half({ phone: { src: 'p.webp' } }) }]), BASE).pack!.biomes.island!.stages[0]!.half!;
+    // Desktop 16:5 (3.2), phone 4:5 (0.8): the log-midpoint is 1.6.
+    expect(pickHalfPicture(h, 2.7).phone).toBe(false);
+    expect(pickHalfPicture(h, 1.7).phone).toBe(false);
+    expect(pickHalfPicture(h, 1.5).phone).toBe(true);
+    expect(pickHalfPicture(h, 0.5).phone).toBe(true);
+    expect(pickHalfPicture(h, null).phone).toBe(false);
+    expect(halfArtOf(h, 1.1)).toMatchObject({ aspect: 0.8, source: 'phone', focal: { x: 0.5, y: 0.4875 } });
+    // No phone picture: the desktop one, cropped, everywhere.
+    const desk = validateManifest(packWith([{ half: half() }]), BASE).pack!.biomes.island!.stages[0]!.half!;
+    expect(halfArtOf(desk, 0.9).source).toBe('half');
   });
 });
 
@@ -250,34 +288,45 @@ describe('spec 1.5: the scrim never lowers contrast', () => {
   const styles = readFileSync(new URL('../ui/styles.css', import.meta.url), 'utf8');
   const skins = readFileSync(new URL('../ui/skins.css', import.meta.url), 'utf8');
   const scenery = readFileSync(new URL('../ui/ambience/scenery.css', import.meta.url), 'utf8');
-  const SKINS: [string, string, string][] = [
-    ['classic', styles, ':root'],
-    ['stack', skins, ":root[data-skin='stack']"],
-    ['felt', skins, ":root[data-skin='felt']"],
+  /** A scrim token in scenery.css for a skin's block: a hex, or var(--surface) resolved from the skin. */
+  const scrimToken = (sel: string, name: string, surface: Rgb): Rgb => {
+    const blocks = scenery.split(`${sel} {`).slice(1).map((b) => b.slice(0, b.indexOf('}')));
+    const block = blocks.find((b) => b.includes('--scn-scrim-top'))!;
+    const m = new RegExp(`${name}:\\s*([^;]+);`).exec(block)!;
+    return m[1]!.startsWith('var(--surface') ? surface : hexRgb(m[1]!.trim());
+  };
+  // The plain board's colour on each side (scenery off), measured from the board in Chromium at 1280 × 800.
+  const SKINS: { name: string; css: string; sel: string; plain: { top: Rgb; me: Rgb } }[] = [
+    { name: 'classic', css: styles, sel: ':root', plain: { top: [25, 30, 40], me: [30, 31, 33] } },
+    { name: 'stack', css: skins, sel: ":root[data-skin='stack']", plain: { top: [23, 26, 30], me: [23, 26, 30] } },
+    // Felt: rgba(14, 32, 27, 0.35) over --bg #1a312b.
+    { name: 'felt', css: skins, sel: ":root[data-skin='felt']", plain: { top: over([14, 32, 27], 0.35, hexRgb('#1a312b')), me: over([14, 32, 27], 0.35, hexRgb('#1a312b')) } },
   ];
   const WHITE: Rgb = [255, 255, 255];
-  const BLACK: Rgb = [0, 0, 0];
 
-  it('paints the board’s own surface colour in the band’s core', () => {
-    expect(scenery).toMatch(/--scn-scrim:\s*var\(--surface/);
+  it('paints the band’s core in the board’s own colour, per side', () => {
     expect(scenery).toMatch(/\.scn-scrim-in\s*{[^}]*background:\s*var\(--scn-scrim\)/);
+    expect(scenery).toMatch(/\.player-top \.scn-scrims,[^{]*{\s*--scn-scrim:\s*var\(--scn-scrim-top\)/);
   });
 
-  for (const [name, css, sel] of SKINS)
+  for (const { name, css, sel, plain } of SKINS)
     it(`${name}: text and card edges in the band read as on the plain board, and better than over today’s strip`, () => {
       const surface = token(css, sel, '--surface');
-      for (const t of ['--text', '--muted', '--faint']) {
-        const ink = token(css, sel, t);
-        const plain = contrast(ink, surface);
-        // The core: exactly the plain board's background, whatever art is under it.
-        for (const art of [WHITE, BLACK, [255, 200, 0] as Rgb]) expect(contrast(ink, over(surface, 1, art)), `${t} core`).toBeCloseTo(plain, 6);
-        // Today's land row sits on the strip's art with no band at all: art of the ink's own colour leaves 1:1.
-        expect(contrast(ink, ink), `${t} today on the strip`).toBeLessThan(plain);
+      for (const side of ['top', 'me'] as const) {
+        const scrim = scrimToken(sel, `--scn-scrim-${side}`, surface);
+        // Within a few levels of the plain board's colour on that side.
+        for (let i = 0; i < 3; i++) expect(Math.abs(scrim[i]! - plain[side][i]!), `${side} channel ${i}`).toBeLessThanOrEqual(3);
+        for (const t of ['--text', '--muted', '--faint']) {
+          const ink = token(css, sel, t);
+          const today = contrast(ink, plain[side]);
+          // The core is opaque: whatever art lies under it, ink reads as on the plain board (within 3%).
+          for (const art of [WHITE, [0, 0, 0] as Rgb, [255, 200, 0] as Rgb]) expect(contrast(ink, over(scrim, 1, art)) / today, `${side} ${t}`).toBeGreaterThan(0.97);
+          // Today's land row sits on the strip's art with no band at all: art of the ink's own colour leaves 1:1.
+          expect(contrast(ink, ink)).toBeLessThan(today);
+        }
+        // The feather's start (0.85) over the brightest art still keeps body text at WCAG AA.
+        expect(contrast(token(css, sel, '--text'), over(scrim, SCRIM_EDGE_ALPHA, WHITE))).toBeGreaterThanOrEqual(4.5);
       }
-      // The feather's start (0.85) over the brightest art still keeps body text at WCAG AA.
-      expect(contrast(token(css, sel, '--text'), over(surface, SCRIM_EDGE_ALPHA, WHITE))).toBeGreaterThanOrEqual(4.5);
-      // A cream card edge next to the band's core keeps today's contrast.
-      expect(contrast(hexRgb('#f2ecdc'), over(surface, 1, WHITE))).toBeCloseTo(contrast(hexRgb('#f2ecdc'), surface), 6);
     });
 });
 

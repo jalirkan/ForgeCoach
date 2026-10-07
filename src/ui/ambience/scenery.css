@@ -671,8 +671,26 @@
 
 :root {
   --scn-mist-color: color-mix(in srgb, var(--text-2, #bcc2cd) 24%, transparent);
-  /* The card-row scrim: the board's own background, so a card's edge sits on today's colour. */
-  --scn-scrim: var(--surface, #161a20);
+  /* The card-row scrim: the board's own background on each side (measured off the plain board per
+     skin), so a card's edge and any text sit on today's colour. Classic tints the two sides. */
+  --scn-scrim-top: #191e28;
+  --scn-scrim-me: #1e1f21;
+}
+:root[data-skin='stack'] {
+  --scn-scrim-top: var(--surface, #171a1e);
+  --scn-scrim-me: var(--surface, #171a1e);
+}
+:root[data-skin='felt'] {
+  /* Felt's sides are its translucent baize (rgba(14, 32, 27, 0.35)) over --bg. */
+  --scn-scrim-top: #162b25;
+  --scn-scrim-me: #162b25;
+}
+.scn-scrims {
+  --scn-scrim: var(--scn-scrim-me);
+}
+.player-top .scn-scrims,
+.amb-side.is-top .scn-scrims {
+  --scn-scrim: var(--scn-scrim-top);
 }
 
 .scn.scn-half {
