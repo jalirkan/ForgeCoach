@@ -66,6 +66,7 @@ function harness(now = () => 1_791_307_366_000) {
     schedule: (fn) => fn(),
     pingMs: 0,
     table: true,
+    tableLog: null,
     now,
   });
   return { session, sockets, sock: () => sockets[sockets.length - 1]! };

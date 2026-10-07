@@ -20,7 +20,8 @@
  *   4. game 1: both boards say "You vs <the other>" and "Game 1 / 3", neither
  *      offers Next game / New match; both players pass priority into round 3; a
  *      line about the other player ("… is thinking") shows; the friend RELOADS and
- *      is back at the same seat; the friend concedes with a real click on the
+ *      is back at the same seat, its Game Log still holding the turns before
+ *      (play/tableLog.ts); the friend concedes with a real click on the
  *      board's Concede (D406: a loss); the cards say the score and who chooses
  *      next; the host's card follows its own engine review, the friend's says it
  *      was not recorded;
@@ -164,6 +165,16 @@ async function toTable(pages) {
   for (const p of pages) await p.locator('.topbar-game').first().waitFor({ timeout: 60_000 });
 }
 
+/** The turn headers of a board's Game Log ("T1", "T2"…), opened with its L key and closed again. */
+async function logTurns(page) {
+  await page.keyboard.press('l');
+  await page.locator('.log-drawer').waitFor({ timeout: 8000 });
+  const turns = await page.locator('.log-drawer .log-turn-no').allInnerTexts();
+  await page.keyboard.press('Escape');
+  await page.locator('.log-drawer').waitFor({ state: 'detached', timeout: 8000 });
+  return turns;
+}
+
 /** The board's own Concede (the top bar), then the confirmation -- real clicks, as a person makes them. */
 async function concedeFromBoard(page) {
   await page.getByRole('button', { name: 'Concede', exact: true }).first().click({ timeout: 8000 });
@@ -296,11 +307,15 @@ async function main() {
     check(g1.thinking, 'a board said the other player is thinking');
     await host.screenshot({ path: path.join(OUT, 'table-2-host.png') });
     await friend.screenshot({ path: path.join(OUT, 'table-3-friend.png') });
-    // The friend reloads: the same seat comes back by its token.
+    // The friend reloads: the same seat comes back by its token, and its Game Log keeps the turns before
+    // (play/tableLog.ts: the bridge's catch-up is only the latest state).
+    const turnsBefore = await logTurns(friend);
     await friend.reload();
     await friend.locator('.topbar-game').first().waitFor({ timeout: 30_000 });
     check((await friend.locator('.topbar-game').first().innerText()) === 'You vs Justin', 'the friend reloads mid-game and is back at the same seat');
     await friend.locator('.live-pill.is-open').waitFor({ timeout: 15_000 });
+    const turnsAfter = await logTurns(friend);
+    check(turnsBefore.length > 1 && turnsBefore.every((t) => turnsAfter.includes(t)), `the friend's Game Log keeps its turns through the reload (${turnsBefore.join(' ')} → ${turnsAfter.join(' ')})`);
     await concedeFromBoard(friend);
     await host.getByText('You won').waitFor({ timeout: 60_000 });
     await friend.getByText('You lost').waitFor({ timeout: 60_000 });
