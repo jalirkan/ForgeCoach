@@ -179,6 +179,40 @@ each tied to a general rule). Same choice: Claude Code on your PC, your key, or
 copy the prompt. **Next
 game** continues a match.
 
+### Report a bug
+
+Something wrong on the board? Press **Shift+B** or the bug button in the top
+bar. On a phone it is in the ⋯ menu, and on the draft and room screens it is
+the small button in the corner. Type a title and what happened, then press
+**Send**. The page adds the rest itself:
+
+- the game: its id, your seat, the turn, the phase, and who has priority;
+- the open question and its options;
+- the last 300 frames of your game log, only what your seat could see;
+- recent console errors;
+- the site's build, look, settings, screen size and browser;
+- a screenshot of the screen, if you leave that box ticked.
+
+It never adds your API key or a seat or room token.
+
+The report is saved on the PC running mtg-table, in `var/bugs/`, and the
+panel shows its id. On your own page it goes through the coach helper. A
+friend's report (in a draft room, or a game between you two) goes through
+the room with their seat's link. When `play.sh` exits it sends new reports
+to the lab's results branch. If no helper or room answers (GitHub Pages with
+nothing running), **Download report** saves the same report as a JSON file.
+
+**How the screenshot works.** The page redraws itself into a picture
+(html-to-image), so there is no permission prompt and it works offline. It
+takes 1–3 seconds. It has limits:
+
+- a list you scrolled inside the page is drawn scrolled to its top;
+- card art the browser has not loaded comes out blank;
+- Safari draws it less faithfully.
+
+If the picture is wrong, paste your own (your system's screenshot key, then
+Ctrl+V in the panel), or choose an image file.
+
 ## Play on your phone
 
 On the desktop, in your mtg-table checkout, run `./scripts/play.sh --engine-only --lan`.
@@ -615,6 +649,12 @@ second and reads only new bytes. Each game of a match is a new file. Any
   Advice feedback exports it as JSON; nothing is sent anywhere.
 - The **Lab** page only downloads the runner's public status file (or the
   `src` you give it); it sends nothing.
+- **Bug reports** (Report a bug) go only where you send them. That is the
+  coach helper on your PC, the room you are playing in (your friend's PC), or
+  a file you download. Each holds your view of the game (your hand
+  included), recent console messages and a screenshot if you tick the box.
+  It never holds your API key or a token. Console messages stay in the page's
+  memory until a report is sent.
 
 ## Development
 
