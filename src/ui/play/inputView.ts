@@ -14,7 +14,7 @@
  * and Forge answers a click it will not take with a "Not selectable" notice.
  */
 import type { AnyCard, AskBody, Card, GameStateBody, InputBody, InputButton } from '../../protocol.ts';
-import { isHidden, keywordsOf } from '../../protocol.ts';
+import { isHidden, keywordsOf, playableOf } from '../../protocol.ts';
 import { cardIndex, cardName } from '../../decisions.ts';
 
 export type InputMode =
@@ -353,6 +353,11 @@ export interface ClickContext {
   input: InputBody | null;
   state: GameStateBody | null;
   seat: number | null;
+  /**
+   * A card's oracle text when the page already has it (the Scryfall cache), for
+   * the older-engine fallback below; never fetched for this. Optional.
+   */
+  oracle?: (name: string) => string | undefined;
 }
 
 function isCreature(c: Card): boolean {
@@ -375,6 +380,28 @@ const FROM_GRAVEYARD = new Set(['FLASHBACK', 'UNEARTH', 'ESCAPE', 'EMBALM', 'ETE
 
 const hasAny = (c: Card, set: ReadonlySet<string>) => keywordsOf(c).some((k) => set.has(k));
 
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The older-engine fallback for an activated ability that works from the
+ * graveyard and is no keyword (Cauldron Familiar, Seasoned Pyromancer,
+ * Unwilling Ingredient): an activated line of the oracle text (a cost, a
+ * colon) that names the card itself "from your graveyard". Only when the text
+ * is already cached; the engine refuses a click it would not take anyway.
+ */
+export function oracleFromGraveyard(name: string, oracle: string | undefined): boolean {
+  if (!oracle || !name) return false;
+  const self = new RegExp(`(?:${escapeRe(name.split(' // ')[0]!)}|this card) from your graveyard`, 'i');
+  return oracle.split('\n').some((line) => {
+    const colon = line.indexOf(':');
+    if (colon < 0 || /^\s*(when|whenever|at|as long as|if)\b/i.test(line)) return false;
+    return self.test(line);
+  });
+}
+
+/** The zones a card leaves to be played (amendment M61's five); the battlefield and the stack are not among them. */
+const OUTSIDE_PLAY = new Set(['hand', 'graveyard', 'exile', 'command', 'library']);
+
 /**
  * Which cards a click should be sent for. `select` is the engine's own
  * selection set (strong outline); `act` is a card that a click plausibly
@@ -389,8 +416,18 @@ export function cardRole(card: AnyCard, ctx: ClickContext): CardRole {
   const c = card as Card;
   const mine = c.controller === seat;
   const zone = c.zone;
-  // Your own graveyard card with a way to play it from there (flashback, unearth…).
-  const fromGraveyard = zone === 'graveyard' && (c.owner ?? c.controller) === seat && hasAny(c, FROM_GRAVEYARD);
+  const own = (c.owner ?? c.controller) === seat;
+  // The engine's own word (mtg-table M61): at your priority, which of your cards
+  // outside the battlefield a click would play. When the frame carries it, it
+  // decides those cards outright; the battlefield keeps its rules below.
+  const listed = playableOf(state);
+  if (listed && OUTSIDE_PLAY.has(zone) && (view.mode === 'main' || view.mode === 'priority' || view.mode === 'stack')) {
+    return own && listed.some((e) => e.cardId === c.id) ? 'act' : null;
+  }
+  // An older engine: your own graveyard card with a way to play it from there —
+  // a keyword (flashback, unearth…) or an oracle line such as Cauldron Familiar's.
+  const fromGraveyard =
+    zone === 'graveyard' && own && (hasAny(c, FROM_GRAVEYARD) || oracleFromGraveyard(c.name, ctx.oracle?.(c.name)));
   switch (view.mode) {
     case 'main':
       if (mine && (zone === 'hand' || zone === 'battlefield')) return 'act';

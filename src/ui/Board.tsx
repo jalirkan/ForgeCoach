@@ -289,6 +289,8 @@ function PlayerHeader({
   const otherCounters = Object.entries(player.counters ?? {}).filter(([k, n]) => n > 0 && k !== 'POISON');
   // A zone holding a card the engine wants clicked (a graveyard target): outlined, like a tile.
   const picks = (zone: 'library' | 'graveyard' | 'exile' | 'command') => !!play && z[zone].cards.some((c) => play.mark(c) === 'select');
+  // A zone of yours holding a card you can play now (Cauldron Familiar in the graveyard, a flashback): its pill says so.
+  const plays = (zone: 'library' | 'graveyard' | 'exile' | 'command') => !!play && mine && z[zone].cards.some((c) => play.mark(c) === 'act');
   return (
     <div className={cx('phead', active && 'is-active', targetable && 'is-targetable')} data-phead-player={player.id}>
       <div className="phead-id">
@@ -334,10 +336,10 @@ function PlayerHeader({
             Hand <OppHand n={z.hand.count} /> <b>{z.hand.count}</b>
           </span>
         )}
-        <ZonePill label="Library" short="Lib" n={z.library.count} onClick={z.library.cards.length > 0 ? () => setZone('library') : undefined} pick={picks('library')} />
-        <ZonePill label="Graveyard" short="GY" n={z.graveyard.count} onClick={() => setZone('graveyard')} pick={picks('graveyard')} />
-        <ZonePill label="Exile" short="Ex" n={z.exile.count} onClick={() => setZone('exile')} pick={picks('exile')} />
-        {z.command.count > 0 && <ZonePill label="Command" n={z.command.count} onClick={() => setZone('command')} pick={picks('command')} />}
+        <ZonePill label="Library" short="Lib" n={z.library.count} onClick={z.library.cards.length > 0 ? () => setZone('library') : undefined} pick={picks('library')} playable={plays('library')} />
+        <ZonePill label="Graveyard" short="GY" n={z.graveyard.count} onClick={() => setZone('graveyard')} pick={picks('graveyard')} playable={plays('graveyard')} />
+        <ZonePill label="Exile" short="Ex" n={z.exile.count} onClick={() => setZone('exile')} pick={picks('exile')} playable={plays('exile')} />
+        {z.command.count > 0 && <ZonePill label="Command" n={z.command.count} onClick={() => setZone('command')} pick={picks('command')} playable={plays('command')} />}
         {otherCounters.map(([k, n]) => (
           <span key={k} className="zone-pill zone-static">
             {k.toLowerCase()} <b>{n}</b>
@@ -384,7 +386,7 @@ function sortSources(s: ManaSource[]): ManaSource[] {
   return [...s].sort((a, b) => a.colors.length - b.colors.length || order.indexOf(a.colors[0] ?? 'C') - order.indexOf(b.colors[0] ?? 'C'));
 }
 
-function ZonePill({ label, short, n, onClick, pick }: { label: string; short?: string; n: number; onClick?: () => void; pick?: boolean }) {
+function ZonePill({ label, short, n, onClick, pick, playable }: { label: string; short?: string; n: number; onClick?: () => void; pick?: boolean; playable?: boolean }) {
   // Narrow screens show the short label (Lib, GY); the long one stays for screen readers.
   const text = short ? (
     <>
@@ -404,7 +406,14 @@ function ZonePill({ label, short, n, onClick, pick }: { label: string; short?: s
     );
   }
   return (
-    <button className={cx('zone-pill', pick && 'is-pick')} onClick={onClick} disabled={n === 0} title={pick ? `${label}: holds a card to choose` : label} data-zone-pill={label.toLowerCase()}>
+    <button
+      className={cx('zone-pill', pick && 'is-pick', !pick && playable && 'is-playable')}
+      onClick={onClick}
+      disabled={n === 0}
+      title={pick ? `${label}: holds a card to choose` : playable ? `${label}: holds a card you can play now` : label}
+      data-zone-pill={label.toLowerCase()}
+      data-playable={!pick && playable ? 'true' : undefined}
+    >
       {text} <b>{n}</b>
     </button>
   );

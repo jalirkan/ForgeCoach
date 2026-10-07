@@ -397,6 +397,62 @@ const scenarios = [
   },
 
   {
+    name: 'Cauldron Familiar returns from the graveyard: the engine lists it (M61), the pill and the tile say so, a click plays it',
+    engine: { scene: 'graveyard', playable: true },
+    async run({ page, engine, app }) {
+      const u = ui(page);
+      await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+      await u.mode('main');
+      const familiar = mine(engine, 'Cauldron Familiar', 'graveyard');
+      const pill = page.locator('.phead[data-phead-player="0"] [data-zone-pill="graveyard"]');
+      await page.locator('.phead[data-phead-player="0"] [data-zone-pill="graveyard"][data-playable="true"]').waitFor({ timeout: STEP_MS });
+      check(!(await page.locator('.phead[data-phead-player="1"] [data-zone-pill="graveyard"][data-playable="true"]').count()), "the opponent's graveyard pill is not marked");
+      await pill.click();
+      const tile = page.locator(`.zv-grid .tile[data-card-id="${familiar}"]`);
+      await tile.waitFor({ timeout: STEP_MS });
+      check(/\bis-act\b/.test((await tile.getAttribute('class')) ?? ''), 'the Familiar is outlined in the graveyard viewer');
+      await sent(engine, 'clickCard', () => tile.click());
+      const act = engine.acts().filter((a) => a.action === 'clickCard').at(-1);
+      check(act?.cardId === familiar, `the click went to the engine for the Familiar (${JSON.stringify(act)})`);
+      await engine.waitFor(() => engine.game.players[0].battlefield.some((c) => c.id === familiar), 'the Familiar back on the battlefield');
+      await page.locator('.zv-grid').waitFor({ state: 'detached', timeout: STEP_MS });
+      await u.card(familiar).waitFor({ timeout: STEP_MS });
+      // The graveyard is empty now: nothing to mark.
+      await page.locator('.phead[data-phead-player="0"] [data-zone-pill="graveyard"][data-playable="true"]').waitFor({ state: 'detached', timeout: STEP_MS });
+      // The hand follows the engine's list too: the Mountain (a land drop) is outlined, then not once it is played.
+      const mountain = mine(engine, 'Mountain');
+      await u.openHand();
+      check(/\bis-act\b/.test((await u.card(mountain).getAttribute('class')) ?? ''), 'the Mountain is outlined while the land drop is open');
+      await sent(engine, 'clickCard', () => u.click(mountain));
+      await engine.waitFor(() => engine.game.landPlayed, 'the land played');
+      const other = mine(engine, 'Mountain');
+      await page.waitForFunction((id) => !document.querySelector(`.game .tile.is-act[data-card-id="${id}"]`), other, { timeout: STEP_MS });
+    },
+  },
+
+  {
+    name: 'an engine from before M61: no list, the graveyard creature without a keyword opens its details',
+    engine: { scene: 'graveyard' },
+    async run({ page, engine, app }) {
+      const u = ui(page);
+      await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+      await u.mode('main');
+      check(!JSON.parse(engine.lastState).body.hasOwnProperty('playable'), 'the old engine writes no playable key');
+      const familiar = mine(engine, 'Cauldron Familiar', 'graveyard');
+      await page.locator('.phead[data-phead-player="0"] [data-zone-pill="graveyard"]').click();
+      const tile = page.locator(`.zv-grid .tile[data-card-id="${familiar}"]`);
+      await tile.waitFor({ timeout: STEP_MS });
+      // Scryfall is offline here, so no oracle text: today's keyword rule, and no click goes out.
+      check(!/\bis-act\b/.test((await tile.getAttribute('class')) ?? ''), 'not outlined without the list or its text');
+      // The hand keeps its old rule: every card of yours is a click in your main phase.
+      await page.keyboard.press('Escape');
+      await page.locator('.zv-grid').waitFor({ state: 'detached', timeout: STEP_MS });
+      await u.openHand();
+      check(/\bis-act\b/.test((await u.card(mine(engine, 'Hill Giant')).getAttribute('class')) ?? ''), 'a hand card is outlined as before');
+    },
+  },
+
+  {
     name: 'the coach panel offers Copy prompt with no helper and no key',
     engine: { scene: 'main3' },
     async run({ page, engine, app }) {

@@ -532,6 +532,12 @@
   }
 }
 
+/* A zone of yours holding a card you can play now (mtg-table M61): a quiet outline, like an act tile. */
+button.zone-pill.is-playable {
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
 /* A zone that holds a card to choose: its count pill pulses like a selectable tile. */
 button.zone-pill.is-pick {
   border-color: var(--accent);

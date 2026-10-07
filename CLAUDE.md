@@ -41,7 +41,13 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 - `ui/play/` — the play screen: `PlayView` (board), `ActionBar`, `HandDock`,
   `AskDialog` + `askModel` (engine questions), `PlayCoach` + `liveDecision`
   (coach for the current decision), `playKeys` (hotkeys), `usePlaySession`
-  (hook over `play/session.ts`), `autoPlan` (when auto-coach asks, the advice history), `adviceStore` + `keepAdvice` (the advice and asked cycles kept in sessionStorage across a reload, keyed by feedback.ts's game key and the seat). Auto-coach (`autoPlan.ts`): one plan per turn
+  (hook over `play/session.ts`), `autoPlan` (when auto-coach asks, the advice history), `adviceStore` + `keepAdvice` (the advice and asked cycles kept in sessionStorage across a reload, keyed by feedback.ts's game key and the seat). What a click plays (`inputView.ts` `cardRole`):
+  outside the battlefield, mtg-table M61's `state.playable` (`playableOf`) when
+  the frame carries it — your own listed cards only, the zone pill marked
+  (`data-playable`); on an older engine (absent or `null`), keywords (flashback,
+  cycling…) plus a cached-oracle "<name> from your graveyard" line
+  (`oracleFromGraveyard`). The act is `clickCard`; Forge asks its own
+  `ability_menu` when a card has several. Auto-coach (`autoPlan.ts`): one plan per turn
   cycle at the opponent's END_OF_TURN/CLEANUP (else at the start of the
   player's turn), kept on screen until the next cycle; the player's own asks
   sit beside it; game-scoped history in module state (survives a folded

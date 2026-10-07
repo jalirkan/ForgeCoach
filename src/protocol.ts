@@ -78,6 +78,16 @@
  *       the games won before this one, `tableScoreOf` reads it); the session
  *       header's `record`, the seat's consent to recording this game (D407).
  *
+ * 2026-10-07 — **what the seat may play from outside the battlefield**
+ * (`docs/protocol.md` §3, §3.1):
+ *   M61 `state.playable` (D413): at the seat's own priority, each of its own
+ *       cards in hand, graveyard, exile, command zone or on top of its library
+ *       that Forge would play or activate on a click now, with the abilities
+ *       Forge kept (`{abilityId, label, isSpell}`); `null` off the seat's
+ *       priority; absent before M61 and in AI-vs-AI recordings. A click is
+ *       still `clickCard` (Forge asks its own `ability_menu` when there is more
+ *       than one). `playableOf` is its one reader.
+ *
  * **Every M6 field is declared optional here**, and that is not defensiveness
  * for its own sake: fifteen committed recordings predate them,
  * `web/test/render.test.tsx` folds every frame of all of them, and a required
@@ -854,6 +864,54 @@ export interface GameStateBody {
   yield?: YieldState | null;
   /** §3 (M6) — see {@link UndoState}. Read it with {@link undoOf}. */
   undo?: UndoState | null;
+  /**
+   * §3 (**M61**, D413) — what this seat may play from outside the battlefield,
+   * at its own priority; `null` off it; absent before M61. Read it with
+   * {@link playableOf}.
+   */
+  playable?: PlayableCard[] | null;
+}
+
+/** §3.1 (M61). One spell or ability Forge would let the seat play from this card now. */
+export interface PlayableAbility {
+  /**
+   * Forge's id for this ability in THIS frame. An alternative cost (flashback,
+   * escape) is a fresh copy each frame, so the id is not a handle to keep:
+   * the act is `clickCard` on the card, never `clickAbility` with this id.
+   */
+  abilityId: number;
+  /** The engine's description, through the bridge's one ability-label gate. Render verbatim. */
+  label: string;
+  isSpell: boolean;
+}
+
+/** §3.1 (M61). A card of the seat's own, outside the battlefield, with what it may do now. */
+export interface PlayableCard {
+  cardId: number;
+  zone: 'hand' | 'graveyard' | 'exile' | 'command' | 'library';
+  /** Never empty. More than one: a click makes Forge ask its own `ability_menu`. */
+  abilities: PlayableAbility[];
+}
+
+const PLAYABLE_ZONES: ReadonlySet<string> = new Set(['hand', 'graveyard', 'exile', 'command', 'library']);
+
+/**
+ * **Amendment M61 — the ONE reader of `state.playable`.** The list, or `null`
+ * when the frame does not say: before M61 (no key), in an AI-vs-AI recording,
+ * and off the seat's priority (`null`). A client falls back to its own reading
+ * on `null` and must never read it as "nothing is playable". Malformed entries
+ * are dropped.
+ */
+export function playableOf(state: GameStateBody | null | undefined): readonly PlayableCard[] | null {
+  const list = state?.playable;
+  if (!Array.isArray(list)) return null;
+  return list.filter(
+    (e) =>
+      e !== null && typeof e === 'object' && Number.isInteger(e.cardId) && PLAYABLE_ZONES.has(e.zone) &&
+      Array.isArray(e.abilities) && e.abilities.length > 0 &&
+      e.abilities.every((a) => a !== null && typeof a === 'object' && Number.isInteger(a.abilityId) &&
+        typeof a.label === 'string' && typeof a.isSpell === 'boolean'),
+  );
 }
 
 // ---------------------------------------------------------------------------
