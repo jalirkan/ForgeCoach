@@ -45,6 +45,8 @@ import { cardRole, describeInput, handNeeded, noticeLine, playerClickable, type 
 import { lastStateFrame } from './liveDecision.ts';
 import { PlayCoach } from './PlayCoach.tsx';
 import { ZonePickPanel } from './ZonePickPanel.tsx';
+import { StackPanel } from '../StackPanel.tsx';
+import { stackEntries } from '../stackModel.ts';
 import { zonePick } from './zonePick.ts';
 import { CombatArrows } from './CombatArrows.tsx';
 import { combatLinks } from './combatLines.ts';
@@ -323,6 +325,14 @@ export function PlayView({
   // An engine question that arrives while a card's details, the log or a help sheet is open must not
   // land behind it (they sit on the same layer): close them, and the question is the one thing on screen.
   const askId = ask?.askId ?? null;
+  // The stack panel folds to its heading; a new item on the stack opens it again.
+  const [stackFolded, setStackFolded] = useState(false);
+  const stackSize = state?.stack.length ?? 0;
+  const lastStackSize = useRef(stackSize);
+  useEffect(() => {
+    if (stackSize > lastStackSize.current) setStackFolded(false);
+    lastStackSize.current = stackSize;
+  }, [stackSize]);
   useEffect(() => {
     if (askId === null) return;
     setDetail(null);
@@ -461,6 +471,10 @@ export function PlayView({
   const myMove = !!(ask || (input && view.mode !== 'waiting' && view.mode !== 'yield' && !over));
   const match = matchBox(hello, over, snap.previousLogs, seat);
 
+  // The stack: always in view while it is not empty, in one place over the board (endstep-style).
+  const stackNow = useMemo(() => stackEntries(state, seat), [state, seat]);
+  const stackPanel =
+    state && stackNow.length > 0 ? <StackPanel entries={stackNow} state={state} variant="float" folded={stackFolded} onFold={setStackFolded} /> : null;
   const zonePanel = offBoard ? <ZonePickPanel key={input?.prompt ?? ''} pick={offBoard} view={view} state={state} seat={seat} onOk={pressOk} onCancel={pressCancel} /> : null;
 
   const board =
@@ -471,6 +485,7 @@ export function PlayView({
         frameIndex={Math.max(0, frameIndex)}
         seat={seat}
         hideHand
+        stackElsewhere
         overlay={<><CombatArrows links={links} version={state} /><BoardScenery log={log} frameIndex={Math.max(0, frameIndex)} seat={seat} /></>}
       />
     ) : (
@@ -643,8 +658,9 @@ export function PlayView({
             {wide ? (
               <div className={cx('play-cols', coachOpen && 'has-coach')}>
                 <main className="play-main">
-                  <div className="play-board">
+                  <div className={cx('play-board', stackPanel && !stackFolded && 'has-stack')}>
                     {board}
+                    {stackPanel}
                     {zonePanel}
                   </div>
                   {dock}
@@ -667,7 +683,8 @@ export function PlayView({
             ) : (
               <>
                 {!phoneCoach && <LogTab variant="edge" onClick={() => setLogOpen(true)} open={logOpen} />}
-                <div className="play-stage">
+                <div className={cx('play-stage', stackPanel && !phoneCoach && 'has-stack', stackFolded && 'is-stack-folded')}>
+                  {!phoneCoach && stackPanel}
                   {!phoneCoach && zonePanel}
                   <main className="phone-main play-phone-main" aria-hidden={phoneCoach || undefined}>
                     {board}

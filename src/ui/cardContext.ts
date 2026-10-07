@@ -51,3 +51,18 @@ export interface PlayInteraction {
 }
 export const PlayContext = createContext<PlayInteraction | null>(null);
 export const usePlay = () => useContext(PlayContext);
+
+/**
+ * Numbered badges on board cards, the same numbers the stack panel and the
+ * combat lines use (endstep-style): a card that is the source of stack item
+ * 2 wears a "2"; a card an item targets wears a ringed "2". Absent: no badges.
+ */
+export interface CardStackMarks {
+  sources: number[];
+  targets: number[];
+}
+export interface BoardMarks {
+  stack: ReadonlyMap<number, CardStackMarks>;
+}
+export const BoardMarksContext = createContext<BoardMarks | null>(null);
+export const useBoardMarks = () => useContext(BoardMarksContext);

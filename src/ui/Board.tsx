@@ -12,9 +12,12 @@ import type { GameLog } from '../log.ts';
 import { cardIndex, cardName, phaseLabel } from '../decisions.ts';
 import { chosenColors, manaSummary, turnFacts, type ManaSource } from '../state.ts';
 import { cachedMap, useCardsVersion } from './cardData.ts';
-import { useCardActions, usePlay } from './cardContext.ts';
+import { BoardMarksContext, useCardActions, usePlay, type BoardMarks } from './cardContext.ts';
+import { StackPanel } from './StackPanel.tsx';
+import { BoardArrows } from './BoardArrows.tsx';
+import { stackEntries, stackMarks, type StackEntry } from './stackModel.ts';
 import { CardBack, CardTile, LandPile, displayName } from './CardTile.tsx';
-import { IconHeart, IconLayers, IconShield, IconSword } from './Icons.tsx';
+import { IconHeart, IconShield, IconSword } from './Icons.tsx';
 import { Pip } from './Mana.tsx';
 import { ZoneViewer, type ViewableZone } from './ZoneViewer.tsx';
 import { groupLands, pileWeight } from './landPiles.ts';
@@ -31,9 +34,13 @@ interface BoardProps {
   hideHand?: boolean;
   /** Drawn over the table, scrolling with it (play: the combat lines). */
   overlay?: ReactNode;
+  /** Play draws the stack in its own floating panel (StackPanel `float`); the board then leaves it out of the midline. */
+  stackElsewhere?: boolean;
 }
 
-export function Board({ log, state, frameIndex, seat, hideHand, overlay }: BoardProps) {
+export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackElsewhere }: BoardProps) {
+  const stack = useMemo(() => stackEntries(state, seat), [state, seat]);
+  const marks = useMemo<BoardMarks>(() => ({ stack: stackMarks(stack) }), [stack]);
   const me = state.players.find((p) => p.id === seat) ?? state.players[0];
   const opps = state.players.filter((p) => p !== me);
   const byId = useMemo(() => {
@@ -50,14 +57,17 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay }: Board
     );
   }
   return (
-    <div className="board">
-      {opps.map((p) => (
-        <PlayerArea key={p.id} player={p} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} top />
-      ))}
-      <Midline state={state} seat={seat} />
-      <PlayerArea player={me} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} hideHand={hideHand} />
-      {overlay}
-    </div>
+    <BoardMarksContext.Provider value={marks}>
+      <div className="board">
+        {opps.map((p) => (
+          <PlayerArea key={p.id} player={p} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} top />
+        ))}
+        <Midline state={state} seat={seat} stack={stackElsewhere ? [] : stack} />
+        <PlayerArea player={me} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} hideHand={hideHand} />
+        {overlay}
+      </div>
+      <BoardArrows entries={stack} version={state} />
+    </BoardMarksContext.Provider>
   );
 }
 
@@ -418,11 +428,11 @@ const STEPS: { label: string; phases: string[] }[] = [
   { label: 'End', phases: ['END_OF_TURN', 'CLEANUP'] },
 ];
 
-function Midline({ state, seat }: { state: GameStateBody; seat: number }) {
+function Midline({ state, seat, stack }: { state: GameStateBody; seat: number; stack: StackEntry[] }) {
   return (
     <div className="midline">
       <PhaseHeader state={state} seat={seat} />
-      {state.stack.length > 0 && <StackPanel state={state} seat={seat} />}
+      {stack.length > 0 && <StackPanel entries={stack} state={state} variant="inline" />}
       {state.combat && state.combat.bands.length > 0 && <CombatPanel state={state} seat={seat} />}
     </div>
   );
@@ -476,62 +486,6 @@ function CardRef({ card, state }: { card: AnyCard | undefined; state: GameStateB
       )}
     </button>
   );
-}
-
-function StackPanel({ state, seat }: { state: GameStateBody; seat: number }) {
-  const idx = useMemo(() => cardIndex(state), [state]);
-  const items = [...state.stack].reverse();
-  const playerName = (id: number | null) => (id === null ? 'someone' : id === seat ? 'You' : state.players.find((p) => p.id === id)?.name ?? 'Opponent');
-  return (
-    <div className="mid-panel stack-panel">
-      <div className="mid-title">
-        <IconLayers size={14} /> Stack <span className="bf-count">{items.length}</span>
-        <span className="muted mid-hint">top resolves first</span>
-      </div>
-      <StackTargets items={items} seat={seat} />
-      <ol className="stack-list">
-        {items.map((it, i) => {
-          const src = it.sourceCardId !== null ? idx.get(it.sourceCardId) : undefined;
-          const targets = [
-            ...it.targetPlayerIds.map((id) => playerName(id)),
-            ...it.targetCardIds.map((id) => cardName(idx.get(id))),
-          ];
-          return (
-            <li key={it.id} className={cx('stack-item', i === 0 && 'is-top', it.controller === seat ? 'is-mine' : 'is-theirs')}>
-              <div className="stack-line">
-                <CardRef card={src} state={state} />
-                <span className="muted">· {playerName(it.controller)}</span>
-              </div>
-              {it.text && <div className="stack-text">{it.text}</div>}
-              {targets.length > 0 && <div className="stack-targets">→ {targets.join(', ')}</div>}
-            </li>
-          );
-        })}
-      </ol>
-    </div>
-  );
-}
-
-/**
- * The Stack skin outlines each permanent a stack item targets, dashed, in its
- * caster's colour (the topmost item wins). Only public stack data; the rules
- * match nothing in the other skins.
- */
-function StackTargets({ items, seat }: { items: GameStateBody['stack']; seat: number }) {
-  const css = useMemo(() => {
-    const seen = new Set<number>();
-    const rules: string[] = [];
-    for (const it of items) {
-      for (const id of it.targetCardIds) {
-        if (!Number.isInteger(id) || seen.has(id)) continue;
-        seen.add(id);
-        const who = it.controller === seat ? 'you' : 'them';
-        rules.push(`:root[data-skin='stack'] .board [data-card-id="${id}"] .tile-card{outline:2px dashed var(--skin-${who});outline-offset:3px}`);
-      }
-    }
-    return rules.join('\n');
-  }, [items, seat]);
-  return css ? <style>{css}</style> : null;
 }
 
 function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {

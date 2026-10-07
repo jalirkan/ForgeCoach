@@ -236,62 +236,65 @@
 
 /* ---- Stack: the game stack, a pile of cream objects -------------------- */
 
-:root[data-skin='stack'] .stack-panel {
+:root[data-skin='stack'] .stackp {
   background: var(--surface-2);
   border-color: var(--line);
 }
-:root[data-skin='stack'] .stack-list {
+:root[data-skin='stack'] .stackp-list {
   gap: 0;
 }
-:root[data-skin='stack'] .stack-item {
+:root[data-skin='stack'] .stackp-item {
   position: relative;
   background: var(--skin-card);
   color: var(--skin-ink);
   border: 0;
   border-left: 5px solid var(--skin-them);
   border-radius: 9px;
-  padding: 8px 11px;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
 }
-:root[data-skin='stack'] .stack-item.is-mine {
+:root[data-skin='stack'] .stackp-item.is-mine {
   border-left-color: var(--skin-you);
 }
-:root[data-skin='stack'] .stack-item + .stack-item {
+:root[data-skin='stack'] .stackp-item + .stackp-item {
   margin-top: -3px;
 }
 /* Under the top: a step down in the pile. */
-:root[data-skin='stack'] .stack-item:not(.is-top) {
+:root[data-skin='stack'] .stackp-item:not(.is-next) {
   background: var(--skin-card-under);
   transform: scale(0.97);
   transform-origin: top;
   z-index: 0;
 }
-:root[data-skin='stack'] .stack-item.is-top {
+:root[data-skin='stack'] .stackp-item.is-next {
   z-index: 1;
 }
-:root[data-skin='stack'] .stack-item .card-ref {
-  background: transparent;
+:root[data-skin='stack'] .stackp-name {
   color: var(--skin-ink);
   font-family: var(--serif);
   font-weight: 700;
-  font-size: 14px;
-  padding: 0;
-  border: 0;
 }
-:root[data-skin='stack'] .stack-item .muted,
-:root[data-skin='stack'] .stack-item .card-ref-pt {
+:root[data-skin='stack'] .stackp-who,
+:root[data-skin='stack'] .stackp-next {
   color: var(--skin-ink-2);
 }
-:root[data-skin='stack'] .stack-item .stack-text {
+:root[data-skin='stack'] .stackp-text {
   color: #35312a;
 }
-:root[data-skin='stack'] .stack-item .stack-targets {
+:root[data-skin='stack'] .stackp-chip {
   color: #8c4a33;
+  background: transparent;
+  border-color: rgba(140, 74, 51, 0.4);
   font-family: var(--skin-sc);
   letter-spacing: 0.06em;
 }
-:root[data-skin='stack'] .stack-item.is-mine .stack-targets {
+:root[data-skin='stack'] .stackp-item.is-mine .stackp-chip {
   color: #2f5f8f;
+  border-color: rgba(47, 95, 143, 0.4);
+}
+/* Each permanent a stack item targets: outlined, dashed (the board's numbered badge says which item). */
+:root[data-skin='stack'] .board .tile.is-stack-target .tile-card {
+  outline: 2px dashed var(--accent);
+  outline-offset: 3px;
 }
 
 /* ---- Stack: the coach's reasoning, a separate pile of dark items -------- */
@@ -843,12 +846,12 @@
   color: #1f3a33;
   box-shadow: none;
 }
-:root[data-skin='felt'] .stack-panel,
+:root[data-skin='felt'] .stackp,
 :root[data-skin='felt'] .combat-panel {
   background: rgba(14, 32, 27, 0.4);
   border-color: var(--line-2);
 }
-:root[data-skin='felt'] .stack-item.is-top {
+:root[data-skin='felt'] .stackp-item.is-next {
   border-color: var(--skin-bone);
 }
 :root[data-skin='felt'] .answer {

@@ -1,0 +1,383 @@
+/*
+ * ForgeCoach — ui/stack.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The stack panel (StackPanel.tsx), its numbered badges on board cards
+ * (CardTile StackBadges) and its lines (BoardArrows.tsx). Skin tokens only;
+ * the Stack and Felt skins restyle the items in ui/skins.css.
+ */
+
+:root {
+  --stack-mine: var(--accent);
+  --stack-theirs: var(--bad);
+}
+
+.stackp {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius, 12px);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+}
+.stackp-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px 6px 11px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.stackp-title {
+  font-family: var(--serif, inherit);
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text);
+}
+.stackp-n {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-2);
+  font-weight: 700;
+  text-align: center;
+}
+.stackp-hint {
+  flex: 1;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+}
+.stackp-fold {
+  width: 26px;
+  height: 26px;
+}
+.stackp-caret {
+  transition: transform 0.15s ease;
+  transform: rotate(-90deg);
+}
+.stackp-caret.is-open {
+  transform: none;
+}
+.stackp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.stackp-item {
+  display: grid;
+  grid-template-columns: auto 46px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+}
+.stackp-item.is-next {
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--line));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.stackp-num {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--stack-theirs);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 13px;
+  background: var(--bg);
+}
+.stackp-item.is-mine .stackp-num {
+  border-color: var(--stack-mine);
+}
+.stackp-item.is-next .stackp-num {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.stackp-art {
+  width: 46px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--surface-3);
+  color: var(--muted);
+  cursor: pointer;
+}
+.stackp-art:disabled {
+  cursor: default;
+}
+.stackp-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.stackp-art .card-back {
+  --cw: 46px;
+  transform: rotate(90deg) scale(0.75);
+}
+.stackp-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.stackp-line {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.stackp-kind {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--info);
+}
+.stackp-kind.k-spell {
+  color: var(--accent-2);
+}
+.stackp-kind.k-triggered {
+  color: var(--violet, var(--info));
+}
+.stackp-numcol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.stackp-next {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+.stackp-name {
+  font-weight: 650;
+  font-size: 13.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stackp-who {
+  font-weight: 500;
+  color: var(--muted);
+}
+.stackp-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+.stackp-text.is-wide {
+  -webkit-line-clamp: unset;
+}
+.stackp-text.is-hidden {
+  color: var(--muted);
+  font-style: italic;
+  cursor: default;
+}
+.stackp-targets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+}
+.stackp-arrow {
+  color: var(--muted);
+  font-size: 12px;
+}
+.stackp-chip {
+  padding: 0 7px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+/* ---- the play screen: one fixed place over the board, right of centre */
+.stackp-float {
+  position: absolute;
+  z-index: 44;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(300px, 32%);
+  max-height: min(72%, 520px);
+}
+.stackp-float.is-folded {
+  width: auto;
+}
+.stackp-float.is-folded .stackp-hint {
+  display: none;
+}
+/* The board makes room for it rather than slide cards under it. */
+.play-board.has-stack .board {
+  padding-right: calc(min(300px, 32%) + 18px) !important;
+}
+/* ---- the replay: a strip between the two sides */
+.stackp-inline {
+  box-shadow: none;
+}
+.stackp-inline .stackp-list {
+  flex-direction: row;
+  overflow-x: auto;
+}
+.stackp-inline .stackp-item {
+  flex: 0 0 min(320px, 80%);
+}
+
+@media (max-width: 1023px) {
+  /* Phones: across the top of the board, the items side by side. */
+  .stackp-float {
+    left: 6px;
+    right: 6px;
+    top: 6px;
+    transform: none;
+    width: auto;
+    max-height: 45%;
+  }
+  .stackp-float.is-folded {
+    left: auto;
+  }
+  .stackp-float .stackp-list {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .stackp-float .stackp-item {
+    flex: 0 0 min(240px, 74%);
+    grid-template-columns: auto 36px minmax(0, 1fr);
+    gap: 6px;
+    padding: 5px 7px;
+  }
+  .stackp-float .stackp-art {
+    width: 36px;
+    height: 28px;
+  }
+  .stackp-float .stackp-text {
+    -webkit-line-clamp: 1;
+  }
+  .stackp-float .stackp-head {
+    padding: 4px 6px 3px 9px;
+  }
+  .stackp-float .stackp-list {
+    padding: 0 6px 6px;
+  }
+  /* The board scrolls below it instead of under it. */
+  .play-stage.has-stack:not(.is-stack-folded) .play-phone-main {
+    padding-top: var(--stack-h, 112px);
+  }
+}
+
+/* ---- the numbers on board cards */
+.tile-stackmarks {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  gap: 3px;
+  pointer-events: none;
+}
+.smk {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+.smk-src {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 2px solid var(--bg);
+}
+.smk-tgt {
+  background: var(--bg);
+  color: var(--accent-2);
+  border: 2px solid var(--accent);
+}
+.board .tile.is-stack-target .tile-card {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 80%, transparent), 0 0 18px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* ---- the lines */
+.stack-arrows {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 46;
+  pointer-events: none;
+  overflow: visible;
+}
+.stack-arrow path {
+  fill: none;
+  stroke-linecap: round;
+}
+.stack-arrow-under {
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 5;
+}
+.stack-arrow-line {
+  stroke: var(--stack-theirs);
+  stroke-width: 2.25;
+}
+.stack-arrow.is-mine .stack-arrow-line {
+  stroke: var(--stack-mine);
+}
+.stack-arrow.is-source .stack-arrow-line {
+  stroke-dasharray: 5 5;
+  opacity: 0.85;
+}
+.stack-arrow:not(.is-next) .stack-arrow-line {
+  opacity: 0.7;
+}
+.stack-arrow-head {
+  fill: var(--stack-theirs);
+}
+.stack-arrow.is-mine .stack-arrow-head {
+  fill: var(--stack-mine);
+}
+.stack-arrow-badge circle {
+  fill: var(--bg);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.stack-arrow-badge text {
+  fill: var(--accent-2);
+  font-size: 11px;
+  font-weight: 800;
+}
