@@ -31,8 +31,9 @@ const held = new Map<string, Held>();
 function acquire(url: string): PlaySession {
   let h = held.get(url);
   if (!h) {
-    // A table of two (mtg-table D402) is reached with a seat token in `?seat=`.
-    h = { session: connectSeat(url, /[?&]seat=/.test(url) ? { table: true } : {}), refs: 0, closeTimer: null };
+    // A table of two (mtg-table D402) is reached with a seat token in `?seat=`. Either way the
+    // log's frames are kept in this browser, so a page that comes back mid-game keeps its history.
+    h = { session: connectSeat(url, /[?&]seat=/.test(url) ? { table: true } : { keepLog: true }), refs: 0, closeTimer: null };
     held.set(url, h);
   }
   if (h.closeTimer !== null) {

@@ -2,14 +2,17 @@
  * ForgeCoach — ambience/manifest.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The scenery asset pack's manifest (`scenery.json`, schema 1, spec 1.4; the
+ * The scenery asset pack's manifest (`scenery.json`, schema 1, spec 1.5; the
  * contract is docs/scenery-pack-spec.md) and its strict validator. DOM-free.
  * Spec 1.2 adds optional one-shot `effects` (creature enters, attack, damage,
  * landfall, stage up), globally and per biome; spec 1.3 adds optional board
  * accents (`overlay` per stage: corner and edge pieces in the player's area,
  * outside the strip); spec 1.4 adds one more accent piece, the full-area
  * piece (`anchor: "area"`: one transparent picture across the whole player
- * area, beneath the strip). A 1.1, 1.2 or 1.3 pack reads as before.
+ * area, beneath the strip); spec 1.5 adds half-board pictures (`half` per
+ * stage: one picture that fills the player's whole half of the board, with a
+ * focal point and a safe rect for the crop) and the top-level `half` layout
+ * (seam, smallest share, mist). A 1.1–1.4 pack reads as before.
  *
  * A pack is untrusted input, served from wherever the user pointed the page:
  * every string is cleaned and clipped, every number range-checked, every URL
@@ -24,7 +27,7 @@ import { BIOMES, MAX_STAGES, type Biome } from './model.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
-export const SPEC_VERSION = '1.4';
+export const SPEC_VERSION = '1.5';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */
@@ -93,7 +96,68 @@ export interface PackLayer {
 
 export interface PackStage {
   layers: PackLayer[];
+  /** Spec 1.5: the stage's half-board picture, when the pack gives one. */
+  half?: PackHalf;
 }
+
+// ---------------------------------------------------------------------------
+// Half-board pictures (spec 1.5)
+
+/** A point of the picture, as fractions from its top-left. */
+export interface FocalPoint {
+  x: number;
+  y: number;
+}
+
+/** Spec 1.5: one picture for a half, at one shape (the desktop's, or the phone's). */
+export interface HalfPicture {
+  src: string;
+  src2x: string | null;
+  /** The 1x file's pixel size: only its shape (width / height) is used, to crop before the file loads. */
+  width: number;
+  height: number;
+  /** §5's subject band: the scene's subject lies between these fractions of the height, from the top. */
+  subjectBand: [number, number];
+  /** Kept as near the panel's middle as the picture allows (default: the band's middle, centred). */
+  focal: FocalPoint;
+  /** Kept whole whenever the panel's shape allows (default: the subject band across the middle half). */
+  safe: AreaRect;
+}
+
+/**
+ * Spec 1.5: the pictures that fill a player's whole half of the board at a
+ * stage (art direction §5; pack-v3: desktop halves 16:5, 2048 × 640, and
+ * phone halves 4:5, 1024 × 1280, outpainted up into sky and down into calm
+ * ground). Cover-cropped to each panel: the phone picture where the panel's
+ * shape is nearer its own, else the desktop one.
+ */
+export interface PackHalf extends HalfPicture {
+  /** The portrait picture for phones, or null (the desktop picture is cropped). */
+  phone: HalfPicture | null;
+  /** Declared size of every file of this `half` (src, src2x, phone src and src2x), for the budget. */
+  bytes: number | null;
+}
+
+/** Spec 1.5 top-level `half`: how a player's half is shared between their biomes and meets the other half. */
+export interface PackHalfLayout {
+  /** The gradient seam between two biomes, as a fraction of the half's width. */
+  seamRatio: number;
+  /** No live biome's panel narrower than this fraction of the half. */
+  minShare: number;
+  /** How much of the half, from the centre line, fades into the mist band. */
+  mist: number;
+}
+
+/** The default half layout (§5: ~10% seams, no panel under ~15%). */
+export const DEFAULT_HALF_LAYOUT: PackHalfLayout = { seamRatio: 0.1, minShare: 0.15, mist: 0.16 };
+/** §5's subject band: 35–60% down the picture. */
+export const DEFAULT_SUBJECT_BAND: [number, number] = [0.35, 0.6];
+/** The default sizes when the pack does not say (pack-v3: desktop 16:5, phone 4:5). */
+export const DEFAULT_HALF_SIZE = { width: 2048, height: 640 } as const;
+export const DEFAULT_PHONE_SIZE = { width: 1024, height: 1280 } as const;
+/** Declared half-picture files per biome (desktop and phone, 1x and 2x, every stage) past this get a warning. */
+export const MAX_HALF_BYTES = 8 * 1024 * 1024;
+const HALF_EXT = /\.(webp|avif|png|jpe?g)$/i;
 
 export interface PackBiome {
   label: string | null;
@@ -742,6 +806,8 @@ export interface ScenePack {
   effects?: PackEffectSet | null;
   /** Spec 1.3: board accents per biome (1.4: full-area pieces too), or undefined / null when the pack has none. */
   overlays?: PackOverlays | null;
+  /** Spec 1.5: how each half is shared and meets the other (defaults when the pack does not say). */
+  half?: PackHalfLayout;
 }
 
 export interface ManifestResult {
@@ -891,6 +957,131 @@ function parseLayer(v: unknown, base: string, path: string, warn: string[]): Pac
   };
 }
 
+const HALF_EXT_NAME = '.webp, .avif, .png or .jpg';
+
+/** One picture of a `half` (the desktop fields, or `phone`); null when its `src` is unusable (warned). */
+function parseHalfPicture(v: Obj, base: string, path: string, warn: string[], size: { width: number; height: number }, band0: [number, number] | null): HalfPicture | null {
+  const problems: string[] = [];
+  const src = layerUrl(v.src, base, HALF_EXT, HALF_EXT_NAME, `${path}.src`, problems, false);
+  if (problems.length) {
+    warn.push(...problems.map((p) => `${p}; picture dropped`));
+    return null;
+  }
+  const opt: string[] = [];
+  const src2x = layerUrl(v.src2x, base, HALF_EXT, HALF_EXT_NAME, `${path}.src2x`, opt, true);
+  for (const o of opt) warn.push(`${o}; ignored`);
+  let { width, height } = size;
+  if (v.width !== undefined || v.height !== undefined) {
+    const w = int(v.width, 64, 16384);
+    const h = int(v.height, 64, 16384);
+    if (w === null || h === null || w / h < 0.25 || w / h > 8) warn.push(`${path}: width and height are the 1x file's pixels (64–16384, a shape between 1:4 and 8:1); using ${width} × ${height}`);
+    else [width, height] = [w, h];
+  }
+  let band: [number, number] = band0 ?? DEFAULT_SUBJECT_BAND;
+  if (v.subjectBand !== undefined && v.subjectBand !== null) {
+    const sb: unknown[] = Array.isArray(v.subjectBand) ? v.subjectBand : [];
+    const ok = sb.length === 2 && sb.every((x) => num(x, 0, 1) !== null) && Number(sb[1]) - Number(sb[0]) >= 0.05;
+    if (!ok) warn.push(`${path}.subjectBand: [top, bottom], fractions 0–1 of the height from the top, at least 0.05 apart; using [${band.join(', ')}]`);
+    else band = [Number(sb[0]), Number(sb[1])];
+  }
+  let focal: FocalPoint = { x: 0.5, y: +((band[0] + band[1]) / 2).toFixed(4) };
+  if (v.focal !== undefined && v.focal !== null) {
+    const f = isObj(v.focal) ? { x: num(v.focal.x ?? focal.x, 0, 1), y: num(v.focal.y ?? focal.y, 0, 1) } : null;
+    if (!f || f.x === null || f.y === null) warn.push(`${path}.focal: { x, y }, fractions 0–1 of the picture from its top-left; using the subject band’s middle`);
+    else focal = { x: f.x, y: f.y };
+  }
+  const safe = parseSafe(v.safe, `${path}.safe`, warn) ?? { x: 0.25, y: band[0], w: 0.5, h: +(band[1] - band[0]).toFixed(4) };
+  return { src: src!, src2x, width, height, subjectBand: band, focal, safe };
+}
+
+/**
+ * The phone picture's default subject band: the desktop picture's middle half
+ * of the width, outpainted evenly up and down to 4:5, puts the desktop band
+ * in the phone picture's middle (the desktop's height is 1/2 of the phone's
+ * for 16:5 → 4:5, so y ↦ 0.25 + y / 2 then). A pack whose outpainting is not
+ * even gives `phone.subjectBand`.
+ */
+function phoneBand(desk: HalfPicture): [number, number] {
+  const k = Math.min(1, (desk.height / desk.width) * 2 / (DEFAULT_PHONE_SIZE.height / DEFAULT_PHONE_SIZE.width));
+  const map = (y: number) => +((1 - k) / 2 + y * k).toFixed(4);
+  return [map(desk.subjectBand[0]), map(desk.subjectBand[1])];
+}
+
+/** Spec 1.5: a stage's `half` pictures, or null (dropped with a warning when unusable). */
+function parseHalf(v: unknown, base: string, path: string, warn: string[]): PackHalf | null {
+  if (v === undefined || v === null) return null;
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object; ignored`);
+    return null;
+  }
+  const desk = parseHalfPicture(v, base, path, warn, DEFAULT_HALF_SIZE, null);
+  if (!desk) return null;
+  let phone: HalfPicture | null = null;
+  if (v.phone !== undefined && v.phone !== null) {
+    if (!isObj(v.phone)) warn.push(`${path}.phone: not an object { src, src2x }; ignored`);
+    else phone = parseHalfPicture(v.phone, base, `${path}.phone`, warn, DEFAULT_PHONE_SIZE, phoneBand(desk));
+  }
+  return { ...desk, phone, bytes: parseBytes(v, path, warn) };
+}
+
+/** Spec 1.5: the declared bytes of a biome's half pictures (each file once). */
+export function halfBytes(b: PackBiome | undefined): number {
+  const seen = new Set<string>();
+  let n = 0;
+  for (const st of b?.stages ?? []) {
+    const h = st.half;
+    if (!h || seen.has(h.src)) continue;
+    seen.add(h.src);
+    n += h.bytes ?? 0;
+  }
+  return n;
+}
+
+/** A stage with a half picture and no strip layers: the strip shows the half picture, cover-cropped about its focal point. */
+function halfAsLayer(h: PackHalf): PackLayer {
+  return { id: 'half', kind: 'image', src: h.src, src2x: h.src2x, fallback: null, poster: null, frames: 1, cols: 1, rows: 1, fps: 0, depth: 0, blend: 'normal', z: 0, opacity: 1, x: 0, y: 0, w: 1, h: 1, fit: 'cover', anchor: 'center', idle: false };
+}
+
+function parseHalfLayout(v: unknown, warn: string[]): PackHalfLayout {
+  if (v === undefined || v === null) return { ...DEFAULT_HALF_LAYOUT };
+  if (!isObj(v)) {
+    warn.push('half: not an object; defaults used');
+    return { ...DEFAULT_HALF_LAYOUT };
+  }
+  const d = DEFAULT_HALF_LAYOUT;
+  return {
+    seamRatio: ranged(v.seamRatio, 0, 0.3, d.seamRatio, 'half.seamRatio', warn),
+    minShare: ranged(v.minShare, 0.05, 0.3, d.minShare, 'half.minShare', warn),
+    mist: ranged(v.mist, 0, 0.4, d.mist, 'half.mist', warn),
+  };
+}
+
+/** The half picture a biome shows at a stage (the last defined stage past the end), or null. */
+export function halfAt(biome: PackBiome | undefined, stage: number): PackHalf | null {
+  if (!biome || stage <= 0) return null;
+  return biome.stages[Math.min(stage, biome.stages.length) - 1]?.half ?? null;
+}
+
+/** Does any biome of the pack have a half picture (spec 1.5)? */
+export function hasHalfArt(pack: ScenePack | null | undefined): boolean {
+  return Object.values(pack?.biomes ?? {}).some((b) => b?.stages.some((s) => !!s.half));
+}
+
+/** Every half picture a pack names, stage 1 first (background preload order). */
+export function halfUrls(pack: ScenePack): { biome: Biome; stage: number; url: string; phone: string | null }[] {
+  const out: { biome: Biome; stage: number; url: string; phone: string | null }[] = [];
+  const seen = new Set<string>();
+  for (let stage = 1; stage <= MAX_STAGES; stage++) {
+    for (const biome of BIOMES) {
+      const h = pack.biomes[biome]?.stages[stage - 1]?.half;
+      if (!h || seen.has(h.src)) continue;
+      seen.add(h.src);
+      out.push({ biome, stage, url: h.src, phone: h.phone?.src ?? null });
+    }
+  }
+  return out;
+}
+
 function parseBiome(v: unknown, base: string, path: string, warn: string[]): PackBiome | null {
   if (!isObj(v)) {
     warn.push(`${path}: not an object; biome uses the built-in scene`);
@@ -900,13 +1091,15 @@ function parseBiome(v: unknown, base: string, path: string, warn: string[]): Pac
   if (rawStages.length > MAX_STAGES) warn.push(`${path}.stages: more than ${MAX_STAGES}; the rest ignored`);
   const stages: PackStage[] = [];
   // Accents only (spec 1.3): every stage has an `overlay` and no `layers`; the strip keeps the built-in scene, no warning.
-  const accentsOnly = rawStages.length > 0 && rawStages.every((st) => isObj(st) && st.layers === undefined && st.overlay !== undefined);
+  const accentsOnly = rawStages.length > 0 && rawStages.every((st) => isObj(st) && st.layers === undefined && st.half === undefined && st.overlay !== undefined);
   if (accentsOnly) return null;
   rawStages.slice(0, MAX_STAGES).forEach((st, i) => {
     const sp = `${path}.stages[${i}]`;
-    const rawLayers = isObj(st) && Array.isArray(st.layers) ? st.layers : Array.isArray(st) ? st : null;
+    // Spec 1.5: a half-board picture; a stage may have one and no strip layers (the strip then shows the picture).
+    const half = isObj(st) && st.half !== undefined ? parseHalf(st.half, base, `${sp}.half`, warn) : null;
+    const rawLayers = isObj(st) && Array.isArray(st.layers) ? st.layers : Array.isArray(st) ? st : half && isObj(st) && st.layers === undefined ? [] : null;
     if (!rawLayers) {
-      warn.push(`${sp}: needs a "layers" list; stage dropped`);
+      warn.push(`${sp}: needs a "layers" list${isObj(st) && st.half !== undefined ? ' or a usable "half" picture' : ''}; stage dropped`);
       return;
     }
     if (rawLayers.length > MAX_LAYERS) warn.push(`${sp}.layers: more than ${MAX_LAYERS}; the rest ignored`);
@@ -924,9 +1117,12 @@ function parseBiome(v: unknown, base: string, path: string, warn: string[]): Pac
     });
     const moving = layers.filter((l) => l.kind !== 'image').length;
     if (moving > MAX_MOVING_LAYERS) warn.push(`${sp}: ${moving} moving layers (sprite or video); the budget is ${MAX_MOVING_LAYERS} per stage, so a phone may stutter (layers kept)`);
-    if (layers.length) stages.push({ layers });
+    if (half && !layers.some((l) => l.kind === 'image')) layers.unshift({ ...halfAsLayer(half), z: Math.max(-100, Math.min(0, ...layers.map((l) => l.z)) - 1) });
+    if (layers.length) stages.push(half ? { layers, half } : { layers });
     else warn.push(`${sp}: no usable layers; stage dropped`);
   });
+  const hb = halfBytes({ stages } as PackBiome);
+  if (hb > MAX_HALF_BYTES) warn.push(`${path}: ${(hb / 1048576).toFixed(1)} MB of half pictures declared; their budget is ${MAX_HALF_BYTES / 1048576} MB per biome (pictures kept)`);
   if (!stages.length) {
     // Effects only: the built-in scene with the pack's effects, no warning.
     if (v.stages === undefined && v.effects !== undefined) return null;
@@ -1040,6 +1236,7 @@ export function validateManifest(raw: unknown, base: string): ManifestResult {
       biomes,
       effects,
       overlays,
+      half: parseHalfLayout(raw.half, warnings),
     },
     errors,
     warnings,

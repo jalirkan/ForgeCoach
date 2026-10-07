@@ -20,11 +20,12 @@ import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '..
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
 import { SIM_PLAYERS, simLog, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
 import { browserLoader, checkEffectFiles, fetchManifest, manifestUrlFor, preloadPack, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
-import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
+import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
 import { currentPrefs, loadSceneryPrefs, saveSceneryPrefs } from '../../ambience/prefs.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
+import { HalfScrim } from './HalfScrim.tsx';
 import { useSceneryFx, type PlaceCard } from './useScenery.ts';
 import './ambience-page.css';
 
@@ -69,6 +70,8 @@ export default function AmbiencePage() {
   const [usePack, setUsePack] = useState(initial.mode === 'pack');
   const [eventsLog, setEventsLog] = useState<string[]>([]);
   const [accents, setAccents] = useState(initial.accents);
+  // Spec 1.5: the scenery fills each side (Settings → Fill each side), or keeps to the strip.
+  const [fill, setFill] = useState(initial.fill);
   // Spec 1.4: preview the built-in full-area placeholder where the pack gives none; and a pasted manifest previewed as is.
   const [areaPreview, setAreaPreview] = useState(false);
   const [pastedPack, setPastedPack] = useState<ScenePack | null>(null);
@@ -174,6 +177,7 @@ export default function AmbiencePage() {
             top
             slots={counts(SIM_PLAYERS[1])}
             creatures={creaturesOf(SIM_PLAYERS[1])}
+            scrim={fill && slotsOf(scenery, SIM_PLAYERS[1]).length > 0}
             strip={
               <>
                 <SceneryStrip
@@ -185,6 +189,7 @@ export default function AmbiencePage() {
                   pulses={fx.pulses.get(SIM_PLAYERS[1])}
                   fx={fx.fx.get(SIM_PLAYERS[1])}
                   stageOverride={stage || null}
+                  fill={fill ? 'half' : 'strip'}
                 />
                 {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[1])} pack={pack} edge="top" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} />}
               </>
@@ -197,6 +202,7 @@ export default function AmbiencePage() {
             player={SIM_PLAYERS[0]}
             slots={counts(SIM_PLAYERS[0])}
             creatures={creaturesOf(SIM_PLAYERS[0])}
+            scrim={fill && slotsOf(scenery, SIM_PLAYERS[0]).length > 0}
             strip={
               <>
                 <SceneryStrip
@@ -207,6 +213,7 @@ export default function AmbiencePage() {
                   pulses={fx.pulses.get(SIM_PLAYERS[0])}
                   fx={fx.fx.get(SIM_PLAYERS[0])}
                   stageOverride={stage || null}
+                  fill={fill ? 'half' : 'strip'}
                 />
                 {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[0])} pack={pack} edge="bottom" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} />}
               </>
@@ -288,6 +295,19 @@ export default function AmbiencePage() {
               </div>
             </div>
             <div className="amb-field">
+              <span>Fill each side</span>
+              <div className="amb-seg" role="radiogroup" aria-label="Fill each side">
+                {([true, false] as const).map((on) => (
+                  <button key={String(on)} role="radio" aria-checked={fill === on} className={fill === on ? 'is-on' : ''} onClick={() => setFill(on)} data-fill-toggle={on ? 'on' : 'off'}>
+                    {on ? 'Whole half' : 'Strip only'}
+                  </button>
+                ))}
+              </div>
+              <span className="amb-hint">
+                Spec 1.5: the scene fills each side's half, split by land count (each biome at its own stage, none under {Math.round((pack?.half?.minShare ?? 0.15) * 100)}% wide), both halves upright with a mist band along the centre line, and a soft dark band under each card row. A pack's half pictures where it has them{pack && hasHalfArt(pack) ? ' (this pack has some)' : ''}, else its strip art, cover-cropped.
+              </span>
+            </div>
+            <div className="amb-field">
               <span>Board accents</span>
               <div className="amb-seg" role="radiogroup" aria-label="Board accents">
                 {([true, false] as const).map((on) => (
@@ -333,7 +353,7 @@ export default function AmbiencePage() {
             usePack={usePack}
             setUsePack={setUsePack}
             onLoad={() => loadPack(url || DEFAULT_PACK_URL)}
-            onSave={() => saveSceneryPrefs({ ...loadSceneryPrefs(), mode: usePack && url ? 'pack' : 'procedural', packUrl: url, motion, accents })}
+            onSave={() => saveSceneryPrefs({ ...loadSceneryPrefs(), mode: usePack && url ? 'pack' : 'procedural', packUrl: url, motion, accents, fill })}
             pastedPack={pastedPack}
             setPastedPack={setPastedPack}
           />
@@ -351,7 +371,8 @@ function describe(e: SceneryEvent): string {
   return `damage · ${who} · ${e.amount}`;
 }
 
-function MockSide({ title, player, top, slots, creatures, strip, plays }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; creatures: number[]; strip: React.ReactNode; plays: SimPlay[] }) {
+function MockSide({ title, player, top, slots, creatures, strip, plays, scrim }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; creatures: number[]; strip: React.ReactNode; plays: SimPlay[]; scrim?: boolean }) {
+  const [host, setHost] = useState<HTMLDivElement | null>(null);
   const lands = plays.filter((p): p is Extract<SimPlay, { kind: 'land' }> => p.kind === 'land' && p.player === player);
   const summary = slots.length ? slots.map((s) => `${BIOME_LABEL[s.biome]} ${fmt(s.weight)} · stage ${s.stage}`).join('   ') : 'No lands yet';
   const chips = (
@@ -378,7 +399,8 @@ function MockSide({ title, player, top, slots, creatures, strip, plays }: { titl
         <b>{title}</b>
         <span className="amb-summary">{summary}</span>
       </div>
-      <div className="amb-bf scn-host" data-amb-player={player}>
+      <div className="amb-bf scn-host" data-amb-player={player} ref={setHost}>
+        {scrim && host && <HalfScrim host={host} selector=".amb-chips:not(:empty), .amb-creatures" version={plays.length} />}
         {strip}
         {top ? (
           <>
@@ -399,7 +421,9 @@ function MockSide({ title, player, top, slots, creatures, strip, plays }: { titl
 /** One line per biome: its stage layers, and its accent pieces per stage (spec 1.3; 1.4: which stages have a full-area piece). */
 function* packSummary(pack: ScenePack): Generator<string> {
   for (const [b, v] of Object.entries(pack.biomes) as [Biome, NonNullable<ScenePack['biomes'][Biome]>][]) {
-    yield `${BIOME_LABEL[b]}: ${v.stages.length} stage${v.stages.length === 1 ? '' : 's'}, ${v.stages.map((s) => s.layers.length).join('/')} layers`;
+    const halfStages = v.stages.flatMap((s, i) => (s.half ? [i + 1] : []));
+    const hb = halfBytes(v);
+    yield `${BIOME_LABEL[b]}: ${v.stages.length} stage${v.stages.length === 1 ? '' : 's'}, ${v.stages.map((s) => s.layers.length).join('/')} layers${halfStages.length ? ` · half pictures at stage ${halfStages.join(', ')}${hb ? ` (${(hb / 1048576).toFixed(1)} MB declared)` : ''}` : ''}`;
   }
   for (const [b, v] of Object.entries(pack.overlays ?? {}) as [Biome, NonNullable<NonNullable<ScenePack['overlays']>[Biome]>][]) {
     const bytes = overlayBytes(v);
