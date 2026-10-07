@@ -16,6 +16,7 @@ import { humanValueNote } from '../../cube/score.ts';
 import { aiLabelFrom } from '../../draft/aiLabel.ts';
 import { canPass, expectedPicks, knownAiCards, lineName, progress, toAct, yourPack, type BoosterDraft, type Draft, type GridDraft, type WinstonDraft } from '../../draft/draft.ts';
 import { gridBlurb } from '../../draft/gridBlurb.ts';
+import { buildGridWhyPrompt, gridWhyCards } from '../../draft/gridWhyPrompt.ts';
 import { bestBoosterPick, buildPickPrompt, pickPromptCards } from '../../draft/pickPrompt.ts';
 import { startAnswer, stopAnswer, useAnswer } from '../answers.ts';
 import { cardsForPrompt, prefetchCards } from '../cardData.ts';
@@ -28,6 +29,7 @@ import { CardInfoSheet } from '../deck/sheets.tsx';
 import { SizeSlider, usePrefs, type Zone } from './Collection.tsx';
 import { DCard } from './DCard.tsx';
 import { GridBoard } from './GridBoard.tsx';
+import { GridWhyCoach } from './GridHint.tsx';
 import { AiBanner, Dock, Kebab, SeatChips, Timer, useCountdown, type Action, type Seat } from './Panels.tsx';
 import { PoolPanel, PoolSheet } from './Pool.tsx';
 import { useCubeMeta } from './useCubeMeta.ts';
@@ -100,6 +102,11 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
     const a = recommendWinston({ pile, pileIndex: (d.look + 1) as 1 | 2 | 3, sizes: d.piles.map((p) => p.length) as [number, number, number], pool: d.picks.you, oppPool: known, seen: d.seen.you }, ctx);
     return { title: a.action === 'take' ? `Take pile ${d.look + 1}` : `Pass pile ${d.look + 1}`, lines: a.reasons, line: null, take: a.action === 'take', card: null };
   }, [mine, d, ctx, known, them]);
+
+  // The grid hint's "Explain more": one coach answer per grid, pick and line, kept for re-opening.
+  const why = d.format === 'grid' && hints && advice && 'why' in advice ? advice.why : null;
+  const whyKey = why && d.format === 'grid' ? `gridwhy:${d.id}:${d.g}:${d.firstLine ?? 'first'}:${advice?.line}` : null;
+  const whyPrompt = useCallback(async () => buildGridWhyPrompt({ ctx, cubeId: d.cubeId, blurb: why!, pool: d.picks.you, infos: await cardsForPrompt(gridWhyCards(why!)) }), [ctx, d.cubeId, d.picks.you, why]);
 
   // The decision: title, mono line, actions.
   const pr = progress(d);
@@ -249,7 +256,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
         {lastBlind?.who === 'you' && lastBlind.kind === 'blind' && <div className="aibanner is-you">You took the top card blind: {lastBlind.cards[0]}</div>}
         {status && <p className="pk-status">{sel !== null || pick ? <span className="dot" /> : null}{status}</p>}
         {d.format === 'grid' ? (
-          <GridBoard d={d} mine={mine} selected={sel} preview={preview} hint={hints ? (advice?.line ?? null) : null} aiLine={game.aiLine} onSelect={setSel} onPreview={setPreview} onInfo={setInfo} why={hints && advice && 'why' in advice ? advice.why : null} />
+          <GridBoard d={d} mine={mine} selected={sel} preview={preview} hint={hints ? (advice?.line ?? null) : null} aiLine={game.aiLine} onSelect={setSel} onPreview={setPreview} onInfo={setInfo} why={why} whyExtra={whyKey ? <GridWhyCoach answerKey={whyKey} makePrompt={whyPrompt} onSettings={onSettings} /> : null} />
         ) : d.format === 'winston' ? (
           <WinstonBoard d={d} mine={mine} hintTake={hints && advice ? advice.take : null} onInfo={setInfo} />
         ) : (
