@@ -2,7 +2,7 @@
  * ForgeCoach — ui/bug/BugReport.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * "Report a bug" (mtg-table D410): a small panel over any screen. The player
+ * "Report a bug" (mtg-table D411): a small panel over any screen. The player
  * types a title and what happened; the page adds the rest (bug/report.ts) and
  * sends it to mtg-table — the room this page holds a seat in, else the coach
  * helper on this computer (bug/deliver.ts) — or offers it as a file.

@@ -187,7 +187,7 @@ export function GameView({
   const frame = mode === 'frames' ? frames[fIdx] ?? null : null;
   const state = decision?.state ?? frame?.state ?? frames[frames.length - 1]?.state ?? null;
   const frameIndex = decision?.frameIndex ?? frame?.frameIndex ?? 0;
-  // Report a bug (mtg-table D410): the replay at the moment shown, its log up to that frame.
+  // Report a bug (mtg-table D411): the replay at the moment shown, its log up to that frame.
   useBugContext(() => ({
     surface: 'replay',
     game: gameFacts(state, log.seat, { gameId: state?.gameId ?? log.header?.gameId ?? null, frameIndex, gameNumber: log.hello?.gameNumber ?? null }),

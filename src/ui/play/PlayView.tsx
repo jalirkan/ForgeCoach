@@ -125,7 +125,7 @@ export function PlayView({
 
   if (import.meta.env.DEV) (window as unknown as { __forgecoach?: unknown }).__forgecoach = snap;
   const view = useMemo(() => describeInput(input, state, seat, { ask, over: !!over }), [input, state, seat, ask, over]);
-  // Report a bug (mtg-table D410): this seat's game as it stands, read only when a report is made.
+  // Report a bug (mtg-table D411): this seat's game as it stands, read only when a report is made.
   useBugContext(() => ({
     surface: snap.table ? 'table' : 'play',
     game: gameFacts(state, seat, { gameId: state?.gameId ?? log?.hello?.gameId ?? null, status, gameNumber: log?.hello?.gameNumber ?? null, vsHuman: snap.table !== null }),

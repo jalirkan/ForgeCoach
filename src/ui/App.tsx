@@ -187,7 +187,7 @@ export function App() {
         }}
       />
     ) : null;
-  // Report a bug (Shift+B, and the screens' bug buttons; mtg-table D410) over whichever page is open.
+  // Report a bug (Shift+B, and the screens' bug buttons; mtg-table D411) over whichever page is open.
   if (page) {
     return (
       <>

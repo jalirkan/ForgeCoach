@@ -2,7 +2,7 @@
  * ForgeCoach — bug/report.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * A bug report from the page (mtg-table D410): what the player typed (a title,
+ * A bug report from the page (mtg-table D411): what the player typed (a title,
  * what happened, a severity) plus what the page knows at that moment, built
  * here so the player never has to copy it by hand:
  *

@@ -2,7 +2,7 @@
  * ForgeCoach — bug/deliver.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Where a bug report goes (mtg-table D410), in order:
+ * Where a bug report goes (mtg-table D411), in order:
  *
  *   1. a page that holds a seat in a room (a friend's draft or table, or the
  *      owner's own) → that room: `POST <room>/room/<id>/bug` with the seat's

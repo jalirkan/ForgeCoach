@@ -64,7 +64,7 @@ export default function DraftApp({ onExit }: { onExit: () => void }) {
   const deck = useMemo(() => saved?.deck ?? (draft?.done ? initialDeck(draft.picks.you) : null), [saved?.deck, draft]);
   const known = useMemo(() => (draft ? knownAiCards(draft) : []), [draft]);
   const pending = !!saved && 'pending' in (saved.draft as object);
-  // Report a bug (mtg-table D410): only what the player's screen shows of the draft (never the AI's picks).
+  // Report a bug (mtg-table D411): only what the player's screen shows of the draft (never the AI's picks).
   useBugContext(() => ({ ...EMPTY_SNAPSHOT, surface: 'draft', extra: { view, title: saved?.title ?? null, draft: draftExtra(draft), deck: view === 'build' || view === 'match' ? deck : null } }));
 
   let body;

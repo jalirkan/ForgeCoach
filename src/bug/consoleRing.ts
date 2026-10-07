@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The page's recent console errors and warnings, for a bug report (mtg-table
- * D410): a ring of the last RING_SIZE, each cut to a few hundred characters.
+ * D411): a ring of the last RING_SIZE, each cut to a few hundred characters.
  * `installConsoleRing` wraps `console.error` / `console.warn` (the originals
  * still run) and listens for uncaught errors and unhandled rejections. Nothing
  * leaves the page unless the player sends a report; the report scrubs secrets.

@@ -2,7 +2,7 @@
  * ForgeCoach — bug/shot.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * A screenshot for a bug report (mtg-table D410), two ways:
+ * A screenshot for a bug report (mtg-table D411), two ways:
  *
  *   1. THE PAGE DRAWS ITSELF (`captureScreen`): html-to-image (MIT, lazy-loaded)
  *      clones the visible DOM with its computed styles into an SVG

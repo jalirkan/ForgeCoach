@@ -2,7 +2,7 @@
  * ForgeCoach — bug/client.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The client facts a bug report carries (mtg-table D410): the build, the look,
+ * The client facts a bug report carries (mtg-table D411): the build, the look,
  * the settings that change what the page does (never the API key: only
  * whether one is set), the viewport and the browser, and where the page came
  * from. DOM-free: the window's pieces are passed in.

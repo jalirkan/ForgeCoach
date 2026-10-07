@@ -13,7 +13,7 @@ import { registerServiceWorker } from './pwa/register.ts';
 import { captureInstallPrompt } from './pwa/install.ts';
 import { installConsoleRing } from './bug/consoleRing.ts';
 
-// The page's recent console errors, kept for a bug report (Report a bug, mtg-table D410); nothing leaves unless one is sent.
+// The page's recent console errors, kept for a bug report (Report a bug, mtg-table D411); nothing leaves unless one is sent.
 installConsoleRing(window);
 
 // The skin (Settings → Look, or a ?skin= preview) goes on <html> before the first paint.

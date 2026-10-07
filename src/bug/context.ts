@@ -2,7 +2,7 @@
  * ForgeCoach — bug/context.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * What the screen on top knows, for a bug report (mtg-table D410). A screen
+ * What the screen on top knows, for a bug report (mtg-table D411). A screen
  * registers a provider while it is mounted (`pushBugContext`; ui/bug's
  * `useBugContext` hook); the newest one wins, so the replay opened over a live
  * table reports the replay, and closing it gives the table back. The provider

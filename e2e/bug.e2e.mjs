@@ -3,7 +3,7 @@
  * ForgeCoach — e2e/bug.e2e.mjs
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * "Report a bug" (mtg-table D410) through the real app: the fake engine
+ * "Report a bug" (mtg-table D411) through the real app: the fake engine
  * (e2e/fake-engine.mjs) for the play board, a sample for the replay, and a
  * fake coach helper that records each POST /bug. `npm run e2e:bug`.
  *
@@ -58,7 +58,7 @@ async function appUrl() {
   throw new Error(`vite preview did not start on ${url}`);
 }
 
-/** A coach helper that only knows POST /bug: `mode` 'ok' (201) or 'old' (404, a helper from before D410). */
+/** A coach helper that only knows POST /bug: `mode` 'ok' (201) or 'old' (404, a helper from before D411). */
 async function fakeHelper() {
   const port = await freePort();
   const h = { port, url: `http://127.0.0.1:${port}`, mode: 'ok', bugs: [] };

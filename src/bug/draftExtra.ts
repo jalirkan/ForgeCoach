@@ -2,7 +2,7 @@
  * ForgeCoach — bug/draftExtra.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * A draft against the AI, as a bug report may carry it (mtg-table D410): only
+ * A draft against the AI, as a bug report may carry it (mtg-table D411): only
  * what the player's screen shows. The AI's own picks are hidden information
  * (CLAUDE.md: the player only ever sees `knownAiCards`), so the report has the
  * cards the player saw the AI take, its count, the player's own picks, and the

@@ -132,7 +132,7 @@ export default function FriendApp({ onExit }: { onExit: () => void }) {
     window.scrollTo(0, 0);
   }, []);
   const route = routeOf(hash);
-  // Report a bug (mtg-table D410): from a room's page it goes to the room (its owner's machine).
+  // Report a bug (mtg-table D411): from a room's page it goes to the room (its owner's machine).
   useBugContext(() => ({ ...EMPTY_SNAPSHOT, surface: 'room', extra: { screen: route.kind }, room: route.kind === 'room' ? { id: route.id, seat: route.seat } : null }));
   let body;
   if (route.kind === 'join') body = <JoinScreen hash={hash} go={go} />;
@@ -400,7 +400,7 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
     [room.entry.base, room.entry.id, room.entry.token, room.opponent],
   );
 
-  // Report a bug (mtg-table D410): this seat's view of the room (a Grid draft hides nothing; the other deck is a name and a count).
+  // Report a bug (mtg-table D411): this seat's view of the room (a Grid draft hides nothing; the other deck is a name and a count).
   useBugContext(() => ({ ...EMPTY_SNAPSHOT, surface: 'room', extra: { screen: build ? 'build' : 'room', link, note, opponent, state }, room: { id: entry.id, seat: entry.seat } }));
 
   // The draft is over: the pool goes to the deck assistant once, like a draft against the AI.
