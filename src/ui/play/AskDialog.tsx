@@ -178,17 +178,16 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
     ) : null;
 
   if (minimized) {
-    return createPortal(
+    return portal(
       <button type="button" className="ask-peek" onClick={() => setMinimized(false)} aria-label={`Answer: ${peek}`}>
         <span className="ask-peek-dot" aria-hidden="true" />
         <span className="ask-peek-text">{peek}</span>
         <span className="ask-peek-cta">Answer</span>
       </button>,
-      document.body,
     );
   }
 
-  return createPortal(
+  return portal(
     <div className="ask-layer">
       <section
         className={cx('ask-dialog', wide && 'ask-wide')}
@@ -240,8 +239,12 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
         )}
       </section>
     </div>,
-    document.body,
   );
+}
+
+/** Into <body> in a browser; in place where there is no DOM (the server render the ask-coverage test uses). */
+function portal(node: ReactNode) {
+  return typeof document === 'undefined' ? <>{node}</> : createPortal(node, document.body);
 }
 
 function focusables(root: HTMLElement | null): HTMLElement[] {
@@ -614,12 +617,12 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
   };
   const skip = skipAction(ask);
   const skipBtn = skip && (
-    <button type="button" className="btn btn-quiet ask-btn" disabled={sent} title={skip.title} onClick={() => send(skip.value)}>
+    <button type="button" className="btn btn-quiet ask-btn" disabled={sent} title={skip.title} onClick={() => send(skip.value)} data-answer="skip">
       {skip.label}
     </button>
   );
   const primary = (label: string) => (
-    <button type="button" className="btn btn-primary ask-btn" disabled={!v.ok || sent} onClick={confirm}>
+    <button type="button" className="btn btn-primary ask-btn" disabled={!v.ok || sent} onClick={confirm} data-answer="confirm">
       {label}
     </button>
   );
@@ -657,7 +660,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
                   type="button"
                   className={cx('ask-opt ask-row ask-ability', sel === o.id && 'is-on', !o.canPlay && 'is-off')}
                   disabled={!o.canPlay || sent}
-                 
+                  data-answer="direct"
                   onFocus={() => o.canPlay && setDraft({ shape: 'index', index: o.id })}
                   onClick={() => send(o.id)}
                 >
@@ -691,10 +694,10 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
           onEnter={ask.defaultYes ? yes : no}
           footer={
             <>
-              <button type="button" className={cx('btn ask-btn ask-btn-big', ask.defaultYes ? 'btn-quiet' : 'btn-primary')} disabled={sent} onClick={no}>
+              <button type="button" className={cx('btn ask-btn ask-btn-big', ask.defaultYes ? 'btn-quiet' : 'btn-primary')} disabled={sent} onClick={no} data-answer="no">
                 {ask.noLabel || 'No'}
               </button>
-              <button type="button" className={cx('btn ask-btn ask-btn-big', ask.defaultYes ? 'btn-primary' : 'btn-quiet')} disabled={sent} onClick={yes}>
+              <button type="button" className={cx('btn ask-btn ask-btn-big', ask.defaultYes ? 'btn-primary' : 'btn-quiet')} disabled={sent} onClick={yes} data-answer="yes">
                 {ask.yesLabel || 'Yes'}
               </button>
             </>
@@ -808,7 +811,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
             peek={tidy(ask.prompt)}
             onEnter={() => send([])}
             footer={
-              <button type="button" className="btn btn-primary ask-btn" disabled={sent} onClick={() => send([])} data-autofocus="">
+              <button type="button" className="btn btn-primary ask-btn" disabled={sent} onClick={() => send([])} data-autofocus="" data-answer="ok">
                 OK
               </button>
             }

@@ -10,7 +10,9 @@
 .ask-layer {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  /* The sheets' layer (ui/styles.css .sheet-backdrop): a question that arrives while one is open
+     mounts later and so sits on top of it; a card opened from the question sits on top of that. */
+  z-index: 100;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -24,7 +26,7 @@
  * is lifted above this layer's scrim, and the question offers Concede itself.
  */
 body:has(.ask-layer) .game.play .topbar {
-  z-index: 95;
+  z-index: 101;
 }
 .ask-concede {
   flex: none;
@@ -893,7 +895,7 @@ button.ask-card.is-previewable:hover {
 
 .ask-peek {
   position: fixed;
-  z-index: 90;
+  z-index: 100;
   left: 50%;
   /* above the play dock (PlayView measures it), or the replay dock */
   bottom: calc(12px + var(--play-dock-h, calc(var(--dock-h) + env(safe-area-inset-bottom))));
