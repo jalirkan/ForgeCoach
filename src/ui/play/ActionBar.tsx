@@ -88,10 +88,22 @@ export function ActionBar({
   return (
     <div className={cx('actionbar', `ab-${view.mode}`)} role="region" aria-label="Your move">
       <div className="ab-text">
+        {wide && (
+          <div className={cx('ab-eyebrow', view.mode !== 'waiting' && view.mode !== 'over' && 'is-yours')}>
+            <span>{view.mode === 'waiting' ? 'Waiting' : view.mode === 'over' ? 'Game over' : 'Decision'}</span>
+          </div>
+        )}
         <div className="ab-title" role="status" aria-live="polite">
           {waiting ? <span className="spinner" /> : <ModeIcon mode={view.mode} />}
-          <span className="ab-title-text">{view.title}</span>
-          {view.payCost && <ManaCost cost={view.payCost} size="sm" />}
+          {view.payCost ? (
+            // endstep: "Pay {1} for Skullclamp", the cost as mana symbols.
+            <span className="ab-title-text ab-pay-title">
+              Pay <ManaCost cost={view.payCost} size={wide ? 'md' : 'sm'} />
+              {view.payFor ? ` for ${view.payFor}` : ''}
+            </span>
+          ) : (
+            <span className="ab-title-text">{view.title}</span>
+          )}
           <button className="icon-btn ab-icon ab-keys" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)" onClick={onHelp}>
             <IconKeyboard size={15} />
           </button>
