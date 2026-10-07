@@ -68,7 +68,7 @@
   mask-image: none;
 }
 /* Lands gone: the scene withers to a muted base. */
-.scn-slot.is-withered > .scn-layer {
+.scn-slot.is-withered .scn-layer {
   filter: grayscale(0.85) brightness(0.6);
 }
 
@@ -658,6 +658,104 @@
 .scn-fxs.is-paused *::before,
 .scn-fxs.is-paused *::after {
   animation-play-state: paused !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* The half board (spec 1.5, Settings → Fill each side): the scenery fills the
+   player's whole battlefield, at z-index -3 in the host's isolated context:
+   beneath the full-area accent (-2), the corner and edge accents, the card-row
+   scrim and the effects (-1), and every card. Each slot is a size container;
+   its art sits in a frame of the art's shape, cover-cropped (layout.ts
+   halfFrameCss). Both halves upright, each fading into a mist band at the
+   centre line (art direction §5). */
+
+:root {
+  --scn-mist-color: color-mix(in srgb, var(--text-2, #bcc2cd) 24%, transparent);
+  /* The card-row scrim: the board's own background, so a card's edge sits on today's colour. */
+  --scn-scrim: var(--surface, #161a20);
+}
+
+.scn.scn-half {
+  top: 0;
+  bottom: 0;
+  height: auto;
+  z-index: -3;
+  -webkit-mask-image: none;
+  mask-image: none;
+  container-type: size;
+}
+.scn-half > .scn-row {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--scn-mist, 16%));
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--scn-mist, 16%));
+}
+.scn-half.scn-fade-bottom > .scn-row {
+  -webkit-mask-image: linear-gradient(to top, transparent 0, #000 var(--scn-mist, 16%));
+  mask-image: linear-gradient(to top, transparent 0, #000 var(--scn-mist, 16%));
+}
+.scn-half .scn-slot {
+  container-type: size;
+}
+/* The seam between two biomes: the gradient mask, and a breath of mist in it. */
+.scn-half .scn-slot:not(.is-first)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(var(--scn-seam, 120px), 14vw);
+  z-index: 290;
+  background: linear-gradient(to right, transparent, var(--scn-mist-color) 62%, transparent);
+  pointer-events: none;
+}
+.scn-frame {
+  position: absolute;
+}
+.scn-half-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* The mist band along the centre line, over the art's fade. */
+.scn-mist {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: calc(var(--scn-mist, 16%) * 1.3);
+  background: linear-gradient(to bottom, var(--scn-mist-color), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+.scn-fade-bottom > .scn-mist {
+  top: auto;
+  bottom: 0;
+  background: linear-gradient(to top, var(--scn-mist-color), transparent);
+}
+
+/* The card-row scrim (HalfScrim.tsx): a soft dark band under each card row,
+   opaque next to the cards, feathered out over the art (§5: ~0.85, ~30 px). */
+.scn-scrims {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.scn-scrim {
+  position: absolute;
+  --scn-ramp: transparent 0, rgba(0, 0, 0, calc(var(--scn-edge, 0.85) * 0.35)) calc(var(--scn-feather, 30px) * 0.5), rgba(0, 0, 0, var(--scn-edge, 0.85)) var(--scn-feather, 30px), #000 calc(var(--scn-feather, 30px) + 1px);
+  -webkit-mask-image: linear-gradient(to right, var(--scn-ramp), #000 calc(100% - var(--scn-feather, 30px) - 1px), rgba(0, 0, 0, var(--scn-edge, 0.85)) calc(100% - var(--scn-feather, 30px)), rgba(0, 0, 0, calc(var(--scn-edge, 0.85) * 0.35)) calc(100% - var(--scn-feather, 30px) * 0.5), transparent 100%);
+  mask-image: linear-gradient(to right, var(--scn-ramp), #000 calc(100% - var(--scn-feather, 30px) - 1px), rgba(0, 0, 0, var(--scn-edge, 0.85)) calc(100% - var(--scn-feather, 30px)), rgba(0, 0, 0, calc(var(--scn-edge, 0.85) * 0.35)) calc(100% - var(--scn-feather, 30px) * 0.5), transparent 100%);
+}
+.scn-scrim-in {
+  position: absolute;
+  inset: 0;
+  background: var(--scn-scrim);
+  -webkit-mask-image: linear-gradient(to bottom, var(--scn-ramp), #000 calc(100% - var(--scn-feather, 30px) - 1px), rgba(0, 0, 0, var(--scn-edge, 0.85)) calc(100% - var(--scn-feather, 30px)), rgba(0, 0, 0, calc(var(--scn-edge, 0.85) * 0.35)) calc(100% - var(--scn-feather, 30px) * 0.5), transparent 100%);
+  mask-image: linear-gradient(to bottom, var(--scn-ramp), #000 calc(100% - var(--scn-feather, 30px) - 1px), rgba(0, 0, 0, var(--scn-edge, 0.85)) calc(100% - var(--scn-feather, 30px)), rgba(0, 0, 0, calc(var(--scn-edge, 0.85) * 0.35)) calc(100% - var(--scn-feather, 30px) * 0.5), transparent 100%);
 }
 
 /* Dev builds: why a pack fell back, in the board's corner. */
