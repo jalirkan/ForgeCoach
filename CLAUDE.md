@@ -100,7 +100,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   stepped one decision at a time, plus Booster (2–8 seats); `cards.ts` (the
   AI's card view from `cube/` facts, meta ratings); `deck.ts` (the post-draft
   deck: main, side, basics); `poolView.ts` (collection grouping, curve, colour
-  counts); `aiFlags.ts` (AI:RemoveDeck from the cube docs); `pickPrompt.ts`; `gridBlurb.ts` (the grid Hint's "why this line" popover from `recommendGrid`, no model call; UI `ui/draft/GridHint.tsx`, opened from GridBoard's Hint arrow);
+  counts); `aiFlags.ts` (AI:RemoveDeck from the cube docs); `pickPrompt.ts`; `gridBlurb.ts` (the grid Hint's "why this line" popover from `recommendGrid`, no model call; UI `ui/draft/GridHint.tsx`, opened from GridBoard's Hint arrow; its "Explain more" asks the coach via `startAnswer` with `gridWhyPrompt.ts`, cached per grid and line);
   `store.ts` (the draft in localStorage); `launch.ts` (mtg-table's match
   launcher, `POST /match`, docs/match-launcher.md there; plain Play vs
   Forge wakes a sleeping engine with `POST /engine/start`, carrying

@@ -594,6 +594,36 @@ button.dcard:hover {
 .ghint-note.is-close {
   color: var(--text);
 }
+.ghint-coach {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-2);
+  font-size: 13px;
+}
+.ghint-coach p {
+  margin: 0 0 6px;
+}
+.ghint-wait {
+  color: var(--muted);
+  font-size: 12px;
+}
+.ghint-wait.is-bad {
+  color: var(--fx-danger-ink);
+}
+.ghint-btn {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid rgba(var(--fx-gold-rgb), 0.6);
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--gold-hi);
+  font: 600 12px/1 var(--font);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.ghint-btn:hover {
+  border-color: var(--gold-hi);
+}
 
 /* ------------------------------------------------------------------ */
 /* Winston board */
