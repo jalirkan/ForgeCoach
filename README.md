@@ -950,6 +950,58 @@ job after a build. The fake engine also runs on its own, for a browser or
 `npm run e2e`: `node e2e/fake-engine.mjs --port 8642` (POST `/control/drop`,
 `/control/restart`, `/control/reset?scene=main3`).
 
+### Full-game playtest (`npm run playtest`)
+
+`e2e/playtest/` plays complete games through the real UI. A monkey reads
+what the engine offers at every decision from the protocol stream: the ask
+and its options, the input's buttons and selectable cards, and at priority
+the seat's own cards, with Forge's card scripts saying which can be activated
+or cast from where. It finds the on-screen control for one of them and clicks
+it: board tiles, attached chips, the hand, the zone picker and viewer,
+dialogs, the decision panel, combat and mana payment. Its choices are seeded:
+sometimes Forge's own default, sometimes random among the legal options,
+biased to the rare paths (abilities, Equip, graveyard targets, trigger order,
+multi-blocks, X spells, modal choices). It never sends a frame itself.
+
+A finding is one of these:
+- an option the engine says is legal with no clickable control
+  (`unreachable-option`, with a screenshot, the frame index, the ask or input
+  and the card);
+- a seat the engine waits on with nothing to click (`stuck`), or no progress
+  at all;
+- a page or console error;
+- a stack panel or combat badges that disagree with the frames;
+- a Game Log that loses turns, or a seat that does not come back, after a
+  mid-game reload;
+- a card the other seat holds hidden appearing in the page;
+- a game past the turn cap;
+- a best of three that does not complete with sideboarding.
+
+With `--coach fake`, a helper that answers at once checks that the coach
+panel never blanks during the opponent's turn and that auto-coach asks at
+most once per turn cycle. With `--coach real`, each question's latency is
+recorded.
+
+```bash
+npm run playtest -- --mode fake --games 3 --seed 1                 # the fake engine (CI runs this)
+npm run playtest -- --mode solo --games 10 --seed 7 --decks cube,dck  # vs real Forge: mtg-table's play.sh
+npm run playtest -- --mode table --games 2 --seed 7 --decks cube:pauper  # two browsers, best of three each
+```
+
+Solo decks are draft-built 40s from the four cubes (a seeded Grid draft
+between two of ForgeCoach's drafting AIs, then the deck builder) or
+mtg-table's `decks/*.dck`. A table match is a grid draft in mtg-table's draft
+room, then a best of three with a sideboarded deck between games. The report
+is `report.md`, `report.json`, `shots/*.png` and one `trace-*.jsonl` per
+seat (every decision and click) under `--out`, by default
+`e2e/out/playtest-<time>/`. It exits 1 when any game has a finding and 2
+when it cannot run. Environment: `MTG_TABLE` (default `../mtg-table`),
+`FORGE_JAR`, `FORGE_RES`, and `SITE_DIR` (a built site to serve instead of
+building one). `--port-base` moves the engine, the helper, the room and the
+table off 8642–8646. `--viewport phone` plays on a 390×844 touch screen
+(the hand folds, Concede is in the More menu), and `mixed` puts the friend
+on a phone at a table and every other solo game on one. The overnight run on the PC is mtg-table's lab job J103.
+
 ### Installable site test (CI)
 
 `e2e/pwa.e2e.mjs` (`npm run test:pwa`) builds (BUILD=0 reuses `dist/`) and

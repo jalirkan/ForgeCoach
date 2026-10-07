@@ -26,7 +26,7 @@ jobs:
     # Chromium, no mtg-table, no network. playwright-core is deliberately not a
     # dependency, so it is installed here without touching package.json.
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,6 +40,11 @@ jobs:
       - run: npx playwright-core install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e
+        env:
+          BUILD: '0'
+      # The full-game playtest's fast subset (e2e/playtest): whole games through the real UI against
+      # the fake engine, a monkey clicking only what the board offers, the invariants checked throughout.
+      - run: npm run playtest -- --mode fake --games 3 --seed 1 --out e2e/out/playtest
         env:
           BUILD: '0'
       # The installable site: manifest, icons, the service worker and what it never touches.
