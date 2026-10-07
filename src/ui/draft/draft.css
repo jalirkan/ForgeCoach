@@ -2249,6 +2249,14 @@ button.seat-chip:hover {
 .labn[open] > .labn-sum::before {
   content: '▾';
 }
+/* No lab data for the cube: a line, nothing to open. */
+.labn-sum.is-empty {
+  padding: 10px 14px;
+  cursor: default;
+}
+.labn-sum.is-empty::before {
+  content: none;
+}
 .labn-sub {
   font: 12px/1.3 var(--mono);
   color: var(--muted);

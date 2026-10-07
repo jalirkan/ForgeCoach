@@ -93,10 +93,11 @@ describe('cubes', () => {
       return Promise.resolve({ ok: false, status: 404, text: async () => '', json: async () => null });
     }
   };
-  it('every listed cube loads with 180 cards and its shipped lab meta (when it has one)', async () => {
+  it('every listed cube loads with its size in cards (180, Evan\'s 360) and its shipped lab meta (when it has one)', async () => {
     for (const c of CUBES) {
       const cube = await loadCubeDoc(c, '/', fake);
-      expect(cube.cards).toHaveLength(180);
+      expect(cube.cards, c.id).toHaveLength(c.size);
+      expect(cube.warnings, c.id).toEqual([]);
       const meta = await loadShippedMeta(c, '/', fake);
       if (c.labData === false) {
         expect(meta).toBeNull();

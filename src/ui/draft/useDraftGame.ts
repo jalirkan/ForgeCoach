@@ -139,8 +139,10 @@ export function useDraftGame(): DraftGame {
     const label = draft.format === 'grid' ? 'Grid' : draft.format === 'winston' ? 'Winston' : 'Booster';
     const p = newPool(draft.cubeId, `${saved.title || info?.title || draft.cubeId} · ${label} vs AI`);
     const pool = savePool({ ...p, cards: [...draft.picks.you], opp: knownAiCards(draft), format: draft.format === 'booster' ? null : draft.format, updatedAt: Date.now() });
-    // The AI's deck from lab values only (no 17Lands data), as its picks.
-    const ai = buildDecks(labOnly(ctx), draft.picks.ai)[0];
+    // The AI's deck from lab values only (no 17Lands data), as its picks — less any card Forge has no script for yet (the engine would refuse the deck).
+    const noScript = new Set(ctx.cube.forgeMissing ?? []);
+    const aiPool = draft.picks.ai.filter((n) => !noScript.has(n));
+    const ai = buildDecks(labOnly(ctx), aiPool)[0];
     const side = saved.side ?? [];
     const deck = initialDeck(draft.picks.you);
     for (const n of side) {
@@ -151,7 +153,7 @@ export function useDraftGame(): DraftGame {
       ...saved,
       deck: saved.deck ?? deck,
       // The deck's public name: from the cards you know the AI has, never its full list.
-      after: { poolId: pool.id, aiDeck: ai ? matchDeck(aiDeckName(draft, ctx), ai, draft.picks.ai) : undefined },
+      after: { poolId: pool.id, aiDeck: ai ? matchDeck(aiDeckName(draft, ctx), ai, aiPool) : undefined },
     });
   }, [saved, draft, ctx, commit]);
 

@@ -108,6 +108,7 @@ export default function DraftApp({ onExit }: { onExit: () => void }) {
         aiLabel={aiLabelFrom(known, ctx).text}
         meta={game.data.meta}
         cubeNames={ctx.cube.cards.map((c) => c.name)}
+        forgeMissing={ctx.cube.forgeMissing}
         title={saved.title || 'Practice draft'}
         onBack={() => go('build')}
         onAbandon={() => {

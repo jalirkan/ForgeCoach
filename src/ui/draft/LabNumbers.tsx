@@ -5,8 +5,9 @@
  * The pick screen's "Lab numbers" panel: for each card on offer, what the cube
  * lab's Forge-vs-Forge drafts say (draft/labStats.ts) — how its drafters took
  * it, how often it made the final 40, and its decks' win rate with a 95%
- * interval and the game count, beside the baseline of its colours. Shown only
- * when the cube has a lab meta; a card with no numbers says so. For the cube
+ * interval and the game count, beside the baseline of its colours. A cube
+ * with no lab meta (and no human data) gets one quiet line saying so; a card
+ * with no numbers says so. For the cube
  * 17Lands covers, each card also carries its human line (HumanNumbers.tsx,
  * cube/human.ts), styled apart from the lab's. Collapsed by default
  * (remembered), so it never pushes the offer down by surprise.
@@ -29,7 +30,15 @@ export function LabNumbers({ names, ctx, cubeId }: { names: readonly string[]; c
     [names, meta, ctx, baselines],
   );
   const skew = useMemo(() => colourSkew(baselines), [baselines]);
-  if ((!meta && !human) || !names.length) return null;
+  if (!names.length) return null;
+  if (!meta && !human) {
+    return (
+      <div className="labn labn-sum is-empty" role="note">
+        <span className="fx-label">Lab numbers</span>
+        <span className="labn-sub">none for this cube: the cube lab has not drafted it yet</span>
+      </div>
+    );
+  }
   const small = smallSampleNote(rows.map((r) => r.view));
   const sample = meta?.sample;
   return (

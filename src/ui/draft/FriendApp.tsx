@@ -38,7 +38,7 @@ import './draft.css';
 import './friend.css';
 import { CUBES, cubeInfo } from '../../cube/cubes.ts';
 import { newPool, savePool } from '../../cube/pools.ts';
-import { deckCount, exportList, toMatchDeck } from '../../draft/deck.ts';
+import { deckCount, exportList, forForge, toMatchDeck } from '../../draft/deck.ts';
 import {
   cleanName, createRoom, cubeHash, forgetRoom, friendLinks, loadRooms, ownerRoomBase, parseJoinHash, replayMatches, RoomClient, RoomError, roomSupport,
   saveRoom, type RoomState, type SavedRoom,
@@ -506,7 +506,8 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
       />
     );
   }
-  const md = toMatchDeck(deckName, deck);
+  // Cards Forge has no script for yet stay off the sideboard the room hands the engine; in the main deck they are named below.
+  const { deck: md, blocked } = forForge(toMatchDeck(deckName, deck), ctx?.cube.forgeMissing);
   // This seat's own deck and picks only: the friend's list never comes to this page.
   const list = exportList(deckName, deck);
   return (
@@ -543,8 +544,18 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
         <DeckExport list={list} title="Export to another game" className="fr-export" />
       </section>
       {reviewNote && <p className="fr-error" role="alert">{reviewNote}</p>}
-      <HandIn state={state} room={room} deckText={md} opponent={opponent} onOpenReview={openReview} />
+      <HandIn state={state} room={room} deckText={md} blocked={blocked} opponent={opponent} onOpenReview={openReview} />
     </div>
+  );
+}
+
+/** The main-deck cards Forge has no script for yet: what to do, and that the exported list still has them. */
+export function ForgeBlocked({ names }: { names: string[] }) {
+  return (
+    <p className="fr-error" role="alert">
+      Forge 2.0.14 has no card script yet for {names.join(', ')}. Move {names.length === 1 ? 'it' : 'them'} to your sideboard to play this deck through Forge; Export to another game keeps
+      {names.length === 1 ? ' it' : ' them'}.
+    </p>
   );
 }
 
@@ -582,8 +593,11 @@ const REVIEW_WORDS: Record<string, string> = {
   failed: 'your engine review failed',
 };
 
-function HandIn({ state, room, deckText: md, opponent, onOpenReview }: {
-  state: RoomState; room: ReturnType<typeof useFriendRoom>; deckText: ReturnType<typeof toMatchDeck>; opponent: string;
+function HandIn({ state, room, deckText: md, blocked, opponent, onOpenReview }: {
+  state: RoomState; room: ReturnType<typeof useFriendRoom>; deckText: ReturnType<typeof toMatchDeck>;
+  /** Main-deck cards Forge has no script for yet (draft/deck.ts forForge): the room's engine would refuse the deck. */
+  blocked: string[];
+  opponent: string;
   onOpenReview: (matchId: string, game: number) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -727,12 +741,13 @@ function HandIn({ state, room, deckText: md, opponent, onOpenReview }: {
           </button>
         )}
         {!playing && (
-          <button className={table ? 'btn-line' : 'btn-gold'} disabled={busy || size < 40} onClick={() => void handIn()} title={size < 40 ? 'A deck has at least 40 cards' : undefined}>
+          <button className={table ? 'btn-line' : 'btn-gold'} disabled={busy || size < 40 || blocked.length > 0} onClick={() => void handIn()} title={size < 40 ? 'A deck has at least 40 cards' : undefined}>
             {handLabel}
           </button>
         )}
       </div>
       {size < 40 && !playing && <p className="fr-small">Your main deck has {size} cards; a deck needs at least 40.</p>}
+      {blocked.length > 0 && !playing && <ForgeBlocked names={blocked} />}
       {table && <p className="fr-small">The seat is yours alone: it opens with a token the room gave this browser for this game. If you lose the connection, take your seat again — {opponent} waits, and may claim the win after two minutes.</p>}
       {games.length > 0 && (
         <>

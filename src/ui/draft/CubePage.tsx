@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * A cube's own page (#cube/<id>), after the board game's cube gallery: an
- * italic serif title over "180 CARDS", a search, the shared layout bar
+ * italic serif title over "180 CARDS" (the cube's size), a search, the shared layout bar
  * (Stacks / Gallery / List, grouped by CMC, type, colour or rarity), the
  * summary line with colour dots and a curve sparkline, and the cube's
  * themes and archetypes as quiet chips, and a "How to draft" tab
@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import '../deck/deck.css';
 import '../forge-theme.css';
 import './draft.css';
-import { CUBES, cubeInfo } from '../../cube/cubes.ts';
+import { CUBES, cubeInfo, cubeShortName } from '../../cube/cubes.ts';
 import { colourLabel } from '../../cube/colors.ts';
 import { kindCounts } from '../../draft/poolView.ts';
 import { prefetchCards } from '../cardData.ts';
@@ -58,7 +58,7 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
           <span>Cubes</span>
           {CUBES.map((c) => (
             <a key={c.id} href={`#cube/${c.id}${view === 'guide' ? '/guide' : ''}`} className={cx(c.id === info.id && 'is-on')}>
-              {c.title.replace(/ Cube$/, '')}
+              {cubeShortName(c)}
             </a>
           ))}
         </nav>
@@ -67,7 +67,7 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
         <div>
           <h1 className="cp-title">{info.title}</h1>
           <div className="fx-label cp-count">
-            <b>{all.length || 180}</b> cards
+            <b>{all.length || info.size}</b> cards
           </div>
           <p className="cp-blurb">{info.blurb}</p>
         </div>

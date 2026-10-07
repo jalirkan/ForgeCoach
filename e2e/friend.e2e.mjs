@@ -11,7 +11,8 @@
  *   2. starts mtg-table's coach helper with --draft-room on free ports, the
  *      room listener serving that build (no engine: a draft needs none);
  *   3. HOST opens #draft/friend on http://localhost:<room port>, makes a room
- *      on the Synergy Cube and reads the friend's link off the page;
+ *      on the Synergy Cube (FRIEND_CUBE=<id> for another, e.g. evybaby, Evan's
+ *      360-card cube) and reads the friend's link off the page;
  *   4. FRIEND (another context, so another browser's storage) opens the link on
  *      http://127.0.0.1:<room port>, joins as "Sam"; the token leaves the
  *      address bar;
@@ -28,7 +29,7 @@
  *      same list; the two players' lists share no card (only your own pool);
  *      a page that may not use the clipboard shows the list selected instead.
  *
- * Environment:  MTG_TABLE (default ../mtg-table)   HEADLESS=0 to watch
+ * Environment:  MTG_TABLE (default ../mtg-table)   FRIEND_CUBE (a cube id, default the first)   HEADLESS=0 to watch
  * Screenshots go to e2e/out/friend-*.png.
  */
 import { execFileSync, spawn } from 'node:child_process';
@@ -43,6 +44,7 @@ const MTG = path.resolve(process.env.MTG_TABLE ?? path.join(ROOT, '..', 'mtg-tab
 const OUT = path.join(ROOT, 'e2e', 'out');
 const SHOTS = process.env.SHOTS ?? OUT;
 const HEADLESS = process.env.HEADLESS !== '0';
+const CUBE = process.env.FRIEND_CUBE ?? null;
 const log = (s) => console.log(`[friend] ${s}`);
 const procs = [];
 let failed = 0;
@@ -93,6 +95,7 @@ async function main() {
     await host.goto(`http://localhost:${roomPort}/?coachPort=${coachPort}#draft/friend`);
     await host.getByLabel('Your name').fill('Justin');
     await host.getByLabel('Who picks first').selectOption('0');
+    if (CUBE) await host.getByLabel('Cube').selectOption(CUBE);
     const create = host.getByRole('button', { name: 'Create room' });
     await create.waitFor({ timeout: 60_000 });
     await host.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent === 'Create room' && !b.disabled), null, { timeout: 60_000 });
