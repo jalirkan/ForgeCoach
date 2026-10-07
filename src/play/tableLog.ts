@@ -22,7 +22,10 @@
  * of one game, D402/D403), and a new session on that URL reads them back
  * before it connects; the catch-up's frames are then the same frames again
  * (same type and seq, M10), which the log builder skips as on any reconnect.
- * Play against Forge keeps nothing here and is unchanged.
+ * The board's seat against Forge keeps its frames here too (session.ts
+ * `keepLog`): the same reload lost its history (found by the full-game
+ * playtest, e2e/playtest). Its seat URL is one for every game, so the kept
+ * frames of an earlier game are dropped when the log starts a new one.
  *
  * The frames are this seat's own, already redacted for it by the bridge and
  * through faceDown.ts's guard; they never leave the browser. Tables older than
