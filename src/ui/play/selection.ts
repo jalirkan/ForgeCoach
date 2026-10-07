@@ -7,7 +7,7 @@
  * the board dims what a click cannot drive and the panel keeps a live count —
  * "● 1 SELECTED · 1 blocker assigned — click more or confirm" — beside the
  * two buttons, worded for the moment ("No blocks" until you assign one, then
- * "Done blocking").
+ * "Confirm blocks").
  *
  * Pure. The counts are what this browser clicked (the engine reports chosen
  * attackers and blockers only on confirm), never an inference about the board.
@@ -37,8 +37,8 @@ export function selectionSummary(view: InputView, picked: { attackers: number; b
       return {
         active: true,
         count: n,
-        line: n > 0 ? `${plural(n, 'blocker')} assigned — click more or confirm` : 'Click your creature, then the attacker it blocks',
-        confirm: n > 0 ? 'Done blocking' : 'No blocks',
+        line: n > 0 ? `${plural(n, 'blocker')} assigned — same number = who blocks whom` : 'Click your creature to block the outlined attacker',
+        confirm: n > 0 ? 'Confirm blocks' : 'No blocks',
       };
     }
     case 'attack': {

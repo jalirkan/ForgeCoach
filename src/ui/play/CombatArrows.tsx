@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The combat lines over the board (endstep-style): blue curves from each
- * blocker to its attacker with a numbered badge at both ends, red curves from
+ * blocker to its attacker (the pair's number is on both cards, CardTile), red curves from
  * an unblocked attacker to the player or planeswalker it attacks. Which lines
  * exist is `combatLines.ts` (the wire's combat bands, plus the blocks this
  * browser has clicked); this component only finds the tiles on screen and
@@ -91,27 +91,10 @@ export function CombatArrows({ links, version }: { links: CombatLink[]; version:
         <g key={key} className={`combat-line is-${link.kind}${link.pending ? ' is-pending' : ''}`}>
           <path className="combat-line-glow" d={curve.d} />
           <path className="combat-line-path" d={curve.d} markerEnd={link.kind === 'attack' ? 'url(#combat-arrowhead)' : undefined} />
-          {link.kind === 'block' ? (
-            <>
-              <Badge at={curve.start} n={link.n} />
-              <Badge at={curve.end} n={link.n} />
-            </>
-          ) : (
-            <circle className="combat-line-dot" cx={curve.start.x} cy={curve.start.y} r={4} />
-          )}
+          {/* The pair's number sits on the cards themselves (CardTile, combatMarks). */}
+          {link.kind === 'attack' && <circle className="combat-line-dot" cx={curve.start.x} cy={curve.start.y} r={4} />}
         </g>
       ))}
     </svg>
-  );
-}
-
-function Badge({ at, n }: { at: { x: number; y: number }; n: number }) {
-  return (
-    <g className="combat-badge" transform={`translate(${at.x} ${at.y})`}>
-      <circle r={10} />
-      <text dy="0.35em" textAnchor="middle">
-        {n}
-      </text>
-    </g>
   );
 }

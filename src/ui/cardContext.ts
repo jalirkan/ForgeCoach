@@ -61,8 +61,16 @@ export interface CardStackMarks {
   sources: number[];
   targets: number[];
 }
+/** Combat: an attacker and its blockers share a number (ui/play/combatLines.ts `combatMarks`). */
+export interface CardCombatMark {
+  n: number;
+  role: 'attacker' | 'blocker';
+  pending: boolean;
+  current: boolean;
+}
 export interface BoardMarks {
   stack: ReadonlyMap<number, CardStackMarks>;
+  combat?: ReadonlyMap<number, CardCombatMark>;
 }
 export const BoardMarksContext = createContext<BoardMarks | null>(null);
 export const useBoardMarks = () => useContext(BoardMarksContext);

@@ -68,13 +68,13 @@ export function ActionBar({
   const engine = oneLine(view.engineText);
   const showEngine = engine && !waiting && view.mode !== 'ask' && engine.toLowerCase() !== view.title.toLowerCase();
   const base = primaryView(view);
-  // "No blocks" / "Done blocking" / "Attack with 2": the moment's words on the engine's OK.
+  // "No blocks" / "Confirm blocks" / "Attack with 2": the moment's words on the engine's OK.
   const primary =
     selection?.confirm && base.which === 'ok'
       ? { ...base, words: selection.confirm, engine: base.engine ?? view.ok.label }
       : selection?.active && base.which === null && view.ok.label && (view.mode === 'attack' || view.mode === 'block')
         ? // Nothing picked yet and the engine's OK is off: show it, disabled, in the moment's words.
-          { which: 'ok' as const, words: view.mode === 'attack' ? 'Attack' : 'Done blocking', engine: view.ok.label, enabled: false }
+          { which: 'ok' as const, words: view.mode === 'attack' ? 'Attack' : 'Confirm blocks', engine: view.ok.label, enabled: false }
         : base;
   // The engine's other button (End Turn, Alpha Strike, Call back, Cancel…) sits with the tools.
   const other: { b: ButtonView; which: 'ok' | 'cancel' } | null =
