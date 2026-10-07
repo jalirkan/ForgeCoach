@@ -282,7 +282,8 @@ describe('spec 1.3 overlay: loading and prefs', () => {
   });
   it('accents: on by default with the scenery, off with it, and ?accents= overrides', () => {
     expect(DEFAULT_PREFS.accents).toBe(true);
-    expect(accentsOn(DEFAULT_PREFS)).toBe(false); // the scenery itself is off by default
+    expect(accentsOn(DEFAULT_PREFS)).toBe(true); // the scenery is on by default (ForgeCoach art)
+    expect(accentsOn({ ...DEFAULT_PREFS, mode: 'off' })).toBe(false);
     expect(accentsOn({ ...DEFAULT_PREFS, mode: 'procedural' })).toBe(true);
     expect(accentsOn({ ...DEFAULT_PREFS, mode: 'procedural', accents: false })).toBe(false);
     expect(effectivePrefs({ ...DEFAULT_PREFS, mode: 'procedural' }, '?accents=off', '').accents).toBe(false);
