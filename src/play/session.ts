@@ -42,6 +42,11 @@
  * win — kept here as `table` with the bridge's clock offset (`tableSkewMs`), so
  * a countdown runs on the bridge's time. An absent player's asks are never
  * answered for them (D403): on a reconnect the bridge re-sends them unchanged.
+ * A table session also keeps the frames its log takes in this browser
+ * (play/tableLog.ts), and a new session on the same seat reads them back before
+ * it connects: a page that comes back mid-game (a reload, a phone that dropped
+ * the tab, Back to the room and the seat again) keeps the game's history, which
+ * the bridge's catch-up — a snapshot — cannot give it.
  */
 import { PROTOCOL_VERSION } from '../protocol.ts';
 import type {
@@ -60,6 +65,7 @@ import { LiveLogBuilder } from '../live.ts';
 import { guardFrame } from '../faceDown.ts';
 import { whyNotAct, whyNotAnswer } from './acts.ts';
 import { recordFinishedGame } from '../history/record.ts';
+import { defaultTableLog, tableLogKey, type TableLogStore } from './tableLog.ts';
 
 import { DEFAULT_SEAT_URL, redactSeatUrl } from './seatUrl.ts';
 
@@ -166,6 +172,13 @@ export interface SeatOptions {
    * speak of the friend's game, not of starting an engine here.
    */
   table?: boolean;
+  /**
+   * A table session's kept frames (play/tableLog.ts; default: the browser's
+   * store). null keeps nothing. Never used against the AI.
+   */
+  tableLog?: TableLogStore | null;
+  /** How long a table session waits for its kept frames before it connects anyway (default 2 s). */
+  tableLogWaitMs?: number;
 }
 
 /** `WebSocket.OPEN`, spelled out so this module needs no DOM at runtime. */
@@ -243,6 +256,8 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
   const pingMs = opts.pingMs ?? 25_000;
   const now = opts.now ?? (() => Date.now());
   const isTable = opts.table === true;
+  const tableStore: TableLogStore | null = isTable ? (opts.tableLog === undefined ? defaultTableLog() : opts.tableLog) : null;
+  const tableKey = tableLogKey(url);
 
   const builder = new LiveLogBuilder();
   const previousLogs: GameLog[] = [];
@@ -279,6 +294,33 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
 
   let cached: PlaySnapshot | null = null;
   let flushPending = false;
+
+  // -- a table seat's kept frames (tableLog.ts) -----------------------------------
+
+  /** How many of `builder.frames` the store holds, and the first of them (a reset builder has another). */
+  let keptCount = 0;
+  let keptFirst: LoggedFrame | null = null;
+  /** Hands the store whatever the log took since the last call; starts over when the log did. */
+  const keep = () => {
+    if (tableStore === null) return;
+    const frames = builder.frames;
+    if (keptCount > 0 && (frames.length < keptCount || frames[0] !== keptFirst)) {
+      // A new game on this URL (an engine that started over): what was kept is another game's.
+      keptCount = 0;
+      keptFirst = null;
+      void tableStore.clear(tableKey);
+    }
+    if (frames.length <= keptCount) return;
+    void tableStore.append(tableKey, frames.slice(keptCount));
+    keptCount = frames.length;
+    keptFirst = frames[0]!;
+  };
+  /** builder.add, and the log's new frames to the store at a table. */
+  const logFrame = (f: LoggedFrame): boolean => {
+    const added = builder.add(f, true);
+    if (added) keep();
+    return added;
+  };
 
   // -- snapshot & notification ------------------------------------------------
 
@@ -392,7 +434,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
           // of the AI's deck: hidden information. Never shown, never logged by
           // name; acknowledged at once, as its OK would.
           const hidden = { ...body, prompt: AI_DECK_WARNING_REDACTED, options: [] } as AskBody;
-          builder.add({ ...f, body: hidden, dir: 's2c' } as LoggedFrame, true);
+          logFrame({ ...f, body: hidden, dir: 's2c' } as LoggedFrame);
           ask = hidden;
           answer(body.askId, []);
           changed();
@@ -423,7 +465,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     }
     // seq 0 (pong, refusal, dropped-frame notices) and verbatim re-deliveries
     // are skipped by the builder, exactly as live.ts follows a game.
-    builder.add({ ...f, dir: 's2c' }, true);
+    logFrame({ ...f, dir: 's2c' });
     // "Your record" (#history): the finished game, saved once per game id, never throwing.
     if (f.type === 'over') void recordFinishedGame(builder.snapshot());
     changed();
@@ -446,7 +488,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     // §8.2: a client log reads both directions. The terminal `over` ends the
     // game's log (§8.4) — a newGame sent after it belongs to no file.
     if ((type === 'act' || type === 'answer' || type === 'resync') && over === null) {
-      if (builder.add({ ...frame, dir: 'c2s' }, true)) changed();
+      if (logFrame({ ...frame, dir: 'c2s' })) changed();
     }
     return frame;
   }
@@ -676,7 +718,44 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     setStatus('closed', null);
   };
 
-  open();
+  /**
+   * A table seat this browser sat at before: its kept frames back into the log,
+   * before the bridge's catch-up, whose frames the builder then skips as the
+   * same frames again (M10). Only the log is restored, and our c2s numbering,
+   * so a new act does not reuse a seq the log already holds; the board's state,
+   * input and ask come from the catch-up as on any connect.
+   */
+  const restore = (frames: LoggedFrame[]) => {
+    for (const f of frames) {
+      if (!looksLikeFrame(f) || !builder.add(f, true)) continue;
+      if (f.dir === 'c2s') seq = Math.max(seq, f.seq);
+    }
+    keptCount = builder.frames.length;
+    keptFirst = builder.frames[0] ?? null;
+    if (keptCount > 0) changed();
+  };
+
+  if (tableStore === null) {
+    open();
+  } else {
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      clearTimeout(wait);
+      open();
+    };
+    const wait = setTimeout(start, opts.tableLogWaitMs ?? 2_000);
+    setStatus('connecting', null);
+    tableStore.load(tableKey).then(
+      (frames) => {
+        // Too late (a socket is open, or was: a Retry does not wait) -- kept frames after its catch-up would be out of order.
+        if (!started && !shutDown && socket === null && !everOpened) restore(frames);
+        start();
+      },
+      () => start(),
+    );
+  }
 
   return {
     snapshot,
