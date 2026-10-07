@@ -649,6 +649,26 @@
 .attach-chip.is-tapped {
   opacity: 0.7;
 }
+/* In play, an attached card a click drives (Equip, its ability) or the engine
+   asks for (a target, a sacrifice) is marked as a tile is. */
+.attach-chip.is-act:hover,
+.attach-chip.is-act:focus-visible {
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 70%, #000), 0 0 0 1.5px var(--accent-2), 0 0 10px rgba(227, 178, 95, 0.45);
+}
+.attach-chip.is-select {
+  position: relative;
+  opacity: 1;
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 70%, #000), 0 0 0 2px var(--accent-2), 0 0 12px rgba(240, 199, 127, 0.55);
+}
+.attach-chip.is-select::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px rgba(240, 199, 127, 0.7);
+  pointer-events: none;
+  animation: select-pulse 1.6s ease-in-out infinite;
+}
 
 /* ------------------------------------------------------------------ */
 /* Land piles */
