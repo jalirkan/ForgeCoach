@@ -126,13 +126,44 @@ opponent's next one, until the next cycle replaces it or you press *Ask again*.
 *Ask about this* asks about the exact moment (blocks on their turn, a target)
 without clearing the plan; older plans and answers stay under *Earlier advice*.
 Nothing is cleared because the opponent has priority, and an answer stopped
-because the game moved on keeps what it had written.
+because the game moved on keeps what it had written. **A reload keeps the
+advice:** the plan, your questions, *Earlier advice* and the turns whose plan
+was asked are kept in the tab's sessionStorage (the newest four games, twelve
+entries each, keyed like the advice feedback by `gameId|seed|startedAt` and the
+seat), so a page reloaded mid-cycle shows its plan again and does not ask for
+it a second time. A plan that was still being written when the page went away
+keeps its text and is asked again.
+
+**The live plan is built for speed.** Auto-coach's plan uses a tighter prompt
+than other questions: your side shown as it will be on your turn (everything
+untapped, nothing summoning sick, with the mana that gives you, and what is
+open right now for an instant before it), no mana pools, this turn's casts or
+graveyard lists that a plan does not use, card text only for the cards that
+matter (your castable hand, permanents whose text says more than their
+keywords, cards that work from your graveyard) without reminder text, and a
+shorter system prompt. Settings → **Live coach model** picks the model for live
+play: *Automatic* (the default) is Sonnet 5.5 with the least thinking (Opus
+5.5 and Sonnet 5.5 can't turn thinking off in Claude Code; Haiku can), or the
+Model above when that is Haiku. Measured on 13 recorded late-game plans with
+the real helper and Claude Code CLI:
+
+| setting | total p50 | total p90 | first line p50 | first line p90 | plans legal |
+|---|---|---|---|---|---|
+| before: Opus, thinking low, the short prompt | 14.2 s | 23.1 s | 9.3 s | 18.5 s | 13/13 |
+| Sonnet, least thinking, the plan prompt (Automatic) | 12.3 s | 14.6 s | 9.1 s | 10.7 s | 13/13 |
+| Haiku, thinking off, the plan prompt | 5.6 s | 7.4 s | 1.5 s | 1.8 s | 7/13 |
+
+Haiku is the only one that answers in seconds, but a third of its plans cast
+what is not in the hand or spend mana that is not there, so it is a choice in
+Settings, not the default. Replays, the film room, reviews, practice and the
+bench keep Settings → Model and Coach thinking.
 
 Settings → **Coach style** sets how the coach answers while you play: *Short*
 (the default) is a few commands and one short reason —
 `Play: Cast Shock → their Bears`, `Mana: R from Mountain`, `Why: …` — with the
-rule, the confidence and the details behind *More*, and Claude Code thinking
-briefly (at most *Low*); *Detailed* is the longer layout. Replays, the film
+rule, the confidence and the details behind *More*, and Claude Code thinking as
+little as the model allows (*Off*, unless Coach thinking says *Low*);
+*Detailed* is the longer layout. Replays, the film
 room, reviews and practice keep the detailed layout.
 For development, `?coach=http://127.0.0.1:<port>` points the page at a helper
 on another port.

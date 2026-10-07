@@ -9,7 +9,9 @@ const h = vi.hoisted(() => ({
   fresh: false,
 }));
 
-vi.mock('../claude.ts', () => ({
+vi.mock('../claude.ts', async (orig) => ({
+  liveModelOf: (await orig<typeof import('../claude.ts')>()).liveModelOf,
+  liveThinkingOf: (await orig<typeof import('../claude.ts')>()).liveThinkingOf,
   loadSettings: () => h.settings,
   askClaude: vi.fn(async (_p: unknown, hs: { onText(d: string): void }) => {
     hs.onText('key answer');
@@ -263,6 +265,38 @@ describe('the "thinking…" state and the thinking cap (D346)', () => {
     h.settings = { ...h.settings, coachThinking: 'default' };
     await startAnswer('c3', async () => ({ system: 's', user: 'u' }));
     expect(vi.mocked(askHelper).mock.calls[2]![2]).not.toHaveProperty('thinking');
+  });
+
+  it("live play's short answers take the live model and live thinking; Settings' own choices win", async () => {
+    h.fresh = true;
+    h.helper = TOK;
+    h.settings = { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', coachThinking: 'default' };
+    await startAnswer('l1', async () => ({ system: 's', user: 'u' }), { live: 'short' });
+    expect(vi.mocked(askHelper).mock.calls[0]![2]).toMatchObject({ model: 'claude-sonnet-5-5', thinking: 'off' });
+    // Low in Settings is Low; a chosen live model is used whatever it costs.
+    h.settings = { ...h.settings, coachThinking: 'low', liveModel: 'claude-opus-5-5' };
+    await startAnswer('l2', async () => ({ system: 's', user: 'u' }), { live: 'short' });
+    expect(vi.mocked(askHelper).mock.calls[1]![2]).toMatchObject({ model: 'claude-opus-5-5', thinking: 'low' });
+    // Automatic keeps a quicker Model (Haiku).
+    h.settings = { apiKey: '', model: 'claude-haiku-4-5', coachSource: 'auto', coachThinking: 'default', liveModel: 'auto' };
+    await startAnswer('l3', async () => ({ system: 's', user: 'u' }), { live: 'short' });
+    expect(vi.mocked(askHelper).mock.calls[2]![2]).toMatchObject({ model: 'claude-haiku-4-5', thinking: 'off' });
+    // The detailed style: the live model, Coach thinking as set.
+    h.settings = { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', coachThinking: 'default' };
+    await startAnswer('l4', async () => ({ system: 's', user: 'u' }), { live: 'detailed' });
+    expect(vi.mocked(askHelper).mock.calls[3]![2]).toMatchObject({ model: 'claude-sonnet-5-5' });
+    expect(vi.mocked(askHelper).mock.calls[3]![2]).not.toHaveProperty('thinking');
+    // Not live (replay, film room, review, practice, bench): Settings → Model.
+    await startAnswer('l5', async () => ({ system: 's', user: 'u' }));
+    expect(vi.mocked(askHelper).mock.calls[4]![2]).toMatchObject({ model: 'claude-opus-5-5' });
+  });
+
+  it('the API key gets the live model too', async () => {
+    h.helper = DOWN;
+    h.fresh = true;
+    h.settings = { apiKey: 'sk-ant-x', model: 'claude-opus-5-5', coachSource: 'auto' };
+    await startAnswer('l6', async () => ({ system: 's', user: 'u' }), { live: 'short' });
+    expect(vi.mocked(askClaude).mock.calls.at(-1)![2]).toMatchObject({ settings: { model: 'claude-sonnet-5-5', apiKey: 'sk-ant-x' } });
   });
 
   it('with the helper source and nothing known, it asks /health first so the cap can go along', async () => {

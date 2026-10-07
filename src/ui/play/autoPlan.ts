@@ -23,6 +23,7 @@ import type { GameStateBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import type { Decision } from '../../decisions.ts';
 import { phaseLabel } from '../../decisions.ts';
+import { gameJoinKey } from '../../feedback.ts';
 
 /** The opponent's steps at which the next turn's plan is asked. */
 export const PLAN_STEPS_THEIRS: ReadonlySet<string> = new Set(['END_OF_TURN', 'CLEANUP']);
@@ -43,10 +44,15 @@ export function planDue(state: GameStateBody | null, seat: number | null | undef
   return forTurn;
 }
 
-/** One game's seat: the scope of the plan's turn numbers, the history and the coach slots. */
+/**
+ * One game's seat: the scope of the plan's turn numbers, the history, the coach
+ * slots and the advice kept across a reload (adviceStore.ts) — feedback.ts's game
+ * key (`gameId|seed|startedAt`) and the seat.
+ */
 export function gameKeyOf(log: GameLog | null, seat: number | null | undefined): string | null {
-  if (!log?.header || seat === null || seat === undefined) return null;
-  return `${log.header.gameId}@${log.header.startedAt}#${seat}`;
+  const h = log?.header;
+  if (!h || typeof h.gameId !== 'string' || !h.gameId || seat === null || seat === undefined) return null;
+  return `${gameJoinKey({ gameId: h.gameId, seed: typeof h.seed === 'number' ? h.seed : null, startedAt: typeof h.startedAt === 'string' && h.startedAt ? h.startedAt : null })}#${seat}`;
 }
 
 /** The answers-store key of a turn's plan. */
@@ -80,8 +86,13 @@ export interface AdviceEntry {
   label: string;
   /** For a plan: the turn it plans. */
   forTurn: number | null;
-  /** The moment it was asked about (its prompt and its feedback target). */
-  decision: Decision;
+  /** The log frame it was asked at (its feedback target). */
+  frameIndex: number;
+  /**
+   * The moment it was asked about (its prompt). Null for advice kept across a
+   * reload whose moment the log no longer has: its text stays readable.
+   */
+  decision: Decision | null;
   /** Order of asking (a counter, not a clock). */
   seq: number;
 }
@@ -125,9 +136,9 @@ export function adviceFor(game: string | null): readonly AdviceEntry[] {
 }
 
 /** Record advice that was just asked; the same key asked again moves to the front. */
-export function recordAdvice(game: string, e: Omit<AdviceEntry, 'seq'>): AdviceEntry {
+export function recordAdvice(game: string, e: Omit<AdviceEntry, 'seq' | 'frameIndex'> & { frameIndex?: number }): AdviceEntry {
   const g = gameOf(game);
-  const entry: AdviceEntry = { ...e, seq: ++seq };
+  const entry: AdviceEntry = { ...e, frameIndex: e.frameIndex ?? e.decision?.frameIndex ?? -1, seq: ++seq };
   g.entries = [entry, ...g.entries.filter((x) => x.key !== e.key)].slice(0, MAX_ADVICE);
   notify();
   return entry;
@@ -161,6 +172,39 @@ export function lastAsk(entries: readonly AdviceEntry[], currentKey: string | nu
 export function earlierAdvice(entries: readonly AdviceEntry[], currentKey: string | null): AdviceEntry[] {
   const shown = new Set([currentPlan(entries)?.key, lastAsk(entries, currentKey)?.key, currentKey]);
   return entries.filter((e) => !shown.has(e.key));
+}
+
+/** The game seats this page has advice for. */
+export function knownGames(): string[] {
+  return [...games.keys()];
+}
+
+/** The game seat whose advice has the answers-store key `key`, or null. */
+export function gameOfKey(key: string): string | null {
+  for (const [game, g] of games) if (g.entries.some((e) => e.key === key)) return game;
+  return null;
+}
+
+/** What one game seat has, for adviceStore.ts. */
+export function gameAdvice(game: string): { entries: readonly AdviceEntry[]; plans: ReadonlySet<number> } | null {
+  const g = games.get(game);
+  return g ? { entries: g.entries, plans: g.plans } : null;
+}
+
+/**
+ * Puts advice kept across a reload back (adviceStore.ts), unless this page
+ * already has advice for the game. Returns whether it did. The order counter
+ * moves past the kept entries, so newer advice still sorts first.
+ */
+export function restoreAdvice(game: string, entries: AdviceEntry[], plans: Iterable<number>): boolean {
+  const had = games.get(game);
+  if (had && (had.entries.length || had.plans.size)) return false;
+  const g = gameOf(game);
+  g.entries = [...entries].sort((a, b) => b.seq - a.seq).slice(0, MAX_ADVICE);
+  g.plans = new Set(plans);
+  for (const e of g.entries) seq = Math.max(seq, e.seq);
+  notify();
+  return true;
 }
 
 /** Tests: forget every game. */

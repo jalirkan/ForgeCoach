@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { parseLog, type GameLog } from './log.ts';
 import { extractDecisions } from './decisions.ts';
 import type { CardInfo } from './cards.ts';
-import { buildCoachPrompt, coachCardNames, coachSystem, PROMPT_FORMATS, type PromptFormat } from './prompt.ts';
+import { buildCoachPrompt, coachCardNames, coachSystem, planCardNames, PLAN_SYSTEM, PROMPT_FORMATS, type PromptFormat } from './prompt.ts';
 import { liveDecision } from './ui/play/liveDecision.ts';
 import { planDue } from './ui/play/autoPlan.ts';
 import type { GameStateBody } from './protocol.ts';
@@ -128,8 +128,8 @@ describe('the short style and the plan question', () => {
     const s = { ...d.state, activePlayer: 1 - log.seat!, phase: 'END_OF_TURN', turn: 7 } as GameStateBody;
     const u = buildCoachPrompt(log, { ...d, state: s }, cardsFor(log, d), { format: 'short', plan: { forTurn: 8 } }).user;
     expect(u).toMatch(/Decision type: plan my turn 8/);
-    expect(u).toMatch(/my turn 8 is next\. Plan my turn/);
-    expect(u).toMatch(/everything I control untaps/);
+    expect(u).toMatch(/my turn 8 is next\. My side above is shown as on my turn: untapped, nothing summoning sick\. Plan my turn/);
+    expect(u).toMatch(/Mana sources on my turn \(everything untaps\): /);
     expect(u).toMatch(/"If you draw <a land \/ a creature …>:" line only when that card would change the plan/);
   });
 
@@ -143,5 +143,120 @@ describe('the short style and the plan question', () => {
     expect(coachSystem('classic')).toMatch(/\*\*Play:\*\* one recommended line as numbered steps/);
     expect(coachSystem('answer-first')).toMatch(/\*\*Answer:\*\* the recommended play in one line/);
     expect(coachSystem('classic')).not.toMatch(/---/);
+  });
+});
+
+/** Every auto-coach plan of every recorded game: [log, decision, forTurn]. */
+function allPlans() {
+  const out: Array<{ log: GameLog; d: NonNullable<ReturnType<typeof liveDecision>>; forTurn: number }> = [];
+  for (const log of logs) {
+    const asked = new Set<number>();
+    for (let i = 0; i < log.frames.length; i++) {
+      const f = log.frames[i]!;
+      if (f.type !== 'state') continue;
+      const due = planDue(f.body as GameStateBody, log.seat, asked);
+      if (due === null) continue;
+      asked.add(due);
+      const sub = { ...log, frames: log.frames.slice(0, i + 1) };
+      const d = liveDecision({ log: sub, state: f.body as GameStateBody, input: null, ask: null, seat: log.seat });
+      if (d) out.push({ log: sub, d, forTurn: due });
+    }
+  }
+  return out;
+}
+
+describe("the live plan's tighter prompt (short style + plan)", () => {
+  const plans = allPlans();
+  const short = (x: (typeof plans)[number]) => buildCoachPrompt(x.log, x.d, cardsFor(x.log, x.d), { format: 'short', plan: { forTurn: x.forTurn } });
+  const yours = (u: string) => u.slice(u.indexOf('## YOU'), u.indexOf('## OPPONENT'));
+  const theirs = (u: string) => u.slice(u.indexOf('## OPPONENT'), u.indexOf('# Card text'));
+
+  it('uses the plan system prompt, shorter than the short style’s', () => {
+    for (const x of plans.slice(0, 5)) expect(short(x).system.startsWith(PLAN_SYSTEM)).toBe(true);
+    expect(bytes(PLAN_SYSTEM)).toBeLessThan(bytes(coachSystem('short')));
+    for (const s of ['Play: <one action>', 'Mana: <sources>', 'Attack: <creatures>', 'Hold:', 'If you draw', 'Why: <one phrase, under 12 words>', 'a line with only ---', '**Rule:**', '**Confidence:**', '**Details:**'])
+      expect(PLAN_SYSTEM).toContain(s);
+    expect(PLAN_SYSTEM).toMatch(/never name or assume a hidden card/);
+  });
+
+  it('late-game plans (turn 9 on) are at least 15% smaller than the short style’s full table', () => {
+    let tight = 0;
+    let full = 0;
+    for (const x of plans.filter((p) => p.forTurn >= 9)) {
+      const p = short(x);
+      const q = buildCoachPrompt(x.log, x.d, cardsFor(x.log, x.d), { format: 'short' });
+      tight += bytes(p.system) + bytes(p.user);
+      full += bytes(q.system) + bytes(q.user);
+      expect(bytes(p.system) + bytes(p.user)).toBeLessThanOrEqual(7 * 1024);
+    }
+    expect(tight / full).toBeLessThan(0.85);
+  });
+
+  it("at the opponent's end step my side is shown as on my turn; theirs keeps TAPPED", () => {
+    let theirTapped = 0;
+    for (const x of plans.filter((p) => p.d.state.activePlayer !== p.log.seat)) {
+      const u = short(x).user;
+      expect(yours(u)).not.toMatch(/TAPPED|SUMMONING SICK|ATTACKING|BLOCKING|damage \d|Mana pool|Untapped mana sources/);
+      expect(yours(u)).toMatch(/Mana sources on my turn \(everything untaps\): \d+/);
+      // What is open now stays said, for an instant before my turn.
+      expect(yours(u)).toMatch(/Untapped now, before my turn: (none|\d+ — )/);
+      expect(theirs(u)).not.toMatch(/SUMMONING SICK|Spells cast this turn|left the battlefield this turn/);
+      if (/TAPPED/.test(theirs(u))) theirTapped++;
+    }
+    expect(theirTapped).toBeGreaterThan(10);
+  });
+
+  it('counts every land I control as mana on my turn', () => {
+    for (const x of plans.filter((p) => p.d.state.activePlayer !== p.log.seat && p.forTurn >= 9)) {
+      const u = short(x).user;
+      const lands = Number(/Lands \((\d+)\)/.exec(yours(u))![1]);
+      const mana = Number(/Mana sources on my turn \(everything untaps\): (\d+)/.exec(u)![1]);
+      expect(mana).toBeGreaterThanOrEqual(lands - 2); // a land that makes no mana, or a colour the log did not record
+    }
+  });
+
+  it('card text: the cards that matter, without reminder text; a cut card keeps its name in the table', () => {
+    let cut = 0;
+    for (const x of plans.filter((p) => p.forTurn >= 9)) {
+      const cards = cardsFor(x.log, x.d);
+      const keep = new Set(planCardNames(x.log, x.d, cards));
+      const u = short(x).user;
+      const text = u.slice(u.indexOf('# Card text'), u.indexOf('# Question'));
+      expect(text).not.toMatch(/\(Draw a card, then discard|\(This creature can|reminder/);
+      const elsewhere = new Set(coachCardNames(x.log, x.d, { graveyard: false }));
+      for (const n of coachCardNames(x.log, x.d)) {
+        // Only in my graveyard and doing nothing from there: a plan has its count, not its name.
+        if (keep.has(n) || !elsewhere.has(n)) continue;
+        cut++;
+        expect(u.slice(0, u.indexOf('# Card text'))).toContain(n);
+      }
+      // A card in my hand that next turn's mana can cast keeps its text.
+      const me = x.d.state.players.find((p) => p.id === x.log.seat)!;
+      for (const c of me.zones.hand.cards) {
+        const n = (c as { name?: string }).name;
+        const cost = (c as { manaCost?: string }).manaCost ?? '';
+        if (n && cards.has(n) && /^\{[0-9]\}|^\{[WUBRG]\}$/.test(cost) && cost.length <= 6) expect(keep.has(n)).toBe(true);
+      }
+    }
+    expect(cut).toBeGreaterThan(20);
+  });
+
+  it('a plan asked in my own turn keeps the state as it is (untapped sources, my land drop)', () => {
+    const mine = plans.filter((p) => p.d.state.activePlayer === p.log.seat);
+    expect(mine.length).toBeGreaterThan(3);
+    for (const x of mine) {
+      const u = short(x).user;
+      expect(yours(u)).toMatch(/Untapped mana sources: /);
+      expect(yours(u)).toMatch(/Land drop this turn: /);
+    }
+  });
+
+  it('other questions in the short style, and the plan in the detailed style, are unchanged', () => {
+    const x = plans.find((p) => p.forTurn >= 9)!;
+    const detailed = buildCoachPrompt(x.log, x.d, cardsFor(x.log, x.d), { format: 'classic', plan: { forTurn: x.forTurn } });
+    expect(detailed.user).toMatch(/Untapped mana sources: /);
+    expect(detailed.user).toMatch(/Graveyard: /);
+    expect(detailed.user).toMatch(/everything I control untaps/);
+    expect(detailed.system.startsWith(coachSystem('classic'))).toBe(true);
   });
 });

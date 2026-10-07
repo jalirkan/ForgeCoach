@@ -16,8 +16,9 @@
  * - At most one question at a time per seat for the plan and one for your own
  *   asks (answers.ts slots; the coach helper's replaceRunning, mtg-table D410).
  *
- * Live answers take Settings → Coach style: short commands by default, with
- * Claude Code's thinking capped at low (about twice as fast late in a game).
+ * Live answers take Settings → Coach style: short commands by default, and
+ * Settings → Live coach model (claude.ts `liveModelOf`: Sonnet unless chosen) with
+ * the least thinking unless Coach thinking says Low — measured on recorded late-game plans.
  */
 import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { AskBody, GameStateBody, InputBody } from '../../protocol.ts';
@@ -51,6 +52,8 @@ import {
   subscribeAdvice,
   type AdviceEntry,
 } from './autoPlan.ts';
+import { keepAdviceInBrowser, persistAdvice, restoreKeptAdvice } from './keepAdvice.ts';
+import { sessionAdviceStorage } from './adviceStore.ts';
 import './coach.css';
 
 const AUTO_KEY = 'forgecoach.autoCoach';
@@ -113,7 +116,7 @@ export const PlayCoach = memo(function PlayCoach({
     (k: string, d: Decision) => {
       if (!log || !game) return;
       recordAdvice(game, { key: k, kind: 'ask', label: askLabel(d), forTurn: null, decision: d });
-      void startAnswer(k, () => coachPrompt(log, d, { live: true }), { supersedes: ASK_SUPERSEDE, replaceRunning: true, slot: askSlot(game), ...(terse ? { thinkingCap: 'low' as const } : {}) });
+      void startAnswer(k, () => coachPrompt(log, d, { live: true }), { supersedes: ASK_SUPERSEDE, replaceRunning: true, slot: askSlot(game), live: terse ? 'short' : 'detailed' });
     },
     [log, game, terse],
   );
@@ -124,7 +127,7 @@ export const PlayCoach = memo(function PlayCoach({
       if (!log || !game) return;
       const k = planKey(game, forTurn);
       recordAdvice(game, { key: k, kind: 'plan', label: planLabel(forTurn), forTurn, decision: d });
-      void startAnswer(k, () => coachPrompt(log, d, { live: true, plan: { forTurn } }), { supersedes: PLAN_SUPERSEDE, replaceRunning: true, slot: planSlot(game), ...(terse ? { thinkingCap: 'low' as const } : {}) });
+      void startAnswer(k, () => coachPrompt(log, d, { live: true, plan: { forTurn } }), { supersedes: PLAN_SUPERSEDE, replaceRunning: true, slot: planSlot(game), live: terse ? 'short' : 'detailed' });
     },
     [log, game, terse],
   );
@@ -149,6 +152,21 @@ export const PlayCoach = memo(function PlayCoach({
       }
     };
   }, [game]);
+
+  // A reload: this game's advice and the cycles whose plan was asked come back from
+  // the tab's storage (adviceStore.ts), before auto-coach looks at whether to ask.
+  useEffect(() => {
+    if (!game || !log) return;
+    keepAdviceInBrowser();
+    restoreKeptAdvice(game, sessionAdviceStorage(), log, seat ?? log.seat);
+    // Only when the game changes: the log it needs is the one it changed with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game]);
+  // Asked advice is kept at once (answers when they end: keepAdvice.ts).
+  useEffect(() => {
+    if (game && advice.length) persistAdvice(game, sessionAdviceStorage(), log);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game, advice]);
 
   // Auto-coach: one plan per turn cycle, at the opponent's end step (autoPlan.ts).
   useEffect(() => {
@@ -179,13 +197,15 @@ export const PlayCoach = memo(function PlayCoach({
   // Ask again on the plan: a fresh plan from the board as it is now.
   const replan = useCallback(() => {
     if (!log || !plan) return;
-    const d = moment ? liveDecision(moment) : null;
-    planNow(plan.forTurn ?? (state?.turn ?? 0) + 1, d ?? plan.decision);
+    const d = (moment ? liveDecision(moment) : null) ?? plan.decision;
+    if (d) planNow(plan.forTurn ?? (state?.turn ?? 0) + 1, d);
   }, [log, plan, moment, state, planNow]);
   const planPrompt = useCallback(async () => {
-    if (!log || !plan) throw new Error('No plan yet.');
-    return coachPrompt(log, plan.decision, { live: true, plan: { forTurn: plan.forTurn ?? 0 } });
-  }, [log, plan]);
+    // A plan kept across a reload whose moment the log lacks: the board as it is now.
+    const d = plan?.decision ?? (moment ? liveDecision(moment) : null);
+    if (!log || !plan || !d) throw new Error('No plan yet.');
+    return coachPrompt(log, d, { live: true, plan: { forTurn: plan.forTurn ?? 0 } });
+  }, [log, plan, moment]);
 
   return (
     <div className="coach play-coach">
@@ -301,7 +321,7 @@ function PlanBox({
         structured
         terse={terse}
         title={plan.label}
-        feedback={feedbackTarget(log, plan.decision.frameIndex, 'play')}
+        feedback={feedbackTarget(log, plan.frameIndex >= 0 ? plan.frameIndex : null, 'play')}
       />
     </div>
   );

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { DEFAULT_COACH_SOURCE, DEFAULT_SKIN, MODELS, loadSettings, saveSettings, type CoachSource, type CoachStyle, type CoachThinking, type ModelId, type Settings, type Skin } from '../claude.ts';
+import { DEFAULT_COACH_SOURCE, DEFAULT_SKIN, LIVE_FAST_MODEL, MODELS, liveModelOf, loadSettings, saveSettings, type CoachSource, type CoachStyle, type CoachThinking, type LiveModel, type ModelId, type Settings, type Skin } from '../claude.ts';
 import { chooseSource, pageHelperTarget, type HelperStatus } from '../coachHelper.ts';
 import { useCoachAvailability } from './hooks.ts';
 import { IconExternal } from './Icons.tsx';
@@ -118,8 +118,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               </label>
             ))}
           </div>
-          <span className="field-help">Claude Code uses the same choice (opus, sonnet or haiku).</span>
+          <span className="field-help">Claude Code uses the same choice (opus, sonnet or haiku). Live play has its own, below.</span>
         </fieldset>
+        <LiveModelField s={s} setS={setS} />
         <fieldset className="field">
           <legend className="field-label">Coach thinking</legend>
           <div className="model-grid" role="radiogroup" aria-label="Coach thinking">
@@ -155,7 +156,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           </div>
           <span className="field-help">
             While you play. Short answers are a few commands (“Play: Cast Shock → their Bears”, “Mana: …”, “Why: …”), with the rule,
-            confidence and details behind More, and Claude Code on your PC thinks briefly (at most Low) so the answer comes sooner. Replays, the film room and reviews keep the detailed layout.
+            confidence and details behind More, and Claude Code on your PC thinks as little as the model allows (Off, unless Coach thinking says Low) so the answer comes sooner. Replays, the film room and reviews keep the detailed layout.
           </span>
         </fieldset>
         <label className="field check-row">
@@ -200,6 +201,36 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         )}
       </form>
     </Sheet>
+  );
+}
+
+const modelLabel = (id: ModelId) => MODELS.find((m) => m.id === id)?.label ?? id;
+
+/** The live coach's model (claude.ts `liveModelOf`): Automatic picks the measured fast one. */
+function LiveModelField({ s, setS }: { s: Settings; setS: (s: Settings) => void }) {
+  const opts: Array<{ id: LiveModel; label: string; hint: string }> = [
+    { id: 'auto', label: 'Automatic', hint: `${modelLabel(liveModelOf({ model: s.model, liveModel: 'auto' }))}: plans in seconds` },
+    ...MODELS.map((m) => ({ id: m.id as LiveModel, label: m.label, hint: hint(m.id) })),
+  ];
+  const cur = s.liveModel ?? 'auto';
+  return (
+    <fieldset className="field">
+      <legend className="field-label">Live coach model</legend>
+      <div className="model-grid" role="radiogroup" aria-label="Live coach model">
+        {opts.map((o) => (
+          <label key={o.id} className={cx('model-opt', cur === o.id && 'is-on')}>
+            <input type="radio" name="liveModel" value={o.id} checked={cur === o.id} onChange={() => setS({ ...s, liveModel: o.id })} />
+            <span className="model-name">{o.label}</span>
+            <span className="model-hint">{o.hint}</span>
+          </label>
+        ))}
+      </div>
+      <span className="field-help">
+        While you play: the plan for your turn and “Ask about this”. Automatic uses {modelLabel(LIVE_FAST_MODEL)} (or the Model above when
+        that is quicker), measured fastest at planning a late-game turn well; pick one to always use it. Replays, the film room and
+        reviews use the Model above.
+      </span>
+    </fieldset>
   );
 }
 
@@ -368,6 +399,6 @@ function safeLoad(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: DEFAULT_SKIN, winChance: false };
+    return { apiKey: '', model: MODELS[0].id, liveModel: 'auto', coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: DEFAULT_SKIN, winChance: false };
   }
 }

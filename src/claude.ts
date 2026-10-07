@@ -81,9 +81,51 @@ export function isSkin(x: unknown): x is Skin {
   return SKINS.includes(x as Skin);
 }
 
+/**
+ * The live coach's model (the play screen's plan and "Ask about this"): 'auto'
+ * (default) is `LIVE_FAST_MODEL`, the fastest that plans well enough (measured on
+ * recorded late-game plans; see liveCoachPrompt.test.ts and the README), or the
+ * Model above when that is faster still; a model id is that model, whatever it costs
+ * in seconds. Replays, the film room, reviews, practice and the bench use Model.
+ */
+export type LiveModel = 'auto' | ModelId;
+export const LIVE_FAST_MODEL: ModelId = 'claude-sonnet-5-5';
+/**
+ * Live play's thinking when Settings → Coach thinking is left at its default:
+ * 'off'. On Sonnet 5.5 and Opus 5.5 that is their lowest effort, the same as
+ * 'low' (Claude Code can't turn their thinking off; measured the same); on Haiku
+ * it is the difference between a first word in about 1.5 s and in minutes.
+ */
+export const LIVE_THINKING: CoachThinking = 'off';
+
+export function isLiveModel(x: unknown): x is LiveModel {
+  return x === 'auto' || isModelId(x);
+}
+
+/** Fastest first (the order a live 'auto' compares in). */
+const SPEED_ORDER: readonly ModelId[] = ['claude-haiku-4-5', 'claude-sonnet-5-5', 'claude-opus-5-5'];
+
+/** The model live play asks: Settings → Live coach model, 'auto' as above. */
+export function liveModelOf(s: Pick<Settings, 'model' | 'liveModel'>): ModelId {
+  const live = s.liveModel ?? 'auto';
+  if (live !== 'auto') return live;
+  return SPEED_ORDER.indexOf(s.model) < SPEED_ORDER.indexOf(LIVE_FAST_MODEL) ? s.model : LIVE_FAST_MODEL;
+}
+
+/**
+ * Live play's thinking (the short style): Settings → Coach thinking when it is set
+ * to Low or Off, else `LIVE_THINKING`.
+ */
+export function liveThinkingOf(s: Pick<Settings, 'coachThinking'>): CoachThinking {
+  const t = s.coachThinking ?? 'default';
+  return t === 'default' ? LIVE_THINKING : t;
+}
+
 export interface Settings {
   apiKey: string;
   model: ModelId;
+  /** The live coach's model (absent = 'auto'). */
+  liveModel?: LiveModel;
   coachSource: CoachSource;
   /** Coach thinking for the coach helper (absent = 'default'). */
   coachThinking?: CoachThinking;
@@ -115,13 +157,14 @@ function storage(): Storage | null {
 
 export function loadSettings(): Settings {
   // Settings saved before the coach helper existed have no coachSource → 'auto'.
-  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: DEFAULT_COACH_THINKING, coachStyle: DEFAULT_COACH_STYLE, skin: DEFAULT_SKIN, winChance: false };
+  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, liveModel: 'auto', coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: DEFAULT_COACH_THINKING, coachStyle: DEFAULT_COACH_STYLE, skin: DEFAULT_SKIN, winChance: false };
   try {
     const raw = storage()?.getItem(SETTINGS_KEY);
     if (!raw) return out;
     const v = JSON.parse(raw) as Partial<Settings>;
     if (typeof v.apiKey === 'string') out.apiKey = v.apiKey;
     if (isModelId(v.model)) out.model = v.model;
+    if (isLiveModel(v.liveModel)) out.liveModel = v.liveModel;
     if (isCoachSource(v.coachSource)) out.coachSource = v.coachSource;
     if (v.answerFirst === true) out.answerFirst = true;
     if (isCoachThinking(v.coachThinking)) out.coachThinking = v.coachThinking;
@@ -149,6 +192,7 @@ export function saveSettings(s: Settings): void {
       JSON.stringify({
         apiKey: s.apiKey.trim(),
         model: isModelId(s.model) ? s.model : DEFAULT_MODEL,
+        liveModel: isLiveModel(s.liveModel) ? s.liveModel : 'auto',
         coachSource: isCoachSource(s.coachSource) ? s.coachSource : DEFAULT_COACH_SOURCE,
         answerFirst: s.answerFirst === true,
         coachThinking: isCoachThinking(s.coachThinking) ? s.coachThinking : DEFAULT_COACH_THINKING,

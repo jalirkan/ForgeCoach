@@ -137,7 +137,8 @@ export function parseTerseAnswer(text: string, opts: { complete?: boolean } = {}
   const moreFromMain: string[] = [];
   for (let i = 0; i < main.length; i++) {
     const raw = main[i]!;
-    if (!raw.trim()) continue;
+    // A blank line, or a code fence some models wrap the lines in.
+    if (!raw.trim() || /^\s*```/.test(raw)) continue;
     const partial = !complete && sep < 0 && i === main.length - 1;
     const bare = BARE.exec(raw);
     if (bare) {
