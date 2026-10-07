@@ -7,10 +7,11 @@ import { describe, expect, it } from 'vitest';
 import { applySkin, resolveSkin, skinFromUrl } from './skin.ts';
 
 describe('skin', () => {
-  it('defaults to classic, and falls back to classic for an unknown saved value', () => {
-    expect(resolveSkin(undefined)).toBe('classic');
-    expect(resolveSkin('neon')).toBe('classic');
-    expect(resolveSkin(3)).toBe('classic');
+  it('defaults to stack, and falls back to stack for an unknown saved value', () => {
+    expect(resolveSkin(undefined)).toBe('stack');
+    expect(resolveSkin('neon')).toBe('stack');
+    expect(resolveSkin(3)).toBe('stack');
+    expect(resolveSkin('classic')).toBe('classic');
     expect(resolveSkin('felt')).toBe('felt');
     expect(resolveSkin('stack')).toBe('stack');
   });

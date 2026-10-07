@@ -61,7 +61,7 @@ export function isCoachThinking(x: unknown): x is CoachThinking {
  */
 export type Skin = 'classic' | 'stack' | 'felt';
 export const SKINS: readonly Skin[] = ['classic', 'stack', 'felt'];
-export const DEFAULT_SKIN: Skin = 'classic';
+export const DEFAULT_SKIN: Skin = 'stack';
 
 export function isSkin(x: unknown): x is Skin {
   return SKINS.includes(x as Skin);
