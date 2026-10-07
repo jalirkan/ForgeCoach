@@ -272,6 +272,19 @@ describe('the D325 queue', () => {
     expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ system: prompt.system, user: prompt.user, supersedes: 'tab-1' });
   });
 
+  it('mtg-table D410: reads "replaceRunning" from /health, and sends it only with a supersede key', async () => {
+    forgetHelper();
+    const { f: h } = fakeFetch(() => json({ ok: true, helper: 1, claude: '2', models: [], supersedes: 1, replaceRunning: 1 }));
+    expect(await detectHelper({ fetch: h, target, force: true })).toMatchObject({ state: 'ok', supersedes: true, replaceRunning: true });
+    const { f: old } = fakeFetch(() => json({ ok: true, helper: 1, claude: '2', models: [], supersedes: 1 }));
+    expect(await detectHelper({ fetch: old, target, force: true })).toMatchObject({ state: 'ok', replaceRunning: false });
+    const { f, calls } = fakeFetch(() => chunked([line({ type: 'done', stopReason: 'end_turn', model: 'sonnet' })]));
+    await askHelper(prompt, { onText() {} }, { fetch: f, target, supersedes: 'seat-0', replaceRunning: true });
+    expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ system: prompt.system, user: prompt.user, supersedes: 'seat-0', replaceRunning: true });
+    await askHelper(prompt, { onText() {} }, { fetch: f, target, replaceRunning: true });
+    expect(JSON.parse(String(calls[1]!.init?.body))).not.toHaveProperty('replaceRunning');
+  });
+
   it('sends no supersede key unless given one', async () => {
     const { f, calls } = fakeFetch(() => chunked([line({ type: 'done', stopReason: 'end_turn', model: 'sonnet' })]));
     await askHelper(prompt, { onText() {} }, { fetch: f, target });

@@ -9,15 +9,15 @@
 import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
 import type { GameLog } from '../log.ts';
 import type { Decision } from '../decisions.ts';
-import { buildCoachPrompt, coachCardNames, promptAsText, type Prompt } from '../prompt.ts';
+import { buildCoachPrompt, coachCardNames, promptAsText, type PlanAsk, type Prompt, type PromptFormat } from '../prompt.ts';
 import { buildReviewPrompt, reviewCardNames, summarizeGame } from '../review.ts';
 import { loadCubeCoachInput, type CubeCoachInput, type MetaLookups } from '../cube/coachContext.ts';
 import { loadShippedMeta } from '../cube/cubes.ts';
 import type { CubeMeta } from '../cube/meta.ts';
 import { getImportedMeta } from '../cube/metaStore.ts';
 import { activeGuideText as guideText } from '../guide.ts';
-import { loadSettings, MODELS } from '../claude.ts';
-import { parseCoachAnswer, type StatedConfidence } from '../coachAnswer.ts';
+import { loadSettings, MODELS, type CoachStyle } from '../claude.ts';
+import { parseCoachAnswer, parseTerseAnswer, type StatedConfidence, type TerseAnswerParts } from '../coachAnswer.ts';
 import { SOURCE_LABEL } from '../coachHelper.ts';
 import { useCoachAvailability, useNowWhile } from './hooks.ts';
 import { isHelperThinking, thinkingLine } from './coachWait.ts';
@@ -76,12 +76,27 @@ async function cubeFor(log: GameLog): Promise<CubeCoachInput | undefined> {
   }
 }
 
-export async function coachPrompt(log: GameLog, d: Decision): Promise<Prompt> {
+/**
+ * The coach prompt for a decision. `live`: the play screen asks it, so the
+ * answer takes Settings → Coach style (short commands by default; 'detailed'
+ * is the replay's layout), and `plan` asks auto-coach's plan for a turn.
+ */
+export async function coachPrompt(log: GameLog, d: Decision, opts: { live?: boolean; plan?: PlanAsk } = {}): Promise<Prompt> {
   const names = safe(() => coachCardNames(log, d), [] as string[]);
   const cards = await cardsForPrompt(names);
   const guide = activeGuideText();
   const cube = await cubeFor(log);
-  return buildCoachPrompt(log, d, cards, { ...(guide ? { guide } : {}), ...(cube ? { cube } : {}), format: answerFirstSetting() ? 'answer-first' : 'classic' });
+  const format: PromptFormat = opts.live && liveStyle() === 'short' ? 'short' : answerFirstSetting() ? 'answer-first' : 'classic';
+  return buildCoachPrompt(log, d, cards, { ...(guide ? { guide } : {}), ...(cube ? { cube } : {}), format, ...(opts.plan ? { plan: opts.plan } : {}) });
+}
+
+/** Settings → Coach style for live play (absent = short). */
+export function liveStyle(): CoachStyle {
+  try {
+    return loadSettings().coachStyle ?? 'short';
+  } catch {
+    return 'short';
+  }
 }
 
 function answerFirstSetting(): boolean {
@@ -304,6 +319,8 @@ export function AnswerBox({
   onOpenSettings,
   structured = false,
   feedback = null,
+  title = null,
+  terse = false,
 }: {
   answer: Answer | undefined;
   askLabel: string;
@@ -316,6 +333,14 @@ export function AnswerBox({
   structured?: boolean;
   /** "Was this advice helpful?" under a finished answer: the game and decision it is about (feedback.ts). */
   feedback?: FeedbackTarget | null;
+  /** The box's heading instead of "Coach" (the live coach: "Plan for your turn 8"). */
+  title?: ReactNode;
+  /**
+   * The short style (live play): the command lines and the why up front, the rule,
+   * confidence and details behind More. An answer that does not read as short falls
+   * back to the structured layout.
+   */
+  terse?: boolean;
 }) {
   const [copyState, setCopyState] = useState<'idle' | 'busy' | 'ok' | 'err'>('idle');
   const copy = async () => {
@@ -331,9 +356,11 @@ export function AnswerBox({
   };
   const busy = answer?.status === 'preparing' || answer?.status === 'queued' || answer?.status === 'streaming';
   const streaming = answer?.status === 'streaming';
+  const terseParts = useMemo(() => (terse && answer?.text ? parseTerseAnswer(answer.text, { complete: !streaming }) : null), [terse, answer?.text, streaming]);
+  const showTerse = !!terseParts?.terse;
   const parts = useMemo(
-    () => (structured && answer?.text ? parseCoachAnswer(answer.text, { complete: !streaming }) : null),
-    [structured, answer?.text, streaming],
+    () => (structured && !showTerse && answer?.text ? parseCoachAnswer(answer.text, { complete: !streaming }) : null),
+    [structured, showTerse, answer?.text, streaming],
   );
   const coach = useCoachAvailability();
   const needsSetup = answer?.status === 'error' && (SETUP_ERRORS.has(answer.errorKind ?? '') || /api key/i.test(answer.error ?? ''));
@@ -344,7 +371,7 @@ export function AnswerBox({
     <div className="card-box answer">
       <div className="box-h">
         <span>
-          <IconSpark size={13} /> Coach
+          <IconSpark size={13} /> {title ?? 'Coach'}
         </span>
         {showSource && (
           <span
@@ -370,7 +397,8 @@ export function AnswerBox({
         </p>
       )}
       {parts && (parts.answer || parts.rule || parts.confidence) && <AnswerHead answer={parts.answer} rule={parts.rule} confidence={parts.confidence} why={parts.confidenceWhy} />}
-      {answer && answer.text && <Markdown text={parts ? parts.body : answer.text} streaming={streaming} />}
+      {showTerse && terseParts && <TerseView parts={terseParts} streaming={streaming} />}
+      {answer && answer.text && !showTerse && <Markdown text={parts ? parts.body : answer.text} streaming={streaming} />}
       {answer?.status === 'streaming' && !answer.text && (
         <p className="muted small pulse" role="status">
           {thinkingNow ?? (answer.thinking ? 'Thinking it through…' : answer.source === 'helper' ? 'Waiting for Claude Code on your PC…' : 'Waiting for Claude…')}
@@ -380,7 +408,7 @@ export function AnswerBox({
       {answer?.refused && <div className="notice-inline warn">Claude declined to answer this one. Try rephrasing via “Copy prompt” in the Claude app.</div>}
       {answer?.status === 'stopped' && (
         <div className="notice-inline">
-          {answer.stopReasonNote === 'moved_on' ? 'Stopped — the game moved on.' : answer.stopReasonNote === 'superseded' ? 'Replaced by a newer question.' : 'Stopped.'}
+          {stoppedNote(answer)}
         </div>
       )}
       {answer?.status === 'error' && (
@@ -415,6 +443,56 @@ export function AnswerBox({
             Set up coaching
           </button>
         </p>
+      )}
+    </div>
+  );
+}
+
+/** Why a stopped answer stopped; what it had written stays above the note. */
+export function stoppedNote(a: Pick<Answer, 'stopReasonNote' | 'text'>): string {
+  const kept = a.text ? ' What it had written is kept.' : '';
+  if (a.stopReasonNote === 'moved_on') return a.text ? `Stopped when the game moved on.${kept}` : 'Stopped when the game moved on, before it answered.';
+  if (a.stopReasonNote === 'superseded') return `Replaced by a newer question.${kept}`;
+  return `Stopped.${kept}`;
+}
+
+/**
+ * A short-style answer (prompt.ts 'short'): its command lines and one-phrase why,
+ * and a More toggle for the rule, the confidence and the details, which never
+ * stream into the main view.
+ */
+export function TerseView({ parts, streaming }: { parts: TerseAnswerParts; streaming: boolean }) {
+  const [more, setMore] = useState(false);
+  const hasMore = !!(parts.more || parts.rule || parts.confidence);
+  return (
+    <div className={cx('terse', parts.confidence === 'low' && 'is-close')}>
+      {parts.commands.length > 0 && (
+        <ul className="terse-lines">
+          {parts.commands.map((c, i) => (
+            <li key={i} className={cx('terse-line', `t-${c.label.toLowerCase().replace(/[^a-z]+/g, '-')}`)}>
+              <span className="terse-label">{c.label}</span>
+              {c.text && <span className="terse-text">{c.text}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {parts.why && (
+        <p className="terse-why">
+          <span className="terse-label">Why</span> {parts.why}
+        </p>
+      )}
+      {hasMore ? (
+        <button className="link-btn terse-more" onClick={() => setMore((m) => !m)} aria-expanded={more}>
+          {more ? 'Less' : 'More'}
+          {!more && parts.confidence ? ` · ${CONFIDENCE_WORDS[parts.confidence].toLowerCase()}` : ''}
+          <IconChevronDown size={12} className={more ? 'rot' : ''} />
+        </button>
+      ) : null}
+      {more && (
+        <div className="terse-more-body">
+          {(parts.rule || parts.confidence) && <AnswerHead answer={null} rule={parts.rule} confidence={parts.confidence} why={parts.confidenceWhy} />}
+          {parts.more && <Markdown text={parts.more} streaming={streaming} />}
+        </div>
       )}
     </div>
   );

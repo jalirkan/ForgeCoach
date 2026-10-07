@@ -115,19 +115,39 @@ Settings → **Coach source** shows whether the helper is running and picks the
 source: *Automatic* (the default: the helper when it is found, else your key),
 *Claude Code* or *API key*. The model choice applies to both (Opus 5.5 → `opus`,
 Sonnet 5.5 → `sonnet`, Haiku 4.5 → `haiku` for Claude Code). Either way the
-coach gets the decision's state and the exact text of the cards involved, and a
-switch asks automatically at your main phases, attacks and blocks.
+coach gets the decision's state and the exact text of the cards involved.
+
+**Auto-coach** (the switch on the play screen) plans your next turn during your
+opponent's end step: one question per turn cycle, asked as their turn ends so
+the plan is there when yours starts (at the start of your own turn when the
+engine skipped their end step, and on turn 1 when you are on the play). The
+plan, labelled *Plan for your turn N*, stays on screen through your turn and the
+opponent's next one, until the next cycle replaces it or you press *Ask again*.
+*Ask about this* asks about the exact moment (blocks on their turn, a target)
+without clearing the plan; older plans and answers stay under *Earlier advice*.
+Nothing is cleared because the opponent has priority, and an answer stopped
+because the game moved on keeps what it had written.
+
+Settings → **Coach style** sets how the coach answers while you play: *Short*
+(the default) is a few commands and one short reason —
+`Play: Cast Shock → their Bears`, `Mana: R from Mountain`, `Why: …` — with the
+rule, the confidence and the details behind *More*, and Claude Code thinking
+briefly (at most *Low*); *Detailed* is the longer layout. Replays, the film
+room, reviews and practice keep the detailed layout.
 For development, `?coach=http://127.0.0.1:<port>` points the page at a helper
 on another port.
 
 Claude Code answers one question at a time. With a current mtg-table (decision
-D325) the helper **queues** the others: a second question (auto-coach at your
-attacks while the main-phase answer is still coming, or an *Ask* during one)
-shows *Waiting for the coach…* until its turn instead of failing. When the game
-moves on to another decision, the play screen stops the question it no longer
-needs (a waiting one leaves the queue; a running one stops Claude Code), and a
-newer question from the same tab replaces an older one still in line. An older
-helper without a queue still answers *busy* to a second question.
+D325) the helper **queues** the others: a second question (an *Ask* while the
+plan is still coming) shows *Waiting for the coach…* until its turn instead of
+failing. The play screen keeps at most one plan and one question of your own
+per seat: when the game moves on from the moment you asked about, it stops that
+question (a waiting one leaves the queue; a running one stops Claude Code), and
+a newer question replaces the older one of its kind — in the helper's queue, and
+with mtg-table D410 (`replaceRunning`) while it runs, its Claude Code process
+killed. An older helper without a queue still answers *busy* to a second question.
+The browser console logs one `[coach]` line per question: prompt size, queue
+wait, first word and total time; the helper's log line carries the same.
 
 Settings → **Coach thinking** (*Default*, *Low*, *Off*) caps how long Claude
 Code thinks before its first word (mtg-table decision D346; the helper sets

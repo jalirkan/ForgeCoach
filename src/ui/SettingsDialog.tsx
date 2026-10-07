@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { DEFAULT_COACH_SOURCE, DEFAULT_SKIN, MODELS, loadSettings, saveSettings, type CoachSource, type CoachThinking, type ModelId, type Settings, type Skin } from '../claude.ts';
+import { DEFAULT_COACH_SOURCE, DEFAULT_SKIN, MODELS, loadSettings, saveSettings, type CoachSource, type CoachStyle, type CoachThinking, type ModelId, type Settings, type Skin } from '../claude.ts';
 import { chooseSource, pageHelperTarget, type HelperStatus } from '../coachHelper.ts';
 import { useCoachAvailability } from './hooks.ts';
 import { IconExternal } from './Icons.tsx';
@@ -19,6 +19,11 @@ const THINKING: Array<{ id: CoachThinking; label: string; hint: string }> = [
   { id: 'default', label: 'Default', hint: 'As Claude Code chooses' },
   { id: 'low', label: 'Low', hint: 'A short think first' },
   { id: 'off', label: 'Off', hint: 'Answers soonest' },
+];
+
+const STYLES: Array<{ id: CoachStyle; label: string; hint: string }> = [
+  { id: 'short', label: 'Short', hint: 'Commands and a one-line why' },
+  { id: 'detailed', label: 'Detailed', hint: 'Steps, reasons, traps' },
 ];
 
 const SOURCES: Array<{ id: CoachSource; label: string; hint: string }> = [
@@ -134,12 +139,31 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             and Opus always think a little. Needs an mtg-table helper that offers it; the API key ignores it.
           </span>
         </fieldset>
+        <fieldset className="field">
+          <legend className="field-label">Coach style</legend>
+          <div className="model-grid" role="radiogroup" aria-label="Coach style">
+            {STYLES.map((o) => {
+              const on = (s.coachStyle ?? 'short') === o.id;
+              return (
+                <label key={o.id} className={cx('model-opt', on && 'is-on')}>
+                  <input type="radio" name="coachStyle" value={o.id} checked={on} onChange={() => setS({ ...s, coachStyle: o.id })} />
+                  <span className="model-name">{o.label}</span>
+                  <span className="model-hint">{o.hint}</span>
+                </label>
+              );
+            })}
+          </div>
+          <span className="field-help">
+            While you play. Short answers are a few commands (“Play: Cast Shock → their Bears”, “Mana: …”, “Why: …”), with the rule,
+            confidence and details behind More, and Claude Code on your PC thinks briefly (at most Low) so the answer comes sooner. Replays, the film room and reviews keep the detailed layout.
+          </span>
+        </fieldset>
         <label className="field check-row">
           <input type="checkbox" checked={s.answerFirst === true} onChange={(e) => setS({ ...s, answerFirst: e.target.checked })} />
           <span>
             <span className="field-label">Answer first</span>
             <span className="field-help">
-              The coach starts with the play in one line, then explains — so you see what to do sooner. Off: the classic layout.
+              For the detailed style and replays: the coach starts with the play in one line, then explains — so you see what to do sooner. Off: the classic layout.
             </span>
           </span>
         </label>
@@ -344,6 +368,6 @@ function safeLoad(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default', skin: DEFAULT_SKIN, winChance: false };
+    return { apiKey: '', model: MODELS[0].id, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: DEFAULT_SKIN, winChance: false };
   }
 }

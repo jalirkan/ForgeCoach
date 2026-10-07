@@ -54,6 +54,20 @@ export function isCoachThinking(x: unknown): x is CoachThinking {
 }
 
 /**
+ * How the coach answers during live play: 'short' (default) is commands with a
+ * one-phrase why ("Play: Cast Shock → their Bears", "Mana: …", "Why: …"), the
+ * rule, confidence and details behind More; 'detailed' is the longer layout the
+ * replay, film room and review use. Only the play screen reads it.
+ */
+export type CoachStyle = 'short' | 'detailed';
+export const COACH_STYLES: readonly CoachStyle[] = ['short', 'detailed'];
+export const DEFAULT_COACH_STYLE: CoachStyle = 'short';
+
+export function isCoachStyle(x: unknown): x is CoachStyle {
+  return COACH_STYLES.includes(x as CoachStyle);
+}
+
+/**
  * The site's look: 'classic' (default, the original dark look), 'stack' (a dark
  * table with cream game objects and amber for priority and the coach's call) or
  * 'felt' (green baize, calm; the only warm colour is win chance on option bars).
@@ -73,6 +87,8 @@ export interface Settings {
   coachSource: CoachSource;
   /** Coach thinking for the coach helper (absent = 'default'). */
   coachThinking?: CoachThinking;
+  /** Live-play answer style (absent = 'short'). */
+  coachStyle?: CoachStyle;
   /**
    * Answer first: the coach starts with a one-line **Answer:** (and its
    * confidence and rule) before the explanation, so the play shows as soon as
@@ -99,7 +115,7 @@ function storage(): Storage | null {
 
 export function loadSettings(): Settings {
   // Settings saved before the coach helper existed have no coachSource → 'auto'.
-  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: DEFAULT_COACH_THINKING, skin: DEFAULT_SKIN, winChance: false };
+  const out: Settings = { apiKey: '', model: DEFAULT_MODEL, coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: DEFAULT_COACH_THINKING, coachStyle: DEFAULT_COACH_STYLE, skin: DEFAULT_SKIN, winChance: false };
   try {
     const raw = storage()?.getItem(SETTINGS_KEY);
     if (!raw) return out;
@@ -109,6 +125,7 @@ export function loadSettings(): Settings {
     if (isCoachSource(v.coachSource)) out.coachSource = v.coachSource;
     if (v.answerFirst === true) out.answerFirst = true;
     if (isCoachThinking(v.coachThinking)) out.coachThinking = v.coachThinking;
+    if (isCoachStyle(v.coachStyle)) out.coachStyle = v.coachStyle;
     if (isSkin(v.skin)) out.skin = v.skin;
     if (v.winChance === true) out.winChance = true;
   } catch {
@@ -135,6 +152,7 @@ export function saveSettings(s: Settings): void {
         coachSource: isCoachSource(s.coachSource) ? s.coachSource : DEFAULT_COACH_SOURCE,
         answerFirst: s.answerFirst === true,
         coachThinking: isCoachThinking(s.coachThinking) ? s.coachThinking : DEFAULT_COACH_THINKING,
+        coachStyle: isCoachStyle(s.coachStyle) ? s.coachStyle : DEFAULT_COACH_STYLE,
         skin: isSkin(s.skin) ? s.skin : DEFAULT_SKIN,
         winChance: s.winChance === true,
       }),
