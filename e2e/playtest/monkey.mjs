@@ -181,6 +181,21 @@ export class Monkey {
     });
   }
 
+  /**
+   * Opens the folded hand (phones: `.hand-dock.is-collapsed`) when the seat has
+   * cards in hand and the engine waits on it. True when it clicked.
+   */
+  async unfoldHand() {
+    const hand = this.tap.me()?.zones.hand.cards ?? [];
+    if (!hand.length) return false;
+    const folded = this.page.locator('.hand-dock.is-collapsed .hand-dock-head');
+    if (!(await folded.count())) return false;
+    if (!(await folded.first().isVisible().catch(() => false))) return false;
+    await folded.first().click({ timeout: 3000 }).catch(() => {});
+    await sleep(250);
+    return true;
+  }
+
   /** The visible, clickable controls for card `id` (marked act/select), best first. */
   cardControls(dom, id, { anyMark = false } = {}) {
     const hits = dom.cards.filter((c) => c.vis && !c.disabled && c.ids.includes(id) && (anyMark || c.mark === 'act' || c.mark === 'select'));
@@ -244,6 +259,8 @@ export class Monkey {
       await sleep(150);
       dom = await this.dom();
     }
+    // A phone folds the hand to a peek strip when it is not what you need: open it as a person would.
+    if (!this.tap.ask && (await this.unfoldHand())) dom = await this.dom();
     const s = this.tap.state;
     const at = { t: Date.now(), turn: s?.turn ?? 0, phase: s?.phase ?? null, active: s?.activePlayer === this.tap.seat, frame: this.tap.frames.length, what: this.tap.ask ? `ask ${this.tap.ask.kind}: ${firstLine(this.tap.ask.prompt ?? this.tap.ask.title ?? '')}` : firstLine(this.tap.input?.prompt) };
     const r = this.tap.ask ? await this.answerAsk(dom) : await this.answerInput(dom);
@@ -872,7 +889,12 @@ export class Monkey {
     const dom = await this.dom();
     if (dom.sheet) await this.page.keyboard.press('Escape').catch(() => {});
     try {
-      await this.page.getByRole('button', { name: 'Concede', exact: true }).first().click({ timeout: 8000 });
+      // Desktop: the top bar's flag. Phone: the top bar's More menu.
+      const flag = this.page.getByRole('button', { name: 'Concede', exact: true }).first();
+      if (!(await flag.isVisible().catch(() => false))) {
+        await this.page.getByRole('button', { name: 'More' }).first().click({ timeout: 8000 });
+        await this.page.getByRole('menuitem', { name: /Concede/ }).first().click({ timeout: 8000 });
+      } else await flag.click({ timeout: 8000 });
       await this.page.locator('.btn-stop', { hasText: 'Concede' }).click({ timeout: 8000 });
       return await this.tap.until(() => !!this.tap.over, 20_000);
     } catch (e) {

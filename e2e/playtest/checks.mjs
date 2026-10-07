@@ -110,6 +110,8 @@ export function logCovers(log, turns) {
   return missing.length ? [`the Game Log has no header for turn${missing.length > 1 ? 's' : ''} ${missing.join(', ')} (it shows ${log.turns.join(' ') || 'none'})`] : [];
 }
 
+const BASICS = new Set(['Plains', 'Island', 'Swamp', 'Mountain', 'Forest', 'Wastes', 'Snow-Covered Plains', 'Snow-Covered Island', 'Snow-Covered Swamp', 'Snow-Covered Mountain', 'Snow-Covered Forest']);
+
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
@@ -118,7 +120,8 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * (cards it was shown, its own deck). Text and attribute values both count.
  */
 export async function hiddenLeaks(page, hidden, allowed) {
-  const names = [...hidden].filter((n) => n && n.length >= 4 && !allowed.has(n));
+  // Basic land names are also land types ("Savannah — Land — Forest"): never evidence of a leak.
+  const names = [...hidden].filter((n) => n && n.length >= 4 && !allowed.has(n) && !BASICS.has(n));
   if (!names.length) return [];
   const html = await page.evaluate(() => {
     const parts = [document.body.innerText];

@@ -938,7 +938,9 @@ seat (every decision and click) under `--out`, by default
 when it cannot run. Environment: `MTG_TABLE` (default `../mtg-table`),
 `FORGE_JAR`, `FORGE_RES`, and `SITE_DIR` (a built site to serve instead of
 building one). `--port-base` moves the engine, the helper, the room and the
-table off 8642–8646. The overnight run on the PC is mtg-table's lab job J103.
+table off 8642–8646. `--viewport phone` plays on a 390×844 touch screen
+(the hand folds, Concede is in the More menu), and `mixed` puts the friend
+on a phone at a table and every other solo game on one. The overnight run on the PC is mtg-table's lab job J103.
 
 ### Installable site test (CI)
 

@@ -25,6 +25,8 @@
  *   --reload 0|1             reload one seat mid-game and check the log and the seat (default 1)
  *   --out DIR                the report (default e2e/out/playtest-<time>)
  *   --headless 0             watch it
+ *   --viewport desktop|phone|mixed   the board's size: a desktop window, a phone (390×844, touch),
+ *                            or mixed (solo: every other game on a phone; table: the friend on a phone)
  *   --max-shots N            screenshots in all (default 300; each finding's first ones)
  *   --port-base N            the engine on N, its helper on N+1, the draft room on N+2, the
  *                            table on N+4 (default 8642, play.sh's own; the PC job uses another
@@ -60,7 +62,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Options
 
 function parseArgs(argv) {
-  const o = { mode: 'fake', games: 3, seed: 1, decks: null, turnCap: 30, coach: 'off', reload: 1, out: null, headless: true, stallS: 150, gameMinutes: 30, aiProfile: null, portBase: 8642, maxShots: 300 };
+  const o = { mode: 'fake', games: 3, seed: 1, decks: null, turnCap: 30, coach: 'off', reload: 1, out: null, headless: true, stallS: 150, gameMinutes: 30, aiProfile: null, portBase: 8642, maxShots: 300, viewport: 'desktop' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = () => argv[++i];
@@ -78,6 +80,7 @@ function parseArgs(argv) {
     else if (a === '--ai-profile') o.aiProfile = v();
     else if (a === '--port-base') o.portBase = Number(v());
     else if (a === '--max-shots') o.maxShots = Number(v());
+    else if (a === '--viewport') o.viewport = v();
     else if (a === '--help' || a === '-h') {
       console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('*/')[0]);
       process.exit(0);
@@ -85,6 +88,7 @@ function parseArgs(argv) {
   }
   if (!['fake', 'solo', 'table'].includes(o.mode)) throw new Error(`--mode ${o.mode}: fake, solo or table`);
   if (!['off', 'fake', 'real'].includes(o.coach)) throw new Error(`--coach ${o.coach}: off, fake or real`);
+  if (!['desktop', 'phone', 'mixed'].includes(o.viewport)) throw new Error(`--viewport ${o.viewport}: desktop, phone or mixed`);
   return o;
 }
 
@@ -220,8 +224,17 @@ function watchPage(game, seat) {
 
 let browser = null;
 
-async function newSeatPage(label, appOrigin) {
-  const ctx = await browser.newContext({ viewport: { width: 1366, height: 900 } });
+const PHONE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
+
+/** Which seats play on a phone: --viewport phone (all), mixed (the friend; every other solo game). */
+function phoneFor(label, i = 0) {
+  if (opts.viewport === 'phone') return true;
+  if (opts.viewport !== 'mixed') return false;
+  return label === 'friend' || (label === 'solo' && i % 2 === 1);
+}
+
+async function newSeatPage(label, appOrigin, phone = false) {
+  const ctx = await browser.newContext(phone ? PHONE : { viewport: { width: 1366, height: 900 } });
   await ctx.route('**/*', (route) => {
     const u = new URL(route.request().url());
     if (u.hostname === '127.0.0.1' || u.hostname === 'localhost') return route.continue();
@@ -247,7 +260,7 @@ async function newSeatPage(label, appOrigin) {
       c.failed = r.failure()?.errorText ?? 'failed';
     }
   });
-  return { label, ctx, page, tap, coach, appOrigin };
+  return { label, ctx, page, tap, coach, appOrigin, phone };
 }
 
 // ---------------------------------------------------------------------------
@@ -416,6 +429,8 @@ async function reloadCheck(s, onReload) {
 // The coach (optional)
 
 async function coachOn(s) {
+  // A phone's coach is a sheet over the board; its cadence is the same code, checked on a desktop seat.
+  if (s.phone) return;
   // The panel's own switch, as a person would turn it on.
   const sw = s.page.locator('.play-coach .switch input[type="checkbox"]').first();
   try {
@@ -488,7 +503,8 @@ async function runFake(app) {
     const rand = rng(opts.seed * 7919 + i);
     const engine = await startFakeEngine({ dropMode: 'default' });
     const game = { id: i + 1, mode: 'fake', seed: opts.seed, decks: { mine: 'fake (Mountains and goblins)', theirs: 'fake' }, findings: [], shots: 0, t0: Date.now() };
-    const s = await newSeatPage('solo', app);
+    const s = await newSeatPage('solo', app, phoneFor('solo', i));
+    game.viewport = s.phone ? 'phone' : 'desktop';
     const url = `${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}${helper ? `&coach=${encodeURIComponent(helper.url)}` : ''}`;
     s.finding = watchPage(game, s);
     await s.page.goto(url);
@@ -499,7 +515,7 @@ async function runFake(app) {
       rand,
       // The fake AI's deck (fake-engine.mjs AI_LIBRARY): the one card not in yours is Goblin Guide.
       hiddenFor: () => new Set(['Goblin Guide']),
-      allowedFor: (x) => x.tap.seen,
+      allowedFor: (x) => new Set([...x.tap.seen, ...x.tap.typeWords]),
       reloadSeat: s,
     });
     report.games.push(stripGame(game));
@@ -546,7 +562,8 @@ async function runSolo(app) {
       report.games.push(stripGame(game));
       continue;
     }
-    const s = await newSeatPage('solo', app);
+    const s = await newSeatPage('solo', app, phoneFor('solo', i));
+    game.viewport = s.phone ? 'phone' : 'desktop';
     s.finding = watchPage(game, s);
     // The seat and the helper by URL (the page's defaults are 8642/8643): a fake helper for the coach checks.
     const url = `${app}?play=1&seat=${encodeURIComponent(`ws://127.0.0.1:${PORTS.engine}/ws`)}&coach=${encodeURIComponent(helperFake ? helperFake.url : helper)}`;
@@ -566,7 +583,7 @@ async function runSolo(app) {
       askModel,
       rand,
       hiddenFor: () => aiNames,
-      allowedFor: (x) => new Set([...x.tap.seen, ...myNames]),
+      allowedFor: (x) => new Set([...x.tap.seen, ...x.tap.typeWords, ...myNames]),
       reloadSeat: s,
     });
     report.games.push(stripGame(game));
@@ -607,14 +624,16 @@ async function runTable(scratch) {
     const cube = cubes[(opts.seed + m) % cubes.length];
     const match = { id: m + 1, cube, games: [], findings: [], result: null, t0: Date.now() };
     log(`match ${match.id}: a ${cube} grid draft between two browsers`);
-    const host = await newSeatPage('host', `http://localhost:${ROOM}`);
-    const friend = await newSeatPage('friend', `http://127.0.0.1:${ROOM}`);
+    const host = await newSeatPage('host', `http://localhost:${ROOM}`, phoneFor('host'));
+    const friend = await newSeatPage('friend', `http://127.0.0.1:${ROOM}`, phoneFor('friend'));
     const both = [host, friend];
     const mgame = { id: `m${match.id}`, findings: match.findings, shots: 0, t0: Date.now() };
     for (const s of both) s.finding = watchPage(mgame, s);
     try {
       // The room, by clicking.
-      await host.page.goto(`http://localhost:${ROOM}/#draft/friend`);
+      // Off the default ports the page is told where its helper is (play.sh --coach-port's ?coachPort=).
+      const cp = PORTS.helper === 8643 ? '' : `?coachPort=${PORTS.helper}`;
+      await host.page.goto(`http://localhost:${ROOM}/${cp}#draft/friend`);
       await host.page.getByLabel('Your name').fill('Justin');
       const cubeSel = host.page.getByLabel('Cube');
       const values = await cubeSel.locator('option').evaluateAll((os) => os.map((o) => o.value));
@@ -624,7 +643,12 @@ async function runTable(scratch) {
       await host.page.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent === 'Create room' && !b.disabled), null, { timeout: 60_000 });
       await host.page.getByRole('button', { name: 'Create room' }).click();
       await host.page.getByText('Waiting for your friend').waitFor({ timeout: 15_000 });
-      const joinUrl = await host.page.locator('.fr-link input').last().inputValue();
+      let joinUrl = await host.page.locator('.fr-link input').last().inputValue();
+      if (cp && !/coachPort=/.test(joinUrl)) {
+        const u = new URL(joinUrl);
+        u.searchParams.set('coachPort', String(PORTS.helper));
+        joinUrl = u.toString();
+      }
       await friend.page.goto(joinUrl);
       await friend.page.getByLabel('Your name').fill('Sam');
       await friend.page.getByRole('button', { name: 'Join' }).click();
@@ -671,7 +695,7 @@ async function runTable(scratch) {
           askModel,
           rand,
           hiddenFor: (s) => hiddenOf(s === host ? 0 : 1),
-          allowedFor: (s) => new Set([...s.tap.seen, ...allowed(s === host ? 0 : 1)]),
+          allowedFor: (s) => new Set([...s.tap.seen, ...s.tap.typeWords, ...allowed(s === host ? 0 : 1)]),
           reloadSeat: g === 1 ? friend : host,
         });
         game.result = game.result === 'win' ? 'host won' : game.result === 'loss' ? 'friend won' : game.result;
@@ -765,30 +789,44 @@ async function main() {
 }
 
 let code = 0;
+let finishing = false;
+// Stopped from outside (a timeout, Ctrl-C, the lab runner): still stop play.sh and its JVM, and write the report.
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.on(sig, () => {
+    report.error = report.error ?? `stopped by ${sig}`;
+    code = code || 2;
+    void finish();
+  });
+}
 main()
   .catch((e) => {
     console.error(`playtest could not run: ${e.stack ?? e}`);
     report.error = String(e.stack ?? e);
     code = 2;
   })
-  .finally(async () => {
-    report.finished = new Date().toISOString();
-    const summary = writeReport(OUT, report);
-    for (const c of cleanups.reverse()) {
-      try {
-        await c();
-      } catch {
-        /* best effort */
-      }
+  .finally(() => finish());
+
+async function finish() {
+  if (finishing) return;
+  finishing = true;
+  report.finished = new Date().toISOString();
+  const summary = writeReport(OUT, report);
+  // play.sh and its JVM first (a browser that hangs on close must not keep the engine up).
+  for (const p of children) {
+    try {
+      process.kill(-p.pid, 'SIGTERM');
+    } catch {
+      /* gone */
     }
-    for (const p of children) {
-      try {
-        process.kill(-p.pid, 'SIGTERM');
-      } catch {
-        /* gone */
-      }
+  }
+  for (const c of cleanups.reverse()) {
+    try {
+      await Promise.race([c(), sleep(10_000)]);
+    } catch {
+      /* best effort */
     }
-    if (code === 0 && summary.findings > 0) code = 1;
-    console.log(`\n${summary.line}\nreport: ${path.join(OUT, 'report.md')}`);
-    setTimeout(() => process.exit(code), 2000);
-  });
+  }
+  if (code === 0 && summary.findings > 0) code = 1;
+  console.log(`\n${summary.line}\nreport: ${path.join(OUT, 'report.md')}`);
+  setTimeout(() => process.exit(code), 2000);
+}

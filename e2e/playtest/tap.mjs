@@ -14,14 +14,19 @@
  * this seat has been shown (for the hidden-information check).
  */
 
-/** Every card name an s2c body shows this seat: any object with a string `name` and an `id`, plus `alt` faces. */
-export function namesIn(body, out = new Set()) {
+/**
+ * Every card name an s2c body shows this seat: any object with a string `name` and an `id`, plus `alt` faces.
+ * With `words`, also every word of the type lines it shows ("Land — Forest"): a card named like a
+ * subtype (the basics) is on the page as a type, not as a card.
+ */
+export function namesIn(body, out = new Set(), words = null) {
   const walk = (v) => {
     if (!v || typeof v !== 'object') return;
     if (Array.isArray(v)) {
       for (const x of v) walk(x);
       return;
     }
+    if (words && typeof v.types === 'string') for (const w of v.types.split(/[\s—-]+/)) if (w) words.add(w);
     if (typeof v.name === 'string' && v.name && typeof v.id === 'number' && v.hidden !== true) out.add(v.name);
     for (const k of Object.keys(v)) walk(v[k]);
   };
@@ -44,6 +49,7 @@ export class SeatTap {
     this.gameId = null;
     this.games = []; // gameIds in order
     this.seen = new Set(); // card names shown to this seat
+    this.typeWords = new Set(); // words of the type lines shown to this seat
     this.lastFrameAt = Date.now();
     this.sockets = 0;
     this.open = false;
@@ -130,7 +136,7 @@ export class SeatTap {
     f.game = this.gameId;
     if (f.type !== 'ping' && f.type !== 'pong') {
       this.frames.push(f);
-      namesIn(f.body, this.seen);
+      namesIn(f.body, this.seen, this.typeWords);
     }
     this.wake();
   }
