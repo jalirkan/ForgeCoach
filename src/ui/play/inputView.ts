@@ -322,9 +322,13 @@ export function describeInput(
     const n = input.selectable.max;
     const what = input.selectable.mode === 'players' ? 'a player' : n > 1 ? `up to ${n}` : 'one';
     // "Source (12)\nWhat to do": headline the instruction, name the source.
-    const lines = p.split('\n').map((l) => l.trim()).filter(Boolean);
-    const source = lines.length > 1 ? lines[0]!.replace(/\s*\(\d+\)\s*$/, '') : null;
-    const ask = lines.length > 1 ? lines[lines.length - 1]! : lines[0] ?? 'Make a choice';
+    // InputSelectTargets: "Host - Select up to two target …\nTargeted:\n<names>\n(1 more can be targeted)".
+    const all = p.split('\n').map((l) => l.trim()).filter(Boolean);
+    const cut = all.findIndex((l) => /^Targeted:/i.test(l));
+    const lines = (cut >= 0 ? all.slice(0, cut) : all).filter((l) => !/^\(\d+ more can be targeted\)$/i.test(l));
+    const dash = lines.length === 1 ? /^(.+?) - (.+)$/.exec(lines[0]!) : null;
+    const source = dash ? dash[1]!.replace(/\s*\(\d+\)\s*$/, '') : lines.length > 1 ? lines[0]!.replace(/\s*\(\d+\)\s*$/, '') : null;
+    const ask = dash ? dash[2]! : lines.length > 1 ? lines[lines.length - 1]! : lines[0] ?? 'Make a choice';
     const how = selecting ? `Tap ${what} of the highlighted ${input.selectable.mode === 'players' ? 'players' : 'cards'}.` : 'Tap a card or player to choose it.';
     return {
       ...v,

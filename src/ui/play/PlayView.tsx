@@ -44,6 +44,8 @@ import { PhaseStrip } from './PhaseStrip.tsx';
 import { cardRole, describeInput, handNeeded, noticeLine, playerClickable, type ClickContext } from './inputView.ts';
 import { lastStateFrame } from './liveDecision.ts';
 import { PlayCoach } from './PlayCoach.tsx';
+import { ZonePickPanel } from './ZonePickPanel.tsx';
+import { zonePick } from './zonePick.ts';
 import { CombatArrows } from './CombatArrows.tsx';
 import { combatLinks } from './combatLines.ts';
 import { selectionSummary } from './selection.ts';
@@ -257,6 +259,8 @@ export function PlayView({
 
   // ---- the selection under way (dims the rest of the board) and the combat lines
   const selection = useMemo(() => selectionSummary(view, { attackers: chosenAtk.size, blockers: chosenBlk.size }), [view, chosenAtk, chosenBlk]);
+  // Cards the engine wants clicked that the board has no tile for (a graveyard target): their own panel.
+  const offBoard = useMemo(() => (ask || over ? null : zonePick(input, state, seat, view.mode)), [ask, over, input, state, seat, view.mode]);
   const links = useMemo(() => combatLinks(state, view.mode === 'block' ? chosenBlk : undefined), [state, view.mode, chosenBlk]);
 
   // ---- interaction context for tiles and avatars
@@ -316,6 +320,17 @@ export function PlayView({
   const [guidesOpen, setGuidesOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const closeLog = useCallback(() => setLogOpen(false), []);
+  // An engine question that arrives while a card's details, the log or a help sheet is open must not
+  // land behind it (they sit on the same layer): close them, and the question is the one thing on screen.
+  const askId = ask?.askId ?? null;
+  useEffect(() => {
+    if (askId === null) return;
+    setDetail(null);
+    setHelp(false);
+    setGuidesOpen(false);
+    setLogOpen(false);
+    setMenu(false);
+  }, [askId]);
   const [guideName, setGuideName] = useState<string | null>(guideNameNow);
   const [waitingNext, setWaitingNext] = useState(false);
   useEffect(() => {
@@ -445,6 +460,8 @@ export function PlayView({
   const myDeck = hello?.match?.yourDeck?.name ?? null;
   const myMove = !!(ask || (input && view.mode !== 'waiting' && view.mode !== 'yield' && !over));
   const match = matchBox(hello, over, snap.previousLogs, seat);
+
+  const zonePanel = offBoard ? <ZonePickPanel key={input?.prompt ?? ''} pick={offBoard} view={view} state={state} seat={seat} onOk={pressOk} onCancel={pressCancel} /> : null;
 
   const board =
     state && log && seat !== null ? (
@@ -626,7 +643,10 @@ export function PlayView({
             {wide ? (
               <div className={cx('play-cols', coachOpen && 'has-coach')}>
                 <main className="play-main">
-                  <div className="play-board">{board}</div>
+                  <div className="play-board">
+                    {board}
+                    {zonePanel}
+                  </div>
                   {dock}
                 </main>
                 {/* One sidebar: the turn and its steps, then the coach (foldable). */}
@@ -648,6 +668,7 @@ export function PlayView({
               <>
                 {!phoneCoach && <LogTab variant="edge" onClick={() => setLogOpen(true)} open={logOpen} />}
                 <div className="play-stage">
+                  {!phoneCoach && zonePanel}
                   <main className="phone-main play-phone-main" aria-hidden={phoneCoach || undefined}>
                     {board}
                   </main>
