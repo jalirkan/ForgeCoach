@@ -46,7 +46,10 @@
  * (play/tableLog.ts), and a new session on the same seat reads them back before
  * it connects: a page that comes back mid-game (a reload, a phone that dropped
  * the tab, Back to the room and the seat again) keeps the game's history, which
- * the bridge's catch-up — a snapshot — cannot give it.
+ * the bridge's catch-up — a snapshot — cannot give it. The board's seat against
+ * the AI does the same (`keepLog`, ui/play/usePlaySession.ts): its seat URL is
+ * the same for every game, and a kept log of another game is dropped at the
+ * first hello_ok of a new one, as on any new game.
  */
 import { PROTOCOL_VERSION } from '../protocol.ts';
 import type {
@@ -173,8 +176,14 @@ export interface SeatOptions {
    */
   table?: boolean;
   /**
-   * A table session's kept frames (play/tableLog.ts; default: the browser's
-   * store). null keeps nothing. Never used against the AI.
+   * Keep the log's frames in this browser against the AI too (play/tableLog.ts),
+   * so a page that comes back to the seat mid-game — a reload, a phone that
+   * dropped the tab — keeps the game's history. A table session always keeps them.
+   */
+  keepLog?: boolean;
+  /**
+   * The kept frames' store (play/tableLog.ts; default: the browser's store).
+   * null keeps nothing. Used by a table session, and against the AI with `keepLog`.
    */
   tableLog?: TableLogStore | null;
   /** How long a table session waits for its kept frames before it connects anyway (default 2 s). */
@@ -256,7 +265,8 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
   const pingMs = opts.pingMs ?? 25_000;
   const now = opts.now ?? (() => Date.now());
   const isTable = opts.table === true;
-  const tableStore: TableLogStore | null = isTable ? (opts.tableLog === undefined ? defaultTableLog() : opts.tableLog) : null;
+  const keeps = isTable || opts.keepLog === true;
+  const tableStore: TableLogStore | null = keeps ? (opts.tableLog === undefined ? defaultTableLog() : opts.tableLog) : null;
   const tableKey = tableLogKey(url);
 
   const builder = new LiveLogBuilder();

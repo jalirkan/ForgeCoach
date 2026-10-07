@@ -22,6 +22,9 @@ import { DeckEditor } from './DeckEditor.tsx';
 import { PickScreen } from './PickScreen.tsx';
 import { deckColoursOf, DraftSetup, MatchSetup } from './Setup.tsx';
 import { useDraftGame } from './useDraftGame.ts';
+import { BugFab, useBugContext } from '../bug/BugReport.tsx';
+import { EMPTY_SNAPSHOT } from '../../bug/report.ts';
+import { draftExtra } from '../../bug/draftExtra.ts';
 
 type View = 'setup' | 'draft' | 'build' | 'match';
 
@@ -61,6 +64,8 @@ export default function DraftApp({ onExit }: { onExit: () => void }) {
   const deck = useMemo(() => saved?.deck ?? (draft?.done ? initialDeck(draft.picks.you) : null), [saved?.deck, draft]);
   const known = useMemo(() => (draft ? knownAiCards(draft) : []), [draft]);
   const pending = !!saved && 'pending' in (saved.draft as object);
+  // Report a bug (mtg-table D411): only what the player's screen shows of the draft (never the AI's picks).
+  useBugContext(() => ({ ...EMPTY_SNAPSHOT, surface: 'draft', extra: { view, title: saved?.title ?? null, draft: draftExtra(draft), deck: view === 'build' || view === 'match' ? deck : null } }));
 
   let body;
   if (view === 'setup' || !saved) {
@@ -118,6 +123,7 @@ export default function DraftApp({ onExit }: { onExit: () => void }) {
     <>
       {body}
       <SettingsDialog open={settings} onClose={() => setSettings(false)} />
+      <BugFab />
     </>
   );
 }
