@@ -15,6 +15,12 @@
  * turn 1 on the play, right after the keep. Each turn's plan is asked once:
  * `planDue` answers null for a turn already in `asked`.
  *
+ * Not earlier: asking at the opponent's combat end or second main phase was
+ * measured and left out. In all 33 such cycles of the ten recorded games the
+ * Forge AI still changed its board after that point (a land, a creature, an
+ * enchantment), so the plan would miss it; and the AI's second main phase is
+ * short (0–3.5 s in the full-game playtest: its long think is in its first).
+ *
  * The plan stays on screen through the player's turn and the opponent's next
  * one, until the next cycle's plan replaces it (`currentPlan`). The player's
  * own asks ("ask" entries) sit beside it and never clear it.

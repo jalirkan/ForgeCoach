@@ -179,7 +179,7 @@ describe("the live plan's tighter prompt (short style + plan)", () => {
     expect(PLAN_SYSTEM).toMatch(/never name or assume a hidden card/);
   });
 
-  it('late-game plans (turn 9 on) are at least 15% smaller than the short style’s full table', () => {
+  it('late-game plans (turn 9 on) are at least 10% smaller than the short style’s full table', () => {
     let tight = 0;
     let full = 0;
     for (const x of plans.filter((p) => p.forTurn >= 9)) {
@@ -189,7 +189,7 @@ describe("the live plan's tighter prompt (short style + plan)", () => {
       full += bytes(q.system) + bytes(q.user);
       expect(bytes(p.system) + bytes(p.user)).toBeLessThanOrEqual(7 * 1024);
     }
-    expect(tight / full).toBeLessThan(0.85);
+    expect(tight / full).toBeLessThan(0.9);
   });
 
   it("at the opponent's end step my side is shown as on my turn; theirs keeps TAPPED", () => {

@@ -144,16 +144,17 @@ keywords, cards that work from your graveyard) without reminder text, and a
 shorter system prompt. Settings → **Live coach model** picks the model for live
 play: *Automatic* (the default) is Sonnet 5.5 with the least thinking (Opus
 5.5 and Sonnet 5.5 can't turn thinking off in Claude Code; Haiku can), or the
-Model above when that is Haiku. Measured on 13 recorded late-game plans with
-the real helper and Claude Code CLI:
+Model above when that is Haiku. Measured on 13 recorded late-game plans (turns
+10–25 of ten games) with the real helper and Claude Code CLI, before and after
+asked in turn (26 answers each):
 
 | setting | total p50 | total p90 | first line p50 | first line p90 | plans legal |
 |---|---|---|---|---|---|
-| before: Opus, thinking low, the short prompt | 14.2 s | 23.1 s | 9.3 s | 18.5 s | 13/13 |
-| Sonnet, least thinking, the plan prompt (Automatic) | 12.3 s | 14.6 s | 9.1 s | 10.7 s | 13/13 |
+| before: Opus, thinking low, the short prompt | 15.4 s | 23.2 s | 10.9 s | 18.2 s | 26/26 |
+| Automatic: Sonnet, least thinking, the plan prompt | 11.1 s | 16.0 s | 7.9 s | 12.8 s | 26/26 |
 | Haiku, thinking off, the plan prompt | 5.6 s | 7.4 s | 1.5 s | 1.8 s | 7/13 |
 
-Haiku is the only one that answers in seconds, but a third of its plans cast
+Haiku is the only one that answers in seconds, but nearly half its plans cast
 what is not in the hand or spend mana that is not there, so it is a choice in
 Settings, not the default. Replays, the film room, reviews, practice and the
 bench keep Settings → Model and Coach thinking.
