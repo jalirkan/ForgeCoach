@@ -8,15 +8,21 @@
  * or drag a card across), and the Basic Lands panel. "Suggest a build" asks
  * the deck assistant's builder (src/cube/builder.ts) to fill the mainboard
  * and the basics; its score and reasons stay in a quiet note.
+ *
+ * Export (ui/DeckExport.tsx): "Copy list" sits beside Submit (the stat bar on
+ * a wide screen, the bottom dock on a phone), so the deck on screen — picked
+ * by hand or suggested — is one tap from another game; the full export panel
+ * (count, .txt / .dck / .cod, Share…) is under the basic lands.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { buildDecks } from '../../cube/builder.ts';
 import type { CubeContext } from '../../cube/score.ts';
-import { BASIC_KEYS, BASIC_NAME, deckCount, deckFromBuild, mainNames, MIN_DECK, moveCard, setBasic, type BasicKey, type DeckState } from '../../draft/deck.ts';
+import { BASIC_KEYS, BASIC_NAME, deckCount, deckFromBuild, exportList, mainNames, MIN_DECK, moveCard, setBasic, type BasicKey, type DeckState } from '../../draft/deck.ts';
 import { kindCounts } from '../../draft/poolView.ts';
 import { IconChevronLeft } from '../Icons.tsx';
 import { cx } from '../util.ts';
 import { CardInfoSheet } from '../deck/sheets.tsx';
+import { CopyDeckButton, DeckExport } from '../DeckExport.tsx';
 import { Collection, usePrefs, ViewBar } from './Collection.tsx';
 import { ColourDots, MiniCurve } from './Pool.tsx';
 import { useCubeMeta } from './useCubeMeta.ts';
@@ -40,6 +46,7 @@ export function DeckEditor({
   onBack,
   kicker = 'Draft complete',
   cubeId,
+  deckName = 'Cube draft deck',
 }: {
   ctx: CubeContext;
   pool: string[];
@@ -50,6 +57,8 @@ export function DeckEditor({
   kicker?: string;
   /** For the card sheet's 17Lands numbers (cubes.ts `humanData`). */
   cubeId?: string;
+  /** The exported deck's name (file names, .dck / .cod). */
+  deckName?: string;
 }) {
   const meta = useCubeMeta(ctx)!;
   const [prefs, setPrefs] = usePrefs('deck-main', { layout: 'stacks', group: 'cmc', size: 104 });
@@ -59,6 +68,7 @@ export function DeckEditor({
   const count = deckCount(deck);
   const kinds = kindCounts(main, meta);
   const ok = count >= MIN_DECK;
+  const list = useMemo(() => exportList(deckName, deck), [deckName, deck]);
 
   const suggest = () => {
     setBusy(true);
@@ -102,6 +112,7 @@ export function DeckEditor({
         </span>
         <MiniCurve names={main} meta={meta} />
         <ColourDots names={main} meta={meta} />
+        <CopyDeckButton list={list} className="btn-line de-copy" short="Copy list" />
         <button className="btn-begin de-submit" onClick={onSubmit} disabled={!ok} title={ok ? undefined : `A deck needs at least ${MIN_DECK} cards`}>
           Submit deck <kbd>⌘⏎</kbd>
         </button>
@@ -172,10 +183,12 @@ export function DeckEditor({
               </details>
             </div>
           )}
+          <DeckExport list={list} className="de-export" />
         </aside>
       </div>
 
       <div className="dbuild-dock">
+        <CopyDeckButton list={list} className="btn-line dock-second de-dock-copy" short="Copy list" />
         <button className="btn-gold dock-main" onClick={onSubmit} disabled={!ok}>
           Submit deck · {count}
         </button>

@@ -20,7 +20,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';
 import type { CubeMeta } from '../../cube/meta.ts';
 import { aiFlagsFromDoc, noFlags, withMetaFlags, type AiFlags } from '../../draft/aiFlags.ts';
-import { deckCount, mainNames, toMatchDeck, type DeckState } from '../../draft/deck.ts';
+import { deckCount, exportList, mainNames, toMatchDeck, type DeckState } from '../../draft/deck.ts';
 import { boosterPackSize, BOOSTER_PACKS, progress, SEAT_OPTIONS, type Draft, type Format } from '../../draft/draft.ts';
 import {
   AI_POLICIES,
@@ -44,6 +44,7 @@ import { CubeGuideSheet } from '../guide/CubeGuide.tsx';
 import { guideFor } from '../../cube/guides/index.ts';
 import { Sheet } from '../Sheet.tsx';
 import { cx } from '../util.ts';
+import { DeckExport } from '../DeckExport.tsx';
 import type { StartOptions } from './useDraftGame.ts';
 
 const BASE = import.meta.env.BASE_URL;
@@ -428,8 +429,10 @@ export function MatchSetup({
   const supported = status === null ? null : status === 'ready' || status === 'asleep';
   const flags = useAiFlags(draft.cubeId, meta, cubeNames);
   const cube = cubeInfo(draft.cubeId);
-  const deckName = `${title} — ${deckColours ? colourLabel(wubrg(deckColours)) : 'my deck'}`;
+  const deckName = draftDeckName(title, deckColours);
   const yours = useMemo(() => (deck ? toMatchDeck(deckName, deck) : null), [deck, deckName]);
+  // Your own deck only: the AI's list never reaches the export.
+  const exported = useMemo(() => (deck ? exportList(deckName, deck) : null), [deck, deckName]);
   const ai = after?.aiDeck ?? null;
 
   useEffect(() => {
@@ -546,6 +549,7 @@ export function MatchSetup({
               Edit
             </button>
           </div>
+          {exported && <DeckExport list={exported} title="Export to another game" className="match-export" />}
         </section>
 
         <div className="vs" aria-hidden="true">
@@ -657,6 +661,11 @@ export function MatchSetup({
 }
 
 /** Your deck's main colours, from its spells. */
+/** The name a Draft vs AI deck goes by (the match launcher, the export). */
+export function draftDeckName(title: string, deckColours: string): string {
+  return `${title} — ${deckColours ? colourLabel(wubrg(deckColours)) : 'my deck'}`;
+}
+
 export function deckColoursOf(deck: DeckState | null, colorsOf: (n: string) => string): string {
   if (!deck) return '';
   const counts: Record<string, number> = {};

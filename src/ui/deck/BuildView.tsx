@@ -4,7 +4,7 @@
  *
  * The deck builder: the best three builds of the pool, the chosen one as
  * cards by mana value, its score and reasons, swaps with the score moving
- * live, export (text, Forge .dck) and the coach. The coach explains and
+ * live, export (ui/DeckExport.tsx: Copy list by the build tabs, the Export panel) and the coach. The coach explains and
  * suggests; only the player's taps change the deck.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -17,7 +17,7 @@ import {
   CURVE_LABELS,
   dckText,
   deckSlug,
-  deckText,
+  listFromBuild,
   evaluateBuild,
   mainDeck,
   PART_LABEL,
@@ -34,9 +34,10 @@ import { AnswerBox } from '../CoachPanel.tsx';
 import { cardsForPrompt, useCardInfo } from '../cardData.ts';
 import { ManaCost, PipRow } from '../Mana.tsx';
 import { Sheet } from '../Sheet.tsx';
-import { IconCheck, IconChevronDown, IconCopy, IconFile, IconPlay, IconUndo } from '../Icons.tsx';
+import { IconCheck, IconChevronDown, IconCopy, IconPlay, IconUndo } from '../Icons.tsx';
 import { copyText, cx } from '../util.ts';
 import { CubeCard } from './CubeCard.tsx';
+import { CopyDeckButton, DeckExport } from '../DeckExport.tsx';
 import { Collection, usePrefs, ViewBar } from '../draft/Collection.tsx';
 import { ColourDots, MiniCurve } from '../draft/Pool.tsx';
 import { useCubeMeta } from '../draft/useCubeMeta.ts';
@@ -146,6 +147,7 @@ export function BuildView({
             ))}
           </div>
           {metaChip}
+          <CopyDeckButton list={listFromBuild(current, cards, `${pool.name} — ${current.name}`)} className="btn btn-quiet bv-copy" short="Copy list" />
         </div>
       </div>
 
@@ -362,19 +364,9 @@ function SwapSheet({
   );
 }
 
-function download(name: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 function ExportBox({ b, pool, problems, name }: { b: DeckBuild; pool: string[]; problems: string[]; name: string }) {
   const [copied, setCopied] = useState<string | null>(null);
+  const list = useMemo(() => listFromBuild(b, pool, name), [b, pool, name]);
   const slug = deckSlug(name);
   const copy = async (what: string, text: string) => {
     setCopied((await copyText(text)) ? what : null);
@@ -383,41 +375,36 @@ function ExportBox({ b, pool, problems, name }: { b: DeckBuild; pool: string[]; 
   const cmd = `./scripts/play.sh --engine-only --deck decks/${slug}.dck --mirror`;
   return (
     <div className="card-box ex">
-      <div className="box-h">Export</div>
       {problems.length > 0 && <p className="tiny muted">Not a legal 40 yet — exports anyway.</p>}
-      <div className="ex-btns">
-        <button className="btn btn-quiet" onClick={() => copy('text', deckText(b, pool))}>
-          {copied === 'text' ? <IconCheck size={14} /> : <IconCopy size={14} />} Copy list
-        </button>
-        <button className="btn btn-quiet" onClick={() => copy('dck', dckText(b, pool, name))}>
-          {copied === 'dck' ? <IconCheck size={14} /> : <IconCopy size={14} />} Copy .dck
-        </button>
-        <button className="btn btn-quiet" onClick={() => download(`${slug}.dck`, dckText(b, pool, name))}>
-          <IconFile size={14} /> Download .dck
-        </button>
-      </div>
-      <details className="ex-how">
-        <summary>
-          <IconPlay size={13} /> Play it vs Forge <IconChevronDown size={13} />
-        </summary>
-        <ol>
-          <li>
-            Save <code>{slug}.dck</code> into your mtg-table checkout’s <code>decks/</code> folder.
-          </li>
-          <li>
-            Start the engine with it (<code>--mirror</code>: the AI plays a copy; or <code>--ai-deck decks/other.dck</code>):
-            <div className="cmd">
-              <code>{cmd}</code>
-              <button className="icon-btn" aria-label="Copy command" onClick={() => copy('cmd', cmd)}>
-                {copied === 'cmd' ? <IconCheck size={15} /> : <IconCopy size={15} />}
-              </button>
-            </div>
-          </li>
-          <li>
-            Back on the start page, press <b>Play vs Forge</b>. Add a play guide for the deck from the coach’s <i>Play guide</i> menu.
-          </li>
-        </ol>
-      </details>
+      <DeckExport list={list} title="Export">
+        <div className="ex-btns">
+          <button className="btn btn-quiet" onClick={() => copy('dck', dckText(b, pool, name))}>
+            {copied === 'dck' ? <IconCheck size={14} /> : <IconCopy size={14} />} Copy .dck
+          </button>
+        </div>
+        <details className="ex-how">
+          <summary>
+            <IconPlay size={13} /> Play it vs Forge <IconChevronDown size={13} />
+          </summary>
+          <ol>
+            <li>
+              Save <code>{slug}.dck</code> into your mtg-table checkout’s <code>decks/</code> folder.
+            </li>
+            <li>
+              Start the engine with it (<code>--mirror</code>: the AI plays a copy; or <code>--ai-deck decks/other.dck</code>):
+              <div className="cmd">
+                <code>{cmd}</code>
+                <button className="icon-btn" aria-label="Copy command" onClick={() => copy('cmd', cmd)}>
+                  {copied === 'cmd' ? <IconCheck size={15} /> : <IconCopy size={15} />}
+                </button>
+              </div>
+            </li>
+            <li>
+              Back on the start page, press <b>Play vs Forge</b>. Add a play guide for the deck from the coach’s <i>Play guide</i> menu.
+            </li>
+          </ol>
+        </details>
+      </DeckExport>
     </div>
   );
 }

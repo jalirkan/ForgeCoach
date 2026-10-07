@@ -1,0 +1,125 @@
+/*
+ * ForgeCoach — ui/deckExport.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The deck export panel and its copy button (ui/DeckExport.tsx), on the .fx
+ * tokens of the screen around it.
+ */
+.dx {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  background: rgba(var(--fx-warm-rgb), 0.025);
+}
+.dx-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.dx-count {
+  font: 12px/1.2 var(--mono);
+  color: var(--text-2);
+}
+.dx-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.dx-primary {
+  width: 100%;
+}
+.dx-copy.is-copied {
+  filter: saturate(0.6) brightness(1.1);
+}
+.dx-hint,
+.dx-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.dx-note {
+  color: var(--gold-hi);
+}
+.dx-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dx-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 7px;
+  font: 500 12.5px/1 var(--font);
+  color: var(--text-2);
+  background: rgba(var(--fx-warm-rgb), 0.03);
+}
+.dx-small:hover,
+.dx-small.is-on {
+  border-color: var(--gold);
+  color: var(--gold-hi);
+}
+.dx-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dx-text {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 120px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 7px;
+  font: 12.5px/1.45 var(--mono);
+  color: var(--text);
+  background: var(--fx-field);
+  resize: vertical;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.dx-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.dx-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--fx-scrim);
+}
+.dx-modal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(480px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  background: var(--fx-sheet);
+  box-shadow: var(--shadow);
+}
+.dx-modal-card .dx-row {
+  justify-content: flex-end;
+}

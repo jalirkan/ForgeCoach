@@ -11,6 +11,7 @@
 import { BASIC_OF, BASIC_NAMES } from '../cube/colors.ts';
 import { mainDeck, sideboard, type DeckBuild } from '../cube/builder.ts';
 import { safeDeckName, type MatchDeck } from './launch.ts';
+import { makeDeckList, type DeckList } from '../cube/deckExport.ts';
 
 export const BASIC_KEYS = ['W', 'U', 'B', 'R', 'G', 'C'] as const;
 export type BasicKey = (typeof BASIC_KEYS)[number];
@@ -83,4 +84,9 @@ export function toMatchDeck(name: string, d: DeckState): MatchDeck {
 /** A build plus its pool as the launcher's deck shape (the AI's deck: named by its archetype). */
 export function matchDeck(name: string, b: DeckBuild, pool: string[]): MatchDeck {
   return { name: safeDeckName(name), main: mainDeck(b), sideboard: counted(sideboard(b, pool)) };
+}
+
+/** This player's deck as the shared export's deck (cube/deckExport.ts): exactly the deck on screen, its sideboard the rest of the pool. */
+export function exportList(name: string, d: DeckState): DeckList {
+  return makeDeckList(name, counted(mainNames(d)), counted(d.side));
 }

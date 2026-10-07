@@ -20,7 +20,7 @@ import { initialDeck } from '../../draft/deck.ts';
 import { SettingsDialog } from '../SettingsDialog.tsx';
 import { DeckEditor } from './DeckEditor.tsx';
 import { PickScreen } from './PickScreen.tsx';
-import { deckColoursOf, DraftSetup, MatchSetup } from './Setup.tsx';
+import { deckColoursOf, draftDeckName, DraftSetup, MatchSetup } from './Setup.tsx';
 import { useDraftGame } from './useDraftGame.ts';
 import { BugFab, useBugContext } from '../bug/BugReport.tsx';
 import { EMPTY_SNAPSHOT } from '../../bug/report.ts';
@@ -117,7 +117,8 @@ export default function DraftApp({ onExit }: { onExit: () => void }) {
       />
     );
   } else {
-    body = <DeckEditor ctx={ctx} cubeId={draft.cubeId} pool={draft.picks.you} deck={deck ?? initialDeck(draft.picks.you)} onDeck={game.setDeck} onSubmit={() => go('match')} onBack={() => go('setup')} />;
+    body = <DeckEditor ctx={ctx} cubeId={draft.cubeId} pool={draft.picks.you} deck={deck ?? initialDeck(draft.picks.you)} onDeck={game.setDeck} onSubmit={() => go('match')} onBack={() => go('setup')}
+        deckName={draftDeckName(saved.title || 'Practice draft', deckColoursOf(deck, (n) => ctx.facts.get(n)?.colors ?? ''))} />;
   }
   return (
     <>

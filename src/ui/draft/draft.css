@@ -1364,6 +1364,32 @@ button.seat-chip:hover {
   min-height: 54px;
   font-size: 17px;
 }
+/* Deck export (ui/DeckExport.tsx): Copy list beside Submit — the dock on a phone, the stat bar on a wide screen. */
+.dbuild-dock {
+  gap: 8px;
+}
+.dbuild-dock .de-dock-copy {
+  min-height: 54px;
+  padding: 0 14px;
+  letter-spacing: 0.08em;
+}
+.de-stat .de-copy {
+  display: none;
+  margin-left: auto;
+  min-height: 44px;
+}
+.de-copy + .de-submit {
+  margin-left: 0;
+}
+.de-export {
+  margin-top: 18px;
+}
+/* The bug button sits above the deck dock, not over its Copy list. */
+@media (max-width: 999.98px) {
+  body:has(.dbuild-dock) .bug-fab {
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /* Set-up screens (the draft table and the match) */
@@ -2002,7 +2028,8 @@ button.seat-chip:hover {
   .wfan-h .serif-h {
     font-size: 26px;
   }
-  .de-submit {
+  .de-submit,
+  .de-stat .de-copy {
     display: inline-flex;
   }
   .de-top,
@@ -2301,4 +2328,9 @@ button.seat-chip:hover {
   font-size: 11.5px;
   line-height: 1.45;
   color: var(--muted);
+}
+.match-export {
+  align-self: stretch;
+  margin-top: 14px;
+  text-align: left;
 }

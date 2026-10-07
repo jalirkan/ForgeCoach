@@ -1062,6 +1062,9 @@ textarea.paste-text {
   gap: 8px;
   flex-wrap: wrap;
 }
+.bv-opts .bv-copy {
+  margin-left: auto;
+}
 .bv-opts .seg > button {
   min-width: 44px;
 }

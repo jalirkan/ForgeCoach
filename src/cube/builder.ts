@@ -31,6 +31,7 @@ import { BASIC_OF, BASIC_NAMES, COLOURS, colourLabel, colourPairs, type Colour }
 import { castableIn, splashColourOf } from './facts.ts';
 import { findArchetype, type LandStat, type MetaArchetype } from './meta.ts';
 import { cardValue, humanValueNote, isInteraction, metaValue, pairsAmong, pct, synergyOf, themeCountsOf, topThemes, type CubeContext } from './score.ts';
+import { countNames, deckListText, deckSlug, dckFileText, makeDeckList, type DeckList } from './deckExport.ts';
 
 export const DECK_SIZE = 40;
 export const DEFAULT_CURVE = [3, 6, 5, 4, 3, 2];
@@ -705,30 +706,19 @@ export function checkBuild(b: DeckBuild, pool: string[], ctx: CubeContext): stri
   return errs;
 }
 
-/** Plain text list (paste into MTGA-style tools or a chat). */
+/** The build as the shared export's deck (cube/deckExport.ts): the 40, and the rest of the pool as the sideboard. */
+export function listFromBuild(b: DeckBuild, pool: string[], name: string): DeckList {
+  return makeDeckList(name, mainDeck(b), countNames(sideboard(b, pool)));
+}
+
+/** Plain text list (paste into Arena, MTGO, Moxfield, Cockatrice or a chat). */
 export function deckText(b: DeckBuild, pool: string[]): string {
-  const lines = ['Deck', ...mainDeck(b).map(([n, c]) => `${n} ${c}`)];
-  const sb = sideboard(b, pool);
-  if (sb.length) lines.push('', 'Sideboard', ...sb.map((c) => `1 ${c}`));
-  return `${lines.join('\n')}\n`;
+  return deckListText(listFromBuild(b, pool, ''));
 }
 
 /** Forge's .dck (names only: Forge picks the printing). */
 export function dckText(b: DeckBuild, pool: string[], name: string): string {
-  const lines = ['[metadata]', `Name=${name}`, '[Main]', ...mainDeck(b).map(([n, c]) => `${n} ${c}`), '[Sideboard]'];
-  const counts = new Map<string, number>();
-  for (const s of sideboard(b, pool)) counts.set(s, (counts.get(s) ?? 0) + 1);
-  for (const [s, n] of counts) lines.push(`${n} ${s}`);
-  return `${lines.join('\n')}\n`;
+  return dckFileText(listFromBuild(b, pool, name));
 }
 
-/** A file-name-safe slug for a deck name. */
-export function deckSlug(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 48) || 'deck'
-  );
-}
+export { deckSlug };

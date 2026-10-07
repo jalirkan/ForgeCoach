@@ -38,7 +38,7 @@ import './draft.css';
 import './friend.css';
 import { CUBES, cubeInfo } from '../../cube/cubes.ts';
 import { newPool, savePool } from '../../cube/pools.ts';
-import { deckCount, toMatchDeck } from '../../draft/deck.ts';
+import { deckCount, exportList, toMatchDeck } from '../../draft/deck.ts';
 import {
   cleanName, createRoom, cubeHash, forgetRoom, friendLinks, loadRooms, ownerRoomBase, parseJoinHash, replayMatches, RoomClient, RoomError, roomSupport,
   saveRoom, type RoomState, type SavedRoom,
@@ -49,6 +49,7 @@ import { useCubeData } from '../deck/useCubeData.ts';
 import { IconChevronLeft } from '../Icons.tsx';
 import { SettingsDialog } from '../SettingsDialog.tsx';
 import { DeckEditor } from './DeckEditor.tsx';
+import { DeckExport } from '../DeckExport.tsx';
 import { PickScreen } from './PickScreen.tsx';
 import { RoomOwnerControls } from './RoomOwnerControls.tsx';
 import { startingDeck, useFriendRoom } from './useFriendRoom.ts';
@@ -489,6 +490,7 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
 
   const pool = state.seats[state.you].picks;
   const deck = startingDeck(room.entry, pool);
+  const deckName = `${state.seats[state.you].name}’s ${state.cube.title} deck`;
   if (build) {
     return (
       <DeckEditor
@@ -500,11 +502,13 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
         onSubmit={() => go(roomHash(state.id, state.you))}
         onBack={() => go(roomHash(state.id, state.you))}
         kicker={`Draft with ${opponent} · complete`}
+        deckName={deckName}
       />
     );
   }
-  const md = toMatchDeck(`${state.seats[state.you].name}’s ${state.cube.title} deck`, deck);
-  const text = [...md.main.map(([n, c]) => `${n} ${c}`), ...(md.sideboard?.length ? ['', 'Sideboard', ...md.sideboard.map(([n, c]) => `${n} ${c}`)] : [])].join('\n');
+  const md = toMatchDeck(deckName, deck);
+  // This seat's own deck and picks only: the friend's list never comes to this page.
+  const list = exportList(deckName, deck);
   return (
     <div className="fx setup fr">
       <header className="setup-top">
@@ -532,13 +536,11 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
           {deckCount(deck)} cards in the main deck{room.entry.deck ? '' : ' (not built yet: every card you drafted)'}.
         </p>
         <div className="fr-actions">
-          <button className="btn-line" onClick={() => void copy(text)}>
-            Copy the list
-          </button>
-          <button className="btn-gold" onClick={() => go(roomHash(state.id, state.you, true))}>
+          <button className={room.entry.deck ? 'btn-line' : 'btn-gold'} onClick={() => go(roomHash(state.id, state.you, true))}>
             {state.match && !state.match.over && (state.games ?? []).some((x) => x.match === state.match!.n) ? 'Sideboard: edit your deck' : room.entry.deck ? 'Edit your deck' : 'Build your deck'}
           </button>
         </div>
+        <DeckExport list={list} title="Export to another game" className="fr-export" />
       </section>
       {reviewNote && <p className="fr-error" role="alert">{reviewNote}</p>}
       <HandIn state={state} room={room} deckText={md} opponent={opponent} onOpenReview={openReview} />
