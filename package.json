@@ -17,6 +17,7 @@
     "e2e:table": "node e2e/table.e2e.mjs",
     "test:e2e": "node e2e/seat.e2e.mjs",
     "test:pwa": "node e2e/pwa.e2e.mjs",
+    "playtest": "node --experimental-transform-types --no-warnings e2e/playtest/run.mjs",
     "bench:coach": "node bench/coach/run.mjs",
     "human-cards": "node scripts/human-cards/run.mjs",
     "human-blend": "node scripts/human-cards/run.mjs blend-test"

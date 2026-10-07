@@ -7,13 +7,25 @@
  * is set, loopback bypassed), free ports, a seeded generator, and waiting for
  * an HTTP endpoint.
  */
+import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import net from 'node:net';
 
-/** playwright-core: the normal resolution first, then the sandbox's tool dir. */
+/**
+ * playwright-core: the normal resolution first, then PLAYWRIGHT_CORE (a directory holding it,
+ * e.g. a global install on the PC), the global npm root, and the sandbox's tool dir.
+ */
 export async function loadPlaywright() {
   const require = createRequire(import.meta.url);
-  const candidates = ['playwright-core', '/opt/node-tools/node_modules/playwright-core'];
+  const candidates = ['playwright-core'];
+  if (process.env.PLAYWRIGHT_CORE) candidates.push(process.env.PLAYWRIGHT_CORE);
+  try {
+    const root = execFileSync('npm', ['root', '-g'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    if (root) candidates.push(`${root}/playwright-core`);
+  } catch {
+    /* no npm on PATH */
+  }
+  candidates.push('/opt/node-tools/node_modules/playwright-core');
   for (const c of candidates) {
     try {
       const resolved = require.resolve(c);

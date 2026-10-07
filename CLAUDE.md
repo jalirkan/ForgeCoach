@@ -172,6 +172,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   `<cube>.meta.json` beside each; `vintage-cube-180.human.json` (17Lands,
   `cube/human.ts`).
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.
+- `e2e/playtest/` — the full-game playtest (`npm run playtest`, README § Full-game playtest). A UI-only monkey (`monkey.mjs`) reads the engine's offer from the seat socket (`tap.mjs`, Playwright's WebSocket events; it never sends a frame) and clicks the board's control for it. An offered option with no control is an `unreachable-option` finding. `checks.mjs` holds the invariants: stack panel, combat badges, the log through a reload, hidden names in the DOM. `scripts.mjs` (Forge card scripts: priority candidates), `decks.mjs` (cube drafts, `.dck`), `fakehelper.mjs`, `report.mjs`. Modes: `fake` (CI, the fake engine), `solo` (real Forge via POST /match), `table` (the draft room, two browsers, Bo3). Run with `--experimental-transform-types` (the npm script does).
 - `bench/` — `src/bench/coachBench.ts` (cases, legal choices, scoring, reports), `src/bench/grade.ts` (engine-graded regret tables, low-information rule, held-out set) and `bench/coach/` (cases, logs, card snapshot, the `npm run bench:coach` CLI): the coach benchmark. CI runs its dry run in `npm test`; real runs need the helper or a key; regret tables come from mtg-table's `tools/coach-grade.sh` (README § Coach benchmark, *Engine-graded regret*). Regret's yardstick is "best against Forge Default"; held-out cases (`holdout: true`) are never used to tune the prompt. Transient failures are retried; a call that still fails is a transport error, reported apart from format failures, and a run with any is not to be compared.
 
 ## Seat rule
@@ -189,6 +190,7 @@ npm run typecheck  # tsc --noEmit
 npm test           # vitest run
 npm run build      # tsc + vite build → dist/
 npm run bench:coach -- --dry-run   # coach benchmark, no model calls
+npm run playtest -- --mode fake --games 3   # whole games through the UI (fake engine; solo/table need mtg-table)
 ```
 
 Keep typecheck, test and build green before handing work back; CI
