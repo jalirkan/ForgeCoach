@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { askClaude, buildRequest, friendlyError, hasKey, loadSdk, loadSettings, onSettingsChange, saveSettings, SETTINGS_KEY, type Settings } from './claude.ts';
+import { askClaude, buildRequest, friendlyError, hasKey, isLiveModel, LIVE_FAST_MODEL, LIVE_THINKING, liveModelOf, liveThinkingOf, loadSdk, loadSettings, onSettingsChange, saveSettings, SETTINGS_KEY, type Settings } from './claude.ts';
 
 const prompt = { system: 'You are a Magic coach.', user: 'Should I attack?' };
 const settings: Settings = { apiKey: 'sk-ant-test', model: 'claude-opus-5-5', coachSource: 'apiKey' };
@@ -161,11 +161,11 @@ describe('settings', () => {
       getItem: (k: string) => mem.get(k) ?? null,
       setItem: (k: string, v: string) => void mem.set(k, v),
     });
-    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', liveModel: 'auto', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
     expect(hasKey()).toBe(false);
     saveSettings({ apiKey: ' sk-ant-abc ', model: 'claude-haiku-4-5', coachSource: 'helper' });
-    expect(JSON.parse(mem.get(SETTINGS_KEY)!)).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5', coachSource: 'helper', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
-    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5', coachSource: 'helper', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
+    expect(JSON.parse(mem.get(SETTINGS_KEY)!)).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5', liveModel: 'auto', coachSource: 'helper', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-abc', model: 'claude-haiku-4-5', liveModel: 'auto', coachSource: 'helper', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
     expect(hasKey()).toBe(true);
     mem.set(SETTINGS_KEY, JSON.stringify({ apiKey: 'k', model: 'gpt-4', coachSource: 'cloud' }));
     expect(loadSettings().model).toBe('claude-opus-5-5');
@@ -175,7 +175,7 @@ describe('settings', () => {
     mem.set(SETTINGS_KEY, JSON.stringify({ apiKey: 'k', answerFirst: 'yes' }));
     expect(loadSettings().answerFirst).toBe(false);
     mem.set(SETTINGS_KEY, '{not json');
-    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', liveModel: 'auto', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
   });
   it('migrates settings saved before the coach source existed to auto, keeping key and model', () => {
     const mem = new Map<string, string>([[SETTINGS_KEY, JSON.stringify({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5' })]]);
@@ -183,13 +183,13 @@ describe('settings', () => {
       getItem: (k: string) => mem.get(k) ?? null,
       setItem: (k: string, v: string) => void mem.set(k, v),
     });
-    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5', liveModel: 'auto', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
     const seen = vi.fn();
     const off = onSettingsChange(seen);
     saveSettings({ ...loadSettings(), coachSource: 'apiKey' });
     off();
     expect(seen).toHaveBeenCalledTimes(1);
-    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5', coachSource: 'apiKey', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: 'sk-ant-old', model: 'claude-sonnet-5-5', liveModel: 'auto', coachSource: 'apiKey', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
   });
   it('keeps the coach thinking choice (D346), and reads a missing or bad one as default', () => {
     const mem = new Map<string, string>();
@@ -240,7 +240,29 @@ describe('settings', () => {
   });
   it('works without localStorage', () => {
     vi.stubGlobal('localStorage', undefined);
-    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
+    expect(loadSettings()).toEqual({ apiKey: '', model: 'claude-opus-5-5', liveModel: 'auto', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: 'stack', winChance: false });
     expect(() => saveSettings({ apiKey: 'x', model: 'claude-opus-5-5', coachSource: 'auto' })).not.toThrow();
+  });
+});
+
+describe('the live coach model and thinking', () => {
+  it('Automatic is the fast live model unless Model is quicker still; a chosen one is used', () => {
+    expect(liveModelOf({ model: 'claude-opus-5-5' })).toBe(LIVE_FAST_MODEL);
+    expect(liveModelOf({ model: 'claude-opus-5-5', liveModel: 'auto' })).toBe(LIVE_FAST_MODEL);
+    expect(liveModelOf({ model: 'claude-haiku-4-5', liveModel: 'auto' })).toBe('claude-haiku-4-5');
+    expect(liveModelOf({ model: 'claude-haiku-4-5', liveModel: 'claude-opus-5-5' })).toBe('claude-opus-5-5');
+  });
+
+  it('live thinking is LIVE_THINKING unless Coach thinking is set to Low or Off', () => {
+    expect(liveThinkingOf({})).toBe(LIVE_THINKING);
+    expect(liveThinkingOf({ coachThinking: 'default' })).toBe(LIVE_THINKING);
+    expect(liveThinkingOf({ coachThinking: 'off' })).toBe('off');
+    expect(liveThinkingOf({ coachThinking: 'low' })).toBe('low');
+  });
+
+  it('the live model is saved and read back; a bad value is Automatic', () => {
+    expect(isLiveModel('auto')).toBe(true);
+    expect(isLiveModel('claude-haiku-4-5')).toBe(true);
+    expect(isLiveModel('gpt')).toBe(false);
   });
 });

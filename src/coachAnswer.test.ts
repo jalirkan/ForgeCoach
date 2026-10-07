@@ -72,6 +72,13 @@ describe('parseTerseAnswer (the short style)', () => {
     '**Details:** Holding Shock is tempting but the Bears block every turn.',
   ].join('\n');
 
+  it('ignores a code fence around the lines (a model that wraps them)', () => {
+    const p = parseTerseAnswer('```\nPlay: Land — Mountain\nWhy: curve out\n```\n---\n**Rule:** curve');
+    expect(p.commands).toEqual([{ label: 'Play', text: 'Land — Mountain' }]);
+    expect(p.why).toBe('curve out');
+    expect(p.more).not.toContain('```');
+  });
+
   it('reads the commands in order, the why, and keeps the rest for More', () => {
     const p = parseTerseAnswer(ANSWER);
     expect(p.terse).toBe(true);

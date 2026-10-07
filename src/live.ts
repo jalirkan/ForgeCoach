@@ -142,13 +142,18 @@ export class LiveLogBuilder {
     this.header = h;
   }
 
-  /** Synthesizes the session header a socket never carries (§8.1) from `hello_ok`. */
-  static headerFromHello(hello: HelloOkBody, v: number): SessionHeader {
+  /**
+   * Synthesizes the session header a socket never carries (§8.1) from `hello_ok`.
+   * `startedAt` is the hello_ok frame's own time when it has one: a reconnect or a
+   * reload gets that very frame again (M10), so the game keeps one key — the
+   * feedback and history keys, and the live coach's kept advice (adviceStore.ts).
+   */
+  static headerFromHello(hello: HelloOkBody, v: number, t?: number): SessionHeader {
     return {
       v,
       kind: 'session',
       gameId: hello.gameId,
-      startedAt: new Date().toISOString(),
+      startedAt: (typeof t === 'number' && Number.isFinite(t) && t > 0 ? new Date(t) : new Date()).toISOString(),
       seed: hello.seed,
       forgeVersion: hello.forgeVersion,
       forgeJarSha256: hello.forgeJarSha256,
@@ -179,7 +184,7 @@ export class LiveLogBuilder {
         this.reset();
       }
       if (synthesizeHeader) this.#helloStamp ??= { seq: f.seq, t: f.t };
-      if (!this.header && synthesizeHeader) this.header = LiveLogBuilder.headerFromHello(hello, f.v);
+      if (!this.header && synthesizeHeader) this.header = LiveLogBuilder.headerFromHello(hello, f.v, f.t);
     }
     // A catch-up between a new game's hello_ok and its first state can carry
     // the previous game's last state (M50); it belongs to no log we keep.

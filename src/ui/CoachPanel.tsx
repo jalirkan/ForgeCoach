@@ -453,6 +453,7 @@ export function stoppedNote(a: Pick<Answer, 'stopReasonNote' | 'text'>): string 
   const kept = a.text ? ' What it had written is kept.' : '';
   if (a.stopReasonNote === 'moved_on') return a.text ? `Stopped when the game moved on.${kept}` : 'Stopped when the game moved on, before it answered.';
   if (a.stopReasonNote === 'superseded') return `Replaced by a newer question.${kept}`;
+  if (a.stopReasonNote === 'reload') return a.text ? `Cut short when the page reloaded.${kept}` : 'Cut short when the page reloaded, before it answered.';
   return `Stopped.${kept}`;
 }
 

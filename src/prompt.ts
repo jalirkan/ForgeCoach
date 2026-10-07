@@ -94,6 +94,28 @@ const SHORT_FORMAT = [
   '**Details:** at most three short sentences: the tempting wrong play, what the opponent can do next.',
 ];
 
+/**
+ * The live plan's system prompt (auto-coach's plan for my turn, in the short
+ * style): the short style's format, said for a plan only, with the checks a plan
+ * gets wrong most (a land or spell that is not in the hand, mana over the sources).
+ * Shorter than the short style's, so the first line comes sooner.
+ */
+export const PLAN_SYSTEM = `You plan the next turn for a newer Magic: The Gathering player in a live game against the Forge AI. The engine state and card text below are exact: trust them, never memory. You can't see the opponent's hand or either library: never name or assume a hidden card.
+
+Plan only the one turn asked about, never a later one. Check: a land or spell must be in the listed hand (or an ability of a listed permanent). One land drop. Mana = the listed sources, one mana each, colours matter. {T} abilities once a turn. Equip is sorcery speed. Count lethal both ways before attacking.
+
+Reply with only these lines, in the order to do them — plain text, no preamble, no restating the board, no code fences:
+Play: <one action> — "Play: Land — Forest", "Play: Cast Shock → their Grizzly Bears", "Play: Activate <card> — <ability>". Leave out when there is nothing to play.
+Mana: <sources> right after each Play that costs mana (none after a land or a free spell), e.g. "Mana: R from Mountain, 1 from Swamp".
+Attack: <creatures> → <player or planeswalker>, or "Attack: none".
+Hold: <what to keep back>.
+If you draw <a land / a creature …>: <the change> — at most one, only when it changes the plan.
+Why: <one phrase, under 12 words> — exactly one, last.
+Then a line with only ---, then:
+${F_RULE}
+**Confidence:** high, medium or low, and a few words why when not high.
+**Details:** at most two short sentences.`;
+
 /** The coach's system prompt for a layout (`COACH_SYSTEM` is the classic one). */
 export function coachSystem(format: PromptFormat = 'classic'): string {
   if (format === 'short') return `${SHORT_INTRO}${SHORT_FORMAT.join('\n')}`;
@@ -185,7 +207,19 @@ function manaSourcesText(sources: ManaSource[]): string {
 // ---------------------------------------------------------------------------
 // Permanents
 
-function permanentLine(c: Card, byId: Map<number, AnyCard>): string {
+/**
+ * The live plan's view of the battlefield (`planView`): planning my next turn
+ * during the opponent's, my permanents are shown as they will be on my turn
+ * (untapped, no longer summoning sick) and nobody's combat or damage marks are
+ * shown, since cleanup clears them. The opponent's TAPPED stays: they do not
+ * untap before my turn, so a tapped creature of theirs can't block.
+ */
+interface PlanView {
+  /** The permanent's controller is the viewing seat and my untap step comes first. */
+  untapsFirst: boolean;
+}
+
+function permanentLine(c: Card, byId: Map<number, AnyCard>, view?: PlanView): string {
   const bits: string[] = [];
   let head = displayName(c);
   if (c.token) head += ' (token)';
@@ -198,22 +232,22 @@ function permanentLine(c: Card, byId: Map<number, AnyCard>): string {
   if (c.loyalty != null && !c.counters['LOYALTY'] && !c.counters['Loyalty']) bits.push(`loyalty ${c.loyalty}`);
   const kw = keywordsOf(c);
   if (kw.length) bits.push(kw.map((k) => k.toLowerCase().replace(/_/g, ' ')).join(', '));
-  if (c.tapped) bits.push('TAPPED');
-  if (c.sick && isCreature(c)) bits.push('SUMMONING SICK');
-  if (c.attacking) bits.push('ATTACKING');
-  if (c.blocking) bits.push('BLOCKING');
+  if (c.tapped && !view?.untapsFirst) bits.push('TAPPED');
+  if (c.sick && isCreature(c) && !view) bits.push('SUMMONING SICK');
+  if (c.attacking && !view) bits.push('ATTACKING');
+  if (c.blocking && !view) bits.push('BLOCKING');
   const ctr = counterText(c.counters);
   if (ctr) bits.push(`counters: ${ctr}`);
-  if (c.damage > 0) bits.push(`damage ${c.damage}`);
+  if (c.damage > 0 && !view) bits.push(`damage ${c.damage}`);
   if (c.attachedToId !== null) bits.push(`attached to ${displayName(byId.get(c.attachedToId))} #${c.attachedToId}`);
   if (c.attachmentIds.length) bits.push(`with ${c.attachmentIds.map((id) => `${displayName(byId.get(id))} #${id}`).join(', ')}`);
   return bits.join(' · ');
 }
 
-function landsLine(lands: Card[], cards?: Map<string, CardInfo>, chosen?: ChosenColors): string {
+function landsLine(lands: Card[], cards?: Map<string, CardInfo>, chosen?: ChosenColors, view?: PlanView): string {
   const groups = new Map<string, number>();
   for (const c of lands) {
-    const flags = [c.tapped ? 'TAPPED' : 'untapped'];
+    const flags = view?.untapsFirst ? [] : [c.tapped ? 'TAPPED' : 'untapped'];
     if (chosen && chosenColorSource(c, cards)) {
       const pick = chosen.get(c.id);
       flags.push(pick ? `chosen colour ${colorName(pick)}` : 'chosen colour not recorded');
@@ -221,13 +255,13 @@ function landsLine(lands: Card[], cards?: Map<string, CardInfo>, chosen?: Chosen
     if (c.token) flags.push('token');
     const ctr = counterText(c.counters);
     if (ctr) flags.push(ctr);
-    const key = `${displayName(c)} (${flags.join(', ')})`;
+    const key = flags.length ? `${displayName(c)} (${flags.join(', ')})` : displayName(c);
     groups.set(key, (groups.get(key) ?? 0) + 1);
   }
   return [...groups].map(([k, n]) => (n > 1 ? `${n}× ${k}` : k)).join('; ');
 }
 
-function battlefieldLines(p: PlayerState, byId: Map<number, AnyCard>, info?: Map<string, CardInfo>, chosen?: ChosenColors): string[] {
+function battlefieldLines(p: PlayerState, byId: Map<number, AnyCard>, info?: Map<string, CardInfo>, chosen?: ChosenColors, view?: PlanView): string[] {
   const cards = p.zones.battlefield.cards;
   const hidden = cards.filter((c) => isHidden(c));
   const visible = cards.filter((c) => !isHidden(c)) as Card[];
@@ -235,12 +269,12 @@ function battlefieldLines(p: PlayerState, byId: Map<number, AnyCard>, info?: Map
   const creatures = visible.filter((c) => isCreature(c) || (c.faceDown && !isLand(c)));
   const other = visible.filter((c) => !lands.includes(c) && !creatures.includes(c));
   const out: string[] = [];
-  out.push(`Lands (${lands.length}): ${lands.length ? landsLine(lands, info, chosen) : 'none'}`);
+  out.push(`Lands (${lands.length}): ${lands.length ? landsLine(lands, info, chosen, view) : 'none'}`);
   out.push(`Creatures (${creatures.length}):${creatures.length ? '' : ' none'}`);
-  for (const c of creatures) out.push(`  - ${permanentLine(c, byId)}`);
+  for (const c of creatures) out.push(`  - ${permanentLine(c, byId, view)}`);
   if (other.length) {
     out.push(`Other permanents (${other.length}):`);
-    for (const c of other) out.push(`  - ${permanentLine(c, byId)}`);
+    for (const c of other) out.push(`  - ${permanentLine(c, byId, view)}`);
   }
   if (hidden.length) out.push(`Hidden permanents: ${hidden.length}`);
   return out;
@@ -512,8 +546,11 @@ export interface PlanAsk {
   forTurn: number;
 }
 
-function planQuestion(d: Decision, seat: number, plan: PlanAsk): string {
+function planQuestion(d: Decision, seat: number, plan: PlanAsk, tight?: TightPlan): string {
   const s = d.state;
+  if (tight?.nextTurn) {
+    return `It is the opponent's ${phaseLabel(s.phase)}; my turn ${plan.forTurn} is next. My side above is shown as on my turn: untapped, nothing summoning sick. Plan my turn: land drop, spells and abilities in order with the mana that pays each, attacks, and what to hold back for the opponent's next turn. I draw a card I can't know yet: plan with the known hand, and add one "If you draw <a land / a creature …>:" line only when that card would change the plan. If something is worth doing now, before my turn (an instant, an ability), put it first.`;
+  }
   if (s.activePlayer === seat) {
     return `It is my turn ${s.turn} (${phaseLabel(s.phase)}). Plan the rest of my turn: land drop, spells and abilities in order with the mana that pays each, attacks, and what to hold back for the opponent's turn.`;
   }
@@ -610,6 +647,17 @@ export function shortCardNames(log: GameLog, d: Decision, cards: Map<string, Car
 // ---------------------------------------------------------------------------
 // The prompt
 
+/**
+ * The live plan's tighter prompt (live play, the short style, auto-coach's plan
+ * or its Ask again): only what planning a turn needs, so Claude Code reads less
+ * and starts sooner. Measured on recorded late-game plans (see liveCoachPrompt.test.ts).
+ * `nextTurn`: it is the opponent's turn and the plan is for mine, so my side is
+ * shown as on my turn (`PlanView`).
+ */
+interface TightPlan {
+  nextTurn: boolean;
+}
+
 function playerSection(
   log: GameLog,
   d: Decision,
@@ -617,6 +665,7 @@ function playerSection(
   cards: Map<string, CardInfo>,
   byId: Map<number, AnyCard>,
   chosen: ChosenColors,
+  tight?: TightPlan,
 ): string[] {
   const s = d.state;
   const viewer = p.id === log.seat;
@@ -630,17 +679,29 @@ function playerSection(
   const pc = Object.entries(p.counters).filter(([k, v]) => v && k.toLowerCase() !== 'poison');
   if (pc.length) out.push(`Player counters: ${pc.map(([k, v]) => `${v}× ${k}`).join(', ')}`);
   const pregame = !s.phase || !s.turn;
+  // The plan for my next turn: my side as on my turn (untapped); the opponent's as it stays.
+  const view: PlanView | undefined = tight?.nextTurn ? { untapsFirst: viewer } : undefined;
   if (!pregame) {
-    const sources = untappedManaSources(s, p.id, cards, chosen);
-    out.push(`Mana pool: ${manaPoolText(p)}`);
-    out.push(`Untapped mana sources: ${manaSourcesText(sources)}`);
+    if (view?.untapsFirst) {
+      out.push(`Mana sources on my turn (everything untaps): ${manaSourcesText(untappedManaSources(untappedFor(s, p.id), p.id, cards, chosen))}`);
+      // What is open right now, for an instant or ability before my turn.
+      const now = untappedManaSources(s, p.id, cards, chosen);
+      out.push(`Untapped now, before my turn: ${now.length ? manaSourcesText(now) : 'none'}${MANA_COLORS.some((c) => (p.manaPool[c] ?? 0) > 0) ? ` · mana pool ${manaPoolText(p)}` : ''}`);
+    } else {
+      const sources = untappedManaSources(s, p.id, cards, chosen);
+      if (!tight || MANA_COLORS.some((c) => (p.manaPool[c] ?? 0) > 0)) out.push(`Mana pool: ${manaPoolText(p)}`);
+      out.push(`Untapped mana sources: ${manaSourcesText(sources)}`);
+    }
     const facts = turnFacts(log, d.frameIndex, p.id);
     if (s.activePlayer === p.id) {
       out.push(`Land drop this turn: ${facts.landPlayed === null ? 'unknown' : facts.landPlayed ? 'USED' : 'available'}`);
     }
-    const casts = facts.cast.filter((c) => c.playerId === p.id).map((c) => c.name);
-    out.push(`Spells cast this turn: ${casts.length ? casts.join('; ') : 'none'}`);
-    out.push(`Permanents that left the battlefield this turn (revolt): ${facts.leftBattlefield.length ? facts.leftBattlefield.join('; ') : 'none'}`);
+    // This turn's spells and departures matter to a plan only in my own turn.
+    if (!tight || (viewer && s.activePlayer === p.id)) {
+      const casts = facts.cast.filter((c) => c.playerId === p.id).map((c) => c.name);
+      out.push(`Spells cast this turn: ${casts.length ? casts.join('; ') : 'none'}`);
+      out.push(`Permanents that left the battlefield this turn (revolt): ${facts.leftBattlefield.length ? facts.leftBattlefield.join('; ') : 'none'}`);
+    }
   }
   // At play-or-draw no hand is dealt yet: an empty hand is not something to judge.
   const playDraw = pregame && isPlayDrawInput(d.input, s);
@@ -648,17 +709,135 @@ function playerSection(
   if (viewer && !pregame) {
     const inst = instantSpeedOptions(s, p.id, cards, chosen);
     if (inst.length) {
-      out.push(
-        `Instant-speed options the mana covers (heuristic — check the text): ${inst.map((o) => `${o.name}${o.via === 'ability' ? ` (ability ${o.cost})` : o.cost ? ` ${o.cost}` : ''}`).join('; ')}`,
-      );
+      const what = tight?.nextTurn ? 'Instant-speed options now, before my turn (heuristic)' : 'Instant-speed options the mana covers (heuristic — check the text)';
+      out.push(`${what}: ${inst.map((o) => `${o.name}${o.via === 'ability' ? ` (ability ${o.cost})` : o.cost ? ` ${o.cost}` : ''}`).join('; ')}`);
     }
   }
   if (pregame) return out;
-  out.push(...battlefieldLines(p, byId, cards, chosen));
-  out.push(`Graveyard: ${namesList(gy.cards)}`);
+  out.push(...battlefieldLines(p, byId, cards, chosen, view));
+  if (!tight) out.push(`Graveyard: ${namesList(gy.cards)}`);
+  else if (viewer) {
+    // A plan needs only what works from my graveyard (its count is in the line above).
+    const usable = gy.cards.filter((c) => !isHidden(c) && worksFromGraveyard(visibleName(c), cards));
+    if (usable.length) out.push(`Graveyard, usable from there: ${namesList(usable)}`);
+  }
   if (ex.count) out.push(`Exile: ${namesList(ex.cards)}`);
   if (p.zones.command.count) out.push(`Command zone: ${namesList(p.zones.command.cards)}`);
   return out;
+}
+
+/** The state with `playerId`'s permanents untapped and no longer summoning sick (their untap step). */
+function untappedFor(s: GameStateBody, playerId: number): GameStateBody {
+  return {
+    ...s,
+    players: s.players.map((p) =>
+      p.id !== playerId
+        ? p
+        : {
+            ...p,
+            manaPool: {},
+            zones: {
+              ...p.zones,
+              battlefield: {
+                ...p.zones.battlefield,
+                cards: p.zones.battlefield.cards.map((c) => (isHidden(c) ? c : { ...(c as Card), tapped: false, sick: false })),
+              },
+            },
+          },
+    ),
+  } as GameStateBody;
+}
+
+function worksFromGraveyard(name: string | null | undefined, cards: Map<string, CardInfo>): boolean {
+  return !!name && WORKS_FROM_GRAVEYARD.test(infoFor(name, cards)?.oracleText ?? '');
+}
+
+/** Reminder text, "(…)": the plan's card text leaves it out (the model knows the keywords). */
+const REMINDER = /\s*\([^()]*\)/g;
+/** A line of oracle text that is only keywords ("Flying", "Vigilance, trample"), already in the state table. */
+const KEYWORD_LINE = /^[A-Z][a-z]+(?:[ -][a-z]+)*(?:,\s*[a-z]+(?:[ -][a-z]+)*)*$/;
+/** A land's lines that a plan does not need: its mana ability, and how it enters. */
+const PLAIN_LAND_LINE = /^(\{T\}(?:, Pay \d+ life)?: Add [^.]*\.|.*enters (?:the battlefield )?tapped.*|As .* enters, choose a colou?r\.?)$/;
+/** Text that works from my hand without casting the card (cycling, channel …). */
+const WORKS_FROM_HAND = /cycling|channel|ninjutsu|forecast|transmute|from your hand|discard this card|evoke|foretell|plot|suspend|blitz|dash/i;
+
+/** The card's oracle text as the plan's card text shows it: reminder text gone. */
+function planOracle(text: string): string {
+  return text
+    .split('\n')
+    .map((l) => l.replace(REMINDER, '').trim())
+    .filter((l) => l !== '')
+    .join('\n');
+}
+
+/** True when the text says nothing the state table does not (keywords only), or, for a land, only how it makes mana. */
+function plainText(info: CardInfo | undefined, land: boolean): boolean {
+  if (!info?.found) return false;
+  const lines = planOracle(info.oracleText).split('\n').filter(Boolean);
+  return lines.every((l) => KEYWORD_LINE.test(l) || (land && PLAIN_LAND_LINE.test(l)));
+}
+
+/** The plan's card text: each card's oracle text without its reminder text. */
+function planTexts(names: string[], cards: Map<string, CardInfo>): Map<string, CardInfo> {
+  const out = new Map<string, CardInfo>();
+  for (const n of names) {
+    const info = cards.get(n);
+    if (info) out.set(n, info.found ? { ...info, oracleText: planOracle(info.oracleText) } : info);
+  }
+  return out;
+}
+
+/** The mana value of a cost, X as 0 ({2}{G}{G} → 4, {X}{R} → 1, {W/P} → 1). */
+function manaValue(cost: string | null | undefined): number {
+  let n = 0;
+  for (const m of (cost ?? '').matchAll(/\{([^}]+)\}/g)) {
+    const sym = m[1]!;
+    if (/^\d+$/.test(sym)) n += Number(sym);
+    else if (sym !== 'X' && sym !== 'Y') n += 1;
+  }
+  return n;
+}
+
+/**
+ * The live plan's card text: only the cards that matter to planning a turn —
+ * in my hand when it could be cast next turn (mana value up to my mana sources
+ * plus a land drop) or works from the hand, permanents on either side whose
+ * text says more than their keywords (a land: more than its mana), what is on
+ * the stack, revealed cards, the command zone, and my graveyard's cards that
+ * work from there. Names that are cut keep their line in the state table.
+ */
+export function planCardNames(log: GameLog, d: Decision, cards: Map<string, CardInfo>): string[] {
+  const seat = log.seat;
+  const s = d.state;
+  const me = s.players.find((p) => p.id === seat);
+  const keep = new Set<string>();
+  const names = (cs: AnyCard[]) => cs.filter((c) => !isHidden(c) && !(c as Card).token).map((c) => c as Card);
+  const mana = me ? untappedManaSources(untappedFor(s, me.id), me.id, cards).length : 0;
+  for (const c of names(me?.zones.hand.cards ?? [])) {
+    const n = visibleName(c);
+    if (!n) continue;
+    const info = infoFor(n, cards);
+    const cost = info?.manaCost || c.manaCost;
+    const land = /\bLand\b/.test(info?.typeLine ?? c.types ?? '');
+    if (land ? !plainText(info, true) : manaValue(cost) <= mana + 1 || WORKS_FROM_HAND.test(info?.oracleText ?? '')) keep.add(n);
+  }
+  for (const p of s.players) {
+    for (const c of names(p.zones.battlefield.cards)) {
+      const n = visibleName(c);
+      if (!n || c.faceDown) continue;
+      if (!plainText(infoFor(n, cards), isLand(c) && !isCreature(c))) keep.add(n);
+    }
+  }
+  const elsewhere = new Set(coachCardNames(log, d, { graveyard: false }));
+  // Revealed cards, the stack, the command zone, the input's card: as coachCardNames has them.
+  const zoned = new Set<string>();
+  for (const c of [...(me?.zones.hand.cards ?? []), ...s.players.flatMap((p) => p.zones.battlefield.cards)]) {
+    const n = isHidden(c) ? null : visibleName(c);
+    if (n) zoned.add(n);
+  }
+  for (const n of elsewhere) if (!zoned.has(n)) keep.add(n);
+  for (const n of coachCardNames(log, d)) if (!elsewhere.has(n) && worksFromGraveyard(n, cards)) keep.add(n);
+  return coachCardNames(log, d).filter((n) => keep.has(n));
 }
 
 export function buildCoachPrompt(
@@ -675,6 +854,8 @@ export function buildCoachPrompt(
   const playDraw = pregame && isPlayDrawInput(d.input, s);
   // Colours chosen for the seat's own Thriving-style lands, from its own answers so far.
   const chosen = chosenColors(log, d.frameIndex, seat, cards);
+  // Live play's plan (short style): the tighter prompt.
+  const tight: TightPlan | undefined = opts?.plan && opts.format === 'short' && !pregame ? { nextTurn: s.activePlayer !== seat } : undefined;
 
   const round = s.round || Math.ceil((s.turn || 0) / 2);
   const whose = s.activePlayer === seat ? 'my turn' : `${playerName(s, s.activePlayer, seat)}'s turn`;
@@ -692,15 +873,17 @@ export function buildCoachPrompt(
   const others = s.players.filter((p) => p.id !== seat);
   for (const p of [...(me ? [me] : []), ...others]) {
     lines.push('');
-    lines.push(...playerSection(log, d, p, cards, byId, chosen));
+    lines.push(...playerSection(log, d, p, cards, byId, chosen, tight));
   }
 
-  lines.push('');
-  lines.push(...stackLines(s, seat, byId));
+  if (!tight || s.stack.length) {
+    lines.push('');
+    lines.push(...stackLines(s, seat, byId));
+  }
   const combat = combatLines(s, seat, byId);
   if (combat.length) lines.push(...combat);
 
-  const names = opts?.format === 'short' ? shortCardNames(log, d, cards) : coachCardNames(log, d);
+  const names = tight ? planCardNames(log, d, cards) : opts?.format === 'short' ? shortCardNames(log, d, cards) : coachCardNames(log, d);
   const seen = new Map<string, Card>();
   for (const c of byId.values()) {
     const n = visibleName(c);
@@ -708,9 +891,11 @@ export function buildCoachPrompt(
   }
   lines.push('');
   lines.push('# Card text');
-  lines.push(names.length ? formatCardTexts(names, cards, seen) : '(no non-basic cards in view)');
+  const texts = tight ? planTexts(names, cards) : cards;
+  lines.push(names.length ? formatCardTexts(names, texts, seen) : tight ? '(none with text that matters to the plan)' : '(no non-basic cards in view)');
 
-  const cubeSection = buildCubeContext(log, opts?.cube, d.frameIndex);
+  // The cube lab's numbers do not change a turn's plan.
+  const cubeSection = tight ? null : buildCubeContext(log, opts?.cube, d.frameIndex);
   if (cubeSection) lines.push('', cubeSection);
 
   if (playDraw) lines.push('', ...deckLines(log, d, cards));
@@ -723,9 +908,9 @@ export function buildCoachPrompt(
 
   lines.push('');
   lines.push('# Question');
-  lines.push(opts?.plan ? planQuestion(d, seat, opts.plan) : questionFor(d, seat, byId));
+  lines.push(opts?.plan ? planQuestion(d, seat, opts.plan, tight) : questionFor(d, seat, byId));
 
-  return { system: systemFor(coachSystem(opts?.format ?? 'classic'), log), user: lines.join('\n') };
+  return { system: systemFor(tight ? PLAN_SYSTEM : coachSystem(opts?.format ?? 'classic'), log), user: lines.join('\n') };
 }
 
 /** One paste-able block for the Claude app (system + user, clearly separated). */

@@ -7,7 +7,7 @@
  * whatever the store has for the selected key.
  */
 import { useSyncExternalStore } from 'react';
-import { askClaude, loadSettings, type AskPrompt, type CoachResult, type Settings, type StreamHandlers } from '../claude.ts';
+import { askClaude, liveModelOf, liveThinkingOf, loadSettings, type AskPrompt, type CoachResult, type Settings, type StreamHandlers } from '../claude.ts';
 import { askHelper, chooseSource, detectHelper, helperFresh, helperThinking, pageHelperTarget, peekHelper, type ActiveSource, type SourceNeed } from '../coachHelper.ts';
 
 /** 'queued': the coach helper has it in line behind another question (D325). */
@@ -101,7 +101,21 @@ function notify() {
   });
 }
 
+type SettledListener = (key: string, a: Answer) => void;
+const settledListeners = new Set<SettledListener>();
+/**
+ * Called each time an answer ends — done, stopped or failed — with its key and
+ * final state (the live coach keeps its advice across a reload: adviceStore.ts).
+ */
+export function onAnswerSettled(l: SettledListener): () => void {
+  settledListeners.add(l);
+  return () => settledListeners.delete(l);
+}
+
+const ENDED: ReadonlySet<AnswerStatus> = new Set(['done', 'stopped', 'error']);
+
 function set(key: string, patch: Partial<Answer>) {
+  const before = answers.get(key)?.status;
   const prev = answers.get(key) ?? {
     status: 'preparing' as const,
     text: '',
@@ -116,7 +130,35 @@ function set(key: string, patch: Partial<Answer>) {
     queuePosition: null,
     thinkingSince: null,
   };
-  answers.set(key, { ...prev, ...patch });
+  const next = { ...prev, ...patch };
+  answers.set(key, next);
+  notify();
+  if (ENDED.has(next.status) && (before !== next.status || patch.text !== undefined)) for (const l of settledListeners) l(key, next);
+}
+
+/**
+ * Puts back an answer kept across a page reload (the live coach's advice,
+ * adviceStore.ts): shown as it ended. Ignored when this page already has an
+ * answer for the key, or one is running.
+ */
+export function restoreAnswer(key: string, a: Pick<Answer, 'status' | 'text' | 'model' | 'source' | 'refused' | 'stopReasonNote' | 'error'>): void {
+  if (answers.has(key) || controllers.has(key)) return;
+  answers.set(key, {
+    status: a.status,
+    text: a.text,
+    thinking: '',
+    refused: a.refused,
+    model: a.model,
+    stopReason: null,
+    error: a.error,
+    errorKind: null,
+    fallbackFrom: null,
+    source: a.source,
+    queuePosition: null,
+    stopReasonNote: a.stopReasonNote,
+    thinkingSince: null,
+  });
+  snapVersion++;
   notify();
 }
 
@@ -192,6 +234,15 @@ export interface StartOptions {
    * came about twice as fast late in a game). Settings' own lower value wins.
    */
   thinkingCap?: 'low' | 'off';
+  /**
+   * Live play's answers (the play screen's plan and "Ask about this"):
+   * Settings → Live coach model (claude.ts `liveModelOf`: the measured fast default
+   * unless the player chose one) and, for the short style, live thinking
+   * (`liveThinkingOf`: Off, the lowest, unless Coach thinking is set to Low or Off).
+   * 'detailed' (Settings → Coach style: Detailed): the live model, with Coach
+   * thinking as set. Other screens keep Settings → Model and Coach thinking.
+   */
+  live?: 'short' | 'detailed';
 }
 
 const THINKING_ORDER = { off: 0, low: 1, default: 2 } as const;
@@ -231,7 +282,8 @@ export async function startAnswer(key: string, makePrompt: () => Promise<AskProm
     return;
   }
   // D346: a thinking cap goes only to a helper that lists it, so learn what it lists first.
-  const setThinking = settings.coachThinking ?? 'default';
+  const setThinking = opts.live === 'short' ? liveThinkingOf(settings) : (settings.coachThinking ?? 'default');
+  const model = opts.live ? liveModelOf(settings) : settings.model;
   const wantThinking = opts.thinkingCap && THINKING_ORDER[opts.thinkingCap] < THINKING_ORDER[setThinking] ? opts.thinkingCap : setThinking;
   if (source === 'helper' && wantThinking !== 'default' && !(helper?.state === 'ok' && helperFresh())) {
     own({ status: 'preparing', source });
@@ -274,7 +326,7 @@ export async function startAnswer(key: string, makePrompt: () => Promise<AskProm
       source === 'helper'
         ? await askHelper(prompt, handlers, {
             signal: ctrl.signal,
-            model: settings.model,
+            model,
             target: pageHelperTarget(),
             ...(supersedes ? { supersedes } : {}),
             ...(replaceRunning ? { replaceRunning } : {}),
@@ -287,7 +339,7 @@ export async function startAnswer(key: string, makePrompt: () => Promise<AskProm
               if (!ctrl.signal.aborted) own({ status: 'streaming', queuePosition: null, thinkingSince: answers.get(key)?.text ? null : now() });
             },
           })
-        : await askClaude(prompt, handlers, { signal: ctrl.signal, settings });
+        : await askClaude(prompt, handlers, { signal: ctrl.signal, settings: model === settings.model ? settings : { ...settings, model } });
     own({
       status: 'done',
       text: res.text || answers.get(key)?.text || '',
