@@ -28,8 +28,9 @@ describe('manifestUrlFor', () => {
 });
 
 describe('resolveScenery', () => {
-  it('is off by default and procedural when chosen', async () => {
-    expect(await resolveScenery(DEFAULT_PREFS, { fetch: serve(manifest), load: okLoad })).toBeNull();
+  it('is ForgeCoach art by default, off when chosen, and procedural when chosen', async () => {
+    expect(DEFAULT_PREFS).toMatchObject({ mode: 'pack', packUrl: FORGECOACH_PACK_URL });
+    expect(await resolveScenery({ ...DEFAULT_PREFS, mode: 'off' }, { fetch: serve(manifest), load: okLoad })).toBeNull();
     expect((await resolveScenery({ ...DEFAULT_PREFS, mode: 'procedural' }, { fetch: serve(manifest), load: okLoad }))!.source).toBe('procedural');
   });
 
