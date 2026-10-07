@@ -178,7 +178,45 @@ describe('a table seat that comes back mid-game keeps its log (both seats, a rea
     session.close();
   });
 
-  it('against the AI nothing is kept and the socket opens at once, as before', () => {
+  it('against the AI with keepLog (the board’s seat): a reload at turn 4 keeps the whole game’s log', async () => {
+    const AI_URL = 'ws://127.0.0.1:8642/ws';
+    const frames = s2c(SEATS[0]!);
+    const cut = cutAt(frames, 4);
+    const whole = await seat(AI_URL, { keepLog: true, tableLog: memoryTableLog() });
+    for (const f of frames) whole.sock.msg(f);
+    const want = lines(whole.session.snapshot().log);
+    const store = memoryTableLog();
+    const first = await seat(AI_URL, { keepLog: true, tableLog: store });
+    for (const f of frames.slice(0, cut)) first.sock.msg(f);
+    first.session.close();
+    await tick();
+    const again = await seat(AI_URL, { keepLog: true, tableLog: store });
+    for (const f of catchUp(frames.slice(0, cut))) again.sock.msg(f);
+    for (const f of frames.slice(cut)) again.sock.msg(f);
+    expect(lines(again.session.snapshot().log)).toEqual(want);
+    expect(again.session.snapshot().log!.frames.filter((f) => f.type === 'hello_ok')).toHaveLength(1);
+  });
+
+  it('against the AI with keepLog: the next match on the same seat URL starts a log of its own', async () => {
+    const AI_URL = 'ws://127.0.0.1:8642/ws';
+    const store = memoryTableLog();
+    const frames = s2c(SEATS[0]!);
+    const first = await seat(AI_URL, { keepLog: true, tableLog: store });
+    for (const f of frames.slice(0, cutAt(frames, 3))) first.sock.msg(f);
+    first.session.close();
+    await tick();
+    // POST /match: a new game id on the same seat.
+    const next = frames.slice(0, 4).map((f) => (f.type === 'hello_ok' || f.type === 'state' ? { ...f, body: { ...(f.body as object), gameId: 'match-next' } } : f)) as LoggedFrame[];
+    const again = await seat(AI_URL, { keepLog: true, tableLog: store });
+    for (const f of next) again.sock.msg(f);
+    const log = again.session.snapshot().log!;
+    expect(log.hello?.gameId).toBe('match-next');
+    expect(log.frames).toHaveLength(next.length);
+    await tick();
+    expect(await store.load(tableLogKey(AI_URL))).toHaveLength(next.length);
+  });
+
+  it('against the AI without keepLog nothing is kept and the socket opens at once, as before', () => {
     let loads = 0;
     const spy: TableLogStore = { ...memoryTableLog(), load: async () => (loads++, []), append: async () => void loads++ };
     const sockets: FakeSocket[] = [];
