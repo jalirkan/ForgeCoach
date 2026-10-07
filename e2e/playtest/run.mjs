@@ -325,6 +325,13 @@ async function playGame(game, seats, { scripts, askModel, rand, hiddenFor, allow
       }
       // Let the burst land before reading the board.
       await sleep(150);
+      // With the real coach, think like a person: wait for the question in flight to be answered
+      // (up to 2 min), so its latency is an answer's, not the time until the monkey moved on.
+      if (opts.coach === 'real' && s.coachOn) {
+        await sleep(400);
+        const t0 = Date.now();
+        while (s.coach.some((q) => q.end === null) && Date.now() - t0 < 120_000) await sleep(250);
+      }
       if (!s.tap.deciding()) continue;
       let r;
       try {
@@ -475,6 +482,8 @@ function coachSample(s, w) {
     .catch(() => {});
 }
 
+let coachLogSeen = 0;
+
 function coachSummary(game, seats, w) {
   const s = seats[0];
   const qs = s.coach.filter((c) => c.start >= game.t0);
@@ -484,8 +493,19 @@ function coachSummary(game, seats, w) {
   if (opts.coach === 'fake' && over.length) {
     game.findings.push({ game: game.id, seat: s.label, kind: 'coach-cadence', what: `auto-coach asked more than once in a turn cycle: ${over.map(([r, n]) => `round ${r}: ${n}`).join(', ')}`, shot: null });
   }
-  const lat = qs.filter((q) => q.end).map((q) => q.end - q.start);
-  return { questions: qs.length, perRound, latencyMs: lat, failed: qs.filter((q) => q.failed).length, blankSamples: w.blanks, oppTurnSamples: w.samples };
+  let lat = qs.filter((q) => q.end && !q.failed).map((q) => q.end - q.start);
+  let source = 'page';
+  // The real helper's own log says how long each answer took ("done …; 24449 ms"); the page cannot always
+  // tell (a streamed answer the board stops reading after its end shows as aborted).
+  if (opts.coach === 'real') {
+    const file = path.join(MTG, 'var', 'play', 'coach.log');
+    const lines = existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter((l) => /POST \/coach /.test(l)) : [];
+    const fresh = lines.slice(coachLogSeen);
+    coachLogSeen = lines.length;
+    lat = fresh.map((l) => /-> 200 \(done [^)]*?(\d+) ms\)/.exec(l)?.[1]).filter(Boolean).map(Number);
+    source = 'helper log';
+  }
+  return { questions: qs.length, answered: lat.length, latencySource: source, perRound, latencyMs: lat, stopped: qs.filter((q) => q.failed).length, blankSamples: w.blanks, oppTurnSamples: w.samples };
 }
 
 // ---------------------------------------------------------------------------

@@ -86,8 +86,8 @@ export function writeReport(out, report) {
   md.push('');
   if (lat || games.some((g) => g.coach)) {
     md.push('## Coach', '');
-    if (lat) md.push(`Latency per question (ms): n ${lat.n}, median ${lat.median}, p90 ${lat.p90}, max ${lat.max}.`, '');
-    for (const g of games) if (g.coach) md.push(`- game ${g.id}: ${g.coach.questions} question(s), per round ${JSON.stringify(g.coach.perRound)}, blank samples ${g.coach.blankSamples}/${g.coach.oppTurnSamples}${g.coach.failed ? `, ${g.coach.failed} failed` : ''}`);
+    if (lat) md.push(`Latency per answered question (ms, request to the end of the stream): n ${lat.n}, median ${lat.median}, p90 ${lat.p90}, max ${lat.max}.`, '');
+    for (const g of games) if (g.coach) md.push(`- game ${g.id}: ${g.coach.questions} question(s), ${g.coach.answered ?? '?'} answered (${g.coach.latencySource ?? 'page'}), per round ${JSON.stringify(g.coach.perRound)}, blank samples ${g.coach.blankSamples}/${g.coach.oppTurnSamples}${g.coach.stopped ? `, ${g.coach.stopped} stopped or superseded` : ''}${g.coach.latencyMs?.length ? `; latency in order (ms): ${g.coach.latencyMs.join(', ')}` : ''}`);
     md.push('');
   }
   writeFileSync(path.join(out, 'report.md'), md.join('\n'));
