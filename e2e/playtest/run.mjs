@@ -25,6 +25,7 @@
  *                            cadence are checked); real: the PC's helper (latency recorded)
  *   --reload 0|1             reload one seat mid-game and check the log and the seat (default 1)
  *   --out DIR                the report (default e2e/out/playtest-<time>)
+ *   --game-minutes N         wall clock before a game is abandoned (default 75)
  *   --headless 0             watch it
  *   --viewport desktop|phone|mixed   the board's size: a desktop window, a phone (390×844, touch),
  *                            or mixed (solo: every other game on a phone; table: the friend on a phone)
@@ -64,7 +65,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Options
 
 function parseArgs(argv) {
-  const o = { mode: 'fake', games: 3, seed: 1, decks: null, turnCap: 40, coach: 'off', reload: 1, out: null, headless: true, stallS: 150, gameMinutes: 30, aiProfile: null, portBase: 8642, maxShots: 300, viewport: 'desktop' };
+  const o = { mode: 'fake', games: 3, seed: 1, decks: null, turnCap: 40, coach: 'off', reload: 1, out: null, headless: true, stallS: 150, gameMinutes: 75, aiProfile: null, portBase: 8642, maxShots: 300, viewport: 'desktop' };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = () => argv[++i];
@@ -372,6 +373,7 @@ async function playGame(game, seats, { scripts, askModel, rand, hiddenFor, allow
   // A seat that conceded ends the game for both: wait for the other's over.
   if (!abandoned) await Promise.all(seats.map((s) => s.tap.until(() => !!s.tap.over, 30_000)));
   abandoned = abandoned ?? (allOver() ? null : 'no over');
+  if (abandoned) await seats[0].finding({ kind: 'abandoned', what: `the game was left without an end (${abandoned}) at turn ${seats[0].tap.state?.turn ?? '?'}` });
   await watchdog.catch(() => {});
 
   // The board's own word on the result.

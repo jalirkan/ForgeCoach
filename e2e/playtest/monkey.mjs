@@ -208,6 +208,8 @@ export class Monkey {
 
   async click(t, what) {
     this.clicks++;
+    // settle() waits for the engine's answer to this click: frames from now on count.
+    this.markBefore = this.tap.mark;
     this.lastDid = this.lastDid ? `${this.lastDid}; ${what}` : what;
     try {
       await this.page.locator(`[data-pt="${t}"]`).first().click({ timeout: 6000 });
@@ -253,7 +255,9 @@ export class Monkey {
 
   /** Waits for the next s2c frame (or ms), then a beat for React to draw it. */
   async settle(ms = 2500) {
-    const m = this.tap.mark;
+    // Since the last click (a frame that came while we checked the act is the answer), else from now.
+    const m = this.markBefore ?? this.tap.mark;
+    this.markBefore = null;
     await this.tap.until(() => this.tap.mark > m, ms);
     // Quiet for a moment: the engine often sends state, input and highlights in a burst.
     for (let i = 0; i < 10; i++) {
