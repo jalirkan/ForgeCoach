@@ -354,6 +354,11 @@ async function playGame(game, seats, { scripts, askModel, rand, hiddenFor, allow
       }
       if (r === 'stuck') {
         stuck++;
+        // The fake engine's scripted game never leaves a seat without a move: one step the monkey found no
+        // way out of is the monkey's or the board's (J109 3.1: a phone's End Turn, pressed as a missing Cancel).
+        if (opts.mode === 'fake' && stuck === 1) {
+          await s.finding({ kind: 'stuck-step', what: `a decision with nothing that moves it (${s.tap.ask ? `ask ${s.tap.ask.kind}` : `"${(s.tap.input?.prompt ?? '').split('\n')[0]}"`})` });
+        }
         if (stuck >= 4) {
           await s.finding({ kind: 'stuck', what: `the engine waits on this seat and the board offers nothing that moves it (${s.tap.ask ? `ask ${s.tap.ask.kind}` : `"${(s.tap.input?.prompt ?? '').split('\n')[0]}"`})` });
           if (!(await s.monkey.concede())) abandoned = 'stuck';

@@ -139,6 +139,29 @@ describe('turnFacts', () => {
   it('opponent’s turn casts are recorded for both players’ views (auto turn 10 Web Up)', () => {
     expect(turnFacts(auto, 830, 0).cast).toEqual([{ playerId: 1, name: 'Web Up' }]);
   });
+
+  // J109: the board asks on every frame of a live game; the fold goes on from where it stopped while
+  // the log grows. It must say exactly what a fold from the first frame says, at every step.
+  it('a growing log, followed frame by frame, gets the facts a fold from the start gets', () => {
+    for (const log of [auto, comfort]) {
+      // A log nobody asked about yet (its own first frame object): a fold from the start.
+      const fresh = (k: number, p: number) => turnFacts({ ...log, frames: [{ ...log.frames[0]! }, ...log.frames.slice(1, k + 1)] }, k, p);
+      for (let k = 0; k < log.frames.length; k++) {
+        // What a live session hands the board: a new snapshot (a new array) of the same frames, one more each time.
+        const live = { ...log, frames: log.frames.slice(0, k + 1) };
+        for (const p of [0, 1]) {
+          const got = turnFacts(live, k, p);
+          if (k % 23 === 0 || k === log.frames.length - 1) expect(got).toEqual(fresh(k, p));
+          // The caller's copy is its own.
+          got.cast.push({ playerId: 9, name: 'scribble' });
+          got.died.push('scribble');
+        }
+      }
+      // Back to an earlier frame (a replay's scrubber), then forward again.
+      expect(turnFacts(log, 830, 0)).toEqual(fresh(830, 0));
+      expect(turnFacts(log, log.frames.length - 1, 1)).toEqual(fresh(log.frames.length - 1, 1));
+    }
+  });
 });
 
 describe('permanent view', () => {

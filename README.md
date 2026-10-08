@@ -1001,7 +1001,9 @@ A finding is one of these:
 - an option the engine says is legal with no clickable control
   (`unreachable-option`, with a screenshot, the frame index, the ask or input
   and the card);
-- a seat the engine waits on with nothing to click (`stuck`), or no progress
+- a seat the engine waits on with nothing to click (`stuck`, after four
+  tries; against the fake engine, whose scripted game always has a move,
+  already the first such step: `stuck-step`), or no progress
   at all (the session's ping/pong is not progress, so a seat hung on a
   question ends in `no-progress` after `--stall-s`, not at the game's
   deadline);

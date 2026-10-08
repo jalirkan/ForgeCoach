@@ -47,6 +47,19 @@ function firstLine(s) {
   return (s ?? '').split('\n').find((l) => l.trim())?.trim() ?? '';
 }
 
+/**
+ * Why Playwright gave up on a click: its first line, and the call log's last reason (what intercepts the
+ * pointer, an element never stable). J109 1.2's Play with Fire kept only "Timeout 6000ms exceeded".
+ */
+export function clickWhy(e) {
+  const lines = String(e?.message ?? e).split('\n');
+  const reason = lines
+    .map((l) => l.replace(/\x1b\[[0-9;]*m/g, '').trim().replace(/^- /, ''))
+    .filter((l) => /intercepts pointer events|not stable|not visible|not enabled|detached|outside of the viewport/.test(l))
+    .at(-1);
+  return reason ? `${lines[0]} (${reason.slice(0, 200)})` : lines[0];
+}
+
 /** Mana value from a cost string ("{2}{R}{R}" → 4; X counts 0). */
 export function manaValue(cost) {
   if (!cost) return 0;
@@ -265,7 +278,7 @@ export class Monkey {
       return true;
     } catch (e) {
       // The moment moved on while we reached for it (J107: Rolling Thunder as a payment came in): not the board's fault.
-      if (this.tap.input === input && this.tap.ask === ask) await this.finding({ kind: 'control-not-clickable', what, why: String(e.message).split('\n')[0] });
+      if (this.tap.input === input && this.tap.ask === ask) await this.finding({ kind: 'control-not-clickable', what, why: clickWhy(e) });
       return false;
     }
   }
@@ -275,14 +288,20 @@ export class Monkey {
     return this.tap.input === input && (this.tap.ask?.askId ?? null) === (ask?.askId ?? null);
   }
 
+  /** The input or ask a finding is about is still the one the engine waits on this seat for. */
+  stillOpen(extra) {
+    if (extra.input && (this.tap.input !== extra.input || !this.tap.deciding())) return false;
+    if (extra.ask && this.tap.ask?.askId !== extra.ask.askId) return false;
+    return true;
+  }
+
   /** Records an unreachable option once per game and prompt. */
   async unreachable(what, extra = {}) {
     // Once per game per card and reason (not per step), else per text.
     const key = `${this.tap.gameId}|${extra.key ?? what}`;
     if (this.seenUnreach.has(key)) return;
     // Only a question still open is judged: one the engine replaced while we looked is not a finding.
-    if (extra.input && this.tap.input !== extra.input) return;
-    if (extra.ask && this.tap.ask?.askId !== extra.ask.askId) return;
+    if (!this.stillOpen(extra)) return;
     // What the board shows for it, to tell a missing control from one drawn but not marked.
     extra.ui = await this.page
       .evaluate((id) => {
@@ -303,6 +322,9 @@ export class Monkey {
         };
       }, extra.cardId)
       .catch(() => null);
+    // The probe ran in the page after every frame it had already taken: a question the engine closed meanwhile
+    // (the tap hears of it no earlier than the page) is not a finding either.
+    if (!this.stillOpen(extra)) return;
     this.seenUnreach.add(key);
     await this.finding({ kind: 'unreachable-option', what, ...extra });
   }
@@ -390,7 +412,7 @@ export class Monkey {
         await loc.click({ timeout: 5000 });
         return true;
       } catch (e) {
-        await this.finding({ kind: 'control-not-clickable', what, ask, why: String(e.message).split('\n')[0] });
+        await this.finding({ kind: 'control-not-clickable', what, ask, why: clickWhy(e) });
         return false;
       }
     };
@@ -665,6 +687,9 @@ export class Monkey {
   /** The engine's OK / Cancel, through the bar's (or the zone picker's) button. */
   async press(dom, which) {
     const b = dom.buttons.find((x) => x.which === which && x.vis && x.enabled && x.where === 'zpick') ?? this.button(dom, which);
+    // A phone keeps Forge's "End Turn" only as the bar's To EOT (ActionBar's duplicateEot): the same pass, sent
+    // as yieldTo. J109 3.1: a press of the missing Cancel came back "stuck" four times and the seat conceded.
+    if (!b && which === 'cancel' && /end turn/i.test(this.tap.input?.buttons.cancel.label ?? '') && dom.eot) return this.toEot(dom);
     if (!b) return false;
     const mark = this.tap.sent.length;
     const input = this.tap.input;
@@ -674,6 +699,17 @@ export class Monkey {
       // J107: "Go to combat" clicked as Garruk's payment came in — the button had become another one.
       if (this.same(input)) await this.finding({ kind: 'click-no-act', what: `${which} "${b.text}" sent no ${act}`, input: this.tap.input });
     }
+    await this.settle();
+    return true;
+  }
+
+  /** The bar's To EOT (a yieldTo act). True when it was clicked. */
+  async toEot(dom) {
+    if (!dom.eot) return false;
+    this.count('rare', 'to-eot');
+    const mark = this.tap.sent.length;
+    if (!(await this.click(dom.eot, 'To EOT'))) return false;
+    await this.sentSince(mark, (f) => f.type === 'act' && f.body?.action === 'yieldTo', 2500);
     await this.settle();
     return true;
   }
@@ -919,11 +955,7 @@ export class Monkey {
       return 'stuck';
     }
     if (choice.kind === 'eot') {
-      this.count('rare', 'to-eot');
-      const mark = this.tap.sent.length;
-      await this.click(dom.eot, 'To EOT');
-      await this.sentSince(mark, (f) => f.type === 'act' && f.body?.action === 'yieldTo', 2500);
-      await this.settle();
+      await this.toEot(dom);
       return 'priority:eot';
     }
     const { k } = choice;
@@ -1001,6 +1033,12 @@ export class Monkey {
     const players = dom.players.filter((p) => p.vis && p.select);
     const cards = dom.cards.filter((c) => c.vis && !c.disabled && (c.mark === 'act' || c.mark === 'select') && c.where !== 'hand');
     if (!players.length && !cards.length) {
+      // Forge ends a selection with one last update of the same prompt (the list emptied, every button off)
+      // just before it moves on. J109 2.1: the cleanup discard, taken; the frames that moved the game on sat
+      // 1.4 s in a busy page, and that last update was called a target nobody could click.
+      const open = () => this.tap.input === i && this.tap.deciding() && !this.tap.ask;
+      await this.tap.until(() => !open(), 2000);
+      if (!open()) return 'moved-on';
       await this.unreachable(`a target with nothing named: no player or card offered to click — "${firstLine(i.prompt)}"`, { input: i });
       return this.buttons(dom, 'open');
     }

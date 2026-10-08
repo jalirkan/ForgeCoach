@@ -203,7 +203,13 @@ export interface SceneryStep {
 export const MAX_TRACKED_STEPS = 16;
 
 export class SceneryTracker {
-  private log: GameLog | null = null;
+  /**
+   * The log it follows, known by its frames rather than its object: a live session hands the board a new
+   * snapshot (a new object, a new array of the same frames) on every frame, and starting over on each was
+   * the board's biggest cost in a long game (J109: seconds behind the wire by turn 60).
+   */
+  private first: unknown = null;
+  private atUpto: unknown = null;
   private lastSteps: SceneryStep[] = [];
   private upto = -1;
   private scenery: Scenery | null = null;
@@ -215,13 +221,15 @@ export class SceneryTracker {
   /** Change options (thresholds, card data); the next `at` starts over. */
   setOptions(opts: SceneryOptions) {
     this.opts = opts;
-    this.log = null;
+    this.first = null;
   }
 
   at(log: GameLog, frameIndex: number): Scenery {
     const end = Math.min(frameIndex, log.frames.length - 1);
-    if (this.log !== log || end < this.upto || !this.scenery) {
-      this.log = log;
+    // The same log, only grown (its first frame, and the frame it stopped at, where they were): go on.
+    const same = this.first !== null && log.frames[0] === this.first && log.frames[this.upto] === this.atUpto;
+    if (!same || end < this.upto || !this.scenery) {
+      this.first = log.frames[0] ?? null;
       this.upto = -1;
       this.scenery = null;
       this.prevScenery = null;
@@ -242,6 +250,7 @@ export class SceneryTracker {
     }
     if (steps.length || end !== this.upto) this.lastSteps = steps;
     this.upto = Math.max(this.upto, end);
+    this.atUpto = log.frames[this.upto];
     return this.scenery ?? emptyScenery(this.opts.thresholds);
   }
 
