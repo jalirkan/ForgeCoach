@@ -14,7 +14,7 @@ import { FORGECOACH_PACK_URL } from './prefs.ts';
 describe('pack-v5', () => {
   const manifest = JSON.parse(readFileSync(new URL('./testdata/pack-v5.scenery.json', import.meta.url), 'utf8'));
   const r = validateManifest(manifest, `${FORGECOACH_PACK_URL}scenery.json`);
-  it('is the default pack URL', () => expect(FORGECOACH_PACK_URL).toContain('@pack-v5/pack/'));
+  it('is the default pack URL', () => expect(FORGECOACH_PACK_URL).toContain('@pack-v5.1/pack/'));
   it('validates with no errors', () => {
     expect(r.errors).toEqual([]);
     expect(r.pack).toBeTruthy();
