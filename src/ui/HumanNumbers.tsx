@@ -2,7 +2,7 @@
  * ForgeCoach — ui/HumanNumbers.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Human card numbers from 17Lands (cube/human.ts) for the cube 17Lands covers:
+ * Human card numbers from 17Lands (cube/human.ts) for the cubes that ship them:
  * `useHumanCards` loads a cube's shipped `<file>.human.json` once per page,
  * `HumanCardFacts` shows one card's line (the pick screen's Lab numbers panel,
  * the card info sheet), `HumanSourceNote` the credit and the Arena caveat.
@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from 'react';
 import { cubeInfo } from '../cube/cubes.ts';
-import { ARENA_NOTE, HUMAN_TITLE, humanCardView, humanLine, humanSourceLine, humanVerdictLine, iwdLine, loadHumanCards, type HumanCards } from '../cube/human.ts';
+import { humanCardView, humanCoverageLine, humanLine, humanNote, humanSourceLine, humanTitle, humanVerdictLine, iwdLine, loadHumanCards, type HumanCards } from '../cube/human.ts';
 import { cx } from './util.ts';
 import './human.css';
 
@@ -67,7 +67,7 @@ export function HumanCardFacts({ data, name, compact }: { data: HumanCards; name
 export function HumanSourceNote({ data }: { data: HumanCards }) {
   return (
     <p className="hx-note">
-      <b>{HUMAN_TITLE}.</b> Data from{' '}
+      <b>{humanTitle(data)}.</b> {humanCoverageLine(data)}. Data from{' '}
       <a href={data.source.page} target="_blank" rel="noreferrer">
         17Lands public datasets
       </a>{' '}
@@ -75,7 +75,7 @@ export function HumanSourceNote({ data }: { data: HumanCards }) {
       <a href={data.source.licenceUrl} target="_blank" rel="license noreferrer">
         {data.source.licence}
       </a>
-      ), aggregated by ForgeCoach; 17Lands does not endorse it. {ARENA_NOTE} “Win when drawn” = games won when the card was in the opening hand or drawn, with a 95% Wilson interval; strong or weak only when the whole interval is clear of the format’s average.
+      ), aggregated by ForgeCoach; 17Lands does not endorse it. {humanNote(data)} “Win when drawn” = games won when the card was in the opening hand or drawn, with a 95% Wilson interval; strong or weak only when the whole interval is clear of the format’s average.
     </p>
   );
 }

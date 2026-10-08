@@ -8,6 +8,7 @@
  * --out DIR …`). Prints both folds, the decision, and the informational
  * variants. Uses the shipped cube document and meta and the tests' Scryfall
  * snapshot, so today's value is the one the deck assistant computes.
+ * Part 2 (`--cube <id> DIR`, `agree DIR`) is in part2Cli.ts.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -18,6 +19,7 @@ import { parseMeta } from '../../src/cube/meta.ts';
 import { parseHumanCards, type HumanCards } from '../../src/cube/human.ts';
 import { blendedValue, cardPrior, cardValue, HUMAN_DISCOUNT, humanValue, labValue, makeContext, metaValue, type CubeContext } from '../../src/cube/score.ts';
 import { pairedBootstrap, spearman } from './blendTest.ts';
+import { agree, cubeTest } from './part2Cli.ts';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const MIN_TARGET = 500;
@@ -42,8 +44,10 @@ function vintage(human: HumanCards | null): CubeContext {
 const f3 = (x: number) => (x >= 0 ? '+' : '') + x.toFixed(3);
 
 export async function main(argv: string[]): Promise<number> {
+  if (argv[0] === '--cube' && argv.length === 3) return cubeTest(argv[1]!, argv[2]!);
+  if (argv[0] === 'agree' && argv.length === 2) return agree(argv[1]!);
   if (argv.length !== 2) {
-    console.error('usage: npm run human-blend -- vintage-cube-180.human.half0.json vintage-cube-180.human.half1.json');
+    console.error('usage: npm run human-blend -- vintage-cube-180.human.half0.json vintage-cube-180.human.half1.json\n       npm run human-blend -- --cube <id> DIR   (docs/human-blend.md part 2 A)\n       npm run human-blend -- agree DIR         (part 2 B)');
     return 2;
   }
   const halves = argv.map((p) => parseHumanCards(JSON.parse(readFileSync(p, 'utf8'))));

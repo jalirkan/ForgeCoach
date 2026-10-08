@@ -81,3 +81,32 @@ export function pairedBootstrap(target: number[], score: number[], base: number[
   const q = (p: number) => diffs[Math.min(R - 1, Math.max(0, Math.floor(p * R)))]!;
   return { n, rhoScore, rhoBase, diff: rhoScore - rhoBase, lo: q(0.025), hi: q(0.975) };
 }
+
+export interface RhoResult {
+  n: number;
+  rho: number;
+  lo: number;
+  hi: number;
+}
+
+/** Spearman's rho of a against b, with a 95% percentile interval from a bootstrap over items (docs/human-blend.md part 2). */
+export function bootstrapRho(a: number[], b: number[], opts: { resamples?: number; seed?: number } = {}): RhoResult {
+  const n = a.length;
+  const R = opts.resamples ?? 10000;
+  const r = rng(opts.seed ?? 20261006);
+  const rho = spearman(a, b);
+  const out: number[] = [];
+  const x = new Array<number>(n);
+  const y = new Array<number>(n);
+  for (let k = 0; k < R; k++) {
+    for (let i = 0; i < n; i++) {
+      const j = Math.floor(r() * n);
+      x[i] = a[j]!;
+      y[i] = b[j]!;
+    }
+    out.push(spearman(x, y));
+  }
+  out.sort((p, q) => p - q);
+  const q = (p: number) => out[Math.min(R - 1, Math.max(0, Math.floor(p * R)))]!;
+  return { n, rho, lo: q(0.025), hi: q(0.975) };
+}

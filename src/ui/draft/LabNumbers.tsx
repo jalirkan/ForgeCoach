@@ -9,7 +9,8 @@
  * with no lab meta (and no human data) gets one quiet line saying so; a card
  * with no numbers says so. For the cube
  * 17Lands covers, each card also carries its human line (HumanNumbers.tsx,
- * cube/human.ts), styled apart from the lab's. Collapsed by default
+ * cube/human.ts), styled apart from the lab's, and each card with lab numbers
+ * a "Lab number: …" reliability label (LabTrust.tsx). Collapsed by default
  * (remembered), so it never pushes the offer down by surprise.
  */
 import { useMemo, useState } from 'react';
@@ -17,6 +18,8 @@ import type { CubeContext } from '../../cube/score.ts';
 import { baselineLine, colourBaselines, colourNote, colourSkew, fmt, FORGE_CAVEAT, labCardView, pc, smallSampleNote, VERDICT_WORDS, winLine, type LabCardView } from '../../draft/labStats.ts';
 import { cx, readLS, writeLS } from '../util.ts';
 import { HumanCardFacts, HumanSourceNote, useHumanCards } from '../HumanNumbers.tsx';
+import { LabTrustLine } from '../LabTrust.tsx';
+import { labTrust } from '../../cube/labTrust.ts';
 
 const OPEN_KEY = 'forgecoach.draft.labNumbers';
 
@@ -56,7 +59,7 @@ export function LabNumbers({ names, ctx, cubeId }: { names: readonly string[]; c
         <span className="labn-sub">
           {names.length} card{names.length === 1 ? '' : 's'}
           {meta ? ` · ${typeof sample?.drafts === 'number' ? fmt(sample.drafts) : '?'} lab drafts, ${typeof sample?.games === 'number' ? fmt(sample.games) : '?'} games` : ''}
-          {human ? ' · 17Lands human data' : ''}
+          {human ? ` · 17Lands human data for ${human.cube.matched} of ${human.cube.cards} cards` : ''}
         </span>
       </summary>
       {meta && <p className="labn-caveat">{FORGE_CAVEAT}</p>}
@@ -66,6 +69,7 @@ export function LabNumbers({ names, ctx, cubeId }: { names: readonly string[]; c
           <li key={r.name} className="labn-row">
             <div className="labn-name">{r.name}</div>
             {r.view ? <CardNumbers v={r.view} /> : meta && <div className="labn-none">The lab has no numbers for this card.</div>}
+            {r.view && <LabTrustLine trust={labTrust(ctx.facts.get(r.name))} />}
             {human && <HumanCardFacts data={human} name={r.name} />}
           </li>
         ))}

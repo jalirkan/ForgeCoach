@@ -32,6 +32,7 @@ import { castableIn, splashColourOf } from './facts.ts';
 import { colourLabel, wubrg } from './colors.ts';
 import { SPLASH_MIN } from './builder.ts';
 import { cardValue, humanValueNote, synergyOf, themeCountsOf, topThemes, type CubeContext } from './score.ts';
+import { labTrustNote } from './labTrust.ts';
 
 export interface PickParts {
   card: number;
@@ -185,6 +186,8 @@ export function recommendGrid(slots: Array<string | null>, pool: string[], ctx: 
     o.reasons = gridReasons(o, options, mineOf, pair, ctx);
     const note = humanValueNote(o.cards, ctx);
     if (note) o.reasons.push(note);
+    const trust = labTrustNote(o.cards, ctx);
+    if (trust) o.reasons.push(trust);
   }
   return { first, options, best: options[0] ?? null };
 }
@@ -284,6 +287,8 @@ export function recommendWinston(input: WinstonInput, ctx: CubeContext): Winston
   );
   const note = humanValueNote(pile, ctx);
   if (note) reasons.push(note);
+  const trust = labTrustNote(pile, ctx);
+  if (trust) reasons.push(trust);
   reasons.push(action === 'take' ? `Take it: ${r1(take)} beats ${r1(pass)}${margin ? ` by more than the pile-${pileIndex} margin of ${margin}` : ''}.` : `Pass: ${r1(take)} is not ${margin ? `${margin} better than` : 'better than'} ${r1(pass)}.`);
   return { action, take: r1(take), pass: r1(pass), margin, reasons, cards };
 }

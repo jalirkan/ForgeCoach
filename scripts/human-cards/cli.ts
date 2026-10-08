@@ -3,12 +3,16 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * `npm run human-cards -- --updated YYYY-MM-DD GAME_DATA.csv.gz [MORE.csv.gz …] [--min-gih 500] [--dry-run]
- *   [--half 0|1 --out DIR]`
+ *   [--half 0|1] [--out DIR]`
  * (launched by run.mjs). Reads local copies of 17Lands' public game data (the
  * Powered Cube files on https://www.17lands.com/public_datasets; download them
  * first, see README § Human card data), matches every cube in public/cubes/ by
  * card name and writes `public/cubes/<file>.human.json` for each cube with at
- * least MIN_COVERAGE of its cards above the games threshold. Prints the
+ * least its coverage gate (MIN_COVERAGE, or COVERAGE_BY_CUBE for a cube that
+ * passed docs/human-blend.md part 2) of its cards above the games threshold. A
+ * cube other than the one the dataset is a version of (SAME_ENVIRONMENT) gets
+ * `anchor: "cube"`. With `--out DIR` every cube with any numbers goes into DIR
+ * instead (for the tests; never public/cubes). Prints the
  * coverage of every cube. `--updated` is the dataset's "Last Updated" date on
  * 17Lands' page. `--half 0|1` counts only the drafts in that half (stats.ts
  * `halfOf`, for docs/human-blend.md's split-half test) and writes
@@ -22,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { CUBES } from '../../src/cube/cubes.ts';
 import { parseCube } from '../../src/cube/parseCube.ts';
 import type { HumanSource } from '../../src/cube/human.ts';
-import { coverage, GameCounter, humanFile, MIN_COVERAGE, MIN_GIH, splitCsvLine } from './stats.ts';
+import { coverage, coverageGate, GameCounter, humanFile, MIN_GIH, SAME_ENVIRONMENT, splitCsvLine } from './stats.ts';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -102,12 +106,13 @@ export async function main(argv: string[]): Promise<number> {
     const doc = { file: `${info.file}.md`, title: cube.title, names: cube.cards.map((c) => c.name) };
     const { cov } = coverage(s, doc, minGih);
     const share = cov.matched / cov.cards;
-    // A half is for the split-half test of a cube that ships human data, whatever its coverage.
-    const write = half !== null ? !!info.humanData : share >= MIN_COVERAGE;
+    // --out (the tests' files, halves or whole) takes every cube with numbers, whatever its coverage.
+    const write = out ? cov.matched > 0 : share >= coverageGate(info.id);
     console.log(`${info.id.padEnd(12)} ${cov.cards} cards, ${cov.inData} in the data, ${cov.matched} with ${minGih}+ games in hand (${Math.round(share * 100)}%)${write ? (dry ? ' — would write' : ' — written') : ''}`);
     if (write && !dry) {
-      const file = humanFile(s, doc, source, generated, minGih);
-      const path = half !== null ? join(out, `${info.file}.human.half${half}.json`) : join(ROOT, 'public/cubes', `${info.file}.human.json`);
+      const file = humanFile(s, doc, source, generated, minGih, SAME_ENVIRONMENT.has(info.id) ? undefined : 'cube');
+      const name = `${info.file}.human${half !== null ? `.half${half}` : ''}.json`;
+      const path = out ? join(out, name) : join(ROOT, 'public/cubes', name);
       writeFileSync(path, `${JSON.stringify(file, null, 0).replace(/("[^"]+":\{"gih")/g, '\n$1')}\n`);
     }
   }

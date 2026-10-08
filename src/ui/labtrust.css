@@ -1,0 +1,31 @@
+/*
+ * ForgeCoach — ui/labtrust.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The lab-number reliability label (LabTrust.tsx): the lab's gold rule, so it
+ * reads as part of the Forge lab's numbers and never as human data's blue
+ * (human.css).
+ */
+.lt {
+  --lt-rgb: var(--fx-gold-rgb, 201, 164, 92);
+  display: block;
+  margin-top: 4px;
+  padding: 1px 0 1px 7px;
+  border-left: 2px solid rgba(var(--lt-rgb), 0.8);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-2, var(--text, inherit));
+}
+.lt.is-fair {
+  border-left-color: rgba(var(--lt-rgb), 0.45);
+  color: var(--muted, inherit);
+}
+.lt-line {
+  display: block;
+}
+.lt-detail {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted, inherit);
+  font-variant-numeric: tabular-nums;
+}

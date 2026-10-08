@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import { describe, expect, it } from 'vitest';
-import { pairedBootstrap, ranks, spearman } from './blendTest.ts';
+import { bootstrapRho, pairedBootstrap, ranks, spearman } from './blendTest.ts';
 
 describe('ranks and spearman', () => {
   it('gives ties their average rank', () => {
@@ -35,5 +35,17 @@ describe('pairedBootstrap', () => {
   it('a score against itself differs by exactly 0', () => {
     const r = pairedBootstrap(target, good, good, { resamples: 500 });
     expect([r.diff, r.lo, r.hi]).toEqual([0, 0, 0]);
+  });
+});
+
+describe('bootstrapRho', () => {
+  it('brackets the sample rho and is reproducible by seed', () => {
+    const a = Array.from({ length: 50 }, (_, i) => i);
+    const b = a.map((i) => i + ((i * 13) % 17));
+    const r = bootstrapRho(a, b, { resamples: 500 });
+    expect(r.n).toBe(50);
+    expect(r.lo).toBeLessThanOrEqual(r.rho);
+    expect(r.hi).toBeGreaterThanOrEqual(r.rho);
+    expect(bootstrapRho(a, b, { resamples: 500 })).toEqual(r);
   });
 });

@@ -16,6 +16,8 @@ import { Sheet } from '../Sheet.tsx';
 import { IconTrash } from '../Icons.tsx';
 import { colorClass, cx } from '../util.ts';
 import { HumanCardFacts, HumanSourceNote, useHumanCards } from '../HumanNumbers.tsx';
+import { LabTrustLine } from '../LabTrust.tsx';
+import { labTrustFor } from '../../cube/labTrust.ts';
 
 const norm = (s: string) => s.toLowerCase().replace(/[’']/g, "'");
 
@@ -141,6 +143,7 @@ export function CardInfoSheet({ name, ctx, pool, onClose, cubeId }: { name: stri
                   {m ? `, lab ${pct(m.rawRate)} in ${m.games} games weighted ${Math.round(m.weight * 100)}%` : ', no lab games'})
                 </span>
                 {humanValueLine(name, ctx) && <span className="ci-human-value small">{humanValueLine(name, ctx)}</span>}
+                <LabTrustLine trust={labTrustFor(name, ctx)} detail />
               </dd>
               {pv && (
                 <>

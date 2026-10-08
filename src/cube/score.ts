@@ -40,7 +40,12 @@
  *
  * p is the card's GIH win rate over n games in hand, avg the format's pooled
  * GIH win rate, D the fixed Arena-vs-paper discount. H runs to the thousands,
- * so human data leads where it exists. `labValue` is the value without it —
+ * so human data leads where it exists. For a cube whose numbers come from
+ * another cube (the file's `anchor: "cube"`, docs/human-blend.md part 2:
+ * Modern-Era and Synergy against Arena's Powered Cube) the human part only
+ * reorders the covered cards among themselves on the cube's own scale:
+ * h = L̄ + 250 · D · (p − p̄), with p̄ the covered nonland cards' pooled GIH win
+ * rate and L̄ the mean of their `labValue`. `labValue` is the value without it —
  * what the Draft vs AI drafter rates cards by (draft/cards.ts), which stays in
  * parity with mtg-table's cube lab.
  *
@@ -204,16 +209,58 @@ const LAB_GAME_VARIANCE = 0.375;
  * The human (17Lands) opinion of a card on the value scale, and its precision in lab games.
  * Null without a human row, for a land, or when the row is degenerate (p of 0 or 1).
  */
-export function humanValue(name: string, ctx: CubeContext, discount = HUMAN_DISCOUNT): { value: number; games: number; rate: number; avg: number; weight: number } | null {
+export function humanValue(name: string, ctx: CubeContext, discount = HUMAN_DISCOUNT, anchored = true): HumanValue | null {
   const d = ctx.human;
   const c = d?.cards[name];
   if (!d || !c || c.gih <= 0 || d.gih.games <= 0) return null;
-  const f = ctx.facts.get(name);
-  if (f?.land || ctx.byName.get(name)?.land) return null;
+  if (!humanRowUsable(name, ctx)) return null;
   const p = c.gihW / c.gih;
-  if (!(p > 0 && p < 1)) return null;
-  const avg = d.gih.wins / d.gih.games;
-  return { value: 50 + VALUE_PER_RATE * discount * (p - avg), games: c.gih, rate: p, avg, weight: (LAB_GAME_VARIANCE * c.gih) / (discount * discount * p * (1 - p)) };
+  const a = anchored && d.anchor === 'cube' ? cubeAnchor(ctx) : null;
+  const avg = a ? a.rate : d.gih.wins / d.gih.games;
+  const level = a ? a.level : 50;
+  return { value: level + VALUE_PER_RATE * discount * (p - avg), games: c.gih, rate: p, avg, anchored: !!a, weight: (LAB_GAME_VARIANCE * c.gih) / (discount * discount * p * (1 - p)) };
+}
+
+export interface HumanValue {
+  value: number;
+  games: number;
+  rate: number;
+  /** What `rate` is measured against: the format's pooled GIH WR, or (anchored) the covered cards' own. */
+  avg: number;
+  /** True when the file is from another cube and the value sits on this cube's own scale. */
+  anchored: boolean;
+  weight: number;
+}
+
+/** A nonland cube card with a usable (0 < p < 1) human row. */
+function humanRowUsable(name: string, ctx: CubeContext): boolean {
+  const c = ctx.human?.cards[name];
+  if (!c || c.gih <= 0) return false;
+  if (ctx.facts.get(name)?.land || ctx.byName.get(name)?.land) return false;
+  const p = c.gihW / c.gih;
+  return p > 0 && p < 1;
+}
+
+const anchors = new WeakMap<CubeContext, { rate: number; level: number } | null>();
+
+/** For a file from another cube: the covered nonland cards' pooled GIH win rate and the mean of their lab values. */
+export function cubeAnchor(ctx: CubeContext): { rate: number; level: number } | null {
+  if (anchors.has(ctx)) return anchors.get(ctx)!;
+  let n = 0;
+  let k = 0;
+  let sum = 0;
+  let count = 0;
+  for (const card of ctx.cube.cards) {
+    if (!humanRowUsable(card.name, ctx)) continue;
+    const c = ctx.human!.cards[card.name]!;
+    n += c.gih;
+    k += c.gihW;
+    sum += labValue(card.name, ctx);
+    count++;
+  }
+  const out = count && n ? { rate: k / n, level: sum / count } : null;
+  anchors.set(ctx, out);
+  return out;
 }
 
 /**
@@ -229,8 +276,8 @@ export function cardValue(name: string, ctx: CubeContext): number {
 }
 
 /** The precision-weighted blend of prior, lab and human value with discount `discount`; null without human data for the card. */
-export function blendedValue(name: string, ctx: CubeContext, discount: number): number | null {
-  const h = humanValue(name, ctx, discount);
+export function blendedValue(name: string, ctx: CubeContext, discount: number, anchored = true): number | null {
+  const h = humanValue(name, ctx, discount, anchored);
   if (!h) return null;
   const prior = cardPrior(name, ctx);
   const m = metaValue(name, ctx);
@@ -255,7 +302,10 @@ export function humanValueLine(name: string, ctx: CubeContext): string | null {
   if (!h) return null;
   const m = metaValue(name, ctx);
   const share = h.weight / (META_STRENGTH + (m ? m.games : 0) + h.weight);
-  return `value uses human data (17Lands): ${pc1(h.rate)} win when drawn against the format’s ${pc1(h.avg)}, ${Math.round(h.games).toLocaleString('en-US')} games, ${Math.round(share * 100)}% of the weight, discounted ×${HUMAN_DISCOUNT} for the Arena cube`;
+  const games = Math.round(h.games).toLocaleString('en-US');
+  if (h.anchored)
+    return `value uses human data (17Lands, Arena’s Powered Cube): ${pc1(h.rate)} win when drawn against the shared cards’ ${pc1(h.avg)}, ${games} games, ${Math.round(share * 100)}% of the weight, discounted ×${HUMAN_DISCOUNT}, on this cube’s own scale`;
+  return `value uses human data (17Lands): ${pc1(h.rate)} win when drawn against the format’s ${pc1(h.avg)}, ${games} games, ${Math.round(share * 100)}% of the weight, discounted ×${HUMAN_DISCOUNT} for the Arena cube`;
 }
 
 /** A note for advice over several cards: how many of their values use human data; null when none do. */

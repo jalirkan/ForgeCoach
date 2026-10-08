@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { parseHumanCards } from '../../src/cube/human.ts';
-import { coverage, fnv1a32, GameCounter, halfOf, humanFile, splitCsvLine } from './stats.ts';
+import { coverage, coverageGate, fnv1a32, GameCounter, halfOf, humanFile, MIN_COVERAGE, SAME_ENVIRONMENT, splitCsvLine } from './stats.ts';
 
 const HEADER =
   'expansion,event_type,draft_id,won,' +
@@ -107,5 +107,13 @@ describe('coverage and humanFile', () => {
     expect(d.gih).toEqual({ games: 3, wins: 3 });
     expect(d.cards.bolt).toEqual({ gih: 2, gihW: 2, oh: 1, ohW: 1, gns: 1, gnsW: 0 });
     expect(JSON.stringify(f)).not.toMatch(/abc|draft_id/);
+  });
+});
+
+describe('per-cube coverage gates (docs/human-blend.md part 2)', () => {
+  it('lowers the gate only for the cube that passed', () => {
+    expect(coverageGate('synergy')).toBe(0.4);
+    for (const id of ['modern-era', 'omega', 'vintage', 'pauper', 'fair-fight', 'peasant', 'evybaby']) expect(coverageGate(id)).toBe(MIN_COVERAGE);
+    expect([...SAME_ENVIRONMENT]).toEqual(['vintage']);
   });
 });
