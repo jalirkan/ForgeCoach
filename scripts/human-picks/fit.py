@@ -245,7 +245,7 @@ class Model:
             return obj, np.concatenate([gs, [gg], gb])
 
         t0 = time.time()
-        r = minimize(f, self.pack(), jac=True, method='L-BFGS-B', options={'maxiter': maxiter, 'gtol': 1e-5 * len(P)})
+        r = minimize(f, self.pack(), jac=True, method='L-BFGS-B', options={'maxiter': maxiter, 'gtol': 1e-2, 'ftol': 1e-12})
         self.unpack(r.x)
         log(f'  fit {"b" if self.context else "a"} lam={lam}: {r.nit} iterations, {time.time() - t0:.0f}s, {r.message}')
         return self
