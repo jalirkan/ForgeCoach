@@ -77,16 +77,18 @@ files are output of mtg-table's cube lab (simulated Forge AI drafts and games).
     Licence:  Creative Commons Attribution 4.0 International (CC BY 4.0)
               https://creativecommons.org/licenses/by/4.0/
 
-public/cubes/vintage-cube-180.human.json is derived from 17Lands' public game
-data for MTG Arena's Powered Cube (game_data_public.Cube_-_Powered.
-PremierDraft.csv.gz and .TradDraft.csv.gz, "Last Updated" 2025-11-23 on
-17Lands' public datasets page). Changes made: per-card games and wins were
-aggregated (games with the card in hand, in the opening hand, and in the deck
-but never seen), cards were matched to the Vintage Cube document by name, and
-cards with fewer than 500 games in hand were left out; no per-game or
-per-player data is kept. Generator: scripts/human-cards/. The app credits
-17Lands, with links to the dataset page and the licence, wherever the numbers
-are shown. 17Lands does not endorse ForgeCoach or its use of the data.
+public/cubes/vintage-cube-180.human.json and synergy-cube-180.human.json are
+derived from 17Lands' public game data for MTG Arena's Powered Cube
+(game_data_public.Cube_-_Powered.PremierDraft.csv.gz and .TradDraft.csv.gz,
+"Last Updated" 2025-11-23 on 17Lands' public datasets page). Changes made:
+per-card games and wins were aggregated (games with the card in hand, in the
+opening hand, and in the deck but never seen), cards were matched to each cube
+document (Vintage, Synergy) by name, and cards with fewer than 500 games in
+hand were left out; no per-game or per-player data is kept. The lab-number
+reliability table in src/cube/labTrust.ts is computed from the Vintage file.
+Generator: scripts/human-cards/. The app credits 17Lands, with links to the
+dataset page and the licence, wherever the numbers are shown. 17Lands does not
+endorse ForgeCoach or its use of the data.
 
 
 4. Wizards of the Coast — Fan Content Policy

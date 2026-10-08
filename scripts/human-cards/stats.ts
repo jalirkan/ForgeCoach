@@ -169,6 +169,18 @@ export const MIN_GIH = 500;
  * and cheat decks would mislead.
  */
 export const MIN_COVERAGE = 0.75;
+/**
+ * Per-cube coverage gates, lowered only for a cube that passed docs/human-blend.md part 2's
+ * pre-registered test (by cube id; the share of its cards with numbers it needs).
+ */
+export const COVERAGE_BY_CUBE: Readonly<Record<string, number>> = {
+  // Passed 2026-10-08 (both folds and the transfer check): 79 of 180 cards, 44%.
+  synergy: 0.4,
+};
+/** The cubes 17Lands' Powered Cube is a version of; every other cube's file says `anchor: "cube"`. */
+export const SAME_ENVIRONMENT: ReadonlySet<string> = new Set(['vintage']);
+/** The coverage a cube needs for a file in public/cubes. */
+export const coverageGate = (cubeId: string): number => COVERAGE_BY_CUBE[cubeId] ?? MIN_COVERAGE;
 
 export interface Coverage {
   file: string;
@@ -198,7 +210,7 @@ export function coverage(stats: GameStats, cube: { file: string; title: string; 
 }
 
 /** The committed file for one cube. */
-export function humanFile(stats: GameStats, cube: { file: string; title: string; names: string[] }, source: HumanSource, generated: string, minGih = MIN_GIH): HumanCards {
+export function humanFile(stats: GameStats, cube: { file: string; title: string; names: string[] }, source: HumanSource, generated: string, minGih = MIN_GIH, anchor?: 'cube'): HumanCards {
   const { cov, cards } = coverage(stats, cube, minGih);
   let gih = 0;
   let gihW = 0;
@@ -213,6 +225,7 @@ export function humanFile(stats: GameStats, cube: { file: string; title: string;
     source,
     generated,
     cube: { file: cube.file, title: cube.title, cards: cov.cards, matched: cov.matched },
+    ...(anchor ? { anchor } : {}),
     minGih,
     games: stats.games,
     wins: stats.wins,

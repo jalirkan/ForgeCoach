@@ -13,6 +13,7 @@
  *              "updated":"YYYY-MM-DD","changes"},
  *    "generated":"YYYY-MM-DD",
  *    "cube":{"file","title","cards","matched"},
+ *    "anchor":"cube",                       optional: the data is from another cube (docs/human-blend.md part 2)
  *    "minGih":500,
  *    "games","wins",                       every game in the files
  *    "gih":{"games","wins"},               pooled over every card of the dataset: the format's average card in hand
@@ -61,6 +62,12 @@ export interface HumanCards {
   source: HumanSource;
   generated: string;
   cube: { file: string; title: string; cards: number; matched: number };
+  /**
+   * "cube" when 17Lands' players drafted a different cube (Modern-Era, Synergy against Arena's Powered
+   * Cube): the human numbers then only reorder the covered cards among themselves on this cube's own
+   * scale (score.ts `humanValue`). Absent: the same kind of cube (Vintage), part 1's formula.
+   */
+  anchor?: 'cube';
   minGih: number;
   games: number;
   wins: number;
@@ -121,6 +128,7 @@ export function parseHumanCards(raw: unknown): HumanCards {
     if (pair(v.gns, v.gnsW)) Object.assign(out, { gns: v.gns, gnsW: v.gnsW });
     cards[key] = out;
   }
+  if (raw.anchor !== undefined && raw.anchor !== 'cube') throw new Error('human.json: anchor must be "cube" when given.');
   const source: HumanSource = { name, page, licence, licenceUrl, dataset, files, updated };
   const changes = clean(s.changes, 400);
   if (changes) source.changes = changes;
@@ -129,6 +137,7 @@ export function parseHumanCards(raw: unknown): HumanCards {
     source,
     generated,
     cube: { file, title, cards: c.cards, matched: c.matched },
+    ...(raw.anchor === 'cube' ? { anchor: 'cube' as const } : {}),
     minGih: raw.minGih,
     games: raw.games,
     wins: raw.wins,
@@ -177,6 +186,8 @@ export interface HumanCardView {
   avg: number;
   /** Strong / weak only when the GIH interval excludes the average. */
   verdict: HumanVerdict;
+  /** The numbers are from another cube (the file's `anchor: "cube"`): the verdict is about Arena's cube, not this one. */
+  otherCube: boolean;
 }
 
 function rate(k: number, n: number): HumanRate | null {
@@ -208,7 +219,7 @@ export function humanCardView(d: HumanCards | null, name: string): HumanCardView
     const se = Math.sqrt((p1 * (1 - p1)) / gih.n + (p2 * (1 - p2)) / c.gns);
     iwd = { d: p1 - p2, lo: p1 - p2 - 1.96 * se, hi: p1 - p2 + 1.96 * se };
   }
-  return { name, gih, oh, iwd, avg, verdict: humanVerdict(gih, avg) };
+  return { name, gih, oh, iwd, avg, verdict: humanVerdict(gih, avg), otherCube: d.anchor === 'cube' };
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +242,11 @@ export function iwdLine(i: NonNullable<HumanCardView['iwd']>): string {
 
 export function humanVerdictLine(v: HumanCardView): string {
   const a = p1(v.avg);
+  if (v.otherCube) {
+    if (v.verdict === 'strong') return `strong in Arena’s Powered Cube: the interval is above its ${a} average`;
+    if (v.verdict === 'weak') return `weak in Arena’s Powered Cube: the interval is below its ${a} average`;
+    return `neither strong nor weak in Arena’s Powered Cube: the interval includes its ${a} average`;
+  }
   if (v.verdict === 'strong') return `strong for humans: the interval is above the format’s ${a} average`;
   if (v.verdict === 'weak') return `weak for humans: the interval is below the format’s ${a} average`;
   return `neither strong nor weak: the interval includes the format’s ${a} average`;
@@ -240,6 +256,18 @@ export function humanVerdictLine(v: HumanCardView): string {
 export const HUMAN_TITLE = 'Human data (17Lands, Arena cube)';
 
 export const ARENA_NOTE = '17Lands players draft the Arena version of this cube (Powered Cube), so its card list and power level differ slightly from this paper cube.';
+
+/** The section's title for a file: HUMAN_TITLE, or for numbers from another cube "Human data (17Lands, another Arena cube)". */
+export const humanTitle = (d: Pick<HumanCards, 'anchor'>): string => (d.anchor === 'cube' ? 'Human data (17Lands, another Arena cube)' : HUMAN_TITLE);
+
+/** The caveat for a file: ARENA_NOTE, or for another cube's numbers what they can and cannot say. */
+export function humanNote(d: Pick<HumanCards, 'anchor' | 'cube'>): string {
+  if (d.anchor !== 'cube') return ARENA_NOTE;
+  return `These numbers are from Arena’s Powered Cube, a different and more powerful cube that shares ${d.cube.matched} of this cube’s ${d.cube.cards} cards. A card’s win rate among Moxen is not its win rate here, so the card value uses them only to order the shared cards among themselves.`;
+}
+
+/** "Human numbers for 79 of this cube’s 180 cards" — the coverage, always on screen with the numbers. */
+export const humanCoverageLine = (d: Pick<HumanCards, 'cube'>): string => `Human numbers for ${fmt(d.cube.matched)} of this cube’s ${fmt(d.cube.cards)} cards`;
 
 /** "Powered Cube game data, updated 2025-11-23, 294,975 games" — what the credit links to 17Lands' page with. */
 export function humanSourceLine(d: HumanCards): string {

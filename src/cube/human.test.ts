@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CUBES, cubeInfo } from './cubes.ts';
 import { parseCube } from './parseCube.ts';
-import { ARENA_NOTE, humanAverage, humanCardView, humanLine, humanSourceLine, humanVerdict, humanVerdictLine, iwdLine, loadHumanCards, normName, parseHumanCards, type HumanCards } from './human.ts';
+import { ARENA_NOTE, HUMAN_TITLE, humanAverage, humanCardView, humanCoverageLine, humanLine, humanNote, humanSourceLine, humanTitle, humanVerdict, humanVerdictLine, iwdLine, loadHumanCards, normName, parseHumanCards, type HumanCards } from './human.ts';
 
 const pub = (p: string) => new URL(`../../public/cubes/${p}`, import.meta.url);
 const shippedRaw = () => JSON.parse(readFileSync(pub('vintage-cube-180.human.json'), 'utf8'));
@@ -150,7 +150,7 @@ describe('loadHumanCards', () => {
 
   it('ships a file exactly for the cubes flagged humanData', () => {
     for (const c of CUBES) expect(existsSync(pub(`${c.file}.human.json`)), c.id).toBe(c.humanData === true);
-    expect(CUBES.filter((c) => c.humanData).map((c) => c.id)).toEqual(['vintage']);
+    expect(CUBES.filter((c) => c.humanData).map((c) => c.id)).toEqual(['synergy', 'vintage']);
   });
 });
 
@@ -160,5 +160,34 @@ describe('normName', () => {
     expect(normName('Jace, the Mind  Sculptor')).toBe('jace, the mind sculptor');
     expect(normName('Lim-Dûl’s Vault')).toBe("lim-dul's vault");
     expect(normName('Séance')).toBe(normName('seance'));
+  });
+});
+
+describe('numbers from another cube (anchor "cube", docs/human-blend.md part 2)', () => {
+  it('parses the anchor and refuses any other value', () => {
+    expect(parseHumanCards(file()).anchor).toBeUndefined();
+    expect(parseHumanCards(file({ anchor: 'cube' })).anchor).toBe('cube');
+    expect(() => parseHumanCards(file({ anchor: 'format' }))).toThrow(/anchor/);
+  });
+
+  it('words the title, caveat, coverage and verdict for another cube', () => {
+    const same = parseHumanCards(file());
+    const other = parseHumanCards(file({ anchor: 'cube', cube: { file: 'synergy-cube-180.md', title: 'S', cards: 180, matched: 79 } }));
+    expect(humanTitle(same)).toBe(HUMAN_TITLE);
+    expect(humanNote(same)).toBe(ARENA_NOTE);
+    expect(humanTitle(other)).toMatch(/another Arena cube/);
+    expect(humanNote(other)).toMatch(/shares 79 of this cube’s 180 cards/);
+    expect(humanCoverageLine(other)).toBe('Human numbers for 79 of this cube’s 180 cards');
+    const v = humanCardView(other, 'Bomb')!;
+    expect(v.otherCube).toBe(true);
+    expect(humanVerdictLine(v)).toMatch(/^strong in Arena’s Powered Cube/);
+    expect(humanCardView(same, 'Bomb')!.otherCube).toBe(false);
+  });
+
+  it('the shipped Synergy file is anchored and Vintage’s is not', () => {
+    const syn = parseHumanCards(JSON.parse(readFileSync(pub('synergy-cube-180.human.json'), 'utf8')));
+    expect(syn.anchor).toBe('cube');
+    expect(syn.source.updated).toBe('2025-11-23');
+    expect(parseHumanCards(shippedRaw()).anchor).toBeUndefined();
   });
 });

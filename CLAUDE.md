@@ -82,19 +82,34 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   Strict validator, `loadHumanCards` (only cubes with `CubeInfo.humanData`;
   injected fetch), `humanCardView` (GIH WR with a Wilson 95% interval, OH WR,
   IWD; strong/weak only when the interval excludes the **format's average**,
-  not 50%), the words and the Arena caveat. Only the Vintage cube ships one
-  (Arena's Powered Cube: 152/180 cards; the generator's `MIN_COVERAGE` 0.75
-  keeps the unpowered cubes out). Generator: `scripts/human-cards/`
+  not 50%), the words and the Arena caveat. Vintage ships one (Arena's Powered
+  Cube: 152/180 cards; the generator's `MIN_COVERAGE` 0.75) and Synergy (79/180,
+  `COVERAGE_BY_CUBE` 0.4 after `docs/human-blend.md` part 2's pre-registered
+  test; Modern-Era and Omega failed its transfer check and get none). A file
+  from another cube carries `anchor: "cube"`: `score.ts` `humanValue` then
+  centres the human part on the shared cards' own GIH WR and mean `labValue`
+  (`cubeAnchor`), so it only reorders them; the UI says "another Arena cube"
+  and the coverage (`humanTitle`, `humanNote`, `humanCoverageLine`). Generator: `scripts/human-cards/`
   (`npm run human-cards -- --updated <date> <game_data…csv.gz>`, local copies
   of 17Lands' files; `stats.ts` counts as mtg-table `tools/ml/cards17l.py`,
   D396). UI: `ui/HumanNumbers.tsx` (`useHumanCards`, `HumanCardFacts`,
   `HumanSourceNote`) + `ui/human.css` (a blue rule, never the lab's gold) in
   the pick screen's Lab numbers panel and `CardInfoSheet` (its `cubeId` prop).
   `--half 0|1 --out DIR` splits by draft id for the split-half test
-  (`blendTest.ts`, `blendCli.ts`, `npm run human-blend`). `score.ts`
+  (`blendTest.ts`, `blendCli.ts`, `npm run human-blend`; part 2 in
+  `part2Cli.ts`: `--cube <id> DIR`, `agree DIR`, files from `--out DIR`). `score.ts`
   `cardValue` blends it in (see `cube/` above; `ui/deck/useCubeData.ts` loads it
   into the context via `humanCardsFor`); the card sheet shows
   `humanValueLine`, grid/Winston/booster/builder reasons `humanValueNote`.
+- `cube/labTrust.ts` — how far to trust the lab's number for a kind of card
+  (docs/human-blend.md part 2 B): `LAB_AGREEMENT` is the committed Vintage run
+  (lab win rate vs human GIH WR, Spearman with a bootstrap interval, by type,
+  mana value and colourless; `npm run human-blend -- agree`), `labTrust` the
+  weakest band's level (fair / rough / shaky / untested under 20 cards),
+  `labTrustFor` (lab-valued cards only), `labTrustNote` for advice. UI:
+  `ui/LabTrust.tsx` + `labtrust.css` (the lab's gold rule, never human blue)
+  in LabNumbers, CardInfoSheet; the note in grid/Winston (`pick.ts`) and
+  booster (PickScreen) reasons. No model calls.
 - `cube/deckExport.ts` + `ui/DeckExport.tsx` — deck export, the same on every deck screen: `deckListText` (`Deck` / `<qty> <name>` / blank / `Sideboard`, the form Arena, MTGO, Moxfield, Cockatrice and untap.in import; basics counted and last; the sideboard is the rest of the pool; names as the cube documents give them — split cards `A // B`, DFC/adventure by the front face, tested in `deckExport.test.ts`), `dckFileText` (Forge; `builder.ts` `deckText`/`dckText` wrap these via `listFromBuild`), `codFileText` (Cockatrice), `countLine` ("40 cards + 5 sideboard"); `draft/deck.ts` `exportList` makes one from the `DeckState` on screen. UI: `CopyDeckButton` (one tap, "Copied"; without a usable clipboard — a plain-http LAN/phone page is not a secure context — a dialog with the list selected) and the `DeckExport` panel (count, copy, .txt / .dck / .cod downloads, Share… where `navigator.share` exists, Show list). Placed in `DeckEditor` (Copy list beside Submit: the stat bar, the phone dock; the panel under Basic Lands), Draft vs AI's `MatchSetup` (under your deck), FriendApp's room screen (Your deck, before and after Hand in, between games) and `BuildView` (Copy list by the build tabs; the Export panel). Only the player's own deck and pool: never the AI's list or the friend's deck. E2E: `e2e/friend.e2e.mjs` step 7.
 - `ui/deck/` — the Draft & build screens (lazy-loaded from `#deck`):
   `DeckApp` (home, pools, workspace, meta import), `PoolView`, `BuildView`

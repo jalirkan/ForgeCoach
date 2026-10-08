@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The 17Lands blend in score.ts (docs/human-blend.md): the formula, cards and
- * cubes without data unchanged, and the Draft vs AI drafter untouched.
+ * cubes without data unchanged, Synergy's anchored blend (part 2), and the
+ * Draft vs AI drafter untouched.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -90,9 +91,9 @@ describe('the human blend (score.ts)', () => {
     expect(cardValue(best, blended)).toBeGreaterThan(cardValue(worst, blended));
   });
 
-  it('only Vintage ships human data; other cubes are unchanged', () => {
-    expect(CUBES.filter((c) => c.humanData).map((c) => c.id)).toEqual(['vintage']);
-    for (const id of ['synergy', 'modern-era', 'pauper'] as CubeId[]) {
+  it('only Vintage and Synergy ship human data; other cubes are unchanged', () => {
+    expect(CUBES.filter((c) => c.humanData).map((c) => c.id)).toEqual(['synergy', 'vintage']);
+    for (const id of ['modern-era', 'pauper'] as CubeId[]) {
       const cube = loadCube(id);
       const ctx = makeContext(cube, loadInfos(id, cube), loadRealMeta(id));
       expect(ctx.human).toBeNull();
@@ -143,5 +144,65 @@ describe('the Draft vs AI drafter ignores human data (parity with the cube lab)'
     for (const c of today.cube.cards) expect(cardValue(c.name, lo)).toBe(cardValue(c.name, today));
     const pool = today.cube.cards.slice(0, 45).map((c) => c.name);
     expect(buildDecks(lo, pool)[0]?.spells).toEqual(buildDecks(today, pool)[0]?.spells);
+  });
+});
+
+describe('Synergy: the anchored blend for a cube of another environment (docs/human-blend.md part 2)', () => {
+  const syn: HumanCards = parseHumanCards(JSON.parse(readFileSync(new URL('../../public/cubes/synergy-cube-180.human.json', import.meta.url), 'utf8')));
+  const cube = loadCube('synergy');
+  const today = makeContext(cube, loadInfos('synergy', cube), loadRealMeta('synergy'));
+  const blended = makeContext(cube, loadInfos('synergy', cube), loadRealMeta('synergy'), syn);
+  const names = cube.cards.map((c) => c.name);
+  const covered = names.filter((n) => syn.cards[n] && !isLand(n, blended));
+
+  it('the file is marked as from another cube', () => {
+    expect(syn.anchor).toBe('cube');
+    expect(syn.cube.matched).toBe(79);
+    expect(human.anchor).toBeUndefined();
+  });
+
+  it('anchors the human part on the covered cards’ own rate and lab level', () => {
+    let k = 0;
+    let g = 0;
+    let lv = 0;
+    for (const n of covered) {
+      k += syn.cards[n]!.gihW;
+      g += syn.cards[n]!.gih;
+      lv += labValue(n, today);
+    }
+    const pbar = k / g;
+    const level = lv / covered.length;
+    const n = covered.find((x) => metaValue(x, blended))!;
+    const c = syn.cards[n]!;
+    const p = c.gihW / c.gih;
+    const h = humanValue(n, blended)!;
+    expect(h.anchored).toBe(true);
+    expect(h.avg).toBeCloseTo(pbar, 12);
+    expect(h.value).toBeCloseTo(level + 250 * HUMAN_DISCOUNT * (p - pbar), 9);
+    const H = (0.375 * c.gih) / (HUMAN_DISCOUNT * HUMAN_DISCOUNT * p * (1 - p));
+    const m = metaValue(n, blended)!;
+    const want = (META_STRENGTH * cardPrior(n, blended) + m.games * m.value + H * h.value) / (META_STRENGTH + m.games + H);
+    expect(cardValue(n, blended)).toBeCloseTo(Math.round(Math.min(98, Math.max(5, want)) * 10) / 10, 6);
+    // The unanchored variant (part 1's formula) is still there for the test's information line.
+    expect(humanValue(n, blended, HUMAN_DISCOUNT, false)!.anchored).toBe(false);
+  });
+
+  it('only the covered nonland cards move, and they keep their level as a group', () => {
+    let shift = 0;
+    for (const n of names) {
+      if (covered.includes(n)) shift += cardValue(n, blended) - cardValue(n, today);
+      else expect(cardValue(n, blended)).toBe(cardValue(n, today));
+    }
+    expect(Math.abs(shift / covered.length)).toBeLessThan(3);
+  });
+
+  it('the Forge drafter rates and drafts Synergy the same with and without the file', () => {
+    expect([...labCards(blended).entries()]).toEqual([...labCards(today).entries()]);
+    const mk = () => newDraft({ cubeId: 'synergy', format: 'grid', cube: names, seed: 20261006, youFirst: false, seats: 2, now: 1 });
+    expect(selfPlay(mk(), labCards(blended)).picks).toEqual(selfPlay(mk(), labCards(today)).picks);
+  });
+
+  it('says the numbers come from another cube', () => {
+    expect(humanValueLine(covered[0]!, blended)).toMatch(/Arena’s Powered Cube.*the shared cards’ \d+\.\d%.*this cube’s own scale/);
   });
 });

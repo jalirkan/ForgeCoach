@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { cubeInfo } from '../../cube/cubes.ts';
 import { GRID_LINES, poolColours, recommendGrid, recommendWinston } from '../../cube/pick.ts';
 import { humanValueNote } from '../../cube/score.ts';
+import { labTrustNote } from '../../cube/labTrust.ts';
 import { aiLabelFrom } from '../../draft/aiLabel.ts';
 import { canPass, expectedPicks, knownAiCards, lineName, progress, toAct, yourPack, type BoosterDraft, type Draft, type GridDraft, type WinstonDraft } from '../../draft/draft.ts';
 import { gridBlurb } from '../../draft/gridBlurb.ts';
@@ -95,7 +96,8 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
       const b = bestBoosterPick(yourPack(d), d.picks.you, ctx, known);
       if (!b) return null;
       const note = humanValueNote(yourPack(d), ctx);
-      return { title: `Pick ${b.name}`, lines: [...b.ranked.slice(0, 4).map((r) => `${r.name}: ${r.value}`), ...(note ? [note] : [])], line: null, take: null, card: b.name };
+      const trust = labTrustNote(b.ranked.slice(0, 4).map((r) => r.name), ctx);
+      return { title: `Pick ${b.name}`, lines: [...b.ranked.slice(0, 4).map((r) => `${r.name}: ${r.value}`), ...(note ? [note] : []), ...(trust ? [trust] : [])], line: null, take: null, card: b.name };
     }
     const pile = d.piles[d.look] ?? [];
     if (!pile.length) return null;

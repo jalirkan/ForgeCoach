@@ -381,8 +381,9 @@ games", called strong or weak only when the whole 95% interval is clear of the
 format's average (about 56%, not 50%: 17Lands users win more than half their
 games). 17Lands players draft the Arena version of the cube, so the card list
 and power level differ slightly from the paper cube. Only the Vintage Cube gets
-it: 152 of its 180 cards are in 17Lands' data, while the other cubes share
-12–58% of their cards with a powered environment unlike theirs. The numbers
+it in full: 152 of its 180 cards are in 17Lands' data, while the other cubes
+share 12–58% of their cards with a powered environment unlike theirs (see
+Synergy below). The numbers
 also feed the card value the builder, swaps and pick advice use (the deck
 assistant and your pick helper in Draft vs AI): for a nonland card with
 human numbers, the value mixes them in by precision, discounted ×0.8 for the
@@ -392,7 +393,28 @@ Arena/paper gap, and the card sheet and the advice say "value uses human data
 drafts, the blend ranks cards against the other half at rho 0.91, against 0.46
 for the lab-only value, in both folds. Lands, cards without data and other
 cubes keep the lab value, and the Forge AI drafter never uses human data (it
-stays in parity with mtg-table's cube lab). To regenerate
+stays in parity with mtg-table's cube lab).
+
+**Synergy too, for its 79 shared cards.** A second pre-registered test
+(docs/human-blend.md part 2) asked the same of Modern-Era, Omega and Synergy,
+plus whether a card's Powered-Cube rank says anything about the cube at all
+(its own lab meta must agree with the humans). Synergy passed (lab vs humans
+0.45, about Vintage's 0.48), so it ships `synergy-cube-180.human.json`: the
+screen says "Human numbers for 79 of this cube's 180 cards", calls them from
+"another Arena cube", and the value uses them only to reorder the shared
+cards among themselves on Synergy's own scale. Modern-Era (its lab and the
+humans don't agree, +0.05) and Omega (no lab meta to check against) get
+nothing.
+
+**How far to trust a lab number.** On the Vintage cube, Forge's card win rates
+agree with the humans' at rho 0.48 overall: 0.58 for creatures, 0.54–0.56 for
+cards costing up to 4, 0.36 for noncreature spells; 5+ drops (19 cards) and
+colourless cards (12) are too few to measure. The Lab numbers panel, the card
+sheet and the grid / Winston / booster advice carry a gold "Lab number: a
+fair guide for creatures" / "a rough guide for noncreature spells" /
+"untested for 5+ drops" line for lab-valued cards (`src/cube/labTrust.ts`).
+
+To regenerate
 (`--updated` is the dataset's "Last Updated" date on 17Lands' page):
 
 ```bash
@@ -403,7 +425,10 @@ npm run human-cards -- --updated 2025-11-23 game_data_public.Cube_-_Powered.*.cs
 ```
 
 The split-half test: `npm run human-cards -- … --half 0|1 --out DIR` writes each
-half, `npm run human-blend -- DIR/*.half0.json DIR/*.half1.json` runs it.
+half, `npm run human-blend -- DIR/*.half0.json DIR/*.half1.json` runs it. Part
+2: with `--out DIR` (whole and both halves) every cube's file goes to DIR;
+`npm run human-blend -- --cube <id> DIR` tests a cube, `npm run human-blend --
+agree DIR` prints the lab agreement table.
 
 **Play the deck vs Forge.** Download the `.dck`, save it in mtg-table's
 `decks/` folder, start the engine with it —

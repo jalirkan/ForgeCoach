@@ -24,7 +24,11 @@ export interface CubeInfo {
   accent: string;
   /** False when no cube lab meta.json ships beside the document (yet). */
   labData?: boolean;
-  /** True when 17Lands human card numbers ship beside the document (<file>.human.json, cube/human.ts). */
+  /**
+   * True when 17Lands human card numbers ship beside the document (<file>.human.json, cube/human.ts):
+   * Vintage (Arena's Powered Cube is a version of it) and Synergy (docs/human-blend.md part 2: the
+   * shared cards only, on the cube's own scale).
+   */
   humanData?: boolean;
 }
 
@@ -32,7 +36,7 @@ export interface CubeInfo {
 export const cubeShortName = (c: Pick<CubeInfo, 'title' | 'short'>): string => c.short ?? c.title.replace(/ Cube$/, '');
 
 export const CUBES: CubeInfo[] = [
-  { id: 'synergy', file: 'synergy-cube-180', title: 'Synergy Cube', size: 180, blurb: 'Nine overlapping themes, tight power band, no combos.', accent: 'BR' },
+  { id: 'synergy', file: 'synergy-cube-180', title: 'Synergy Cube', size: 180, blurb: 'Nine overlapping themes, tight power band, no combos.', accent: 'BR', humanData: true },
   { id: 'modern-era', file: 'modern-era-cube-180', title: 'Modern-Era Cube', size: 180, blurb: 'Ten guild archetypes with a few famous bombs.', accent: 'UG' },
   { id: 'vintage', file: 'vintage-cube-180', title: 'Vintage Cube', size: 180, blurb: 'Power, Moxen and cheat decks, cut to 180 for two.', accent: 'UR', humanData: true },
   { id: 'pauper', file: 'pauper-cube-180', title: 'Pauper Cube', size: 180, blurb: 'All commons: blink, ninjas, tokens, sacrifice.', accent: 'WG' },

@@ -148,3 +148,243 @@ What this does and does not show:
   other cube keep today's values. The Draft vs AI opponent's ratings, picks
   and deck are unchanged (a test drafts every format with and without the
   human file).
+
+---
+
+# Part 2: the human data in more cubes, and how far to trust the lab
+
+Status: **pre-registered 2026-10-08, before any result below was computed.**
+Nothing in this part's sections up to "Results (part 2)" changes after the run.
+Coverage counts (how many cards of each cube are in 17Lands' data) were known
+before, from the research notes; no correlation, value or interval for any
+cube other than Vintage had been computed with the decision code.
+
+## A. Should Modern-Era, Omega and Synergy blend the overlap cards?
+
+### Question
+
+17Lands' Powered Cube data also holds about 100 Modern-Era, 105 Omega and 79
+Synergy cards (55–58% and 44% of each cube). Should those cubes' card values
+mix in the overlap cards' human numbers, as Vintage's do? The cubes differ
+from Arena's Powered Cube in card pool and power level, so a card's human
+rate there is a rate **in another environment**. Two things must hold for the
+blend to help, and they need different evidence:
+
+1. **Ranking.** Among the overlap cards, does the blend order cards more like
+   human players' results than today's value does? This is answerable with a
+   held-out half of the human data, as in part 1.
+2. **Transfer.** Does a card's Powered-Cube rank say anything about how it does
+   in *this* cube at all? No human games of these cubes exist here (Justin's,
+   Evan's and the friend-table recordings are too few). The only signal from
+   inside the cube that is independent of 17Lands is the cube lab's own meta:
+   Forge-vs-Forge drafts of this very cube. Forge is a weak pilot (part 1: the
+   lab agrees with humans at about 0.46 on Vintage), so this is a low bar: it
+   asks only that the two sources share *some* ordering, not that Forge is
+   right. A cube without a lab meta (Omega) cannot show transfer and so cannot
+   pass. This is stated now, before the run.
+
+Why not the other way round, with the cube's meta as the target for the
+ranking question? Because today's value for Modern-Era and Synergy is built
+from that meta, so it would win against itself by construction; the meta is
+kept out of the ranking target and used only for the transfer check, where
+neither score is built from it.
+
+### The blend for a cube of another environment (fixed in advance)
+
+The ranking test above can only see the order **within** the overlap cards.
+It cannot see whether the overlap cards as a group are better or worse than
+the cube's other cards: the human rates are relative to the Powered Cube's
+average, where a fair three-drop sits among Moxen. So for these cubes the
+human part is anchored to the cube's own scale and only reorders the overlap
+cards among themselves:
+
+    O    = the cube's nonland cards with a human row (500+ games in hand, 0 < p < 1)
+    p̄    = Σ_O wins in hand / Σ_O games in hand       the overlap cards' pooled GIH WR
+    L̄    = mean over O of today's value (labValue)   their level on the cube's own scale
+    h    = L̄ + 250 · D · (p − p̄)                    instead of 50 + 250 · D · (p − avg)
+    H, D = 0.8, K = 80 and the blend: as in part 1
+
+The human file says which anchor it uses (`"anchor": "cube"`; Vintage's file
+has none and keeps part 1's formula unchanged). Lands keep today's value.
+
+### Data, halves, folds
+
+The same two files as part 1 (`game_data_public.Cube_-_Powered.PremierDraft`
+and `.TradDraft.csv.gz`, dataset updated 2025-11-23; checked by their game
+count, 294,975), the same halves (FNV-1a-32(draft_id) & 1) and the same two
+folds (A = half 0 → B = half 1, and back).
+
+### Condition 1: ranking (per cube, per fold)
+
+- **Target:** half B's GIH WR for every nonland card of the cube (neither the
+  document nor Scryfall calls it a land) with 500+ games in hand in half B.
+- **today:** `cardValue` with the cube's document, its test Scryfall snapshot
+  (`src/cube/testdata/scryfall-<id>.json`) and its shipped meta (Modern-Era,
+  Synergy; Omega has none), no human data.
+- **blend:** the anchored formula with half A's file.
+- **Statistic and interval:** rho(blend, target) − rho(today, target), Spearman
+  with average ranks; paired bootstrap over target cards, 10,000 resamples,
+  mulberry32 seed 20261006, 2.5th–97.5th percentiles.
+- **Passes when** there are at least 30 target cards and the lower end is above
+  0 in **both** folds.
+
+### Condition 2: transfer (per cube)
+
+- **Cards:** the cube's nonland cards with 500+ games in hand in the full file
+  and at least one lab game in the cube's shipped meta.
+- **Statistic:** Spearman rho between the lab's win rate for the card in this
+  cube (`wins / games`, what the Lab numbers panel shows) and its full-file
+  human GIH WR; bootstrap over cards, 10,000 resamples, seed 20261006, 95%
+  percentile interval.
+- **Passes when** there are at least 30 such cards and the lower end is above 0.
+  A cube with no shipped meta fails.
+
+### Rule
+
+Per cube: **adopt only if both conditions pass.** Adopting means the generator
+writes `<file>.human.json` for that cube (its per-cube coverage gate replaces
+MIN_COVERAGE 0.75 for that cube only), the card value blends it with the
+anchored formula, the human lines show on the pick screen and card sheet, and
+the screen says how many of the cube's cards have human numbers and that they
+come from a different cube. **Otherwise the cube gets no human file at all**
+(not even display-only): the brief lowers the coverage gate only on a pass, and
+a Powered-Cube win rate shown beside an Omega card without evidence that it
+transfers would read as more than it is. Fair Fight, Peasant and Pauper (47,
+42 and 21 overlap cards) are not tested and get nothing.
+
+### Reported, not used for the decision
+
+- The unanchored blend (part 1's formula, 50 + 250·D·(p − avg)).
+- Human only (half A's GIH WR) and the split-half reliability on the targets.
+- The mean change of the overlap cards' values, blend − today, with the full
+  file (anchored, and unanchored): how far the unanchored formula would have
+  moved the group as a whole.
+- Condition 2 for Vintage, as a reference for the same environment.
+
+## B. A reliability label for the lab's numbers
+
+### Question
+
+How well does the lab's (Forge's) number for a card agree with human results,
+by kind of card, so the draft hints and card sheet can say how far to trust it?
+
+### Method (fixed in advance)
+
+- **Data:** the Vintage cube only, where the lab and the humans draft the same
+  cards in the same kind of environment, so a disagreement is the lab's and not
+  a transfer gap: the shipped `vintage-cube-180.meta.json` and the shipped,
+  full `vintage-cube-180.human.json`, nonland cards with a human row and at
+  least one lab game.
+- **Statistic:** Spearman rho between the lab's win rate (`wins / games`) and
+  the human GIH WR within each band; bootstrap over cards (10,000 resamples,
+  seed 20261006), 95% percentile interval.
+- **Bands:** all; creature / noncreature (Scryfall type line); mana value ≤ 2,
+  3–4, 5+ (Scryfall `cmc`); colourless (no colours). A band is used only with
+  **at least 20 cards**; a smaller one is reported and not used.
+- **Level** from the interval: **fair** when the lower end is at least 0.3;
+  **rough** when the lower end is above 0 but under 0.3; **shaky** when the
+  interval reaches 0 or below.
+- **A card's label** is the weakest level among the used bands it belongs to
+  (its type band, its mana-value band, colourless if it has no colour), naming
+  that band; ties go to the mana-value band, then colourless, then type.
+  Lands get no label. The label is shown wherever a lab number or a lab-based
+  value is shown for a card whose value does not use human data, and in the
+  Lab numbers panel for every nonland card with lab numbers.
+- **Reported, not used:** the same bands pooled over Modern-Era, Synergy and
+  Pauper (overlap cards, each against its own meta), where a disagreement mixes
+  the lab's error with the transfer gap.
+
+The numbers are committed as a table in `src/cube/labTrust.ts`, regenerated by
+`npm run human-blend -- agree`; the page computes nothing about them.
+
+## Results (part 2, run 2026-10-08)
+
+Reproduce (the two files as in part 1; DIR is any scratch folder):
+
+```bash
+npm run human-cards -- --updated 2025-11-23 --out DIR game_data_public.Cube_-_Powered.*.csv.gz
+npm run human-cards -- --updated 2025-11-23 --half 0 --out DIR game_data_public.Cube_-_Powered.*.csv.gz
+npm run human-cards -- --updated 2025-11-23 --half 1 --out DIR game_data_public.Cube_-_Powered.*.csv.gz
+npm run human-blend -- --cube synergy DIR      # likewise modern-era, omega
+npm run human-blend -- agree DIR
+```
+
+The data checked out: 294,975 games, halves of 147,565 and 147,410, no row
+without a draft id, and the regenerated Vintage file is identical to the
+shipped one (cards and pooled counts). Part 1's Vintage run reproduces
+exactly (0.462 → 0.908 and 0.461 → 0.908).
+
+### A. Per cube
+
+| Cube | Targets | Fold 1: today → blend, difference [95%] | Fold 2: today → blend, difference [95%] | Condition 2: lab vs humans, rho [95%] | Decision |
+|---|---|---|---|---|---|
+| Modern-Era | 90 | 0.051 → 0.633, +0.582 [+0.411, +0.750] | 0.071 → 0.673, +0.602 [+0.416, +0.786] | n 90, +0.048 [−0.167, +0.270]: **fails** | **skip** |
+| Omega | 85 | 0.226 → 0.888, +0.663 [+0.440, +0.887] | 0.187 → 0.890, +0.704 [+0.499, +0.916] | no lab meta: **fails** (as stated in advance) | **skip** |
+| Synergy | 59 | 0.498 → 0.834, +0.337 [+0.164, +0.542] | 0.413 → 0.743, +0.329 [+0.139, +0.544] | n 59, +0.451 [+0.195, +0.662]: holds | **adopt** |
+| *Vintage (reference)* | | | | *n 131, +0.477 [+0.340, +0.599]* | |
+
+Condition 1 holds everywhere, as expected: half of the human data predicts
+the other half far better than a Forge-based value does. The decisions turn
+on condition 2. Modern-Era's own lab ranks the shared cards with no relation
+to how Arena's humans rank them (+0.05); whether that is Forge or the
+environment, nothing inside the cube backs the transfer, so it gets no file.
+Omega has no lab meta, so nothing could. Synergy's lab agrees with the
+Powered-Cube humans about as well as Vintage's own lab does (0.45 against
+0.48), so the shared cards' human order carries over at least as far as
+Forge's view of them does.
+
+For information only (not used):
+
+- Unanchored blend (part 1's formula): Modern-Era 0.615 / 0.654, Omega 0.885 /
+  0.891, Synergy 0.835 / 0.744 — the anchor barely changes the order within the
+  shared cards, as intended; what it changes is the group's level. With the
+  full file, the unanchored formula would have moved Omega's 85 shared cards
+  down by 11.9 points on average (the Powered Cube's fair cards sit below its
+  average); anchored, the mean change is −1.6. Synergy: −1.3 unanchored,
+  −1.5 anchored.
+- Human only (half A's GIH WR), i.e. the split-half reliability on the
+  targets: Modern-Era 0.894, Omega 0.888, Synergy 0.881.
+- What changes for Synergy: 59 nonland cards' values move, by 13.3 points on
+  average (−30.7 to +29.5); the other 121 cards and the Draft vs AI drafter are
+  unchanged (tests).
+
+**Decision: Synergy ships `synergy-cube-180.human.json` (79 of 180 cards, 20
+of them lands that show human numbers but keep today's value) with the
+anchored blend; its coverage gate is 0.4 (`COVERAGE_BY_CUBE`). Modern-Era and
+Omega get nothing. Vintage is unchanged.**
+
+### B. Lab agreement by band (Vintage, 131 nonland cards)
+
+| Band | Cards | rho | 95% interval | Level |
+|---|---|---|---|---|
+| all | 131 | 0.477 | [0.340, 0.599] | fair |
+| creatures | 57 | 0.583 | [0.394, 0.719] | fair |
+| noncreature spells | 74 | 0.364 | [0.139, 0.558] | rough |
+| mana value ≤ 2 | 66 | 0.539 | [0.328, 0.705] | fair |
+| mana value 3–4 | 46 | 0.562 | [0.305, 0.746] | fair |
+| mana value 5+ | 19 | 0.204 | [−0.321, 0.642] | under 20 cards |
+| colourless | 12 | −0.084 | [−0.591, 0.507] | under 20 cards |
+
+**Deviation, decided after seeing the counts.** The pre-registration said a
+band under 20 cards "is not used". Applied literally, a six-drop creature
+would then take the creature band's "fair" and an artifact its mana-value
+band's — more trust than the data supports, since those are exactly the bands
+that could not be measured. Instead a card in an under-minimum band is
+labelled **untested** for it ("Lab number: untested for 5+ drops"), the lowest
+level. The change can only lower a label, never raise one; nothing else in
+the method changed. (By the interval alone both bands would read "shaky".)
+
+So the labels say: a fair guide for creatures and for cards costing up to 4;
+a rough guide for noncreature spells; untested for 5+ drops and colourless
+cards. They appear in the Lab numbers panel, on the card sheet (with the
+measurement) and in the grid, Winston and booster advice (only cards that are
+not a fair guide are named), for cards whose value rests on the lab.
+
+For information only (not used): the same bands on Modern-Era, Synergy and
+Pauper's shared cards, each against its own meta, pooled by Fisher z — all
+0.27 [0.13, 0.41] (n 170), creatures 0.06 [−0.17, 0.29] (Modern-Era −0.21,
+Synergy +0.55), noncreature 0.42 [0.23, 0.58], ≤ 2 0.37 [0.19, 0.53], 3–4
+0.20 [−0.10, 0.46]; 5+ and colourless had 10 and 8 cards. These mix Forge's
+error with the gap between environments, which is why they were not the
+basis; they do not contradict the Vintage levels' direction except for
+creatures, which is Modern-Era alone.
