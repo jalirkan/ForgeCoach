@@ -388,3 +388,142 @@ Synergy +0.55), noncreature 0.42 [0.23, 0.58], ≤ 2 0.37 [0.19, 0.53], 3–4
 error with the gap between environments, which is why they were not the
 basis; they do not contradict the Vintage levels' direction except for
 creatures, which is Modern-Era alone.
+
+---
+
+# Part 3: a per-colour correction of the lab's card numbers
+
+Status: **pre-registered 2026-10-08, before any offset, value or correlation
+below was computed.** Nothing in this part's sections up to "Results (part 3)"
+changes after the run.
+
+## Question
+
+mtg-table's J111 (`pc-results:results/J111/blue.json`) found, in all seven
+cubes, that Forge-piloted blue decks win 32–45% at equal deck quality (the
+uncontested model's `b0`), that the other seat's blue takes do not explain it
+(every contention coefficient's interval includes 0), and that the AI drafter
+takes blue at 1.4–2.1× the cube's colour share. Its verdict for every cube is
+"(b) Forge plays blue worse". 17Lands' Powered Cube players, by contrast, do
+about average with blue cards. So a blue card's lab win rate, which is mostly
+its deck's win rate, is likely held down by Forge's piloting, and other
+colours may be pushed up or down the same way.
+
+Does removing each colour's deck-level offset from the lab's win rates make
+the lab-based card value rank cards more like human results?
+
+## The correction (fixed in advance, Forge data only)
+
+For a cube with a lab meta, per colour c in W, U, B, R, G:
+
+    p_c  = the lab's deck win rate for decks whose colours include c
+           (meta `colorBaselines` when the lab writes it, else summed over the
+           meta's archetypes containing c, games-weighted: the rule of
+           draft/labStats.ts `colourBaselines`, which the Lab numbers panel shows)
+    m    = Σ wins / Σ games over all the meta's archetypes   (≈ 0.5)
+    δ_c  = p_c − m
+
+A card's offset is the mean of δ_c over its colours (Scryfall `colors`, as in
+`CardFacts.colors`); a colourless card's is 0. The corrected lab rate is
+`rawRate − offset`, and `labValue`'s formula is otherwise unchanged:
+value = (K·prior + g·(50 + 250·(raw − offset − 0.5)))/(K + g), K = 80. No
+offset is shrunk, scaled or chosen per card. It uses only the cube's own
+meta; no human data enters it. J111's equal-quality effect itself is not
+used: it exists only for blue, and only in mtg-table's results branch.
+
+## The test
+
+- **Cubes and targets.** Vintage: its nonland cards with a row in the shipped
+  `vintage-cube-180.human.json` (500+ games in hand, 0 < p < 1; 131 cards in
+  part 1). Synergy: its nonland cards with a row in the shipped
+  `synergy-cube-180.human.json`. The file covers 79 Synergy cards, of which 20
+  are lands (part 2), so the test set is the 59 nonland ones; lands are
+  colourless here and would get no offset anyway. Target: the card's GIH win
+  rate in that file.
+- **Scores.** *uncorrected*: `labValue` as shipped (the cube document, the
+  test Scryfall snapshot, the shipped meta, no human data); *corrected*: the
+  same with the offset above.
+- **Statistic.** Spearman rho with the target (average ranks),
+  rho(corrected) − rho(uncorrected).
+- **Interval.** Paired bootstrap over target cards, 10,000 resamples,
+  mulberry32 seed 20261006, 2.5th–97.5th percentiles (blendTest.ts
+  `pairedBootstrap`, as parts 1 and 2).
+- **Passes when both hold:** in Vintage the interval's lower end is above 0;
+  in Synergy the difference (the point estimate) is ≥ 0. Its interval is
+  reported.
+
+## Rule
+
+**If it passes**, the deck assistant's card value uses the corrected lab value
+only where no human number exists: every card of a cube with a meta and no
+human file (Modern-Era, Pauper), and the cards of Vintage and Synergy without
+a usable human row. A card with a human number keeps today's blend exactly,
+including its lab term and Synergy's anchor (the mean of the uncorrected
+`labValue`). `labValue` itself and `labOnly` stay as they are: the Draft vs
+AI drafter's ratings, picks and decks do not change, and a test checks that.
+Where a lab-based value is shown, a short note says it is colour-adjusted for
+Forge's play. The Lab numbers panel's raw win rates stay raw.
+
+**If it fails**, nothing ships: this part and its results are what merges.
+
+## Reported, not used for the decision
+
+- Spearman rho of the raw lab win rate (`wins / games`, cards with lab games)
+  against the target, before and after the offset.
+- The offsets δ_c per cube, for all four cubes with a meta.
+- An alternative estimator: each colour's offset as the pooled card win rate
+  of the meta's mono-coloured nonland cards minus the pooled rate of all its
+  nonland cards.
+- The mean GIH WR of each colour's mono-coloured cards in the human files, so
+  the human side of the brief can be checked.
+
+## Results (part 3, run 2026-10-08)
+
+Reproduce: `npm run human-blend -- colour` (the shipped metas and human files;
+no download needed). The code is `scripts/human-cards/colourOffsets.ts` and
+`part3Cli.ts`.
+
+| Cube | Cards | rho uncorrected | rho corrected | difference [95%] | Needed |
+|---|---|---|---|---|---|
+| Vintage | 131 | 0.469 | 0.300 | −0.169 [−0.262, −0.078] | lower end > 0: **fails** |
+| Synergy | 59 | 0.456 | 0.412 | −0.044 [−0.272, +0.179] | difference ≥ 0: **fails** |
+
+**Decision: ship nothing.** The correction makes the lab's card values rank
+cards *less* like human results in Vintage, with an interval that excludes 0
+on the wrong side, and slightly less in Synergy. The card value, `labValue`,
+the drafter and every screen are unchanged. The correction stays in the
+test tooling only (`scripts/human-cards/`) so the run can be repeated.
+
+For information only (not used):
+
+- Offsets δ_c, in win-rate points (W, U, B, R, G): Vintage +4.3, −0.9, −3.4,
+  −0.6, −2.9; Synergy +15.1, −6.1, +3.2, −6.8, −5.8; Modern-Era +1.3, −4.2,
+  −5.6, +4.0, +6.5; Pauper +8.3, −0.8, −0.8, −0.6, −3.8. The mono-coloured
+  card-pool estimator gives nearly the same offsets (within 3.3 points, all
+  of the same sign but Pauper's B and R at 0).
+- The raw lab win rate (cards with lab games) against GIH WR: Vintage 0.477
+  → 0.328 corrected (0.358 with the card-pool offsets); Synergy 0.451 → 0.366
+  (0.240).
+- Human pooled GIH WR by colour, mono-coloured nonland cards in the test set
+  (count): Vintage W 0.591 (21), U 0.564 (23), B 0.549 (20), R 0.590 (20),
+  G 0.543 (18), multicolour 0.571, colourless 0.570; the file's pooled average
+  0.559. Synergy's shared cards: W 0.589, U 0.546, B 0.542, R 0.582, G 0.527.
+  This confirms the brief's order (white and red high, green and black low,
+  blue in between). The levels differ a little from the brief's 0.557 / 0.571
+  because these are pooled over games in hand on the test cards, not plain
+  means over cards.
+
+Why it failed, as far as these numbers show (an interpretation, not tested):
+
+- In Vintage, Forge's deck-level colour effects mostly point the same way as
+  the humans' colour order: white up, black and green down. Most of the colour
+  gap in the lab's numbers is shared with humans, so removing it removes real
+  signal along with any Forge bias.
+- Blue's deck-level offset is small in Vintage (−0.9 points) although J111
+  puts blue decks at 45% *at equal deck quality*. The AI drafter overrates
+  blue, so its blue decks hold better cards, and that hides the piloting
+  penalty in the raw rates. An offset taken from the raw rates cannot
+  recover an effect measured at equal quality. A correction built on J111's
+  equal-quality effects for every colour (which needs mtg-table to fit the
+  `b0` model for W, B, R and G, not only U) would be a new pre-registration,
+  not a re-run of this one.
