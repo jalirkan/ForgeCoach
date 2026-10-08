@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * Evybaby's New Cube: Evan's own 360-card list (public/cubes/evybaby-cube-360.md),
- * with no themes, archetypes, prices, guide or lab data. The document, the
- * registry, the no-meta card values, every draft format on it, and the cards
+ * with no themes, archetypes, prices or guide; its lab meta (J110, j110Metas.test.ts) has no
+ * numbers for the cards Forge lacks. The document, the registry, the no-meta card values
+ * (what a page without the meta falls back to), every draft format on it, and the cards
  * Forge 2.0.14 has no script for kept out of what the engine is handed.
  */
 import { describe, expect, it } from 'vitest';
@@ -82,13 +83,14 @@ describe('the Evybaby document', () => {
 
 describe('the registry', () => {
   const info = cubeInfo('evybaby')!;
-  it('lists it under the title Evan gave it, its own size, and no lab data', () => {
-    expect(info).toMatchObject({ title: "Evybaby's New Cube", file: 'evybaby-cube-360', size: 360, labData: false });
+  it('lists it under the title Evan gave it, its own size, and its lab data', () => {
+    expect(info).toMatchObject({ title: "Evybaby's New Cube", file: 'evybaby-cube-360', size: 360 });
+    expect(info.labData).toBeUndefined();
     expect(cubeShortName(info)).toBe('Evybaby');
     expect(cubeShortName(cubeInfo('fair-fight')!)).toBe('Fair Fight');
     expect(info.humanData).toBeUndefined();
   });
-  it('loads the document from public/cubes/ and asks for no meta.json', async () => {
+  it('loads the document from public/cubes/ and asks for its meta.json beside it', async () => {
     const asked: string[] = [];
     const fetcher = async (u: string) => {
       asked.push(u);
@@ -96,7 +98,7 @@ describe('the registry', () => {
     };
     expect((await loadCubeDoc(info, '/ForgeCoach/', fetcher)).cards).toHaveLength(360);
     expect(await loadShippedMeta(info, '/ForgeCoach/', fetcher)).toBeNull();
-    expect(asked).toEqual(['/ForgeCoach/cubes/evybaby-cube-360.md']);
+    expect(asked).toEqual(['/ForgeCoach/cubes/evybaby-cube-360.md', '/ForgeCoach/cubes/evybaby-cube-360.meta.json']);
   });
 });
 

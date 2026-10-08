@@ -25,7 +25,7 @@ describe('loadShippedMeta', () => {
       asked.push(u);
       return new Response('{}', { status: 404 });
     };
-    expect(await loadShippedMeta(cubeInfo('peasant')!, '/', fetcher)).toBeNull();
+    expect(await loadShippedMeta({ ...cubeInfo('peasant')!, labData: false }, '/', fetcher)).toBeNull();
     expect(asked).toEqual([]);
     expect(await loadShippedMeta(cubeInfo('synergy')!, '/', fetcher)).toBeNull();
     expect(asked).toEqual(['/cubes/synergy-cube-180.meta.json']);

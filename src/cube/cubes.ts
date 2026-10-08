@@ -40,11 +40,12 @@ export const CUBES: CubeInfo[] = [
   { id: 'modern-era', file: 'modern-era-cube-180', title: 'Modern-Era Cube', size: 180, blurb: 'Ten guild archetypes with a few famous bombs.', accent: 'UG' },
   { id: 'vintage', file: 'vintage-cube-180', title: 'Vintage Cube', size: 180, blurb: 'Power, Moxen and cheat decks, cut to 180 for two.', accent: 'UR', humanData: true },
   { id: 'pauper', file: 'pauper-cube-180', title: 'Pauper Cube', size: 180, blurb: 'All commons: blink, ninjas, tokens, sacrifice.', accent: 'WG' },
-  { id: 'omega', file: 'omega-cube-180', title: 'Omega Cube', size: 180, blurb: 'The greatest hits at one fair power level: no Power, no cheats.', accent: 'WB', labData: false },
-  { id: 'fair-fight', file: 'fair-fight-cube-180', title: 'Fair Fight Cube', size: 180, blurb: 'Every rarity at a Pauper power level: no bombs, answers for everything.', accent: 'RW', labData: false },
-  { id: 'peasant', file: 'peasant-cube-180', title: 'Peasant Cube', size: 180, blurb: 'Commons and uncommons: ten guild decks from the most-followed peasant cube.', accent: 'BG', labData: false },
-  // Evan's own list, as he titled it (public/cubes/evybaby-cube-360.md): no themes, archetypes, guide or lab data.
-  { id: 'evybaby', file: 'evybaby-cube-360', title: "Evybaby's New Cube", short: 'Evybaby', size: 360, blurb: 'Evan’s cube: 360 cards, Avatar to Middle-earth to pizza, with shocks, surveil lands and fetches.', accent: 'WUBRG', labData: false },
+  { id: 'omega', file: 'omega-cube-180', title: 'Omega Cube', size: 180, blurb: 'The greatest hits at one fair power level: no Power, no cheats.', accent: 'WB' },
+  { id: 'fair-fight', file: 'fair-fight-cube-180', title: 'Fair Fight Cube', size: 180, blurb: 'Every rarity at a Pauper power level: no bombs, answers for everything.', accent: 'RW' },
+  { id: 'peasant', file: 'peasant-cube-180', title: 'Peasant Cube', size: 180, blurb: 'Commons and uncommons: ten guild decks from the most-followed peasant cube.', accent: 'BG' },
+  // Evan's own list, as he titled it (public/cubes/evybaby-cube-360.md): no themes, archetypes or guide.
+  // Its lab meta (J110) drafted around the 13 cards Forge lacks; those have no lab numbers (meta.ts).
+  { id: 'evybaby', file: 'evybaby-cube-360', title: "Evybaby's New Cube", short: 'Evybaby', size: 360, blurb: 'Evan’s cube: 360 cards, Avatar to Middle-earth to pizza, with shocks, surveil lands and fetches.', accent: 'WUBRG' },
 ];
 
 export function cubeInfo(id: string): CubeInfo | undefined {

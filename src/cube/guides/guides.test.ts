@@ -187,7 +187,7 @@ describe('lab facts come from meta.json at runtime', () => {
     expect(lab.caveat).toContain('40 games from 3 drafts');
   });
 
-  it('nothing without a meta (Omega has no lab run yet)', () => {
+  it('nothing without a meta (as when a cube ships none, or it fails to load)', () => {
     expect(guideLabFacts(null)).toBeNull();
     expect(archetypeLab(null, guideFor('omega')!.archetypes[0]!)).toBeNull();
   });
