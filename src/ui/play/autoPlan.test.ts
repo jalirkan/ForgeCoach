@@ -14,6 +14,8 @@ import {
   earlierAdvice,
   gameKeyOf,
   lastAsk,
+  previousPlan,
+  standInPlan,
   planDue,
   planKey,
   planLabel,
@@ -134,6 +136,22 @@ describe('the advice beside the plan', () => {
     expect(currentPlan(e)?.forTurn).toBe(10);
     expect(lastAsk(e, null)).toBeNull();
     expect(earlierAdvice(e, null).map((x) => x.key)).toEqual(['ask-blocks', planKey(g, 8)]);
+  });
+
+  it('the plan before the new one stands in until the new one has text, then goes to Earlier advice', () => {
+    const g = 'g@3#0';
+    recordAdvice(g, { key: planKey(g, 8), kind: 'plan', label: planLabel(8), forTurn: 8, decision: fakeDecision(st(7)) });
+    expect(previousPlan(adviceFor(g))).toBeNull();
+    recordAdvice(g, { key: 'ask-x', kind: 'ask', label: 'Your blocks, turn 9', forTurn: null, decision: fakeDecision(st(9)) });
+    recordAdvice(g, { key: planKey(g, 10), kind: 'plan', label: planLabel(10), forTurn: 10, decision: fakeDecision(st(9)) });
+    const e = adviceFor(g);
+    expect(previousPlan(e)?.forTurn).toBe(8);
+    // The new plan is being written: the last one stands in; once it has text, it does not.
+    expect(standInPlan(e, false)?.forTurn).toBe(8);
+    expect(standInPlan(e, true)).toBeNull();
+    // While it stands in it is not also folded into Earlier advice.
+    expect(earlierAdvice(e, null, planKey(g, 8)).map((x) => x.key)).toEqual(['ask-x']);
+    expect(earlierAdvice(e, null).map((x) => x.key)).toEqual(['ask-x', planKey(g, 8)]);
   });
 
   it('keeps a bounded history per game', () => {

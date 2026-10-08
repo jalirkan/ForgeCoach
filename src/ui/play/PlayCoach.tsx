@@ -49,6 +49,7 @@ import {
   planLabel,
   plansAsked,
   recordAdvice,
+  standInPlan,
   subscribeAdvice,
   type AdviceEntry,
 } from './autoPlan.ts';
@@ -186,8 +187,11 @@ export const PlayCoach = memo(function PlayCoach({
 
   const current = useAnswer(key);
   const plan = currentPlan(advice);
+  // Advice never disappears: while the new plan has no text yet (queued, thinking, stopped), the one before it stays.
+  const planAnswer = useAnswer(plan?.key ?? null);
+  const standIn = standInPlan(advice, !!planAnswer?.text);
   const prevAsk = lastAsk(advice, key);
-  const earlier = earlierAdvice(advice, key);
+  const earlier = earlierAdvice(advice, key, standIn?.key ?? null);
 
   const makePrompt = useCallback(async () => {
     if (!log || !decision) throw new Error('Nothing to ask about yet.');
@@ -284,6 +288,7 @@ export const PlayCoach = memo(function PlayCoach({
         </div>
       ) : null}
       {plan && <PlanBox plan={plan} log={log} terse={terse} onAsk={replan} makePrompt={planPrompt} onOpenSettings={onOpenSettings} />}
+      {standIn && <StandInPlan entry={standIn} terse={terse} />}
       {prevAsk && <PastAdvice entry={prevAsk} terse={terse} />}
       {earlier.length > 0 && <EarlierAdvice entries={earlier} terse={terse} />}
       <p className="tiny muted pc-foot">The coach only advises — every move is yours.</p>
@@ -323,6 +328,21 @@ function PlanBox({
         title={plan.label}
         feedback={feedbackTarget(log, plan.frameIndex >= 0 ? plan.frameIndex : null, 'play')}
       />
+    </div>
+  );
+}
+
+/** The last plan, kept in view (read-only) while the new one is being written. */
+function StandInPlan({ entry, terse }: { entry: AdviceEntry; terse: boolean }) {
+  const answer = useAnswer(entry.key);
+  if (!answer?.text) return null;
+  return (
+    <div className="card-box answer pc-prev pc-standin" data-standin-plan="">
+      <div className="box-h">
+        <span>Last plan · {entry.label}</span>
+      </div>
+      <p className="tiny muted pc-standin-note">Kept here until the new plan is ready.</p>
+      <AnswerText answer={answer} terse={terse} />
     </div>
   );
 }

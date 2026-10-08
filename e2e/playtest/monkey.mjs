@@ -17,6 +17,11 @@
  *     the card). That is the check that would have caught the attached
  *     Skullclamp and the graveyard target that never showed.
  *   - The engine waiting on this seat with nothing to click is "stuck".
+ *   - The board is judged only once it shows the input the wire has (the board's
+ *     `data-input-seq`): a board still drawing the last moment is not missing a
+ *     control (J107's table findings were mostly that). A board that stays
+ *     behind for seconds is its own finding, "board-lag". A miss is looked at
+ *     twice (the folded hand opened again) before it counts.
  *
  * Choices are seeded: sometimes Forge's own default (the ask's default, the
  * focused button, the preselection, Auto pay), sometimes random among the
@@ -79,6 +84,7 @@ export class Monkey {
     this.trace = [];
     this.lastDid = null;
     this.deadEnds = new Set();
+    this.lagSeen = new Set();
   }
 
   count(group, k) {
@@ -210,19 +216,63 @@ export class Monkey {
     return dom.buttons.find((b) => b.which === which && b.vis && b.enabled) ?? null;
   }
 
+  /** The input seq the board has drawn (`data-input-seq` on the board), or null on an older site. */
+  async boardSeq() {
+    return this.page
+      .evaluate(() => {
+        const v = document.querySelector('.game.play')?.getAttribute('data-input-seq');
+        return v === null || v === undefined ? null : Number(v);
+      })
+      .catch(() => null);
+  }
+
+  /**
+   * Waits (up to `ms`) for the board to draw the input the wire has. True when it has (or the site
+   * does not say). A board that stays behind is recorded once per game as "board-lag": that is a
+   * real board problem (a person would see the last moment's controls), unlike a monkey that looked
+   * a few frames early.
+   */
+  async boardCaughtUp(ms = 3000) {
+    const want = this.tap.inputSeq;
+    if (!want) return true;
+    const end = Date.now() + ms;
+    let seen = null;
+    for (;;) {
+      seen = await this.boardSeq();
+      if (seen === null || Number.isNaN(seen) || seen >= want) return true;
+      if (this.tap.inputSeq !== want) return false; // a newer input came: the caller looks again
+      if (Date.now() > end) break;
+      await sleep(100);
+    }
+    const key = `${this.tap.gameId}|lag`;
+    if (!this.lagSeen.has(key)) {
+      this.lagSeen.add(key);
+      await this.finding({ kind: 'board-lag', what: `the board still drew input seq ${seen} ${ms} ms after the wire's ${want} ("${firstLine(this.tap.input?.prompt)}")`, input: this.tap.input });
+    }
+    return false;
+  }
+
   async click(t, what) {
     this.clicks++;
     // settle() waits for the engine's answer to this click: frames from now on count.
     this.markBefore = this.tap.mark;
     this.lastDid = this.lastDid ? `${this.lastDid}; ${what}` : what;
+    const input = this.tap.input;
+    const ask = this.tap.ask;
     try {
       await this.page.locator(`[data-pt="${t}"]`).first().click({ timeout: 6000 });
       await this.page.mouse.move(3, 3).catch(() => {});
       return true;
     } catch (e) {
-      await this.finding({ kind: 'control-not-clickable', what, why: String(e.message).split('\n')[0] });
+      // The moment moved on while we reached for it (J107: Rolling Thunder as a payment came in): not the board's fault.
+      if (this.tap.input === input && this.tap.ask === ask) await this.finding({ kind: 'control-not-clickable', what, why: String(e.message).split('\n')[0] });
       return false;
     }
+  }
+
+  /** True when the engine's question is the one we acted on (no new input or ask since). */
+  same(input, ask = null) {
+    return this.tap.input === input && (this.tap.ask?.askId ?? null) === (ask?.askId ?? null);
   }
 
   /** Records an unreachable option once per game and prompt. */
@@ -312,13 +362,16 @@ export class Monkey {
       dom = await this.dom();
     }
     if (!dom.dialog) {
-      // Give the dialog a moment to draw before calling it missing.
-      await sleep(1500);
-      dom = await this.dom();
-      if (!dom.dialog && dom.peek) {
-        await this.click(dom.peek, 'the minimised question');
-        await sleep(200);
+      // Give the dialog time to draw before calling it missing (a busy board can take seconds: J107's ability_menu).
+      for (let k = 0; k < 8 && !dom.dialog; k++) {
+        await sleep(500);
+        if (this.tap.ask?.askId !== ask.askId) return 'ask-gone';
         dom = await this.dom();
+        if (!dom.dialog && dom.peek) {
+          await this.click(dom.peek, 'the minimised question');
+          await sleep(200);
+          dom = await this.dom();
+        }
       }
       if (!dom.dialog) {
         if (this.tap.ask?.askId !== ask.askId) return 'ask-gone';
@@ -511,45 +564,68 @@ export class Monkey {
     return 'buttons';
   }
 
-  /** Checks every option of the input has a control; returns nothing. */
-  async checkInputReach(dom, kind) {
+  /** The options of the input with no control on this board: [{ what, extra }]. */
+  reachMisses(dom, kind) {
     const i = this.tap.input;
+    const out = [];
     if (kind === 'opening') {
       const n = dom.opening.filter((b) => b.vis && b.enabled).length;
-      if (n < 2) await this.unreachable(`opening "${firstLine(i.prompt)}": ${n} of 2 buttons`, { input: i });
-      return;
+      if (n < 2) out.push({ what: `opening "${firstLine(i.prompt)}": ${n} of 2 buttons`, extra: { input: i } });
+      return out;
     }
     for (const which of ['ok', 'cancel']) {
       const b = i.buttons[which];
       if (!b.enabled) continue;
       // Forge's End Turn is also "To EOT" (the bar shows one of the two when they say the same).
       if (!this.button(dom, which) && !(which === 'cancel' && /end turn/i.test(b.label) && dom.eot)) {
-        await this.unreachable(`button ${which} "${b.label}" (${kind}: "${firstLine(i.prompt)}")`, { input: i });
+        out.push({ what: `button ${which} "${b.label}" (${kind}: "${firstLine(i.prompt)}")`, extra: { input: i } });
       }
     }
     if (kind === 'select' || kind === 'pay' || kind === 'buttons') {
       for (const id of i.selectable.cardIds) {
         if (!this.cardControls(dom, id).length) {
           const c = this.tap.card(id);
-          await this.unreachable(`selectable card ${id}${c && !c.hidden ? ` (${c.name}, ${c.zone})` : ''} — "${firstLine(i.prompt)}"`, { input: i, cardId: id, card: c, key: `sel|${id}|${firstLine(i.prompt)}` });
+          out.push({ what: `selectable card ${id}${c && !c.hidden ? ` (${c.name}, ${c.zone})` : ''} — "${firstLine(i.prompt)}"`, extra: { input: i, cardId: id, card: c, key: `sel|${id}|${firstLine(i.prompt)}` } });
         }
       }
     }
     if (kind === 'players') {
-      if (!dom.players.some((p) => p.vis && p.select)) await this.unreachable(`a player to choose — "${firstLine(i.prompt)}"`, { input: i });
+      if (!dom.players.some((p) => p.vis && p.select)) out.push({ what: `a player to choose — "${firstLine(i.prompt)}"`, extra: { input: i } });
     }
+    return out;
+  }
+
+  /**
+   * Checks every option of the input has a control. A miss is looked at again after a moment (the
+   * folded hand opened again, the board given time to draw) before it is recorded. Returns the
+   * freshest look at the board.
+   */
+  async checkInputReach(dom, kind) {
+    const i = this.tap.input;
+    let misses = this.reachMisses(dom, kind);
+    if (!misses.length) return dom;
+    await this.unfoldHand();
+    await sleep(1200);
+    if (this.tap.input !== i || this.tap.ask) return dom;
+    dom = await this.dom();
+    misses = this.reachMisses(dom, kind);
+    for (const m of misses) await this.unreachable(m.what, m.extra);
+    return dom;
   }
 
   async answerInput(dom) {
     const input = this.tap.input;
     const kind = this.inputKind();
     this.count('modes', kind);
-    // The board can lag the wire by a frame: wait for it to show this input's buttons.
+    // The board can lag the wire: wait for it to draw this input (its data-input-seq) before judging it.
     await sleep(100);
+    await this.boardCaughtUp();
+    // A phone folds the hand when the moment changes: open it again for this one.
+    if (!this.tap.ask) await this.unfoldHand();
     dom = await this.dom();
     // The moment moved on while we looked (Forge's "Waiting for …" came in): nothing to judge.
     if (this.tap.input !== input || !this.tap.deciding() || this.tap.ask) return 'moved-on';
-    await this.checkInputReach(dom, kind);
+    dom = await this.checkInputReach(dom, kind);
     if (this.tap.input !== input) return 'moved-on';
     switch (kind) {
       case 'opening':
@@ -591,10 +667,12 @@ export class Monkey {
     const b = dom.buttons.find((x) => x.which === which && x.vis && x.enabled && x.where === 'zpick') ?? this.button(dom, which);
     if (!b) return false;
     const mark = this.tap.sent.length;
+    const input = this.tap.input;
     if (!(await this.click(b.t, `${which} "${b.text}"`))) return false;
     const act = which === 'ok' ? 'buttonOk' : 'buttonCancel';
     if (!(await this.sentSince(mark, (f) => f.type === 'act' && f.body?.action === act, 3000))) {
-      await this.finding({ kind: 'click-no-act', what: `${which} "${b.text}" sent no ${act}`, input: this.tap.input });
+      // J107: "Go to combat" clicked as Garruk's payment came in — the button had become another one.
+      if (this.same(input)) await this.finding({ kind: 'click-no-act', what: `${which} "${b.text}" sent no ${act}`, input: this.tap.input });
     }
     await this.settle();
     return true;
@@ -604,9 +682,11 @@ export class Monkey {
     const ctl = this.cardControls(dom, id)[0];
     if (!ctl) return false;
     const mark = this.tap.sent.length;
+    const input = this.tap.input;
     if (!(await this.click(ctl.t, what))) return false;
     const ok = await this.sentSince(mark, (f) => f.type === 'act' && f.body?.action === 'clickCard' && f.body.cardId === ctl.id, 2500);
-    if (!ok) await this.finding({ kind: 'click-no-act', what: `${what}: a click on a marked card sent no clickCard`, cardId: id });
+    // J107: a Counterspell clicked as "Waiting for Sam…" came in opened its details instead — the moment had moved on.
+    if (!ok && this.same(input)) await this.finding({ kind: 'click-no-act', what: `${what}: a click on a marked card sent no clickCard`, cardId: id });
     return ok;
   }
 
@@ -812,6 +892,8 @@ export class Monkey {
     // A board a moment behind the wire gets 1.5 s to catch up before a missing control counts.
     const behindPill = (k) => k.zone !== 'hand' && k.zone !== 'battlefield';
     if (cands.some((k) => !behindPill(k) && !this.cardControls(dom, k.c.id).length)) {
+      // J107 4.1 / 5.1: a phone's hand folded again when the board caught up to a new mode — open it again.
+      await this.unfoldHand();
       await sleep(1500);
       if (this.tap.input !== i || this.tap.ask) return 'moved-on';
       dom = await this.dom();
@@ -925,6 +1007,7 @@ export class Monkey {
     const wantPlayer = /player|opponent|any target/i.test(i.prompt) ? 0.7 : 0.2;
     const prompt = i.prompt;
     const mark = this.tap.sent.length;
+    const frames = this.tap.mark;
     if (players.length && (this.rand() < wantPlayer || !cards.length)) {
       // Mostly the opponent (Forge's own choice for a burn spell or a discard); sometimes yourself.
       const opp = players.find((p) => p.id !== this.tap.seat);
@@ -941,8 +1024,10 @@ export class Monkey {
     // Not taken (Forge says "not a valid target" and asks again): leave with Cancel now and then.
     if (this.tap.input?.prompt === prompt && !this.tap.ask && this.rand() < 0.3) {
       dom = await this.dom();
-      await this.press(dom, 'cancel');
+      if (await this.press(dom, 'cancel')) return 'open-target:cancel';
     }
+    // Nothing moved (no new input, no ask) and no way out: count it toward "stuck", so a hang is a finding, not 75 minutes.
+    if (this.tap.mark === frames && !this.tap.over && !i.buttons.cancel.enabled) return 'stuck';
     return 'open-target';
   }
 

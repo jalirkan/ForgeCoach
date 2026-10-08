@@ -652,7 +652,7 @@ export function PlayView({
     <CardActionsContext.Provider value={actions}>
       <BoardStateRef.Provider value={boardStateRef}>
         <PlayContext.Provider value={play}>
-          <div className={cx('game', 'play', wide ? 'is-wide' : 'is-narrow', `mode-${view.mode}`, selection.active && 'is-selecting')}>
+          <div className={cx('game', 'play', wide ? 'is-wide' : 'is-narrow', `mode-${view.mode}`, selection.active && 'is-selecting')} data-input-seq={snap.inputSeq}>
             {/* Phones: the steps across the very top, above everything (endstep-style). */}
             {!wide && strip('bar')}
             {!wide && header}

@@ -49,7 +49,8 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   (`oracleFromGraveyard`). The act is `clickCard`; Forge asks its own
   `ability_menu` when a card has several. Auto-coach (`autoPlan.ts`): one plan per turn
   cycle at the opponent's END_OF_TURN/CLEANUP (else at the start of the
-  player's turn), kept on screen until the next cycle; the player's own asks
+  player's turn), kept on screen until the next cycle's plan has text (until
+  then it stands in under the new one, labelled: `standInPlan`); the player's own asks
   sit beside it; game-scoped history in module state (survives a folded
   panel). `answers.ts` slots keep one plan and one own question per seat; a
   stale own question is stopped when the moment moves on (text kept).
@@ -194,7 +195,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   in mtg-table, whose `cubes/` holds the same document). A list with no
   `### Section (N)` heading parses as one section, "Cards".
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.
-- `e2e/playtest/` — the full-game playtest (`npm run playtest`, README § Full-game playtest). A UI-only monkey (`monkey.mjs`) reads the engine's offer from the seat socket (`tap.mjs`, Playwright's WebSocket events; it never sends a frame) and clicks the board's control for it. An offered option with no control is an `unreachable-option` finding. `checks.mjs` holds the invariants: stack panel, combat badges, the log through a reload, hidden names in the DOM. `scripts.mjs` (Forge card scripts: priority candidates), `decks.mjs` (cube drafts, `.dck`), `fakehelper.mjs`, `report.mjs`. Modes: `fake` (CI, the fake engine), `solo` (real Forge via POST /match), `table` (the draft room, two browsers, Bo3). Run with `--experimental-transform-types` (the npm script does).
+- `e2e/playtest/` — the full-game playtest (`npm run playtest`, README § Full-game playtest). A UI-only monkey (`monkey.mjs`) reads the engine's offer from the seat socket (`tap.mjs`, Playwright's WebSocket events; it never sends a frame) and clicks the board's control for it. An offered option with no control is an `unreachable-option` finding, judged only once the board draws the wire's input (`data-input-seq` on PlayView's board; a board that stays behind is `board-lag`). `checks.mjs` holds the invariants: stack panel, combat badges, the log through a reload, hidden names in the DOM. `scripts.mjs` (Forge card scripts: priority candidates), `decks.mjs` (cube drafts, `.dck`), `fakehelper.mjs`, `report.mjs`. Modes: `fake` (CI, the fake engine), `solo` (real Forge via POST /match), `table` (the draft room, two browsers, Bo3). Run with `--experimental-transform-types` (the npm script does).
 - `bench/` — `src/bench/coachBench.ts` (cases, legal choices, scoring, reports), `src/bench/grade.ts` (engine-graded regret tables, low-information rule, held-out set) and `bench/coach/` (cases, logs, card snapshot, the `npm run bench:coach` CLI): the coach benchmark. CI runs its dry run in `npm test`; real runs need the helper or a key; regret tables come from mtg-table's `tools/coach-grade.sh` (README § Coach benchmark, *Engine-graded regret*). Regret's yardstick is "best against Forge Default"; held-out cases (`holdout: true`) are never used to tune the prompt. Transient failures are retried; a call that still fails is a transport error, reported apart from format failures, and a run with any is not to be compared.
 
 ## Seat rule

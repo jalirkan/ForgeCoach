@@ -305,6 +305,27 @@ describe('cardRole', () => {
     const i = input('Select target player', { buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: true } }, selectable: { cardIds: [], min: 1, max: 1, mode: 'players' } });
     expect(playerClickable(ctxFor(i))).toBe(true);
   });
+
+  it("a mandatory trigger's player target (J107: Blood Artist, Falkenrath Noble): both buttons off, nothing listed — the portraits are the controls", () => {
+    // Forge's InputSelectTargets for a mandatory target with candidates: updateButtons(false, false, false), no card selectables.
+    const off = { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: false } };
+    const i = input(
+      'Blood Artist (30) - Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life. [Zone Changer: Blood Artist (30)]\n\nSelect target player',
+      { buttons: off },
+    );
+    const st = state({ activePlayer: OPP, priority: OPP });
+    const c = ctxFor(i, st);
+    expect(c.view.mode).toBe('target');
+    expect(c.view.title).toBe('Select target player');
+    expect(c.view.clickWhat).toBe('player');
+    expect(c.view.detail).toMatch(/portrait/);
+    expect(playerClickable(c)).toBe(true);
+    // Only the portraits glow: no card takes that click.
+    expect(cardRole(mine!, c)).toBeNull();
+    expect(cardRole(theirs, c)).toBeNull();
+    // Any target with nothing listed: a card or a player.
+    expect(describeInput(input('Shock (3)\nSelect any target', { buttons: off }), st, ME).clickWhat).toBe('card or player');
+  });
 });
 
 describe('planPlayKey', () => {

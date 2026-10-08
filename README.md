@@ -1002,7 +1002,15 @@ A finding is one of these:
   (`unreachable-option`, with a screenshot, the frame index, the ask or input
   and the card);
 - a seat the engine waits on with nothing to click (`stuck`), or no progress
-  at all;
+  at all (the session's ping/pong is not progress, so a seat hung on a
+  question ends in `no-progress` after `--stall-s`, not at the game's
+  deadline);
+- a board that still draws the last moment seconds after the wire moved on
+  (`board-lag`: the board's `data-input-seq` against the wire's). Every other
+  check waits for the board to draw the input first, and looks at a miss
+  twice (a phone's folded hand opened again) before it counts; a click that
+  sent nothing counts only when the engine's question did not change under
+  it;
 - a page or console error;
 - a stack panel or combat badges that disagree with the frames;
 - a Game Log that loses turns, or a seat that does not come back, after a
@@ -1012,8 +1020,12 @@ A finding is one of these:
 - a best of three that does not complete with sideboarding.
 
 With `--coach fake`, a helper that answers at once checks that the coach
-panel never blanks during the opponent's turn and that auto-coach asks at
-most once per turn cycle. With `--coach real`, each question's latency is
+panel never blanks during the opponent's turn — not even while the next plan
+is written: the last plan stays in view until the new one has text — and that
+auto-coach asks at most once per turn cycle (`PLAYTEST_COACH_MS=N` slows its
+answers). The fake engine's even games put Blood Artist on your battlefield,
+so a creature dying asks "Select target player" with both buttons off: only
+a portrait click moves the game on. With `--coach real`, each question's latency is
 recorded.
 
 ```bash

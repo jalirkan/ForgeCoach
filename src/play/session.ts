@@ -109,6 +109,8 @@ export interface PlaySnapshot {
   state: GameStateBody | null;
   /** The engine's current prompt (buttons, selectable cards…); null when none. */
   input: InputBody | null;
+  /** The seq of the frame that brought `input` (0: none, or a seq-0 re-emit): the board shows it as `data-input-seq` for the playtest. */
+  inputSeq: number;
   /** The open blocking question, if any. Exactly one answer per ask. */
   ask: AskBody | null;
   over: OverBody | null;
@@ -340,6 +342,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     log: builder.snapshot(),
     state,
     input,
+    inputSeq,
     ask,
     over,
     seat: hello?.you ?? null,

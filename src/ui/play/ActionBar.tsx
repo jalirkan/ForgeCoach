@@ -173,7 +173,7 @@ export function ActionBar({
             primary.which && primary.enabled
               ? `${primary.words}${primary.engine ? ` (Forge: ${primary.engine})` : ''} — ${kbdOf(primary.which)}`
               : view.needClick
-                ? 'Tap a highlighted card first'
+                ? `Tap a highlighted ${view.clickWhat} first`
                 : primary.words
           }
         >
@@ -183,7 +183,7 @@ export function ActionBar({
           </span>
           {primary.which && (
             <span className="ab-big-sub">
-              {!primary.enabled && view.needClick ? 'tap a card first' : primary.engine ?? ''}
+              {!primary.enabled && view.needClick ? `tap a ${view.clickWhat === 'player' ? 'player' : 'card'} first` : primary.engine ?? ''}
               {wide && primary.enabled && <kbd>{kbdOf(primary.which)}</kbd>}
             </span>
           )}

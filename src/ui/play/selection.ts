@@ -53,6 +53,6 @@ export function selectionSummary(view: InputView, picked: { attackers: number; b
     case 'pay':
       return { active: true, count: null, line: 'Tap lands to pay', confirm: null };
     default:
-      return { active: true, count: null, line: view.needClick ? 'Click to select' : null, confirm: null };
+      return { active: true, count: null, line: view.needClick ? (view.clickWhat === 'player' ? 'Click a player’s portrait' : 'Click to select') : null, confirm: null };
   }
 }
