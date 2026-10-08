@@ -18,6 +18,11 @@
  * outer edge is the bottom. On the opponent's side (the top of the board) a
  * piece with `mirror` (the default) swaps top and bottom and is flipped
  * vertically, so it hugs their outer edge; `mirror: false` keeps it as drawn.
+ * A full-area piece is never flipped vertically: it is composed as objects
+ * lying low on the mat (plus things at the rim), so flipped it would put
+ * them in the opponent's sky. Drawn upright, its ground objects sit along the
+ * opponent's centre-seam side, and both players' accents gather at the
+ * middle of the table.
  *
  * Full-area pieces (spec 1.4, `anchor: "area"`): one picture across the whole
  * area, owned like the long edges by the dominant biome, counting as one
@@ -46,9 +51,9 @@ export function overlayFit(widthPx: number): OverlayFit {
   return { mode: 'full', maxPx: null };
 }
 
-/** Where a piece goes on a side: the opponent's (`top`) side swaps top and bottom when it mirrors. */
+/** Where a piece goes on a side: the opponent's (`top`) side swaps top and bottom when it mirrors. A full-area piece is always upright. */
 export function mirrorAnchor(anchor: OverlayAnchor, side: 'top' | 'bottom', mirror: boolean): { anchor: OverlayAnchor; flipY: boolean } {
-  if (side === 'bottom' || !mirror) return { anchor, flipY: false };
+  if (side === 'bottom' || !mirror || anchor === 'area') return { anchor, flipY: false };
   const swapped = anchor.replace(/^top/, '\0').replace(/^bottom/, 'top').replace('\0', 'bottom') as OverlayAnchor;
   return { anchor: swapped, flipY: true };
 }

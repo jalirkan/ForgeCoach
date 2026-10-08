@@ -31,7 +31,7 @@ import './scenery.css';
 export interface SceneryOverlayProps {
   slots: SlotState[];
   pack: ScenePack | null;
-  /** The side: `bottom` is the viewer's area, `top` the opponent's (pieces mirror there). */
+  /** The side: `bottom` is the viewer's area, `top` the opponent's (corner and edge pieces mirror there; a full-area piece stays upright). */
   edge: 'top' | 'bottom';
   reduced: boolean;
   stageOverride?: number | null;
@@ -90,7 +90,7 @@ export const SceneryOverlay = memo(function SceneryOverlay({ slots, pack, edge, 
   );
 });
 
-/** A full-area piece (spec 1.4): one picture over the whole area, cropped to keep its safe rect, beneath the strip. */
+/** A full-area piece (spec 1.4): one picture over the whole area, cropped to keep its safe rect, beneath the strip; upright on both sides (never flipped for the opponent). */
 function AreaPiece({ p, bloom, box }: { p: PlacedOverlay; bloom: boolean; box: { w: number; h: number } }) {
   const [blooms] = useState(bloom);
   const [failed, setFailed] = useState(false);
@@ -103,7 +103,6 @@ function AreaPiece({ p, bloom, box }: { p: PlacedOverlay; bloom: boolean; box: {
   const style: CSSProperties = {
     opacity: piece.opacity < 1 ? piece.opacity : undefined,
     mixBlendMode: piece.blend !== 'normal' ? piece.blend : undefined,
-    transform: p.flipY ? 'scaleY(-1)' : undefined,
   };
   const inner = ['scn-ovl-inner', p.animate && `scn-ovl-${piece.motion}`].filter(Boolean).join(' ');
   return (
