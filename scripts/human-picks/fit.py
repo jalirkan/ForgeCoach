@@ -99,6 +99,7 @@ class Data:
         self.item_pick = np.repeat(np.arange(self.P), self.packsize)
         h = np.array([fnv1a32(x) % 5 for x in self.draft_ids])
         self.fold = h[self.draft]   # 0 test, 1 validation, 2-4 train
+        self.fscale = np.ones(len(FEATURES))
         self._pool_stats()
 
     def _pool_stats(self):
@@ -149,7 +150,9 @@ class Data:
         same = self.mv_counts[pk, self.mvb[card]]
         curve = np.where(known & ~land & (nl > 0), same / np.maximum(nl, 1), 0.0)
         F = np.stack([fit, fit * t, off, off * t, gold * t, cless * t, land.astype(float) * t, dual, dual * t, curve, curve * t], 1)
-        return F.astype(np.float64)
+        # Each column divided by its train-set standard deviation (fscale, set by run() before any
+        # other problem is built): numerics only; coefficients are reported back in raw units.
+        return F.astype(np.float64) / self.fscale
 
 
 # --------------------------------------------------------------------------
@@ -245,7 +248,27 @@ class Model:
             return obj, np.concatenate([gs, [gg], gb])
 
         t0 = time.time()
-        r = minimize(f, self.pack(), jac=True, method='L-BFGS-B', options={'maxiter': maxiter, 'gtol': 1e-2, 'ftol': 1e-12})
+        it = [0]
+
+        def progress(_x):
+            it[0] += 1
+            if it[0] % 25 == 0:
+                log(f'    ... {it[0]} iterations, {time.time() - t0:.0f}s')
+
+        opts = {'maxiter': maxiter, 'gtol': 1e-2, 'ftol': 1e-12}
+        if self.context:
+            # Numerics only (the optimum is the same): first the 12 shared coefficients with the
+            # strengths held at their warm start, then everything jointly.
+            s0 = self.s.copy()
+
+            def f_shared(y):
+                obj, g = f(np.concatenate([s0, y]))
+                return obj, g[C:]
+
+            r0 = minimize(f_shared, self.pack()[C:], jac=True, method='L-BFGS-B', options=opts, callback=progress)
+            self.unpack(np.concatenate([s0, r0.x]))
+            log(f'  fit b (shared coefficients first): {r0.nit} iterations, {time.time() - t0:.0f}s')
+        r = minimize(f, self.pack(), jac=True, method='L-BFGS-B', options=opts, callback=progress)
         self.unpack(r.x)
         log(f'  fit {"b" if self.context else "a"} lam={lam}: {r.nit} iterations, {time.time() - t0:.0f}s, {r.message}')
         return self
@@ -383,6 +406,9 @@ def run(D, workdir, ship_dir):
     test_m = (D.fold == 0)
     t0 = time.time()
     Ptr = Problem(D, train_m)
+    D.fscale = Ptr.F.std(0)
+    D.fscale[D.fscale == 0] = 1.0
+    Ptr.F /= D.fscale
     Pva = Problem(D, val_m)
     log(f'problems: train {len(Ptr)} picks / {len(Ptr.card)} items, validation {len(Pva)}  ({time.time() - t0:.0f}s)')
 
@@ -404,8 +430,9 @@ def run(D, workdir, ship_dir):
     b = Model(D.C, True)
     b.s = a.s.copy()
     b.fit(Ptr, lam)
-    results['b'] = {'gamma': b.gamma, 'beta': dict(zip(FEATURES, b.beta.tolist()))}
-    log(f'  (b) gamma {b.gamma:.3f} beta ' + ', '.join(f'{k} {v:+.3f}' for k, v in zip(FEATURES, b.beta)))
+    b.beta_raw = b.beta / D.fscale
+    results['b'] = {'gamma': b.gamma, 'beta': dict(zip(FEATURES, b.beta_raw.tolist())), 'betaPerSD': dict(zip(FEATURES, b.beta.tolist()))}
+    log(f'  (b) gamma {b.gamma:.3f} beta (raw units) ' + ', '.join(f'{k} {v:+.3f}' for k, v in zip(FEATURES, b.beta_raw)))
 
     # ---- held-out: full packs
     Pte = Problem(D, test_m)
@@ -570,7 +597,7 @@ def write_picks(D, cube, cols, b, results, ship_dir):
         'generated': time.strftime('%Y-%m-%d'),
         'cube': {'file': f'{cube["file"]}.md', 'cards': cube['size'], 'matched': len(cards)},
         'picks': int(len(D.pick)), 'drafts': int(len(D.draft_ids)),
-        'model': {'gamma': round(b.gamma, 4), 'beta': {k: round(float(v), 4) for k, v in zip(FEATURES, b.beta)},
+        'model': {'gamma': round(b.gamma, 4), 'beta': {k: round(float(v), 4) for k, v in zip(FEATURES, b.beta_raw)},
                   'tScale': T_SCALE, 'offShare': OFF_SHARE, 'offMinPool': OFF_MIN_POOL},
         'test': {'picks': r['picks'], 'top1': round(r['models']['b']['top1'][0], 4), 'top1CardValue': round(r['models']['cardValue']['top1'][0], 4),
                  'top1PickValue': round(r['models']['pickValue']['top1'][0], 4)},
