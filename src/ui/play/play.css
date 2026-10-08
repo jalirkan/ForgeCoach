@@ -449,6 +449,9 @@ button.avatar.is-select {
 .pc-prev {
   opacity: 0.92;
 }
+.pc-standin-note {
+  margin: 0 0 6px;
+}
 .switch {
   display: inline-flex;
   align-items: center;

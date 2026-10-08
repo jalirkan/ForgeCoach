@@ -22,8 +22,10 @@
  * short (0–3.5 s in the full-game playtest: its long think is in its first).
  *
  * The plan stays on screen through the player's turn and the opponent's next
- * one, until the next cycle's plan replaces it (`currentPlan`). The player's
- * own asks ("ask" entries) sit beside it and never clear it.
+ * one, until the next cycle's plan replaces it (`currentPlan`). Advice never
+ * disappears while a new plan is written: until the new plan has text, the one
+ * before it (`previousPlan`) stays in view, labelled. The player's own asks
+ * ("ask" entries) sit beside it and never clear it.
  */
 import type { GameStateBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
@@ -164,6 +166,27 @@ export function currentPlan(entries: readonly AdviceEntry[]): AdviceEntry | null
   return entries.find((e) => e.kind === 'plan') ?? null;
 }
 
+/** The plan before the one on screen. */
+export function previousPlan(entries: readonly AdviceEntry[]): AdviceEntry | null {
+  let seen = false;
+  for (const e of entries) {
+    if (e.kind !== 'plan') continue;
+    if (seen) return e;
+    seen = true;
+  }
+  return null;
+}
+
+/**
+ * The plan that stands in while the newest one has no text yet (queued, thinking,
+ * stopped before a word): the one before it, so advice never disappears (J107's
+ * `coach-blank`: the panel showed only "thinking…" at the opponent's end step).
+ */
+export function standInPlan(entries: readonly AdviceEntry[], newestHasText: boolean): AdviceEntry | null {
+  if (newestHasText || !currentPlan(entries)) return null;
+  return previousPlan(entries);
+}
+
 /**
  * The player's last own question when the game has moved on from it (`currentKey`
  * is the moment on screen): shown beside the plan until the next cycle's plan.
@@ -174,9 +197,9 @@ export function lastAsk(entries: readonly AdviceEntry[], currentKey: string | nu
   return a && (!plan || a.seq > plan.seq) ? a : null;
 }
 
-/** Everything older than what is shown: "Earlier advice". */
-export function earlierAdvice(entries: readonly AdviceEntry[], currentKey: string | null): AdviceEntry[] {
-  const shown = new Set([currentPlan(entries)?.key, lastAsk(entries, currentKey)?.key, currentKey]);
+/** Everything older than what is shown: "Earlier advice". `alsoShown`: the previous plan while it stands in. */
+export function earlierAdvice(entries: readonly AdviceEntry[], currentKey: string | null, alsoShown: string | null = null): AdviceEntry[] {
+  const shown = new Set([currentPlan(entries)?.key, lastAsk(entries, currentKey)?.key, currentKey, alsoShown]);
   return entries.filter((e) => !shown.has(e.key));
 }
 

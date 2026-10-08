@@ -61,6 +61,12 @@ export interface InputView {
   payFor: string | null;
   /** OK is disabled and something must be clicked (§4.2). */
   needClick: boolean;
+  /**
+   * What that click is on: a card, a player (Blood Artist's "Select target
+   * player": Forge lists no card and both buttons are off, so the portraits are
+   * the only controls), or either.
+   */
+  clickWhat: 'card' | 'player' | 'card or player';
   /** The attacker named by a block prompt ("Select creatures to block X (12)"). */
   blockingAttackerId: number | null;
 }
@@ -164,6 +170,7 @@ export function describeInput(
     payCost: null,
     payFor: null,
     needClick: false,
+    clickWhat: 'card',
     blockingAttackerId: null,
   });
   const quiet = (v: InputView): InputView => ({ ...v, ok: btn(undefined), cancel: btn(undefined) });
@@ -329,13 +336,21 @@ export function describeInput(
     const dash = lines.length === 1 ? /^(.+?) - (.+)$/.exec(lines[0]!) : null;
     const source = dash ? dash[1]!.replace(/\s*\(\d+\)\s*$/, '') : lines.length > 1 ? lines[0]!.replace(/\s*\(\d+\)\s*$/, '') : null;
     const ask = dash ? dash[2]! : lines.length > 1 ? lines[lines.length - 1]! : lines[0] ?? 'Make a choice';
-    const how = selecting ? `Tap ${what} of the highlighted ${input.selectable.mode === 'players' ? 'players' : 'cards'}.` : 'Tap a card or player to choose it.';
+    // Nothing listed: the prompt says whether a player is wanted ("Select target player", "target opponent").
+    const clickWhat: InputView['clickWhat'] =
+      input.selectable.mode === 'players' || (!selecting && PLAYER_ONLY.test(ask) && !CARD_WORDS.test(ask)) ? 'player' : selecting ? 'card' : 'card or player';
+    const how = selecting
+      ? `Tap ${what} of the highlighted ${input.selectable.mode === 'players' ? 'players' : 'cards'}.`
+      : clickWhat === 'player'
+        ? 'Tap a player’s portrait (it glows) to choose them.'
+        : 'Tap a card or player to choose it.';
     return {
       ...v,
       mode: 'target',
       title: ask,
       detail: source ? `${source} — ${how.charAt(0).toLowerCase()}${how.slice(1)}` : how,
       needClick: !ok.enabled,
+      clickWhat,
       primary: v.primary,
     };
   }
@@ -463,6 +478,8 @@ export function cardRole(card: AnyCard, ctx: ClickContext): CardRole {
       // No explicit set: let any visible card on the battlefield (or in your
       // hand) be clicked, and Forge judge.
       if (input.selectable.mode === 'cards' && input.selectable.cardIds.length > 0) return null;
+      // "Select target player": only the portraits take the click; a glowing board would hide them.
+      if (view.clickWhat === 'player') return null;
       if (zone === 'battlefield' || (mine && zone === 'hand')) return view.needClick ? 'act' : mine ? 'act' : null;
       return null;
   }
@@ -489,6 +506,10 @@ export function handNeeded(ctx: ClickContext): boolean {
 
 /** A prompt whose cards come from your hand ("Return 1 card(s) to the bottom of your library", "Discard a card", "from your hand"). */
 const HAND_PROMPT = /\b(bottom of your library|from your hand|in your hand|discard)\b/i;
+
+/** A target prompt that names a player and no card ("Select target player", "Select target opponent"). */
+const PLAYER_ONLY = /\b(player|opponent)s?\b/i;
+const CARD_WORDS = /\b(card|creature|permanent|planeswalker|artifact|enchantment|land|spell|battle|any target)s?\b/i;
 
 /** Whether a player avatar should be outlined and send `clickPlayer`. */
 export function playerClickable(ctx: ClickContext): boolean {

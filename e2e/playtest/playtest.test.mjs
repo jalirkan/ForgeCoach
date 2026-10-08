@@ -65,6 +65,26 @@ describe('SeatTap', () => {
     expect(t.deciding()).toBe(false);
   });
 
+  it("a mandatory trigger's player target waits on the seat with every button off (J107's hang)", () => {
+    const t = new SeatTap('solo');
+    t.receive(frame('hello_ok', 1, { gameId: 'g1', you: 0, players: [] }));
+    const off = { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: false } };
+    t.receive(frame('input', 2, input('Blood Artist (30) - Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life.\n\nSelect target player', { buttons: off })));
+    expect(t.deciding()).toBe(true);
+    // An empty prompt with nothing on is not a question.
+    t.receive(frame('input', 3, input('', { buttons: off })));
+    expect(t.deciding()).toBe(false);
+  });
+
+  it('the session\'s ping/pong is not progress for the watchdog', () => {
+    const t = new SeatTap('solo');
+    t.lastFrameAt = 0;
+    t.receive(JSON.stringify({ v: 1, seq: 0, t: 1, type: 'pong', body: {} }));
+    expect(t.lastFrameAt).toBe(0);
+    t.receive(frame('hello_ok', 1, { gameId: 'g1', you: 0, players: [] }));
+    expect(t.lastFrameAt).toBeGreaterThan(0);
+  });
+
   it('names every visible card a frame shows, never a hidden one', () => {
     const names = namesIn({ players: [{ zones: { hand: { cards: [{ id: 1, name: 'Shock' }, { id: 2, zone: 'hand', hidden: true }] } } }], options: [{ id: 0, label: 'x', card: { id: 9, name: 'Opt' } }] });
     expect([...names].sort()).toEqual(['Opt', 'Shock']);

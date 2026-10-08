@@ -34,6 +34,13 @@
  *   - observers get the seat's cached hello_ok, state, over-or-latest input
  *     and open ask, then every later s2c frame; they are never answered.
  *
+ * With `deathTrigger: true` the human starts with Blood Artist on the battlefield:
+ * whenever a creature dies, Forge's InputSelectTargets asks "Select target
+ * player" for its trigger with BOTH buttons off and no card listed (a mandatory
+ * target: `updateButtons(false, false, false)`), and only a `clickPlayer` moves
+ * the game on — the full-game playtest's J107 hang (Blood Artist, Falkenrath
+ * Noble). Whatever input was due waits behind the trigger.
+ *
  * With `playable: true` it also writes mtg-table M61's `state.playable` (the
  * seat's cards outside the battlefield a click would play, null off its
  * priority); without it, it is an engine from before M61. Scene `graveyard`
@@ -47,7 +54,7 @@
  * the record of every frame a client sent (`received`) and every connection.
  *
  * Run it on its own to point a browser (or e2e/play.e2e.mjs) at it:
- *   node e2e/fake-engine.mjs [--port 8642] [--scene pregame|main3|graveyard] [--drop-mode default|reask] [--playable]
+ *   node e2e/fake-engine.mjs [--port 8642] [--scene pregame|main3|graveyard] [--drop-mode default|reask] [--playable] [--death-trigger]
  * with POST /control/drop, /control/restart[?scene=…], /control/reset[?scene=…]
  * and GET /control/log.
  */
@@ -69,6 +76,8 @@ const DEFS = {
   Memnite: { setCode: 'SOM', manaCost: '{0}', types: 'Artifact Creature - Construct', power: '1', toughness: '1', keywords: [], cost: 0 },
   'Hill Giant': { setCode: 'M10', manaCost: '{3}{R}', types: 'Creature - Giant', power: '3', toughness: '3', keywords: [], cost: 4 },
   Shock: { setCode: 'M21', manaCost: '{R}', types: 'Instant', cost: 1, burn: 2 },
+  // A death trigger with a mandatory player target (deathTrigger: true).
+  'Blood Artist': { setCode: 'DKA', manaCost: '{1}{B}', types: 'Creature - Vampire', power: '0', toughness: '1', keywords: [], cost: 2, drain: true },
   // An activated ability from the graveyard that is no keyword (the full-game playtest's finding).
   // The fake model asks no Food for it.
   'Cauldron Familiar': {
@@ -146,8 +155,12 @@ function inputBody(prompt, ok, cancel, extra = {}) {
 // One game: the rules model and its script. `out(type, body)` puts a frame on the wire.
 
 class Game {
-  constructor({ out, aiLife = 3, scene = 'pregame', playable = false }) {
+  constructor({ out, aiLife = 3, scene = 'pregame', playable = false, deathTrigger = false }) {
     this.out = out;
+    /** Blood Artist on your battlefield: a creature dying asks for a target player with both buttons off. */
+    this.deathTrigger = deathTrigger;
+    this.triggers = [];
+    this.parked = null;
     /** Amendment M61: write `state.playable` (null off the seat's priority), as an engine since 2026-10-07 does. */
     this.playableOn = playable;
     this.atPriority = false;
@@ -193,6 +206,10 @@ class Game {
     const from = c.zone;
     c.zone = zone;
     if (zone !== 'stack') p[zone].push(c);
+    if (from === 'battlefield' && zone === 'graveyard' && isCreature(c)) {
+      const artist = c.name === 'Blood Artist' && c.owner === HUMAN ? c : this.players[HUMAN].battlefield.find((x) => x.name === 'Blood Artist');
+      if (artist) this.triggers.push(artist);
+    }
     if (zone !== 'battlefield') Object.assign(c, { tapped: false, attacking: false, blocking: false, damage: 0 });
     this.events.push({ kind: 'zone', cardId: c.id, from: { zone: from, player: c.owner }, to: { zone, player: c.owner } });
   }
@@ -294,9 +311,43 @@ class Game {
   }
 
   input(body, pending) {
+    // A death trigger waits on its target first; the input that was due comes after it.
+    if (this.triggers.length && !this.gameOver) {
+      this.parked = { body, pending };
+      return this.triggerPrompt();
+    }
     this.pending = pending;
     this.atPriority = pending?.kind === 'priority';
     this.out('input', body);
+  }
+
+  /** Forge's InputSelectTargets for the trigger's mandatory "target player": no button, no listed card. */
+  triggerPrompt() {
+    const a = this.triggers[0];
+    const text = `Blood Artist (${a.id}) - Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life. [Zone Changer: Blood Artist (${a.id})]\n\nSelect target player`;
+    this.pending = { kind: 'trigger' };
+    this.atPriority = false;
+    this.emitState();
+    this.out('input', inputBody(text, button('OK', false), button('Cancel', false)));
+  }
+
+  /** The trigger's player chosen: the drain resolves, then the next trigger or the input that was due. */
+  resolveTrigger(playerId) {
+    this.triggers.shift();
+    const target = this.players[playerId];
+    const me = this.players[HUMAN];
+    const tFrom = target.life;
+    target.life -= 1;
+    this.events.push({ kind: 'life', player: target.id, from: tFrom, to: target.life });
+    const mFrom = me.life;
+    me.life += 1;
+    this.events.push({ kind: 'life', player: HUMAN, from: mFrom, to: me.life });
+    if (this.checkLife()) return;
+    if (this.triggers.length) return this.triggerPrompt();
+    const parked = this.parked;
+    this.parked = null;
+    this.emitState();
+    if (parked) this.input(parked.body, parked.pending);
   }
 
   priorityPrompt() {
@@ -307,6 +358,10 @@ class Game {
   // ---- scenes
 
   scenePregame() {
+    if (this.deathTrigger) {
+      const a = this.make('Blood Artist', HUMAN, 'battlefield');
+      this.players[HUMAN].battlefield.push(a);
+    }
     this.draw(HUMAN, 7);
     this.draw(AI, 7);
     this.emitState();
@@ -727,6 +782,12 @@ class Game {
       return;
     }
     if (!p || p.kind === 'over' || p.kind === 'ask') return this.out('notice', { level: 'warn', title: 'Not now', text: `${a}: the engine is not waiting for that` });
+    if (p.kind === 'trigger') {
+      if (a === 'clickPlayer' && this.players[body.playerId]) return this.resolveTrigger(body.playerId);
+      // Forge's own answer to anything else: the same question again.
+      if (a === 'clickCard') this.out('notice', { level: 'warn', title: 'Not selectable', text: `card ${body.cardId} cannot be selected now` });
+      return this.triggerPrompt();
+    }
     switch (p.kind) {
       case 'keep':
         if (a === 'buttonOk') {
@@ -842,9 +903,10 @@ class Game {
 // The bridge: sockets, the session's frames, catch-ups.
 
 export class FakeEngine {
-  constructor({ gameId = 'human-ws-0', gameCount = 3, scene = 'pregame', dropMode = 'default', aiLife = 3, verbose = false, playable = false } = {}) {
+  constructor({ gameId = 'human-ws-0', gameCount = 3, scene = 'pregame', dropMode = 'default', aiLife = 3, verbose = false, playable = false, deathTrigger = false } = {}) {
     this.baseGameId = gameId;
     this.playable = playable;
+    this.deathTrigger = deathTrigger;
     this.gameCount = gameCount;
     this.dropMode = dropMode;
     this.aiLife = aiLife;
@@ -901,7 +963,7 @@ export class FakeEngine {
       ],
       match: { yourDeck: { name: 'Mono-Red Test', path: 'decks/e2e-red.dck', cards: 40 }, aiDeck: { name: 'Red Probe', cards: 40 }, aiProfile: 'Default', games: this.gameCount },
     });
-    const game = new Game({ out: (type, body) => this.emit(type, body), aiLife: this.aiLife, scene: 'none', playable: this.playable });
+    const game = new Game({ out: (type, body) => this.emit(type, body), aiLife: this.aiLife, scene: 'none', playable: this.playable, deathTrigger: this.deathTrigger });
     this.game = game;
     game.gameId = this.gameId;
     game.matchOverIf = (winner) => {
@@ -1185,6 +1247,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const i = args.indexOf(`--${name}`);
     return i >= 0 ? args[i + 1] : dflt;
   };
-  const e = await startFakeEngine({ port: Number(opt('port', 8642)), scene: opt('scene', 'pregame'), dropMode: opt('drop-mode', 'default'), playable: args.includes('--playable'), verbose: true });
+  const e = await startFakeEngine({ port: Number(opt('port', 8642)), scene: opt('scene', 'pregame'), dropMode: opt('drop-mode', 'default'), playable: args.includes('--playable'), deathTrigger: args.includes('--death-trigger'), verbose: true });
   console.log(`fake engine: seat ${e.seatUrl}, observer ${e.observeUrl}, health http://127.0.0.1:${e.port}/health`);
 }

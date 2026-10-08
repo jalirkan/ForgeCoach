@@ -90,7 +90,9 @@ export class SeatTap {
       return;
     }
     f.at = Date.now();
-    this.lastFrameAt = f.at;
+    // Progress is a game frame: the session's own ping/pong every few seconds is not (J107: a seat
+    // stuck on a target for 75 minutes kept the watchdog quiet because the pongs kept coming).
+    if (f.type !== 'ping' && f.type !== 'pong') this.lastFrameAt = f.at;
     switch (f.type) {
       case 'hello_ok':
         if (this.gameId !== f.body.gameId) {
@@ -225,7 +227,11 @@ export class SeatTap {
     if (!i) return false;
     if (/^Waiting for/i.test(i.prompt) && i.selectable.mode === 'none') return false;
     if (/^Yielding/i.test(i.prompt)) return false;
-    return i.buttons.ok.enabled || i.buttons.cancel.enabled || i.selectable.cardIds.length > 0 || i.selectable.mode === 'players';
+    if (i.buttons.ok.enabled || i.buttons.cancel.enabled || i.selectable.cardIds.length > 0 || i.selectable.mode === 'players') return true;
+    // Every button off and nothing listed, with a prompt of its own: Forge waits for a click on something it
+    // did not name — a mandatory trigger's "Select target player" (Blood Artist, Falkenrath Noble: J107's two
+    // 75-minute hangs). The board's portraits are the controls; monkey.openTarget clicks one.
+    return /\S/.test(i.prompt ?? '');
   }
 
   me() {

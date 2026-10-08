@@ -99,7 +99,7 @@ export function planPlayKey(e: KeyLike, ctx: PlayKeyContext): PlayKeyPlan | null
     if (tag === 'button' || tag === 'a' || tag === 'summary') return null;
     if (ctx.view.primary === 'ok') return { kind: 'ok' };
     if (ctx.view.primary === 'cancel') return { kind: 'cancel' };
-    return { kind: 'inert', why: ctx.view.needClick ? 'tap a highlighted card first' : 'nothing to confirm right now' };
+    return { kind: 'inert', why: ctx.view.needClick ? `tap a highlighted ${ctx.view.clickWhat === 'player' ? 'player' : 'card'} first` : 'nothing to confirm right now' };
   }
   switch (key) {
     case 'p':

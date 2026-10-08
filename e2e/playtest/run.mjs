@@ -35,6 +35,8 @@
  *                            so it never meets a game Justin is playing)
  *
  * Environment: PLAYTEST_DEBUG_CLICKS=1 prints every click the page receives (what the monkey hit);
+ * PLAYTEST_COACH_MS=N makes the fake coach take N ms per answer (default 50: a slow coach checks
+ * that the last plan stays in view while the next is written);
  * MTG_TABLE (default ../mtg-table), FORGE_JAR (play.sh's), FORGE_RES (Forge's
  * res/ for the card scripts; default: beside FORGE_JAR), SITE_DIR (a built site to serve
  * instead of building one).
@@ -61,6 +63,7 @@ import { writeReport } from './report.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const FAKE_COACH_MS = Number(process.env.PLAYTEST_COACH_MS) || 50;
 
 // ---------------------------------------------------------------------------
 // Options
@@ -484,9 +487,9 @@ function coachSample(s, w) {
       }
       if (st.activePlayer !== s.tap.seat && w.seenAnswer) {
         w.samples++;
-        // A new plan being written ("Thinking…") is not a blank: a question is on its way.
-        const inFlight = s.coach.some((q) => q.end === null);
-        if (!has && !inFlight) {
+        // Advice never disappears: while a new plan is being written the last one stays in view
+        // (PlayCoach's stand-in), so a question in flight is no excuse for an empty panel (J107: 6×).
+        if (!has) {
           w.blanks++;
           // A reload since the last advice is its own case: the page's advice lives in memory.
           const reloaded = s.tap.sockets > (w.answerSockets ?? 0);
@@ -563,14 +566,15 @@ function scriptsIndex() {
 async function runFake(app) {
   const scripts = scriptsIndex();
   const askModel = await loadAskModel();
-  const helper = opts.coach === 'fake' ? await startFakeHelper() : null;
+  const helper = opts.coach === 'fake' ? await startFakeHelper({ answerMs: FAKE_COACH_MS }) : null;
   if (helper) cleanups.push(() => helper.close());
   for (let i = 0; i < opts.games; i++) {
     const rand = rng(opts.seed * 7919 + i);
     // Every other game an engine with mtg-table M61 (`state.playable`), its graveyard holding Cauldron Familiar.
     const m61 = i % 2 === 1;
-    const engine = await startFakeEngine({ dropMode: 'default', ...(m61 ? { playable: true, scene: 'graveyard' } : {}) });
-    const game = { id: i + 1, mode: 'fake', seed: opts.seed, decks: { mine: `fake (Mountains and goblins${m61 ? '; M61, Cauldron Familiar in the graveyard' : ''})`, theirs: 'fake' }, findings: [], shots: 0, t0: Date.now() };
+    // The others: Blood Artist out, so a creature dying asks "Select target player" with both buttons off (J107's hang).
+    const engine = await startFakeEngine({ dropMode: 'default', ...(m61 ? { playable: true, scene: 'graveyard' } : { deathTrigger: true }) });
+    const game = { id: i + 1, mode: 'fake', seed: opts.seed, decks: { mine: `fake (Mountains and goblins${m61 ? '; M61, Cauldron Familiar in the graveyard' : '; Blood Artist out'})`, theirs: 'fake' }, findings: [], shots: 0, t0: Date.now() };
     const s = await newSeatPage('solo', app, phoneFor('solo', i));
     game.viewport = s.phone ? 'phone' : 'desktop';
     if (helper) s.helperAsks = helper.asks;
@@ -597,7 +601,7 @@ async function runFake(app) {
 async function runSolo(app) {
   const scripts = scriptsIndex();
   const askModel = await loadAskModel();
-  const helperFake = opts.coach === 'fake' ? await startFakeHelper() : null;
+  const helperFake = opts.coach === 'fake' ? await startFakeHelper({ answerMs: FAKE_COACH_MS }) : null;
   if (helperFake) cleanups.push(() => helperFake.close());
   const helper = `http://127.0.0.1:${PORTS.helper}`;
   // An engine already up (play.sh --engine-only started by hand) is used as it is.
