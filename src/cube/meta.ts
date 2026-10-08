@@ -119,13 +119,20 @@ export interface CubeMeta {
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 
+/**
+ * A card the lab never put in a pack (seen, picked and games all 0): a cube card Forge has no
+ * script for, drafted around (Evan's cube: 13 of 360). Its entry is all zeros and a [0, 1]
+ * interval: no numbers, not a 0% card, so it is dropped and reads as "no lab numbers".
+ */
+const neverOffered = (v: Record<string, unknown>): boolean => v.seen === 0 && (v.picked ?? 0) === 0 && (v.games ?? 0) === 0;
+
 /** Validates and normalises a parsed meta.json; throws an Error saying what is wrong. */
 export function parseMeta(raw: unknown): CubeMeta {
   if (!isObj(raw)) throw new Error('meta.json is not a JSON object.');
   if (raw.schema !== 1) throw new Error(`meta.json schema ${String(raw.schema)} is not supported (this page reads schema 1).`);
   const cube = isObj(raw.cube) ? raw.cube : {};
   const cards: Record<string, MetaCardStats> = {};
-  if (isObj(raw.cards)) for (const [k, v] of Object.entries(raw.cards)) if (isObj(v)) cards[k] = v as MetaCardStats;
+  if (isObj(raw.cards)) for (const [k, v] of Object.entries(raw.cards)) if (isObj(v) && !neverOffered(v)) cards[k] = v as MetaCardStats;
   const archetypes: MetaArchetype[] = Array.isArray(raw.archetypes)
     ? raw.archetypes.filter(isObj).map((a) => ({ ...(a as unknown as MetaArchetype), colors: wubrg(String(a.colors ?? '')), id: String(a.id ?? a.colors ?? '') }))
     : [];

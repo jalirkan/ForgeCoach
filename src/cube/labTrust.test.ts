@@ -72,7 +72,7 @@ describe('labTrustFor and labTrustNote on a real cube', () => {
     expect(labTrustNote([spell, fair, big], ctx)).toBe(note);
   });
 
-  it('a cube without a lab meta gets no labels', () => {
+  it('a cube without a lab meta (none loaded) gets no labels', () => {
     const omega = loadCube('omega');
     const o = makeContext(omega, loadInfos('omega', omega), null);
     expect(omega.cards.some((c) => labTrustFor(c.name, o))).toBe(false);

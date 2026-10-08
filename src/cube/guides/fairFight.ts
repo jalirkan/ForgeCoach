@@ -124,7 +124,7 @@ export const FAIR_FIGHT_GUIDE: CubeGuide = {
     points: [
       ...FORGE_COMMON,
       'Here only three cards are flagged, all Random (left out of random AI decks): Bomat Courier, Soulherder and Fling. The AI plays them when it drafts them.',
-      'The cube has no lab run yet, so the archetypes here are design intent, not measured results. Once a run ships, its numbers appear beside each archetype.',
+      'The archetypes here are design intent; the lab’s Forge-vs-Forge numbers for each appear beside it.',
     ],
     flagged: {
       all: [],

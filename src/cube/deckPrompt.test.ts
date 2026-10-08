@@ -104,7 +104,8 @@ describe('cubes', () => {
         continue;
       }
       expect(meta?.schema).toBe(1);
-      expect(Object.keys(meta?.cards ?? {})).toHaveLength(180);
+      // Every cube card, less the ones the lab never put in a pack (Forge has no script: meta.ts drops them).
+      expect(Object.keys(meta?.cards ?? {}), c.id).toHaveLength(c.size - (cube.forgeMissing?.length ?? 0));
       expect(meta?.pairs[0]?.gain).toBeCloseTo((meta?.pairs[0]?.lift ?? 0) - 1);
     }
   });
