@@ -20,6 +20,7 @@ import { cx, readLS, writeLS } from '../util.ts';
 import { HumanCardFacts, HumanSourceNote, useHumanCards } from '../HumanNumbers.tsx';
 import { LabTrustLine } from '../LabTrust.tsx';
 import { labTrust } from '../../cube/labTrust.ts';
+import { BlueCaveat } from '../BlueNote.tsx';
 
 const OPEN_KEY = 'forgecoach.draft.labNumbers';
 
@@ -33,6 +34,8 @@ export function LabNumbers({ names, ctx, cubeId }: { names: readonly string[]; c
     [names, meta, ctx, baselines],
   );
   const skew = useMemo(() => colourSkew(baselines), [baselines]);
+  // The colours whose baselines show (each card's, and the skew note's): J111's blue caveat goes with a blue one.
+  const shownColours = useMemo(() => [...rows.flatMap((r) => r.view?.baselines.map((b) => b.colour) ?? []), skew?.colour ?? ''].join(''), [rows, skew]);
   if (!names.length) return null;
   if (!meta && !human) {
     return (
@@ -64,6 +67,7 @@ export function LabNumbers({ names, ctx, cubeId }: { names: readonly string[]; c
       </summary>
       {meta && <p className="labn-caveat">{FORGE_CAVEAT}</p>}
       {skew && <p className="labn-caveat is-skew">{colourNote(skew)}</p>}
+      {meta && <BlueCaveat cubeId={cubeId} colors={shownColours} />}
       <ul className="labn-rows">
         {rows.map((r) => (
           <li key={r.name} className="labn-row">
