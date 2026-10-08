@@ -23,7 +23,7 @@ import { FRIEND_TABLE_HASH, loadFriendTable, saveFriendTable, savedRoomBases, ty
 import { usePlaySession } from './play/usePlaySession.ts';
 import type { PlaySnapshot } from '../play/session.ts';
 import { ensureEngineAwake } from '../draft/launch.ts';
-import { readPlayProfile } from './PlayProfile.tsx';
+import { readPlayPolicy, readPlayProfile } from './PlayProfile.tsx';
 import { PlayView } from './play/PlayView.tsx';
 import { useFriendReview } from './play/useFriendReview.ts';
 import { hasSampleReview } from './review/samples.ts';
@@ -267,7 +267,7 @@ function MainApp({ hash }: { hash: string }) {
   // belongs to: this page's own seat, or one named with ?coach=.
   const [waking, setWaking] = useState<{ url: string; error: string | null } | null>(null);
   const wakeRef = useRef<AbortController | null>(null);
-  // D381: what the helper said about the AI profile picked for this Play (e.g. "the running match keeps Default").
+  // D381 / D414: what the helper said about the AI profile or opponent picked for this Play (e.g. "the running match keeps Default").
   const [playNote, setPlayNote] = useState<string | null>(null);
   const startPlay = useCallback(
     (url: string) => {
@@ -281,7 +281,7 @@ function MainApp({ hash }: { hash: string }) {
       }
       const c = new AbortController();
       wakeRef.current = c;
-      void ensureEngineAwake({ signal: c.signal, aiProfile: readPlayProfile(), onWaking: () => !c.signal.aborted && setWaking({ url, error: null }) }).then((r) => {
+      void ensureEngineAwake({ signal: c.signal, aiProfile: readPlayProfile(), aiPolicy: readPlayPolicy(), onWaking: () => !c.signal.aborted && setWaking({ url, error: null }) }).then((r) => {
         if (c.signal.aborted) return;
         wakeRef.current = null;
         if (r.ok) {
