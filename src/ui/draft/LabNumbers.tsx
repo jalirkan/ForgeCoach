@@ -18,6 +18,7 @@ import type { CubeContext } from '../../cube/score.ts';
 import { baselineLine, colourBaselines, colourNote, colourSkew, fmt, FORGE_CAVEAT, labCardView, pc, smallSampleNote, VERDICT_WORDS, winLine, type LabCardView } from '../../draft/labStats.ts';
 import { cx, readLS, writeLS } from '../util.ts';
 import { HumanCardFacts, HumanSourceNote, useHumanCards } from '../HumanNumbers.tsx';
+import { HumanPickCardLine, HumanPicksSource, useHumanPicks } from '../HumanPicks.tsx';
 import { LabTrustLine } from '../LabTrust.tsx';
 import { labTrust } from '../../cube/labTrust.ts';
 import { BlueCaveat } from '../BlueNote.tsx';
@@ -27,6 +28,7 @@ const OPEN_KEY = 'forgecoach.draft.labNumbers';
 export function LabNumbers({ names, ctx, cubeId }: { names: readonly string[]; ctx: CubeContext; cubeId?: string }) {
   const meta = ctx.meta?.meta ?? null;
   const human = useHumanCards(cubeId);
+  const picks = useHumanPicks(cubeId);
   const [open, setOpen] = useState(() => readLS(OPEN_KEY) === '1');
   const baselines = useMemo(() => colourBaselines(meta), [meta]);
   const rows = useMemo(
@@ -37,7 +39,7 @@ export function LabNumbers({ names, ctx, cubeId }: { names: readonly string[]; c
   // The colours whose baselines show (each card's, and the skew note's): J111's blue caveat goes with a blue one.
   const shownColours = useMemo(() => [...rows.flatMap((r) => r.view?.baselines.map((b) => b.colour) ?? []), skew?.colour ?? ''].join(''), [rows, skew]);
   if (!names.length) return null;
-  if (!meta && !human) {
+  if (!meta && !human && !picks) {
     return (
       <div className="labn labn-sum is-empty" role="note">
         <span className="fx-label">Lab numbers</span>
@@ -75,10 +77,12 @@ export function LabNumbers({ names, ctx, cubeId }: { names: readonly string[]; c
             {r.view ? <CardNumbers v={r.view} /> : meta && <div className="labn-none">The lab has no numbers for this card.</div>}
             {r.view && <LabTrustLine trust={labTrust(ctx.facts.get(r.name))} />}
             {human && <HumanCardFacts data={human} name={r.name} />}
+            {picks && <HumanPickCardLine data={picks} name={r.name} />}
           </li>
         ))}
       </ul>
       {human && <HumanSourceNote data={human} />}
+      {picks && <HumanPicksSource data={picks} />}
       {meta && (
         <p className="labn-foot">
           Win rate = decisive games won by lab decks that ran the card, with a 95% Wilson interval. “Strong” or “weak” only when the whole interval is clear of 50%.{small ? ` ${small}` : ''} Colour

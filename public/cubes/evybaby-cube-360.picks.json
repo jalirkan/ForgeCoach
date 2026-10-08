@@ -1,0 +1,597 @@
+{
+ "schema": 1,
+ "source": {
+  "name": "17Lands",
+  "page": "https://www.17lands.com/public_datasets",
+  "licence": "CC BY 4.0",
+  "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "dataset": "Powered Cube",
+  "files": [
+   "draft_data_public.Cube_-_Powered.PremierDraft.csv.gz",
+   "draft_data_public.Cube_-_Powered.TradDraft.csv.gz"
+  ],
+  "updated": "2025-12-01",
+  "changes": "A pick model fitted to the human picks (docs/human-picks.md): per-card pick strength and pool-context coefficients; matched to this cube by card name."
+ },
+ "generated": "2026-10-08",
+ "cube": {
+  "file": "evybaby-cube-360.md",
+  "cards": 360,
+  "matched": 91
+ },
+ "picks": 2316631,
+ "drafts": 52652,
+ "model": {
+  "gamma": -0.3953,
+  "beta": {
+   "fit": 1.9386,
+   "fitT": 2.7434,
+   "off": -1.0818,
+   "offT": -0.3364,
+   "goldT": 1.0541,
+   "colourlessT": 0.7783,
+   "landT": 0.7624,
+   "dual": 1.8326,
+   "dualT": 0.2974,
+   "curve": 0.0826,
+   "curveT": -0.1223
+  },
+  "tScale": 44.0,
+  "offShare": 0.15,
+  "offMinPool": 3
+ },
+ "test": {
+  "picks": 54511,
+  "top1": 0.7571,
+  "top1CardValue": 0.3652,
+  "top1PickValue": 0.5032
+ },
+ "cards": {
+  "Descendant of Storms": {
+   "s": -1.128,
+   "seen": 45612,
+   "taken": 5596,
+   "colors": "W"
+  },
+  "Thraben Inspector": {
+   "s": -0.282,
+   "seen": 41042,
+   "taken": 6085,
+   "colors": "W"
+  },
+  "Cathar Commando": {
+   "s": -0.989,
+   "seen": 44391,
+   "taken": 5116,
+   "colors": "W"
+  },
+  "Lion Sash": {
+   "s": -1.387,
+   "seen": 43718,
+   "taken": 4311,
+   "colors": "W"
+  },
+  "Splitskin Doll": {
+   "s": -1.131,
+   "seen": 45299,
+   "taken": 5220,
+   "colors": "W"
+  },
+  "Thalia, Guardian of Thraben": {
+   "s": -0.207,
+   "seen": 33993,
+   "taken": 4999,
+   "colors": "W"
+  },
+  "Voice of Victory": {
+   "s": 1.319,
+   "seen": 23603,
+   "taken": 5340,
+   "colors": "W"
+  },
+  "Elite Spellbinder": {
+   "s": 0.161,
+   "seen": 33967,
+   "taken": 5504,
+   "colors": "W"
+  },
+  "Witch Enchanter": {
+   "s": -0.514,
+   "seen": 39745,
+   "taken": 5255,
+   "colors": "W"
+  },
+  "Ephemerate": {
+   "s": -1.308,
+   "seen": 42362,
+   "taken": 4140,
+   "colors": "W"
+  },
+  "Mana Tithe": {
+   "s": -0.534,
+   "seen": 39706,
+   "taken": 5174,
+   "colors": "W"
+  },
+  "Path to Exile": {
+   "s": 1.288,
+   "seen": 20996,
+   "taken": 4441,
+   "colors": "W"
+  },
+  "Swords to Plowshares": {
+   "s": 3.752,
+   "seen": 11428,
+   "taken": 5146,
+   "colors": "W"
+  },
+  "Reprieve": {
+   "s": 0.748,
+   "seen": 30603,
+   "taken": 5887,
+   "colors": "W"
+  },
+  "Prismatic Ending": {
+   "s": -0.619,
+   "seen": 39654,
+   "taken": 4728,
+   "colors": "W"
+  },
+  "Wrath of God": {
+   "s": -0.858,
+   "seen": 35529,
+   "taken": 3710,
+   "colors": "W"
+  },
+  "Brazen Borrower": {
+   "s": -0.113,
+   "seen": 28878,
+   "taken": 3842,
+   "colors": "U"
+  },
+  "Brainstorm": {
+   "s": -0.105,
+   "seen": 28710,
+   "taken": 3728,
+   "colors": "U"
+  },
+  "Counterspell": {
+   "s": 1.427,
+   "seen": 18029,
+   "taken": 3996,
+   "colors": "U"
+  },
+  "Ponder": {
+   "s": 0.17,
+   "seen": 28254,
+   "taken": 4166,
+   "colors": "U"
+  },
+  "Preordain": {
+   "s": 0.096,
+   "seen": 28671,
+   "taken": 4228,
+   "colors": "U"
+  },
+  "Stock Up": {
+   "s": 1.415,
+   "seen": 19861,
+   "taken": 4559,
+   "colors": "U"
+  },
+  "Fatal Push": {
+   "s": 0.653,
+   "seen": 29645,
+   "taken": 4695,
+   "colors": "B"
+  },
+  "Go for the Throat": {
+   "s": 0.088,
+   "seen": 31443,
+   "taken": 3842,
+   "colors": "B"
+  },
+  "Dismember": {
+   "s": 2.428,
+   "seen": 18506,
+   "taken": 5382,
+   "colors": "B"
+  },
+  "Night's Whisper": {
+   "s": -1.136,
+   "seen": 42358,
+   "taken": 3814,
+   "colors": "B"
+  },
+  "Kellan, Planar Trailblazer": {
+   "s": -0.759,
+   "seen": 40994,
+   "taken": 5326,
+   "colors": "R"
+  },
+  "Monastery Swiftspear": {
+   "s": -1.828,
+   "seen": 46384,
+   "taken": 4395,
+   "colors": "R"
+  },
+  "Voldaren Epicure": {
+   "s": -1.612,
+   "seen": 48468,
+   "taken": 5027,
+   "colors": "R"
+  },
+  "Bonecrusher Giant": {
+   "s": 0.188,
+   "seen": 30776,
+   "taken": 4729,
+   "colors": "R"
+  },
+  "Hellrider": {
+   "s": -1.316,
+   "seen": 42295,
+   "taken": 4612,
+   "colors": "R"
+  },
+  "Chandra, Torch of Defiance": {
+   "s": -0.238,
+   "seen": 31210,
+   "taken": 4080,
+   "colors": "R"
+  },
+  "Burst Lightning": {
+   "s": -0.246,
+   "seen": 36791,
+   "taken": 5185,
+   "colors": "R"
+  },
+  "Galvanic Blast": {
+   "s": -0.753,
+   "seen": 41095,
+   "taken": 4938,
+   "colors": "R"
+  },
+  "Lightning Bolt": {
+   "s": 2.451,
+   "seen": 16460,
+   "taken": 5448,
+   "colors": "R"
+  },
+  "Monstrous Rage": {
+   "s": -1.566,
+   "seen": 46643,
+   "taken": 5072,
+   "colors": "R"
+  },
+  "Abrade": {
+   "s": 0.115,
+   "seen": 32249,
+   "taken": 4854,
+   "colors": "R"
+  },
+  "Faithless Looting": {
+   "s": -1.282,
+   "seen": 41064,
+   "taken": 4061,
+   "colors": "R"
+  },
+  "Flame Slash": {
+   "s": 0.49,
+   "seen": 31672,
+   "taken": 5759,
+   "colors": "R"
+  },
+  "Fiery Confluence": {
+   "s": 0.914,
+   "seen": 27952,
+   "taken": 5815,
+   "colors": "R"
+  },
+  "Kumano Faces Kakkazan": {
+   "s": -0.917,
+   "seen": 43103,
+   "taken": 5500,
+   "colors": "R"
+  },
+  "Goblin Bombardment": {
+   "s": -0.144,
+   "seen": 37307,
+   "taken": 5993,
+   "colors": "R"
+  },
+  "Birds of Paradise": {
+   "s": 0.772,
+   "seen": 23756,
+   "taken": 3467,
+   "colors": "G"
+  },
+  "Elvish Mystic": {
+   "s": -0.867,
+   "seen": 37194,
+   "taken": 3335,
+   "colors": "G"
+  },
+  "Haywire Mite": {
+   "s": -1.885,
+   "seen": 49007,
+   "taken": 3769,
+   "colors": ""
+  },
+  "Llanowar Elves": {
+   "s": -0.7,
+   "seen": 36092,
+   "taken": 3391,
+   "colors": "G"
+  },
+  "Scavenging Ooze": {
+   "s": -1.856,
+   "seen": 46701,
+   "taken": 3178,
+   "colors": "G"
+  },
+  "Surrak, Elusive Hunter": {
+   "s": -1.413,
+   "seen": 43160,
+   "taken": 3374,
+   "colors": "G"
+  },
+  "Ulvenwald Oddity": {
+   "s": -2.056,
+   "seen": 48485,
+   "taken": 3465,
+   "colors": "G"
+  },
+  "Pest Infestation": {
+   "s": 0.576,
+   "seen": 33139,
+   "taken": 4760,
+   "colors": "G"
+  },
+  "Up the Beanstalk": {
+   "s": -2.773,
+   "seen": 50882,
+   "taken": 3030,
+   "colors": "G"
+  },
+  "Mishra's Bauble": {
+   "s": 0.665,
+   "seen": 29780,
+   "taken": 4709,
+   "colors": ""
+  },
+  "Kolaghan's Command": {
+   "s": 0.153,
+   "seen": 40340,
+   "taken": 4642,
+   "colors": "BR"
+  },
+  "Questing Druid": {
+   "s": -1.851,
+   "seen": 50745,
+   "taken": 3968,
+   "colors": "G"
+  },
+  "Territorial Kavu": {
+   "s": -1.116,
+   "seen": 52168,
+   "taken": 4629,
+   "colors": "RG"
+  },
+  "Lingering Souls": {
+   "s": -1.167,
+   "seen": 45147,
+   "taken": 4989,
+   "colors": "W"
+  },
+  "Lurrus of the Dream-Den": {
+   "s": 1.28,
+   "seen": 29732,
+   "taken": 4492,
+   "colors": "WB"
+  },
+  "Expressive Iteration": {
+   "s": 0.226,
+   "seen": 37050,
+   "taken": 4568,
+   "colors": "UR"
+  },
+  "Third Path Iconoclast": {
+   "s": 0.332,
+   "seen": 35729,
+   "taken": 4767,
+   "colors": "UR"
+  },
+  "Lightning Helix": {
+   "s": 0.222,
+   "seen": 36766,
+   "taken": 5321,
+   "colors": "WR"
+  },
+  "Showdown of the Skalds": {
+   "s": 0.188,
+   "seen": 40464,
+   "taken": 6340,
+   "colors": "WR"
+  },
+  "Hallowed Fountain": {
+   "s": 0.026,
+   "seen": 33116,
+   "taken": 5024,
+   "colors": ""
+  },
+  "Watery Grave": {
+   "s": 0.31,
+   "seen": 27264,
+   "taken": 4588,
+   "colors": ""
+  },
+  "Blood Crypt": {
+   "s": -0.053,
+   "seen": 34994,
+   "taken": 5019,
+   "colors": ""
+  },
+  "Stomping Ground": {
+   "s": -0.59,
+   "seen": 38995,
+   "taken": 4724,
+   "colors": ""
+  },
+  "Temple Garden": {
+   "s": -1.191,
+   "seen": 45248,
+   "taken": 4631,
+   "colors": ""
+  },
+  "Godless Shrine": {
+   "s": -0.612,
+   "seen": 41241,
+   "taken": 4922,
+   "colors": ""
+  },
+  "Steam Vents": {
+   "s": 0.439,
+   "seen": 29292,
+   "taken": 5005,
+   "colors": ""
+  },
+  "Overgrown Tomb": {
+   "s": -1.012,
+   "seen": 40184,
+   "taken": 4031,
+   "colors": ""
+  },
+  "Sacred Foundry": {
+   "s": 0.412,
+   "seen": 29487,
+   "taken": 6154,
+   "colors": ""
+  },
+  "Breeding Pool": {
+   "s": -0.32,
+   "seen": 32642,
+   "taken": 4141,
+   "colors": ""
+  },
+  "Meticulous Archive": {
+   "s": -0.647,
+   "seen": 36998,
+   "taken": 4456,
+   "colors": ""
+  },
+  "Undercity Sewers": {
+   "s": -0.477,
+   "seen": 32462,
+   "taken": 4129,
+   "colors": ""
+  },
+  "Raucous Theater": {
+   "s": -0.735,
+   "seen": 40714,
+   "taken": 4626,
+   "colors": ""
+  },
+  "Commercial District": {
+   "s": -1.268,
+   "seen": 44629,
+   "taken": 4396,
+   "colors": ""
+  },
+  "Lush Portico": {
+   "s": -1.742,
+   "seen": 48810,
+   "taken": 4215,
+   "colors": ""
+  },
+  "Shadowy Backstreet": {
+   "s": -1.232,
+   "seen": 45075,
+   "taken": 4515,
+   "colors": ""
+  },
+  "Thundering Falls": {
+   "s": -0.268,
+   "seen": 35034,
+   "taken": 4634,
+   "colors": ""
+  },
+  "Underground Mortuary": {
+   "s": -1.393,
+   "seen": 43065,
+   "taken": 3912,
+   "colors": ""
+  },
+  "Elegant Parlor": {
+   "s": -0.752,
+   "seen": 38730,
+   "taken": 5538,
+   "colors": ""
+  },
+  "Hedge Maze": {
+   "s": -1.024,
+   "seen": 38874,
+   "taken": 3880,
+   "colors": ""
+  },
+  "Arid Mesa": {
+   "s": 2.075,
+   "seen": 17038,
+   "taken": 5749,
+   "colors": ""
+  },
+  "Bloodstained Mire": {
+   "s": 2.268,
+   "seen": 17779,
+   "taken": 5333,
+   "colors": ""
+  },
+  "Flooded Strand": {
+   "s": 2.48,
+   "seen": 15190,
+   "taken": 5187,
+   "colors": ""
+  },
+  "Marsh Flats": {
+   "s": 2.085,
+   "seen": 18999,
+   "taken": 5339,
+   "colors": ""
+  },
+  "Misty Rainforest": {
+   "s": 2.186,
+   "seen": 16154,
+   "taken": 4701,
+   "colors": ""
+  },
+  "Polluted Delta": {
+   "s": 2.345,
+   "seen": 14784,
+   "taken": 4842,
+   "colors": ""
+  },
+  "Scalding Tarn": {
+   "s": 2.72,
+   "seen": 13950,
+   "taken": 5085,
+   "colors": ""
+  },
+  "Verdant Catacombs": {
+   "s": 1.627,
+   "seen": 19793,
+   "taken": 4674,
+   "colors": ""
+  },
+  "Windswept Heath": {
+   "s": 1.759,
+   "seen": 20094,
+   "taken": 5114,
+   "colors": ""
+  },
+  "Wooded Foothills": {
+   "s": 1.95,
+   "seen": 19176,
+   "taken": 5215,
+   "colors": ""
+  }
+ }
+}

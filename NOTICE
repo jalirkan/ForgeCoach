@@ -90,6 +90,15 @@ Generator: scripts/human-cards/. The app credits 17Lands, with links to the
 dataset page and the licence, wherever the numbers are shown. 17Lands does not
 endorse ForgeCoach or its use of the data.
 
+The files public/cubes/*.picks.json are adapted from 17Lands' public draft
+data for MTG Arena's Powered Cube (draft_data_public.Cube_-_Powered.
+PremierDraft.csv.gz and .TradDraft.csv.gz, last modified 2025-12-01; same
+licence). Changes made: a pick model (per-card pick strength and pool-context
+coefficients) was fitted to the picks, see docs/human-picks.md, and matched to
+each cube document by name; no per-pick, per-draft or per-player data is kept.
+Scripts: scripts/human-picks/. The app credits 17Lands, with links to the
+dataset page and the licence, wherever the pick signal is shown.
+
 
 4. Wizards of the Coast — Fan Content Policy
 --------------------------------------------

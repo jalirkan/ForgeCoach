@@ -74,3 +74,11 @@
   border-left: 2px solid rgba(132, 176, 214, 0.75);
   color: var(--muted, inherit);
 }
+
+/* The human pick signal (HumanPicks.tsx): the same blue, one line. */
+.hx-picks .hx-body.hx-early {
+  color: var(--hx-ink);
+}
+.adv .hx-picks {
+  margin-top: 10px;
+}
