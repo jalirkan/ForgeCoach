@@ -262,3 +262,131 @@ Replicated pairs with a **negative** effect are reported here, not shipped.
 
 **If nothing replicates:** nothing ships; this part and its results are what
 merges.
+
+---
+
+# Results (run 2026-10-08)
+
+Reproduce (the two 17Lands files as in `docs/human-blend.md`; DIR any scratch
+folder; `scripts/card-model/README.md` has the details):
+
+```bash
+npm run human-cards -- --updated 2025-11-23 --half 0 --out DIR/halves game_data_public.Cube_-_Powered.*.csv.gz
+npm run human-cards -- --updated 2025-11-23 --half 1 --out DIR/halves game_data_public.Cube_-_Powered.*.csv.gz
+npm run card-model -- export DIR/features.json DIR/halves
+python3 -I scripts/card-model/fit.py test DIR/features.json        # A2's test (about 5 minutes)
+python3 -I scripts/card-model/fit.py report DIR/features.json      # A2's reported extras
+python3 -I scripts/card-model/decks.py DIR/decks.npz game_data_public.Cube_-_Powered.*.csv.gz
+python3 -I scripts/card-model/synergy.py test DIR/decks.npz DIR/synergy.json   # D2 (under a minute)
+```
+
+The data checked out: 294,975 games, halves of 147,565 and 147,410, as in
+human-blend.md. Today's held-out rho on Vintage (0.462 and 0.461) is part 1's
+"today", as it should be.
+
+## A2: the card model fails; nothing ships
+
+| Direction | Cube (cards) | rho today → model | Δrho [95%] | RMSE today → model | ΔRMSE [95%] |
+|---|---|---|---|---|---|
+| half 0 → 1 | Vintage (131) | 0.462 → 0.601 | +0.139 [+0.040, +0.244] | 0.0333 → 0.0291 | +0.0041 [+0.0015, +0.0069] |
+| half 1 → 0 | Vintage (131) | 0.461 → 0.582 | +0.121 [+0.018, +0.227] | 0.0314 → 0.0288 | +0.0025 [**−0.0003**, +0.0054] |
+| half 0 → 1 | Synergy (59) | 0.498 → 0.386 | −0.111 [−0.313, +0.066] | 0.0266 → 0.1107 | −0.0841 [−0.0993, −0.0691] |
+| half 1 → 0 | Synergy (59) | 0.413 → 0.262 | −0.151 [−0.362, +0.051] | 0.0281 → 0.1196 | −0.0915 [−0.1070, −0.0761] |
+
+Guard (human data visible, Vintage): today's blend 0.908 → model 0.924,
++0.016 [+0.003, +0.030]; and 0.908 → 0.919, +0.011 [−0.003, +0.025].
+
+| Condition | Needed | Result |
+|---|---|---|
+| 1. Vintage held out | both lower ends > 0, both directions | rho yes; RMSE no in half 1 → 0 (−0.0003): **fails** |
+| 2. Synergy not worse | mean Δrho ≥ 0 and mean ΔRMSE ≥ 0 | −0.131 and −0.0878: **fails** |
+| 3. Guard | lower end > −0.03, both directions | +0.003 and −0.003: holds |
+
+**Decision: ship nothing.** `cardValue`, `labValue`, the lab-trust labels,
+the drafter and every screen are unchanged; the scripts stay in
+`scripts/card-model/` so the run can be repeated.
+
+Reported, not used for the decision (full-data fit):
+
+- **Hyperparameters.** λ 0.54 (a lab point is worth about half a human
+  point: the lab's spread is squeezed), σ_l 0.010, τ 0.025, σ_t,syn **0.113**,
+  σ_g col 0.066, type 0.002, mv 0.004; σ_b col 0.022, type 0.003, mv 0.003,
+  cell 0.006. The prior: β +0.006 ± 0.002 per 10 prior points.
+- **The learned lab biases** (lab win-rate points, 95% intervals; they are
+  relative to each cube's level, so the differences are what count):
+  white **+3.6** [+2.5, +4.6], blue −1.9 [−2.9, −1.0], black −2.2 [−3.3, −1.1],
+  red −2.4 [−3.5, −1.3], green −1.2 [−2.4, −0.0], multicolour −1.1
+  [−2.5, +0.4], colourless +0.7 [−0.4, +1.8]. Creature / noncreature +0.2 /
+  −0.3 and mana value ≤ 2 / 3–4 / 5+ −0.3 / −0.0 / +0.2, every interval
+  including 0; the colour × type × band cell terms add at most ±1.5 (σ 0.006). So the only bias the data
+  support is by **colour**: Forge's lab rates white cards about 5–6 lab points
+  above blue, black and red cards, compared with how humans rate them. Blue
+  is no worse off than black or red. Card type and mana value carry no
+  learned bias: part 2 B found the lab *agrees* less on 5+ drops and
+  noncreature spells, but that is noise around the right level, not a shift.
+- **Held-out rho with the biases switched off** (Vintage): 0.555 and 0.547,
+  against 0.601 and 0.582 with them. Most of the Vintage gain over today
+  (0.46) comes from the pooling, the prior and the lab's scale; the colour
+  biases add about 0.04.
+- **Interval widths** (median 95% width, value points): Vintage 4.8 (human
+  data); the lab-only 180-card cubes 16.8–17.8; Evan's 19.8 (median 468 lab
+  games). Without human numbers a card's value is uncertain by about ±9
+  points, whatever the lab's game count: the limit is how far Forge's rate
+  says anything about human play (λ, σ_l), not sampling. Evan's thin sample
+  adds little to that.
+
+Why it failed, as far as the numbers show (an exploratory look after the
+result, not part of the test): the lab biases are shared by all cubes, but
+Synergy's lab colour gaps are its own. Mean raw lab rate minus 0.5 over the
+shared cards, against the human level: Synergy white +10.0 (humans +2.2),
+blue −7.2 (−1.5), black +2.4 (−2.3); Vintage white +7.2 (+2.5), blue −2.4
+(−0.1). Shared biases cannot absorb a gap twice Vintage's, so the fit puts
+it into Synergy's own colour effects on quality (white +22 human points) and
+declares Synergy's human numbers 11 points noisy (σ_t,syn 0.113) so they no
+longer contradict it. On Synergy's held-out cards the model then predicts
+from those colour effects, hence RMSE 0.11. The same would have happened in
+every lab-only cube: σ_g col 0.066 is the per-cube colour effects of
+Forge's play in that cube (Modern-Era green +12, Omega white −8), now read as
+human quality. This is part 3's lesson again from the other side: inside
+one cube, the lab cannot tell its colour quirks from real colour strength,
+and a bias learned in Vintage does not carry to another cube's quirks.
+
+A model that would answer this needs either per-cube lab colour biases
+with human data in each cube (none exist beyond Vintage and Synergy's shared
+cards) or the equal-deck-quality colour effects from mtg-table's J111 model
+for every colour, as part 3 already concluded. Either would be a new
+pre-registration.
+
+## D2: one pair replicates, in no cube; nothing ships
+
+| | half 0 | half 1 |
+|---|---|---|
+| decks (draft × deck clusters) / games | 34,300 / 147,565 | 34,549 / 147,410 |
+| main-effects fit | 20 Newton steps, φ 0.919 | 20 Newton steps, φ 0.914 |
+| candidate pairs (≥ 1,000 games together and apart) | 17,041 | 16,901 |
+
+| Direction | Discovered at FDR 10% | Same sign in the other half | Replicated (BH 5%) |
+|---|---|---|---|
+| half 0 → 1 | 4 (all positive) | 4 of 4 | 0 |
+| half 1 → 0 | 1 (positive) | 1 of 1 | 1 |
+
+- **Replicated:** **Brain Freeze + Lion's Eye Diamond**, +5.1 win-rate
+  points in the replication half (z 3.30, 3,336 games together; +7.4 in the
+  discovery half). It is the storm combo the two cards are known for.
+- **Discovered, not replicated** (half 0, with half 1's effect): Tolarian
+  Academy + Ugin, Eye of the Storms +6.3 → +2.8; Ramunap Excavator + Strip
+  Mine +6.4 → +2.0; Icetill Explorer + Strip Mine +6.3 → +0.9; Creeping Tar
+  Pit + Psychic Frog +5.4 → +1.0. All four keep their sign but shrink, as
+  selected effects do.
+- **Agreement between halves** over the 15,403 pairs that are candidates in
+  both: Pearson +0.085, Spearman +0.070. Pair effects are mostly noise at
+  this sample size; only a few strong combos stand out.
+- No negative pair was discovered.
+- The dispersion φ is just under 1: games of one deck are no more alike than
+  the covariates already say.
+
+**Decision: ship nothing.** The one replicated pair is in none of the eight
+cubes: Justin's Vintage cube leaves out both Brain Freeze and Lion's Eye
+Diamond on purpose ("no turn-two infinite combos"), so no
+`<cube>.synergy.json` is written and no advice line is added.
+`synergy.py ship` stays as the tool that would write them.
