@@ -13,7 +13,8 @@
  *                as you have seen them, and its count: its list stays
  *                hidden), the known cards the AI can't pilot well,
  *                AI profile, the opponent AI (Forge, + sacrifice play, search;
- *                only when the helper's /health offers it), Bo1/Bo3, and Begin,
+ *                only when the helper's /health offers it; the search AI by
+ *                default when offered, mtg-table D414), Bo1/Bo3, and Begin,
  *                which asks mtg-table's match launcher to deal the match.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -29,6 +30,8 @@ import {
   engineHealth,
   launchMatch,
   policyFields,
+  defaultPolicy,
+  effectivePolicy,
   safeDeckName,
   type AiPolicy,
   type AiProfile,
@@ -421,12 +424,14 @@ export function MatchSetup({
   onAbandon: () => void;
 }) {
   const [profile, setProfile] = useState<AiProfile>('Default');
-  const [policy, setPolicy] = useState<AiPolicy>('plain');
+  // mtg-table D414: the search AI by default whenever the helper offers it (else plain, as policyFields sends).
+  const [picked, setPolicy] = useState<AiPolicy | null>(null);
   const [games, setGames] = useState<1 | 3>(3);
   const [health, setHealth] = useState<EngineHealth | null>(null);
   const status = health?.status ?? null;
   // The opponent AIs this helper takes (D333); none from an older helper: no choice shown.
   const policies = AI_POLICIES.filter((p) => health?.aiPolicies.includes(p.id));
+  const policy: AiPolicy = health ? effectivePolicy(picked ?? defaultPolicy(health), health) : (picked ?? 'plain');
   const opponent = policies.length ? (AI_POLICIES.find((p) => p.id === policy) ?? AI_POLICIES[0]!) : null;
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<LaunchResult | null>(null);

@@ -22,7 +22,8 @@
     "bench:coach": "node bench/coach/run.mjs",
     "human-cards": "node scripts/human-cards/run.mjs",
     "human-blend": "node scripts/human-cards/run.mjs blend-test",
-    "human-picks": "node scripts/human-picks/run.mjs"
+    "human-picks": "node scripts/human-picks/run.mjs",
+    "card-model": "node scripts/card-model/run.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

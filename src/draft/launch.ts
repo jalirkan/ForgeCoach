@@ -17,13 +17,16 @@
  *                      body (D381, only when /health has `engine_start_profile: 1`):
  *                      none, or {"aiProfile"} — the last setup with that AI profile;
  *                      a running engine answers {already: true} and, for another
- *                      profile than its own, a warning (nothing restarts)
+ *                      profile than its own, a warning (nothing restarts);
+ *                      (D414, only with `engine_start_policy: 1`) {"aiPolicy"} too
  *
  * The opponent AI (mtg-table D333, over D314's `--ai-policy`): Forge's own AI,
  * Forge with the sacrifice-outlet policy (D310), or the search AI (D312). The
  * page offers the choice only when /health advertises `aiPolicies`; with an
  * older helper the request carries no `aiPolicy` and the engine plays as
- * play.sh started it.
+ * play.sh started it. Since mtg-table D414 the pickers start on the search AI
+ * (search-v2) whenever it is offered (`defaultPolicy`); plain Forge is one tap
+ * away, and a choice the helper does not offer falls back to plain.
  *
  * Since D308 the engine can be asleep: play.sh and the helper stay up, nothing
  * listens on the seat port, and /health says `engine: "idle"` (and
@@ -70,7 +73,7 @@ export const AI_POLICIES: Array<{ id: AiPolicy; label: string; blurb: string }> 
     id: 'search',
     label: 'Search AI (stronger, slower)',
     blurb:
-      'Sacrifice play plus a look-ahead at its main-phase plays, attacks and blocks. Thinks about 1–3 s per decision, so games run slower. In mtg-table’s tests it won 56% of cube games where Forge’s AI won 47%. It never sees your hand or library: it guesses them.',
+      'Sacrifice play plus a look-ahead at its main-phase plays, attacks and blocks. Thinks about 1–3 s per decision, so games run slower. The default (search-v2): against Forge’s own AI it won 60% of 1,200 games in mtg-table’s tests. It never sees your hand or library: it guesses them.',
   },
 ];
 
@@ -189,6 +192,8 @@ export interface EngineHealth {
   canWake: boolean;
   /** POST /engine/start takes `{"aiProfile"}` (D381, `engine_start_profile: 1`): plain Play vs Forge can pick the AI profile. */
   canPickProfile?: boolean;
+  /** POST /engine/start takes `{"aiPolicy"}` (mtg-table D414, `engine_start_policy: 1`): plain Play vs Forge can pick the opponent AI. */
+  canPickPolicy?: boolean;
   /** The opponent AIs POST /match takes (D333 `aiPolicies`, known ids only); empty: an older helper, no choice. */
   aiPolicies: AiPolicy[];
   /** The search budget's limits (D333 `aiSearchMs`), when advertised and sane. */
@@ -223,7 +228,21 @@ export function advertisedSearchBudget(j: { aiSearchMs?: unknown }): SearchBudge
  */
 export function policyFields(choice: AiPolicy, health: Pick<EngineHealth, 'aiPolicies'>): Pick<MatchRequest, 'aiPolicy'> {
   if (health.aiPolicies.length === 0) return {};
-  return { aiPolicy: health.aiPolicies.includes(choice) ? choice : 'plain' };
+  return { aiPolicy: effectivePolicy(choice, health) };
+}
+
+/**
+ * The opponent a picker starts on (mtg-table D414): the search AI (search-v2)
+ * whenever the helper offers it, else plain Forge. Plain stays one tap away.
+ */
+export const DEFAULT_POLICY: AiPolicy = 'search';
+export function defaultPolicy(health: Pick<EngineHealth, 'aiPolicies'> | null | undefined): AiPolicy {
+  return health?.aiPolicies.includes(DEFAULT_POLICY) ? DEFAULT_POLICY : 'plain';
+}
+
+/** What a choice becomes on this helper: itself when offered, else plain Forge (as `policyFields` sends). */
+export function effectivePolicy(choice: AiPolicy, health: Pick<EngineHealth, 'aiPolicies'>): AiPolicy {
+  return health.aiPolicies.includes(choice) ? choice : 'plain';
 }
 
 /** GET /health, read for the launcher and the engine (`match`, `engine`, `engine_start` are there whether `ok` is true or false). */
@@ -233,7 +252,7 @@ export async function engineHealth(opts: LaunchOptions = {}): Promise<EngineHeal
   const to = withTimeout(opts.timeoutMs ?? 1500);
   try {
     const res = await f(`${t.baseUrl}/health`, { headers: headers(t, false), signal: to.signal });
-    let j: { match?: unknown; engine?: unknown; engine_start?: unknown; engine_start_profile?: unknown; aiPolicies?: unknown; aiSearchMs?: unknown } = {};
+    let j: { match?: unknown; engine?: unknown; engine_start?: unknown; engine_start_profile?: unknown; engine_start_policy?: unknown; aiPolicies?: unknown; aiSearchMs?: unknown } = {};
     try {
       j = ((await res.json()) ?? {}) as typeof j;
     } catch {
@@ -248,6 +267,8 @@ export async function engineHealth(opts: LaunchOptions = {}): Promise<EngineHeal
       status: j.engine === 'idle' ? 'asleep' : 'ready',
       canWake,
       ...(canWake && j.engine_start_profile === 1 ? { canPickProfile: true } : {}),
+      // D414: only with a policy list we understand (plain in it), so the choice can fall back to plain.
+      ...(canWake && j.engine_start_policy === 1 && aiPolicies.length > 0 ? { canPickPolicy: true } : {}),
       aiPolicies,
       ...(aiSearchMs ? { aiSearchMs } : {}),
     };
@@ -367,8 +388,9 @@ export const isAiProfile = (x: unknown): x is AiProfile => AI_PROFILES.some((p) 
  * `engine_start_profile: 1`) the AI plays that profile; no deck is named or
  * sent. Never throws.
  */
-export async function wakeEngine(opts: LaunchOptions & { aiProfile?: AiProfile | null } = {}): Promise<WakeResult> {
-  const p = await post('/engine/start', opts.aiProfile ? JSON.stringify({ aiProfile: opts.aiProfile }) : undefined, opts);
+export async function wakeEngine(opts: LaunchOptions & { aiProfile?: AiProfile | null; aiPolicy?: AiPolicy | null } = {}): Promise<WakeResult> {
+  const ask = { ...(opts.aiProfile ? { aiProfile: opts.aiProfile } : {}), ...(opts.aiPolicy ? { aiPolicy: opts.aiPolicy } : {}) };
+  const p = await post('/engine/start', Object.keys(ask).length ? JSON.stringify(ask) : undefined, opts);
   if ('ok' in p) return p;
   const { res, body } = p;
   if (res.ok && body.ok === true) return { ok: true, already: body.already === true, warnings: warningsOf(body), ms: typeof body.ms === 'number' ? body.ms : undefined };
@@ -387,14 +409,21 @@ export async function wakeEngine(opts: LaunchOptions & { aiProfile?: AiProfile |
  * the engine already running, the request still goes out — nothing restarts —
  * so its warning that the running match keeps its own profile reaches the
  * player. `profileSent` says whether the profile went to the helper.
+ *
+ * `aiPolicy` (mtg-table D414) goes the same way, only to a helper with
+ * `canPickPolicy`, as `effectivePolicy` makes it (plain when the helper does
+ * not offer the choice): with the engine running, its warning says the running
+ * match keeps its own AI. `policySent` says whether it went.
  */
 export async function ensureEngineAwake(
-  opts: LaunchOptions & { onWaking?: () => void; aiProfile?: AiProfile | null } = {},
-): Promise<(EngineWoken & { woke: boolean; profileSent: boolean }) | MatchRefused> {
+  opts: LaunchOptions & { onWaking?: () => void; aiProfile?: AiProfile | null; aiPolicy?: AiPolicy | null } = {},
+): Promise<(EngineWoken & { woke: boolean; profileSent: boolean; policySent: boolean }) | MatchRefused> {
   const h = await engineHealth({ ...opts, timeoutMs: 1500 });
   const aiProfile = opts.aiProfile && h.canPickProfile ? opts.aiProfile : null;
-  if (!h.canWake || (h.status !== 'asleep' && !(h.status === 'ready' && aiProfile))) return { ok: true, already: true, warnings: [], woke: false, profileSent: false };
+  const aiPolicy = opts.aiPolicy && h.canPickPolicy ? effectivePolicy(opts.aiPolicy, h) : null;
+  const asks = aiProfile !== null || aiPolicy !== null;
+  if (!h.canWake || (h.status !== 'asleep' && !(h.status === 'ready' && asks))) return { ok: true, already: true, warnings: [], woke: false, profileSent: false, policySent: false };
   if (h.status === 'asleep') opts.onWaking?.();
-  const r = await wakeEngine({ ...opts, aiProfile });
-  return r.ok ? { ...r, woke: !r.already, profileSent: aiProfile !== null } : r;
+  const r = await wakeEngine({ ...opts, aiProfile, aiPolicy });
+  return r.ok ? { ...r, woke: !r.already, profileSent: aiProfile !== null, policySent: aiPolicy !== null } : r;
 }

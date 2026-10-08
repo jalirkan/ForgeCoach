@@ -14,6 +14,7 @@ import { getAnswer, onAnswerSettled, restoreAnswer, type Answer } from '../answe
 import { gameAdvice, gameOfKey, knownGames, planKey, restoreAdvice, type AdviceEntry } from './autoPlan.ts';
 import { loadStoredAdvice, saveStoredAdvice, sessionAdviceStorage, type StoredAnswer, type StoredEntry } from './adviceStore.ts';
 import { liveDecision } from './liveDecision.ts';
+import { answerWasShown, coachUseStorage, noteAnswerShown } from '../../coachUse.ts';
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -25,6 +26,18 @@ function keptAnswer(a: Answer | undefined): StoredAnswer | null {
   if (ENDED.has(a.status)) return { ...base, status: a.status as StoredAnswer['status'] };
   // Still on its way: what it had, marked cut (its plan is asked again after a reload).
   return a.text ? { ...base, status: 'stopped', stopReasonNote: 'reload', cut: true } : null;
+}
+
+/**
+ * mtg-table D414: an answer that ended with text on the play screen counts once
+ * for its game's coach use (a game noted by PlayView: against the AI only).
+ */
+export function countShownAnswer(key: string, storage: Store | null = coachUseStorage(), now: () => number = Date.now): boolean {
+  const game = gameOfKey(key);
+  const a = getAnswer(key);
+  if (!game || !answerWasShown(a)) return false;
+  const kind = gameAdvice(game)?.entries.find((e) => e.key === key)?.kind ?? 'ask';
+  return noteAnswerShown(storage, game, { key, kind, model: a!.model, source: a!.source }, now);
 }
 
 /** Saves one game seat's advice and answers as they are now. False when there is nothing to keep or no storage. */
@@ -93,6 +106,7 @@ export function keepAdviceInBrowser(): void {
   onAnswerSettled((key) => {
     const game = gameOfKey(key);
     if (game) persistAdvice(game, storage, null);
+    countShownAnswer(key);   // mtg-table D414: coach use per game
   });
   window.addEventListener('pagehide', () => {
     for (const game of knownGames()) persistAdvice(game, storage, null);

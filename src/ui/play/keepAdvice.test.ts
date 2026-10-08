@@ -289,3 +289,29 @@ describe('a client-made log keeps its game key across a reload', () => {
     expect(b.header!.startedAt).toBe(a.header!.startedAt);
   });
 });
+
+describe('coach use per game: the answers shown count once (mtg-table D414)', () => {
+  it('counts a finished plan and a finished question of a noted game, by kind; not an error, not twice', async () => {
+    const { noteGamePlayed, loadCoachUse } = await import('../../coachUse.ts');
+    const { restoreAnswer } = await import('../answers.ts');
+    const { countShownAnswer } = await import('./keepAdvice.ts');
+    const game = gameKeyOf(LOG, LOG.seat)!;
+    const local = memoryStorage();
+    const base = { model: 'claude-sonnet-4-5', source: 'helper' as const, refused: false, stopReasonNote: null, error: null };
+    const plan = planKey(game, 3);
+    recordAdvice(game, { key: plan, kind: 'plan', label: planLabel(3), forTurn: 3, decision: null });
+    recordAdvice(game, { key: `${game}:ask:1`, kind: 'ask', label: 'Your main phase', forTurn: null, decision: null });
+    recordAdvice(game, { key: `${game}:ask:2`, kind: 'ask', label: 'Your attacks', forTurn: null, decision: null });
+    restoreAnswer(plan, { ...base, status: 'done', text: 'Play: Forest' });
+    restoreAnswer(`${game}:ask:1`, { ...base, status: 'stopped', text: 'Attack: all' });
+    restoreAnswer(`${game}:ask:2`, { ...base, status: 'error', text: '', error: 'auth' });
+    // Not noted yet (as a friend's table never is): nothing is recorded.
+    expect(countShownAnswer(plan, local)).toBe(false);
+    noteGamePlayed(local, game);
+    expect(countShownAnswer(plan, local)).toBe(true);
+    expect(countShownAnswer(plan, local)).toBe(false);
+    expect(countShownAnswer(`${game}:ask:1`, local)).toBe(true);
+    expect(countShownAnswer(`${game}:ask:2`, local)).toBe(false);
+    expect(loadCoachUse(local)[0]).toMatchObject({ key: gameJoinKey({ gameId: LOG.header.gameId, seed: LOG.header.seed ?? null, startedAt: LOG.header.startedAt ?? null }), plans: 1, asks: 1, models: ['claude-sonnet-4-5'], sources: ['helper'] });
+  });
+});
