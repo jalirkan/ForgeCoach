@@ -108,6 +108,22 @@ describe('scenery from a log', () => {
     expect(t.previous().scenery).toEqual(sceneryFromLog(log, 1));
   });
 
+  it('a live seat’s snapshots (a new log object each frame, the same frames) are followed, not started over (J109)', () => {
+    const full = parseLog(gunzipSync(readFileSync(new URL('../../public/samples/human-auto-42.jsonl.gz', import.meta.url))).toString('utf8'));
+    const t = new SceneryTracker();
+    for (let k = 0; k < full.frames.length; k++) {
+      const snap = { ...full, frames: full.frames.slice(0, k + 1) };
+      const got = t.at(snap, k);
+      // Only the frame that came: a tracker that started over would list up to MAX_TRACKED_STEPS steps.
+      if (full.frames[k]!.type === 'state') expect(t.steps().map((s) => s.frameIndex)).toEqual([k]);
+      if (k % 97 === 0) expect(got).toEqual(sceneryFromLog(full, k));
+    }
+    expect(t.at({ ...full, frames: full.frames.slice() }, full.frames.length - 1)).toEqual(sceneryFromLog(full, Infinity));
+    // Another game (its own first frame): from the start.
+    const other = simLog(seq);
+    expect(t.at(other, other.frames.length - 1)).toEqual(sceneryFromLog(other, Infinity));
+  });
+
   it('reads a recorded game: only the viewer-visible battlefield, slots stable', () => {
     const log = parseLog(gunzipSync(readFileSync(new URL('../../public/samples/human-auto-42.jsonl.gz', import.meta.url))).toString('utf8'));
     const t = new SceneryTracker();

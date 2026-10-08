@@ -190,12 +190,13 @@ export function chosenColors(log: GameLog, frameIndex: number, seat: number, car
     const f = log.frames[i]!;
     if (f.type === 'state') {
       const s = f.body as GameStateBody;
-      const byId = cardsById(s);
+      // Built only for a frame where something entered: a long game has thousands of state frames (J109).
+      let byId: Map<number, AnyCard> | null = null;
       const now: number[] = [];
       for (const e of s.events as GameEvent[]) {
         if (e.kind !== 'zone' || e.to?.zone !== 'battlefield' || e.from?.zone === 'battlefield') continue;
         out.delete(e.cardId); // a new object: any old choice is gone
-        const c = byId.get(e.cardId);
+        const c = (byId ??= cardsById(s)).get(e.cardId);
         if (e.to.player === seat && chosenColorSource(c, cards)) now.push(e.cardId);
       }
       if (pending !== null && now.length) {
@@ -686,7 +687,43 @@ export function castIsAbility(ev: { stackId: number; cardId: number; text: strin
  * boundary, so frame-level turn numbers are not enough).
  */
 export function turnFacts(log: GameLog, frameIndex: number, playerId: number): TurnFacts {
-  const blank = (start: number): TurnFacts => ({
+  const end = Math.min(frameIndex, log.frames.length - 1);
+  if (end < 0) return blankFacts(-1);
+  // The board asks this on every frame the seat receives, and the fold reads every state frame from the
+  // start (the names of cards long gone): J109's long games spent most of a render here. The fold is kept
+  // per log (by its first frame) and player, and goes on from where it stopped while the log only grew.
+  const first = log.frames[0]!;
+  let folds = turnFolds.get(first);
+  if (!folds) turnFolds.set(first, (folds = new Map()));
+  let fold = folds.get(playerId);
+  if (!fold || fold.upto > end || log.frames[fold.upto] !== fold.at) {
+    fold = { upto: -1, at: null, facts: blankFacts(-1), sawTurnStart: false, names: new Map(), prev: null };
+    folds.set(playerId, fold);
+  }
+  for (let i = fold.upto + 1; i <= end; i++) {
+    const f = log.frames[i]!;
+    if (f.type === 'state') foldTurnState(fold, f.body as GameStateBody, i, playerId);
+  }
+  fold.upto = end;
+  fold.at = log.frames[end]!;
+  return copyFacts(fold.facts, fold.sawTurnStart);
+}
+
+interface TurnFold {
+  /** The last frame index folded in, and that frame (the log it came from must still hold it there). */
+  upto: number;
+  at: unknown;
+  facts: TurnFacts;
+  sawTurnStart: boolean;
+  names: Map<number, string>;
+  prev: GameStateBody | null;
+}
+
+/** Folds per log (keyed by its first frame object: a log only ever grows at its end) and player. */
+const turnFolds = new WeakMap<object, Map<number, TurnFold>>();
+
+function blankFacts(start: number): TurnFacts {
+  return {
     landPlayed: null,
     cast: [],
     leftBattlefield: [],
@@ -698,67 +735,75 @@ export function turnFacts(log: GameLog, frameIndex: number, playerId: number): T
     lifeGained: 0,
     lifeLost: 0,
     turnStartFrame: start,
-  });
-  let facts = blank(-1);
-  let sawTurnStart = false;
-  const names = new Map<number, string>();
-  let prev: GameStateBody | null = null;
-  const end = Math.min(frameIndex, log.frames.length - 1);
-  for (let i = 0; i <= end; i++) {
-    const f = log.frames[i]!;
-    if (f.type !== 'state') continue;
-    const s = f.body as GameStateBody;
-    // Names from the previous snapshot first (cards that left to a hidden zone), then this one.
-    for (const [id, c] of cardsById(s)) {
-      const v = visibleCard(c);
-      if (v && v.name) names.set(id, v.name);
-    }
-    const nm = (id: number) => names.get(id) ?? 'a hidden card';
-    for (const e of s.events as GameEvent[]) {
-      switch (e.kind) {
-        case 'turn':
-          facts = blank(i);
-          facts.landPlayed = false;
-          sawTurnStart = true;
-          break;
-        case 'land':
-          if (e.player === playerId) {
-            facts.landPlayed = true;
-            facts.landsPlayed++;
-          }
-          break;
-        case 'cast': {
-          if (castIsAbility(e, s, prev)) {
-            facts.abilities.push({ playerId: e.controller, name: nm(e.cardId), text: e.text, triggered: isTriggerText(e.text) });
-          } else {
-            facts.cast.push({ playerId: e.controller, name: nm(e.cardId) });
-          }
-          break;
-        }
-        case 'zone': {
-          const from = e.from;
-          const to = e.to;
-          if (from?.zone === 'battlefield' && from.player === playerId && to?.zone !== 'battlefield') {
-            facts.leftBattlefield.push(nm(e.cardId));
-            const wasCreature = prev ? hasType(cardsById(prev).get(e.cardId), 'Creature') : false;
-            if (to?.zone === 'graveyard' && wasCreature) facts.died.push(nm(e.cardId));
-          }
-          if (to?.zone === 'battlefield' && to.player === playerId && from?.zone !== 'battlefield') facts.entered.push(nm(e.cardId));
-          if (from?.zone === 'library' && to?.zone === 'hand' && to.player === playerId) facts.drawn++;
-          break;
-        }
-        case 'life':
-          if (e.player === playerId) {
-            if (e.to > e.from) facts.lifeGained += e.to - e.from;
-            else facts.lifeLost += e.from - e.to;
-          }
-          break;
-        default:
-          break;
-      }
-    }
-    prev = s;
+  };
+}
+
+/** The caller's own copy: the fold's facts go on changing. */
+function copyFacts(f: TurnFacts, sawTurnStart: boolean): TurnFacts {
+  return {
+    ...f,
+    landPlayed: sawTurnStart ? f.landPlayed : null,
+    cast: f.cast.map((c) => ({ ...c })),
+    leftBattlefield: [...f.leftBattlefield],
+    abilities: f.abilities.map((a) => ({ ...a })),
+    died: [...f.died],
+    entered: [...f.entered],
+  };
+}
+
+/** One state frame (index `i`) into the fold. */
+function foldTurnState(fold: TurnFold, s: GameStateBody, i: number, playerId: number): void {
+  const names = fold.names;
+  const prev = fold.prev;
+  let facts = fold.facts;
+  // Names from the previous snapshot first (cards that left to a hidden zone), then this one.
+  for (const [id, c] of cardsById(s)) {
+    const v = visibleCard(c);
+    if (v && v.name) names.set(id, v.name);
   }
-  if (!sawTurnStart) facts.landPlayed = null;
-  return facts;
+  const nm = (id: number) => names.get(id) ?? 'a hidden card';
+  for (const e of s.events as GameEvent[]) {
+    switch (e.kind) {
+      case 'turn':
+        facts = fold.facts = blankFacts(i);
+        facts.landPlayed = false;
+        fold.sawTurnStart = true;
+        break;
+      case 'land':
+        if (e.player === playerId) {
+          facts.landPlayed = true;
+          facts.landsPlayed++;
+        }
+        break;
+      case 'cast': {
+        if (castIsAbility(e, s, prev)) {
+          facts.abilities.push({ playerId: e.controller, name: nm(e.cardId), text: e.text, triggered: isTriggerText(e.text) });
+        } else {
+          facts.cast.push({ playerId: e.controller, name: nm(e.cardId) });
+        }
+        break;
+      }
+      case 'zone': {
+        const from = e.from;
+        const to = e.to;
+        if (from?.zone === 'battlefield' && from.player === playerId && to?.zone !== 'battlefield') {
+          facts.leftBattlefield.push(nm(e.cardId));
+          const wasCreature = prev ? hasType(cardsById(prev).get(e.cardId), 'Creature') : false;
+          if (to?.zone === 'graveyard' && wasCreature) facts.died.push(nm(e.cardId));
+        }
+        if (to?.zone === 'battlefield' && to.player === playerId && from?.zone !== 'battlefield') facts.entered.push(nm(e.cardId));
+        if (from?.zone === 'library' && to?.zone === 'hand' && to.player === playerId) facts.drawn++;
+        break;
+      }
+      case 'life':
+        if (e.player === playerId) {
+          if (e.to > e.from) facts.lifeGained += e.to - e.from;
+          else facts.lifeLost += e.from - e.to;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  fold.prev = s;
 }

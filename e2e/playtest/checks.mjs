@@ -16,7 +16,7 @@
  *
  * Each returns a list of problems ([] when it holds). A board a frame behind
  * the wire is not a problem: the caller checks when the stream is quiet, and
- * these re-read once before calling a mismatch.
+ * these re-read before calling a mismatch.
  */
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -35,7 +35,10 @@ export async function stackAgrees(page, tap) {
         nums: [...panel.querySelectorAll('[data-stack-n]')].map((e) => Number(e.getAttribute('data-stack-n'))),
       };
     });
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // A board a state behind gets 3 s: in a long game the page can take a second to draw a state, and the
+  // tap hears of the next frames no earlier than the page does (J109 1.2: Walking Ballista's panel came).
+  const waits = [500, 1000, 1500];
+  for (let attempt = 0; attempt <= waits.length; attempt++) {
     const seq = tap.stateSeq;
     const want = tap.state?.stack.length ?? 0;
     const got = await read();
@@ -48,7 +51,7 @@ export async function stackAgrees(page, tap) {
       if (!got.folded && got.nums.join(',') !== Array.from({ length: got.items }, (_, i) => i + 1).join(',')) problems.push(`stack numbers ${got.nums.join(',')}`);
     }
     if (!problems.length || tap.stateSeq !== seq) return [];
-    if (attempt === 0) await sleep(500);
+    if (attempt < waits.length) await sleep(waits[attempt]);
     else return problems;
   }
   return [];

@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { SeatTap, namesIn } from './tap.mjs';
 import { parseScript } from './scripts.mjs';
 import { parseDck } from './decks.mjs';
-import { manaValue } from './monkey.mjs';
+import { clickWhy, manaValue, Monkey } from './monkey.mjs';
 import { hiddenLeaks, logCovers } from './checks.mjs';
 import { findingShape } from './report.mjs';
 
@@ -88,6 +88,99 @@ describe('SeatTap', () => {
   it('names every visible card a frame shows, never a hidden one', () => {
     const names = namesIn({ players: [{ zones: { hand: { cards: [{ id: 1, name: 'Shock' }, { id: 2, zone: 'hand', hidden: true }] } } }], options: [{ id: 0, label: 'x', card: { id: 9, name: 'Opt' } }] });
     expect([...names].sort()).toEqual(['Opt', 'Shock']);
+  });
+});
+
+/** A Monkey on a stub page: `evaluate` answers `probe()`, a click runs `onClick(selector)`. */
+function stubMonkey(tap, { probe = () => null, onClick = () => {} } = {}) {
+  const findings = [];
+  const clicks = [];
+  const page = {
+    evaluate: async () => probe(),
+    locator: (sel) => ({ first: () => ({ click: async () => (clicks.push(sel), onClick(sel)) }) }),
+    mouse: { move: async () => {} },
+  };
+  const m = new Monkey({ page, tap, rand: () => 0.5, scripts: new Map(), label: 'host', finding: async (f) => void findings.push(f) });
+  return { m, findings, clicks };
+}
+const OFF = { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: false }, focus: 'ok' };
+const seats = (deciding) => ({ you: 0, seats: [{ seat: 0, deciding }, { seat: 1, deciding: !deciding }] });
+const noControls = { cards: [], buttons: [], players: [], eot: null };
+
+describe('the monkey, on J109\'s two hangs that were not the board\'s', () => {
+  // J109 2.1 (host, seq 2394–2405): the cleanup discard was taken (card 5), Forge's last update of it
+  // emptied the list with every button off, and the frames that passed the turn to Sam reached the
+  // page 1.4 s late. The board drew "Waiting for Sam…", rightly; that last update is not a target.
+  const cleanup = (cardIds) =>
+    input('Cleanup Phase\nSelect 1 card(s) to discard to bring your hand down to the maximum of 7 cards.', {
+      buttons: OFF,
+      selectable: { cardIds, min: cardIds.length ? 1 : 0, max: cardIds.length ? 1 : 0, mode: cardIds.length ? 'cards' : 'none' },
+    });
+  const atCleanup = () => {
+    const t = new SeatTap('host');
+    t.receive(frame('hello_ok', 1, { gameId: 'g', you: 0, players: [] }));
+    t.receive(frame('table', 2396, seats(true)));
+    t.receive(frame('input', 2400, cleanup([])));
+    return t;
+  };
+
+  it('an emptied selection that the engine closes a moment later is no unreachable target', async () => {
+    const t = atCleanup();
+    expect(t.deciding()).toBe(true);
+    const { m, findings } = stubMonkey(t);
+    setTimeout(() => {
+      t.receive(frame('table', 2403, seats(false)));
+      t.receive(frame('input', 2404, input('Waiting for Sam...', { buttons: OFF })));
+    }, 50);
+    expect(await m.openTarget(noControls)).toBe('moved-on');
+    expect(findings).toEqual([]);
+  });
+
+  it('nor when the closing frames come in while the board is probed', async () => {
+    const t = atCleanup();
+    const probe = () => {
+      t.receive(frame('table', 2403, seats(false)));
+      return { board: 'mode-waiting', primary: 'Waiting for Sam… (disabled)', dialog: false, card: [] };
+    };
+    const { m, findings } = stubMonkey(t, { probe });
+    await m.unreachable('a target with nothing named', { input: t.input });
+    expect(findings).toEqual([]);
+  });
+
+  it('an input that stays open with nothing to click still is one', async () => {
+    const t = atCleanup();
+    const { m, findings } = stubMonkey(t);
+    await m.openTarget(noControls);
+    expect(findings.map((f) => f.kind)).toEqual(['unreachable-option']);
+  });
+
+  // J109 3.1 (friend, a phone, seq 1791): priority with OK and Forge's "End Turn" both on. The phone's bar
+  // keeps End Turn only as To EOT; the monkey's 1-in-14 Cancel found no button and came back "stuck"
+  // four times running, and the seat conceded a game the board had never stopped offering moves in.
+  it("a phone's End Turn is pressed through To EOT", async () => {
+    const t = new SeatTap('friend');
+    t.receive(frame('hello_ok', 1, { gameId: 'g', you: 1, players: [] }));
+    t.receive(frame('table', 1793, { you: 1, seats: [{ seat: 0, deciding: false }, { seat: 1, deciding: true }] }));
+    t.receive(frame('input', 1791, input('Priority: Sam\nTurn: 12 (Justin)\nPhase: Beginning of Combat Step\nStack: Empty')));
+    const onClick = () => {
+      t.sentFrame(JSON.stringify({ v: 1, seq: 9, t: 1, type: 'act', body: { action: 'yieldTo', target: 'EOT' } }));
+      t.receive(frame('input', 1794, input('Waiting for Justin...', { buttons: OFF })));
+    };
+    const { m, clicks } = stubMonkey(t, { onClick });
+    const dom = { ...noControls, buttons: [{ t: 'pt1', which: 'ok', enabled: true, vis: true, where: 'bar' }], eot: 'pt2' };
+    expect(await m.press(dom, 'cancel')).toBe(true);
+    expect(clicks).toEqual(['[data-pt="pt2"]']);
+    // A Cancel that is not End Turn has no such stand-in.
+    t.receive(frame('input', 1795, input('Pay', { buttons: { ok: { label: 'Auto', enabled: false }, cancel: { label: 'Cancel', enabled: true } } })));
+    expect(await m.press(dom, 'cancel')).toBe(false);
+  });
+});
+
+describe('a click Playwright gave up on', () => {
+  it('keeps the reason from the call log', () => {
+    const msg = 'locator.click: Timeout 6000ms exceeded.\nCall log:\n\x1b[2m  - attempting click action\x1b[22m\n\x1b[2m      - <div class="ask-layer">…</div> intercepts pointer events\x1b[22m\n\x1b[2m    - retrying click action\x1b[22m';
+    expect(clickWhy(new Error(msg))).toBe('locator.click: Timeout 6000ms exceeded. (<div class="ask-layer">…</div> intercepts pointer events)');
+    expect(clickWhy(new Error('locator.click: Timeout 6000ms exceeded.'))).toBe('locator.click: Timeout 6000ms exceeded.');
   });
 });
 

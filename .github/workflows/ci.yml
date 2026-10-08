@@ -47,6 +47,10 @@ jobs:
       - run: npm run playtest -- --mode fake --games 3 --seed 1 --out e2e/out/playtest
         env:
           BUILD: '0'
+      # The same on a phone (390×844): its bar keeps Forge's End Turn only as To EOT (J109 3.1).
+      - run: npm run playtest -- --mode fake --games 2 --seed 3 --viewport phone --out e2e/out/playtest-phone
+        env:
+          BUILD: '0'
       # The installable site: manifest, icons, the service worker and what it never touches.
       - run: npm run test:pwa
         env:

@@ -464,3 +464,36 @@ describe('handNeeded', () => {
     expect(handNeeded(ctxFor(input('Select creatures to block Card 5 (5) or select another attacker to declare blockers for.'), st))).toBe(false);
   });
 });
+
+// J109's two "hangs" at a table were the playtest monkey's, not the board's: these pin what the board
+// does with those exact frames (mtg-table frames, seq numbers from the host's and the friend's logs).
+describe('J109: the board at the cleanup discard and at the friend’s priority', () => {
+  const off = { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: false }, focus: 'ok' as const };
+  const CLEANUP = 'Cleanup Phase\nSelect 1 card(s) to discard to bring your hand down to the maximum of 7 cards.';
+
+  it('2.1, seq 2395: the discard is a tap on one of the listed hand cards; seq 2404: waiting for the friend', () => {
+    const st = state({ phase: 'CLEANUP', priority: OPP });
+    const i = input(CLEANUP, { buttons: off, selectable: { cardIds: [1, 2], min: 1, max: 1, mode: 'cards' }, openZones: [{ playerId: ME, zones: ['hand'] }] });
+    const ctx = { view: describeInput(i, st, ME), input: i, state: st, seat: ME };
+    expect(ctx.view.mode).toBe('discard');
+    expect(ctx.view.needClick).toBe(true);
+    for (const c of st.players[0]!.zones.hand.cards) expect(cardRole(c, ctx)).toBe('select');
+    expect(handNeeded(ctx)).toBe(true);
+    // Once the discard is taken the turn passes: Forge's own "Waiting for …" is waiting, nothing to click.
+    const next = state({ turn: 4, phase: 'MAIN1', activePlayer: OPP, priority: OPP });
+    const w = describeInput(input('Waiting for Sam...', { buttons: off }), next, ME);
+    expect(w.mode).toBe('waiting');
+    expect(primaryView(w).enabled).toBe(false);
+  });
+
+  it('3.1, seq 1791: priority in the other player’s beginning of combat offers OK and To EOT', () => {
+    const st = state({ phase: 'COMBAT_BEGIN', activePlayer: OPP, priority: ME });
+    const v = describeInput(input('Priority: Human\nTurn: 4 (Forge AI)\nPhase: Beginning of Combat Step\nStack: Empty'), st, ME);
+    const p = primaryView(v);
+    expect(p.which).toBe('ok');
+    expect(p.enabled).toBe(true);
+    // Forge's End Turn (the input's Cancel) is the same pass as To EOT; a phone shows only To EOT.
+    expect(v.cancel).toMatchObject({ label: 'End Turn', enabled: true });
+    expect(canPassAhead(v)).toBe(true);
+  });
+});
