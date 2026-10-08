@@ -255,7 +255,7 @@ class Model:
             if it[0] % 25 == 0:
                 log(f'    ... {it[0]} iterations, {time.time() - t0:.0f}s')
 
-        opts = {'maxiter': maxiter, 'gtol': 1e-2, 'ftol': 1e-12}
+        opts = {'maxiter': maxiter, 'gtol': 1e-2, 'ftol': 1e-9}
         if self.context:
             # Numerics only (the optimum is the same): first the 12 shared coefficients with the
             # strengths held at their warm start, then everything jointly.
