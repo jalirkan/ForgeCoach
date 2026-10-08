@@ -1,0 +1,303 @@
+{
+ "schema": 1,
+ "source": {
+  "name": "17Lands",
+  "page": "https://www.17lands.com/public_datasets",
+  "licence": "CC BY 4.0",
+  "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "dataset": "Powered Cube",
+  "files": [
+   "draft_data_public.Cube_-_Powered.PremierDraft.csv.gz",
+   "draft_data_public.Cube_-_Powered.TradDraft.csv.gz"
+  ],
+  "updated": "2025-12-01",
+  "changes": "A pick model fitted to the human picks (docs/human-picks.md): per-card pick strength and pool-context coefficients; matched to this cube by card name."
+ },
+ "generated": "2026-10-08",
+ "cube": {
+  "file": "peasant-cube-180.md",
+  "cards": 180,
+  "matched": 42
+ },
+ "picks": 2316631,
+ "drafts": 52652,
+ "model": {
+  "gamma": -0.3953,
+  "beta": {
+   "fit": 1.9386,
+   "fitT": 2.7434,
+   "off": -1.0818,
+   "offT": -0.3364,
+   "goldT": 1.0541,
+   "colourlessT": 0.7783,
+   "landT": 0.7624,
+   "dual": 1.8326,
+   "dualT": 0.2974,
+   "curve": 0.0826,
+   "curveT": -0.1223
+  },
+  "tScale": 44.0,
+  "offShare": 0.15,
+  "offMinPool": 3
+ },
+ "test": {
+  "picks": 15145,
+  "top1": 0.8277,
+  "top1CardValue": 0.4269,
+  "top1PickValue": 0.5282
+ },
+ "cards": {
+  "Descendant of Storms": {
+   "s": -1.128,
+   "seen": 45612,
+   "taken": 5596,
+   "colors": "W"
+  },
+  "Thraben Inspector": {
+   "s": -0.282,
+   "seen": 41042,
+   "taken": 6085,
+   "colors": "W"
+  },
+  "Cathar Commando": {
+   "s": -0.989,
+   "seen": 44391,
+   "taken": 5116,
+   "colors": "W"
+  },
+  "Splitskin Doll": {
+   "s": -1.131,
+   "seen": 45299,
+   "taken": 5220,
+   "colors": "W"
+  },
+  "Flickerwisp": {
+   "s": -1.339,
+   "seen": 46135,
+   "taken": 4992,
+   "colors": "W"
+  },
+  "Witch Enchanter": {
+   "s": -0.514,
+   "seen": 39745,
+   "taken": 5255,
+   "colors": "W"
+  },
+  "Ephemerate": {
+   "s": -1.308,
+   "seen": 42362,
+   "taken": 4140,
+   "colors": "W"
+  },
+  "Path to Exile": {
+   "s": 1.288,
+   "seen": 20996,
+   "taken": 4441,
+   "colors": "W"
+  },
+  "Swords to Plowshares": {
+   "s": 3.752,
+   "seen": 11428,
+   "taken": 5146,
+   "colors": "W"
+  },
+  "Consider": {
+   "s": -1.016,
+   "seen": 38878,
+   "taken": 4107,
+   "colors": "U"
+  },
+  "Counterspell": {
+   "s": 1.427,
+   "seen": 18029,
+   "taken": 3996,
+   "colors": "U"
+  },
+  "Mana Leak": {
+   "s": 1.829,
+   "seen": 17742,
+   "taken": 4634,
+   "colors": "U"
+  },
+  "Miscalculation": {
+   "s": 0.736,
+   "seen": 25133,
+   "taken": 4594,
+   "colors": "U"
+  },
+  "Sink into Stupor": {
+   "s": -0.998,
+   "seen": 38625,
+   "taken": 4044,
+   "colors": "U"
+  },
+  "Ponder": {
+   "s": 0.17,
+   "seen": 28254,
+   "taken": 4166,
+   "colors": "U"
+  },
+  "Preordain": {
+   "s": 0.096,
+   "seen": 28671,
+   "taken": 4228,
+   "colors": "U"
+  },
+  "Stock Up": {
+   "s": 1.415,
+   "seen": 19861,
+   "taken": 4559,
+   "colors": "U"
+  },
+  "Deep-Cavern Bat": {
+   "s": 0.753,
+   "seen": 28980,
+   "taken": 4901,
+   "colors": "B"
+  },
+  "Fatal Push": {
+   "s": 0.653,
+   "seen": 29645,
+   "taken": 4695,
+   "colors": "B"
+  },
+  "Bitter Triumph": {
+   "s": 0.469,
+   "seen": 28173,
+   "taken": 4116,
+   "colors": "B"
+  },
+  "Dismember": {
+   "s": 2.428,
+   "seen": 18506,
+   "taken": 5382,
+   "colors": "B"
+  },
+  "Bone Shards": {
+   "s": -0.837,
+   "seen": 39881,
+   "taken": 4076,
+   "colors": "B"
+  },
+  "Reanimate": {
+   "s": 2.753,
+   "seen": 13044,
+   "taken": 3951,
+   "colors": "B"
+  },
+  "Night's Whisper": {
+   "s": -1.136,
+   "seen": 42358,
+   "taken": 3814,
+   "colors": "B"
+  },
+  "Animate Dead": {
+   "s": 2.018,
+   "seen": 17262,
+   "taken": 4218,
+   "colors": "B"
+  },
+  "Dragon's Rage Channeler": {
+   "s": -0.795,
+   "seen": 40157,
+   "taken": 4808,
+   "colors": "R"
+  },
+  "Monastery Swiftspear": {
+   "s": -1.828,
+   "seen": 46384,
+   "taken": 4395,
+   "colors": "R"
+  },
+  "Gut, True Soul Zealot": {
+   "s": 2.571,
+   "seen": 17646,
+   "taken": 6276,
+   "colors": "R"
+  },
+  "Lightning Bolt": {
+   "s": 2.451,
+   "seen": 16460,
+   "taken": 5448,
+   "colors": "R"
+  },
+  "Abrade": {
+   "s": 0.115,
+   "seen": 32249,
+   "taken": 4854,
+   "colors": "R"
+  },
+  "Chain Lightning": {
+   "s": 0.772,
+   "seen": 28024,
+   "taken": 5498,
+   "colors": "R"
+  },
+  "Faithless Looting": {
+   "s": -1.282,
+   "seen": 41064,
+   "taken": 4061,
+   "colors": "R"
+  },
+  "Goblin Bombardment": {
+   "s": -0.144,
+   "seen": 37307,
+   "taken": 5993,
+   "colors": "R"
+  },
+  "Elvish Mystic": {
+   "s": -0.867,
+   "seen": 37194,
+   "taken": 3335,
+   "colors": "G"
+  },
+  "Llanowar Elves": {
+   "s": -0.7,
+   "seen": 36092,
+   "taken": 3391,
+   "colors": "G"
+  },
+  "Eternal Witness": {
+   "s": -1.345,
+   "seen": 43346,
+   "taken": 3474,
+   "colors": "G"
+  },
+  "Reclamation Sage": {
+   "s": -2.154,
+   "seen": 49860,
+   "taken": 3411,
+   "colors": "G"
+  },
+  "Malevolent Rumble": {
+   "s": 0.37,
+   "seen": 34349,
+   "taken": 4627,
+   "colors": "G"
+  },
+  "Bloodbraid Elf": {
+   "s": -0.885,
+   "seen": 47888,
+   "taken": 4152,
+   "colors": "RG"
+  },
+  "Lingering Souls": {
+   "s": -1.167,
+   "seen": 45147,
+   "taken": 4989,
+   "colors": "W"
+  },
+  "Third Path Iconoclast": {
+   "s": 0.332,
+   "seen": 35729,
+   "taken": 4767,
+   "colors": "UR"
+  },
+  "Mishra's Bauble": {
+   "s": 0.665,
+   "seen": 29780,
+   "taken": 4709,
+   "colors": ""
+  }
+ }
+}

@@ -1,0 +1,5021 @@
+{
+"note": "fit.py features and probabilities for 30 held-out Vintage picks, with vintage-cube-180.picks.json (docs/human-picks.md); facts as fit.py read them",
+"facts": {
+"Barrowgoyf": {
+"colors": "B",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Demonic Tutor": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Bloodstained Mire": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BR",
+"creature": false
+},
+"Brazen Borrower": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Sneak Attack": {
+"colors": "R",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Inspiring Vantage": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WR",
+"creature": false
+},
+"Ragavan, Nimble Pilferer": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Skyclave Apparition": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Tamiyo, Inquisitive Student": {
+"colors": "UG",
+"mv": 1,
+"land": false,
+"produces": "WUBRG",
+"creature": true
+},
+"Lotus Cobra": {
+"colors": "G",
+"mv": 2,
+"land": false,
+"produces": "WUBRG",
+"creature": true
+},
+"Mother of Runes": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Brain Freeze": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Fabled Passage": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WUBRG",
+"creature": false
+},
+"Fiery Confluence": {
+"colors": "R",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Goblin Rabblemaster": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Karakas": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "W",
+"creature": false
+},
+"Lion's Eye Diamond": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "WUBRG",
+"creature": false
+},
+"Virtue of Loyalty": {
+"colors": "W",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Bonecrusher Giant": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Fatal Push": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Overgrown Tomb": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BG",
+"creature": false
+},
+"Polluted Delta": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UB",
+"creature": false
+},
+"Psychic Frog": {
+"colors": "UB",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Snuff Out": {
+"colors": "B",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Hymn to Tourach": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Seasoned Pyromancer": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Arid Mesa": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WR",
+"creature": false
+},
+"Cosmogrand Zenith": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Mox Pearl": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "W",
+"creature": false
+},
+"No More Lies": {
+"colors": "WU",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Remand": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Urza's Saga": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "",
+"creature": false
+},
+"Baleful Strix": {
+"colors": "UB",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Teferi, Hero of Dominaria": {
+"colors": "WU",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Abhorrent Oculus": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Reanimate": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Monastery Swiftspear": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Stoneforge Mystic": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Breeding Pool": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UG",
+"creature": false
+},
+"Duress": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Explore": {
+"colors": "G",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Floodfarm Verge": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WU",
+"creature": false
+},
+"Goben, Gene-Splice Savant": null,
+"Kytheon, Hero of Akros": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Phyrexian Metamorph": {
+"colors": "U",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Pick Your Poison": {
+"colors": "G",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Ponder": {
+"colors": "U",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Seachrome Coast": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WU",
+"creature": false
+},
+"Shelldock Isle": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "U",
+"creature": false
+},
+"Sol Ring": {
+"colors": "",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Thundertrap Trainer": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Tinker": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Balance": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Chain Lightning": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Grief": {
+"colors": "B",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Kolaghan's Command": {
+"colors": "BR",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Mox Ruby": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "R",
+"creature": false
+},
+"Six": {
+"colors": "G",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Bayou": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BG",
+"creature": false
+},
+"Dack Fayden": {
+"colors": "UR",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Faerie Mastermind": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Gut, True Soul Zealot": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Lotus Petal": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "WUBRG",
+"creature": false
+},
+"Malcolm, Alluring Scoundrel": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Mana Leak": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Regrowth": {
+"colors": "G",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Riverpyre Verge": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UR",
+"creature": false
+},
+"Strip Mine": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "",
+"creature": false
+},
+"Talisman of Unity": {
+"colors": "",
+"mv": 2,
+"land": false,
+"produces": "WG",
+"creature": false
+},
+"Thieving Skydiver": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Thundering Falls": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UR",
+"creature": false
+},
+"Tropical Island": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UG",
+"creature": false
+},
+"Wooded Foothills": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "RG",
+"creature": false
+},
+"Adeline, Resplendent Cathar": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Badlands": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BR",
+"creature": false
+},
+"Deathrite Shaman": {
+"colors": "BG",
+"mv": 1,
+"land": false,
+"produces": "WUBRG",
+"creature": true
+},
+"Emrakul, the Aeons Torn": {
+"colors": "",
+"mv": 15,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Titania, Protector of Argoth": {
+"colors": "G",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Burst Lightning": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Fable of the Mirror-Breaker": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Force of Will": {
+"colors": "U",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Savannah": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WG",
+"creature": false
+},
+"Scalding Tarn": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UR",
+"creature": false
+},
+"Sheoldred's Edict": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Treasure Cruise": {
+"colors": "U",
+"mv": 8,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Verdant Catacombs": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BG",
+"creature": false
+},
+"Dark Confidant": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Third Path Iconoclast": {
+"colors": "UR",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Birds of Paradise": {
+"colors": "G",
+"mv": 1,
+"land": false,
+"produces": "WUBRG",
+"creature": true
+},
+"Blooming Marsh": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BG",
+"creature": false
+},
+"Echo of Eons": {
+"colors": "U",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Lush Portico": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WG",
+"creature": false
+},
+"Mana Drain": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Pentad Prism": {
+"colors": "",
+"mv": 2,
+"land": false,
+"produces": "WUBRG",
+"creature": false
+},
+"Razorverge Thicket": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WG",
+"creature": false
+},
+"Restless Cottage": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BG",
+"creature": false
+},
+"Sleight of Hand": {
+"colors": "U",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Torsten, Founder of Benalia": {
+"colors": "WG",
+"mv": 7,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Wishclaw Talisman": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Grist, the Hunger Tide": {
+"colors": "BG",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Mox Emerald": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "G",
+"creature": false
+},
+"Chrome Host Seedshark": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Darkslick Shores": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UB",
+"creature": false
+},
+"Flooded Strand": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WU",
+"creature": false
+},
+"Leyline Binding": {
+"colors": "W",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Lingering Souls": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Miscalculation": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Oust": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Scrubland": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WB",
+"creature": false
+},
+"Spirebluff Canal": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UR",
+"creature": false
+},
+"Steam Vents": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UR",
+"creature": false
+},
+"Surrak, Elusive Hunter": {
+"colors": "G",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Swords to Plowshares": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Preordain": {
+"colors": "U",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Wrath of God": {
+"colors": "W",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Collective Brutality": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Dig Through Time": {
+"colors": "U",
+"mv": 8,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Fallen Shinobi": {
+"colors": "UB",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Force of Negation": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Lutri, the Spellchaser": {
+"colors": "UR",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"March of Otherworldly Light": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Memory Lapse": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Mystic Confluence": {
+"colors": "U",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Narset, Parter of Veils": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Oko, Thief of Crowns": {
+"colors": "UG",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Raffine's Tower": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WUB",
+"creature": false
+},
+"Time Spiral": {
+"colors": "U",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Upheaval": {
+"colors": "U",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Craterhoof Behemoth": {
+"colors": "G",
+"mv": 8,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Dark Ritual": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "B",
+"creature": false
+},
+"Misty Rainforest": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UG",
+"creature": false
+},
+"Underground Sea": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UB",
+"creature": false
+},
+"Copperline Gorge": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "RG",
+"creature": false
+},
+"Endurance": {
+"colors": "G",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Flash": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Gitaxian Probe": {
+"colors": "U",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Hallowed Fountain": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WU",
+"creature": false
+},
+"Jace, Vryn's Prodigy": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Library of Alexandria": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "",
+"creature": false
+},
+"Nettlecyst": {
+"colors": "",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Reprieve": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Tamiyo, Collector of Tales": {
+"colors": "UG",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"The Mightstone and Weakstone": {
+"colors": "",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Three Steps Ahead": {
+"colors": "U",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Tireless Tracker": {
+"colors": "G",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Unexpectedly Absent": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Vaultborn Tyrant": {
+"colors": "G",
+"mv": 7,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Lightning Bolt": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Mishra's Bauble": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Thraben Inspector": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Windswept Heath": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WG",
+"creature": false
+},
+"Broadside Bombardiers": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Carnage Interpreter": {
+"colors": "BR",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Detective's Phoenix": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Elegant Parlor": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WR",
+"creature": false
+},
+"Guide of Souls": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Hazoret the Fervent": {
+"colors": "R",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Intrepid Adversary": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Prismatic Ending": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Pyrokinesis": {
+"colors": "R",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Questing Beast": {
+"colors": "G",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Questing Druid": {
+"colors": "G",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Raugrin Triome": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WUR",
+"creature": false
+},
+"Screaming Nemesis": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Serra Paragon": {
+"colors": "W",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Snapcaster Mage": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Time Walk": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Ephemerate": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Flickerwisp": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Comet, Stellar Pup": {
+"colors": "WR",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Enduring Curiosity": {
+"colors": "U",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Llanowar Elves": {
+"colors": "G",
+"mv": 1,
+"land": false,
+"produces": "G",
+"creature": true
+},
+"Lurrus of the Dream-Den": {
+"colors": "WB",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Mox Diamond": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "WUBRG",
+"creature": false
+},
+"Nethergoyf": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Preacher of the Schism": {
+"colors": "B",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Restless Prairie": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WG",
+"creature": false
+},
+"Solitude": {
+"colors": "W",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Sorin of House Markov": {
+"colors": "WB",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Sword of Fire and Ice": {
+"colors": "",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Talisman of Hierarchy": {
+"colors": "",
+"mv": 2,
+"land": false,
+"produces": "WB",
+"creature": false
+},
+"Toxic Deluge": {
+"colors": "B",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Crucible of Worlds": {
+"colors": "",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Elvish Mystic": {
+"colors": "G",
+"mv": 1,
+"land": false,
+"produces": "G",
+"creature": true
+},
+"Fastbond": {
+"colors": "G",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Liliana of the Veil": {
+"colors": "B",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Malevolent Rumble": {
+"colors": "G",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Mana Vault": {
+"colors": "",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Manamorphose": {
+"colors": "RG",
+"mv": 2,
+"land": false,
+"produces": "WUBRG",
+"creature": false
+},
+"Nissa, Ascended Animist": {
+"colors": "G",
+"mv": 7,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Skullclamp": {
+"colors": "",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Stock Up": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Talisman of Dominance": {
+"colors": "",
+"mv": 2,
+"land": false,
+"produces": "UB",
+"creature": false
+},
+"Timetwister": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Unburial Rites": {
+"colors": "B",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Jace, the Mind Sculptor": {
+"colors": "U",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Chandra, Torch of Defiance": {
+"colors": "R",
+"mv": 4,
+"land": false,
+"produces": "R",
+"creature": false
+},
+"Chromatic Star": {
+"colors": "",
+"mv": 1,
+"land": false,
+"produces": "WUBRG",
+"creature": false
+},
+"Karn, Scion of Urza": {
+"colors": "",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Mana Tithe": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Nadu, Winged Wisdom": {
+"colors": "UG",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Quantum Riddler": {
+"colors": "U",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Retrofitter Foundry": {
+"colors": "",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Tundra": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WU",
+"creature": false
+},
+"Underground Mortuary": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BG",
+"creature": false
+},
+"Urza's Bauble": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Frantic Search": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Minsc & Boo, Timeless Heroes": {
+"colors": "RG",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Bloodtithe Harvester": {
+"colors": "BR",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Caustic Bronco": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Damn": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Descendant of Storms": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Elspeth, Storm Slayer": {
+"colors": "W",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Glimmer Lens": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Kroxa, Titan of Death's Hunger": {
+"colors": "BR",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Makdee and Itla, Skysnarers": null,
+"Overlord of the Mistmoors": {
+"colors": "W",
+"mv": 7,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Parallax Wave": {
+"colors": "W",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Phelia, Exuberant Shepherd": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Savai Triome": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WBR",
+"creature": false
+},
+"Undercity Sewers": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UB",
+"creature": false
+},
+"Yawgmoth, Thran Physician": {
+"colors": "B",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Show and Tell": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Thalia, Guardian of Thraben": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Ademi of the Silkchutes": null,
+"Draconautics Engineer": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Galvanic Blast": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Lightning Helix": {
+"colors": "WR",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Luminarch Aspirant": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Mine Collapse": {
+"colors": "R",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Nia, Skysail Storyteller": null,
+"Ocelot Pride": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Sage of the Skies": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Sanguine Evangelist": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Sunbillow Verge": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WR",
+"creature": false
+},
+"Sunfall": {
+"colors": "W",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Talisman of Progress": {
+"colors": "",
+"mv": 2,
+"land": false,
+"produces": "WU",
+"creature": false
+},
+"Thespian's Stage": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "",
+"creature": false
+},
+"Unearth": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Unholy Heat": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Yavimaya, Cradle of Growth": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "G",
+"creature": false
+},
+"Yera and Oski, Weaver and Guide": null,
+"Cori-Steel Cutter": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Dragon's Rage Channeler": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Expressive Iteration": {
+"colors": "UR",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Faithless Looting": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Fireblast": {
+"colors": "R",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Fractured Identity": {
+"colors": "WU",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Ghostfire Slice": {
+"colors": "",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Kappa Cannoneer": {
+"colors": "U",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Memory Jar": {
+"colors": "",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Nova Hellkite": {
+"colors": "R",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Primeval Titan": {
+"colors": "G",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Spell Pierce": {
+"colors": "U",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Talisman of Creativity": {
+"colors": "",
+"mv": 2,
+"land": false,
+"produces": "UR",
+"creature": false
+},
+"Ulamog, the Infinite Gyre": {
+"colors": "",
+"mv": 11,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Volcanic Island": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UR",
+"creature": false
+},
+"Xander's Lounge": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UBR",
+"creature": false
+},
+"Arena of Glory": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "R",
+"creature": false
+},
+"Blade Splicer": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Cathar Commando": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Currency Converter": {
+"colors": "",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Displacer Kitten": {
+"colors": "U",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Elite Spellbinder": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Fear of Missing Out": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Flame Slash": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Jetmir's Garden": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WRG",
+"creature": false
+},
+"Kellan, Planar Trailblazer": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Laelia, the Blade Reforged": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Restless Vents": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BR",
+"creature": false
+},
+"Sacred Foundry": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WR",
+"creature": false
+},
+"Talisman of Conviction": {
+"colors": "",
+"mv": 2,
+"land": false,
+"produces": "WR",
+"creature": false
+},
+"Voldaren Epicure": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Recurring Nightmare": {
+"colors": "B",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Bitter Triumph": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Counterspell": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Crop Rotation": {
+"colors": "G",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Duelist of the Mind": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Esper Sentinel": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Hedge Maze": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UG",
+"creature": false
+},
+"Mox Sapphire": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "U",
+"creature": false
+},
+"Restless Fortress": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WB",
+"creature": false
+},
+"Restless Ridgeline": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "RG",
+"creature": false
+},
+"Shadowy Backstreet": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WB",
+"creature": false
+},
+"Vindicate": {
+"colors": "WB",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Winds of Abandon": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Worldspine Wurm": {
+"colors": "G",
+"mv": 11,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Zuran Orb": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Sheoldred, the Apocalypse": {
+"colors": "B",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Bomat Courier": {
+"colors": "",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Death-Greeter's Champion": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Fiery Islet": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UR",
+"creature": false
+},
+"Inti, Seneschal of the Sun": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Kari Zev, Skyship Raider": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Lion Sash": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Overlord of the Boilerbilges": {
+"colors": "R",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Plateau": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WR",
+"creature": false
+},
+"Pyrite Spellbomb": {
+"colors": "",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Pyrogoyf": {
+"colors": "R",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Woe Strider": {
+"colors": "B",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Taiga": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "RG",
+"creature": false
+},
+"Wrenn and Six": {
+"colors": "RG",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Ancestral Recall": {
+"colors": "U",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Archon of Cruelty": {
+"colors": "B",
+"mv": 8,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Entomb": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Grim Monolith": {
+"colors": "",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Jace, Wielder of Mysteries": {
+"colors": "U",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Ketria Triome": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "URG",
+"creature": false
+},
+"Lavaspur Boots": {
+"colors": "",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Leovold, Emissary of Trest": {
+"colors": "UBG",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Sink into Stupor": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "U",
+"creature": false
+},
+"Tishana's Tidebinder": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Willowrush Verge": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "UG",
+"creature": false
+},
+"Kaldra Compleat": {
+"colors": "",
+"mv": 7,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Cut Down": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Deep-Cavern Bat": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Emperor of Bones": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Enduring Innocence": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Enlightened Tutor": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Goblin Bombardment": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Godless Shrine": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WB",
+"creature": false
+},
+"Grave Titan": {
+"colors": "B",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Loran of the Third Path": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Mosswood Dreadknight": {
+"colors": "G",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Multiversal Passage": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "",
+"creature": false
+},
+"Path to Exile": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Phyrexian Revoker": {
+"colors": "",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Voice of Victory": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Bone Shards": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Beza, the Bounding Spring": {
+"colors": "W",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Coalition Relic": {
+"colors": "",
+"mv": 3,
+"land": false,
+"produces": "WUBRG",
+"creature": false
+},
+"Figure of Destiny": {
+"colors": "WR",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Generous Plunderer": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Hushwood Verge": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WG",
+"creature": false
+},
+"Lightstall Inquisitor": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Mana Crypt": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Phlage, Titan of Fire's Fury": {
+"colors": "WR",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Souls of the Lost": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Staff of the Storyteller": {
+"colors": "W",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Touch the Spirit Realm": {
+"colors": "W",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Triplicate Titan": {
+"colors": "",
+"mv": 9,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Valki, God of Lies": {
+"colors": "BR",
+"mv": 2,
+"land": false,
+"produces": "R",
+"creature": true
+},
+"Abrade": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Fury": {
+"colors": "R",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Harvester of Misery": {
+"colors": "B",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Life // Death": null,
+"Meticulous Archive": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "WU",
+"creature": false
+},
+"Stomping Ground": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "RG",
+"creature": false
+},
+"The Endstone": {
+"colors": "",
+"mv": 7,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Thirst for Discovery": {
+"colors": "U",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Underworld Breach": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Vampiric Tutor": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Yawgmoth's Will": {
+"colors": "B",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Nissa, Who Shakes the World": {
+"colors": "G",
+"mv": 5,
+"land": false,
+"produces": "G",
+"creature": false
+},
+"Black Lotus": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "WUBRG",
+"creature": false
+},
+"Gideon, Ally of Zendikar": {
+"colors": "W",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Giver of Runes": {
+"colors": "W",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Grim Lavamancer": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Hired Claw": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Ivora, Insatiable Heir": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Kumano Faces Kakkazan": {
+"colors": "R",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Legion Extruder": {
+"colors": "R",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Necromancy": {
+"colors": "B",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Phantasmal Image": {
+"colors": "U",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Sundering Titan": {
+"colors": "",
+"mv": 8,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Tersa Lightshatter": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Trumpeting Carnosaur": {
+"colors": "R",
+"mv": 6,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Ajani, Nacatl Pariah": {
+"colors": "WR",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Blackcleave Cliffs": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BR",
+"creature": false
+},
+"Fire Covenant": {
+"colors": "BR",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Go for the Throat": {
+"colors": "B",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Murderous Cut": {
+"colors": "B",
+"mv": 5,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Otawara, Soaring City": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "U",
+"creature": false
+},
+"Raucous Theater": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "BR",
+"creature": false
+},
+"Thoughtseize": {
+"colors": "B",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Wheel of Fortune": {
+"colors": "R",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Green Sun's Zenith": {
+"colors": "G",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Candelabra of Tawnos": {
+"colors": "",
+"mv": 1,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Commercial District": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "RG",
+"creature": false
+},
+"Ignoble Hierarch": {
+"colors": "G",
+"mv": 1,
+"land": false,
+"produces": "BRG",
+"creature": true
+},
+"Mox Jet": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "B",
+"creature": false
+},
+"Mox Opal": {
+"colors": "",
+"mv": 0,
+"land": false,
+"produces": "WUBRG",
+"creature": false
+},
+"Saheeli, Sublime Artificer": {
+"colors": "UR",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Scythecat Cub": {
+"colors": "G",
+"mv": 2,
+"land": false,
+"produces": "",
+"creature": true
+},
+"Tendrils of Agony": {
+"colors": "B",
+"mv": 4,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Tezzeret, Cruel Captain": {
+"colors": "",
+"mv": 3,
+"land": false,
+"produces": "",
+"creature": false
+},
+"Tolarian Academy": {
+"colors": "",
+"mv": 0,
+"land": true,
+"produces": "U",
+"creature": false
+},
+"Urza, Lord High Artificer": {
+"colors": "U",
+"mv": 4,
+"land": false,
+"produces": "U",
+"creature": true
+}
+},
+"cases": [
+{
+"pool": [
+"Barrowgoyf",
+"Demonic Tutor"
+],
+"pack": [
+"Bloodstained Mire",
+"Brazen Borrower",
+"Sneak Attack"
+],
+"features": [
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.045454545,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.5,
+0.022727273
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+]
+],
+"p": [
+0.758056508,
+0.073435398,
+0.168508094
+]
+},
+{
+"pool": [
+"Inspiring Vantage",
+"Ragavan, Nimble Pilferer",
+"Skyclave Apparition",
+"Tamiyo, Inquisitive Student"
+],
+"pack": [
+"Lotus Cobra",
+"Mother of Runes"
+],
+"features": [
+[
+0.166666667,
+0.015151515,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.333333333,
+0.03030303,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.666666667,
+0.060606061
+]
+],
+"p": [
+0.083819797,
+0.916180203
+]
+},
+{
+"pool": [
+"Brain Freeze",
+"Fabled Passage",
+"Fiery Confluence",
+"Goblin Rabblemaster",
+"Karakas",
+"Lion's Eye Diamond",
+"Virtue of Loyalty"
+],
+"pack": [
+"Bonecrusher Giant",
+"Fatal Push"
+],
+"features": [
+[
+0.5,
+0.079545455,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.2,
+0.031818182
+],
+[
+0.0,
+0.0,
+1.0,
+0.159090909,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.2,
+0.031818182
+]
+],
+"p": [
+0.868422966,
+0.131577034
+]
+},
+{
+"pool": [
+"Overgrown Tomb",
+"Polluted Delta",
+"Psychic Frog",
+"Snuff Out"
+],
+"pack": [
+"Hymn to Tourach",
+"Lotus Cobra",
+"Seasoned Pyromancer"
+],
+"features": [
+[
+0.75,
+0.068181818,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.5,
+0.045454545
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.5,
+0.045454545
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+]
+],
+"p": [
+0.716607132,
+0.137536195,
+0.145856673
+]
+},
+{
+"pool": [
+"Arid Mesa",
+"Cosmogrand Zenith",
+"Karakas",
+"Mox Pearl",
+"No More Lies",
+"Remand",
+"Urza's Saga"
+],
+"pack": [
+"Baleful Strix",
+"Teferi, Hero of Dominaria"
+],
+"features": [
+[
+0.0,
+0.0,
+1.0,
+0.159090909,
+0.159090909,
+0.0,
+0.0,
+0.0,
+0.0,
+0.5,
+0.079545455
+],
+[
+0.5,
+0.079545455,
+0.0,
+0.0,
+0.159090909,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+]
+],
+"p": [
+0.058133072,
+0.941866928
+]
+},
+{
+"pool": [
+"Abhorrent Oculus",
+"Reanimate",
+"Tamiyo, Inquisitive Student"
+],
+"pack": [
+"Hymn to Tourach",
+"Monastery Swiftspear",
+"Polluted Delta",
+"Stoneforge Mystic"
+],
+"features": [
+[
+0.333333333,
+0.022727273,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.0,
+0.0,
+1.0,
+0.068181818,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.666666667,
+0.045454545
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.068181818,
+1.0,
+0.068181818,
+0.0,
+0.0
+],
+[
+0.0,
+0.0,
+1.0,
+0.068181818,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+]
+],
+"p": [
+0.01874928,
+0.000869011,
+0.972836919,
+0.00754479
+]
+},
+{
+"pool": [
+"Breeding Pool",
+"Duress",
+"Explore",
+"Floodfarm Verge",
+"Goben, Gene-Splice Savant",
+"Kytheon, Hero of Akros",
+"Phyrexian Metamorph",
+"Pick Your Poison",
+"Ponder",
+"Seachrome Coast",
+"Shelldock Isle",
+"Sol Ring",
+"Tamiyo, Inquisitive Student",
+"Thundertrap Trainer",
+"Tinker"
+],
+"pack": [
+"Balance",
+"Chain Lightning",
+"Grief",
+"Kolaghan's Command",
+"Mox Ruby",
+"Six"
+],
+"features": [
+[
+0.111111111,
+0.037878788,
+1.0,
+0.340909091,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.2,
+0.068181818
+],
+[
+0.0,
+0.0,
+1.0,
+0.340909091,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.6,
+0.204545455
+],
+[
+0.111111111,
+0.037878788,
+1.0,
+0.340909091,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.1,
+0.034090909
+],
+[
+0.0,
+0.0,
+2.0,
+0.681818182,
+0.340909091,
+0.0,
+0.0,
+0.0,
+0.0,
+0.1,
+0.034090909
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.340909091,
+0.0,
+0.0,
+0.0,
+0.6,
+0.204545455
+],
+[
+0.277777778,
+0.09469697,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.1,
+0.034090909
+]
+],
+"p": [
+0.001581745,
+0.000583713,
+0.000700269,
+0.000144929,
+0.995384602,
+0.001604742
+]
+},
+{
+"pool": [
+"Bayou",
+"Dack Fayden",
+"Faerie Mastermind",
+"Gut, True Soul Zealot",
+"Lotus Petal",
+"Malcolm, Alluring Scoundrel",
+"Mana Leak",
+"No More Lies",
+"Regrowth",
+"Riverpyre Verge",
+"Sol Ring",
+"Strip Mine",
+"Talisman of Unity",
+"Thieving Skydiver",
+"Thundering Falls",
+"Tropical Island",
+"Wooded Foothills"
+],
+"pack": [
+"Adeline, Resplendent Cathar",
+"Badlands",
+"Deathrite Shaman",
+"Emrakul, the Aeons Torn",
+"Polluted Delta",
+"Titania, Protector of Argoth"
+],
+"features": [
+[
+0.0625,
+0.024147727,
+1.0,
+0.386363636,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.181818182,
+0.070247934
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.386363636,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.0,
+0.0,
+2.0,
+0.772727273,
+0.386363636,
+0.0,
+0.0,
+0.0,
+0.0,
+0.181818182,
+0.070247934
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.386363636,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.386363636,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.125,
+0.048295455,
+1.0,
+0.386363636,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+]
+],
+"p": [
+0.053383423,
+0.138015864,
+0.013613889,
+0.077065742,
+0.682776778,
+0.035144304
+]
+},
+{
+"pool": [
+"Burst Lightning",
+"Fable of the Mirror-Breaker",
+"Force of Will",
+"Savannah",
+"Scalding Tarn",
+"Seasoned Pyromancer",
+"Sheoldred's Edict",
+"Treasure Cruise",
+"Verdant Catacombs"
+],
+"pack": [
+"Dark Confidant",
+"Third Path Iconoclast"
+],
+"features": [
+[
+0.166666667,
+0.034090909,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.166666667,
+0.034090909
+],
+[
+0.333333333,
+0.068181818,
+0.0,
+0.0,
+0.204545455,
+0.0,
+0.0,
+0.0,
+0.0,
+0.166666667,
+0.034090909
+]
+],
+"p": [
+0.225755203,
+0.774244797
+]
+},
+{
+"pool": [
+"Balance",
+"Bayou",
+"Birds of Paradise",
+"Blooming Marsh",
+"Echo of Eons",
+"Fabled Passage",
+"Lush Portico",
+"Mana Drain",
+"Pentad Prism",
+"Razorverge Thicket",
+"Restless Cottage",
+"Sleight of Hand",
+"Sneak Attack",
+"Torsten, Founder of Benalia",
+"Wishclaw Talisman"
+],
+"pack": [
+"Grist, the Hunger Tide",
+"Mox Emerald",
+"Skyclave Apparition"
+],
+"features": [
+[
+0.125,
+0.042613636,
+1.0,
+0.340909091,
+0.340909091,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.340909091,
+0.0,
+0.0,
+0.0,
+0.222222222,
+0.075757576
+],
+[
+0.1875,
+0.063920455,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+]
+],
+"p": [
+0.001190948,
+0.994665106,
+0.004143946
+]
+},
+{
+"pool": [
+"Badlands",
+"Balance",
+"Chrome Host Seedshark",
+"Darkslick Shores",
+"Flooded Strand",
+"Leyline Binding",
+"Lingering Souls",
+"Mana Drain",
+"Mana Leak",
+"Miscalculation",
+"Oust",
+"Scrubland",
+"Spirebluff Canal",
+"Steam Vents",
+"Surrak, Elusive Hunter",
+"Swords to Plowshares",
+"Teferi, Hero of Dominaria"
+],
+"pack": [
+"Preordain",
+"Wrath of God"
+],
+"features": [
+[
+0.409090909,
+0.158057851,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.181818182,
+0.070247934
+],
+[
+0.5,
+0.193181818,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+]
+],
+"p": [
+0.632307171,
+0.367692829
+]
+},
+{
+"pool": [
+"Collective Brutality",
+"Dig Through Time",
+"Fallen Shinobi",
+"Force of Negation",
+"Goben, Gene-Splice Savant",
+"Lutri, the Spellchaser",
+"March of Otherworldly Light",
+"Memory Lapse",
+"Mystic Confluence",
+"Narset, Parter of Veils",
+"Oko, Thief of Crowns",
+"Psychic Frog",
+"Raffine's Tower",
+"Reanimate",
+"Third Path Iconoclast",
+"Time Spiral",
+"Upheaval"
+],
+"pack": [
+"Craterhoof Behemoth",
+"Dark Ritual",
+"Force of Will",
+"Misty Rainforest",
+"Underground Sea"
+],
+"features": [
+[
+0.033333333,
+0.012878788,
+1.0,
+0.386363636,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.2,
+0.077272727
+],
+[
+0.2,
+0.077272727,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.133333333,
+0.051515152
+],
+[
+0.633333333,
+0.24469697,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.133333333,
+0.051515152
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.386363636,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.386363636,
+1.0,
+0.386363636,
+0.0,
+0.0
+]
+],
+"p": [
+0.000909499,
+0.017487647,
+0.750314572,
+0.06756788,
+0.163720403
+]
+},
+{
+"pool": [
+"Abhorrent Oculus",
+"Chrome Host Seedshark",
+"Copperline Gorge",
+"Endurance",
+"Flash",
+"Gitaxian Probe",
+"Hallowed Fountain",
+"Jace, Vryn's Prodigy",
+"Library of Alexandria",
+"Nettlecyst",
+"Reprieve",
+"Swords to Plowshares",
+"Tamiyo, Collector of Tales",
+"Teferi, Hero of Dominaria",
+"The Mightstone and Weakstone",
+"Three Steps Ahead",
+"Tireless Tracker",
+"Unexpectedly Absent",
+"Vaultborn Tyrant"
+],
+"pack": [
+"Lightning Bolt",
+"Mishra's Bauble",
+"Thraben Inspector",
+"Windswept Heath"
+],
+"features": [
+[
+0.0,
+0.0,
+1.0,
+0.431818182,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.1875,
+0.080965909
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.431818182,
+0.0,
+0.0,
+0.0,
+0.1875,
+0.080965909
+],
+[
+0.25,
+0.107954545,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.1875,
+0.080965909
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.431818182,
+0.0,
+0.0,
+0.0,
+0.0
+]
+],
+"p": [
+0.181369964,
+0.196871811,
+0.140040542,
+0.481717682
+]
+},
+{
+"pool": [
+"Balance",
+"Broadside Bombardiers",
+"Carnage Interpreter",
+"Copperline Gorge",
+"Detective's Phoenix",
+"Elegant Parlor",
+"Guide of Souls",
+"Hazoret the Fervent",
+"Intrepid Adversary",
+"Oust",
+"Ponder",
+"Prismatic Ending",
+"Pyrokinesis",
+"Questing Beast",
+"Questing Druid",
+"Raugrin Triome",
+"Screaming Nemesis",
+"Serra Paragon",
+"Skyclave Apparition",
+"Snapcaster Mage",
+"Time Walk"
+],
+"pack": [
+"Ephemerate",
+"Flickerwisp",
+"Monastery Swiftspear"
+],
+"features": [
+[
+0.388888889,
+0.185606061,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.222222222,
+0.106060606
+],
+[
+0.388888889,
+0.185606061,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.277777778,
+0.132575758
+],
+[
+0.305555556,
+0.145833333,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.222222222,
+0.106060606
+]
+],
+"p": [
+0.403751432,
+0.394253518,
+0.20199505
+]
+},
+{
+"pool": [
+"Comet, Stellar Pup",
+"Enduring Curiosity",
+"Karakas",
+"Llanowar Elves",
+"Lurrus of the Dream-Den",
+"Mana Drain",
+"Mox Diamond",
+"Nethergoyf",
+"Preacher of the Schism",
+"Raugrin Triome",
+"Restless Prairie",
+"Serra Paragon",
+"Solitude",
+"Sorin of House Markov",
+"Sword of Fire and Ice",
+"Talisman of Hierarchy",
+"Teferi, Hero of Dominaria",
+"Thraben Inspector",
+"Toxic Deluge",
+"Wishclaw Talisman"
+],
+"pack": [
+"Badlands",
+"Flickerwisp",
+"Hymn to Tourach",
+"Tireless Tracker"
+],
+"features": [
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.454545455,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.357142857,
+0.162337662,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.235294118,
+0.106951872
+],
+[
+0.357142857,
+0.162337662,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.235294118,
+0.106951872
+],
+[
+0.071428571,
+0.032467532,
+1.0,
+0.454545455,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.235294118,
+0.106951872
+]
+],
+"p": [
+0.381664461,
+0.194018592,
+0.391241898,
+0.033075049
+]
+},
+{
+"pool": [
+"Crucible of Worlds",
+"Darkslick Shores",
+"Elvish Mystic",
+"Fastbond",
+"Goben, Gene-Splice Savant",
+"Liliana of the Veil",
+"Malcolm, Alluring Scoundrel",
+"Malevolent Rumble",
+"Mana Vault",
+"Manamorphose",
+"Misty Rainforest",
+"Nissa, Ascended Animist",
+"Pentad Prism",
+"Remand",
+"Skullclamp",
+"Stock Up",
+"Talisman of Dominance",
+"Timetwister",
+"Unburial Rites",
+"Verdant Catacombs"
+],
+"pack": [
+"Jace, the Mind Sculptor",
+"Thieving Skydiver",
+"Tinker"
+],
+"features": [
+[
+0.363636364,
+0.165289256,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.363636364,
+0.165289256,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.375,
+0.170454545
+],
+[
+0.363636364,
+0.165289256,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.25,
+0.113636364
+]
+],
+"p": [
+0.190945005,
+0.094795156,
+0.714259839
+]
+},
+{
+"pool": [
+"Burst Lightning",
+"Chandra, Torch of Defiance",
+"Chromatic Star",
+"Comet, Stellar Pup",
+"Dack Fayden",
+"Karn, Scion of Urza",
+"Mana Leak",
+"Mana Tithe",
+"Mishra's Bauble",
+"Nadu, Winged Wisdom",
+"Oko, Thief of Crowns",
+"Pick Your Poison",
+"Quantum Riddler",
+"Questing Druid",
+"Retrofitter Foundry",
+"Savannah",
+"Solitude",
+"Tundra",
+"Underground Mortuary",
+"Urza's Bauble",
+"Windswept Heath"
+],
+"pack": [
+"Frantic Search",
+"Minsc & Boo, Timeless Heroes"
+],
+"features": [
+[
+0.291666667,
+0.139204545,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.176470588,
+0.084224599
+],
+[
+0.25,
+0.119318182,
+0.0,
+0.0,
+0.477272727,
+0.0,
+0.0,
+0.0,
+0.0,
+0.176470588,
+0.084224599
+]
+],
+"p": [
+0.017392329,
+0.982607671
+]
+},
+{
+"pool": [
+"Balance",
+"Bloodtithe Harvester",
+"Caustic Bronco",
+"Damn",
+"Descendant of Storms",
+"Elspeth, Storm Slayer",
+"Gitaxian Probe",
+"Glimmer Lens",
+"Karakas",
+"Kroxa, Titan of Death's Hunger",
+"Makdee and Itla, Skysnarers",
+"March of Otherworldly Light",
+"Mother of Runes",
+"Overlord of the Mistmoors",
+"Parallax Wave",
+"Phelia, Exuberant Shepherd",
+"Savai Triome",
+"Thundertrap Trainer",
+"Undercity Sewers",
+"Yawgmoth, Thran Physician"
+],
+"pack": [
+"Badlands",
+"Scrubland",
+"Show and Tell",
+"Thalia, Guardian of Thraben"
+],
+"features": [
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.454545455,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.454545455,
+1.0,
+0.454545455,
+0.0,
+0.0
+],
+[
+0.125,
+0.056818182,
+1.0,
+0.454545455,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.5625,
+0.255681818,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.5,
+0.227272727
+]
+],
+"p": [
+0.125558646,
+0.547795972,
+0.013671279,
+0.312974103
+]
+},
+{
+"pool": [
+"Ademi of the Silkchutes",
+"Blooming Marsh",
+"Descendant of Storms",
+"Draconautics Engineer",
+"Flickerwisp",
+"Galvanic Blast",
+"Guide of Souls",
+"Lightning Helix",
+"Luminarch Aspirant",
+"Lurrus of the Dream-Den",
+"Lutri, the Spellchaser",
+"Mine Collapse",
+"Mishra's Bauble",
+"Nia, Skysail Storyteller",
+"Ocelot Pride",
+"Oust",
+"Phelia, Exuberant Shepherd",
+"Riverpyre Verge",
+"Sage of the Skies",
+"Sanguine Evangelist",
+"Scrubland",
+"Skullclamp",
+"Sol Ring",
+"Sunbillow Verge",
+"Sunfall",
+"Talisman of Hierarchy",
+"Talisman of Progress",
+"Thespian's Stage",
+"Unearth",
+"Unexpectedly Absent",
+"Unholy Heat",
+"Virtue of Loyalty",
+"Yavimaya, Cradle of Growth",
+"Yera and Oski, Weaver and Guide"
+],
+"pack": [
+"Grist, the Hunger Tide",
+"Tundra"
+],
+"features": [
+[
+0.0,
+0.0,
+2.0,
+1.545454545,
+0.772727273,
+0.0,
+0.0,
+0.0,
+0.0,
+0.2,
+0.154545455
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.772727273,
+0.0,
+0.0,
+0.0,
+0.0
+]
+],
+"p": [
+0.045091978,
+0.954908022
+]
+},
+{
+"pool": [
+"Bonecrusher Giant",
+"Burst Lightning",
+"Chandra, Torch of Defiance",
+"Cori-Steel Cutter",
+"Dragon's Rage Channeler",
+"Expressive Iteration",
+"Faithless Looting",
+"Fiery Confluence",
+"Fireblast",
+"Flooded Strand",
+"Fractured Identity",
+"Ghostfire Slice",
+"Kappa Cannoneer",
+"Kolaghan's Command",
+"Memory Jar",
+"Narset, Parter of Veils",
+"Nova Hellkite",
+"Pentad Prism",
+"Primeval Titan",
+"Remand",
+"Seasoned Pyromancer",
+"Solitude",
+"Sorin of House Markov",
+"Spell Pierce",
+"Steam Vents",
+"Sword of Fire and Ice",
+"Talisman of Creativity",
+"Talisman of Dominance",
+"Ulamog, the Infinite Gyre",
+"Underground Sea",
+"Unexpectedly Absent",
+"Volcanic Island",
+"Xander's Lounge"
+],
+"pack": [
+"Jace, the Mind Sculptor",
+"Mystic Confluence",
+"Ragavan, Nimble Pilferer"
+],
+"features": [
+[
+0.238095238,
+0.178571429,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.071428571,
+0.053571429
+],
+[
+0.238095238,
+0.178571429,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.142857143,
+0.107142857
+],
+[
+0.523809524,
+0.392857143,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.142857143,
+0.107142857
+]
+],
+"p": [
+0.0289908,
+0.049976786,
+0.921032415
+]
+},
+{
+"pool": [
+"Arena of Glory",
+"Blade Splicer",
+"Cathar Commando",
+"Currency Converter",
+"Displacer Kitten",
+"Echo of Eons",
+"Elite Spellbinder",
+"Ephemerate",
+"Fabled Passage",
+"Faithless Looting",
+"Fear of Missing Out",
+"Fiery Confluence",
+"Flame Slash",
+"Gitaxian Probe",
+"Glimmer Lens",
+"Jetmir's Garden",
+"Kellan, Planar Trailblazer",
+"Laelia, the Blade Reforged",
+"Lingering Souls",
+"March of Otherworldly Light",
+"Parallax Wave",
+"Pyrokinesis",
+"Restless Vents",
+"Sacred Foundry",
+"Sage of the Skies",
+"Talisman of Conviction",
+"Ulamog, the Infinite Gyre",
+"Voldaren Epicure"
+],
+"pack": [
+"Kappa Cannoneer",
+"Recurring Nightmare"
+],
+"features": [
+[
+0.15,
+0.095454545,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.130434783,
+0.083003953
+],
+[
+0.0,
+0.0,
+1.0,
+0.636363636,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.217391304,
+0.138339921
+]
+],
+"p": [
+0.834049434,
+0.165950566
+]
+},
+{
+"pool": [
+"Barrowgoyf",
+"Bitter Triumph",
+"Caustic Bronco",
+"Counterspell",
+"Craterhoof Behemoth",
+"Crop Rotation",
+"Dark Confidant",
+"Darkslick Shores",
+"Duelist of the Mind",
+"Esper Sentinel",
+"Goben, Gene-Splice Savant",
+"Hedge Maze",
+"Malcolm, Alluring Scoundrel",
+"Mox Sapphire",
+"Oust",
+"Psychic Frog",
+"Restless Fortress",
+"Restless Ridgeline",
+"Savannah",
+"Shadowy Backstreet",
+"Sheoldred's Edict",
+"Stock Up",
+"Sunfall",
+"Underground Sea",
+"Vaultborn Tyrant",
+"Vindicate",
+"Winds of Abandon",
+"Worldspine Wurm",
+"Wrath of God",
+"Zuran Orb"
+],
+"pack": [
+"Arid Mesa",
+"Liliana of the Veil",
+"Llanowar Elves",
+"Sheoldred, the Apocalypse",
+"Solitude"
+],
+"features": [
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.681818182,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.3,
+0.204545455,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.136363636,
+0.092975207
+],
+[
+0.2,
+0.136363636,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.227272727,
+0.154958678
+],
+[
+0.3,
+0.204545455,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.045454545,
+0.030991736
+],
+[
+0.275,
+0.1875,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.045454545,
+0.030991736
+]
+],
+"p": [
+0.184090694,
+0.062520256,
+0.030882115,
+0.380152099,
+0.342354835
+]
+},
+{
+"pool": [
+"Arena of Glory",
+"Bomat Courier",
+"Comet, Stellar Pup",
+"Death-Greeter's Champion",
+"Dragon's Rage Channeler",
+"Elegant Parlor",
+"Elite Spellbinder",
+"Fear of Missing Out",
+"Fiery Confluence",
+"Fiery Islet",
+"Goblin Rabblemaster",
+"Inti, Seneschal of the Sun",
+"Karakas",
+"Kari Zev, Skyship Raider",
+"Laelia, the Blade Reforged",
+"Lightning Helix",
+"Lion Sash",
+"Luminarch Aspirant",
+"Lutri, the Spellchaser",
+"March of Otherworldly Light",
+"Minsc & Boo, Timeless Heroes",
+"Mother of Runes",
+"Mox Ruby",
+"Nova Hellkite",
+"Oust",
+"Overlord of the Boilerbilges",
+"Plateau",
+"Pyrite Spellbomb",
+"Pyrogoyf",
+"Pyrokinesis",
+"Reprieve",
+"Unholy Heat",
+"Urza's Bauble",
+"Woe Strider",
+"Yera and Oski, Weaver and Guide"
+],
+"pack": [
+"Taiga",
+"Wrenn and Six"
+],
+"features": [
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.795454545,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.02,
+0.015909091,
+1.0,
+0.795454545,
+0.795454545,
+0.0,
+0.0,
+0.0,
+0.0,
+0.24137931,
+0.19200627
+]
+],
+"p": [
+0.623340174,
+0.376659826
+]
+},
+{
+"pool": [
+"Ancestral Recall",
+"Archon of Cruelty",
+"Baleful Strix",
+"Barrowgoyf",
+"Displacer Kitten",
+"Echo of Eons",
+"Entomb",
+"Flooded Strand",
+"Grim Monolith",
+"Jace, Wielder of Mysteries",
+"Ketria Triome",
+"Lavaspur Boots",
+"Leovold, Emissary of Trest",
+"Mana Leak",
+"Mox Emerald",
+"Narset, Parter of Veils",
+"Polluted Delta",
+"Quantum Riddler",
+"Reanimate",
+"Regrowth",
+"Remand",
+"Sink into Stupor",
+"Snuff Out",
+"Stock Up",
+"Talisman of Dominance",
+"Tamiyo, Collector of Tales",
+"Tamiyo, Inquisitive Student",
+"Tishana's Tidebinder",
+"Urza's Saga",
+"Willowrush Verge",
+"Woe Strider",
+"Wrenn and Six"
+],
+"pack": [
+"Jace, the Mind Sculptor",
+"Kaldra Compleat",
+"Recurring Nightmare"
+],
+"features": [
+[
+0.557971014,
+0.405797101,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.148148148,
+0.107744108
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.727272727,
+0.0,
+0.0,
+0.0,
+0.074074074,
+0.053872054
+],
+[
+0.297101449,
+0.216073781,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.259259259,
+0.188552189
+]
+],
+"p": [
+0.738376822,
+0.078288949,
+0.183334229
+]
+},
+{
+"pool": [
+"Adeline, Resplendent Cathar",
+"Cathar Commando",
+"Cut Down",
+"Damn",
+"Dark Confidant",
+"Deep-Cavern Bat",
+"Dig Through Time",
+"Emperor of Bones",
+"Enduring Innocence",
+"Enlightened Tutor",
+"Fallen Shinobi",
+"Flickerwisp",
+"Goblin Bombardment",
+"Godless Shrine",
+"Grave Titan",
+"Jace, Vryn's Prodigy",
+"Lavaspur Boots",
+"Loran of the Third Path",
+"Mana Tithe",
+"Mosswood Dreadknight",
+"Multiversal Passage",
+"Oust",
+"Overgrown Tomb",
+"Overlord of the Mistmoors",
+"Parallax Wave",
+"Path to Exile",
+"Phelia, Exuberant Shepherd",
+"Phyrexian Revoker",
+"Recurring Nightmare",
+"Reprieve",
+"Restless Fortress",
+"Sage of the Skies",
+"Scrubland",
+"Sheoldred, the Apocalypse",
+"Thraben Inspector",
+"Tundra",
+"Unexpectedly Absent",
+"Vindicate",
+"Voice of Victory"
+],
+"pack": [
+"Bone Shards",
+"Collective Brutality",
+"Show and Tell"
+],
+"features": [
+[
+0.290322581,
+0.257331378,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.212121212,
+0.188016529
+],
+[
+0.290322581,
+0.257331378,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.393939394,
+0.349173554
+],
+[
+0.080645161,
+0.071480938,
+1.0,
+0.886363636,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.212121212,
+0.188016529
+]
+],
+"p": [
+0.423797418,
+0.532603889,
+0.043598693
+]
+},
+{
+"pool": [
+"Adeline, Resplendent Cathar",
+"Ademi of the Silkchutes",
+"Beza, the Bounding Spring",
+"Coalition Relic",
+"Elegant Parlor",
+"Elite Spellbinder",
+"Elspeth, Storm Slayer",
+"Enlightened Tutor",
+"Figure of Destiny",
+"Generous Plunderer",
+"Grim Monolith",
+"Guide of Souls",
+"Gut, True Soul Zealot",
+"Hushwood Verge",
+"Kaldra Compleat",
+"Karakas",
+"Lightstall Inquisitor",
+"Lingering Souls",
+"Loran of the Third Path",
+"Luminarch Aspirant",
+"Makdee and Itla, Skysnarers",
+"Mana Crypt",
+"Mana Tithe",
+"Multiversal Passage",
+"Ocelot Pride",
+"Overlord of the Mistmoors",
+"Phelia, Exuberant Shepherd",
+"Phlage, Titan of Fire's Fury",
+"Preacher of the Schism",
+"Restless Ridgeline",
+"Savai Triome",
+"Serra Paragon",
+"Souls of the Lost",
+"Staff of the Storyteller",
+"Sunbillow Verge",
+"Talisman of Hierarchy",
+"Thraben Inspector",
+"Touch the Spirit Realm",
+"Triplicate Titan",
+"Valki, God of Lies",
+"Virtue of Loyalty",
+"Voice of Victory"
+],
+"pack": [
+"Dragon's Rage Channeler",
+"Savannah"
+],
+"features": [
+[
+0.12962963,
+0.123737374,
+1.0,
+0.954545455,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.242424242,
+0.231404959
+],
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.954545455,
+0.0,
+0.0,
+0.0,
+0.0
+]
+],
+"p": [
+0.163695486,
+0.836304514
+]
+},
+{
+"pool": [
+"Abrade",
+"Bayou",
+"Bone Shards",
+"Brain Freeze",
+"Expressive Iteration",
+"Fiery Confluence",
+"Fury",
+"Grave Titan",
+"Grim Monolith",
+"Harvester of Misery",
+"Hazoret the Fervent",
+"Jace, Wielder of Mysteries",
+"Jetmir's Garden",
+"Life // Death",
+"Lion's Eye Diamond",
+"Lutri, the Spellchaser",
+"Malcolm, Alluring Scoundrel",
+"Mana Leak",
+"Meticulous Archive",
+"No More Lies",
+"Plateau",
+"Preordain",
+"Riverpyre Verge",
+"Screaming Nemesis",
+"Snapcaster Mage",
+"Stomping Ground",
+"Talisman of Hierarchy",
+"Tamiyo, Collector of Tales",
+"The Endstone",
+"Thirst for Discovery",
+"Time Walk",
+"Unburial Rites",
+"Undercity Sewers",
+"Underworld Breach",
+"Vampiric Tutor",
+"Windswept Heath",
+"Yawgmoth's Will"
+],
+"pack": [
+"Arid Mesa",
+"Fireblast",
+"Nissa, Who Shakes the World"
+],
+"features": [
+[
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.840909091,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.291666667,
+0.245265152,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.071428571,
+0.060064935
+],
+[
+0.020833333,
+0.017518939,
+1.0,
+0.840909091,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.107142857,
+0.090097403
+]
+],
+"p": [
+0.855201984,
+0.12760651,
+0.017191506
+]
+},
+{
+"pool": [
+"Black Lotus",
+"Craterhoof Behemoth",
+"Death-Greeter's Champion",
+"Dragon's Rage Channeler",
+"Elite Spellbinder",
+"Esper Sentinel",
+"Fiery Confluence",
+"Fury",
+"Gideon, Ally of Zendikar",
+"Giver of Runes",
+"Grim Lavamancer",
+"Guide of Souls",
+"Gut, True Soul Zealot",
+"Hired Claw",
+"Inspiring Vantage",
+"Ivora, Insatiable Heir",
+"Kari Zev, Skyship Raider",
+"Kumano Faces Kakkazan",
+"Kytheon, Hero of Akros",
+"Laelia, the Blade Reforged",
+"Legion Extruder",
+"Lightning Helix",
+"Mana Vault",
+"Minsc & Boo, Timeless Heroes",
+"Necromancy",
+"Overgrown Tomb",
+"Overlord of the Mistmoors",
+"Phantasmal Image",
+"Phelia, Exuberant Shepherd",
+"Psychic Frog",
+"Razorverge Thicket",
+"Restless Fortress",
+"Seasoned Pyromancer",
+"Stoneforge Mystic",
+"Sundering Titan",
+"Taiga",
+"Tersa Lightshatter",
+"Trumpeting Carnosaur",
+"Unholy Heat"
+],
+"pack": [
+"Dark Ritual",
+"Kolaghan's Command"
+],
+"features": [
+[
+0.048387097,
+0.042888563,
+1.0,
+0.886363636,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.323529412,
+0.286764706
+],
+[
+0.048387097,
+0.042888563,
+1.0,
+0.886363636,
+0.886363636,
+0.0,
+0.0,
+0.0,
+0.0,
+0.205882353,
+0.182486631
+]
+],
+"p": [
+0.290990398,
+0.709009602
+]
+},
+{
+"pool": [
+"Ajani, Nacatl Pariah",
+"Black Lotus",
+"Blackcleave Cliffs",
+"Broadside Bombardiers",
+"Caustic Bronco",
+"Cosmogrand Zenith",
+"Death-Greeter's Champion",
+"Deep-Cavern Bat",
+"Draconautics Engineer",
+"Elite Spellbinder",
+"Elspeth, Storm Slayer",
+"Entomb",
+"Fear of Missing Out",
+"Figure of Destiny",
+"Fire Covenant",
+"Flame Slash",
+"Go for the Throat",
+"Karakas",
+"Lingering Souls",
+"Luminarch Aspirant",
+"Mana Tithe",
+"Mother of Runes",
+"Murderous Cut",
+"Necromancy",
+"Ocelot Pride",
+"Otawara, Soaring City",
+"Path to Exile",
+"Phelia, Exuberant Shepherd",
+"Phlage, Titan of Fire's Fury",
+"Pyrogoyf",
+"Raucous Theater",
+"Reprieve",
+"Shadowy Backstreet",
+"Sunbillow Verge",
+"Swords to Plowshares",
+"Thoughtseize",
+"Thraben Inspector",
+"Toxic Deluge",
+"Unholy Heat",
+"Voice of Victory",
+"Voldaren Epicure",
+"Wheel of Fortune"
+],
+"pack": [
+"Bonecrusher Giant",
+"Green Sun's Zenith"
+],
+"features": [
+[
+0.314285714,
+0.3,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.277777778,
+0.265151515
+],
+[
+0.0,
+0.0,
+1.0,
+0.954545455,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.361111111,
+0.34469697
+]
+],
+"p": [
+0.973181456,
+0.026818544
+]
+},
+{
+"pool": [
+"Birds of Paradise",
+"Candelabra of Tawnos",
+"Commercial District",
+"Crucible of Worlds",
+"Detective's Phoenix",
+"Emperor of Bones",
+"Glimmer Lens",
+"Grist, the Hunger Tide",
+"Ignoble Hierarch",
+"Jace, Wielder of Mysteries",
+"Jetmir's Garden",
+"Karn, Scion of Urza",
+"Lion's Eye Diamond",
+"Lotus Petal",
+"Lurrus of the Dream-Den",
+"Mana Crypt",
+"Manamorphose",
+"Mox Jet",
+"Mox Opal",
+"Narset, Parter of Veils",
+"Pentad Prism",
+"Raugrin Triome",
+"Retrofitter Foundry",
+"Saheeli, Sublime Artificer",
+"Savai Triome",
+"Scalding Tarn",
+"Scythecat Cub",
+"Skullclamp",
+"Talisman of Conviction",
+"Tendrils of Agony",
+"Tezzeret, Cruel Captain",
+"Third Path Iconoclast",
+"Thundering Falls",
+"Tolarian Academy",
+"Tropical Island",
+"Underworld Breach",
+"Urza, Lord High Artificer",
+"Voice of Victory",
+"Wishclaw Talisman",
+"Wrenn and Six"
+],
+"pack": [
+"Nissa, Who Shakes the World",
+"Six"
+],
+"features": [
+[
+0.236842105,
+0.215311005,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0
+],
+[
+0.236842105,
+0.215311005,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.0,
+0.21875,
+0.198863636
+]
+],
+"p": [
+0.412620041,
+0.587379959
+]
+}
+]
+}

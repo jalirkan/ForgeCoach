@@ -1,0 +1,963 @@
+{
+ "schema": 1,
+ "source": {
+  "name": "17Lands",
+  "page": "https://www.17lands.com/public_datasets",
+  "licence": "CC BY 4.0",
+  "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "dataset": "Powered Cube",
+  "files": [
+   "draft_data_public.Cube_-_Powered.PremierDraft.csv.gz",
+   "draft_data_public.Cube_-_Powered.TradDraft.csv.gz"
+  ],
+  "updated": "2025-12-01",
+  "changes": "A pick model fitted to the human picks (docs/human-picks.md): per-card pick strength and pool-context coefficients; matched to this cube by card name."
+ },
+ "generated": "2026-10-08",
+ "cube": {
+  "file": "vintage-cube-180.md",
+  "cards": 180,
+  "matched": 152
+ },
+ "picks": 2316631,
+ "drafts": 52652,
+ "model": {
+  "gamma": -0.3953,
+  "beta": {
+   "fit": 1.9386,
+   "fitT": 2.7434,
+   "off": -1.0818,
+   "offT": -0.3364,
+   "goldT": 1.0541,
+   "colourlessT": 0.7783,
+   "landT": 0.7624,
+   "dual": 1.8326,
+   "dualT": 0.2974,
+   "curve": 0.0826,
+   "curveT": -0.1223
+  },
+  "tScale": 44.0,
+  "offShare": 0.15,
+  "offMinPool": 3
+ },
+ "test": {
+  "picks": 99733,
+  "top1": 0.7296,
+  "top1CardValue": 0.462,
+  "top1PickValue": 0.5632
+ },
+ "cards": {
+  "Mox Pearl": {
+   "s": 7.492,
+   "seen": 3726,
+   "taken": 3434,
+   "colors": ""
+  },
+  "Mother of Runes": {
+   "s": 1.559,
+   "seen": 23391,
+   "taken": 5920,
+   "colors": "W"
+  },
+  "Thraben Inspector": {
+   "s": -0.282,
+   "seen": 41042,
+   "taken": 6085,
+   "colors": "W"
+  },
+  "Thalia, Guardian of Thraben": {
+   "s": -0.207,
+   "seen": 33993,
+   "taken": 4999,
+   "colors": "W"
+  },
+  "Stoneforge Mystic": {
+   "s": 0.444,
+   "seen": 28273,
+   "taken": 4686,
+   "colors": "W"
+  },
+  "Adeline, Resplendent Cathar": {
+   "s": 0.886,
+   "seen": 27023,
+   "taken": 5441,
+   "colors": "W"
+  },
+  "Ocelot Pride": {
+   "s": 2.968,
+   "seen": 13541,
+   "taken": 5058,
+   "colors": "W"
+  },
+  "Luminarch Aspirant": {
+   "s": 1.085,
+   "seen": 26104,
+   "taken": 5806,
+   "colors": "W"
+  },
+  "Elite Spellbinder": {
+   "s": 0.161,
+   "seen": 33967,
+   "taken": 5504,
+   "colors": "W"
+  },
+  "Containment Priest": {
+   "s": -0.103,
+   "seen": 36732,
+   "taken": 5599,
+   "colors": "W"
+  },
+  "Swords to Plowshares": {
+   "s": 3.752,
+   "seen": 11428,
+   "taken": 5146,
+   "colors": "W"
+  },
+  "Ephemerate": {
+   "s": -1.308,
+   "seen": 42362,
+   "taken": 4140,
+   "colors": "W"
+  },
+  "Skyclave Apparition": {
+   "s": 0.201,
+   "seen": 32031,
+   "taken": 5162,
+   "colors": "W"
+  },
+  "Flickerwisp": {
+   "s": -1.339,
+   "seen": 46135,
+   "taken": 4992,
+   "colors": "W"
+  },
+  "Loran of the Third Path": {
+   "s": -0.784,
+   "seen": 39577,
+   "taken": 4498,
+   "colors": "W"
+  },
+  "Solitude": {
+   "s": 2.202,
+   "seen": 17519,
+   "taken": 5209,
+   "colors": "W"
+  },
+  "The Wandering Emperor": {
+   "s": -0.033,
+   "seen": 29075,
+   "taken": 4049,
+   "colors": "W"
+  },
+  "Balance": {
+   "s": 1.574,
+   "seen": 19597,
+   "taken": 4582,
+   "colors": "W"
+  },
+  "Wrath of God": {
+   "s": -0.858,
+   "seen": 35529,
+   "taken": 3710,
+   "colors": "W"
+  },
+  "Serra Paragon": {
+   "s": -0.401,
+   "seen": 34954,
+   "taken": 4524,
+   "colors": "W"
+  },
+  "Mox Sapphire": {
+   "s": 7.547,
+   "seen": 3526,
+   "taken": 3267,
+   "colors": ""
+  },
+  "Ancestral Recall": {
+   "s": 7.12,
+   "seen": 3690,
+   "taken": 3098,
+   "colors": "U"
+  },
+  "Time Walk": {
+   "s": 7.538,
+   "seen": 3593,
+   "taken": 3105,
+   "colors": "U"
+  },
+  "Brainstorm": {
+   "s": -0.105,
+   "seen": 28710,
+   "taken": 3728,
+   "colors": "U"
+  },
+  "Ponder": {
+   "s": 0.17,
+   "seen": 28254,
+   "taken": 4166,
+   "colors": "U"
+  },
+  "Preordain": {
+   "s": 0.096,
+   "seen": 28671,
+   "taken": 4228,
+   "colors": "U"
+  },
+  "Frantic Search": {
+   "s": -0.013,
+   "seen": 28039,
+   "taken": 3910,
+   "colors": "U"
+  },
+  "Force of Will": {
+   "s": 3.128,
+   "seen": 10614,
+   "taken": 4027,
+   "colors": "U"
+  },
+  "Mana Drain": {
+   "s": 3.591,
+   "seen": 9194,
+   "taken": 3855,
+   "colors": "U"
+  },
+  "Counterspell": {
+   "s": 1.427,
+   "seen": 18029,
+   "taken": 3996,
+   "colors": "U"
+  },
+  "Memory Lapse": {
+   "s": 1.277,
+   "seen": 21817,
+   "taken": 4812,
+   "colors": "U"
+  },
+  "Snapcaster Mage": {
+   "s": 1.449,
+   "seen": 18320,
+   "taken": 4165,
+   "colors": "U"
+  },
+  "Jace, Vryn's Prodigy": {
+   "s": 0.719,
+   "seen": 22857,
+   "taken": 4105,
+   "colors": "U"
+  },
+  "Brazen Borrower": {
+   "s": -0.113,
+   "seen": 28878,
+   "taken": 3842,
+   "colors": "U"
+  },
+  "Treasure Cruise": {
+   "s": -0.92,
+   "seen": 37508,
+   "taken": 4088,
+   "colors": "U"
+  },
+  "Tinker": {
+   "s": 1.972,
+   "seen": 15122,
+   "taken": 3794,
+   "colors": "U"
+  },
+  "Show and Tell": {
+   "s": -0.803,
+   "seen": 26532,
+   "taken": 2652,
+   "colors": "U"
+  },
+  "Urza, Lord High Artificer": {
+   "s": 2.284,
+   "seen": 14075,
+   "taken": 4012,
+   "colors": "U"
+  },
+  "Kappa Cannoneer": {
+   "s": -0.454,
+   "seen": 31752,
+   "taken": 4095,
+   "colors": "U"
+  },
+  "Thieving Skydiver": {
+   "s": -0.494,
+   "seen": 35133,
+   "taken": 4288,
+   "colors": "U"
+  },
+  "Phyrexian Metamorph": {
+   "s": -0.494,
+   "seen": 30489,
+   "taken": 3315,
+   "colors": "U"
+  },
+  "Mystic Confluence": {
+   "s": 1.147,
+   "seen": 22146,
+   "taken": 4653,
+   "colors": "U"
+  },
+  "Jace, the Mind Sculptor": {
+   "s": 0.372,
+   "seen": 22223,
+   "taken": 3204,
+   "colors": "U"
+  },
+  "Mox Jet": {
+   "s": 7.547,
+   "seen": 3676,
+   "taken": 3391,
+   "colors": ""
+  },
+  "Dark Ritual": {
+   "s": 0.225,
+   "seen": 25827,
+   "taken": 3281,
+   "colors": "B"
+  },
+  "Entomb": {
+   "s": 1.205,
+   "seen": 21051,
+   "taken": 3887,
+   "colors": "B"
+  },
+  "Reanimate": {
+   "s": 2.753,
+   "seen": 13044,
+   "taken": 3951,
+   "colors": "B"
+  },
+  "Animate Dead": {
+   "s": 2.018,
+   "seen": 17262,
+   "taken": 4218,
+   "colors": "B"
+  },
+  "Necromancy": {
+   "s": 1.013,
+   "seen": 23728,
+   "taken": 4141,
+   "colors": "B"
+  },
+  "Thoughtseize": {
+   "s": 2.682,
+   "seen": 14716,
+   "taken": 4462,
+   "colors": "B"
+  },
+  "Hymn to Tourach": {
+   "s": -0.484,
+   "seen": 34638,
+   "taken": 3778,
+   "colors": "B"
+  },
+  "Demonic Tutor": {
+   "s": 2.969,
+   "seen": 11259,
+   "taken": 3546,
+   "colors": "B"
+  },
+  "Dark Confidant": {
+   "s": -0.321,
+   "seen": 35046,
+   "taken": 4194,
+   "colors": "B"
+  },
+  "Fatal Push": {
+   "s": 0.653,
+   "seen": 29645,
+   "taken": 4695,
+   "colors": "B"
+  },
+  "Bone Shards": {
+   "s": -0.837,
+   "seen": 39881,
+   "taken": 4076,
+   "colors": "B"
+  },
+  "Collective Brutality": {
+   "s": -0.478,
+   "seen": 36549,
+   "taken": 4061,
+   "colors": "B"
+  },
+  "Liliana of the Veil": {
+   "s": -0.256,
+   "seen": 28080,
+   "taken": 2966,
+   "colors": "B"
+  },
+  "Toxic Deluge": {
+   "s": 1.466,
+   "seen": 21974,
+   "taken": 4421,
+   "colors": "B"
+  },
+  "Grief": {
+   "s": 0.637,
+   "seen": 24470,
+   "taken": 3728,
+   "colors": "B"
+  },
+  "Recurring Nightmare": {
+   "s": -0.142,
+   "seen": 28776,
+   "taken": 3432,
+   "colors": "B"
+  },
+  "Sheoldred, the Apocalypse": {
+   "s": 2.215,
+   "seen": 13814,
+   "taken": 3457,
+   "colors": "B"
+  },
+  "Archon of Cruelty": {
+   "s": 1.761,
+   "seen": 17192,
+   "taken": 3732,
+   "colors": "B"
+  },
+  "Griselbrand": {
+   "s": 0.665,
+   "seen": 23342,
+   "taken": 3582,
+   "colors": "B"
+  },
+  "Mox Ruby": {
+   "s": 7.683,
+   "seen": 3659,
+   "taken": 3422,
+   "colors": ""
+  },
+  "Lightning Bolt": {
+   "s": 2.451,
+   "seen": 16460,
+   "taken": 5448,
+   "colors": "R"
+  },
+  "Chain Lightning": {
+   "s": 0.772,
+   "seen": 28024,
+   "taken": 5498,
+   "colors": "R"
+  },
+  "Fireblast": {
+   "s": -1.667,
+   "seen": 47942,
+   "taken": 4904,
+   "colors": "R"
+  },
+  "Pyrokinesis": {
+   "s": -0.127,
+   "seen": 37956,
+   "taken": 5953,
+   "colors": "R"
+  },
+  "Unholy Heat": {
+   "s": -0.17,
+   "seen": 37025,
+   "taken": 5395,
+   "colors": "R"
+  },
+  "Monastery Swiftspear": {
+   "s": -1.828,
+   "seen": 46384,
+   "taken": 4395,
+   "colors": "R"
+  },
+  "Ragavan, Nimble Pilferer": {
+   "s": 3.666,
+   "seen": 10454,
+   "taken": 4621,
+   "colors": "R"
+  },
+  "Dragon's Rage Channeler": {
+   "s": -0.795,
+   "seen": 40157,
+   "taken": 4808,
+   "colors": "R"
+  },
+  "Faithless Looting": {
+   "s": -1.282,
+   "seen": 41064,
+   "taken": 4061,
+   "colors": "R"
+  },
+  "Goblin Rabblemaster": {
+   "s": -0.286,
+   "seen": 35175,
+   "taken": 5010,
+   "colors": "R"
+  },
+  "Fable of the Mirror-Breaker": {
+   "s": 2.965,
+   "seen": 14305,
+   "taken": 5445,
+   "colors": "R"
+  },
+  "Goblin Bombardment": {
+   "s": -0.144,
+   "seen": 37307,
+   "taken": 5993,
+   "colors": "R"
+  },
+  "Laelia, the Blade Reforged": {
+   "s": 1.895,
+   "seen": 20710,
+   "taken": 5794,
+   "colors": "R"
+  },
+  "Bonecrusher Giant": {
+   "s": 0.188,
+   "seen": 30776,
+   "taken": 4729,
+   "colors": "R"
+  },
+  "Seasoned Pyromancer": {
+   "s": -0.396,
+   "seen": 36425,
+   "taken": 4800,
+   "colors": "R"
+  },
+  "Fiery Confluence": {
+   "s": 0.914,
+   "seen": 27952,
+   "taken": 5815,
+   "colors": "R"
+  },
+  "Sneak Attack": {
+   "s": 0.772,
+   "seen": 20998,
+   "taken": 3666,
+   "colors": "R"
+  },
+  "Chandra, Torch of Defiance": {
+   "s": -0.238,
+   "seen": 31210,
+   "taken": 4080,
+   "colors": "R"
+  },
+  "Fury": {
+   "s": 2.426,
+   "seen": 16483,
+   "taken": 5360,
+   "colors": "R"
+  },
+  "Mox Emerald": {
+   "s": 6.841,
+   "seen": 3885,
+   "taken": 3467,
+   "colors": ""
+  },
+  "Llanowar Elves": {
+   "s": -0.7,
+   "seen": 36092,
+   "taken": 3391,
+   "colors": "G"
+  },
+  "Birds of Paradise": {
+   "s": 0.772,
+   "seen": 23756,
+   "taken": 3467,
+   "colors": "G"
+  },
+  "Lotus Cobra": {
+   "s": -0.494,
+   "seen": 33641,
+   "taken": 3177,
+   "colors": "G"
+  },
+  "Scavenging Ooze": {
+   "s": -1.856,
+   "seen": 46701,
+   "taken": 3178,
+   "colors": "G"
+  },
+  "Tireless Tracker": {
+   "s": -0.881,
+   "seen": 38737,
+   "taken": 3365,
+   "colors": "G"
+  },
+  "Six": {
+   "s": -0.341,
+   "seen": 35345,
+   "taken": 3580,
+   "colors": "G"
+  },
+  "Survival of the Fittest": {
+   "s": -1.912,
+   "seen": 43816,
+   "taken": 3125,
+   "colors": "G"
+  },
+  "Endurance": {
+   "s": -1.58,
+   "seen": 44413,
+   "taken": 3291,
+   "colors": "G"
+  },
+  "Eternal Witness": {
+   "s": -1.345,
+   "seen": 43346,
+   "taken": 3474,
+   "colors": "G"
+  },
+  "Courser of Kruphix": {
+   "s": -1.514,
+   "seen": 40121,
+   "taken": 2945,
+   "colors": "G"
+  },
+  "Green Sun's Zenith": {
+   "s": -1.022,
+   "seen": 38393,
+   "taken": 3283,
+   "colors": "G"
+  },
+  "Questing Beast": {
+   "s": -0.976,
+   "seen": 37117,
+   "taken": 3092,
+   "colors": "G"
+  },
+  "Titania, Protector of Argoth": {
+   "s": 0.179,
+   "seen": 32220,
+   "taken": 4140,
+   "colors": "G"
+  },
+  "Nissa, Who Shakes the World": {
+   "s": -0.902,
+   "seen": 36693,
+   "taken": 3264,
+   "colors": "G"
+  },
+  "Natural Order": {
+   "s": -0.117,
+   "seen": 28011,
+   "taken": 2979,
+   "colors": "G"
+  },
+  "Primeval Titan": {
+   "s": -0.324,
+   "seen": 27296,
+   "taken": 2573,
+   "colors": "G"
+  },
+  "Craterhoof Behemoth": {
+   "s": -1.247,
+   "seen": 37273,
+   "taken": 2988,
+   "colors": "G"
+  },
+  "Teferi, Time Raveler": {
+   "s": 2.099,
+   "seen": 21004,
+   "taken": 4545,
+   "colors": "WU"
+  },
+  "Teferi, Hero of Dominaria": {
+   "s": 1.382,
+   "seen": 24392,
+   "taken": 4155,
+   "colors": "WU"
+  },
+  "Baleful Strix": {
+   "s": 0.855,
+   "seen": 28267,
+   "taken": 4133,
+   "colors": "UB"
+  },
+  "Psychic Frog": {
+   "s": 3.816,
+   "seen": 11704,
+   "taken": 4484,
+   "colors": "UB"
+  },
+  "Expressive Iteration": {
+   "s": 0.226,
+   "seen": 37050,
+   "taken": 4568,
+   "colors": "UR"
+  },
+  "Third Path Iconoclast": {
+   "s": 0.332,
+   "seen": 35729,
+   "taken": 4767,
+   "colors": "UR"
+  },
+  "Kolaghan's Command": {
+   "s": 0.153,
+   "seen": 40340,
+   "taken": 4642,
+   "colors": "BR"
+  },
+  "Bloodtithe Harvester": {
+   "s": -0.628,
+   "seen": 47880,
+   "taken": 4841,
+   "colors": "BR"
+  },
+  "Wrenn and Six": {
+   "s": 0.75,
+   "seen": 32144,
+   "taken": 4130,
+   "colors": "RG"
+  },
+  "Minsc & Boo, Timeless Heroes": {
+   "s": 4.506,
+   "seen": 11227,
+   "taken": 4851,
+   "colors": "RG"
+  },
+  "Knight of the Reliquary": {
+   "s": -1.672,
+   "seen": 53242,
+   "taken": 3895,
+   "colors": "WG"
+  },
+  "Lingering Souls": {
+   "s": -1.167,
+   "seen": 45147,
+   "taken": 4989,
+   "colors": "W"
+  },
+  "Uro, Titan of Nature's Wrath": {
+   "s": 0.897,
+   "seen": 25190,
+   "taken": 3308,
+   "colors": "UG"
+  },
+  "Oko, Thief of Crowns": {
+   "s": 2.997,
+   "seen": 13792,
+   "taken": 3748,
+   "colors": "UG"
+  },
+  "Grist, the Hunger Tide": {
+   "s": -0.065,
+   "seen": 39300,
+   "taken": 3666,
+   "colors": "BG"
+  },
+  "Deathrite Shaman": {
+   "s": 0.444,
+   "seen": 34976,
+   "taken": 3711,
+   "colors": "BG"
+  },
+  "Lightning Helix": {
+   "s": 0.222,
+   "seen": 36766,
+   "taken": 5321,
+   "colors": "WR"
+  },
+  "Phlage, Titan of Fire's Fury": {
+   "s": 2.474,
+   "seen": 19396,
+   "taken": 5634,
+   "colors": "WR"
+  },
+  "Black Lotus": {
+   "s": 9.014,
+   "seen": 3106,
+   "taken": 3057,
+   "colors": ""
+  },
+  "Sol Ring": {
+   "s": 7.26,
+   "seen": 3541,
+   "taken": 3253,
+   "colors": ""
+  },
+  "Mishra's Bauble": {
+   "s": 0.665,
+   "seen": 29780,
+   "taken": 4709,
+   "colors": ""
+  },
+  "Skullclamp": {
+   "s": 1.879,
+   "seen": 20076,
+   "taken": 4977,
+   "colors": ""
+  },
+  "Smuggler's Copter": {
+   "s": 1.037,
+   "seen": 28036,
+   "taken": 5470,
+   "colors": ""
+  },
+  "Umezawa's Jitte": {
+   "s": 0.848,
+   "seen": 25566,
+   "taken": 4276,
+   "colors": ""
+  },
+  "Retrofitter Foundry": {
+   "s": 0.99,
+   "seen": 26094,
+   "taken": 4843,
+   "colors": ""
+  },
+  "Batterskull": {
+   "s": -0.579,
+   "seen": 35614,
+   "taken": 3534,
+   "colors": ""
+  },
+  "Karn, Scion of Urza": {
+   "s": 0.011,
+   "seen": 30356,
+   "taken": 3710,
+   "colors": ""
+  },
+  "Kaldra Compleat": {
+   "s": -0.492,
+   "seen": 35334,
+   "taken": 3692,
+   "colors": ""
+  },
+  "Myr Battlesphere": {
+   "s": -0.696,
+   "seen": 36948,
+   "taken": 3717,
+   "colors": ""
+  },
+  "Emrakul, the Aeons Torn": {
+   "s": -0.237,
+   "seen": 26904,
+   "taken": 2736,
+   "colors": ""
+  },
+  "Tundra": {
+   "s": 0.788,
+   "seen": 25915,
+   "taken": 4960,
+   "colors": ""
+  },
+  "Underground Sea": {
+   "s": 0.932,
+   "seen": 22516,
+   "taken": 4434,
+   "colors": ""
+  },
+  "Badlands": {
+   "s": 0.458,
+   "seen": 30057,
+   "taken": 4974,
+   "colors": ""
+  },
+  "Taiga": {
+   "s": -0.03,
+   "seen": 33630,
+   "taken": 4774,
+   "colors": ""
+  },
+  "Savannah": {
+   "s": -0.662,
+   "seen": 40180,
+   "taken": 4635,
+   "colors": ""
+  },
+  "Scrubland": {
+   "s": -0.145,
+   "seen": 35870,
+   "taken": 4784,
+   "colors": ""
+  },
+  "Volcanic Island": {
+   "s": 1.109,
+   "seen": 24049,
+   "taken": 4977,
+   "colors": ""
+  },
+  "Bayou": {
+   "s": -0.399,
+   "seen": 34603,
+   "taken": 4096,
+   "colors": ""
+  },
+  "Plateau": {
+   "s": 0.925,
+   "seen": 25498,
+   "taken": 6139,
+   "colors": ""
+  },
+  "Tropical Island": {
+   "s": 0.376,
+   "seen": 26557,
+   "taken": 4037,
+   "colors": ""
+  },
+  "Flooded Strand": {
+   "s": 2.48,
+   "seen": 15190,
+   "taken": 5187,
+   "colors": ""
+  },
+  "Polluted Delta": {
+   "s": 2.345,
+   "seen": 14784,
+   "taken": 4842,
+   "colors": ""
+  },
+  "Bloodstained Mire": {
+   "s": 2.268,
+   "seen": 17779,
+   "taken": 5333,
+   "colors": ""
+  },
+  "Wooded Foothills": {
+   "s": 1.95,
+   "seen": 19176,
+   "taken": 5215,
+   "colors": ""
+  },
+  "Windswept Heath": {
+   "s": 1.759,
+   "seen": 20094,
+   "taken": 5114,
+   "colors": ""
+  },
+  "Marsh Flats": {
+   "s": 2.085,
+   "seen": 18999,
+   "taken": 5339,
+   "colors": ""
+  },
+  "Scalding Tarn": {
+   "s": 2.72,
+   "seen": 13950,
+   "taken": 5085,
+   "colors": ""
+  },
+  "Verdant Catacombs": {
+   "s": 1.627,
+   "seen": 19793,
+   "taken": 4674,
+   "colors": ""
+  },
+  "Arid Mesa": {
+   "s": 2.075,
+   "seen": 17038,
+   "taken": 5749,
+   "colors": ""
+  },
+  "Misty Rainforest": {
+   "s": 2.186,
+   "seen": 16154,
+   "taken": 4701,
+   "colors": ""
+  },
+  "Ancient Tomb": {
+   "s": 2.067,
+   "seen": 15061,
+   "taken": 3663,
+   "colors": ""
+  }
+ }
+}

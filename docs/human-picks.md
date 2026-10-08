@@ -220,6 +220,160 @@ python3 -I scripts/human-picks/fit.py describe OUT/picks.npz OUT/facts.json
 python3 -I scripts/human-picks/fit.py run OUT/picks.npz OUT/facts.json OUT/names.json OUT/scryfall-arena.json OUT/work [--ship public/cubes]
 ```
 
-## Results
+## Results (run 2026-10-08)
 
-(Filled in after the run.)
+Run as in *Reproduce*; the log is reproduced below in tables. 739 s on one CPU
+core (most of it fitting (b)).
+
+**Changes to the code after the pre-registration commit, all before any
+result was computed, all numerical only** (each its own commit): the L-BFGS
+stopping rule (the first setting stopped a fit after 9 iterations, the second
+never stopped the joint fit; now a relative change of 1e-9), and fitting (b)
+in two stages on standardised features (the optimum is the same; coefficients
+are reported in raw units). After the run, the shipped files gained each
+card's colours as the model saw them (below), with no change to any number.
+
+### Choosing λ (validation)
+
+Mean validation log-loss of (a): λ = 100: 1.6797, λ = 10: 1.6762, **λ = 1: 1.6761**
+(chosen; the data are large enough that the penalty barely matters).
+
+### The fitted context coefficients (b)
+
+γ = −0.40: a card's strength counts fully at the start of the draft and 0.6×
+by the end. β, in log-odds per unit of the feature:
+
+| feature | start of draft (t = 0) | end (t = 1) |
+|---|---|---|
+| colour fit (smallest pool share of the card's colours, 0–1) | +1.94 | +4.68 |
+| each of the card's colours under 15% of the pool | −1.08 | −1.42 |
+| gold card | 0 | +1.05 |
+| colourless nonland | 0 | +0.78 |
+| land | 0 | +0.76 |
+| a dual in the pool's two colours | +1.83 | +2.13 |
+| curve (share of the pool at the card's mana value) | +0.08 | −0.04 |
+
+The card strengths *s* have a standard deviation of 1.72 log-odds.
+
+### Held-out drafts, full packs (10,665 drafts, 437,265 picks)
+
+| model | top-1 | top-3 | log-loss |
+|---|---|---|---|
+| uniform guess | 16.8% | 46.7% | 1.975 |
+| (a) card strength | 36.4% [36.2, 36.6] | 72.1% [71.9, 72.3] | 1.675 [1.671, 1.679] |
+| (b) + pool context | **49.1%** [48.9, 49.3] | **82.9%** [82.8, 83.1] | **1.373** [1.368, 1.377] |
+| (b) − (a) | +12.7 pts [+12.5, +12.9] | +10.9 pts [+10.7, +11.0] | −0.303 [−0.307, −0.299] |
+
+### Each cube's packs: the ship test
+
+Top-1 on held-out picks with the pack cut to the cube's cards (95% draft
+bootstrap intervals). `cardValue` and `aiRating` are the same number in cubes
+with no human file (both are then the lab value), so they tie there by
+construction.
+
+| cube (overlap, test picks) | (a) | **(b)** | cardValue | **pickValue** | aiRating | gihWR | (b) − cardValue | (b) − pickValue | ship |
+|---|---|---|---|---|---|---|---|---|---|
+| Vintage (152, 99,733) | 61.2% | **73.0%** | 46.2% | 56.3% | 34.6% | 48.6% | +26.8 [+26.3, +27.2] | +16.6 [+16.3, +17.0] | yes |
+| Omega (105, 62,067) | 64.2% | **76.1%** | 37.7% | 50.1% | 37.7% | — | +38.4 [+37.9, +38.9] | +25.9 [+25.4, +26.4] | yes |
+| Modern-Era (100, 55,704) | 62.2% | **77.0%** | 31.9% | 43.3% | 31.9% | — | +45.1 [+44.6, +45.8] | +33.7 [+33.2, +34.3] | yes |
+| Evybaby (91, 54,511) | 64.4% | **75.7%** | 36.5% | 50.3% | 36.5% | — | +39.2 [+38.6, +39.7] | +25.4 [+24.9, +25.9] | yes |
+| Synergy (79, 42,834) | 64.9% | **76.0%** | 44.7% | 53.7% | 40.1% | 49.7% | +31.3 [+30.6, +31.9] | +22.4 [+21.8, +23.0] | yes |
+| Fair Fight (47, 17,370) | 69.2% | **82.4%** | 39.6% | 58.5% | 39.6% | — | +42.9 [+41.9, +43.8] | +24.0 [+23.1, +24.8] | yes |
+| Peasant (42, 15,145) | 70.6% | **82.8%** | 42.7% | 52.8% | 42.7% | — | +40.1 [+39.0, +41.1] | +29.9 [+28.9, +30.9] | yes |
+
+Log-loss on Vintage's packs: (b) 0.649 [0.644, 0.654], (a) 0.879, pickValue
+0.974, gihWR 1.080, cardValue 1.114, aiRating 1.168 (each baseline at its
+validation temperature). Top-3: (b) 98.0%, pickValue 93.3%, cardValue 90.2%
+(with a median of 3 cards to choose from, top-3 is nearly always right, so
+top-1 is the informative one). The other cubes rank the same way on every metric.
+
+**Decision: ship all seven** (`public/cubes/<file>.picks.json`). Every
+interval is far from 0; the smallest margin is Vintage's +16.6 points over
+the pick advice.
+
+### Transfer (Vintage)
+
+- **T1.** (a) fitted on full 540-card packs vs (a) fitted only on choice sets
+  cut to Vintage's 152 cards, both scored on Vintage's test packs: top-1 61.2%
+  vs 61.1%, difference +0.1 pts [−0.0, +0.2]; log-loss 0.879 vs 0.878
+  (+0.001 [+0.001, +0.001]). The two strength vectors correlate at Spearman
+  0.997. So the big cube's other 388 cards do not distort how humans order
+  the overlap cards: strengths learned among 540 cards order them as well as
+  strengths learned among those cards alone (to 0.1 point of accuracy).
+- **T2.** By choice-set size and by draft stage (top-1 on Vintage's packs),
+  (b) leads every baseline in every bin; see `results.json`.
+- **By drafter skill** (full packs, top-1 of (b)): under 50% win rate 46.8%,
+  50–60% 49.5%, 60%+ 51.2%. Stronger drafters are more predictable, and the
+  model fits them best.
+
+What this does **not** show, as said above: that a grid **line** chosen by
+human pick strength is better, that two-player denial, Winston's piles or
+paper players behave the same, or that the picks it predicts **win**. It
+predicts what Arena's players take. Those are different questions: the
+cards 17Lands' own win rates like and humans take late (below) are exactly
+where the two part.
+
+### What the human picks say (descriptive, not tested)
+
+1. **Humans draft blue and black, and leave green and white aggro.** Mean pick
+   strength of mono-coloured nonland cards over the whole Arena cube: blue
+   +0.44, red +0.03, white −0.01, black −0.04, green −1.01 (gold +0.84,
+   colourless +0.56: Moxen, Sol Ring and flexible cards). In Vintage's
+   nonland cards, the picks rank blue and black cards in the top half, while
+   ForgeCoach's card value ranks white and red there (mean rank percentile,
+   lower = earlier: white 0.52 by humans vs 0.27 by card value, black 0.42 vs
+   0.66). The cards humans take far earlier than our value says are black and
+   blue power — Toxic Deluge (#36 by humans, #119 by value), Thoughtseize (#21
+   vs #96), Demonic Tutor (#17 vs #72), Balance, Griselbrand, Dark Ritual — and
+   the ones we rate high and humans take late are white and red aggro:
+   Thraben Inspector (#91 vs #17), Goblin Rabblemaster, Lingering Souls,
+   Flickerwisp, Monastery Swiftspear. The second group are cards with good
+   17Lands win rates, which is why card value (it blends them in) likes
+   them: humans under-draft cheap aggressive cards relative to how they win.
+   In Modern-Era the disagreement is total (Spearman −0.34 between pick
+   strength and card value): the lab's favourites are green (Eternal Witness,
+   Tarmogoyf, Bloodbraid Elf), which humans take last. This is also a note
+   for J111: the Forge AI over-drafts blue, and so do humans.
+2. **Colour commitment roughly doubles in weight over the draft, while raw
+   card strength fades.** A card fully in the colours of a two-colour pool
+   (fit ≈ 0.5) gains about +1.0 log-odds at the start and +2.3 by the end,
+   while strength drops to 0.6×. With strengths spread at 1.7 log-odds (one
+   standard deviation), being on colour at the end is worth more than a card
+   one standard deviation stronger, which is what the advice's colour fit
+   already assumes; the pool features alone add 12.7 points of top-1 over
+   strength alone. Each off-colour colour costs about −1.1 to −1.4 log-odds,
+   and a dual in your colours is worth +1.8 to +2.1. Curve barely matters.
+3. **The Power is the Power.** The model's top ten are Black Lotus, the five
+   Moxen, Time Walk, Sol Ring, Ancestral Recall and Mana Crypt, then new
+   cards (Minsc & Boo, Tamiyo, Broadside Bombardiers, Ajani, Comet). The
+   files' first pick is missing from the data (*Data*), so these strengths
+   come from the picks after it.
+
+### What shipped
+
+- `public/cubes/<file>.picks.json` (schema 1) for Vintage, Omega, Modern-Era,
+  Evybaby, Synergy, Fair Fight and Peasant: the per-card strength, how often
+  the card was seen and taken in the data, its colours as the model saw them
+  (Scryfall's: the Vintage document files the colourless Moxen under their
+  colours, and Fair Fight and Evybaby one colourless card each), γ, β and the
+  feature constants, and the held-out top-1 of the model, cardValue and
+  pickValue.
+- `src/cube/humanPicks.ts`: the parser, the same features and utility as
+  fit.py (checked against fit.py's own features and probabilities on 30 held-out
+  picks, `src/cube/testdata/human-picks-golden.json`), and the words.
+- On screen, in the human-data blue: each card's "Humans take this early /
+  mid-pack / late · #k of N by human picks" in the pick screen's numbers
+  panel, and under the grid, Winston and booster advice "Of these, humans with
+  your pool would most often take X (p%), then Y". The credit names 17Lands,
+  links the dataset and licence, and says what the model is not. The advice's
+  ranking, the card value and the Forge AI drafter are unchanged.
+
+### Follow-ups (not done here)
+
+- **Draft vs AI opponent:** whether the human pick model makes a better Forge
+  AI drafter needs its own pre-registered test (and mtg-table parity).
+- **(c)** a boosted ranker on the same features: (b) gains 12.7 points over
+  (a), so pool context clearly matters; a richer ranker might find more
+  (synergy pairs, pick-order effects). It belongs on the lab PC.
+- **Advice ranking:** using the strengths inside `pickValue` would need a test
+  of what wins, not of what humans pick.

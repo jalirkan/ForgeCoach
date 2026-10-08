@@ -424,6 +424,23 @@ curl -O $B/game_data_public.Cube_-_Powered.TradDraft.csv.gz
 npm run human-cards -- --updated 2025-11-23 game_data_public.Cube_-_Powered.*.csv.gz
 ```
 
+**What humans pick (17Lands draft data).** A pick model fitted to 2.3 million
+human picks from 17Lands' Powered Cube *draft* data (a conditional logit: one
+strength per card, plus how the drafter's pool shifts it — colour fit,
+off-colour, duals, gold, curve, by how far into the draft). A pre-registered
+test ([docs/human-picks.md](docs/human-picks.md)) scored it on drafts it never
+saw: cut to the Vintage cube's cards, it names the card humans took 73% of the
+time, against 56% for this page's own pick advice and 46% for card value.
+Seven cubes ship `<file>.picks.json` for the cards they share with Arena's
+cube. The pick screen's numbers panel shows "Humans take this early · #12 of
+152 by human picks", and the grid, Winston and booster advice add "Of these,
+humans with your pool would most often take …", in the human-data blue. It is
+a signal beside the advice, not part of it: it predicts what Arena players
+take, not what wins (they take blue and black early and leave white and red
+aggro that wins well), and nobody has tested it on grid lines. To regenerate:
+see *Reproduce* in docs/human-picks.md (Python 3 with numpy and scipy, about
+15 minutes).
+
 The split-half test: `npm run human-cards -- … --half 0|1 --out DIR` writes each
 half, `npm run human-blend -- DIR/*.half0.json DIR/*.half1.json` runs it. Part
 2: with `--out DIR` (whole and both halves) every cube's file goes to DIR;

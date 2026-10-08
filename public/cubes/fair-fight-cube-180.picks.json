@@ -1,0 +1,333 @@
+{
+ "schema": 1,
+ "source": {
+  "name": "17Lands",
+  "page": "https://www.17lands.com/public_datasets",
+  "licence": "CC BY 4.0",
+  "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "dataset": "Powered Cube",
+  "files": [
+   "draft_data_public.Cube_-_Powered.PremierDraft.csv.gz",
+   "draft_data_public.Cube_-_Powered.TradDraft.csv.gz"
+  ],
+  "updated": "2025-12-01",
+  "changes": "A pick model fitted to the human picks (docs/human-picks.md): per-card pick strength and pool-context coefficients; matched to this cube by card name."
+ },
+ "generated": "2026-10-08",
+ "cube": {
+  "file": "fair-fight-cube-180.md",
+  "cards": 180,
+  "matched": 47
+ },
+ "picks": 2316631,
+ "drafts": 52652,
+ "model": {
+  "gamma": -0.3953,
+  "beta": {
+   "fit": 1.9386,
+   "fitT": 2.7434,
+   "off": -1.0818,
+   "offT": -0.3364,
+   "goldT": 1.0541,
+   "colourlessT": 0.7783,
+   "landT": 0.7624,
+   "dual": 1.8326,
+   "dualT": 0.2974,
+   "curve": 0.0826,
+   "curveT": -0.1223
+  },
+  "tScale": 44.0,
+  "offShare": 0.15,
+  "offMinPool": 3
+ },
+ "test": {
+  "picks": 17370,
+  "top1": 0.8244,
+  "top1CardValue": 0.3957,
+  "top1PickValue": 0.5849
+ },
+ "cards": {
+  "Thraben Inspector": {
+   "s": -0.282,
+   "seen": 41042,
+   "taken": 6085,
+   "colors": "W"
+  },
+  "Stoneforge Mystic": {
+   "s": 0.444,
+   "seen": 28273,
+   "taken": 4686,
+   "colors": "W"
+  },
+  "Blade Splicer": {
+   "s": -0.926,
+   "seen": 41788,
+   "taken": 4709,
+   "colors": "W"
+  },
+  "Flickerwisp": {
+   "s": -1.339,
+   "seen": 46135,
+   "taken": 4992,
+   "colors": "W"
+  },
+  "Skyclave Apparition": {
+   "s": 0.201,
+   "seen": 32031,
+   "taken": 5162,
+   "colors": "W"
+  },
+  "Elite Spellbinder": {
+   "s": 0.161,
+   "seen": 33967,
+   "taken": 5504,
+   "colors": "W"
+  },
+  "Swords to Plowshares": {
+   "s": 3.752,
+   "seen": 11428,
+   "taken": 5146,
+   "colors": "W"
+  },
+  "Ephemerate": {
+   "s": -1.308,
+   "seen": 42362,
+   "taken": 4140,
+   "colors": "W"
+  },
+  "Snapcaster Mage": {
+   "s": 1.449,
+   "seen": 18320,
+   "taken": 4165,
+   "colors": "U"
+  },
+  "Phantasmal Image": {
+   "s": -1.252,
+   "seen": 36736,
+   "taken": 3263,
+   "colors": "U"
+  },
+  "Brazen Borrower": {
+   "s": -0.113,
+   "seen": 28878,
+   "taken": 3842,
+   "colors": "U"
+  },
+  "Brainstorm": {
+   "s": -0.105,
+   "seen": 28710,
+   "taken": 3728,
+   "colors": "U"
+  },
+  "Ponder": {
+   "s": 0.17,
+   "seen": 28254,
+   "taken": 4166,
+   "colors": "U"
+  },
+  "Preordain": {
+   "s": 0.096,
+   "seen": 28671,
+   "taken": 4228,
+   "colors": "U"
+  },
+  "Counterspell": {
+   "s": 1.427,
+   "seen": 18029,
+   "taken": 3996,
+   "colors": "U"
+  },
+  "Mana Leak": {
+   "s": 1.829,
+   "seen": 17742,
+   "taken": 4634,
+   "colors": "U"
+  },
+  "Treasure Cruise": {
+   "s": -0.92,
+   "seen": 37508,
+   "taken": 4088,
+   "colors": "U"
+  },
+  "Woe Strider": {
+   "s": -2.699,
+   "seen": 52658,
+   "taken": 3647,
+   "colors": "B"
+  },
+  "Fatal Push": {
+   "s": 0.653,
+   "seen": 29645,
+   "taken": 4695,
+   "colors": "B"
+  },
+  "Bone Shards": {
+   "s": -0.837,
+   "seen": 39881,
+   "taken": 4076,
+   "colors": "B"
+  },
+  "Night's Whisper": {
+   "s": -1.136,
+   "seen": 42358,
+   "taken": 3814,
+   "colors": "B"
+  },
+  "Unearth": {
+   "s": -1.495,
+   "seen": 45199,
+   "taken": 3959,
+   "colors": "B"
+  },
+  "Monastery Swiftspear": {
+   "s": -1.828,
+   "seen": 46384,
+   "taken": 4395,
+   "colors": "R"
+  },
+  "Bomat Courier": {
+   "s": -1.225,
+   "seen": 46586,
+   "taken": 4645,
+   "colors": ""
+  },
+  "Kari Zev, Skyship Raider": {
+   "s": -0.655,
+   "seen": 38827,
+   "taken": 5037,
+   "colors": "R"
+  },
+  "Bonecrusher Giant": {
+   "s": 0.188,
+   "seen": 30776,
+   "taken": 4729,
+   "colors": "R"
+  },
+  "Hellrider": {
+   "s": -1.316,
+   "seen": 42295,
+   "taken": 4612,
+   "colors": "R"
+  },
+  "Lightning Bolt": {
+   "s": 2.451,
+   "seen": 16460,
+   "taken": 5448,
+   "colors": "R"
+  },
+  "Chain Lightning": {
+   "s": 0.772,
+   "seen": 28024,
+   "taken": 5498,
+   "colors": "R"
+  },
+  "Llanowar Elves": {
+   "s": -0.7,
+   "seen": 36092,
+   "taken": 3391,
+   "colors": "G"
+  },
+  "Scavenging Ooze": {
+   "s": -1.856,
+   "seen": 46701,
+   "taken": 3178,
+   "colors": "G"
+  },
+  "Tireless Tracker": {
+   "s": -0.881,
+   "seen": 38737,
+   "taken": 3365,
+   "colors": "G"
+  },
+  "Sentinel of the Nameless City": {
+   "s": -0.547,
+   "seen": 41219,
+   "taken": 4235,
+   "colors": "G"
+  },
+  "Eternal Witness": {
+   "s": -1.345,
+   "seen": 43346,
+   "taken": 3474,
+   "colors": "G"
+  },
+  "Baleful Strix": {
+   "s": 0.855,
+   "seen": 28267,
+   "taken": 4133,
+   "colors": "UB"
+  },
+  "Ertai Resurrected": {
+   "s": -0.599,
+   "seen": 40851,
+   "taken": 3909,
+   "colors": "UB"
+  },
+  "Bloodtithe Harvester": {
+   "s": -0.628,
+   "seen": 47880,
+   "taken": 4841,
+   "colors": "BR"
+  },
+  "Saheeli, Sublime Artificer": {
+   "s": 0.421,
+   "seen": 34406,
+   "taken": 4368,
+   "colors": "UR"
+  },
+  "Lightning Helix": {
+   "s": 0.222,
+   "seen": 36766,
+   "taken": 5321,
+   "colors": "WR"
+  },
+  "Shadowspear": {
+   "s": -1.092,
+   "seen": 40590,
+   "taken": 3403,
+   "colors": ""
+  },
+  "The Mightstone and Weakstone": {
+   "s": -0.454,
+   "seen": 35891,
+   "taken": 3985,
+   "colors": ""
+  },
+  "Restless Vents": {
+   "s": -1.906,
+   "seen": 49685,
+   "taken": 4436,
+   "colors": ""
+  },
+  "Restless Ridgeline": {
+   "s": -2.366,
+   "seen": 52227,
+   "taken": 4229,
+   "colors": ""
+  },
+  "Restless Prairie": {
+   "s": -2.9,
+   "seen": 55317,
+   "taken": 4098,
+   "colors": ""
+  },
+  "Restless Cottage": {
+   "s": -2.582,
+   "seen": 51351,
+   "taken": 3785,
+   "colors": ""
+  },
+  "Restless Fortress": {
+   "s": -2.18,
+   "seen": 51315,
+   "taken": 4244,
+   "colors": ""
+  },
+  "Restless Vinestalk": {
+   "s": -2.269,
+   "seen": 48237,
+   "taken": 3804,
+   "colors": ""
+  }
+ }
+}

@@ -583,7 +583,9 @@ def write_picks(D, cube, cols, b, results, ship_dir):
     cards = {}
     for c in cube['cards']:
         i = D.names.index(c['col'])
-        cards[c['name']] = {'s': round(float(b.s[i]), 3), 'seen': int(cnt[i]), 'taken': int(taken[i])}
+        # The colours the features were fitted with (Scryfall's; a cube document may file a colourless
+        # Mox under its colour), so the page computes the features from the same facts.
+        cards[c['name']] = {'s': round(float(b.s[i]), 3), 'seen': int(cnt[i]), 'taken': int(taken[i]), 'colors': (D.facts['arena'].get(c['col']) or {}).get('colors', '')}
     r = results['cubes'][cube['id']]
     doc = {
         'schema': 1,

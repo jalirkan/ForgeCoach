@@ -14,6 +14,7 @@ import { IconPlus, IconSpark, IconTrash } from '../Icons.tsx';
 import { cx } from '../util.ts';
 import { CubeCard } from './CubeCard.tsx';
 import { CardPicker } from './sheets.tsx';
+import { HumanPickAdvice, HumanPicksSource, useHumanPicks } from '../HumanPicks.tsx';
 
 const EMPTY: Array<string | null> = [null, null, null, null, null, null, null, null, null];
 
@@ -24,6 +25,7 @@ export function GridView({ ctx, pool, onChange, onInfo }: { ctx: CubeContext; po
   const filled = slots.filter(Boolean).length;
   const advice = useMemo(() => (filled >= 2 ? recommendGrid(slots, pool.cards, ctx, pool.opp) : null), [slots, filled, pool.cards, pool.opp, ctx]);
   const best = advice?.best ?? null;
+  const humanPicks = useHumanPicks(pool.cubeId);
   const prof = useMemo(() => poolProfile(pool.cards, ctx), [pool.cards, ctx]);
   const totals = new Map(advice?.options.map((o) => [o.line.id, o.total]) ?? []);
   const exclude = useMemo(() => new Set([...pool.cards, ...pool.opp, ...slots.filter((s): s is string => !!s)]), [pool.cards, pool.opp, slots]);
@@ -142,6 +144,7 @@ export function GridView({ ctx, pool, onChange, onInfo }: { ctx: CubeContext; po
                   = <b>{best.total}</b>
                 </span>
               </div>
+              <HumanPickAdvice data={humanPicks} names={slots.filter((s): s is string => !!s)} pool={pool.cards} ctx={ctx} />
             </div>
             <div className="card-box adv-list">
               <div className="box-h">Every line</div>
@@ -153,6 +156,7 @@ export function GridView({ ctx, pool, onChange, onInfo }: { ctx: CubeContext; po
                 </div>
               ))}
               {!pool.opp.length && advice.first && <p className="tiny muted">Their replies are judged by plain card value — record their picks (“They pick”) to judge them for their colours.</p>}
+              {humanPicks && <HumanPicksSource data={humanPicks} />}
             </div>
           </>
         )}

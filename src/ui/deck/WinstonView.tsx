@@ -13,6 +13,7 @@ import { IconPlus, IconX } from '../Icons.tsx';
 import { cx } from '../util.ts';
 import { CubeCard } from './CubeCard.tsx';
 import { CardPicker } from './sheets.tsx';
+import { HumanPickAdvice, HumanPicksSource, useHumanPicks } from '../HumanPicks.tsx';
 
 export function WinstonView({ ctx, pool, onChange, onInfo }: { ctx: CubeContext; pool: SavedPool; onChange: (p: SavedPool) => void; onInfo: (n: string) => void }) {
   const pile = pool.pile ?? [];
@@ -24,6 +25,7 @@ export function WinstonView({ ctx, pool, onChange, onInfo }: { ctx: CubeContext;
     () => (pile.length ? recommendWinston({ pile, pileIndex: idx, sizes, pool: pool.cards, oppPool: pool.opp }, ctx) : null),
     [pile, idx, sizes, pool.cards, pool.opp, ctx],
   );
+  const humanPicks = useHumanPicks(pool.cubeId);
   const exclude = useMemo(() => new Set([...pool.cards, ...pool.opp, ...pile]), [pool.cards, pool.opp, pile]);
 
   return (
@@ -111,6 +113,8 @@ export function WinstonView({ ctx, pool, onChange, onInfo }: { ctx: CubeContext;
                 <li key={i}>{r}</li>
               ))}
             </ul>
+            <HumanPickAdvice data={humanPicks} names={pile} pool={pool.cards} ctx={ctx} />
+            {humanPicks && <HumanPicksSource data={humanPicks} />}
           </div>
         )}
       </div>
