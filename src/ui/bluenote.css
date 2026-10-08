@@ -1,0 +1,25 @@
+/*
+ * ForgeCoach — ui/bluenote.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * J111's blue lines (BlueNote.tsx): the lab's gold rule, as labtrust.css, so
+ * they read as part of the Forge lab's numbers and never as human data's blue
+ * (human.css).
+ */
+.bn {
+  --bn-rgb: var(--fx-gold-rgb, 201, 164, 92);
+  display: block;
+  margin: 6px 0 8px;
+  padding: 2px 0 2px 8px;
+  border-left: 2px solid rgba(var(--bn-rgb), 0.8);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-2, var(--text, inherit));
+}
+.bn-label {
+  font: 600 10.5px/1.6 var(--mono, ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--bn-rgb));
+  margin-right: 6px;
+}

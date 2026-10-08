@@ -42,6 +42,8 @@ import { Collection, usePrefs, ViewBar } from '../draft/Collection.tsx';
 import { ColourDots, MiniCurve } from '../draft/Pool.tsx';
 import { useCubeMeta } from '../draft/useCubeMeta.ts';
 import { kindCounts } from '../../draft/poolView.ts';
+import { buildShowsPairRate } from '../../draft/blueNote.ts';
+import { BlueCaveat } from '../BlueNote.tsx';
 
 const SPELL_OPTS: SpellCount[] = ['auto', 22, 23, 24];
 
@@ -181,6 +183,7 @@ export function BuildView({
                 <li key={i}>{r}</li>
               ))}
             </ul>
+            {buildShowsPairRate(current.metaArchetype, ctx.meta?.meta.archetypes) && <BlueCaveat cubeId={pool.cubeId} colors={current.colors} />}
             {current.cuts.length > 0 && (
               <>
                 <div className="box-h bv-cuts-h">Left out</div>

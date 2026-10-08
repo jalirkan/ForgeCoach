@@ -35,6 +35,7 @@ import { AiBanner, Dock, Kebab, SeatChips, Timer, useCountdown, type Action, typ
 import { PoolPanel, PoolSheet } from './Pool.tsx';
 import { useCubeMeta } from './useCubeMeta.ts';
 import { LabNumbers } from './LabNumbers.tsx';
+import { BlueOverdraftNote } from '../BlueNote.tsx';
 import type { DraftGame } from './useDraftGame.ts';
 import { WinstonBoard } from './WinstonBoard.tsx';
 
@@ -277,6 +278,8 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
             ))}
           </div>
         )}
+        {/* J111: the AI drafter's blue over-draft. Not with a friend: the friend is not the AI drafter. */}
+        {!opponent && <BlueOverdraftNote cubeId={d.cubeId} />}
         <LabNumbers names={offerNames} ctx={ctx} cubeId={d.cubeId} />
       </section>
 
