@@ -9,7 +9,7 @@ import { aiStep, apply, newDraft, selfPlay, toAct } from './draft.ts';
 import { poolColours } from '../cube/pick.ts';
 import { guideFor, guidePromptSection } from '../cube/guides/index.ts';
 import { matchDeck } from './deck.ts';
-import { advertisedPolicies, advertisedSearchBudget, AI_POLICIES, AI_PROFILES, isAiProfile, checkRequest, deckSize, engineHealth, policyFields, ensureEngineAwake, launcherStatus, launchMatch, matchSupported, wakeEngine, safeDeckName, type MatchRequest } from './launch.ts';
+import { advertisedPolicies, advertisedSearchBudget, AI_POLICIES, AI_PROFILES, isAiProfile, checkRequest, deckSize, defaultPolicy, effectivePolicy, engineHealth, policyFields, ensureEngineAwake, launcherStatus, launchMatch, matchSupported, wakeEngine, safeDeckName, type MatchRequest } from './launch.ts';
 import { buildPickPrompt } from './pickPrompt.ts';
 import { clearDraft, DRAFT_KEY, loadDraft, saveDraft } from './store.ts';
 
@@ -266,6 +266,75 @@ describe('plain Play vs Forge picks the AI profile (mtg-table D381)', () => {
   it('a 400 brings its problems back', async () => {
     const r = recorder(idle, () => json(400, { ok: false, type: 'error', message: 'Bad request', problems: ['aiProfile: unknown profile "Hard"'] }));
     expect(await ensureEngineAwake({ fetch: r.f, target, aiProfile: 'Cautious' })).toMatchObject({ ok: false, status: 400, message: 'Bad request', problems: ['aiProfile: unknown profile "Hard"'] });
+  });
+});
+
+describe('the search AI is the default opponent (mtg-table D414)', () => {
+  const target = { baseUrl: 'http://127.0.0.1:8643', token: null };
+  const json = (status: number, body: unknown) => Promise.resolve({ ok: status < 300, status, json: () => Promise.resolve(body) });
+  const ALL = ['plain', 'outlets', 'search'];
+  const idle = { ok: true, helper: 1, match: 1, engine: 'idle', engine_start: 1, engine_start_profile: 1, engine_start_policy: 1, aiPolicies: ALL };
+  const started = { ok: true, already: false, yourDeck: { name: 'x', path: null, cards: 40 }, aiDeck: { name: 'y', cards: 40 }, aiProfile: 'Default', aiPolicy: 'search', games: 1, ms: 9000, warnings: [] };
+  const recorder = (health: unknown, reply: () => ReturnType<typeof json> = () => json(200, started)) => {
+    const calls: Array<{ path: string; body: unknown }> = [];
+    const f = vi.fn((u: string, i?: RequestInit) => {
+      calls.push({ path: u.replace(target.baseUrl, ''), body: i?.body });
+      return u.endsWith('/health') ? json(200, health) : reply();
+    });
+    return { f, calls };
+  };
+
+  it('pickers start on search when it is offered, else on plain Forge', () => {
+    expect(defaultPolicy({ aiPolicies: ['plain', 'outlets', 'search'] })).toBe('search');
+    expect(defaultPolicy({ aiPolicies: ['plain', 'outlets'] })).toBe('plain');
+    expect(defaultPolicy({ aiPolicies: [] })).toBe('plain');
+    expect(defaultPolicy(null)).toBe('plain');
+    expect(effectivePolicy('search', { aiPolicies: ['plain'] })).toBe('plain');
+    expect(policyFields(defaultPolicy({ aiPolicies: ['plain', 'search'] }), { aiPolicies: ['plain', 'search'] })).toEqual({ aiPolicy: 'search' });
+  });
+
+  it('reads engine_start_policy from /health, only beside engine_start and a policy list', async () => {
+    expect((await engineHealth({ fetch: () => json(200, idle), target })).canPickPolicy).toBe(true);
+    expect((await engineHealth({ fetch: () => json(200, { ...idle, engine_start_policy: undefined }), target })).canPickPolicy).toBeUndefined();
+    expect((await engineHealth({ fetch: () => json(200, { ...idle, engine_start: undefined }), target })).canPickPolicy).toBeUndefined();
+    expect((await engineHealth({ fetch: () => json(200, { ...idle, aiPolicies: undefined }), target })).canPickPolicy).toBeUndefined();
+  });
+
+  it('wakeEngine sends {"aiPolicy"} beside {"aiProfile"}', async () => {
+    const f = vi.fn((_u: string, _i?: RequestInit) => json(200, started));
+    await wakeEngine({ fetch: f, target, aiPolicy: 'search' });
+    expect(JSON.parse(String(f.mock.calls[0]![1]!.body))).toEqual({ aiPolicy: 'search' });
+    await wakeEngine({ fetch: f, target, aiPolicy: 'plain', aiProfile: 'Cautious' });
+    expect(JSON.parse(String(f.mock.calls[1]![1]!.body))).toEqual({ aiProfile: 'Cautious', aiPolicy: 'plain' });
+    await wakeEngine({ fetch: f, target });
+    expect(f.mock.calls[2]![1]!.body).toBeUndefined();
+  });
+
+  it('asleep: the picked AI goes to a helper that takes it, as plain when the helper does not offer it; never to an older helper', async () => {
+    const a = recorder(idle);
+    expect(await ensureEngineAwake({ fetch: a.f, target, aiPolicy: 'search' })).toMatchObject({ ok: true, woke: true, policySent: true });
+    expect(JSON.parse(String(a.calls[1]!.body))).toEqual({ aiPolicy: 'search' });
+    const noSearch = recorder({ ...idle, aiPolicies: ['plain', 'outlets'] });
+    await ensureEngineAwake({ fetch: noSearch.f, target, aiPolicy: 'search' });
+    expect(JSON.parse(String(noSearch.calls[1]!.body))).toEqual({ aiPolicy: 'plain' });
+    const old = recorder({ ...idle, engine_start_policy: undefined });
+    expect(await ensureEngineAwake({ fetch: old.f, target, aiPolicy: 'search' })).toMatchObject({ ok: true, woke: true, policySent: false });
+    expect(old.calls[1]!.body).toBeUndefined();
+  });
+
+  it('running: the pick still goes out so the "not applied" warning reaches the player; nothing restarts', async () => {
+    const warn = "the engine is already running against Forge's own AI; search was not applied — nothing is restarted while a match runs";
+    const r = recorder({ ...idle, engine: 'running' }, () => json(200, { ok: true, already: true, aiPolicy: 'plain', warnings: [warn] }));
+    const onWaking = vi.fn();
+    expect(await ensureEngineAwake({ fetch: r.f, target, aiPolicy: 'search', onWaking })).toMatchObject({ ok: true, already: true, woke: false, policySent: true, warnings: [warn] });
+    expect(onWaking).not.toHaveBeenCalled();
+    const q = recorder({ ...idle, engine: 'running', engine_start_policy: undefined, engine_start_profile: undefined });
+    expect(await ensureEngineAwake({ fetch: q.f, target, aiPolicy: 'search' })).toMatchObject({ ok: true, woke: false, policySent: false });
+    expect(q.calls.map((c) => c.path)).toEqual(['/health']);
+  });
+
+  it('the search AI blurb names it the default', () => {
+    expect(AI_POLICIES.find((p) => p.id === 'search')!.blurb).toMatch(/default \(search-v2\)/);
   });
 });
 

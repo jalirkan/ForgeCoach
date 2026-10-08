@@ -12,6 +12,7 @@ import { cx } from './util.ts';
 import { ScenerySettings } from './ambience/ScenerySettings.tsx';
 import { setFeedbackList, useFeedbackList } from './AdviceFeedback.tsx';
 import { exportFeedback } from '../feedback.ts';
+import { COACH_USE_KEY, coachUseStorage, exportCoachUse, loadCoachUse } from '../coachUse.ts';
 import { installOffer, onInstallChange, promptInstall } from '../pwa/install.ts';
 
 /** Coach thinking (D346): how long Claude Code on the PC may think before it answers. */
@@ -187,6 +188,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         </fieldset>
         <ScenerySettings />
         <AdviceFeedbackField />
+        <CoachUseField />
         <InstallField />
         {s.apiKey && (
           <button
@@ -315,6 +317,57 @@ function InstallField() {
         </>
       ) : (
         <span className="field-help">On iPhone and iPad: Share → Add to Home Screen. It then opens full-screen, like an app.</span>
+      )}
+    </div>
+  );
+}
+
+/** Settings → Coach use (mtg-table D414): per game against the AI, how many coach answers were shown; the JSON export for the human test set. */
+function CoachUseField() {
+  const [list, setList] = useState(() => loadCoachUse(coachUseStorage()));
+  const used = list.filter((g) => g.plans + g.asks > 0).length;
+  const exportJson = () => {
+    const text = JSON.stringify(exportCoachUse(list), null, 2);
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `coach-usage-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  return (
+    <div className="field" data-testid="coach-use-field">
+      <span className="field-label">Coach use</span>
+      <span className="field-help">
+        {list.length
+          ? `${list.length} game${list.length === 1 ? '' : 's'} against the AI: ${used} with the coach’s advice, ${list.length - used} without.`
+          : 'No game against the AI recorded in this browser yet.'}{' '}
+        Kept in this browser only: per game, how many coach answers were shown and which model — never the advice. Save the export in mtg-table’s
+        var/ml/human/ folder and its human test set marks which games you played with the coach.
+      </span>
+      {list.length > 0 && (
+        <div className="field-row">
+          <button type="button" className="btn btn-sm" onClick={exportJson}>
+            Export JSON
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-quiet"
+            onClick={() => {
+              if (!confirm('Delete the coach-use record of every game stored in this browser?')) return;
+              try {
+                coachUseStorage()?.removeItem(COACH_USE_KEY);
+              } catch {
+                /* blocked storage: nothing to clear */
+              }
+              setList([]);
+            }}
+          >
+            Clear
+          </button>
+        </div>
       )}
     </div>
   );

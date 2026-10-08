@@ -14,7 +14,7 @@ import './lobby.css';
 import { LobbyTiles, lobbyTiles } from './LobbyTiles.tsx';
 import { DEFAULT_LIVE_URL, FALLBACK_LIVE_URL } from '../live.ts';
 import { redactSeatUrl, type SeatStatus } from '../play/session.ts';
-import { PlayProfilePicker, usePlayProfileOffered } from './PlayProfile.tsx';
+import { PlayPolicyPicker, PlayProfilePicker, usePlayChoices } from './PlayProfile.tsx';
 import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconPlay, IconUpload } from './Icons.tsx';
 import { copyText, cx } from './util.ts';
 import { Logo } from './Logo.tsx';
@@ -156,8 +156,8 @@ function EnginePanel({
     if (failed || (play && play.attempts > 0)) setHelpOpen(true);
   }, [failed, play]);
   const cmd = ENGINE_CMD + portArg(url);
-  // mtg-table D381: the helper takes an AI profile for plain Play (asked again after a failed try).
-  const profileOffered = usePlayProfileOffered(play?.status ?? null);
+  // mtg-table D381 / D414: the helper takes an AI profile and an opponent AI for plain Play (asked again after a failed try).
+  const choices = usePlayChoices(play?.status ?? null);
   if (engineServed && !play) return null;
   return (
     <section className="play-card engine-panel" aria-label="The Forge engine">
@@ -174,7 +174,8 @@ function EnginePanel({
         ) : null}
       </div>
       <SeatStatusBox play={play} url={url} />
-      {profileOffered && <PlayProfilePicker disabled={busy} />}
+      {choices.policies.length > 0 && <PlayPolicyPicker policies={choices.policies} disabled={busy} />}
+      {choices.profile && <PlayProfilePicker disabled={busy} />}
       {!engineServed && (
         <details className="play-help" open={helpOpen} onToggle={(e) => setHelpOpen((e.target as HTMLDetailsElement).open)}>
           <summary>
@@ -244,7 +245,7 @@ function EngineConnect({
 }) {
   const busy = play !== null && (play.status === 'connecting' || play.status === 'idle' || play.status === 'open');
   const failed = play !== null && !busy;
-  const profileOffered = usePlayProfileOffered(play?.status ?? null);
+  const choices = usePlayChoices(play?.status ?? null);
   return (
     <div className="engine-connect">
       <header className="load-top">
@@ -265,7 +266,8 @@ function EngineConnect({
               : 'The Forge engine on your computer served this page. You play from here; the coach is one tap away.'}
           </p>
           <SeatStatusBox play={play} url={seatUrl} />
-          {profileOffered && !busy && <PlayProfilePicker />}
+          {choices.policies.length > 0 && !busy && <PlayPolicyPicker policies={choices.policies} />}
+          {choices.profile && !busy && <PlayProfilePicker />}
           {busy ? (
             <button className="btn btn-quiet engine-connect-go" onClick={onCancel}>
               Cancel

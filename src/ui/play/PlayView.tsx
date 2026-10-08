@@ -62,6 +62,8 @@ import { gameFacts } from '../../bug/report.ts';
 import { tableRoom } from '../../bug/deliver.ts';
 import { loadFriendTable } from '../../play/friendTable.ts';
 import { redactSeatUrl } from '../../play/seatUrl.ts';
+import { coachUseStorage, noteGamePlayed } from '../../coachUse.ts';
+import { gameKeyOf } from './autoPlan.ts';
 import './play.css';
 import './controls.css';
 import './log.css';
@@ -126,6 +128,12 @@ export function PlayView({
   const seat = snap.seat ?? log?.seat ?? null;
   const wide = useMediaQuery('(min-width: 1024px)');
   const connected = status === 'open';
+  // mtg-table D414: a game against the AI is noted for coach use per game (coachUse.ts); never a table of two.
+  const coachUseGame = gameKeyOf(log, seat);
+  const againstAi = !!log?.hello && !opponentIsHuman(log.hello) && snap.table === null;
+  useEffect(() => {
+    if (coachUseGame && againstAi) noteGamePlayed(coachUseStorage(), coachUseGame);
+  }, [coachUseGame, againstAi]);
 
   if (import.meta.env.DEV) (window as unknown as { __forgecoach?: unknown }).__forgecoach = snap;
   const view = useMemo(() => describeInput(input, state, seat, { ask, over: !!over }), [input, state, seat, ask, over]);
