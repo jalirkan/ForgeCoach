@@ -97,7 +97,10 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   the pick screen's Lab numbers panel and `CardInfoSheet` (its `cubeId` prop).
   `--half 0|1 --out DIR` splits by draft id for the split-half test
   (`blendTest.ts`, `blendCli.ts`, `npm run human-blend`; part 2 in
-  `part2Cli.ts`: `--cube <id> DIR`, `agree DIR`, files from `--out DIR`). `score.ts`
+  `part2Cli.ts`: `--cube <id> DIR`, `agree DIR`, files from `--out DIR`; part 3
+  in `part3Cli.ts` + `colourOffsets.ts`: `colour`, a per-colour correction of
+  the lab's win rates from Forge data only, which failed its pre-registered
+  test — Vintage rho 0.469 → 0.300 — so the app does not use it). `score.ts`
   `cardValue` blends it in (see `cube/` above; `ui/deck/useCubeData.ts` loads it
   into the context via `humanCardsFor`); the card sheet shows
   `humanValueLine`, grid/Winston/booster/builder reasons `humanValueNote`.
