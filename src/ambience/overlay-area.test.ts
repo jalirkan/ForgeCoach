@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { areaBytes, AREA_MIN_WIDTH_PX, hasAreaPieces, MAX_AREA_BYTES, overlayBytes, overlayUrls, validateManifest, type OverlayArea } from './manifest.ts';
-import { areaPlacement, builtinAreaPiece, DEFAULT_AREA, overlayPieces } from './overlay.ts';
+import { areaPlacement, builtinAreaPiece, DEFAULT_AREA, mirrorAnchor, overlayPieces } from './overlay.ts';
 import { builtinAreaSrc } from '../ui/ambience/overlayArt.ts';
 import { accentGolden, compactGolden } from './testdata/accentGolden.ts';
 import type { Biome, SlotState } from './model.ts';
@@ -172,10 +172,12 @@ describe('spec 1.4: placement', () => {
     expect(islandLeads.filter((p) => p.anchor === 'area').map((p) => p.key)).toEqual(['island:ia:area']);
   });
 
-  it('mirrors on the opponent side unless mirror is false', () => {
-    const r = validateManifest(pack([{ overlay: [area('a')] }]), BASE).pack;
-    expect(overlayPieces([slot('forest', 0, 1, 1)], r, { side: 'top', widthPx: 900, reduced: false }).map((p) => [p.anchor, p.flipY])).toEqual([['area', true]]);
-    expect(overlayPieces([slot('forest', 0, 1, 1)], r, { side: 'bottom', widthPx: 900, reduced: false }).map((p) => [p.anchor, p.flipY])).toEqual([['area', false]]);
+  it('is never flipped vertically on the opponent side, whatever mirror says', () => {
+    const r = validateManifest(pack([{ overlay: [area('a'), vine('v')] }]), BASE).pack;
+    const top = overlayPieces([slot('forest', 0, 1, 1)], r, { side: 'top', widthPx: 900, reduced: false });
+    expect(top.map((p) => [p.piece.id, p.anchor, p.flipY])).toEqual([['a', 'area', false], ['v', 'top-left', true]]);
+    expect(mirrorAnchor('area', 'top', true)).toEqual({ anchor: 'area', flipY: false });
+    expect(overlayPieces([slot('forest', 0, 1, 1)], r, { side: 'bottom', widthPx: 900, reduced: false }).filter((p) => p.anchor === 'area').map((p) => p.flipY)).toEqual([false]);
     const still = validateManifest(pack([{ overlay: [area('a', { mirror: false })] }]), BASE).pack;
     expect(overlayPieces([slot('forest', 0, 1, 1)], still, { side: 'top', widthPx: 900, reduced: false }).map((p) => [p.anchor, p.flipY])).toEqual([['area', false]]);
   });

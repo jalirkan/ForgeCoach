@@ -334,7 +334,8 @@ opponent's side, at the top of the board, a piece with `mirror` (the default)
 swaps top and bottom (`bottom-left` → `top-left`, `bottom-edge` → `top-edge`)
 and is flipped vertically, so it hugs their outer edge the same way. Left
 and right never swap. With `mirror: false` the piece keeps its anchor and is
-drawn as is.
+drawn as is. A full-area piece (`anchor: "area"`, 1.4) is the exception: it is
+never flipped vertically (see *Full-area pieces*).
 
 **Several biomes: split by slot.** The strip shows a player's biomes left to
 right in slot order, and the accents follow it:
@@ -507,7 +508,7 @@ keep them at the rim and in the gaps, as the mock-ups do.
 | `blend` | as layers | `normal` | |
 | `motion` | `none` \| `sway` \| `drift` \| `breathe` | `none` | CSS only, smaller than a corner's, as the picture is the size of the area: `sway` turns ±0.35° about the outer edge's middle, `drift` shifts ±0.6%, `breathe` grows 1.2% and brightens a little. |
 | `periodMs` | 2000–60000 (whole) | 9000 | |
-| `mirror` | boolean | `true` | On the opponent's side the picture is flipped vertically, so its outer edge is their (top) edge. Left and right do not swap. `false`: drawn as is. |
+| `mirror` | boolean | `true` | Ignored on an area piece: a full-area piece is **never flipped vertically** for the opponent (below). Accepted for compatibility. |
 | `minWidthPx` | 300–4096 (whole) | 600 | Not drawn when the player's area is narrower than this, in CSS px. |
 | `bytes` | whole number | — | The size of `src` + `src2x`, for the full-area budget (§3). |
 
@@ -531,6 +532,7 @@ land is quiet. A stage without `overlay` keeps the previous stage's pieces,
 the area piece included.
 
 **Rendering rules** (in addition to those of *Board accents*):
+- **Never flipped for the opponent.** The picture is drawn upright on both sides, whatever `mirror` says, and left and right do not swap. A full-area piece is composed as objects lying low on the mat (plus things hanging from the rim); flipped, those objects would land at the top of the opponent's half, in their landscape's sky. Upright, its ground objects sit along the **centre seam** of the opponent's half, so both players' accents gather at the middle of the table. Compose with that in mind: what lies low on your side lies by the seam on theirs.
 - **Z-order**, bottom to top: the area's background, **the full-area piece**, the strip (with its fade) and effects, the corner and edge pieces, then every card, label and control. So the strip paints over the picture's bottom band (on your side, the outer quarter or so of the area, where the strip is solid) and the picture shows through as the strip fades; keep what matters above that band.
 - **Clipped to the area**, never takes clicks or taps, and screen readers skip it, as other accents.
 - **Small screens.** Hidden under `minWidthPx` (600 px by default). Between 300 and 600 px, where only corners show, an area piece whose `minWidthPx` allows it still shows, but still (no motion). Under 300 px, no accents at all.
