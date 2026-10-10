@@ -8,9 +8,10 @@ import { blueCaveat, blueOverdraftLine, blueStatsFor, buildShowsPairRate, hasBlu
 import { DRAFT_CUBES } from '../cube/cubes.ts';
 
 describe('J111 data', () => {
-  it('covers every cube but Evan’s, and only real cubes', () => {
+  it('covers every cube J111 measured (not Evan’s, nor the Final Fantasy cube, made after it), and only real cubes', () => {
     const ids = DRAFT_CUBES.map((c) => c.id);
-    expect(Object.keys(BLUE_J111).sort()).toEqual(ids.filter((id) => id !== 'evybaby').sort());
+    expect(Object.keys(BLUE_J111).sort()).toEqual(ids.filter((id) => id !== 'evybaby' && id !== 'final-fantasy').sort());
+    expect(blueStatsFor('final-fantasy')).toBeNull();
     expect(Object.keys(BLUE_J111)).toHaveLength(7);
   });
 

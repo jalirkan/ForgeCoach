@@ -62,6 +62,7 @@ export const CUBE_ART: Record<string, string> = {
   'fair-fight': 'Skyclave Apparition',
   peasant: 'Mayhem Devil',
   evybaby: 'Brazen Borrower',
+  'final-fantasy': 'Summon: Bahamut',
   'counter-blitz': "Tidus, Yuna's Guardian",
 };
 

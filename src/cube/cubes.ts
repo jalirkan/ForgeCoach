@@ -55,6 +55,8 @@ export const CUBES: CubeInfo[] = [
   // Evan's own list, as he titled it (public/cubes/evybaby-cube-360.md): no themes, archetypes or guide.
   // Its lab meta (J110) drafted around the 13 cards Forge lacks; those have no lab numbers (meta.ts).
   { id: 'evybaby', file: 'evybaby-cube-360', title: "Evybaby's New Cube", short: 'Evybaby', size: 360, blurb: 'Evan’s cube: 360 cards, Avatar to Middle-earth to pizza, with shocks, surveil lands and fetches.', accent: 'WUBRG', humanPicks: true },
+  // Claude's 180 from the Final Fantasy release (public/cubes/final-fantasy-cube-180.md), picked with 17Lands' FIN draft data.
+  { id: 'final-fantasy', file: 'final-fantasy-cube-180', title: 'Final Fantasy Cube', size: 180, blurb: 'The best of the Final Fantasy set: Summons, Job select heroes, Tiered magic and ten guild decks.', accent: 'WUBRG', labData: false },
   // Justin's Final Fantasy X Commander deck (public/cubes/counter-blitz-fic.md): its 88 cards that work outside Commander, basics aside.
   { id: 'counter-blitz', file: 'counter-blitz-fic', title: 'Counter Blitz', size: 88, blurb: 'Your Final Fantasy X Commander deck: +1/+1 counters in green, white and blue. Build 40s from it.', accent: 'WUG', labData: false, kind: 'deck' },
 ];
