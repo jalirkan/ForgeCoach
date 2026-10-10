@@ -60,7 +60,7 @@ import { PlanCoach } from './PlanCoach.tsx';
 import './coach.css';
 
 const AUTO_KEY = 'forgecoach.autoCoach';
-export const AUTO_HELP = 'Plans your next turn during your opponent’s end step.';
+export const AUTO_HELP = 'Plans your next turn at their end step.';
 
 /**
  * The live coach's supersede keys (D325), one per tab — a tab is one seat, also
@@ -241,7 +241,7 @@ const StyleCoach = memo(function StyleCoach({
     <div className="coach play-coach">
       <div className="pc-head">
         <div className="pc-title">Coach</div>
-        <label className="switch" title={`${AUTO_HELP} Uses Claude Code on your PC, or your API key.`}>
+        <label className="switch" title={`${AUTO_HELP} Answers come from Claude Code on your PC or your API key (Settings → Coach source).`}>
           <input
             type="checkbox"
             checked={auto}

@@ -638,14 +638,14 @@ export function PlayView({
   const liveWords = connected ? 'Connected' : status === 'connecting' ? 'Connecting' : status === 'refused' ? 'Seat taken' : 'Disconnected';
   const header = (
     <header className={cx('topbar', wide && 'play-side-top')}>
-      <button className="logo-btn" onClick={onLeave} aria-label="Back to start">
+      <button className="logo-btn" onClick={onLeave} aria-label="Back to the start">
         <Logo compact />
       </button>
       <div className="topbar-title">
         <span className="topbar-game">You vs {oppName}</span>
         <span className="topbar-sub">
           {!wide && match ? <MatchScore match={match} inline /> : null}
-          {[match ? null : gameNo, myDeck].filter(Boolean).join(' · ') || (match ? '' : 'Playing live')}
+          {[match ? null : gameNo, myDeck].filter(Boolean).join(' · ') || (match ? '' : 'Game in progress')}
         </span>
       </div>
       {wide && <span className="side-break" aria-hidden="true" />}
@@ -669,7 +669,7 @@ export function PlayView({
           <button className="icon-btn" onClick={onSettings} aria-label="Settings">
             <IconGear size={18} />
           </button>
-          <button className="icon-btn" onClick={onLeave} aria-label="Leave game">
+          <button className="icon-btn" onClick={onLeave} aria-label="Leave the table">
             <IconX size={18} />
           </button>
         </>
@@ -773,7 +773,7 @@ export function PlayView({
                 {/* The turn's steps in their own column between the board and the sidebar (endstep-style). */}
                 <aside className="play-strip-col" aria-label="Turn steps">
                   {/* Lane 2's vertical strip: it reads state, seat, log and act from usePlayBoard() and toggles only when canAct. */}
-                  <PhaseStrip orientation="vertical" oppLabel={vsHuman ? oppName : 'Forge'} />
+                  <PhaseStrip orientation="vertical" oppLabel={oppName} />
                 </aside>
                 {/* The sidebar: the match, the win chance, then the coach (foldable). */}
                 <aside className="play-side">

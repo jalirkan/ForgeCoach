@@ -56,7 +56,7 @@ import { runPlanMoment, snapshotOf, useRunStatus } from './planRun.ts';
 import './coach.css';
 
 const AUTO_KEY = 'forgecoach.autoCoach';
-export const PLAN_AUTO_HELP = 'Asks at your turn, a spell of theirs you could answer, blocks, their end step and the engine’s questions.';
+export const PLAN_AUTO_HELP = 'Asks at your opening hand, your turn, a spell of theirs you could answer, your blocks, their end step and the engine’s questions.';
 
 const TAB = Math.random().toString(36).slice(2, 10);
 const PLAN_SUPERSEDE = `live-coach:${TAB}:plan`;
@@ -199,7 +199,7 @@ export const PlanCoach = memo(function PlanCoach({
     <div className="coach play-coach plan-coach">
       <div className="pc-head">
         <div className="pc-title">Coach</div>
-        <label className="switch" title={`${PLAN_AUTO_HELP} Uses Claude Code on your PC, or your API key.`}>
+        <label className="switch" title={`${PLAN_AUTO_HELP} Answers come from Claude Code on your PC or your API key (Settings → Coach source).`}>
           <input
             type="checkbox"
             checked={auto}
