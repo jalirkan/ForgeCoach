@@ -108,12 +108,12 @@ describe('buildDecks', () => {
 
 describe('the meta', () => {
   const pool = [
-    // A Rakdos sacrifice pool with Skullclamp and Young Pyromancer.
+    // A Rakdos sacrifice pool with Yawgmoth and Young Pyromancer.
     'Blood Artist', 'Zulaport Cutthroat', 'Viscera Seer', 'Carrion Feeder', 'Priest of Forgotten Gods', 'Village Rites',
     'Deadly Dispute', 'Bone Shards', 'Fatal Push', 'Go for the Throat', "Stitcher's Supplier", 'Bloodghast', 'Gravecrawler',
     'Woe Strider', 'Grim Haruspex', 'Midnight Reaper', 'Ophiomancer', 'Young Pyromancer', 'Goblin Bombardment', 'Pia Nalaar',
     'Hordeling Outburst', 'Lightning Bolt', 'Burst Lightning', 'Kari Zev, Skyship Raider', 'Legion Warboss', 'Mayhem Devil',
-    'Juri, Master of the Revue', 'Skullclamp', 'Hangarback Walker', 'Walking Ballista', 'Mishra\'s Bauble', 'Blood Crypt',
+    'Juri, Master of the Revue', 'Yawgmoth, Thran Physician', 'Hangarback Walker', 'Walking Ballista', 'Mishra\'s Bauble', 'Blood Crypt',
     'Bloodstained Mire', 'Persist', 'Archon of Cruelty', 'Cauldron Familiar', 'Opt', 'Brainstorm', 'Swords to Plowshares',
     'Llanowar Elves', 'Thraben Inspector', 'Hallowed Fountain',
   ];
@@ -121,7 +121,7 @@ describe('the meta', () => {
   it('moves card values toward the lab’s win rates, weighted by games', () => {
     const plain = context('synergy');
     const lab = context('synergy', loadMeta());
-    expect(cardValue('Skullclamp', lab)).toBeGreaterThan(cardValue('Skullclamp', plain));
+    expect(cardValue('Yawgmoth, Thran Physician', lab)).toBeGreaterThan(cardValue('Yawgmoth, Thran Physician', plain));
     expect(cardValue('Carrion Feeder', lab)).toBeLessThan(cardValue('Carrion Feeder', plain));
   });
 
@@ -134,7 +134,7 @@ describe('the meta', () => {
     expect(b!.landNote).toMatch(/BR-SAC decks won 60% of 50 games with 16/);
     expect(b!.parts.archetype).toBeGreaterThan(0);
     expect(b!.reasons.join('\n')).toMatch(/Blood Artist \+ Goblin Bombardment: \+8% together/);
-    expect(b!.reasons.join('\n')).toMatch(/Skullclamp \+ Young Pyromancer: \+6% together/);
+    expect(b!.reasons.join('\n')).toMatch(/Yawgmoth, Thran Physician \+ Young Pyromancer: \+6% together/);
     const plain = buildDecks(context('synergy'), pool)[0]!;
     expect(plain.landNote).not.toMatch(/lab/);
     expect(plain.parts.archetype).toBe(0);

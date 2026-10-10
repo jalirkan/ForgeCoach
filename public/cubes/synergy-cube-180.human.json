@@ -1,4 +1,4 @@
-{"schema":1,"source":{"name":"17Lands","page":"https://www.17lands.com/public_datasets","licence":"CC BY 4.0","licenceUrl":"https://creativecommons.org/licenses/by/4.0/","dataset":"Powered Cube","files":["game_data_public.Cube_-_Powered.PremierDraft.csv.gz","game_data_public.Cube_-_Powered.TradDraft.csv.gz"],"updated":"2025-11-23","changes":"Per-card games and wins aggregated from the game data; matched to this cube by card name; cards with fewer than 500 games in hand left out."},"generated":"2026-10-08","cube":{"file":"synergy-cube-180.md","title":"The Synergy Cube — version 1 (180 cards, two-player)","cards":180,"matched":79},"anchor":"cube","minGih":500,"games":294975,"wins":161968,"gih":{"games":3942339,"wins":2203120},"cards":{
+{"schema":1,"source":{"name":"17Lands","page":"https://www.17lands.com/public_datasets","licence":"CC BY 4.0","licenceUrl":"https://creativecommons.org/licenses/by/4.0/","dataset":"Powered Cube","files":["game_data_public.Cube_-_Powered.PremierDraft.csv.gz","game_data_public.Cube_-_Powered.TradDraft.csv.gz"],"updated":"2025-11-23","changes":"Per-card games and wins aggregated from the game data; matched to this cube by card name; cards with fewer than 500 games in hand left out."},"generated":"2026-10-08","cube":{"file":"synergy-cube-180.md","title":"The Synergy Cube — version 2 (180 cards, two-player)","cards":180,"matched":79},"anchor":"cube","minGih":500,"games":294975,"wins":161968,"gih":{"games":3942339,"wins":2203120},"cards":{
 "Adeline, Resplendent Cathar":{"gih":10334,"gihW":6244,"oh":5056,"ohW":3088,"gns":19518,"gnsW":12000},
 "Archon of Cruelty":{"gih":6392,"gihW":3623,"oh":2919,"ohW":1637,"gns":10544,"gnsW":5303},
 "Arid Mesa":{"gih":12694,"gihW":7378,"oh":6289,"ohW":3707,"gns":21010,"gnsW":11960},
@@ -50,6 +50,7 @@
 "Ponder":{"gih":8250,"gihW":4467,"oh":3512,"ohW":1784,"gns":11125,"gnsW":5710},
 "Prismatic Ending":{"gih":6313,"gihW":3557,"oh":2837,"ohW":1530,"gns":10096,"gnsW":5569},
 "Ramunap Excavator":{"gih":3871,"gihW":1973,"oh":1828,"ohW":887,"gns":6636,"gnsW":3402},
+"Reanimate":{"gih":8461,"gihW":4879,"oh":3748,"ohW":2130,"gns":12700,"gnsW":6386},
 "Remand":{"gih":10531,"gihW":6053,"oh":4547,"ohW":2529,"gns":14173,"gnsW":7378},
 "Retrofitter Foundry":{"gih":8639,"gihW":4811,"oh":3866,"ohW":2101,"gns":11727,"gnsW":5864},
 "Sacred Foundry":{"gih":11480,"gihW":6769,"oh":6120,"ohW":3672,"gns":21815,"gnsW":13073},
@@ -59,7 +60,6 @@
 "Seasoned Pyromancer":{"gih":6455,"gihW":3754,"oh":3139,"ohW":1779,"gns":11691,"gnsW":6862},
 "Shadowspear":{"gih":2407,"gihW":1213,"oh":1120,"ohW":519,"gns":3969,"gnsW":2119},
 "Showdown of the Skalds":{"gih":9002,"gihW":5517,"oh":4431,"ohW":2688,"gns":17968,"gnsW":11016},
-"Skullclamp":{"gih":9319,"gihW":5279,"oh":4555,"ohW":2545,"gns":15418,"gnsW":8642},
 "Skyclave Apparition":{"gih":8759,"gihW":5153,"oh":4143,"ohW":2357,"gns":16128,"gnsW":9627},
 "Smuggler's Copter":{"gih":9722,"gihW":5686,"oh":4768,"ohW":2805,"gns":17213,"gnsW":10050},
 "Snapcaster Mage":{"gih":8568,"gihW":4675,"oh":3615,"ohW":1805,"gns":11790,"gnsW":6061},

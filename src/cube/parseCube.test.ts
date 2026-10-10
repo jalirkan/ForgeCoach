@@ -29,7 +29,8 @@ describe('parseCube on the shipped documents', () => {
     expect(by.get('Mana Leak')?.tags).toEqual(['counter']);
     expect(by.get('Reflector Mage')).toMatchObject({ pair: 'WU', colorHint: 'WU', sectionKind: 'gold' });
     expect(by.get('Grist, the Hunger Tide')?.colorHint).toBe('BG');
-    expect(by.get('Skullclamp')).toMatchObject({ colorHint: '', sectionKind: 'colorless' });
+    expect(by.get('Walking Ballista')).toMatchObject({ colorHint: '', sectionKind: 'colorless' });
+    expect(by.get('Murderous Redcap')).toMatchObject({ pair: 'BR', sectionKind: 'gold' });
     expect(by.get('Flooded Strand')).toMatchObject({ land: true, group: 'Fetchlands' });
     expect(c.hasPrices).toBe(false);
     expect(c.cards.filter((x) => x.land)).toHaveLength(20);
