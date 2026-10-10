@@ -95,10 +95,28 @@ export function matchDeck(name: string, b: DeckBuild, pool: string[]): MatchDeck
  */
 export function forForge(d: MatchDeck, missing: Iterable<string> | undefined): { deck: MatchDeck; blocked: string[] } {
   const out = new Set(missing ?? []);
-  if (!out.size) return { deck: d, blocked: [] };
-  const deck: MatchDeck = { ...d, main: d.main };
-  if (d.sideboard) deck.sideboard = d.sideboard.filter(([, n]) => !out.has(n));
+  const deck: MatchDeck = d.sideboard ? { ...d, sideboard: capSideboard(d.sideboard.filter(([, n]) => !out.has(n))) } : d;
   return { deck, blocked: d.main.filter(([, n]) => out.has(n)).map(([, n]) => n) };
+}
+
+/**
+ * Forge plays a match as Constructed, whose sideboard holds at most 15 cards:
+ * between games it refuses any deck that leaves more than that beside it and
+ * asks again, forever (a drafted pool's leftovers are often 40 or more). So
+ * the engine gets the first 15 copies; the export keeps the whole pool.
+ */
+export const FORGE_SIDEBOARD_MAX = 15;
+
+function capSideboard(side: Array<[number, string]>): Array<[number, string]> {
+  let left = FORGE_SIDEBOARD_MAX;
+  const out: Array<[number, string]> = [];
+  for (const [n, name] of side) {
+    if (left <= 0) break;
+    const k = Math.min(n, left);
+    out.push([k, name]);
+    left -= k;
+  }
+  return out;
 }
 
 /** This player's deck as the shared export's deck (cube/deckExport.ts): exactly the deck on screen, its sideboard the rest of the pool. */
