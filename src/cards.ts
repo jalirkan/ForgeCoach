@@ -673,7 +673,7 @@ export function tokenRef(c: TokenSource | null | undefined): TokenRef | null {
   const net = (c.counters?.P1P1 ?? 0) - (c.counters?.M1M1 ?? 0);
   const power = baseStat(c.power, net);
   const toughness = baseStat(c.toughness, net);
-  const key = ['token', keyOf(base), types.toLowerCase(), power === null || toughness === null ? '-' : `${power}/${toughness}`].join('|');
+  const key = ['token2', keyOf(base), types.toLowerCase(), power === null || toughness === null ? '-' : `${power}/${toughness}`].join('|');
   return { key, base, types, power, toughness };
 }
 
@@ -684,6 +684,11 @@ export function tokenSearchUrl(base: string): string {
 }
 
 const TYPE_NOISE = new Set(['token', 'basic', 'tribal']);
+
+/** A printed P/T that is not a number (`*`, `X`, `1+*`): the token's size is set by the card that makes it. */
+function isVariablePt(p: string, t: string): boolean {
+  return /[*xX]/.test(p) || /[*xX]/.test(t);
+}
 function typeWords(t: string): Set<string> {
   return new Set(
     t
@@ -714,13 +719,17 @@ export function pickToken(results: ScryfallCard[], ref: TokenRef): ScryfallCard 
     for (const w of want) if (!have.has(w)) return false;
     const p = c.power ?? c.card_faces?.[0]?.power;
     const t = c.toughness ?? c.card_faces?.[0]?.toughness;
-    if (ref.power !== null && ref.toughness !== null && p !== undefined && t !== undefined && (p !== ref.power || t !== ref.toughness)) return false;
+    // A variable token (*/*: Skyclave Apparition's X/X Illusion) is any size.
+    const variable = p !== undefined && t !== undefined && isVariablePt(p, t);
+    if (ref.power !== null && ref.toughness !== null && p !== undefined && t !== undefined && !variable && (p !== ref.power || t !== ref.toughness)) return false;
     // A token the wire gives a P/T has to be a creature card with one.
     if (ref.power !== null && ref.toughness !== null && (p === undefined || t === undefined)) return false;
     return true;
   });
   const exact = (c: ScryfallCard) => (c.name && keyOf(c.name) === baseKey ? 1 : 0);
-  ok.sort((a, b) => exact(b) - exact(a) || (b.released_at ?? '').localeCompare(a.released_at ?? ''));
+  // A printing of this very size beats a variable one.
+  const sized = (c: ScryfallCard) => (isVariablePt(c.power ?? c.card_faces?.[0]?.power ?? '', c.toughness ?? c.card_faces?.[0]?.toughness ?? '') ? 0 : 1);
+  ok.sort((a, b) => exact(b) - exact(a) || sized(b) - sized(a) || (b.released_at ?? '').localeCompare(a.released_at ?? ''));
   return ok[0];
 }
 

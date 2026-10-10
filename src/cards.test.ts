@@ -330,6 +330,13 @@ describe('pickToken: type and P/T filtering', () => {
     const other = tokenCard('Clue Hound', 'Token Artifact — Clue', undefined, undefined, '2025-01-01');
     expect(pickToken([other, clue], tokenRef({ name: 'Clue Token', token: true, types: 'Artifact - Clue', power: null, toughness: null })!)).toBe(clue);
   });
+  it('a variable */* token is any size (Skyclave Apparition’s 4/4 Illusion); a printing of the exact size still wins', () => {
+    const star = tokenCard('Illusion', 'Token Creature — Illusion', '*', '*', '2021-04-23');
+    const two = tokenCard('Illusion', 'Token Creature — Illusion', '2', '2', '2023-11-17');
+    const ill = { name: 'Illusion Token', token: true, types: 'Creature - Illusion', power: '4', toughness: '4' };
+    expect(pickToken([two, star], tokenRef(ill)!)).toBe(star);
+    expect(pickToken([star, two], tokenRef({ ...ill, power: '2', toughness: '2' })!)).toBe(two);
+  });
   it('nothing matches: undefined', () => {
     expect(pickToken(birdSearch, tokenRef({ ...bird, power: '9', toughness: '9' })!)).toBeUndefined();
     expect(pickToken([], tokenRef(bird)!)).toBeUndefined();
