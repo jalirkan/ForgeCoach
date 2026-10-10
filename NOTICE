@@ -64,9 +64,15 @@ text, colours, produced mana, P/T, rarity; no images), fetched once from the
 Scryfall API so the benchmark builds the same prompts offline.
 
 The cube documents in public/cubes/*.md are Justin's (the project owner's)
-cube designs, except public/cubes/evybaby-cube-360.md, Evybaby's New Cube:
+cube designs (final-fantasy-cube-180.md, the Final Fantasy Cube, was picked
+by Claude for him), except public/cubes/evybaby-cube-360.md, Evybaby's New Cube:
 Evan's cube (a friend of Justin's): his own 360-card list as he gave it,
-here so the two of them can draft it together. The public/cubes/*.meta.json
+here so the two of them can draft it together; and public/cubes/
+counter-blitz-fic.md, the decklist of Wizards of the Coast's Final Fantasy X
+Commander deck "Counter Blitz" (Final Fantasy Commander, 2025), as Wizards
+published it and MTGJSON carries it, a deck Justin owns. Magic: The Gathering
+and its card names are Wizards of the Coast's; Final Fantasy is Square Enix's.
+The public/cubes/*.meta.json
 files are output of mtg-table's cube lab (simulated Forge AI drafts and games).
 
 
@@ -89,6 +95,13 @@ reliability table in src/cube/labTrust.ts is computed from the Vintage file.
 Generator: scripts/human-cards/. The app credits 17Lands, with links to the
 dataset page and the licence, wherever the numbers are shown. 17Lands does not
 endorse ForgeCoach or its use of the data.
+
+The card choices of public/cubes/final-fantasy-cube-180.md (the Final Fantasy
+Cube) were guided by 17Lands' public game data for Final Fantasy
+(game_data_public.FIN.PremierDraft.csv.gz, last modified 2025-07-19):
+per-card games and wins with the card in hand were aggregated to rank the
+set's cards. No 17Lands numbers ship with that cube; the document credits the
+source.
 
 The files public/cubes/*.picks.json are adapted from 17Lands' public draft
 data for MTG Arena's Powered Cube (draft_data_public.Cube_-_Powered.

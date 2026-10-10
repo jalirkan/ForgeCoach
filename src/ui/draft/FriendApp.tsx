@@ -36,7 +36,7 @@ import '../deck/deck.css';
 import '../forge-theme.css';
 import './draft.css';
 import './friend.css';
-import { CUBES, cubeInfo } from '../../cube/cubes.ts';
+import { DRAFT_CUBES, cubeInfo } from '../../cube/cubes.ts';
 import { newPool, savePool } from '../../cube/pools.ts';
 import { deckCount, exportList, forForge, toMatchDeck } from '../../draft/deck.ts';
 import {
@@ -175,7 +175,7 @@ function Message({ title, text, onBack }: { title: string; text: string; onBack:
 
 function Lobby({ go, onExit }: { go: (h: string, replace?: boolean) => void; onExit: () => void }) {
   const [rooms, setRooms] = useState(() => loadRooms());
-  const [cubeId, setCubeId] = useState(CUBES[0]?.id ?? 'synergy');
+  const [cubeId, setCubeId] = useState(DRAFT_CUBES[0]?.id ?? 'synergy');
   const [name, setName] = useState(readName);
   const [first, setFirst] = useState<'random' | '0' | '1'>('random');
   const [record, setRecord] = useState(false);
@@ -274,7 +274,7 @@ function Lobby({ go, onExit }: { go: (h: string, replace?: boolean) => void; onE
         <label className="fr-field">
           <span>Cube</span>
           <select value={cubeId} onChange={(e) => setCubeId(e.target.value)} aria-label="Cube">
-            {CUBES.map((c) => (
+            {DRAFT_CUBES.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.title}
               </option>

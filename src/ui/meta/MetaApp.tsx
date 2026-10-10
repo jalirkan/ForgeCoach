@@ -11,7 +11,7 @@
  */
 import './meta.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CUBES, cubeForMeta, cubeInfo } from '../../cube/cubes.ts';
+import { DRAFT_CUBES, cubeForMeta, cubeInfo } from '../../cube/cubes.ts';
 import { parseMeta } from '../../cube/meta.ts';
 import { setImportedMeta } from '../../cube/metaStore.ts';
 import {
@@ -44,7 +44,7 @@ const CARD_PAGE = 40;
 /** The cube named by the hash (#meta/<id>), else the first. */
 export function cubeFromHash(hash: string): string {
   const id = /^#meta\/([\w-]+)/.exec(hash)?.[1];
-  return id && cubeInfo(id) ? id : CUBES[0]!.id;
+  return id && DRAFT_CUBES.some((c) => c.id === id) ? id : DRAFT_CUBES[0]!.id;
 }
 
 type View = 'archetypes' | 'cards' | 'spread' | 'guide';
@@ -212,7 +212,7 @@ export default function MetaApp() {
       </div>
 
       <div className="lg-tabs" role="tablist" aria-label="Cubes">
-        {CUBES.map((c) => (
+        {DRAFT_CUBES.map((c) => (
           <button key={c.id} type="button" role="tab" className="lg-tab" aria-selected={c.id === cubeId} onClick={() => pick(c.id)}>
             {c.title.replace(/ Cube$/, '')}
           </button>

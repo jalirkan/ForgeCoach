@@ -18,11 +18,11 @@
  *                which asks mtg-table's match launcher to deal the match.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';
+import { AI_DRAFT_CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';
 import type { CubeMeta } from '../../cube/meta.ts';
 import { aiFlagsFromDoc, noFlags, withMetaFlags, type AiFlags } from '../../draft/aiFlags.ts';
 import { deckCount, exportList, forForge, mainNames, toMatchDeck, type DeckState } from '../../draft/deck.ts';
-import { boosterPackSize, BOOSTER_PACKS, progress, SEAT_OPTIONS, type Draft, type Format } from '../../draft/draft.ts';
+import { boosterPackSize, BOOSTER_PACKS, GRID_ROUNDS, gridFits, progress, SEAT_OPTIONS, WINSTON_CARDS, type Draft, type Format } from '../../draft/draft.ts';
 import {
   AI_POLICIES,
   AI_PROFILES,
@@ -62,6 +62,8 @@ export const CUBE_ART: Record<string, string> = {
   'fair-fight': 'Skyclave Apparition',
   peasant: 'Mayhem Devil',
   evybaby: 'Brazen Borrower',
+  'final-fantasy': 'Summon: Bahamut',
+  'counter-blitz': "Tidus, Yuna's Guardian",
 };
 
 export function Seg<T extends string | number | boolean>({ value, options, onChange, label }: { value: T; options: Array<[T, string]>; onChange: (v: T) => void; label: string }) {
@@ -131,8 +133,8 @@ export function DraftSetup({
   onFriend?: () => void;
   hints: boolean;
 }) {
-  const [cubeId, setCubeId] = useState(CUBES[0]?.id ?? 'synergy');
-  const [format, setFormat] = useState<Format>('booster');
+  const [cubeId, setCubeId] = useState(AI_DRAFT_CUBES[0]?.id ?? 'synergy');
+  const [chosen, setFormat] = useState<Format>('booster');
   const [players, setPlayers] = useState(2);
   const [first, setFirst] = useState<'you' | 'ai' | 'toss'>('toss');
   const [timer, setTimer] = useState(0);
@@ -142,7 +144,10 @@ export function DraftSetup({
   const [picker, setPicker] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   useEffect(() => prefetchCards(Object.values(CUBE_ART)), []);
-  const cube = cubeInfo(cubeId) ?? CUBES[0]!;
+  const cube = AI_DRAFT_CUBES.find((c) => c.id === cubeId) ?? AI_DRAFT_CUBES[0]!;
+  // A list too small for Grid's 18 grids (a deck you own) drafts as Booster or Winston.
+  const formats = VARIANTS.filter(([v]) => v !== 'grid' || gridFits(cube.size));
+  const format: Format = formats.some(([v]) => v === chosen) ? chosen : 'booster';
   const seats = format === 'booster' ? players : 2;
   const packSize = boosterPackSize(seats, cube.size);
   const begin = () => onBegin({ cubeId, format, youFirst: first === 'toss' ? Math.random() < 0.5 : first === 'you', hints: hintsOn, seats, timer, title: title.trim() || 'Practice draft' });
@@ -158,8 +163,8 @@ export function DraftSetup({
     format === 'booster'
       ? `${BOOSTER_PACKS} packs · ${packSize} cards each · 1 card before passing`
       : format === 'winston'
-        ? '90 cards · 3 piles · take a pile or pass'
-        : '18 grids of 9 · first pick alternates';
+        ? `${Math.min(WINSTON_CARDS, cube.size)} cards · 3 piles · take a pile or pass`
+        : `${Math.min(GRID_ROUNDS, Math.floor(cube.size / 9))} grids of 9 · first pick alternates`;
 
   return (
     <div className="fx setup">
@@ -218,7 +223,7 @@ export function DraftSetup({
               <span className="opt-d">{variant[2]}</span>
             </div>
             <Field label="Variant">
-              <Seg label="Variant" value={format} onChange={setFormat} options={VARIANTS.map(([v, l]) => [v, l] as [Format, string])} />
+              <Seg label="Variant" value={format} onChange={setFormat} options={formats.map(([v, l]) => [v, l] as [Format, string])} />
             </Field>
             <div className="src-tiles">
               <button className="src-tile is-on" aria-pressed="true">
@@ -350,7 +355,7 @@ export function DraftSetup({
       <CubeGuideSheet open={guideOpen} onClose={() => setGuideOpen(false)} cubeId={cube.id} />
       <Sheet open={picker} onClose={() => setPicker(false)} width={720} className="fx fx-sheet" title={<span className="serif-title">Choose a cube</span>}>
         <div className="ctiles">
-          {CUBES.map((c) => (
+          {AI_DRAFT_CUBES.map((c) => (
             <button
               key={c.id}
               className={cx('ctile', cubeId === c.id && 'is-on')}

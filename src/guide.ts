@@ -128,6 +128,18 @@ Plan: cheap creatures gain life whenever creatures enter, lifegain payoffs grow,
 - Brimaz is a fine blocker; Adeline is better attacking.
 Trap: don't run the payoffs out without an enabler on the board. Win by going wide, with Pridemate and Adeline enormous.`;
 
+export const COUNTER_BLITZ_GUIDE_ID = 'builtin:counter-blitz-gw';
+export const COUNTER_BLITZ_GUIDE_TEXT = `Counter Blitz, green-white (a 40-card deck built from the Final Fantasy X Commander precon; Tidus and Yuna are three colours, so they stay out of a two-colour build).
+
+Plan: cheap creatures that put +1/+1 counters on your team every turn, then make the countered creatures hard to block and hard to kill. Count everything with a counter on it: half the deck checks for one.
+- Counter engines, best first on the curve: Shelinda, Yevon Acolyte (lifelink; each creature that enters after her gets a counter while it is smaller than her, otherwise she grows), Maester Seymour (at the start of each combat on your turn, puts counters equal to its power on another creature), Tromell, Seymour's Butler (each other nontoken creature enters with an extra counter; {1},{T}: proliferate once per nontoken creature that entered this turn, so play your creatures first, then use it), Wakka, Devoted Guardian (when a counter went on Wakka this turn, every other creature you control gets one at your end step). Duskshell Crawler and Generous Patron put counters on others when they enter; Gyre Sage and Incubation Druid turn a counter into mana (Druid makes three).
+- Removal: Summon: Ixion (chapter I exiles their creature until the Saga leaves; it leaves after chapter III, so the creature comes back: race it or remove it again), Auron, Venerated Guardian (each attack exiles a defender's creature with less power than Auron, until Auron leaves: attack with it every turn, it grows first), Summon: Yojimbo (chapter I exiles an artifact, enchantment or tapped creature; then attacking you costs {2} a creature for two turns), Path to Exile, Destroy Evil (toughness 4 or more, or an enchantment), Collective Effort (escalate by tapping creatures: kill a power-4 creature and counter your whole team in one card).
+- Damning Verdict destroys only creatures with no counters: with counters on your team it is a one-sided wipe. Count before you cast it. Farewell is modes you choose: exile all creatures only when you are behind on board.
+- Protect the board: Inspiring Call draws a card for each creature with a +1/+1 counter and makes them indestructible until end of turn, so hold it for their removal or wipe, or for a big attack. Gatta and Luzzu has flash: prevent the damage to a blocker or attacker and turn it into counters.
+- Evasion: Sphere Grid gives creatures with +1/+1 counters reach and trample and grows anything that connects; Duskshell Crawler gives trample. Chocobo Knights gives your countered attackers double strike whenever you attack.
+- Lord Jyscal Guado (a flier) investigates at each end step in which you put a counter on a creature: almost every turn here. Walking Ballista grows with spare mana and pings in response to removal.
+Traps: don't cast Promise of Loyalty with a wide board (you keep one creature); don't put Ixion's exile on a creature you can kill for good with Path; don't run a creature out alone into open mana when Inspiring Call or Gatta can wait for the fight. Win: a board of countered creatures with trample, finished by Wakka's or Seymour's end-step growth.`;
+
 const BUILTINS: readonly Guide[] = Object.freeze([
   Object.freeze({ id: RAKDOS_GUIDE_ID, name: 'Rakdos sacrifice (cube)', text: RAKDOS_GUIDE_TEXT }),
   Object.freeze({ id: SHIELD_GUIDE_ID, name: 'S.H.I.E.L.D. (Marvel W/U)', text: SHIELD_GUIDE_TEXT }),
@@ -138,6 +150,7 @@ const BUILTINS: readonly Guide[] = Object.freeze([
   Object.freeze({ id: ARTIFACTS_GUIDE_ID, name: 'Artifact aggro (cube)', text: ARTIFACTS_GUIDE_TEXT }),
   Object.freeze({ id: LANDFALL_GUIDE_ID, name: 'Landfall ramp (cube)', text: LANDFALL_GUIDE_TEXT }),
   Object.freeze({ id: LIFEGAIN_GUIDE_ID, name: 'Selesnya lifegain tokens (cube)', text: LIFEGAIN_GUIDE_TEXT }),
+  Object.freeze({ id: COUNTER_BLITZ_GUIDE_ID, name: 'Counter Blitz G/W (Final Fantasy X deck)', text: COUNTER_BLITZ_GUIDE_TEXT }),
 ]);
 
 const GUIDES_KEY = 'forgecoach.guides.v1';

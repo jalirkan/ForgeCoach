@@ -32,6 +32,13 @@ export interface CubeInfo {
   humanData?: boolean;
   /** True when a 17Lands human pick model ships beside the document (<file>.picks.json, cube/humanPicks.ts; docs/human-picks.md). */
   humanPicks?: boolean;
+  /**
+   * 'deck': a deck the player owns (a Commander precon), not a cube: the deck assistant builds 40s
+   * from the whole list and its cube page lists it; it is drafted only against the AI
+   * (`AI_DRAFT_CUBES`), never with a friend (the draft room knows only mtg-table's cubes) or on the
+   * lab's pages (`DRAFT_CUBES`), and has no lab data. Absent: a cube.
+   */
+  kind?: 'deck';
 }
 
 /** The crumb name: `short`, else the title without " Cube". */
@@ -48,7 +55,20 @@ export const CUBES: CubeInfo[] = [
   // Evan's own list, as he titled it (public/cubes/evybaby-cube-360.md): no themes, archetypes or guide.
   // Its lab meta (J110) drafted around the 13 cards Forge lacks; those have no lab numbers (meta.ts).
   { id: 'evybaby', file: 'evybaby-cube-360', title: "Evybaby's New Cube", short: 'Evybaby', size: 360, blurb: 'Evan’s cube: 360 cards, Avatar to Middle-earth to pizza, with shocks, surveil lands and fetches.', accent: 'WUBRG', humanPicks: true },
+  // Claude's 180 from the Final Fantasy release (public/cubes/final-fantasy-cube-180.md), picked with 17Lands' FIN draft data.
+  { id: 'final-fantasy', file: 'final-fantasy-cube-180', title: 'Final Fantasy Cube', size: 180, blurb: 'The best of the Final Fantasy set: Summons, Job select heroes, Tiered magic and ten guild decks.', accent: 'WUBRG', labData: false },
+  // Justin's Final Fantasy X Commander deck (public/cubes/counter-blitz-fic.md): its 88 cards that work outside Commander, basics aside.
+  { id: 'counter-blitz', file: 'counter-blitz-fic', title: 'Counter Blitz', size: 88, blurb: 'Your Final Fantasy X Commander deck: +1/+1 counters in green, white and blue. Build 40s from it.', accent: 'WUG', labData: false, kind: 'deck' },
 ];
+
+/** The cubes proper (Draft with a friend, the lab's pages, the lobby's count): every entry but a deck. */
+export const DRAFT_CUBES: CubeInfo[] = CUBES.filter((c) => c.kind !== 'deck');
+
+/** What Draft vs AI offers: the cubes, then the decks the player owns (small lists: fewer grids, a shorter Winston stack). */
+export const AI_DRAFT_CUBES: CubeInfo[] = [...DRAFT_CUBES, ...CUBES.filter((c) => c.kind === 'deck')];
+
+/** The decks the player owns, to build from whole (the deck assistant). */
+export const OWNED_DECKS: CubeInfo[] = CUBES.filter((c) => c.kind === 'deck');
 
 export function cubeInfo(id: string): CubeInfo | undefined {
   return CUBES.find((c) => c.id === id);

@@ -7,7 +7,7 @@
  * only route; every mode keeps its own screen and behaviour.
  */
 import type { ReactNode } from 'react';
-import { CUBES } from '../cube/cubes.ts';
+import { DRAFT_CUBES } from '../cube/cubes.ts';
 
 export interface Tile {
   id: string;
@@ -37,7 +37,7 @@ export function lobbyTiles(o: { onPlay: () => void; onDraftBuild: () => void; sa
     { id: 'build', title: 'Draft & build', line: 'For a paper draft: track your pool, get each pick called, build the best 40.', glyph: G.build, onClick: o.onDraftBuild },
     { id: 'practice', title: 'Practice', line: 'Puzzles from your own games: what would you do here?', glyph: G.practice, onClick: () => (location.hash = '#practice') },
     { id: 'review', title: 'Review a game', line: `Step through a recorded game with the coach: ${o.samples} samples, or your own.`, glyph: G.review, onClick: () => scrollTo('lobby-review') },
-    { id: 'cube', title: 'The cubes', line: `${CUBES.length} cubes: their cards, themes and the lab’s numbers.`, glyph: G.cube, onClick: () => (location.hash = `#cube/${CUBES[0]?.id ?? 'synergy'}`) },
+    { id: 'cube', title: 'The cubes', line: `${DRAFT_CUBES.length} cubes: their cards, themes and the lab’s numbers.`, glyph: G.cube, onClick: () => (location.hash = `#cube/${DRAFT_CUBES[0]?.id ?? 'synergy'}`) },
     { id: 'live', title: 'Watch live', line: 'Follow a game on mtg-table’s own board, read-only.', glyph: G.live, onClick: () => scrollTo('lobby-live') },
   ];
 }
