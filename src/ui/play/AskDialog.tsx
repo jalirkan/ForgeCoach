@@ -25,6 +25,7 @@ import { createPortal } from 'react-dom';
 import type { AnswerValue, AnyCard, AskBody, AskOption, Card, GameStateBody, InputBody } from '../../protocol.ts';
 import { isHidden, keywordsOf } from '../../protocol.ts';
 import { cardIndex } from '../../decisions.ts';
+import { imageForFace } from '../../cards.ts';
 import { prefetchCards, useCardInfo } from '../cardData.ts';
 import { IconCheck, IconChevronDown, IconEye, IconPlay, IconPlus, IconX, TypeGlyph } from '../Icons.tsx';
 import { ManaCost, Pip, SymbolText } from '../Mana.tsx';
@@ -311,7 +312,7 @@ function visibleCard(card: AnyCard | undefined | null): Card | null {
 /** Small art square for rows. */
 function Thumb({ name, card, hidden }: { name: string | null; card?: Card | null; hidden?: boolean }) {
   const info = useCardInfo(hidden ? null : name);
-  const art = info?.image?.artCrop ?? info?.faces?.[0]?.image?.artCrop;
+  const art = imageForFace(info, name)?.artCrop;
   const kind = typeKind(card?.types || info?.typeLine);
   if (hidden) return <span className="ask-thumb ask-thumb-back" aria-hidden="true" />;
   return (
@@ -324,7 +325,7 @@ function Thumb({ name, card, hidden }: { name: string | null; card?: Card | null
 /** A whole card: Scryfall image when cached, a clean frame otherwise. */
 function CardFace({ name, card, hidden, label }: { name: string | null; card?: Card | null; hidden?: boolean; label: string }) {
   const info = useCardInfo(hidden ? null : name);
-  const img = info?.image?.normal ?? info?.faces?.[0]?.image?.normal;
+  const img = imageForFace(info, name)?.normal;
   const [loaded, setLoaded] = useState(false);
   if (hidden) {
     return (

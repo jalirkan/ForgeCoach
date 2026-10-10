@@ -57,7 +57,7 @@ import { SeatTap } from './tap.mjs';
 import { Monkey } from './monkey.mjs';
 import { loadScripts } from './scripts.mjs';
 import { deckNames, deckPlan, CUBES } from './decks.mjs';
-import { combatAgrees, hiddenFromOther, hiddenLeaks, logCovers, logTurns, stackAgrees, streamTurns } from './checks.mjs';
+import { combatAgrees, combatPlaced, hiddenFromOther, hiddenLeaks, logCovers, logTurns, stackAgrees, streamTurns } from './checks.mjs';
 import { startFakeHelper } from './fakehelper.mjs';
 import { writeReport } from './report.mjs';
 
@@ -371,6 +371,7 @@ async function playGame(game, seats, { scripts, askModel, rand, hiddenFor, allow
         lastCheck = s.monkey.decisions;
         for (const p of await stackAgrees(s.page, s.tap)) await s.finding({ kind: 'stack-mismatch', what: p });
         for (const p of await combatAgrees(s.page, s.tap)) await s.finding({ kind: 'combat-badge-mismatch', what: p });
+        for (const p of await combatPlaced(s.page, s.tap)) await s.finding({ kind: 'combat-placement', what: p });
       }
       if (s.monkey.decisions - lastLeak >= 12) {
         lastLeak = s.monkey.decisions;

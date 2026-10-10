@@ -10,7 +10,7 @@ import type { AnyCard, Card, GameStateBody } from '../protocol.ts';
 import { altFace, isHidden, keywordsOf } from '../protocol.ts';
 import { cardIndex, cardName } from '../decisions.ts';
 import type { CardInfo } from '../cards.ts';
-import { isLookupName } from '../cards.ts';
+import { imageForFace, isLookupName } from '../cards.ts';
 import { useCardInfo } from './cardData.ts';
 import { displayName } from './CardTile.tsx';
 import { IconExternal } from './Icons.tsx';
@@ -41,7 +41,7 @@ export function CardDetail({
 }
 
 function CardDetailBody({ card, info, state, seat }: { card: Card; info: CardInfo | undefined; state: GameStateBody | null; seat: number }) {
-  const img = info?.image?.normal ?? info?.faces?.[0]?.image?.normal;
+  const img = imageForFace(info, card.name || altFace(card)?.name)?.normal;
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => {
@@ -222,7 +222,7 @@ function TextCard({ card, info }: { card: Card; info: CardInfo | undefined }) {
 /** Desktop-only floating image preview next to the hovered tile. */
 export function HoverPreview({ name, rect }: { name: string | null; rect: DOMRect | null }) {
   const info = useCardInfo(name);
-  const img = info?.image?.normal ?? info?.faces?.[0]?.image?.normal;
+  const img = imageForFace(info, name)?.normal;
   const [shown, setShown] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);

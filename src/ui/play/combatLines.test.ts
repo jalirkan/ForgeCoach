@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { AnyCard, CombatBand, GameStateBody } from '../../protocol.ts';
-import { combatLinks, combatMarks, curveBetween, lanes } from './combatLines.ts';
+import { combatMarks, curveBetween, lanes } from './combatLines.ts';
 
 function creature(id: number, controller: number): AnyCard {
   return {
@@ -68,58 +68,6 @@ const band = (attackerIds: number[], blockerIds: number[], defender: CombatBand[
   damageOrder: blockerIds,
 });
 
-describe('combatLinks', () => {
-  it('draws nothing outside combat', () => {
-    expect(combatLinks(state([creature(1, 0)], [creature(9, 1)], null))).toEqual([]);
-    expect(combatLinks(null)).toEqual([]);
-  });
-
-  it('draws an unblocked attacker at the player it attacks', () => {
-    const links = combatLinks(state([creature(1, 0)], [creature(9, 1)], [band([9], [])]));
-    expect(links).toEqual([{ kind: 'attack', from: { card: 9 }, to: { player: 0 }, n: 0, pending: false }]);
-  });
-
-  it('numbers confirmed blocks per attacker, both blockers sharing the number', () => {
-    const links = combatLinks(
-      state([creature(1, 0), creature(2, 0), creature(3, 0)], [creature(9, 1), creature(8, 1)], [band([9], [1, 2]), band([8], [3])]),
-    );
-    expect(links.map((l) => [l.from, l.to, l.n])).toEqual([
-      [{ card: 1 }, { card: 9 }, 1],
-      [{ card: 2 }, { card: 9 }, 1],
-      [{ card: 3 }, { card: 8 }, 2],
-    ]);
-    // A blocked attacker gets no line to the player.
-    expect(links.some((l) => l.kind === 'attack')).toBe(false);
-  });
-
-  it('adds this browser’s unconfirmed blocks, and the engine wins over them', () => {
-    const s = state([creature(1, 0), creature(2, 0)], [creature(9, 1)], [band([9], [2])]);
-    const links = combatLinks(
-      s,
-      new Map([
-        [1, 9],
-        [2, 9],
-      ]),
-    );
-    expect(links).toEqual([
-      { kind: 'block', from: { card: 2 }, to: { card: 9 }, n: 1, pending: false },
-      { kind: 'block', from: { card: 1 }, to: { card: 9 }, n: 1, pending: true },
-    ]);
-  });
-
-  it('skips a pick with no attacker named, and ids the viewer cannot see', () => {
-    const s = state([creature(1, 0)], [hidden(9, 1), creature(8, 1)], [band([9], []), band([8], [], null)]);
-    expect(combatLinks(s, new Map([[1, null]]))).toEqual([]);
-    expect(combatLinks(s, new Map([[1, 9]]))).toEqual([]);
-  });
-
-  it('draws an attack on a planeswalker to that card', () => {
-    const pw = { ...(creature(5, 0) as object), types: 'Legendary Planeswalker - Jace' } as AnyCard;
-    const links = combatLinks(state([pw], [creature(9, 1)], [band([9], [], { kind: 'card', id: 5 })]));
-    expect(links).toEqual([{ kind: 'attack', from: { card: 9 }, to: { card: 5 }, n: 0, pending: false }]);
-  });
-});
-
 describe('curveBetween', () => {
   it('leaves the facing edges of stacked boxes', () => {
     const c = curveBetween({ x: 100, y: 400, w: 80, h: 110 }, { x: 300, y: 50, w: 80, h: 110 });
@@ -150,14 +98,8 @@ describe('curveBetween', () => {
 });
 
 describe('lanes', () => {
-  it('counts lines per target', () => {
-    expect(
-      lanes([
-        { kind: 'block', from: { card: 1 }, to: { card: 9 }, n: 1, pending: false },
-        { kind: 'block', from: { card: 2 }, to: { card: 9 }, n: 1, pending: false },
-        { kind: 'attack', from: { card: 8 }, to: { player: 0 }, n: 0, pending: false },
-      ]),
-    ).toEqual([0, 1, 0]);
+  it('counts lines per card they end at', () => {
+    expect(lanes([{ to: { card: 9 } }, { to: { card: 9 } }, { to: { card: 8 } }])).toEqual([0, 1, 0]);
   });
 });
 
@@ -175,10 +117,12 @@ describe('combatMarks: an attacker and its blockers share a numbered badge', () 
     expect(m.get(9)!.defender).toEqual({ kind: 'player', id: 0 });
   });
 
-  it('the badges agree with the block lines’ numbers', () => {
+  it('a blocker’s mark names its attacker (the lane places it in front of that card)', () => {
     const s = state([creature(1, 0), creature(3, 0)], [creature(9, 1), creature(8, 1)], [band([9], [1]), band([8], [3])]);
     const m = combatMarks(s);
-    for (const l of combatLinks(s)) if (l.kind === 'block' && 'card' in l.to) expect(m.get(l.from.card)!.n).toBe(m.get(l.to.card)!.n);
+    expect(m.get(1)).toMatchObject({ role: 'blocker', attackerId: 9, n: m.get(9)!.n });
+    expect(m.get(3)).toMatchObject({ role: 'blocker', attackerId: 8, n: m.get(8)!.n });
+    expect(m.get(9)!.attackerId).toBe(null);
   });
 
   it('a planeswalker defender is kept, so the defending player can read what attacks what', () => {
@@ -209,21 +153,7 @@ describe('combatMarks: an attacker and its blockers share a numbered badge', () 
 });
 
 describe('declarations still under way (M65 chosen.attacks)', () => {
-  it('draws a pending line from an attacker to what it attacks before state.combat names it', () => {
-    const st = state([creature(1, 0)], [creature(9, 1), { ...(creature(7, 1) as object), types: 'Legendary Planeswalker - Jace' } as AnyCard], null);
-    const links = combatLinks(st, new Map(), [
-      { attackerId: 1, defender: { kind: 'player', id: 1 } },
-      { attackerId: 1, defender: { kind: 'card', id: 7 } },
-      { attackerId: 42, defender: { kind: 'player', id: 1 } },
-    ]);
-    expect(links).toEqual([
-      { kind: 'attack', from: { card: 1 }, to: { player: 1 }, n: 0, pending: true },
-      { kind: 'attack', from: { card: 1 }, to: { card: 7 }, n: 0, pending: true },
-    ]);
-  });
-  it('the engine’s band wins over a pending row; the badge carries the pending defender', () => {
-    const st = state([creature(1, 0)], [creature(9, 1)], [band([1], [], { kind: 'player', id: 1 })]);
-    expect(combatLinks(st, new Map(), [{ attackerId: 1, defender: { kind: 'player', id: 1 } }]).filter((l) => l.pending)).toEqual([]);
+  it('the badge carries the pending defender', () => {
     const marks = combatMarks(state([creature(1, 0)], [creature(9, 1)], null), new Map(), new Set([1]), null, [{ attackerId: 1, defender: { kind: 'player', id: 1 } }]);
     expect(marks.get(1)).toMatchObject({ role: 'attacker', pending: true, defender: { kind: 'player', id: 1 } });
   });

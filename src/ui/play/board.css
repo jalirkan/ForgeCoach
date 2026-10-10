@@ -13,7 +13,8 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Combat lines (CombatArrows.tsx), drawn over the board and scrolling with it */
+/* Combat is drawn by placement (CombatLane.tsx, lane.css); the few lines
+   position cannot say (CombatArrows.tsx) are drawn over the board. */
 
 .game.play .board {
   position: relative;
@@ -27,55 +28,6 @@
   z-index: 30;
   pointer-events: none;
   overflow: visible;
-}
-.combat-line-path,
-.combat-line-glow {
-  fill: none;
-  stroke-linecap: round;
-}
-.combat-line-path {
-  stroke-width: 3;
-}
-.combat-line-glow {
-  stroke-width: 10;
-  opacity: 0.22;
-}
-.combat-line.is-block .combat-line-path,
-.combat-line.is-block .combat-line-glow {
-  stroke: var(--blk-line);
-}
-.combat-line.is-attack .combat-line-path,
-.combat-line.is-attack .combat-line-glow {
-  stroke: var(--atk-line);
-}
-.combat-line.is-attack .combat-line-path {
-  stroke-width: 2.5;
-  stroke-dasharray: 10 6;
-}
-.combat-line.is-pending .combat-line-glow {
-  animation: line-breathe 1.6s ease-in-out infinite;
-}
-@keyframes line-breathe {
-  50% {
-    opacity: 0.08;
-  }
-}
-.combat-line-dot {
-  fill: var(--atk-line);
-}
-.combat-badge circle {
-  fill: #0d1726;
-  stroke: var(--blk-line);
-  stroke-width: 2;
-}
-.combat-badge text {
-  fill: #fff;
-  font: 700 12px/1 var(--font);
-}
-@media (prefers-reduced-motion: reduce) {
-  .combat-line.is-pending .combat-line-glow {
-    animation: none;
-  }
 }
 
 /* Attacking / blocking: the frame and the lines say it; the flag shrinks to a corner badge. */
@@ -353,17 +305,12 @@
   margin-right: 6px;
 }
 @media (max-width: 1023px) {
-  /* Phones: before the first pick the count says enough. */
-  .game.play .ab-select-line.is-hint {
+  /* Phones: before the first pick the count says enough (a block declaration keeps its how-to). */
+  .game.play:not(.mode-block) .ab-select-line.is-hint {
     display: none;
   }
 }
 
-/* Phones: the combat lines and frames say what the combat strip says, and the
-   strip would sit under the lines; the desktop keeps it as a slim summary. */
-.game.play.is-narrow .midline .combat-panel {
-  display: none;
-}
 
 /* ------------------------------------------------------------------ */
 /* Choices off the board (ZonePickPanel.tsx): a graveyard / exile / library target */

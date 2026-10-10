@@ -2,99 +2,25 @@
  * ForgeCoach — ui/play/combatLines.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The combat lines drawn over the board (endstep-style): a curve from each
- * blocker to the attacker it blocks, numbered at both ends, and a curve from
- * an unblocked attacker to what it attacks (a player or a planeswalker).
+ * Combat's marks and the geometry of its few lines. The board draws combat
+ * by placement (`combatLayout.ts`: the attack lane, blockers in front of
+ * their attacker); here are the small numbered chips an attacker and its
+ * blockers share, and the curve for a line where position cannot say it.
  *
- * Pure: which links exist (from `state.combat` — protocol §3.1 — plus the
- * blocks and attacks declared but not yet confirmed: the engine's own M65
- * `selectable.chosen` when the frame carries it, else this browser's clicks) and
- * the geometry of one curve between two rectangles. No DOM.
- *
- * Only what the wire says: a link is drawn between ids the viewer can see on
- * the battlefield, or to a player. A band with a null defender gets no
- * defender line; a concealed id is skipped, never guessed at.
+ * Pure: the marks come from `state.combat` — protocol §3.1 — plus the blocks
+ * and attacks declared but not yet confirmed (the engine's own M65
+ * `selectable.chosen` when the frame carries it, else this browser's clicks).
+ * Only ids the viewer can see on the battlefield are marked; a concealed id is
+ * skipped, never guessed at. No DOM.
  */
 import type { AnyCard, Card, ChosenAttack, GameStateBody } from '../../protocol.ts';
 import { isHidden } from '../../protocol.ts';
-
-export type LinkKind = 'block' | 'attack';
-
-export interface CombatLink {
-  kind: LinkKind;
-  /** The blocker (block) or the attacker (attack). */
-  from: { card: number };
-  /** The attacker (block) or the defender (attack). */
-  to: { card: number } | { player: number };
-  /** Badge number: one per blocked attacker, in band order, 1-based. 0 for attack lines. */
-  n: number;
-  /** A block (or attack) still being declared; `state.combat` reports it only on confirm. */
-  pending: boolean;
-}
 
 function visibleOnBattlefield(state: GameStateBody): Map<number, Card> {
   const m = new Map<number, Card>();
   for (const p of state.players)
     for (const c of p.zones.battlefield.cards as AnyCard[]) if (!isHidden(c)) m.set(c.id, c as Card);
   return m;
-}
-
-/**
- * The lines to draw now. `pending` maps a blocker id this browser clicked to
- * the attacker it was sent against (null when the prompt named none); the
- * engine's own bands win wherever they say anything about a blocker.
- * `pendingAttacks`: attackers declared so far and what each attacks (M65
- * `chosen.attacks`), drawn where no band names the attacker yet.
- */
-export function combatLinks(
-  state: GameStateBody | null,
-  pending: ReadonlyMap<number, number | null> = new Map(),
-  pendingAttacks: readonly ChosenAttack[] = [],
-): CombatLink[] {
-  if (!state) return [];
-  const seen = visibleOnBattlefield(state);
-  const bands = state.combat?.bands ?? [];
-  const out: CombatLink[] = [];
-  const confirmed = new Set<number>();
-  for (const b of bands) for (const id of b.blockerIds) confirmed.add(id);
-  // Blocks by attacker, confirmed first, then this browser's picks.
-  const blocks = new Map<number, { id: number; pending: boolean }[]>();
-  for (const b of bands) {
-    const atk = b.attackerIds.find((id) => seen.has(id));
-    if (atk === undefined) continue;
-    for (const id of b.blockerIds) if (seen.has(id) && id !== atk) push(blocks, atk, { id, pending: false });
-  }
-  for (const [blocker, atk] of pending) {
-    if (atk === null || confirmed.has(blocker) || !seen.has(blocker) || !seen.has(atk)) continue;
-    push(blocks, atk, { id: blocker, pending: true });
-  }
-  const numbers = attackerNumbers(bands, blocks.keys(), seen);
-  for (const [atk, n] of numbers) {
-    const bl = blocks.get(atk);
-    if (!bl || bl.length === 0) continue;
-    for (const b of bl) out.push({ kind: 'block', from: { card: b.id }, to: { card: atk }, n, pending: b.pending });
-  }
-  for (const b of bands) {
-    if (!b.defender) continue;
-    for (const atk of b.attackerIds) {
-      if (!seen.has(atk) || blocks.get(atk)?.length) continue;
-      if (b.defender.kind === 'card') {
-        if (seen.has(b.defender.id)) out.push({ kind: 'attack', from: { card: atk }, to: { card: b.defender.id }, n: 0, pending: false });
-      } else if (state.players.some((p) => p.id === b.defender!.id)) {
-        out.push({ kind: 'attack', from: { card: atk }, to: { player: b.defender.id }, n: 0, pending: false });
-      }
-    }
-  }
-  const banded = new Set(bands.flatMap((b) => b.attackerIds));
-  for (const a of pendingAttacks) {
-    if (banded.has(a.attackerId) || !seen.has(a.attackerId)) continue;
-    if (a.defender.kind === 'card') {
-      if (seen.has(a.defender.id)) out.push({ kind: 'attack', from: { card: a.attackerId }, to: { card: a.defender.id }, n: 0, pending: true });
-    } else if (state.players.some((p) => p.id === a.defender.id)) {
-      out.push({ kind: 'attack', from: { card: a.attackerId }, to: { player: a.defender.id }, n: 0, pending: true });
-    }
-  }
-  return out;
 }
 
 /**
@@ -118,6 +44,8 @@ export interface CombatMark {
   current: boolean;
   /** What an attacker attacks: a player id or a planeswalker / battle id, when the wire says. */
   defender: { kind: 'player' | 'card'; id: number } | null;
+  /** A blocker's attacker (null for an attacker). */
+  attackerId: number | null;
 }
 
 /**
@@ -144,23 +72,18 @@ export function combatMarks(
   const defenderOf = new Map<number, CombatMark['defender']>();
   for (const a of pendingAttacks) defenderOf.set(a.attackerId, { kind: a.defender.kind, id: a.defender.id });
   for (const b of bands) for (const a of b.attackerIds) defenderOf.set(a, b.defender ? { kind: b.defender.kind, id: b.defender.id } : null);
-  for (const [id, n] of numbers) out.set(id, { n, role: 'attacker', pending: !confirmedAtk.has(id), current: id === current, defender: defenderOf.get(id) ?? null });
+  for (const [id, n] of numbers) out.set(id, { n, role: 'attacker', pending: !confirmedAtk.has(id), current: id === current, defender: defenderOf.get(id) ?? null, attackerId: null });
   for (const b of bands)
     for (const blk of b.blockerIds) {
       const a = b.attackerIds.find((x) => numbers.has(x));
-      if (a !== undefined && seen.has(blk) && !out.has(blk)) out.set(blk, { n: numbers.get(a)!, role: 'blocker', pending: false, current: false, defender: null });
+      if (a !== undefined && seen.has(blk) && !out.has(blk)) out.set(blk, { n: numbers.get(a)!, role: 'blocker', pending: false, current: false, defender: null, attackerId: a });
     }
-  for (const [blk, a] of pendingBlk) if (!out.has(blk) && numbers.has(a)) out.set(blk, { n: numbers.get(a)!, role: 'blocker', pending: true, current: false, defender: null });
+  for (const [blk, a] of pendingBlk) if (!out.has(blk) && numbers.has(a)) out.set(blk, { n: numbers.get(a)!, role: 'blocker', pending: true, current: false, defender: null, attackerId: a });
   // The current attacker of a block prompt, even before anything blocks it.
-  if (current !== null && seen.has(current) && !out.has(current)) out.set(current, { n: numbers.size + 1, role: 'attacker', pending: true, current: true, defender: null });
+  if (current !== null && seen.has(current) && !out.has(current)) out.set(current, { n: numbers.size + 1, role: 'attacker', pending: true, current: true, defender: null, attackerId: null });
   return out;
 }
 
-function push<K, V>(m: Map<K, V[]>, k: K, v: V) {
-  const l = m.get(k);
-  if (l) l.push(v);
-  else m.set(k, [v]);
-}
 
 // ---------------------------------------------------------------------------
 // Geometry
@@ -233,13 +156,12 @@ export function curveBetween(a: Box, b: Box, lane = 0, endInset = 10): Curve {
   };
 }
 
-/** Lane numbers so lines sharing an attacker (or a defender) fan out instead of overlapping. */
-export function lanes(links: CombatLink[]): number[] {
-  const count = new Map<string, number>();
+/** Fan numbers so lines sharing an end fan out instead of overlapping. */
+export function lanes(links: readonly { to: { card: number } }[]): number[] {
+  const count = new Map<number, number>();
   return links.map((l) => {
-    const key = 'card' in l.to ? `c${l.to.card}` : `p${l.to.player}`;
-    const n = count.get(key) ?? 0;
-    count.set(key, n + 1);
+    const n = count.get(l.to.card) ?? 0;
+    count.set(l.to.card, n + 1);
     return n;
   });
 }

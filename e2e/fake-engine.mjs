@@ -75,7 +75,7 @@
  * the record of every frame a client sent (`received`) and every connection.
  *
  * Run it on its own to point a browser (or e2e/play.e2e.mjs) at it:
- *   node e2e/fake-engine.mjs [--port 8642] [--scene pregame|main3|graveyard|combat] [--drop-mode default|reask] [--playable] [--death-trigger] [--selection]
+ *   node e2e/fake-engine.mjs [--port 8642] [--scene pregame|main3|graveyard|combat|blocks] [--drop-mode default|reask] [--playable] [--death-trigger] [--selection]
  * with POST /control/drop, /control/restart[?scene=…], /control/reset[?scene=…]
  * and GET /control/log.
  */
@@ -98,6 +98,8 @@ const DEFS = {
   'Hill Giant': { setCode: 'M10', manaCost: '{3}{R}', types: 'Creature - Giant', power: '3', toughness: '3', keywords: [], cost: 4 },
   // A trampler for scene `combat` (mtg-table M67).
   'Colossal Dreadmaw': { setCode: 'M21', manaCost: '{4}{G}{G}', types: 'Creature - Dinosaur', power: '6', toughness: '6', keywords: ['TRAMPLE'], cost: 6 },
+  // A flyer, for the block declaration's refusals (scene `blocks`).
+  'Storm Crow': { setCode: '9ED', manaCost: '{1}{U}', types: 'Creature - Bird', power: '1', toughness: '2', keywords: ['FLYING'], cost: 2 },
   Shock: { setCode: 'M21', manaCost: '{R}', types: 'Instant', cost: 1, burn: 2 },
   // A death trigger with a mandatory player target (deathTrigger: true).
   'Blood Artist': { setCode: 'DKA', manaCost: '{1}{B}', types: 'Creature - Vampire', power: '0', toughness: '1', keywords: [], cost: 2, drain: true },
@@ -116,6 +118,7 @@ const isCreature = (c) => /Creature/.test(DEFS[c.name].types);
 const power = (c) => Number(DEFS[c.name].power ?? 0);
 const toughness = (c) => Number(DEFS[c.name].toughness ?? 0);
 const hasHaste = (c) => (DEFS[c.name].keywords ?? []).includes('HASTE');
+const hasKw = (c, k) => (DEFS[c.name].keywords ?? []).includes(k);
 
 function wire(c) {
   const d = DEFS[c.name];
@@ -207,6 +210,8 @@ class Game {
     this.assigned = new Map();
     this.aiBlocks = false;
     this.refuseNext = null;
+    /** Forge's InputBlock "current attacker": the one the prompt names, the one a creature click blocks. */
+    this.currentAttacker = null;
     this.events = [];
     this.landPlayed = false;
     this.mulligans = 0;
@@ -221,6 +226,7 @@ class Game {
     for (const name of AI_LIBRARY) ai.library.push(this.make(name, AI, 'library'));
     if (scene === 'main3') this.sceneMain3();
     else if (scene === 'pregame') this.scenePregame();
+    else if (scene === 'blocks') this.sceneBlocks();
   }
 
   make(name, owner, zone) {
@@ -278,9 +284,11 @@ class Game {
         library: { count: p.library.length, cards: [] },
       };
     };
-    const bands = this.attackers.length
-      ? [{ attackerIds: this.attackers.slice(), defender: { kind: 'player', id: this.active === HUMAN ? AI : HUMAN }, blockerIds: declaring ? [] : [...this.blocks.values()].flat(), damageOrder: [] }]
-      : [];
+    // One band per attacker, as Forge writes them (no banding here).
+    const bands = this.attackers.map((id) => {
+      const blockerIds = declaring ? [] : (this.blocks.get(id) ?? []).slice();
+      return { attackerIds: [id], defender: { kind: 'player', id: this.active === HUMAN ? AI : HUMAN }, blockerIds, damageOrder: blockerIds };
+    });
     return {
       gameId: this.gameId,
       turn: this.turn,
@@ -467,6 +475,37 @@ class Game {
     this.startTurn(HUMAN, { draw: false, keepTurn: true });
   }
 
+  /**
+   * The AI attacks with three (Goblin Guide, Hill Giant, Storm Crow — a flyer) and you declare blocks with
+   * Memnite, Raging Goblin and a Hill Giant that came in this turn (summoning sick: it may still block).
+   */
+  sceneBlocks() {
+    const me = this.players[HUMAN];
+    const ai = this.players[AI];
+    const put = (p, name, extra = {}) => {
+      const c = this.make(name, p.id, 'battlefield');
+      Object.assign(c, extra);
+      p.battlefield.push(c);
+      return c;
+    };
+    for (let i = 0; i < 4; i++) put(me, 'Mountain');
+    put(me, 'Memnite');
+    put(me, 'Raging Goblin');
+    put(me, 'Hill Giant', { sick: true });
+    for (let i = 0; i < 3; i++) put(ai, 'Mountain');
+    put(ai, 'Goblin Guide');
+    put(ai, 'Hill Giant');
+    put(ai, 'Storm Crow');
+    this.draw(HUMAN, 3);
+    this.draw(AI, 4);
+    me.life = 20;
+    ai.life = 20;
+    this.turn = 2;
+    this.active = AI;
+    this.events = [{ kind: 'turn', player: AI, turn: 2 }];
+    this.aiCombat();
+  }
+
   /** `main3`, with Cauldron Familiar in your graveyard. */
   sceneGraveyard() {
     const f = this.make('Cauldron Familiar', HUMAN, 'graveyard');
@@ -546,6 +585,7 @@ class Game {
     this.attackers = [];
     this.blocks.clear();
     this.assigned.clear();
+    this.currentAttacker = null;
     this.startTurn(this.active === HUMAN ? AI : HUMAN);
   }
 
@@ -804,10 +844,11 @@ class Game {
   }
 
   blockPrompt() {
-    const a = this.find(this.attackers[0]);
+    if (this.currentAttacker === null || !this.attackers.includes(this.currentAttacker)) this.currentAttacker = this.attackers[0];
+    const a = this.find(this.currentAttacker);
     this.input(
       inputBody(`Select creatures to block ${a.name} (${a.id}) or select another attacker to declare blockers for.`, button('OK', true), button('Cancel', false), { highlighted: [a.id] }),
-      { kind: 'block', attackerId: a.id },
+      { kind: 'block' },
     );
   }
 
@@ -1056,14 +1097,32 @@ class Game {
         break;
       }
       case 'block': {
+        // As Forge's InputBlock.onCardSelected (the pinned jar): an attacker becomes the current attacker; a
+        // creature blocking the current attacker comes off it; any other creature blocks it if it may
+        // (CombatUtil.canBlock: not one already blocking another attacker, not a non-flyer under a flyer).
         if (a === 'clickCard') {
           const c = this.find(body.cardId);
-          if (c && c.owner === HUMAN && c.zone === 'battlefield' && isCreature(c) && (!c.tapped || c.blocking)) {
-            const list = this.blocks.get(p.attackerId) ?? [];
-            c.blocking = !c.blocking;
-            this.blocks.set(p.attackerId, c.blocking ? [...list, c.id] : list.filter((x) => x !== c.id));
-            this.emitState();
+          if (c && this.attackers.includes(c.id)) {
+            this.currentAttacker = c.id;
             return this.blockPrompt();
+          }
+          const cur = this.find(this.currentAttacker);
+          if (cur && c && c.owner === HUMAN && c.zone === 'battlefield' && isCreature(c)) {
+            const list = this.blocks.get(cur.id) ?? [];
+            if (list.includes(c.id)) {
+              this.blocks.set(cur.id, list.filter((x) => x !== c.id));
+              c.blocking = [...this.blocks.values()].some((l) => l.includes(c.id));
+              this.emitState();
+              return this.blockPrompt();
+            }
+            const elsewhere = [...this.blocks.values()].some((l) => l.includes(c.id));
+            const flyer = hasKw(cur, 'FLYING') && !hasKw(c, 'FLYING') && !hasKw(c, 'REACH');
+            if (!c.tapped && !elsewhere && !flyer) {
+              c.blocking = true;
+              this.blocks.set(cur.id, [...list, c.id]);
+              this.emitState();
+              return this.blockPrompt();
+            }
           }
           break;
         }
@@ -1176,6 +1235,7 @@ export class FakeEngine {
     if (scene === 'main3') game.sceneMain3();
     else if (scene === 'graveyard') game.sceneGraveyard();
     else if (scene === 'combat') game.sceneCombat();
+    else if (scene === 'blocks') game.sceneBlocks();
     else game.scenePregame();
   }
 
