@@ -19,11 +19,17 @@
 /* Desktop: board | turn steps | sidebar */
 
 @media (min-width: 1024px) {
+  /* The strip's 124 px come out of the sidebar and the slot, never the hand: at 1440 px the hand keeps the
+     width it had with the strip in the sidebar (cards overlap more on a narrower hand, and a lifted card
+     then covers its neighbour's middle). */
   .game.play.is-wide .play-cols.has-strip {
-    grid-template-columns: minmax(0, 1fr) 124px 280px;
+    grid-template-columns: minmax(0, 1fr) 124px 250px;
   }
   .game.play.is-wide .play-cols.has-strip.has-coach {
-    grid-template-columns: minmax(0, 1fr) 124px clamp(280px, 20vw, 360px);
+    grid-template-columns: minmax(0, 1fr) 124px clamp(250px, 17.5vw, 340px);
+  }
+  .game.play.is-wide .play-cols.has-strip .play-dock {
+    grid-template-columns: clamp(250px, 18vw, 300px) minmax(0, 1fr);
   }
   .game.play.is-wide .play-main {
     /* the slot's question grows over the board up to this width */
@@ -217,7 +223,7 @@
 }
 .ds-toggles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
   gap: 4px;
 }
 .ds-toggle {
@@ -266,9 +272,13 @@
 
 /* ---- Desktop: the slot beside the hand, as tall as it needs */
 @media (min-width: 1024px) {
+  /* One fixed height (never a board that jumps with each mode): the slot's words clip, its buttons never do. */
   .game.play.is-wide .play-dock {
-    height: auto;
-    min-height: var(--hand-h);
+    height: max(var(--hand-h), 280px);
+  }
+  .game.play.is-wide .decision-slot .ab-text {
+    min-height: 0;
+    overflow: hidden;
   }
   .game.play.is-wide .actionbar.decision-slot {
     grid-template-areas: 'text' 'ask' 'tools' 'go' 'auto';
@@ -278,6 +288,13 @@
   }
   .game.play.is-wide .decision-slot .ab-sub {
     -webkit-line-clamp: 2;
+  }
+  /* "Pay {R} for <the engine's whole first line>": two lines at most, the cost always on the first. */
+  .game.play.is-wide .decision-slot .ab-pay-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
   }
   .game.play.is-wide .decision-slot .ab-tools {
     gap: 4px;
