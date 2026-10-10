@@ -41,6 +41,7 @@ import { FilmRoom } from '../filmroom/FilmRoom.tsx';
 import { HandDock } from './HandDock.tsx';
 import { LogDrawer, LogTab } from './LogDrawer.tsx';
 import { PhaseStrip } from './PhaseStrip.tsx';
+import { PlayBoardContext, usePlayBoardValue } from './playBoard.ts';
 import { cardRole, describeInput, handNeeded, noticeLine, playerClickable, type ClickContext } from './inputView.ts';
 import { lastStateFrame } from './liveDecision.ts';
 import { PlayCoach } from './PlayCoach.tsx';
@@ -491,6 +492,9 @@ export function PlayView({
     return () => window.removeEventListener('keydown', onKey);
   }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, logOpen, wide, pressOk, doCancel, doAct]);
 
+  // ---- the board seam (playBoard.ts): the parts of the board read this instead of taking props
+  const playBoard = usePlayBoardValue({ state, input, ask, seat, log, view, connected, over: !!over, act, inputSeen: snap.inputSeen });
+
   // ---- render
   const me = state?.players.find((p) => p.id === seat) ?? null;
   const players = log?.hello?.players ?? state?.players ?? [];
@@ -657,6 +661,7 @@ export function PlayView({
   );
 
   return (
+    <PlayBoardContext.Provider value={playBoard}>
     <CardActionsContext.Provider value={actions}>
       <BoardStateRef.Provider value={boardStateRef}>
         <PlayContext.Provider value={play}>
@@ -839,6 +844,7 @@ export function PlayView({
         </PlayContext.Provider>
       </BoardStateRef.Provider>
     </CardActionsContext.Provider>
+    </PlayBoardContext.Provider>
   );
 }
 
