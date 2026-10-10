@@ -46,6 +46,12 @@ export interface CubeInfo {
   version?: number;
   /** A card whose art stands for the cube on its tile. */
   art?: string;
+  /**
+   * 'deck': a deck the player owns (a Commander precon), not a cube: the deck assistant builds 40s
+   * from the whole list and its cube page lists it, but it is never drafted (`DRAFT_CUBES`) and has
+   * no lab data. Absent: a cube.
+   */
+  kind?: 'deck';
 }
 
 /** The crumb name: `short`, else the title without " Cube". */
@@ -65,6 +71,8 @@ export const SHIPPED_CUBES: readonly CubeInfo[] = [
   { id: 'evybaby', file: 'evybaby-cube-360', title: "Evybaby's New Cube", short: 'Evybaby', size: 360, blurb: 'Evan’s cube: 360 cards, Avatar to Middle-earth to pizza, with shocks, surveil lands and fetches.', accent: 'WUBRG', humanPicks: true },
   // Evan's second list, as he gave it (public/cubes/twobert-cube-180.md): no themes, archetypes, guide or lab data yet.
   { id: 'twobert', file: 'twobert-cube-180', title: "Evan's Twobert Cube", short: 'Twobert', size: 180, blurb: 'Evan’s second cube: 180 cards of blink, aristocrats, artifacts and tokens, with shocks and fetches.', accent: 'WB', labData: false },
+  // Justin's Final Fantasy X Commander deck (public/cubes/counter-blitz-fic.md): its 88 cards that work outside Commander, basics aside.
+  { id: 'counter-blitz', file: 'counter-blitz-fic', title: 'Counter Blitz', size: 88, blurb: 'Your Final Fantasy X Commander deck: +1/+1 counters in green, white and blue. Build 40s from it.', accent: 'WUG', labData: false, kind: 'deck' },
 ];
 
 /** A custom cube as the registry lists it. */
@@ -77,10 +85,20 @@ export function customCubeInfo(c: CustomCube): CubeInfo {
 /** Every cube: the shipped ones, then yours (refreshed in place, so a list read at render time is current). */
 export const CUBES: CubeInfo[] = [...SHIPPED_CUBES];
 
+/**
+ * The cubes that can be drafted (Draft vs AI, with a friend, the lab's pages): every entry but a deck.
+ * Refreshed in place with `CUBES`.
+ */
+export const DRAFT_CUBES: CubeInfo[] = [];
+
+/** The decks the player owns, to build from whole (the deck assistant). */
+export const OWNED_DECKS: readonly CubeInfo[] = SHIPPED_CUBES.filter((c) => c.kind === 'deck');
+
 /** Re-reads your cubes from this browser's storage into `CUBES` (after the builder saves or deletes one). */
 export function refreshCustomCubes(list: CustomCube[] = listCustomCubes()): void {
   const mine = list.filter((c) => !SHIPPED_CUBES.some((s) => s.id === c.id)).map(customCubeInfo);
   CUBES.splice(SHIPPED_CUBES.length, CUBES.length - SHIPPED_CUBES.length, ...mine);
+  DRAFT_CUBES.splice(0, DRAFT_CUBES.length, ...CUBES.filter((c) => c.kind !== 'deck'));
 }
 refreshCustomCubes();
 

@@ -67,7 +67,12 @@ The cube documents in public/cubes/*.md are Justin's (the project owner's)
 cube designs, except public/cubes/evybaby-cube-360.md, Evybaby's New Cube,
 and public/cubes/twobert-cube-180.md, Evan's Twobert Cube: Evan's cubes (a
 friend of Justin's), his own 360- and 180-card lists as he gave them, here so
-the two of them can draft them together. The public/cubes/*.meta.json
+the two of them can draft them together; and public/cubes/
+counter-blitz-fic.md, the decklist of Wizards of the Coast's Final Fantasy X
+Commander deck "Counter Blitz" (Final Fantasy Commander, 2025), as Wizards
+published it and MTGJSON carries it, a deck Justin owns. Magic: The Gathering
+and its card names are Wizards of the Coast's; Final Fantasy is Square Enix's.
+The public/cubes/*.meta.json
 files are output of mtg-table's cube lab (simulated Forge AI drafts and games).
 
 

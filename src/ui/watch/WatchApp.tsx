@@ -228,7 +228,8 @@ function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: strin
         <section className="panel">
           <div className="fx-label panel-h">Cube</div>
           <div className="wb-chips is-cubes" role="radiogroup" aria-label="Cube">
-            {CUBES.filter((c) => !c.custom).map((c) => (
+            {/* A deck you own (cubes.ts kind: 'deck') is not on mtg-table's side to draft. */}
+            {CUBES.filter((c) => !c.custom && c.kind !== 'deck').map((c) => (
               <button key={c.id} type="button" role="radio" aria-checked={form.cube === c.file} className={cx('wb-chip', form.cube === c.file && 'is-on')} onClick={() => set({ cube: c.file })}>
                 {cubeShortName(c)}
               </button>

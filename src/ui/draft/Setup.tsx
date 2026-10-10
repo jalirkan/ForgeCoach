@@ -18,7 +18,7 @@
  *                which asks mtg-table's match launcher to deal the match.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { CUBES, cubeInfo, loadCubeText, type CubeInfo } from '../../cube/cubes.ts';
+import { DRAFT_CUBES, cubeInfo, loadCubeText, type CubeInfo } from '../../cube/cubes.ts';
 import type { CubeMeta } from '../../cube/meta.ts';
 import { aiFlagsFromDoc, noFlags, withMetaFlags, type AiFlags } from '../../draft/aiFlags.ts';
 import { deckCount, exportList, forForge, mainNames, sideboardFit, toMatchDeck, type DeckState, type FitFacts } from '../../draft/deck.ts';
@@ -135,7 +135,7 @@ export function DraftSetup({
   // #draft/setup?cube=<id> (a cube's page, the cube builder's "Draft it") opens on that cube.
   const [cubeId, setCubeId] = useState(() => {
     const asked = typeof location === 'undefined' ? null : new URLSearchParams(location.hash.split('?')[1] ?? '').get('cube');
-    return asked && cubeInfo(asked) ? asked : (CUBES[0]?.id ?? 'synergy');
+    return asked && DRAFT_CUBES.some((c) => c.id === asked) ? asked : (DRAFT_CUBES[0]?.id ?? 'synergy');
   });
   const [format, setFormat] = useState<Format>('booster');
   const [players, setPlayers] = useState(2);
@@ -147,7 +147,7 @@ export function DraftSetup({
   const [picker, setPicker] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   useEffect(() => prefetchCards(Object.values(CUBE_ART)), []);
-  const cube = cubeInfo(cubeId) ?? CUBES[0]!;
+  const cube = DRAFT_CUBES.find((c) => c.id === cubeId) ?? DRAFT_CUBES[0]!;
   const seats = format === 'booster' ? players : 2;
   const packSize = boosterPackSize(seats, cube.size);
   const begin = () => onBegin({ cubeId, format, youFirst: first === 'toss' ? Math.random() < 0.5 : first === 'you', hints: hintsOn, seats, timer, title: title.trim() || 'Practice draft' });
@@ -356,7 +356,7 @@ export function DraftSetup({
       <CubeGuideSheet open={guideOpen} onClose={() => setGuideOpen(false)} cubeId={cube.id} />
       <Sheet open={picker} onClose={() => setPicker(false)} width={720} className="fx fx-sheet" title={<span className="serif-title">Choose a cube</span>}>
         <div className="ctiles">
-          {CUBES.map((c) => (
+          {DRAFT_CUBES.map((c) => (
             <button
               key={c.id}
               className={cx('ctile', cubeId === c.id && 'is-on')}
