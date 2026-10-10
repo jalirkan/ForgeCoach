@@ -15,6 +15,7 @@
  * there is no cancel-yield act).
  */
 import type { ActBody, AskBody, GameStateBody, InputBody, YieldState } from '../../protocol.ts';
+import { chosenOf, selectablePlayersOf } from '../../protocol.ts';
 import { cancel, yieldTo } from '../../play/acts.ts';
 import type { ButtonView, InputView } from './inputView.ts';
 import { buttonWords, canPassAhead, primaryView } from './actionWords.ts';
@@ -49,7 +50,8 @@ const QUIET = new Set<InputView['mode']>(['waiting', 'yield', 'over', 'ask']);
 export function inputPending(input: InputBody | null, view: InputView): boolean {
   if (!input || QUIET.has(view.mode)) return false;
   const sel = input.selectable;
-  const selecting = sel.mode === 'players' || (sel.mode === 'cards' && sel.cardIds.length > 0);
+  // M66: a player-only choice reads `mode: "none"`; `playerIds` says the portraits take the click.
+  const selecting = sel.mode === 'players' || (sel.mode === 'cards' && sel.cardIds.length > 0) || (selectablePlayersOf(input)?.length ?? 0) > 0;
   return view.ok.enabled || view.cancel.enabled || selecting || view.needClick;
 }
 
@@ -123,29 +125,42 @@ export function choiceCounter(chosen: number, lo: number, hi: number): string | 
   return `${chosen}/${hi}${tail}`;
 }
 
+/** The modes whose input states a count the slot can show (a target, a discard). */
+const COUNTED = new Set<InputView['mode']>(['target', 'discard']);
+
 /**
- * The counter for a targeting input, from the engine's own prompt and
- * `selectable.min/max` only (the wire carries no "chosen so far", N1):
- * Forge's InputSelectTargets lists what is targeted under a "Targeted:" line.
- * Null for every other input — a count we cannot read is not shown.
+ * The counter for a choice: "1/2 · up to 1 more" where the input states a
+ * count (`selectable.max`), "2 chosen" where it does not.
+ *
+ * The count is the engine's own (M65 `selectable.chosen`: the cards and players
+ * picked so far) when the frame carries it. Without it — an engine before M65,
+ * or a frame that does not say — only a targeting input is counted, from
+ * Forge's prompt: InputSelectTargets lists what is targeted under a
+ * "Targeted:" line. Null when there is nothing to count.
  */
 export function inputCounter(input: InputBody | null, view: InputView): string | null {
-  if (!input || view.mode !== 'target') return null;
+  if (!input) return null;
   const { min, max } = input.selectable;
-  if (max <= 0) return null;
+  const chosen = chosenOf(input);
+  if (chosen && COUNTED.has(view.mode)) {
+    const n = chosen.cardIds.length + chosen.playerIds.length;
+    if (max > 0) return choiceCounter(n, Math.max(0, min), max);
+    return n > 0 ? `${n} chosen` : null;
+  }
+  if (view.mode !== 'target' || max <= 0) return null;
   const lines = input.prompt
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean);
   const at = lines.findIndex((l) => /^Targeted:/i.test(l));
-  let chosen = 0;
+  let n = 0;
   if (at >= 0) {
     for (const l of lines.slice(at + 1)) {
       if (/^\(\d+ more can be targeted\)$/i.test(l)) break;
-      chosen++;
+      n++;
     }
   }
-  return choiceCounter(chosen, Math.max(0, min), max);
+  return choiceCounter(n, Math.max(0, min), max);
 }
 
 // ---------------------------------------------------------------------------
@@ -227,15 +242,16 @@ export function slotButtons(
 // ---------------------------------------------------------------------------
 // Auto-pass toggles, lit from state.yield
 
-export type PassToggleId = 'eot' | 'before' | 'myturn' | 'stack';
+export type PassToggleId = 'eot' | 'before' | 'myturn' | 'theyAct' | 'stack';
 
 export type YieldLit = Record<PassToggleId, boolean>;
 
 /** Which pass-ahead target the running yield is (Forge runs one at a time). */
 export function yieldLit(y: YieldState | null | undefined, seat: number | null): YieldLit {
-  const lit: YieldLit = { eot: false, before: false, myturn: false, stack: false };
+  const lit: YieldLit = { eot: false, before: false, myturn: false, theyAct: false, stack: false };
   if (!y) return lit;
   if (y.kind === 'endOfTurn') lit.eot = true;
+  else if (y.kind === 'endStepOrOpponent') lit.theyAct = true;
   else if (y.kind === 'stack') lit.stack = true;
   else if (y.kind === 'marker') {
     if (y.phase === 'END_OF_TURN' && y.playerId !== null && y.playerId !== seat) lit.before = true;
@@ -259,21 +275,69 @@ const TOGGLES: { id: PassToggleId; label: string; kbd: string | null; body: ActB
   { id: 'eot', label: 'End of turn', kbd: 'E', body: yieldTo('endOfTurn'), what: 'Pass until the end of this turn' },
   { id: 'before', label: 'Before my turn', kbd: 'B', body: yieldTo('marker', 'END_OF_TURN', 'opp'), what: 'Pass until their end step, just before your turn' },
   { id: 'myturn', label: 'My next turn', kbd: 'T', body: yieldTo('marker', 'UPKEEP', 'own'), what: 'Pass until your next upkeep' },
+  {
+    id: 'theyAct',
+    label: 'Until they act',
+    kbd: 'Y',
+    body: yieldTo('endStepOrOpponent'),
+    what: 'Pass until they cast something or attack you, or this turn’s end step begins',
+  },
   { id: 'stack', label: 'Stack resolves', kbd: null, body: yieldTo('stack'), what: 'Pass until the stack resolves' },
 ];
+
+/** The steps in which the engine refuses "until they act" (M64): this turn's end step has already begun. */
+const THEY_ACT_REFUSED = new Set(['END_OF_TURN', 'CLEANUP']);
+
+/** Why "until they act" is off in this step, or null. */
+export const THEY_ACT_END_STEP = 'Off in the end step and cleanup: this turn’s end step has already begun';
+
+/**
+ * Whether the engine offers "until they act" (M64). The protocol has no
+ * capability list, so the sign is its sibling amendments: M64–M66 shipped in
+ * one bridge release, and since M65/M66 every `input` carries
+ * `selectable.chosen` and `selectable.playerIds` (null or not — the KEY is the
+ * sign). A running `endStepOrOpponent` yield says so too. An engine before
+ * them would refuse the kind with a notice.
+ */
+export function offersTheyAct(input: InputBody | null | undefined, y: YieldState | null | undefined): boolean {
+  if (y?.kind === 'endStepOrOpponent') return true;
+  const sel = input?.selectable as object | undefined;
+  return !!sel && ('playerIds' in sel || 'chosen' in sel);
+}
+
+/** Why the Y key does nothing now (no M64 engine; the end step), or null when it may send. */
+export function theyActWhyNot(p: { offered: boolean; phase: string | null | undefined; lit: boolean }): string | null {
+  if (p.lit) return null;
+  if (!p.offered) return 'The engine on your PC doesn’t offer “until they act” yet: update it';
+  if (p.phase && THEY_ACT_REFUSED.has(p.phase)) return THEY_ACT_END_STEP;
+  return null;
+}
 
 /**
  * The toggles under the slot. Unlit: the yield, while you could pass ahead
  * (your priority, nothing else asked). Lit: the engine's Cancel, only while it
  * is enabled. Never while the board may not act (an ask open, the game over).
  * "Stack resolves" only shows while something is on the stack or it runs.
+ * "Until they act" (M64) only shows on an engine that offers it
+ * (`offersTheyAct`), and is off in the end step and cleanup, where the engine
+ * refuses it.
  */
-export function passToggles(p: { yielding: YieldState | null | undefined; seat: number | null; view: InputView; canAct: boolean }): PassToggle[] {
+export function passToggles(p: {
+  yielding: YieldState | null | undefined;
+  seat: number | null;
+  view: InputView;
+  canAct: boolean;
+  /** The engine offers `endStepOrOpponent` (offersTheyAct). Absent: not offered. */
+  theyAct?: boolean;
+  /** `state.phase`, for the step in which the engine refuses "until they act". */
+  phase?: string | null;
+}): PassToggle[] {
   const lit = yieldLit(p.yielding, p.seat);
   const ahead = canPassAhead(p.view);
-  return TOGGLES.filter((t) => t.id !== 'stack' || p.view.mode === 'stack' || lit.stack).map((t) => {
+  return TOGGLES.filter((t) => (t.id !== 'stack' || p.view.mode === 'stack' || lit.stack) && (t.id !== 'theyAct' || p.theyAct || lit.theyAct)).map((t) => {
     const on = lit[t.id];
-    const enabled = p.canAct && (on ? p.view.cancel.enabled : ahead);
+    const refused = t.id === 'theyAct' && !on && !!p.phase && THEY_ACT_REFUSED.has(p.phase);
+    const enabled = p.canAct && !refused && (on ? p.view.cancel.enabled : ahead);
     return {
       id: t.id,
       label: t.label,
@@ -281,7 +345,11 @@ export function passToggles(p: { yielding: YieldState | null | undefined; seat: 
       lit: on,
       enabled,
       body: on ? cancel() : t.body,
-      title: on ? `${t.what} — on. Press to stop (the engine’s Cancel)${t.kbd ? ` (${t.kbd})` : ''}` : `${t.what}${t.kbd ? ` (${t.kbd})` : ''}`,
+      title: refused
+        ? `${THEY_ACT_END_STEP}.`
+        : on
+          ? `${t.what} — on. Press to stop (the engine’s Cancel)${t.kbd ? ` (${t.kbd})` : ''}`
+          : `${t.what}${t.kbd ? ` (${t.kbd})` : ''}`,
     };
   });
 }

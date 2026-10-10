@@ -85,6 +85,17 @@ describe('handAnswers: an explicit choice (input.selectable)', () => {
   it('a player-only choice says the answer is a portrait', () => {
     expect(run({ input: inputOf({ cardIds: [], min: 1, max: 1, mode: 'players' }), mode: 'target' })).toEqual(new Set());
   });
+  it('M66: players listed and no card (mode "none") is a player-only choice: no hand card is an answer', () => {
+    const only = { ...inputOf({ cardIds: [], min: 1, max: 1, mode: 'none', playerIds: [1] }), prompt: 'Lava Spike - Select target player', buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: true } } } as InputBody;
+    expect(run({ input: only, state: stateOf({ playable: [play(1)] }) })).toEqual(new Set());
+  });
+  it('M66: [] and null say nothing new — priority still reads state.playable', () => {
+    expect(run({ input: inputOf({ cardIds: [], min: 0, max: 0, mode: 'none', playerIds: [] }) })).toEqual(new Set([1]));
+    expect(run({ input: inputOf({ cardIds: [], min: 0, max: 0, mode: 'none', playerIds: null }) })).toEqual(new Set([1]));
+  });
+  it('M66: an attack declaration’s defenders are not a player-only choice', () => {
+    expect(run({ input: inputOf({ cardIds: [], min: 0, max: 0, mode: 'none', playerIds: [1] }), mode: 'attack' })).toBeNull();
+  });
   it('mode cards with no ids says nothing', () => {
     expect(run({ input: inputOf({ cardIds: [], min: 0, max: 0, mode: 'cards' }), state: stateOf(), mode: 'target' })).toBeNull();
   });

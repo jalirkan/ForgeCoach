@@ -306,6 +306,33 @@ describe('cardRole', () => {
     expect(playerClickable(ctxFor(i))).toBe(true);
   });
 
+  it('M66: exactly the players selectable.playerIds lists; [] is none; null keeps the heuristics', () => {
+    const off = { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: false } };
+    // "Target opponent": mode "none" (computed from cardIds alone), only the opponent listed.
+    const opp = input('Lava Spike (7) - Select target opponent', { buttons: off, selectable: { cardIds: [], min: 1, max: 1, mode: 'none', playerIds: [OPP] } });
+    const c = ctxFor(opp);
+    expect(c.view.mode).toBe('target');
+    expect(c.view.clickWhat).toBe('player');
+    expect(playerClickable(c, OPP)).toBe(true);
+    expect(playerClickable(c, ME)).toBe(false);
+    expect(playerClickable(c)).toBe(true);
+    // [] — a player click does nothing here, whatever the prompt says.
+    const none = input('Select target player', { buttons: off, selectable: { cardIds: [], min: 1, max: 1, mode: 'players', playerIds: [] } });
+    expect(playerClickable(ctxFor(none), OPP)).toBe(false);
+    expect(playerClickable(ctxFor(none))).toBe(false);
+    // null — the frame does not say: today's rule.
+    const unknown = input('Select target player', { buttons: off, selectable: { cardIds: [], min: 1, max: 1, mode: 'players', playerIds: null } });
+    expect(playerClickable(ctxFor(unknown), OPP)).toBe(true);
+    // Cards and players both listed: "a card or a player".
+    const both = input('Shock (3) - Select any target', { buttons: off, selectable: { cardIds: [5], min: 1, max: 1, mode: 'cards', playerIds: [ME, OPP] } });
+    expect(ctxFor(both).view.clickWhat).toBe('card or player');
+    expect(playerClickable(ctxFor(both), ME)).toBe(true);
+    // An attack declaration: the defending player takes a click (whom the next attacker attacks).
+    const atk = input('Select creatures to attack Forge AI or select player/card you wish to attack.', { selectable: { cardIds: [], min: 0, max: 0, mode: 'none', playerIds: [OPP] } });
+    expect(playerClickable(ctxFor(atk), OPP)).toBe(true);
+    expect(playerClickable(ctxFor(atk), ME)).toBe(false);
+  });
+
   it("a mandatory trigger's player target (J107: Blood Artist, Falkenrath Noble): both buttons off, nothing listed — the portraits are the controls", () => {
     // Forge's InputSelectTargets for a mandatory target with candidates: updateButtons(false, false, false), no card selectables.
     const off = { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: false } };

@@ -7,14 +7,15 @@
  * an unblocked attacker to what it attacks (a player or a planeswalker).
  *
  * Pure: which links exist (from `state.combat` — protocol §3.1 — plus the
- * blocks this browser has clicked but the engine has not yet confirmed) and
+ * blocks and attacks declared but not yet confirmed: the engine's own M65
+ * `selectable.chosen` when the frame carries it, else this browser's clicks) and
  * the geometry of one curve between two rectangles. No DOM.
  *
  * Only what the wire says: a link is drawn between ids the viewer can see on
  * the battlefield, or to a player. A band with a null defender gets no
  * defender line; a concealed id is skipped, never guessed at.
  */
-import type { AnyCard, Card, GameStateBody } from '../../protocol.ts';
+import type { AnyCard, Card, ChosenAttack, GameStateBody } from '../../protocol.ts';
 import { isHidden } from '../../protocol.ts';
 
 export type LinkKind = 'block' | 'attack';
@@ -27,7 +28,7 @@ export interface CombatLink {
   to: { card: number } | { player: number };
   /** Badge number: one per blocked attacker, in band order, 1-based. 0 for attack lines. */
   n: number;
-  /** A block this browser clicked; the engine reports it only on confirm. */
+  /** A block (or attack) still being declared; `state.combat` reports it only on confirm. */
   pending: boolean;
 }
 
@@ -42,8 +43,14 @@ function visibleOnBattlefield(state: GameStateBody): Map<number, Card> {
  * The lines to draw now. `pending` maps a blocker id this browser clicked to
  * the attacker it was sent against (null when the prompt named none); the
  * engine's own bands win wherever they say anything about a blocker.
+ * `pendingAttacks`: attackers declared so far and what each attacks (M65
+ * `chosen.attacks`), drawn where no band names the attacker yet.
  */
-export function combatLinks(state: GameStateBody | null, pending: ReadonlyMap<number, number | null> = new Map()): CombatLink[] {
+export function combatLinks(
+  state: GameStateBody | null,
+  pending: ReadonlyMap<number, number | null> = new Map(),
+  pendingAttacks: readonly ChosenAttack[] = [],
+): CombatLink[] {
   if (!state) return [];
   const seen = visibleOnBattlefield(state);
   const bands = state.combat?.bands ?? [];
@@ -78,6 +85,15 @@ export function combatLinks(state: GameStateBody | null, pending: ReadonlyMap<nu
       }
     }
   }
+  const banded = new Set(bands.flatMap((b) => b.attackerIds));
+  for (const a of pendingAttacks) {
+    if (banded.has(a.attackerId) || !seen.has(a.attackerId)) continue;
+    if (a.defender.kind === 'card') {
+      if (seen.has(a.defender.id)) out.push({ kind: 'attack', from: { card: a.attackerId }, to: { card: a.defender.id }, n: 0, pending: true });
+    } else if (state.players.some((p) => p.id === a.defender.id)) {
+      out.push({ kind: 'attack', from: { card: a.attackerId }, to: { player: a.defender.id }, n: 0, pending: true });
+    }
+  }
   return out;
 }
 
@@ -108,13 +124,15 @@ export interface CombatMark {
  * The numbered badges for combat: every attacker and its blockers share a
  * number. `pending` maps a blocker this browser clicked to its attacker;
  * `pendingAttackers` are attackers clicked but not confirmed; `current` is
- * the attacker the block prompt names.
+ * the attacker the block prompt names; `pendingAttacks` (M65) says what a
+ * not-yet-confirmed attacker attacks.
  */
 export function combatMarks(
   state: GameStateBody | null,
   pending: ReadonlyMap<number, number | null> = new Map(),
   pendingAttackers: ReadonlySet<number> = new Set(),
   current: number | null = null,
+  pendingAttacks: readonly ChosenAttack[] = [],
 ): Map<number, CombatMark> {
   const out = new Map<number, CombatMark>();
   if (!state) return out;
@@ -124,6 +142,7 @@ export function combatMarks(
   const pendingBlk = [...pending].filter(([b, a]) => a !== null && seen.has(b) && seen.has(a)) as [number, number][];
   const numbers = attackerNumbers(bands, [...pendingAttackers, ...pendingBlk.map(([, a]) => a)], seen);
   const defenderOf = new Map<number, CombatMark['defender']>();
+  for (const a of pendingAttacks) defenderOf.set(a.attackerId, { kind: a.defender.kind, id: a.defender.id });
   for (const b of bands) for (const a of b.attackerIds) defenderOf.set(a, b.defender ? { kind: b.defender.kind, id: b.defender.id } : null);
   for (const [id, n] of numbers) out.set(id, { n, role: 'attacker', pending: !confirmedAtk.has(id), current: id === current, defender: defenderOf.get(id) ?? null });
   for (const b of bands)

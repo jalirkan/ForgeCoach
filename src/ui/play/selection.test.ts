@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import type { InputBody } from '../../protocol.ts';
 import { describeInput } from './inputView.ts';
-import { selectionSummary } from './selection.ts';
+import { selectionSummary, wireChoice } from './selection.ts';
 
 function input(prompt: string, ok = true, cancel = false): InputBody {
   return {
@@ -50,5 +50,32 @@ describe('selectionSummary', () => {
     const v = describeInput(i, null, 0);
     expect(v.mode).toBe('target');
     expect(selectionSummary(v, none)).toEqual({ active: true, count: null, line: 'Click to select', confirm: null });
+  });
+});
+
+describe('wireChoice (M65 selectable.chosen)', () => {
+  const chosen = { cardIds: [3, 4], playerIds: [1], blocks: [{ blockerId: 3, attackerId: 9 }], attacks: [{ attackerId: 5, defender: { kind: 'player' as const, id: 1 } }] };
+  it('null is "this frame does not say", never "nothing chosen"', () => {
+    expect(wireChoice(null, 'attack')).toBeNull();
+  });
+  it('a block declaration: blocker → attacker, a blocker with no pair row → null', () => {
+    const w = wireChoice(chosen, 'block')!;
+    expect([...w.blockers]).toEqual([
+      [3, 9],
+      [4, null],
+    ]);
+    expect(w.attackers.size).toBe(0);
+    expect(w.cards.size).toBe(0);
+  });
+  it('an attack declaration: the attackers and what each attacks', () => {
+    const w = wireChoice(chosen, 'attack')!;
+    expect([...w.attackers].sort()).toEqual([3, 4, 5]);
+    expect(w.attacks).toEqual(chosen.attacks);
+    expect(w.blockers.size).toBe(0);
+  });
+  it('a target or a list: the cards and players picked', () => {
+    const w = wireChoice({ ...chosen, blocks: [], attacks: [] }, 'target')!;
+    expect([...w.cards]).toEqual([3, 4]);
+    expect([...w.players]).toEqual([1]);
   });
 });

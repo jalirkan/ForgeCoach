@@ -17,7 +17,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActBody, AnswerValue, AnyCard, Card, GameStateBody } from '../../protocol.ts';
-import { isHidden, MANA_COLORS, opponentIsHuman, undoOf, yieldOf } from '../../protocol.ts';
+import { chosenOf, isHidden, MANA_COLORS, opponentIsHuman, undoOf, yieldOf } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import type { PlaySession, PlaySnapshot } from '../../play/session.ts';
 import { activeGuideId, listGuides } from '../../guide.ts';
@@ -37,7 +37,7 @@ import { Sheet } from '../Sheet.tsx';
 import { allCardNames, cx, readLS, writeLS } from '../util.ts';
 import { AskDialog, OpeningDialog, openingKind } from './AskDialog.tsx';
 import { DecisionSlot, OppWaitingLine } from './DecisionSlot.tsx';
-import { attentionOf, inputCounter, markedTitle, nudgeDelay, passToggles, yieldLit } from './decisionModel.ts';
+import { attentionOf, inputCounter, markedTitle, nudgeDelay, offersTheyAct, passToggles, theyActWhyNot, yieldLit } from './decisionModel.ts';
 import { GameOverCard } from './GameOverCard.tsx';
 import type { FriendReviewView } from './useFriendReview.ts';
 import { FilmRoom } from '../filmroom/FilmRoom.tsx';
@@ -55,7 +55,7 @@ import { stackEntries } from '../stackModel.ts';
 import { zonePick } from './zonePick.ts';
 import { CombatArrows } from './CombatArrows.tsx';
 import { combatLinks, combatMarks } from './combatLines.ts';
-import { selectionSummary } from './selection.ts';
+import { selectionSummary, wireChoice } from './selection.ts';
 import { matchBox, tableMatchLine, type MatchBox } from '../../play/match.ts';
 import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
 import { BoardScenery } from '../ambience/BoardScenery.tsx';
@@ -278,15 +278,31 @@ export function PlayView({
     [act, alphaStrike],
   );
 
+  // ---- what is chosen so far: the engine's own word when the frame says (M65 `selectable.chosen`),
+  // else this browser's clicks, exactly as before (absent / null is "unknown", never "nothing").
+  const wire = useMemo(() => wireChoice(chosenOf(input), view.mode), [input, view.mode]);
+  const atkNow = wire && view.mode === 'attack' ? wire.attackers : chosenAtk;
+  const blkNow = wire && view.mode === 'block' ? wire.blockers : chosenBlk;
+
   // ---- the selection under way (dims the rest of the board) and the combat lines
-  const selection = useMemo(() => selectionSummary(view, { attackers: chosenAtk.size, blockers: chosenBlk.size }), [view, chosenAtk, chosenBlk]);
+  const selection = useMemo(() => selectionSummary(view, { attackers: atkNow.size, blockers: blkNow.size }), [view, atkNow, blkNow]);
   // Cards the engine wants clicked that the board has no tile for (a graveyard target): their own panel.
   const offBoard = useMemo(() => (ask || over ? null : zonePick(input, state, seat, view.mode)), [ask, over, input, state, seat, view.mode]);
-  const links = useMemo(() => combatLinks(state, view.mode === 'block' ? chosenBlk : undefined), [state, view.mode, chosenBlk]);
+  const links = useMemo(
+    () => combatLinks(state, view.mode === 'block' ? blkNow : undefined, view.mode === 'attack' ? wire?.attacks : undefined),
+    [state, view.mode, blkNow, wire],
+  );
   // Every attacker and its blockers share a number on the board (endstep-style), clicks not yet confirmed included.
   const pairs = useMemo(
-    () => combatMarks(state, view.mode === 'block' ? chosenBlk : undefined, view.mode === 'attack' ? chosenAtk : undefined, view.mode === 'block' ? view.blockingAttackerId : null),
-    [state, view.mode, view.blockingAttackerId, chosenBlk, chosenAtk],
+    () =>
+      combatMarks(
+        state,
+        view.mode === 'block' ? blkNow : undefined,
+        view.mode === 'attack' ? atkNow : undefined,
+        view.mode === 'block' ? view.blockingAttackerId : null,
+        view.mode === 'attack' ? wire?.attacks : undefined,
+      ),
+    [state, view.mode, view.blockingAttackerId, blkNow, atkNow, wire],
   );
 
   // ---- interaction context for tiles and avatars
@@ -301,14 +317,16 @@ export function PlayView({
       mark: (c: AnyCard) => cardRole(c, ctx),
       hint: (c: AnyCard) => affordable.has(c.id),
       click: clickCard,
-      chosen: (c: AnyCard) => (chosenAtk.has(c.id) ? 'attack' : chosenBlk.has(c.id) ? 'block' : null),
-      blockersFor: (attackerId: number) => [...chosenBlk].filter(([, a]) => a === attackerId).map(([b]) => b),
-      playerMark: () => playerClickable(ctx),
+      chosen: (c: AnyCard) => (atkNow.has(c.id) ? 'attack' : blkNow.has(c.id) ? 'block' : wire?.cards.has(c.id) ? 'pick' : null),
+      blockersFor: (attackerId: number) => [...blkNow].filter(([, a]) => a === attackerId).map(([b]) => b),
+      // M66: exactly the players the engine lists when the frame says; else today's heuristics.
+      playerMark: (id: number) => playerClickable(ctx, id),
+      playerChosen: (id: number) => !!wire?.players.has(id),
       clickPlayer: (id: number) => {
-        if (playerClickable(ctx)) act({ action: 'clickPlayer', playerId: id });
+        if (playerClickable(ctx, id)) act({ action: 'clickPlayer', playerId: id });
       },
     }),
-    [ctx, affordable, act, clickCard, chosenAtk, chosenBlk],
+    [ctx, affordable, act, clickCard, atkNow, blkNow, wire],
   );
 
   // ---- details / hover
@@ -442,6 +460,13 @@ export function PlayView({
   const undo = undoOf(state);
   const yielding = yieldOf(state);
   const lit = useMemo(() => yieldLit(yielding, seat), [yielding, seat]);
+  // M64 "until they act": offered once this engine shows it has it (decisionModel.ts offersTheyAct), for the session.
+  const [theyActOffered, setTheyActOffered] = useState(false);
+  useEffect(() => {
+    if (!theyActOffered && offersTheyAct(input, yielding)) setTheyActOffered(true);
+  }, [input, yielding, theyActOffered]);
+  const phase = state?.phase ?? null;
+  const theyActBlocked = theyActWhyNot({ offered: theyActOffered, phase, lit: lit.theyAct });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -456,6 +481,7 @@ export function PlayView({
           poolColors: pool ? MANA_COLORS.filter((c) => pool[c] > 0) : [],
           overlay,
           yieldLit: lit,
+          theyActWhyNot: theyActBlocked,
         },
       );
       if (!plan) return;
@@ -485,7 +511,7 @@ export function PlayView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, logOpen, wide, pressOk, doCancel, doAct, lit]);
+  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, logOpen, wide, pressOk, doCancel, doAct, lit, theyActBlocked]);
 
   // ---- the board seam (playBoard.ts): the parts of the board read this instead of taking props
   const playBoard = usePlayBoardValue({ state, input, ask, seat, log, view, connected, over: !!over, act, inputSeen: snap.inputSeen });
@@ -530,7 +556,10 @@ export function PlayView({
       document.title = markedTitle(document.title, false);
     };
   }, [nudged]);
-  const toggles = useMemo(() => passToggles({ yielding, seat, view, canAct: playBoard.canAct }), [yielding, seat, view, playBoard.canAct]);
+  const toggles = useMemo(
+    () => passToggles({ yielding, seat, view, canAct: playBoard.canAct, theyAct: theyActOffered, phase }),
+    [yielding, seat, view, playBoard.canAct, theyActOffered, phase],
+  );
   const counter = useMemo(() => inputCounter(input, view), [input, view]);
 
   // The stack: always in view while it is not empty, in one place over the board (endstep-style).

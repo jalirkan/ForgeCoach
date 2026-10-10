@@ -46,6 +46,17 @@
  * priority); without it, it is an engine from before M61. Scene `graveyard`
  * is `main3` with Cauldron Familiar in your graveyard.
  *
+ * With `selection: true` it is an engine since mtg-table M64–M66 (D421–D423):
+ * every `input` carries `selectable.playerIds` (the players a click is taken
+ * for: the trigger's targets, the attack's defender, `[]` elsewhere, `null`
+ * while paying) and `selectable.chosen` (the bottom pick, the declared
+ * attackers and their defender, the declared blocks — which `state.combat`
+ * then does not show until the declaration ends, as in Forge — and `null`
+ * where no selection is up); `yieldTo {kind: "endStepOrOpponent"}` is taken
+ * (`state.yield` shows it; refused with a `yieldTo` notice in the end step) and
+ * the engine's Cancel stops it. Without it, the kind is refused as a bridge
+ * before M64 does, and no input carries either key.
+ *
  * Test hooks: `dropSeat()` (the TCP connection cut, the browser sees 1006),
  * `restart()` (a new process under the same game id: every socket cut, an
  * optional down time, then a fresh session whose seq series starts at 1),
@@ -54,7 +65,7 @@
  * the record of every frame a client sent (`received`) and every connection.
  *
  * Run it on its own to point a browser (or e2e/play.e2e.mjs) at it:
- *   node e2e/fake-engine.mjs [--port 8642] [--scene pregame|main3|graveyard] [--drop-mode default|reask] [--playable] [--death-trigger]
+ *   node e2e/fake-engine.mjs [--port 8642] [--scene pregame|main3|graveyard] [--drop-mode default|reask] [--playable] [--death-trigger] [--selection]
  * with POST /control/drop, /control/restart[?scene=…], /control/reset[?scene=…]
  * and GET /control/log.
  */
@@ -155,8 +166,11 @@ function inputBody(prompt, ok, cancel, extra = {}) {
 // One game: the rules model and its script. `out(type, body)` puts a frame on the wire.
 
 class Game {
-  constructor({ out, aiLife = 3, scene = 'pregame', playable = false, deathTrigger = false }) {
+  constructor({ out, aiLife = 3, scene = 'pregame', playable = false, deathTrigger = false, selection = false }) {
     this.out = out;
+    /** Amendments M64–M66: `selectable.playerIds` / `chosen` on every input, and the `endStepOrOpponent` yield. */
+    this.selectionOn = selection;
+    this.yieldState = null;
     /** Blood Artist on your battlefield: a creature dying asks for a target player with both buttons off. */
     this.deathTrigger = deathTrigger;
     this.triggers = [];
@@ -233,9 +247,12 @@ class Game {
   // ---- frames
 
   snapshot() {
+    // M65's engine, as Forge: blocks being declared are not in state.combat until the declaration ends.
+    const declaring = this.selectionOn && this.pending?.kind === 'block';
+    const shown = (c) => (declaring && c.blocking ? { ...wire(c), blocking: false } : wire(c));
     const zones = (p) => {
       const viewer = p.id === HUMAN;
-      const z = (cards, hide) => ({ count: cards.length, cards: cards.map((c) => (hide ? stub(c) : wire(c))) });
+      const z = (cards, hide) => ({ count: cards.length, cards: cards.map((c) => (hide ? stub(c) : shown(c))) });
       return {
         hand: z(p.hand, !viewer),
         battlefield: z(p.battlefield, false),
@@ -246,7 +263,7 @@ class Game {
       };
     };
     const bands = this.attackers.length
-      ? [{ attackerIds: this.attackers.slice(), defender: { kind: 'player', id: this.active === HUMAN ? AI : HUMAN }, blockerIds: [...this.blocks.values()].flat(), damageOrder: [] }]
+      ? [{ attackerIds: this.attackers.slice(), defender: { kind: 'player', id: this.active === HUMAN ? AI : HUMAN }, blockerIds: declaring ? [] : [...this.blocks.values()].flat(), damageOrder: [] }]
       : [];
     return {
       gameId: this.gameId,
@@ -281,7 +298,7 @@ class Game {
       })),
       stackCards: this.stack.map((s) => wire(s.card)),
       combat: this.phase && this.phase.startsWith('COMBAT') ? { bands } : null,
-      yield: null,
+      yield: this.yieldState,
       undo: { can: false, depth: 0 },
       ...(this.playableOn ? { playable: this.atPriority && this.priority === HUMAN && !this.gameOver ? this.playableNow() : null } : {}),
       events: this.events.splice(0),
@@ -318,7 +335,38 @@ class Game {
     }
     this.pending = pending;
     this.atPriority = pending?.kind === 'priority';
-    this.out('input', body);
+    this.out('input', this.withSelection(body, pending));
+  }
+
+  /** M65/M66: what the seat has chosen in this input, and the players a click is taken for. */
+  withSelection(body, pending) {
+    if (!this.selectionOn) return body;
+    const none = { cardIds: [], playerIds: [], blocks: [], attacks: [] };
+    const asc = (a) => a.slice().sort((x, y) => x - y);
+    let playerIds = [];
+    let chosen = null;
+    switch (pending?.kind) {
+      case 'bottom':
+        chosen = { ...none, cardIds: pending.chosen === null ? [] : [pending.chosen] };
+        break;
+      case 'trigger':
+        playerIds = [HUMAN, AI];
+        chosen = none;
+        break;
+      case 'attack':
+        playerIds = [AI];
+        chosen = { ...none, cardIds: asc(this.attackers), attacks: asc(this.attackers).map((id) => ({ attackerId: id, defender: { kind: 'player', id: AI } })) };
+        break;
+      case 'block': {
+        const blocks = [...this.blocks.entries()].flatMap(([attackerId, ids]) => ids.map((blockerId) => ({ blockerId, attackerId })));
+        chosen = { ...none, cardIds: asc(blocks.map((b) => b.blockerId)), blocks: blocks.sort((x, y) => x.blockerId - y.blockerId) };
+        break;
+      }
+      case 'pay':
+        playerIds = null;
+        break;
+    }
+    return { ...body, selectable: { ...body.selectable, playerIds, chosen } };
   }
 
   /** Forge's InputSelectTargets for the trigger's mandatory "target player": no button, no listed card. */
@@ -328,7 +376,7 @@ class Game {
     this.pending = { kind: 'trigger' };
     this.atPriority = false;
     this.emitState();
-    this.out('input', inputBody(text, button('OK', false), button('Cancel', false)));
+    this.out('input', this.withSelection(inputBody(text, button('OK', false), button('Cancel', false)), this.pending));
   }
 
   /** The trigger's player chosen: the drain resolves, then the next trigger or the input that was due. */
@@ -419,6 +467,8 @@ class Game {
   // ---- turns
 
   startTurn(pid, { draw = true, keepTurn = false } = {}) {
+    // M64: a later turn beginning ends the yield (this model passes nothing for it: it only shows it).
+    this.yieldState = null;
     if (!keepTurn) this.turn += 1;
     this.active = pid;
     this.priority = pid;
@@ -577,6 +627,8 @@ class Game {
 
   aiMain() {
     const ai = this.players[AI];
+    // M64: the opponent acting (a land drop is not acting, but this model ends it at the AI's turn either way).
+    this.yieldState = null;
     const land = ai.hand.find((c) => DEFS[c.name].land);
     if (land) {
       this.move(land, 'battlefield');
@@ -776,6 +828,22 @@ class Game {
       if (!this.gameOver) this.finish(AI, 'Conceded');
       return;
     }
+    if (a === 'yieldTo' && body.kind === 'endStepOrOpponent') {
+      // M64. A bridge before it refuses the kind; one since refuses it in the end step and cleanup.
+      if (!this.selectionOn) return this.out('notice', { level: 'warn', title: 'yieldTo', text: 'kind must be endOfTurn, marker or stack' });
+      if (this.phase === 'END_OF_TURN' || this.phase === 'CLEANUP') {
+        return this.out('notice', { level: 'warn', title: 'yieldTo', text: 'the end step has already begun' });
+      }
+      this.yieldState = { kind: 'endStepOrOpponent', playerId: this.active, phase: 'END_OF_TURN' };
+      this.emitState();
+      return;
+    }
+    // The engine's Cancel ends a running yield (§2.2: there is no cancel-yield act); the input stays.
+    if (a === 'buttonCancel' && this.yieldState) {
+      this.yieldState = null;
+      this.emitState();
+      return;
+    }
     if (['setPhaseStop', 'setYield', 'yieldTo', 'undo'].includes(a)) {
       // M6: these four are answered with a fresh state.
       this.emitState();
@@ -903,9 +971,10 @@ class Game {
 // The bridge: sockets, the session's frames, catch-ups.
 
 export class FakeEngine {
-  constructor({ gameId = 'human-ws-0', gameCount = 3, scene = 'pregame', dropMode = 'default', aiLife = 3, verbose = false, playable = false, deathTrigger = false } = {}) {
+  constructor({ gameId = 'human-ws-0', gameCount = 3, scene = 'pregame', dropMode = 'default', aiLife = 3, verbose = false, playable = false, deathTrigger = false, selection = false } = {}) {
     this.baseGameId = gameId;
     this.playable = playable;
+    this.selection = selection;
     this.deathTrigger = deathTrigger;
     this.gameCount = gameCount;
     this.dropMode = dropMode;
@@ -963,7 +1032,7 @@ export class FakeEngine {
       ],
       match: { yourDeck: { name: 'Mono-Red Test', path: 'decks/e2e-red.dck', cards: 40 }, aiDeck: { name: 'Red Probe', cards: 40 }, aiProfile: 'Default', games: this.gameCount },
     });
-    const game = new Game({ out: (type, body) => this.emit(type, body), aiLife: this.aiLife, scene: 'none', playable: this.playable, deathTrigger: this.deathTrigger });
+    const game = new Game({ out: (type, body) => this.emit(type, body), aiLife: this.aiLife, scene: 'none', playable: this.playable, deathTrigger: this.deathTrigger, selection: this.selection });
     this.game = game;
     game.gameId = this.gameId;
     game.matchOverIf = (winner) => {
@@ -1247,6 +1316,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const i = args.indexOf(`--${name}`);
     return i >= 0 ? args[i + 1] : dflt;
   };
-  const e = await startFakeEngine({ port: Number(opt('port', 8642)), scene: opt('scene', 'pregame'), dropMode: opt('drop-mode', 'default'), playable: args.includes('--playable'), deathTrigger: args.includes('--death-trigger'), verbose: true });
+  const e = await startFakeEngine({ port: Number(opt('port', 8642)), scene: opt('scene', 'pregame'), dropMode: opt('drop-mode', 'default'), playable: args.includes('--playable'), deathTrigger: args.includes('--death-trigger'), selection: args.includes('--selection'), verbose: true });
   console.log(`fake engine: seat ${e.seatUrl}, observer ${e.observeUrl}, health http://127.0.0.1:${e.port}/health`);
 }

@@ -26,6 +26,7 @@
  * moment. Pure and DOM-free.
  */
 import type { AskBody, GameStateBody, InputBody } from '../protocol.ts';
+import { selectablePlayersOf } from '../protocol.ts';
 import type { LoggedFrame } from '../log.ts';
 import { isPlayDrawInput } from '../decisions.ts';
 import { cardsById, nameOf, playersOf, zoneCards } from './board.ts';
@@ -195,11 +196,15 @@ export function selectChoices(input: InputBody, state: GameStateBody, me: number
     if (hand.length <= k) return null;
     return { prompt, choices: hand.map((c) => ({ label: nameOf(c) ?? `card ${c.id}`, cardId: c.id })), min: k, max: k };
   }
-  if (!((sel?.mode === 'cards' && ids.length > 0) || sel?.mode === 'players')) return null;
+  // M66: the players a click is taken for, when the frame says (null: not said — the prompt's words decide, as before).
+  const listed = sel ? selectablePlayersOf(input) : null;
+  if (!((sel?.mode === 'cards' && ids.length > 0) || sel?.mode === 'players' || (listed?.length ?? 0) > 0)) return null;
   const cards = cardsById(state);
   const choices: Choice[] = [];
   const playerWords = /any target|target player|target opponent|player or planeswalker|creature or player|player, planeswalker|each opponent|any player/i;
-  if (sel.mode === 'players' || (/\bSelect\b[^\n]*\btarget\b/i.test(prompt) && playerWords.test(prompt))) {
+  if (listed !== null) {
+    for (const p of state.players ?? []) if (listed.includes(p.id)) choices.push({ label: p.id === me ? 'me' : 'opponent', playerId: p.id });
+  } else if (sel.mode === 'players' || (/\bSelect\b[^\n]*\btarget\b/i.test(prompt) && playerWords.test(prompt))) {
     for (const p of state.players ?? []) choices.push({ label: p.id === me ? 'me' : 'opponent', playerId: p.id });
   }
   for (const id of ids) {

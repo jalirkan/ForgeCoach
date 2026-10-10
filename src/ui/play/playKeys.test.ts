@@ -85,10 +85,16 @@ describe('the planners agree with the table', () => {
     expect(planPlayKey(ev('a'), ctx('main'))?.kind).toBe('inert');
   });
   it('a lit auto-pass key stops its yield with the engine’s Cancel', () => {
-    const lit = { eot: true, before: false, myturn: false, stack: false };
+    const lit = { eot: true, before: false, myturn: false, theyAct: false, stack: false };
     expect(planPlayKey(ev('e'), ctx('yield', { yieldLit: lit }))).toEqual({ kind: 'cancel' });
     expect(planPlayKey(ev('e'), ctx('yield', { yieldLit: lit, view: { ...view('yield'), cancel: { label: 'Cancel', enabled: false, meaning: null } } }))?.kind).toBe('inert');
     expect(planPlayKey(ev('b'), ctx('yield', { yieldLit: lit }))).toMatchObject({ kind: 'act', body: { action: 'yieldTo' } });
+  });
+  it('Y: until they act (M64); stops its own yield; inert with the reason on an engine without it or in the end step', () => {
+    expect(planPlayKey(ev('y'), ctx('priority'))).toMatchObject({ kind: 'act', body: { action: 'yieldTo', kind: 'endStepOrOpponent' } });
+    const lit = { eot: false, before: false, myturn: false, theyAct: true, stack: false };
+    expect(planPlayKey(ev('y'), ctx('yield', { yieldLit: lit, theyActWhyNot: 'x' }))).toEqual({ kind: 'cancel' });
+    expect(planPlayKey(ev('y'), ctx('priority', { theyActWhyNot: 'Off in the end step' }))).toEqual({ kind: 'inert', why: 'Off in the end step' });
   });
   it('an open question turns every board key off, and the question plans its own', () => {
     for (const b of KEY_BINDINGS) {
@@ -109,6 +115,6 @@ describe('the planners agree with the table', () => {
   });
   it('the ? list names every key the table binds', () => {
     const chords = PLAY_KEYS.map((r) => r.chord.toLowerCase()).join(' ');
-    for (const k of ['space', 'enter', 'esc', '1', 'p', 'e', 'b', 't', 'a', 'ctrl+z', 'w u b r g c', 'l', '?']) expect(chords).toContain(k);
+    for (const k of ['space', 'enter', 'esc', '1', 'p', 'e', 'b', 't', 'y', 'a', 'ctrl+z', 'w u b r g c', 'l', '?']) expect(chords).toContain(k);
   });
 });

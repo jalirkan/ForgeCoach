@@ -18,7 +18,8 @@
  * (decisionModel.ts `attentionOf`), never a guess.
  *
  * Under it, the AUTO-PASS toggles: the protocol's `yieldTo` targets, lit from
- * `state.yield`; a lit one sends the engine's Cancel.
+ * `state.yield`; a lit one sends the engine's Cancel. UNTIL THEY ACT [Y] is
+ * M64's `endStepOrOpponent`, shown only on an engine that offers it.
  *
  * Kept class names (e2e and the playtest monkey read them): .actionbar,
  * .ab-<mode>, .ab-eyebrow, .ab-title-text, .ab-flash, .ab-pool-pip, .ab-eot,
@@ -105,6 +106,8 @@ export function DecisionSlot({
   const eyebrow = pending ? 'Decision' : view.mode === 'over' ? 'Game over' : 'Waiting';
   const hasTools = poolColors.length > 0 || rest.length > 0;
   const eot = toggles.find((t) => t.id === 'eot');
+  // The phone's ▲ menu offers "until they act" while its toggle could send it (M64; not in the end step).
+  const theyAct = toggles.some((t) => t.id === 'theyAct' && !t.lit && t.enabled);
   // "Your move — " runs inline with the title (a wrap, never a squeezed column of its own).
   const nudge = nudged && pending ? <span className="ds-nudge">{NUDGE_PREFIX}</span> : null;
 
@@ -242,7 +245,7 @@ export function DecisionSlot({
             </button>
             {menu && (
               <div className="ab-menu" role="menu">
-                {passMenu(view).map((m) => (
+                {passMenu(view, { theyAct }).map((m) => (
                   <button
                     key={m.id}
                     role="menuitem"
@@ -296,7 +299,10 @@ function ToolButton({ b, busy, onOk, onCancel, onUndo }: { b: SlotButton; busy: 
   );
 }
 
-/** AUTO-PASS: END OF TURN [E], BEFORE MY TURN [B], MY NEXT TURN [T] (and the stack, while there is one). */
+/**
+ * AUTO-PASS: END OF TURN [E], BEFORE MY TURN [B], MY NEXT TURN [T], UNTIL THEY
+ * ACT [Y] (M64, on an engine that offers it), and the stack while there is one.
+ */
 function AutoPass({ toggles, onAct }: { toggles: PassToggle[]; onAct: (body: ActBody) => void }) {
   return (
     <div className="ds-autopass" role="group" aria-label="Auto-pass">
@@ -310,6 +316,7 @@ function AutoPass({ toggles, onAct }: { toggles: PassToggle[]; onAct: (body: Act
             key={t.id}
             type="button"
             className={cx('ds-toggle', t.id === 'eot' && 'ab-eot', t.lit && 'is-lit')}
+            data-toggle={t.id}
             aria-pressed={t.lit}
             disabled={!t.enabled}
             title={t.title}

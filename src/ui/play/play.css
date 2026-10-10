@@ -428,6 +428,11 @@ button.avatar.is-select {
   cursor: pointer;
   box-shadow: 0 0 0 2px var(--accent), 0 0 14px rgba(227, 178, 95, 0.35);
 }
+/* A player already chosen in the open input (M65): the same solid ring as a chosen card. */
+button.avatar.is-chosen {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* ------------------------------------------------------------------ */
 /* Coach in play */

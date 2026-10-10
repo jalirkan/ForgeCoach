@@ -30,6 +30,7 @@ export const PLAY_KEYS: KeyRow[] = [
   { chord: 'E', what: 'auto-pass: until end of turn (again, while it runs, to stop it)' },
   { chord: 'B', what: 'auto-pass: until just before my turn (their end step)' },
   { chord: 'T', what: 'auto-pass: until my next turn' },
+  { chord: 'Y', what: 'auto-pass: until they cast something or attack you, or this turn’s end step (again, while it runs, to stop it)' },
   { chord: 'A', what: 'alpha strike while declaring attackers; Auto pay while paying' },
   { chord: 'Ctrl+Z', what: 'undo the last mana tap' },
   { chord: 'W U B R G C', what: 'spend one floating mana of that colour (B spends black while black floats)' },
@@ -60,6 +61,7 @@ export const KEY_BINDINGS: readonly KeyBinding[] = [
   { keys: ['e'], scope: 'board', modes: null, what: 'auto-pass: end of turn' },
   { keys: ['b'], scope: 'board', modes: null, what: 'auto-pass: before my turn' },
   { keys: ['t'], scope: 'board', modes: null, what: 'auto-pass: my next turn' },
+  { keys: ['y'], scope: 'board', modes: null, what: 'auto-pass: until they act' },
   { keys: ['a', 'ctrl+a'], scope: 'board', modes: ['attack'], what: 'alpha strike' },
   { keys: ['a'], scope: 'board', modes: ['pay'], what: 'auto pay (the engine’s OK)' },
   { keys: ['ctrl+z'], scope: 'board', modes: null, what: 'undo' },
@@ -92,6 +94,11 @@ export interface PlayKeyContext {
   overlay: boolean;
   /** Which auto-pass toggle is lit (decisionModel.ts yieldLit): its key then stops it. */
   yieldLit?: YieldLit;
+  /**
+   * Why Y ("until they act", M64) must not send now — an engine that does not
+   * offer it, or the end step (decisionModel.ts theyActWhyNot); null/absent: it may.
+   */
+  theyActWhyNot?: string | null;
 }
 
 export type PlayKeyPlan =
@@ -153,6 +160,9 @@ export function planPlayKey(e: KeyLike, ctx: PlayKeyContext): PlayKeyPlan | null
       return stop(ctx.yieldLit?.eot, { action: 'yieldTo', kind: 'endOfTurn' }, 'Pass to end of turn');
     case 't':
       return stop(ctx.yieldLit?.myturn, { action: 'yieldTo', kind: 'marker', phase: 'UPKEEP', turn: 'own' }, 'Pass to my turn');
+    case 'y':
+      if (!ctx.yieldLit?.theyAct && ctx.theyActWhyNot) return { kind: 'inert', why: ctx.theyActWhyNot };
+      return stop(ctx.yieldLit?.theyAct, { action: 'yieldTo', kind: 'endStepOrOpponent' }, 'Pass until they act');
     case 'b':
       return stop(ctx.yieldLit?.before, { action: 'yieldTo', kind: 'marker', phase: 'END_OF_TURN', turn: 'opp' }, 'Pass to before my turn');
     case 'a':

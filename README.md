@@ -89,6 +89,7 @@ engine decides what is legal.
 | E | pass until end of turn (Cancel stops it) |
 | T | pass until my next turn |
 | B | pass until just before my turn (opponent's end step) |
+| Y | pass until they cast something or attack you, or this turn's end step (needs an up-to-date engine; not in the end step) |
 | A | attack with everything (while declaring attackers) |
 | Ctrl+Z | undo the last mana tap |
 | W U B R G C | spend one floating mana of that colour |

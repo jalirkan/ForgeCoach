@@ -39,14 +39,19 @@ export interface PlayInteraction {
   hint(card: AnyCard): boolean;
   click(card: AnyCard): void;
   /**
-   * Attackers / blockers you have clicked while declaring. The wire has no
-   * "chosen so far" field (combat stays null until you confirm), so this is
-   * what this browser sent, drawn as chosen.
+   * What is chosen so far in the open input: an attacker or blocker being
+   * declared, or (`pick`) a target or list entry. The engine's own M65
+   * `selectable.chosen` when the frame carries it; on an engine before it
+   * (combat stays null until you confirm) what this browser sent, drawn as
+   * chosen — attackers and blockers only.
    */
-  chosen(card: AnyCard): 'attack' | 'block' | null;
+  chosen(card: AnyCard): 'attack' | 'block' | 'pick' | null;
   /** Blockers chosen so far for one attacker (same caveat as `chosen`). */
   blockersFor(attackerId: number): number[];
+  /** Whether this player's portrait takes a click now (M66 `selectable.playerIds` when the frame says). */
   playerMark(playerId: number): boolean;
+  /** Whether this player is already chosen in the open input (M65); absent: never. */
+  playerChosen?(playerId: number): boolean;
   clickPlayer(playerId: number): void;
 }
 export const PlayContext = createContext<PlayInteraction | null>(null);

@@ -9,6 +9,8 @@
  * Nothing here computes legality. The sources, in order:
  *   1. an open ask: the cards its options carry (`ask.options[].card`);
  *   2. an explicit choice: `input.selectable` (targets, a discard, blockers…);
+ *      a choice of players only (M66 `selectable.playerIds` listing someone,
+ *      no card) has no hand card for an answer;
  *   3. priority: M61 `state.playable` (and M63 `activatable`, if it ever lists
  *      a hand card) — the cards Forge says a click would play.
  * When the engine says nothing — an older engine with no `playable`, no input,
@@ -17,7 +19,7 @@
  * engine did say, and no hand card is an answer. A hidden card is never one.
  */
 import type { AnyCard, AskBody, Card, GameStateBody, InputBody } from '../../protocol.ts';
-import { activatableOf, isHidden, playableOf } from '../../protocol.ts';
+import { activatableOf, isHidden, playableOf, selectablePlayersOf } from '../../protocol.ts';
 import type { InputView } from './inputView.ts';
 
 export interface HandAnswersIn {
@@ -69,8 +71,11 @@ export function handAnswers({ view, input, state, ask, seat }: HandAnswersIn): S
   if (mode === 'waiting' || mode === 'over' || mode === 'yield' || mode === 'ask') return null;
   const sel = input.selectable;
   if (sel && sel.mode === 'cards' && sel.cardIds.length > 0) return onlyHand(sel.cardIds, hand);
-  // "Select target player": the engine says the answer is a portrait, not a card.
+  // "Select target player": the engine says the answer is a portrait, not a card —
+  // `mode: "players"`, or (M66) players listed and no card (a player-only choice reads mode "none").
   if (sel && sel.mode === 'players') return new Set();
+  // (An attack declaration lists its defenders the same way; it is not a player-only choice.)
+  if (sel && mode !== 'attack' && sel.cardIds.length === 0 && (selectablePlayersOf(input)?.length ?? 0) > 0) return new Set();
   if (!AT_PRIORITY.has(mode)) return null;
   const playable = playableOf(state);
   if (!playable) return null;

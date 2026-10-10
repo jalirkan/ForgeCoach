@@ -14,7 +14,7 @@
  * and Forge answers a click it will not take with a "Not selectable" notice.
  */
 import type { AnyCard, AskBody, Card, GameStateBody, InputBody, InputButton } from '../../protocol.ts';
-import { isHidden, keywordsOf, playableOf } from '../../protocol.ts';
+import { isHidden, keywordsOf, playableOf, selectablePlayersOf } from '../../protocol.ts';
 import { cardIndex, cardName } from '../../decisions.ts';
 
 export type InputMode =
@@ -184,7 +184,11 @@ export function describeInput(
   const ok = input.buttons.ok;
   const cancel = input.buttons.cancel;
   const focus = input.buttons.focus ?? null;
-  const selecting = input.selectable.mode !== 'none' && (input.selectable.cardIds.length > 0 || input.selectable.mode === 'players');
+  // M66: the players a click is taken for. `selectable.mode` is computed from cardIds alone, so a
+  // player-only choice ("target opponent") reads "none" and only this list shows it; null: not said.
+  const players = selectablePlayersOf(input);
+  const playerPick = (players?.length ?? 0) > 0;
+  const selecting = (input.selectable.mode !== 'none' && (input.selectable.cardIds.length > 0 || input.selectable.mode === 'players')) || playerPick;
   const v = base('other', firstLine(p) || 'Your move');
   const primaryDefault = (): 'ok' | 'cancel' | null => (focus === 'cancel' && cancel.enabled ? 'cancel' : ok.enabled ? 'ok' : cancel.enabled && focus === 'cancel' ? 'cancel' : null);
   v.primary = primaryDefault();
@@ -327,7 +331,9 @@ export function describeInput(
 
   if (selecting || !ok.enabled) {
     const n = input.selectable.max;
-    const what = input.selectable.mode === 'players' ? 'a player' : n > 1 ? `up to ${n}` : 'one';
+    const cardPick = input.selectable.mode === 'cards' && input.selectable.cardIds.length > 0;
+    const onlyPlayers = input.selectable.mode === 'players' || (playerPick && !cardPick);
+    const what = onlyPlayers ? 'a player' : n > 1 ? `up to ${n}` : 'one';
     // "Source (12)\nWhat to do": headline the instruction, name the source.
     // InputSelectTargets: "Host - Select up to two target …\nTargeted:\n<names>\n(1 more can be targeted)".
     const all = p.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -337,10 +343,21 @@ export function describeInput(
     const source = dash ? dash[1]!.replace(/\s*\(\d+\)\s*$/, '') : lines.length > 1 ? lines[0]!.replace(/\s*\(\d+\)\s*$/, '') : null;
     const ask = dash ? dash[2]! : lines.length > 1 ? lines[lines.length - 1]! : lines[0] ?? 'Make a choice';
     // Nothing listed: the prompt says whether a player is wanted ("Select target player", "target opponent").
+    // M66 decides when the frame says (a list: players and/or cards); else the prompt's words.
     const clickWhat: InputView['clickWhat'] =
-      input.selectable.mode === 'players' || (!selecting && PLAYER_ONLY.test(ask) && !CARD_WORDS.test(ask)) ? 'player' : selecting ? 'card' : 'card or player';
+      players !== null && selecting
+        ? onlyPlayers
+          ? 'player'
+          : playerPick
+            ? 'card or player'
+            : 'card'
+        : input.selectable.mode === 'players' || (!selecting && PLAYER_ONLY.test(ask) && !CARD_WORDS.test(ask))
+          ? 'player'
+          : selecting
+            ? 'card'
+            : 'card or player';
     const how = selecting
-      ? `Tap ${what} of the highlighted ${input.selectable.mode === 'players' ? 'players' : 'cards'}.`
+      ? `Tap ${what} of the highlighted ${onlyPlayers ? 'players' : clickWhat === 'card or player' ? 'cards or players' : 'cards'}.`
       : clickWhat === 'player'
         ? 'Tap a player’s portrait (it glows) to choose them.'
         : 'Tap a card or player to choose it.';
@@ -511,10 +528,20 @@ const HAND_PROMPT = /\b(bottom of your library|from your hand|in your hand|disca
 const PLAYER_ONLY = /\b(player|opponent)s?\b/i;
 const CARD_WORDS = /\b(card|creature|permanent|planeswalker|artifact|enchantment|land|spell|battle|any target)s?\b/i;
 
-/** Whether a player avatar should be outlined and send `clickPlayer`. */
-export function playerClickable(ctx: ClickContext): boolean {
+/**
+ * Whether a player avatar should be outlined and send `clickPlayer`. With M66
+ * (`selectable.playerIds`) exactly the listed players, and `[]` is none; an
+ * engine that does not say keeps the heuristics below (`playerId` omitted:
+ * whether any portrait takes a click).
+ */
+export function playerClickable(ctx: ClickContext, playerId?: number): boolean {
   const { view, input } = ctx;
   if (!input) return false;
+  const listed = selectablePlayersOf(input);
+  if (listed !== null) {
+    if (view.mode === 'ask' || view.mode === 'over' || view.mode === 'waiting') return false;
+    return playerId === undefined ? listed.length > 0 : listed.includes(playerId);
+  }
   if (input.selectable.mode === 'players') return true;
   return view.mode === 'target' && view.needClick && input.selectable.cardIds.length === 0;
 }

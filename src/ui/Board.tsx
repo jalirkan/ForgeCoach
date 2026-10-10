@@ -264,6 +264,7 @@ function PlayerHeader({
   const v = useCardsVersion();
   const play = usePlay();
   const targetable = play ? play.playerMark(player.id) : false;
+  const picked = play?.playerChosen?.(player.id) ?? false;
   const [zone, setZone] = useState<ViewableZone | null>(null);
   const mine = player.id === seat;
   const sources = useMemo(() => {
@@ -297,8 +298,9 @@ function PlayerHeader({
         {play ? (
           <button
             type="button"
-            className={cx('avatar', mine ? 'avatar-me' : 'avatar-opp', targetable && 'is-select')}
+            className={cx('avatar', mine ? 'avatar-me' : 'avatar-opp', targetable && 'is-select', picked && 'is-chosen')}
             aria-label={`Choose ${mine ? 'yourself' : player.name}`}
+            aria-pressed={picked || undefined}
             data-player-id={player.id}
             onClick={() => play.clickPlayer(player.id)}
           >

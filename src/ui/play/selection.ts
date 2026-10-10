@@ -9,10 +9,51 @@
  * two buttons, worded for the moment ("No blocks" until you assign one, then
  * "Confirm blocks").
  *
- * Pure. The counts are what this browser clicked (the engine reports chosen
- * attackers and blockers only on confirm), never an inference about the board.
+ * Pure. The counts are the engine's own when the frame says (M65
+ * `selectable.chosen`: the targets, list entries, blockers and attackers chosen
+ * so far — `wireChoice` below), else what this browser clicked (an engine
+ * before M65 reports attackers and blockers only on confirm); never an
+ * inference about the board.
  */
+import type { ChosenAttack, SelectionChosen } from '../../protocol.ts';
 import type { InputView } from './inputView.ts';
+
+/** What the engine says is chosen in the open input (M65), shaped for the board. */
+export interface WireChoice {
+  /** Cards chosen outside a declaration: targets, list entries. */
+  cards: ReadonlySet<number>;
+  /** Players chosen (targets, list entries). */
+  players: ReadonlySet<number>;
+  /** Attackers declared so far (an attack declaration), else empty. */
+  attackers: ReadonlySet<number>;
+  /** What each declared attacker attacks. */
+  attacks: readonly ChosenAttack[];
+  /** Blocker → the attacker it blocks (a block declaration); a blocker with no pair row → null. */
+  blockers: ReadonlyMap<number, number | null>;
+}
+
+/**
+ * The board's picture of `chosenOf(input)`, or null when the frame does not
+ * say (absent or null is "unknown", never "nothing chosen"): the caller then
+ * keeps its own clicks, exactly as before M65.
+ */
+export function wireChoice(chosen: SelectionChosen | null, mode: InputView['mode']): WireChoice | null {
+  if (!chosen) return null;
+  const attack = mode === 'attack';
+  const block = mode === 'block';
+  const blockers = new Map<number, number | null>();
+  if (block) {
+    for (const b of chosen.blocks) if (!blockers.has(b.blockerId)) blockers.set(b.blockerId, b.attackerId);
+    for (const id of chosen.cardIds) if (!blockers.has(id)) blockers.set(id, null);
+  }
+  return {
+    cards: new Set(attack || block ? [] : chosen.cardIds),
+    players: new Set(chosen.playerIds),
+    attackers: new Set(attack ? [...chosen.cardIds, ...chosen.attacks.map((a) => a.attackerId)] : []),
+    attacks: attack ? chosen.attacks : [],
+    blockers,
+  };
+}
 
 export interface SelectionSummary {
   /** A selection is under way: dim the cards a click cannot drive. */

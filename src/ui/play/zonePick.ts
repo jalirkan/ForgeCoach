@@ -12,8 +12,9 @@
  * happened (the first two-person game: "it never popped up").
  *
  * Pure: which selectable ids have no tile on the board, where each one is,
- * and how many the engine already counts as chosen (`input.highlighted`,
- * which `InputSelectTargets.addTarget` sets). No rules: the engine judges
+ * and how many the engine already counts as chosen (M65 `selectable.chosen`
+ * when the frame carries it, else `input.highlighted`, which
+ * `InputSelectTargets.addTarget` sets). No rules: the engine judges
  * every click (§4.1); this only makes sure there is something to click.
  *
  * Only what the redacted state carries: an id that is not in this frame
@@ -21,7 +22,7 @@
  * no name — a click on it is the engine's to judge, and it names nothing.
  */
 import type { AnyCard, GameStateBody, InputBody } from '../../protocol.ts';
-import { isHidden } from '../../protocol.ts';
+import { chosenOf, isHidden } from '../../protocol.ts';
 import type { InputMode } from './inputView.ts';
 
 export type PickZone = 'graveyard' | 'exile' | 'library' | 'command' | 'stack' | 'hand' | 'unknown';
@@ -78,7 +79,7 @@ export function zonePick(input: InputBody | null, state: GameStateBody | null, s
   if (!input || !state || !PICKING.has(mode)) return null;
   const sel = input.selectable;
   if (sel.mode !== 'cards' || sel.cardIds.length === 0) return null;
-  const highlighted = new Set(input.highlighted ?? []);
+  const highlighted = new Set(chosenOf(input)?.cardIds ?? input.highlighted ?? []);
   const picks: OffBoardPick[] = [];
   for (const id of sel.cardIds) {
     const at = locate(state, id);
