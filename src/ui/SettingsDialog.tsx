@@ -23,6 +23,7 @@ const THINKING: Array<{ id: CoachThinking; label: string; hint: string }> = [
 ];
 
 const STYLES: Array<{ id: CoachStyle; label: string; hint: string }> = [
+  { id: 'plan', label: 'Steps', hint: 'Numbered steps, checked against the engine' },
   { id: 'short', label: 'Short', hint: 'Commands and a one-line why' },
   { id: 'detailed', label: 'Detailed', hint: 'Steps, reasons, traps' },
 ];
@@ -145,7 +146,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           <legend className="field-label">Coach style</legend>
           <div className="model-grid" role="radiogroup" aria-label="Coach style">
             {STYLES.map((o) => {
-              const on = (s.coachStyle ?? 'short') === o.id;
+              const on = (s.coachStyle ?? 'plan') === o.id;
               return (
                 <label key={o.id} className={cx('model-opt', on && 'is-on')}>
                   <input type="radio" name="coachStyle" value={o.id} checked={on} onChange={() => setS({ ...s, coachStyle: o.id })} />
@@ -156,7 +157,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             })}
           </div>
           <span className="field-help">
-            While you play. Short answers are a few commands (“Play: Cast Shock → their Bears”, “Mana: …”, “Why: …”), with the rule,
+            While you play. Steps (the default) is how Claude Sonnet played its test games against Forge: a one-line plan and
+            numbered steps, asked at your turn, a spell of theirs you could answer, blocks, their end step and the engine’s
+            questions; each step is checked against what the engine allows (cards, mana, land drop, attackers) before you see
+            it, and a step that can’t be done is sent back to the coach to correct. Short answers are a few commands (“Play: Cast Shock → their Bears”, “Mana: …”, “Why: …”), with the rule,
             confidence and details behind More, and Claude Code on your PC thinks as little as the model allows (Off, unless Coach thinking says Low) so the answer comes sooner. Replays, the film room and reviews keep the detailed layout.
           </span>
         </fieldset>
@@ -452,6 +456,6 @@ function safeLoad(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: MODELS[0].id, liveModel: 'auto', coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default', coachStyle: 'short', skin: DEFAULT_SKIN, winChance: false };
+    return { apiKey: '', model: MODELS[0].id, liveModel: 'auto', coachSource: DEFAULT_COACH_SOURCE, answerFirst: false, coachThinking: 'default', coachStyle: 'plan', skin: DEFAULT_SKIN, winChance: false };
   }
 }

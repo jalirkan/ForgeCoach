@@ -88,6 +88,16 @@
  *       still `clickCard` (Forge asks its own `ability_menu` when there is more
  *       than one). `playableOf` is its one reader.
  *
+ * 2026-10-09 — **what the seat may activate on the battlefield**
+ * (`docs/protocol.md` §3, §3.1):
+ *   M63 `state.activatable` (D420): at the seat's own priority, each permanent
+ *       it controls with a non-mana ability Forge would activate on a click now
+ *       (loyalty abilities, equip, crew, a Clue's sacrifice…), with those
+ *       abilities (`{abilityId, label, isSpell: false}`), `zone` always
+ *       `battlefield`; `null` off the seat's priority; absent before M63 and in
+ *       AI-vs-AI recordings. A separate key, so `playable` keeps its meaning. A
+ *       click is still `clickCard`. `activatableOf` is its one reader.
+ *
  * **Every M6 field is declared optional here**, and that is not defensiveness
  * for its own sake: fifteen committed recordings predate them,
  * `web/test/render.test.tsx` folds every frame of all of them, and a required
@@ -870,6 +880,12 @@ export interface GameStateBody {
    * {@link playableOf}.
    */
   playable?: PlayableCard[] | null;
+  /**
+   * §3 (**M63**, D420) — the permanents this seat controls that Forge would
+   * activate a non-mana ability of on a click now, at its own priority; `null`
+   * off it; absent before M63. Read it with {@link activatableOf}.
+   */
+  activatable?: ActivatableCard[] | null;
 }
 
 /** §3.1 (M61). One spell or ability Forge would let the seat play from this card now. */
@@ -911,6 +927,32 @@ export function playableOf(state: GameStateBody | null | undefined): readonly Pl
       Array.isArray(e.abilities) && e.abilities.length > 0 &&
       e.abilities.every((a) => a !== null && typeof a === 'object' && Number.isInteger(a.abilityId) &&
         typeof a.label === 'string' && typeof a.isSpell === 'boolean'),
+  );
+}
+
+/** §3.1 (M63). A permanent the seat controls, with the non-mana abilities Forge would activate now. */
+export interface ActivatableCard {
+  cardId: number;
+  zone: 'battlefield';
+  /** Never empty; every `isSpell` is false. More than one: a click makes Forge ask its own `ability_menu`. */
+  abilities: PlayableAbility[];
+}
+
+/**
+ * **Amendment M63 — the ONE reader of `state.activatable`.** The list, or
+ * `null` when the frame does not say (before M63, an AI-vs-AI recording, off
+ * the seat's priority); never read `null` as "nothing can be activated".
+ * Malformed entries are dropped.
+ */
+export function activatableOf(state: GameStateBody | null | undefined): readonly ActivatableCard[] | null {
+  const list = state?.activatable;
+  if (!Array.isArray(list)) return null;
+  return list.filter(
+    (e) =>
+      e !== null && typeof e === 'object' && Number.isInteger(e.cardId) && e.zone === 'battlefield' &&
+      Array.isArray(e.abilities) && e.abilities.length > 0 &&
+      e.abilities.every((a) => a !== null && typeof a === 'object' && Number.isInteger(a.abilityId) &&
+        typeof a.label === 'string' && a.isSpell === false),
   );
 }
 

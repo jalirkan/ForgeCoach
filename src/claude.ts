@@ -54,14 +54,17 @@ export function isCoachThinking(x: unknown): x is CoachThinking {
 }
 
 /**
- * How the coach answers during live play: 'short' (default) is commands with a
- * one-phrase why ("Play: Cast Shock → their Bears", "Mana: …", "Why: …"), the
- * rule, confidence and details behind More; 'detailed' is the longer layout the
- * replay, film room and review use. Only the play screen reads it.
+ * How the coach answers during live play: 'plan' (default) is mtg-table D419's
+ * plan mode — a PLAN: sentence and numbered steps, asked at the moments the
+ * LLM seat was asked, each step checked against what the engine allows before
+ * the player sees it (livePlan/); 'short' is commands with a one-phrase why
+ * ("Play: Cast Shock → their Bears", "Mana: …", "Why: …"), the rule, confidence
+ * and details behind More; 'detailed' is the longer layout the replay, film room
+ * and review use. Only the play screen reads it.
  */
-export type CoachStyle = 'short' | 'detailed';
-export const COACH_STYLES: readonly CoachStyle[] = ['short', 'detailed'];
-export const DEFAULT_COACH_STYLE: CoachStyle = 'short';
+export type CoachStyle = 'plan' | 'short' | 'detailed';
+export const COACH_STYLES: readonly CoachStyle[] = ['plan', 'short', 'detailed'];
+export const DEFAULT_COACH_STYLE: CoachStyle = 'plan';
 
 export function isCoachStyle(x: unknown): x is CoachStyle {
   return COACH_STYLES.includes(x as CoachStyle);
@@ -113,6 +116,16 @@ export function liveModelOf(s: Pick<Settings, 'model' | 'liveModel'>): ModelId {
 }
 
 /**
+ * Plan mode's thinking (mtg-table D419: the LLM seat ran Sonnet with
+ * `--thinking low`): Low, or Off when Coach thinking says Off.
+ */
+export const PLAN_THINKING: CoachThinking = 'low';
+
+export function planThinkingOf(s: Pick<Settings, 'coachThinking'>): CoachThinking {
+  return s.coachThinking === 'off' ? 'off' : PLAN_THINKING;
+}
+
+/**
  * Live play's thinking (the short style): Settings → Coach thinking when it is set
  * to Low or Off, else `LIVE_THINKING`.
  */
@@ -129,7 +142,7 @@ export interface Settings {
   coachSource: CoachSource;
   /** Coach thinking for the coach helper (absent = 'default'). */
   coachThinking?: CoachThinking;
-  /** Live-play answer style (absent = 'short'). */
+  /** Live-play answer style (absent = 'plan'). */
   coachStyle?: CoachStyle;
   /**
    * Answer first: the coach starts with a one-line **Answer:** (and its
@@ -245,11 +258,12 @@ export type AskPrompt = Prompt & { images?: VisionImage[] };
 /**
  * The exact request body sent for `prompt` on `model` (with `prompt.images`,
  * the user turn is the images then the text).
- * - Opus 5.5 / Sonnet 5.5: adaptive thinking (summarised so it can be shown), effort "medium",
+ * - Opus 5.5 / Sonnet 5.5: adaptive thinking (summarised so it can be shown), effort "medium"
+ *   ("low" for the live coach's plan mode, as the LLM seat was tested),
  *   and server-side refusal fallback (`fallbacks: "default"` under its beta header).
  * - Haiku 4.5: no adaptive thinking or effort support → a fixed thinking budget, no fallback.
  */
-export function buildRequest(prompt: AskPrompt, model: ModelId): BetaMessageStreamParams {
+export function buildRequest(prompt: AskPrompt, model: ModelId, effort: 'low' | 'medium' = 'medium'): BetaMessageStreamParams {
   const content = prompt.images?.length
     ? [...prompt.images.map((im) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: im.mediaType, data: im.data } })), { type: 'text' as const, text: prompt.user }]
     : prompt.user;
@@ -265,7 +279,7 @@ export function buildRequest(prompt: AskPrompt, model: ModelId): BetaMessageStre
     ...base,
     max_tokens: 64000,
     thinking: { type: 'adaptive', display: 'summarized' },
-    output_config: { effort: 'medium' },
+    output_config: { effort },
     betas: [FALLBACK_BETA],
     fallbacks: 'default',
   };
@@ -386,7 +400,7 @@ export function friendlyError(e: unknown): CoachError {
 // Ask
 
 /** Streams Claude's answer to `prompt`. Rejects with a user-readable Error (no key, bad key, network). */
-export async function askClaude(prompt: AskPrompt, h: StreamHandlers, opts?: { signal?: AbortSignal; settings?: Settings; fetch?: typeof fetch }): Promise<CoachResult> {
+export async function askClaude(prompt: AskPrompt, h: StreamHandlers, opts?: { signal?: AbortSignal; settings?: Settings; fetch?: typeof fetch; effort?: 'low' | 'medium' }): Promise<CoachResult> {
   const settings = opts?.settings ?? loadSettings();
   const apiKey = settings.apiKey.trim();
   if (!apiKey) throw new CoachError('Add your Anthropic API key in Settings to ask the coach.', 'no_key');
@@ -396,7 +410,7 @@ export async function askClaude(prompt: AskPrompt, h: StreamHandlers, opts?: { s
   try {
     const Anthropic = await loadSdk();
     const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 2, ...(opts?.fetch ? { fetch: opts.fetch } : {}) });
-    const stream = client.beta.messages.stream(buildRequest(prompt, model), { signal: opts?.signal });
+    const stream = client.beta.messages.stream(buildRequest(prompt, model, opts?.effort), { signal: opts?.signal });
     for await (const event of stream) {
       if (event.type === 'content_block_delta') {
         if (event.delta.type === 'text_delta') {

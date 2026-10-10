@@ -1,0 +1,1472 @@
+{
+ "note": "Real plan-mode moments (mtg-table D419, tools/llm-seat): Sonnet's real reply, the steps the seat read, the step that failed when it was carried out, and the user message the seat sent. Extracted by hand from var/llm-seat; frames in <log>.jsonl.gz.",
+ "recordedSystem": "REPLY FORMAT. Every reply you write must have exactly this shape:\n\nPLAN: <one or two sentences, plain words>\nSTEPS:\n1. <step>\n2. <step>\nEND\n\nA program reads your reply, not a person. A reply not in this shape cannot be read: it is sent back to you as invalid, and that costs a turn of conversation. You may write a few lines of reasoning before the PLAN: line. Nothing may come after END.\n\nEach step is one of these, using card names exactly as the game shows them:\n  play land <card>\n  cast <card>                      or  cast <card> -> <target>\n  activate <card>                  or  activate <card> -> <target>\n  activate <card>: <ability>       (a permanent with several: its cost, as in \"+2\", or words of it)\n  attack with <creature>, <creature>, ...      or  attack with none\n  block <attacker> with <your creature>        (one line per block)\n  target <card or player>          (answers a question that asks for a target)\n  choose <option>                  (answers any other question, in the words shown)\n  keep   or   mulligan             (your opening hand)\n  pass                             (do nothing now: no response, no blocks; last step)\n  hold                             (do nothing more this turn; last step)\nThe players are \"opponent\" and \"me\". When two cards share a name, add the number shown after it, as in \"Island #12\".\n\nExample:\nTheir only creature is a 2/1, so I develop first and keep my Shock for it.\nPLAN: Play a Forest, cast Grizzly Bears, then attack with Llanowar Elves.\nSTEPS:\n1. play land Forest\n2. cast Grizzly Bears\n3. attack with Llanowar Elves\nEND\n\nTHE GAME. You are playing a two-player game of Magic: The Gathering against the Forge AI. You see only what your seat may see. The program carries out your steps in order on the rules engine: steps before an attack happen in your first main phase, the attack at declare attackers, steps after it in your second main phase. Mana is paid for you from your untapped mana. If a step cannot be done (not enough mana, a name that matches nothing, the engine says no), the program stops, tells you exactly why, and asks for new steps from there. When your steps run out it passes for you until you are needed again: when the opponent casts or activates something you could respond to, when you must declare blockers, when a card asks you to choose, and at the end of the opponent's turn if you could cast something then.\n\nPlay to win.",
+ "moments": [
+  {
+   "log": "s2-search-p0-s6-001",
+   "run": "s2-search-p0-s6",
+   "momentNo": 1,
+   "moment": "mulligan",
+   "frameSeq": 6,
+   "turn": 0,
+   "phase": null,
+   "question": "The game is starting. Your opening hand is shown below (7 cards). Do you keep it? Reply with the single step \"keep\" or \"mulligan\".",
+   "reply": "PLAN: Keep this hand: three lands, Mind Stone, and cheap plays.\nSTEPS:\n1. keep\nEND",
+   "steps": [
+    "keep"
+   ],
+   "plan": "Keep this hand: three lands, Mind Stone, and cheap plays.",
+   "failed": null,
+   "recordedUser": "The game is starting. Your opening hand is shown below (7 cards). Do you keep it? Reply with the single step \"keep\" or \"mulligan\".\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\n(nothing yet)\n\nNOW\nBefore the first turn.\n\nYOU (Human): life 20, hand 7, library 33, graveyard 0, exile 0\n  Hand: Island #27 (Land - Island); Monastery Swiftspear {R} (Creature - Human Monk 1/2); Oblivion Ring {2}{W} (Enchantment); Plains (Land - Plains); Mind Stone {2} (Artifact); Island #22 (Land - Island); Perilous Myr {2} (Artifact Creature - Phyrexian Myr 1/1)\n  Untapped mana: 0. Land played this turn: no.\n  Lands: none\n  Creatures and other permanents: none\n\nOPPONENT (Forge AI): life 20, hand 7 (hidden), library 33, graveyard 0, exile 0\n  Lands: none\n  Creatures and other permanents: none\n\nSTACK: empty\n\nCARD TEXT\nMind Stone: {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\nMonastery Swiftspear: Haste / Prowess\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPerilous Myr: When this creature dies, it deals 2 damage to any target.\n\nThe game is starting. Your opening hand is shown below (7 cards). Do you keep it? Reply with the single step \"keep\" or \"mulligan\".\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "run": "s2-search-p0-s6",
+   "momentNo": 3,
+   "moment": "turn",
+   "frameSeq": 48,
+   "turn": 4,
+   "phase": "MAIN1",
+   "question": "It is your turn 4. What do you do this turn?",
+   "reply": "PLAN: Play Island and cast Mind Stone to ramp toward Oblivion Ring and more next turn.\nSTEPS:\n1. play land Island #27\n2. cast Mind Stone\nEND",
+   "steps": [
+    "play land Island #27",
+    "cast Mind Stone"
+   ],
+   "plan": "Play Island and cast Mind Stone to ramp toward Oblivion Ring and more next turn.",
+   "failed": null,
+   "recordedUser": "It is your turn 4. What do you do this turn?\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (opp): opp land Restless Reef [71];\nT2 (you): you land Plains [32];\nT3 (opp): opp land Swamp [78];\nT4 (you):\n\nNOW\nTurn 4, your turn, first main phase. You have priority.\n\nYOU (Human): life 20, hand 8, library 31, graveyard 0, exile 0\n  Hand: Island #27 (Land - Island); Monastery Swiftspear {R} (Creature - Human Monk 1/2); Oblivion Ring {2}{W} (Enchantment); Mind Stone {2} (Artifact); Island #22 (Land - Island); Perilous Myr {2} (Artifact Creature - Phyrexian Myr 1/1); Plains #34 (Land - Plains); Bonesplitter {1} (Artifact - Equipment)\n  Untapped mana: 1 (Plains: W). Land played this turn: no.\n  Lands: Plains #32 -- 1 untapped\n  Creatures and other permanents: none\n\nOPPONENT (Forge AI): life 20, hand 6 (hidden), library 32, graveyard 0, exile 0\n  Lands: Restless Reef, Swamp -- 2 untapped\n  Creatures and other permanents: none\n\nSTACK: empty\n\nWHAT THE ENGINE LETS YOU DO NOW (mana checked against your untapped mana)\n  play a land: Island #27, Island #22, Plains #34\n  cast: Bonesplitter {1}\n  in your hand, but your untapped mana (1) cannot pay for it now: Monastery Swiftspear {R}; Oblivion Ring {2}{W}; Mind Stone {2}; Perilous Myr {2}\n\nCARD TEXT\nBonesplitter: Equipped creature gets +2/+0. / Equip {1}\nMind Stone: {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\nMonastery Swiftspear: Haste / Prowess\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPerilous Myr: When this creature dies, it deals 2 damage to any target.\nRestless Reef: This land enters tapped. / {T}: Add {U} or {B}. / {2}{U}{B}: Until end of turn, this land becomes a 4/4 blue and black Shark creature with deathtouch. It's still a land. / Whenever this land attacks, target player mills four cards.\n\nIt is your turn 4. What do you do this turn?\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "run": "s2-search-p0-s6",
+   "momentNo": 5,
+   "moment": "turn",
+   "frameSeq": 184,
+   "turn": 8,
+   "phase": "MAIN1",
+   "question": "It is your turn 8. What do you do this turn?",
+   "reply": "Their only creature is a Solemn Simulacrum, so O-Ring stays in hand for a real threat. I'll develop and put Bonesplitter on the Myr, which makes any block bad for them.\n\nPLAN: Play Plains, cast Monastery Swiftspear, equip Bonesplitter to Perilous Myr, and attack with the Myr alone.\nSTEPS:\n1. play land Plains #34\n2. cast Monastery Swiftspear\n3. activate Bonesplitter -> Perilous Myr\n4. attack with Perilous Myr\nEND",
+   "steps": [
+    "play land Plains #34",
+    "cast Monastery Swiftspear",
+    "activate Bonesplitter -> Perilous Myr",
+    "attack with Perilous Myr"
+   ],
+   "plan": "Play Plains, cast Monastery Swiftspear, equip Bonesplitter to Perilous Myr, and attack with the Myr alone.",
+   "failed": null,
+   "recordedUser": "It is your turn 8. What do you do this turn?\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (opp): opp land Restless Reef [71];\nT2 (you): you land Plains [32];\nT3 (opp): opp land Swamp [78];\nT4 (you): you land Island [27]; you cast Mind Stone [20];\nT5 (opp): opp land Swamp [77];\nT6 (you): you land Wind-Scarred Crag [30]; you cast Wind-Scarred Crag [30]; you life 20->21; you cast Perilous Myr [9]; you cast Bonesplitter [16];\nT7 (opp): opp land Swamp [82]; opp cast Solemn Simulacrum [101]; opp cast Solemn Simulacrum [101];\nT8 (you):\n\nNOW\nTurn 8, your turn, first main phase. You have priority.\n\nYOU (Human): life 21, hand 5, library 29, graveyard 0, exile 0\n  Hand: Monastery Swiftspear {R} (Creature - Human Monk 1/2); Oblivion Ring {2}{W} (Enchantment); Island #22 (Land - Island); Plains #34 (Land - Plains); Plains #37 (Land - Plains)\n  Untapped mana: 4 (Plains, Island, Mind Stone, Wind-Scarred Crag: W U C R/W). Land played this turn: no.\n  Lands: Plains #32, Island #27, Wind-Scarred Crag -- 3 untapped\n  Creatures and other permanents: Mind Stone; Perilous Myr 1/1; Bonesplitter (equip)\n\nOPPONENT (Forge AI): life 20, hand 5 (hidden), library 29, graveyard 0, exile 0\n  Lands: Restless Reef (tapped), Swamp #78 (tapped), Swamp #77 (tapped), Swamp #82 (tapped), Plains #104 (tapped) -- 0 untapped\n  Creatures and other permanents: Solemn Simulacrum 2/2 (summoning sick)\n\nSTACK: empty\n\nWHAT THE ENGINE LETS YOU DO NOW (mana checked against your untapped mana)\n  play a land: Island #22, Plains #34, Plains #37\n  cast: Monastery Swiftspear {R}; Oblivion Ring {2}{W}\n  activate on the battlefield (the engine's list; for a permanent with more than one, write \"activate <card>: <cost or words of the ability>\"):\n    Mind Stone: {1}, {T}, Sacrifice Mind Stone: Draw a card.\n    Bonesplitter: Equip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)\n  can attack this turn: Perilous Myr 1/1\n\nCARD TEXT\nBonesplitter: Equipped creature gets +2/+0. / Equip {1}\nMind Stone: {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\nMonastery Swiftspear: Haste / Prowess\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPerilous Myr: When this creature dies, it deals 2 damage to any target.\nRestless Reef: This land enters tapped. / {T}: Add {U} or {B}. / {2}{U}{B}: Until end of turn, this land becomes a 4/4 blue and black Shark creature with deathtouch. It's still a land. / Whenever this land attacks, target player mills four cards.\nSolemn Simulacrum: When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle. / When this creature dies, you may draw a card.\nWind-Scarred Crag: This land enters tapped. / When this land enters, you gain 1 life. / {T}: Add {R} or {W}.\n\nIt is your turn 8. What do you do this turn?\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "run": "s2-search-p0-s6",
+   "momentNo": 6,
+   "moment": "question",
+   "frameSeq": 270,
+   "turn": 8,
+   "phase": "COMBAT_DAMAGE",
+   "question": "The engine asks you: Perilous Myr (9) - When Perilous Myr dies, it deals 2 damage to any target. [Zone Changer: Perilous Myr (9)] / Select any target",
+   "reply": "PLAN: Send the Myr's 2 damage at the opponent's face, since they have no creatures and my Swiftspear should not be hit.\nSTEPS:\n1. target opponent\nEND",
+   "steps": [
+    "target opponent"
+   ],
+   "plan": "Send the Myr's 2 damage at the opponent's face, since they have no creatures and my Swiftspear should not be hit.",
+   "failed": null,
+   "recordedUser": "The engine asks you: Perilous Myr (9) - When Perilous Myr dies, it deals 2 damage to any target. [Zone Changer: Perilous Myr (9)] / Select any target\nLegal targets: me; opponent; Monastery Swiftspear (yours).\nYour plan was: 1. play land Plains #34 (done); 2. cast Monastery Swiftspear (done); 3. activate Bonesplitter -> Perilous Myr (done); 4. attack with Perilous Myr (done).\nAnswer with step 1 \"target <name>\" or \"choose <option>\", in the words shown. Add more steps only to change the rest of your plan: they replace it.\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (opp): opp land Restless Reef [71];\nT2 (you): you land Plains [32];\nT3 (opp): opp land Swamp [78];\nT4 (you): you land Island [27]; you cast Mind Stone [20];\nT5 (opp): opp land Swamp [77];\nT6 (you): you land Wind-Scarred Crag [30]; you cast Wind-Scarred Crag [30]; you life 20->21; you cast Perilous Myr [9]; you cast Bonesplitter [16];\nT7 (opp): opp land Swamp [82]; opp cast Solemn Simulacrum [101]; opp cast Solemn Simulacrum [101];\nT8 (you): you land Plains [34]; you cast Monastery Swiftspear [14]; you cast Bonesplitter [16]; you attack: Perilous Myr [9]; opp block: Solemn Simulacrum [101] blocks Perilous Myr [9]; Perilous Myr [9] died / to graveyard; Solemn Simulacrum [101] died / to graveyard;\n\nNOW\nTurn 8, your turn, combat damage step. You have priority.\n\nYOU (Human): life 21, hand 3, library 29, graveyard 1, exile 0\n  Hand: Oblivion Ring {2}{W} (Enchantment); Island #22 (Land - Island); Plains #37 (Land - Plains)\n  Untapped mana: 3 (Plains, Mind Stone, Plains: W C W). Land played this turn: yes.\n  Lands: Plains #32, Island #27 (tapped), Wind-Scarred Crag (tapped), Plains #34 -- 2 untapped\n  Creatures and other permanents: Mind Stone; Bonesplitter (equip); Monastery Swiftspear 1/2 (haste, prowess)\n  Graveyard: Perilous Myr\n\nOPPONENT (Forge AI): life 20, hand 5 (hidden), library 29, graveyard 1, exile 0\n  Lands: Restless Reef (tapped), Swamp #78 (tapped), Swamp #77 (tapped), Swamp #82 (tapped), Plains #104 (tapped) -- 0 untapped\n  Creatures and other permanents: none\n  Graveyard: Solemn Simulacrum\n\nSTACK: empty\n\nCARD TEXT\nBonesplitter: Equipped creature gets +2/+0. / Equip {1}\nMind Stone: {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\nMonastery Swiftspear: Haste / Prowess\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPerilous Myr: When this creature dies, it deals 2 damage to any target.\nRestless Reef: This land enters tapped. / {T}: Add {U} or {B}. / {2}{U}{B}: Until end of turn, this land becomes a 4/4 blue and black Shark creature with deathtouch. It's still a land. / Whenever this land attacks, target player mills four cards.\nSolemn Simulacrum: When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle. / When this creature dies, you may draw a card.\nWind-Scarred Crag: This land enters tapped. / When this land enters, you gain 1 life. / {T}: Add {R} or {W}.\n\nThe engine asks you: Perilous Myr (9) - When Perilous Myr dies, it deals 2 damage to any target. [Zone Changer: Perilous Myr (9)] / Select any target\nLegal targets: me; opponent; Monastery Swiftspear (yours).\nYour plan was: 1. play land Plains #34 (done); 2. cast Monastery Swiftspear (done); 3. activate Bonesplitter -> Perilous Myr (done); 4. attack with Perilous Myr (done).\nAnswer with step 1 \"target <name>\" or \"choose <option>\", in the words shown. Add more steps only to change the rest of your plan: they replace it.\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "run": "s2-search-p0-s6",
+   "momentNo": 7,
+   "moment": "response",
+   "frameSeq": 280,
+   "turn": 8,
+   "phase": "COMBAT_DAMAGE",
+   "question": "This just happened: the opponent put an ability on the stack: Solemn Simulacrum (an ability) -- When Solemn Simulacrum dies, you may draw a card.. It is on the stack now.",
+   "reply": "PLAN: Let the opponent's draw trigger and my Perilous Myr trigger resolve; nothing worth responding with.\nSTEPS:\n1. pass\nEND",
+   "steps": [
+    "pass"
+   ],
+   "plan": "Let the opponent's draw trigger and my Perilous Myr trigger resolve; nothing worth responding with.",
+   "failed": null,
+   "recordedUser": "This just happened: the opponent put an ability on the stack: Solemn Simulacrum (an ability) -- When Solemn Simulacrum dies, you may draw a card.. It is on the stack now.\nYour plan was: 1. play land Plains #34 (done); 2. cast Monastery Swiftspear (done); 3. activate Bonesplitter -> Perilous Myr (done); 4. attack with Perilous Myr (done).\nWhat do you do now? To let it resolve, reply with the single step \"pass\".\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (opp): opp land Restless Reef [71];\nT2 (you): you land Plains [32];\nT3 (opp): opp land Swamp [78];\nT4 (you): you land Island [27]; you cast Mind Stone [20];\nT5 (opp): opp land Swamp [77];\nT6 (you): you land Wind-Scarred Crag [30]; you cast Wind-Scarred Crag [30]; you life 20->21; you cast Perilous Myr [9]; you cast Bonesplitter [16];\nT7 (opp): opp land Swamp [82]; opp cast Solemn Simulacrum [101]; opp cast Solemn Simulacrum [101];\nT8 (you): you land Plains [34]; you cast Monastery Swiftspear [14]; you cast Bonesplitter [16]; you attack: Perilous Myr [9]; opp block: Solemn Simulacrum [101] blocks Perilous Myr [9]; Perilous Myr [9] died / to graveyard; Solemn Simulacrum [101] died / to graveyard; you cast Perilous Myr [9]; opp cast Solemn Simulacrum [101];\n\nNOW\nTurn 8, your turn, combat damage step. You have priority.\n\nYOU (Human): life 21, hand 3, library 29, graveyard 1, exile 0\n  Hand: Oblivion Ring {2}{W} (Enchantment); Island #22 (Land - Island); Plains #37 (Land - Plains)\n  Untapped mana: 3 (Plains, Mind Stone, Plains: W C W). Land played this turn: yes.\n  Lands: Plains #32, Island #27 (tapped), Wind-Scarred Crag (tapped), Plains #34 -- 2 untapped\n  Creatures and other permanents: Mind Stone; Bonesplitter (equip); Monastery Swiftspear 1/2 (haste, prowess)\n  Graveyard: Perilous Myr\n\nOPPONENT (Forge AI): life 20, hand 5 (hidden), library 29, graveyard 1, exile 0\n  Lands: Restless Reef (tapped), Swamp #78 (tapped), Swamp #77 (tapped), Swamp #82 (tapped), Plains #104 (tapped) -- 0 untapped\n  Creatures and other permanents: none\n  Graveyard: Solemn Simulacrum\n\nSTACK (top first): the opponent's Solemn Simulacrum (an ability) -- When Solemn Simulacrum dies, you may draw a card.; your Perilous Myr (an ability) -- When Perilous Myr dies, it deals 2 damage to any target. (Targeting: [[Forge AI]]) (targets the opponent)\n\nWHAT THE ENGINE LETS YOU DO NOW (mana checked against your untapped mana)\n  activate on the battlefield (the engine's list; for a permanent with more than one, write \"activate <card>: <cost or words of the ability>\"):\n    Mind Stone: {1}, {T}, Sacrifice Mind Stone: Draw a card.\n\nCARD TEXT\nBonesplitter: Equipped creature gets +2/+0. / Equip {1}\nMind Stone: {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\nMonastery Swiftspear: Haste / Prowess\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPerilous Myr: When this creature dies, it deals 2 damage to any target.\nRestless Reef: This land enters tapped. / {T}: Add {U} or {B}. / {2}{U}{B}: Until end of turn, this land becomes a 4/4 blue and black Shark creature with deathtouch. It's still a land. / Whenever this land attacks, target player mills four cards.\nSolemn Simulacrum: When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle. / When this creature dies, you may draw a card.\nWind-Scarred Crag: This land enters tapped. / When this land enters, you gain 1 life. / {T}: Add {R} or {W}.\n\nThis just happened: the opponent put an ability on the stack: Solemn Simulacrum (an ability) -- When Solemn Simulacrum dies, you may draw a card.. It is on the stack now.\nYour plan was: 1. play land Plains #34 (done); 2. cast Monastery Swiftspear (done); 3. activate Bonesplitter -> Perilous Myr (done); 4. attack with Perilous Myr (done).\nWhat do you do now? To let it resolve, reply with the single step \"pass\".\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "run": "s2-search-p0-s6",
+   "momentNo": 12,
+   "moment": "end-step",
+   "frameSeq": 336,
+   "turn": 9,
+   "phase": "END_OF_TURN",
+   "question": "It is the opponent's end step (turn 9). You have 3 untapped mana. Do you cast or activate anything before your turn? If not, reply with the single step \"pass\".",
+   "reply": "PLAN: Pass. Oblivion Ring is sorcery-speed, and I'd rather keep Mind Stone for mana than sacrifice it to draw.\nSTEPS:\n1. pass\nEND",
+   "steps": [
+    "pass"
+   ],
+   "plan": "Pass. Oblivion Ring is sorcery-speed, and I'd rather keep Mind Stone for mana than sacrifice it to draw.",
+   "failed": null,
+   "recordedUser": "It is the opponent's end step (turn 9). You have 3 untapped mana. Do you cast or activate anything before your turn? If not, reply with the single step \"pass\".\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (opp): opp land Restless Reef [71];\nT2 (you): you land Plains [32];\nT3 (opp): opp land Swamp [78];\nT4 (you): you land Island [27]; you cast Mind Stone [20];\nT5 (opp): opp land Swamp [77];\nT6 (you): you land Wind-Scarred Crag [30]; you cast Wind-Scarred Crag [30]; you life 20->21; you cast Perilous Myr [9]; you cast Bonesplitter [16];\nT7 (opp): opp land Swamp [82]; opp cast Solemn Simulacrum [101]; opp cast Solemn Simulacrum [101];\nT8 (you): you land Plains [34]; you cast Monastery Swiftspear [14]; you cast Bonesplitter [16]; you attack: Perilous Myr [9]; opp block: Solemn Simulacrum [101] blocks Perilous Myr [9]; Perilous Myr [9] died / to graveyard; Solemn Simulacrum [101] died / to graveyard; you cast Perilous Myr [9]; opp cast Solemn Simulacrum [101]; opp life 20->18;\nT9 (opp): opp cast Stoneforge Mystic [87]; opp cast Stoneforge Mystic [87]; opp cast Man-o'-War [103]; opp cast Man-o'-War [103]; Monastery Swiftspear [14] returned to hand;\n\nNOW\nTurn 9, the opponent's turn, end step. You have priority.\n\nYOU (Human): life 21, hand 4, library 29, graveyard 1, exile 0\n  Hand: Oblivion Ring {2}{W} (Enchantment); Island #22 (Land - Island); Plains #37 (Land - Plains); Monastery Swiftspear {R} (Creature - Human Monk 1/2)\n  Untapped mana: 3 (Plains, Mind Stone, Plains: W C W). Land played this turn: no.\n  Lands: Plains #32, Island #27 (tapped), Wind-Scarred Crag (tapped), Plains #34 -- 2 untapped\n  Creatures and other permanents: Mind Stone; Bonesplitter (equip)\n  Graveyard: Perilous Myr\n\nOPPONENT (Forge AI): life 18, hand 6 (hidden), library 26, graveyard 1, exile 0\n  Lands: Restless Reef (tapped), Swamp #78 (tapped), Swamp #77 (tapped), Swamp #82 (tapped), Plains #104 (tapped) -- 0 untapped\n  Creatures and other permanents: Stoneforge Mystic 1/2 (summoning sick); Man-o'-War 2/2 (summoning sick)\n  Graveyard: Solemn Simulacrum\n\nSTACK: empty\n\nWHAT THE ENGINE LETS YOU DO NOW (mana checked against your untapped mana)\n  activate on the battlefield (the engine's list; for a permanent with more than one, write \"activate <card>: <cost or words of the ability>\"):\n    Mind Stone: {1}, {T}, Sacrifice Mind Stone: Draw a card.\n\nCARD TEXT\nBonesplitter: Equipped creature gets +2/+0. / Equip {1}\nMan-o'-War: When this creature enters, return target creature to its owner's hand.\nMind Stone: {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\nMonastery Swiftspear: Haste / Prowess\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPerilous Myr: When this creature dies, it deals 2 damage to any target.\nRestless Reef: This land enters tapped. / {T}: Add {U} or {B}. / {2}{U}{B}: Until end of turn, this land becomes a 4/4 blue and black Shark creature with deathtouch. It's still a land. / Whenever this land attacks, target player mills four cards.\nSolemn Simulacrum: When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle. / When this creature dies, you may draw a card.\nStoneforge Mystic: When this creature enters, you may search your library for an Equipment card, reveal it, put it into your hand, then shuffle. / {1}{W}, {T}: You may put an Equipment card from your hand onto the battlefield.\nWind-Scarred Crag: This land enters tapped. / When this land enters, you gain 1 life. / {T}: Add {R} or {W}.\n\nIt is the opponent's end step (turn 9). You have 3 untapped mana. Do you cast or activate anything before your turn? If not, reply with the single step \"pass\".\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "run": "s2-search-p0-s6",
+   "momentNo": 17,
+   "moment": "blocks",
+   "frameSeq": 459,
+   "turn": 11,
+   "phase": "COMBAT_DECLARE_BLOCKERS",
+   "question": "The opponent attacks with: Man-o'-War 2/2 (tapped; attacking).",
+   "reply": "PLAN: Take the 2 damage with no blocks, so I keep my flyers and Swiftspear and have O-Ring ready for next turn.\nSTEPS:\n1. pass\nEND",
+   "steps": [
+    "pass"
+   ],
+   "plan": "Take the 2 damage with no blocks, so I keep my flyers and Swiftspear and have O-Ring ready for next turn.",
+   "failed": null,
+   "recordedUser": "The opponent attacks with: Man-o'-War 2/2 (tapped; attacking).\nYour untapped creatures: Monastery Swiftspear 1/2 (haste, prowess); Bird Token #140 1/1 (summoning sick; flying; token); Bird Token #141 1/1 (summoning sick; flying; token).\nDeclare your blockers: one step \"block <attacker> with <your creature>\" per block, or the single step \"pass\" for no blocks. Steps after the blocks (a spell or an ability) are carried out once the blocks are declared.\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (opp): opp land Restless Reef [71];\nT2 (you): you land Plains [32];\nT3 (opp): opp land Swamp [78];\nT4 (you): you land Island [27]; you cast Mind Stone [20];\nT5 (opp): opp land Swamp [77];\nT6 (you): you land Wind-Scarred Crag [30]; you cast Wind-Scarred Crag [30]; you life 20->21; you cast Perilous Myr [9]; you cast Bonesplitter [16];\nT7 (opp): opp land Swamp [82]; opp cast Solemn Simulacrum [101]; opp cast Solemn Simulacrum [101];\nT8 (you): you land Plains [34]; you cast Monastery Swiftspear [14]; you cast Bonesplitter [16]; you attack: Perilous Myr [9]; opp block: Solemn Simulacrum [101] blocks Perilous Myr [9]; Perilous Myr [9] died / to graveyard; Solemn Simulacrum [101] died / to graveyard; you cast Perilous Myr [9]; opp cast Solemn Simulacrum [101]; opp life 20->18;\nT9 (opp): opp cast Stoneforge Mystic [87]; opp cast Stoneforge Mystic [87]; opp cast Man-o'-War [103]; opp cast Man-o'-War [103]; Monastery Swiftspear [14] returned to hand;\nT10 (you): you land Plains [37]; you cast Monastery Swiftspear [14]; you cast Battle Screech [15]; you cast Monastery Swiftspear [14];\nT11 (opp): opp land Swamp [74]; opp cast Gray Merchant of Asphodel [91]; opp cast Gray Merchant of Asphodel [91]; you life 21->19; opp life 18->20; opp cast Shadowspear [84]; opp attack: Man-o'-War [103];\n\nNOW\nTurn 11, the opponent's turn, declare blockers step. You have priority.\n\nYOU (Human): life 19, hand 2, library 28, graveyard 2, exile 0\n  Hand: Oblivion Ring {2}{W} (Enchantment); Island #22 (Land - Island)\n  Untapped mana: 1 (Mind Stone: C). Land played this turn: no.\n  Lands: Plains #32 (tapped), Island #27 (tapped), Wind-Scarred Crag (tapped), Plains #34 (tapped), Plains #37 (tapped) -- 0 untapped\n  Creatures and other permanents: Mind Stone; Bonesplitter (equip); Monastery Swiftspear 1/2 (haste, prowess); Bird Token #140 1/1 (summoning sick; flying; token); Bird Token #141 1/1 (summoning sick; flying; token)\n  Graveyard: Perilous Myr; Battle Screech\n\nOPPONENT (Forge AI): life 20, hand 4 (hidden), library 25, graveyard 1, exile 0\n  Lands: Restless Reef (tapped), Swamp #78 (tapped), Swamp #77 (tapped), Swamp #82 (tapped), Plains #104 (tapped), Swamp #74 (tapped) -- 0 untapped\n  Creatures and other permanents: Stoneforge Mystic 1/2; Man-o'-War 2/2 (tapped; attacking); Gray Merchant of Asphodel 2/4 (summoning sick); Shadowspear (equip)\n  Graveyard: Solemn Simulacrum\n\nSTACK: empty\nCOMBAT:  attacking you; Man-o'-War attacking you\n\nCARD TEXT\nBattle Screech: Create two 1/1 white Bird creature tokens with flying. / Flashback\u2014Tap three untapped white creatures you control.\nBonesplitter: Equipped creature gets +2/+0. / Equip {1}\nGray Merchant of Asphodel: When this creature enters, each opponent loses X life, where X is your devotion to black. You gain life equal to the life lost this way.\nMan-o'-War: When this creature enters, return target creature to its owner's hand.\nMind Stone: {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\nMonastery Swiftspear: Haste / Prowess\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPerilous Myr: When this creature dies, it deals 2 damage to any target.\nRestless Reef: This land enters tapped. / {T}: Add {U} or {B}. / {2}{U}{B}: Until end of turn, this land becomes a 4/4 blue and black Shark creature with deathtouch. It's still a land. / Whenever this land attacks, target player mills four cards.\nShadowspear: Equipped creature gets +1/+1 and has trample and lifelink. / {1}: Permanents your opponents control lose hexproof and indestructible until end of turn. / Equip {2}\nSolemn Simulacrum: When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle. / When this creature dies, you may draw a card.\nStoneforge Mystic: When this creature enters, you may search your library for an Equipment card, reveal it, put it into your hand, then shuffle. / {1}{W}, {T}: You may put an Equipment card from your hand onto the battlefield.\nWind-Scarred Crag: This land enters tapped. / When this land enters, you gain 1 life. / {T}: Add {R} or {W}.\n\nThe opponent attacks with: Man-o'-War 2/2 (tapped; attacking).\nYour untapped creatures: Monastery Swiftspear 1/2 (haste, prowess); Bird Token #140 1/1 (summoning sick; flying; token); Bird Token #141 1/1 (summoning sick; flying; token).\nDeclare your blockers: one step \"block <attacker> with <your creature>\" per block, or the single step \"pass\" for no blocks. Steps after the blocks (a spell or an ability) are carried out once the blocks are declared.\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "run": "s2-search-p0-s6",
+   "momentNo": 18,
+   "moment": "turn",
+   "frameSeq": 471,
+   "turn": 12,
+   "phase": "MAIN1",
+   "question": "It is your turn 12. What do you do this turn?",
+   "reply": "PLAN: Play Island, Stomp the Stoneforge Mystic, O-Ring the Shadowspear, equip Bonesplitter to Swiftspear, then attack with everything. Both spells trigger prowess.\nSTEPS:\n1. play land Island #22\n2. cast Stomp -> Stoneforge Mystic\n3. cast Oblivion Ring -> Shadowspear\n4. activate Bonesplitter -> Monastery Swiftspear\n5. attack with Monastery Swiftspear, Bird Token #140, Bird Token #141\nEND",
+   "steps": [
+    "play land Island #22",
+    "cast Stomp -> Stoneforge Mystic",
+    "cast Oblivion Ring -> Shadowspear",
+    "activate Bonesplitter -> Monastery Swiftspear",
+    "attack with Monastery Swiftspear, Bird Token #140, Bird Token #141"
+   ],
+   "plan": "Play Island, Stomp the Stoneforge Mystic, O-Ring the Shadowspear, equip Bonesplitter to Swiftspear, then attack with everything. Both spells trigger prowess.",
+   "failed": null,
+   "recordedUser": "It is your turn 12. What do you do this turn?\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (opp): opp land Restless Reef [71];\nT2 (you): you land Plains [32];\nT3 (opp): opp land Swamp [78];\nT4 (you): you land Island [27]; you cast Mind Stone [20];\nT5 (opp): opp land Swamp [77];\nT6 (you): you land Wind-Scarred Crag [30]; you cast Wind-Scarred Crag [30]; you life 20->21; you cast Perilous Myr [9]; you cast Bonesplitter [16];\nT7 (opp): opp land Swamp [82]; opp cast Solemn Simulacrum [101]; opp cast Solemn Simulacrum [101];\nT8 (you): you land Plains [34]; you cast Monastery Swiftspear [14]; you cast Bonesplitter [16]; you attack: Perilous Myr [9]; opp block: Solemn Simulacrum [101] blocks Perilous Myr [9]; Perilous Myr [9] died / to graveyard; Solemn Simulacrum [101] died / to graveyard; you cast Perilous Myr [9]; opp cast Solemn Simulacrum [101]; opp life 20->18;\nT9 (opp): opp cast Stoneforge Mystic [87]; opp cast Stoneforge Mystic [87]; opp cast Man-o'-War [103]; opp cast Man-o'-War [103]; Monastery Swiftspear [14] returned to hand;\nT10 (you): you land Plains [37]; you cast Monastery Swiftspear [14]; you cast Battle Screech [15]; you cast Monastery Swiftspear [14];\nT11 (opp): opp land Swamp [74]; opp cast Gray Merchant of Asphodel [91]; opp cast Gray Merchant of Asphodel [91]; you life 21->19; opp life 18->20; opp cast Shadowspear [84]; opp attack: Man-o'-War [103]; you no blocks; you life 19->17;\nT12 (you):\n\nNOW\nTurn 12, your turn, first main phase. You have priority.\n\nYOU (Human): life 17, hand 3, library 27, graveyard 2, exile 0\n  Hand: Oblivion Ring {2}{W} (Enchantment); Island #22 (Land - Island); Bonecrusher Giant {2}{R} (Creature - Giant 4/3)\n  Untapped mana: 6 (Plains, Island, Mind Stone, Wind-Scarred Crag, Plains, Plains: W U C R/W W W). Land played this turn: no.\n  Lands: Plains #32, Island #27, Wind-Scarred Crag, Plains #34, Plains #37 -- 5 untapped\n  Creatures and other permanents: Mind Stone; Bonesplitter (equip); Monastery Swiftspear 1/2 (haste, prowess); Bird Token #140 1/1 (flying; token); Bird Token #141 1/1 (flying; token)\n  Graveyard: Perilous Myr; Battle Screech\n\nOPPONENT (Forge AI): life 20, hand 4 (hidden), library 25, graveyard 1, exile 0\n  Lands: Restless Reef (tapped), Swamp #78 (tapped), Swamp #77 (tapped), Swamp #82 (tapped), Plains #104 (tapped), Swamp #74 (tapped) -- 0 untapped\n  Creatures and other permanents: Stoneforge Mystic 1/2; Man-o'-War 2/2 (tapped); Gray Merchant of Asphodel 2/4 (summoning sick); Shadowspear (equip)\n  Graveyard: Solemn Simulacrum\n\nSTACK: empty\n\nWHAT THE ENGINE LETS YOU DO NOW (mana checked against your untapped mana)\n  play a land: Island #22\n  cast: Oblivion Ring {2}{W}; Bonecrusher Giant {2}{R}\n  activate on the battlefield (the engine's list; for a permanent with more than one, write \"activate <card>: <cost or words of the ability>\"):\n    Mind Stone: {1}, {T}, Sacrifice Mind Stone: Draw a card.\n    Bonesplitter: Equip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)\n  can attack this turn: Monastery Swiftspear 1/2; Bird Token #140 1/1; Bird Token #141 1/1\n\nCARD TEXT\nBattle Screech: Create two 1/1 white Bird creature tokens with flying. / Flashback\u2014Tap three untapped white creatures you control.\nBonecrusher Giant: Bonecrusher Giant: Whenever this creature becomes the target of a spell, this creature deals 2 damage to that spell's controller. // Stomp: Damage can't be prevented this turn. Stomp deals 2 damage to any target.\nBonesplitter: Equipped creature gets +2/+0. / Equip {1}\nGray Merchant of Asphodel: When this creature enters, each opponent loses X life, where X is your devotion to black. You gain life equal to the life lost this way.\nMan-o'-War: When this creature enters, return target creature to its owner's hand.\nMind Stone: {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\nMonastery Swiftspear: Haste / Prowess\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPerilous Myr: When this creature dies, it deals 2 damage to any target.\nRestless Reef: This land enters tapped. / {T}: Add {U} or {B}. / {2}{U}{B}: Until end of turn, this land becomes a 4/4 blue and black Shark creature with deathtouch. It's still a land. / Whenever this land attacks, target player mills four cards.\nShadowspear: Equipped creature gets +1/+1 and has trample and lifelink. / {1}: Permanents your opponents control lose hexproof and indestructible until end of turn. / Equip {2}\nSolemn Simulacrum: When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle. / When this creature dies, you may draw a card.\nStoneforge Mystic: When this creature enters, you may search your library for an Equipment card, reveal it, put it into your hand, then shuffle. / {1}{W}, {T}: You may put an Equipment card from your hand onto the battlefield.\nWind-Scarred Crag: This land enters tapped. / When this land enters, you gain 1 life. / {T}: Add {R} or {W}.\n\nIt is your turn 12. What do you do this turn?\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "run": "s2-search-p0-s6",
+   "momentNo": 19,
+   "moment": "turn",
+   "frameSeq": 646,
+   "turn": 14,
+   "phase": "MAIN1",
+   "question": "It is your turn 14. What do you do this turn?",
+   "reply": "Crypt Rats could sweep my board next turn. They have five black sources, and the ability needs no tap. I'll bounce it with Petty Theft so they must spend mana recasting it, then cast Borrower from exile as a flyer. Their five ground blockers make a ground attack bad, and they have no flyers, so only the two Birds attack.\n\nPLAN: Petty Theft on Crypt Rats, recast Brazen Borrower as a creature from exile, then attack with the two Bird tokens.\nSTEPS:\n1. cast Brazen Borrower -> Crypt Rats\n2. cast Brazen Borrower\n3. attack with Bird Token #140, Bird Token #141\nEND",
+   "steps": [
+    "cast Brazen Borrower -> Crypt Rats",
+    "cast Brazen Borrower",
+    "attack with Bird Token #140, Bird Token #141"
+   ],
+   "plan": "Petty Theft on Crypt Rats, recast Brazen Borrower as a creature from exile, then attack with the two Bird tokens.",
+   "failed": {
+    "step": 2,
+    "text": "cast Brazen Borrower",
+    "reason": "Brazen Borrower is already on the battlefield; for its ability write \"activate Brazen Borrower\""
+   },
+   "recordedUser": "It is your turn 14. What do you do this turn?\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (opp): opp land Restless Reef [71];\nT2 (you): you land Plains [32];\nT3 (opp): opp land Swamp [78];\nT4 (you): you land Island [27]; you cast Mind Stone [20];\nT5 (opp): opp land Swamp [77];\nT6 (you): you land Wind-Scarred Crag [30]; you cast Wind-Scarred Crag [30]; you life 20->21; you cast Perilous Myr [9]; you cast Bonesplitter [16];\nT7 (opp): opp land Swamp [82]; opp cast Solemn Simulacrum [101]; opp cast Solemn Simulacrum [101];\nT8 (you): you land Plains [34]; you cast Monastery Swiftspear [14]; you cast Bonesplitter [16]; you attack: Perilous Myr [9]; opp block: Solemn Simulacrum [101] blocks Perilous Myr [9]; Perilous Myr [9] died / to graveyard; Solemn Simulacrum [101] died / to graveyard; you cast Perilous Myr [9]; opp cast Solemn Simulacrum [101]; opp life 20->18;\nT9 (opp): opp cast Stoneforge Mystic [87]; opp cast Stoneforge Mystic [87]; opp cast Man-o'-War [103]; opp cast Man-o'-War [103]; Monastery Swiftspear [14] returned to hand;\nT10 (you): you land Plains [37]; you cast Monastery Swiftspear [14]; you cast Battle Screech [15]; you cast Monastery Swiftspear [14];\nT11 (opp): opp land Swamp [74]; opp cast Gray Merchant of Asphodel [91]; opp cast Gray Merchant of Asphodel [91]; you life 21->19; opp life 18->20; opp cast Shadowspear [84]; opp attack: Man-o'-War [103]; you no blocks; you life 19->17;\nT12 (you): you land Island [22]; you cast Bonecrusher Giant [40]; you cast Oblivion Ring [19]; you cast Monastery Swiftspear [14]; you cast Oblivion Ring [19]; Shadowspear [84] exiled; you cast Bonesplitter [16]; you attack: Monastery Swiftspear [14], Bird Token [140], Bird Token [141]; opp no blocks; opp life 20->14;\nT13 (opp): opp land Island [97]; opp cast Crypt Rats [105]; opp cast Gravedigger [106]; opp cast Gravedigger [106];\nT14 (you):\n\nNOW\nTurn 14, your turn, first main phase. You have priority.\n\nYOU (Human): life 17, hand 1, library 26, graveyard 2, exile 0\n  Hand: Brazen Borrower {1}{U}{U} (Creature - Faerie Rogue 3/1)\n  Untapped mana: 7 (Plains, Island, Mind Stone, Wind-Scarred Crag, Plains, Plains, Island: W U C R/W W W U). Land played this turn: no.\n  Lands: Plains #32, Island #27, Wind-Scarred Crag, Plains #34, Plains #37, Island #22 -- 6 untapped\n  Creatures and other permanents: Mind Stone; Bonesplitter attached to Monastery Swiftspear (equip); Monastery Swiftspear 3/2 (haste, prowess); Bird Token #140 1/1 (flying; token); Bird Token #141 1/1 (flying; token); Bonecrusher Giant 4/3; Oblivion Ring\n  Graveyard: Perilous Myr; Battle Screech\n\nOPPONENT (Forge AI): life 14, hand 3 (hidden), library 24, graveyard 0, exile 1\n  Lands: Restless Reef (tapped), Swamp #78 (tapped), Swamp #77 (tapped), Swamp #82 (tapped), Plains #104 (tapped), Swamp #74 (tapped), Island #97 (tapped) -- 0 untapped\n  Creatures and other permanents: Stoneforge Mystic 1/2; Man-o'-War 2/2; Gray Merchant of Asphodel 2/4; Crypt Rats 1/1 (summoning sick); Gravedigger 2/2 (summoning sick)\n  Exile: Shadowspear\n\nSTACK: empty\n\nWHAT THE ENGINE LETS YOU DO NOW (mana checked against your untapped mana)\n  cast: Brazen Borrower {1}{U}{U}\n  activate on the battlefield (the engine's list; for a permanent with more than one, write \"activate <card>: <cost or words of the ability>\"):\n    Mind Stone: {1}, {T}, Sacrifice Mind Stone: Draw a card.\n    Bonesplitter: Equip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)\n  can attack this turn: Monastery Swiftspear 3/2; Bird Token #140 1/1; Bird Token #141 1/1; Bonecrusher Giant 4/3\n\nCARD TEXT\nBattle Screech: Create two 1/1 white Bird creature tokens with flying. / Flashback\u2014Tap three untapped white creatures you control.\nBonecrusher Giant: Bonecrusher Giant: Whenever this creature becomes the target of a spell, this creature deals 2 damage to that spell's controller. // Stomp: Damage can't be prevented this turn. Stomp deals 2 damage to any target.\nBonesplitter: Equipped creature gets +2/+0. / Equip {1}\nBrazen Borrower: Brazen Borrower: Flash / Flying / This creature can block only creatures with flying. // Petty Theft: Return target nonland permanent an opponent controls to its owner's hand.\nCrypt Rats: {X}: This creature deals X damage to each creature and each player. Spend only black mana on X.\nGravedigger: When this creature enters, you may return target creature card from your graveyard to your hand.\nGray Merchant of Asphodel: When this creature enters, each opponent loses X life, where X is your devotion to black. You gain life equal to the life lost this way.\nMan-o'-War: When this creature enters, return target creature to its owner's hand.\nMind Stone: {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\nMonastery Swiftspear: Haste / Prowess\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPerilous Myr: When this creature dies, it deals 2 damage to any target.\nRestless Reef: This land enters tapped. / {T}: Add {U} or {B}. / {2}{U}{B}: Until end of turn, this land becomes a 4/4 blue and black Shark creature with deathtouch. It's still a land. / Whenever this land attacks, target player mills four cards.\nShadowspear: Equipped creature gets +1/+1 and has trample and lifelink. / {1}: Permanents your opponents control lose hexproof and indestructible until end of turn. / Equip {2}\nStoneforge Mystic: When this creature enters, you may search your library for an Equipment card, reveal it, put it into your hand, then shuffle. / {1}{W}, {T}: You may put an Equipment card from your hand onto the battlefield.\nWind-Scarred Crag: This land enters tapped. / When this land enters, you gain 1 life. / {T}: Add {R} or {W}.\n\nIt is your turn 14. What do you do this turn?\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "run": "s2-search-p0-s6",
+   "momentNo": 34,
+   "moment": "blocks",
+   "frameSeq": 1074,
+   "turn": 21,
+   "phase": "COMBAT_DECLARE_BLOCKERS",
+   "question": "The opponent attacks with: Solemn Simulacrum 2/2 (tapped; attacking); Restless Reef 4/4 (tapped; attacking; deathtouch); Kor Skyfisher 2/3 (tapped; attacking; flying); Gravedigger 2/2 (tapped; attacking); Gray Merchant of Asphodel 2/4 (tapped; attacking).",
+   "reply": "The opponent's attackers total 12 damage and I'm at 8, so I have to block at least 5 power's worth. Eagles of the North blocks Kor Skyfisher: it kills the 2/3 and survives. Skyclave Apparition chump-blocks Restless Reef, the 4/4 deathtouch. That leaves me at 2 life. Apparition dying gives the opponent a 4/4 token for the exiled Murmuring Mystic, but I have no better block.\n\nPLAN: Eagles of the North blocks Kor Skyfisher and kills it. Skyclave Apparition chump-blocks Restless Reef to keep me alive.\nSTEPS:\n1. block Kor Skyfisher with Eagles of the North\n2. block Restless Reef with Skyclave Apparition\nEND",
+   "steps": [
+    "block Kor Skyfisher with Eagles of the North",
+    "block Restless Reef with Skyclave Apparition"
+   ],
+   "plan": "Eagles of the North blocks Kor Skyfisher and kills it. Skyclave Apparition chump-blocks Restless Reef to keep me alive.",
+   "failed": null,
+   "recordedUser": "The opponent attacks with: Solemn Simulacrum 2/2 (tapped; attacking); Restless Reef 4/4 (tapped; attacking; deathtouch); Kor Skyfisher 2/3 (tapped; attacking; flying); Gravedigger 2/2 (tapped; attacking); Gray Merchant of Asphodel 2/4 (tapped; attacking).\nYour untapped creatures: Skyclave Apparition 2/2; Eagles of the North 3/3 (summoning sick; flying, typecycling).\nDeclare your blockers: one step \"block <attacker> with <your creature>\" per block, or the single step \"pass\" for no blocks. Steps after the blocks (a spell or an ability) are carried out once the blocks are declared.\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (opp): opp land Restless Reef [71];\nT2 (you): you land Plains [32];\nT3 (opp): opp land Swamp [78];\nT4 (you): you land Island [27]; you cast Mind Stone [20];\nT5 (opp): opp land Swamp [77];\nT6 (you): you land Wind-Scarred Crag [30]; you cast Wind-Scarred Crag [30]; you life 20->21; you cast Perilous Myr [9]; you cast Bonesplitter [16];\nT7 (opp): opp land Swamp [82]; opp cast Solemn Simulacrum [101]; opp cast Solemn Simulacrum [101];\nT8 (you): you land Plains [34]; you cast Monastery Swiftspear [14]; you cast Bonesplitter [16]; you attack: Perilous Myr [9]; opp block: Solemn Simulacrum [101] blocks Perilous Myr [9]; Perilous Myr [9] died / to graveyard; Solemn Simulacrum [101] died / to graveyard; you cast Perilous Myr [9]; opp cast Solemn Simulacrum [101]; opp life 20->18;\nT9 (opp): opp cast Stoneforge Mystic [87]; opp cast Stoneforge Mystic [87]; opp cast Man-o'-War [103]; opp cast Man-o'-War [103]; Monastery Swiftspear [14] returned to hand;\nT10 (you): you land Plains [37]; you cast Monastery Swiftspear [14]; you cast Battle Screech [15]; you cast Monastery Swiftspear [14];\nT11 (opp): opp land Swamp [74]; opp cast Gray Merchant of Asphodel [91]; opp cast Gray Merchant of Asphodel [91]; you life 21->19; opp life 18->20; opp cast Shadowspear [84]; opp attack: Man-o'-War [103]; you no blocks; you life 19->17;\nT12 (you): you land Island [22]; you cast Bonecrusher Giant [40]; you cast Oblivion Ring [19]; you cast Monastery Swiftspear [14]; you cast Oblivion Ring [19]; Shadowspear [84] exiled; you cast Bonesplitter [16]; you attack: Monastery Swiftspear [14], Bird Token [140], Bird Token [141]; opp no blocks; opp life 20->14;\nT13 (opp): opp land Island [97]; opp cast Crypt Rats [105]; opp cast Gravedigger [106]; opp cast Gravedigger [106];\nT14 (you): you cast Brazen Borrower [13]; you attack: Bird Token [140], Bird Token [141]; opp no blocks; opp life 14->12; Mind Stone [20] died / to graveyard; you cast Mind Stone [20];\nT15 (opp): opp cast Crypt Rats [105]; you life 17->16; opp life 12->11; Crypt Rats [105] died / to graveyard; Bird Token [140] died / to graveyard; Bird Token [141] died / to graveyard; Brazen Borrower [13] died / to graveyard; opp land Swamp [80]; opp cast Solemn Simulacrum [101]; opp cast Solemn Simulacrum [101]; opp cast Kor Skyfisher [72]; opp cast Kor Skyfisher [72]; Swamp [78] returned to hand; opp attack: Man-o'-War [103], Gravedigger [106]; you no blocks; you life 16->12;\nT16 (you): you land Island [21]; you cast Eagles of the North [17]; you cast Eagles of the North [17]; you attack: Monastery Swiftspear [14]; opp no blocks; opp life 11->7;\nT17 (opp): opp cast Repulse [99]; Eagles of the North [17] returned to hand; opp land Swamp [78]; opp attack: Kor Skyfisher [72]; you no blocks; you life 12->10; opp cast Murmuring Mystic [73];\nT18 (you): you cast Skyclave Apparition [4]; you cast Skyclave Apparition [4]; Murmuring Mystic [73] exiled;\nT19 (opp): opp land Swamp [79]; opp attack: Kor Skyfisher [72]; you no blocks; you life 10->8;\nT20 (you): you land Island [26]; you cast Eagles of the North [17]; you cast Eagles of the North [17]; you attack: Monastery Swiftspear [14], Bonecrusher Giant [40]; opp block: Man-o'-War [103] + Gray Merchant of Asphodel [91] blocks Monastery Swiftspear [14]; Stoneforge Mystic [87] blocks Bonecrusher Giant [40]; Stoneforge Mystic [87] died / to graveyard; Man-o'-War [103] died / to graveyard; Monastery Swiftspear [14] died / to graveyard;\nT21 (opp): opp land Swamp [76]; opp cast Restless Reef [71]; opp attack: Restless Reef [71], Gray Merchant of Asphodel [91], Gravedigger [106], Solemn Simulacrum [101], Kor Skyfisher [72]; opp cast Restless Reef [71]; you milled Island [23]; you milled The Mightstone and Weakstone [10]; you milled Thraben Inspector [18]; you milled Island [24];\n\nNOW\nTurn 21, the opponent's turn, declare blockers step. You have priority.\n\nYOU (Human): life 8, hand 0, library 18, graveyard 9, exile 0\n  Hand: none\n  Untapped mana: 2 (Wind-Scarred Crag, Island: R/W U). Land played this turn: no.\n  Lands: Plains #32 (tapped), Island #27 (tapped), Wind-Scarred Crag, Plains #34 (tapped), Plains #37 (tapped), Island #22 (tapped), Island #21 (tapped), Island #26 -- 2 untapped\n  Creatures and other permanents: Bonesplitter (equip); Bonecrusher Giant 4/3 (tapped); Oblivion Ring; Skyclave Apparition 2/2; Eagles of the North 3/3 (summoning sick; flying, typecycling)\n  Graveyard: Perilous Myr; Battle Screech; Mind Stone; Brazen Borrower; Monastery Swiftspear; Island #23; The Mightstone and Weakstone; Thraben Inspector; Island #24\n\nOPPONENT (Forge AI): life 7, hand 1 (hidden), library 18, graveyard 4, exile 2\n  Lands: Swamp #77 (tapped), Swamp #82 (tapped), Plains #104, Swamp #74, Island #97 (tapped), Swamp #80, Island #93 (tapped), Swamp #78, Swamp #79, Swamp #76 -- 6 untapped\n  Creatures and other permanents: Restless Reef 4/4 (tapped; attacking; deathtouch); Gray Merchant of Asphodel 2/4 (tapped; attacking); Gravedigger 2/2 (tapped; attacking); Solemn Simulacrum 2/2 (tapped; attacking); Kor Skyfisher 2/3 (tapped; attacking; flying)\n  Graveyard: Crypt Rats; Repulse; Stoneforge Mystic; Man-o'-War\n  Exile: Shadowspear; Murmuring Mystic\n\nSTACK: empty\nCOMBAT:  attacking you; Solemn Simulacrum attacking you; Restless Reef attacking you; Kor Skyfisher attacking you; Gravedigger attacking you; Gray Merchant of Asphodel attacking you\n\nCARD TEXT\nBattle Screech: Create two 1/1 white Bird creature tokens with flying. / Flashback\u2014Tap three untapped white creatures you control.\nBonecrusher Giant: Bonecrusher Giant: Whenever this creature becomes the target of a spell, this creature deals 2 damage to that spell's controller. // Stomp: Damage can't be prevented this turn. Stomp deals 2 damage to any target.\nBonesplitter: Equipped creature gets +2/+0. / Equip {1}\nBrazen Borrower: Brazen Borrower: Flash / Flying / This creature can block only creatures with flying. // Petty Theft: Return target nonland permanent an opponent controls to its owner's hand.\nCrypt Rats: {X}: This creature deals X damage to each creature and each player. Spend only black mana on X.\nEagles of the North: Flying / When this creature enters, creatures you control get +1/+0 and gain first strike until end of turn. / Plainscycling {1}\nGravedigger: When this creature enters, you may return target creature card from your graveyard to your hand.\nGray Merchant of Asphodel: When this creature enters, each opponent loses X life, where X is your devotion to black. You gain life equal to the life lost this way.\nKor Skyfisher: Flying / When this creature enters, return a permanent you control to its owner's hand.\nMan-o'-War: When this creature enters, return target creature to its owner's hand.\nMind Stone: {T}: Add {C}. / {1}, {T}, Sacrifice this artifact: Draw a card.\nMonastery Swiftspear: Haste / Prowess\nMurmuring Mystic: Whenever you cast an instant or sorcery spell, create a 1/1 blue Bird Illusion creature token with flying.\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPerilous Myr: When this creature dies, it deals 2 damage to any target.\nRepulse: Return target creature to its owner's hand. / Draw a card.\nRestless Reef: This land enters tapped. / {T}: Add {U} or {B}. / {2}{U}{B}: Until end of turn, this land becomes a 4/4 blue and black Shark creature with deathtouch. It's still a land. / Whenever this land attacks, target player mills four cards.\nShadowspear: Equipped creature gets +1/+1 and has trample and lifelink. / {1}: Permanents your opponents control lose hexproof and indestructible until end of turn. / Equip {2}\nSkyclave Apparition: When this creature enters, exile up to one target nonland, nontoken permanent you don't control with mana value 4 or less. / When this creature leaves the battlefield, the exiled card's owner creates an X/X blue Illusion creature token, where X is the mana value of the exiled card.\nSolemn Simulacrum: When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle. / When this creature dies, you may draw a card.\nStoneforge Mystic: When this creature enters, you may search your library for an Equipment card, reveal it, put it into your hand, then shuffle. / {1}{W}, {T}: You may put an Equipment card from your hand onto the battlefield.\nThe Mightstone and Weakstone: When The Mightstone and Weakstone enters, choose one \u2014 / \u2022 Draw two cards. / \u2022 Target creature gets -5/-5 until end of turn. / {T}: Add {C}{C}. This mana can't be spent to cast nonartifact spells.\nThraben Inspector: When this creature enters, investigate.\nWind-Scarred Crag: This land enters tapped. / When this land enters, you gain 1 life. / {T}: Add {R} or {W}.\n\nThe opponent attacks with: Solemn Simulacrum 2/2 (tapped; attacking); Restless Reef 4/4 (tapped; attacking; deathtouch); Kor Skyfisher 2/3 (tapped; attacking; flying); Gravedigger 2/2 (tapped; attacking); Gray Merchant of Asphodel 2/4 (tapped; attacking).\nYour untapped creatures: Skyclave Apparition 2/2; Eagles of the North 3/3 (summoning sick; flying, typecycling).\nDeclare your blockers: one step \"block <attacker> with <your creature>\" per block, or the single step \"pass\" for no blocks. Steps after the blocks (a spell or an ability) are carried out once the blocks are declared.\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "m20-search-p10-001",
+   "run": "m20-search-p10",
+   "momentNo": 7,
+   "moment": "turn",
+   "frameSeq": 306,
+   "turn": 10,
+   "phase": "MAIN1",
+   "question": "It is your turn 10. What do you do this turn?",
+   "reply": "Blinking Inspiring Overseer gains 1 life and draws a card, and casting Momentary Blink also triggers Murmuring Mystic for a Bird token. Ancestral Blade then adds a 2/2 Soldier. Blinked Overseer would be summoning sick and Falkenrath Noble can block in the air, so I won't attack.\n\nPLAN: Play an Island, cast Momentary Blink on Inspiring Overseer, then cast Ancestral Blade. No attack.\nSTEPS:\n1. play land Island #21\n2. cast Momentary Blink -> Inspiring Overseer\n3. cast Ancestral Blade\n4. attack with none\nEND",
+   "steps": [
+    "play land Island #21",
+    "cast Momentary Blink -> Inspiring Overseer",
+    "cast Ancestral Blade",
+    "attack with none"
+   ],
+   "plan": "Play an Island, cast Momentary Blink on Inspiring Overseer, then cast Ancestral Blade. No attack.",
+   "failed": {
+    "step": 3,
+    "text": "cast Ancestral Blade",
+    "reason": "it costs {1}{W}, which needs 1 white mana, and your untapped mana makes no white (you have 3 untapped mana sources (Island, Island, Island))"
+   },
+   "recordedUser": "It is your turn 10. What do you do this turn?\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nBefore turn 1: opp mulligan;\nT1 (opp): opp land Island [98]; opp cast Ponder [84];\nT2 (you): you land Island [24]; you cast Candy Trail [18]; you cast Candy Trail [18];\nT3 (opp): opp land Swamp [82]; opp cast Dusk Legion Zealot [93]; opp cast Dusk Legion Zealot [93]; opp life 20->19;\nT4 (you): you land Island [20]; Candy Trail [18] died / to graveyard; you cast Candy Trail [18]; you life 20->23;\nT5 (opp): opp attack: Dusk Legion Zealot [93]; you no blocks; you life 23->22; opp land Ash Barrens [86];\nT6 (you): you land Plains [28]; you cast Inspiring Overseer [5]; you cast Inspiring Overseer [5]; you life 22->23;\nT7 (opp): opp land Island [96]; opp cast Falkenrath Noble [85];\nT8 (you): you land Island [22]; you cast Murmuring Mystic [3];\nT9 (opp): opp land Island [95]; opp cast Prophetic Prism [70]; opp cast Prophetic Prism [70]; opp cast Night's Whisper [68]; opp life 19->17;\nT10 (you):\n\nNOW\nTurn 10, your turn, first main phase. You have priority.\n\nYOU (Human): life 23, hand 7, library 26, graveyard 1, exile 0\n  Hand: Spellstutter Sprite {1}{U} (Creature - Faerie Wizard 1/1); Ancestral Blade {1}{W} (Artifact - Equipment); Island #21 (Land - Island); Mountain (Land - Mountain); Momentary Blink {1}{W} (Instant); Plains #34 (Land - Plains); Island #23 (Land - Island)\n  Untapped mana: 4 (Island, Island, Plains, Island: U U W U). Land played this turn: no.\n  Lands: Island #24, Island #20, Plains #28, Island #22 -- 4 untapped\n  Creatures and other permanents: Inspiring Overseer 2/1 (flying); Murmuring Mystic 1/5\n  Graveyard: Candy Trail\n\nOPPONENT (Forge AI): life 17, hand 5 (hidden), library 25, graveyard 2, exile 0\n  Lands: Island #98 (tapped), Swamp (tapped), Ash Barrens (tapped), Island #96 (tapped), Island #95 -- 1 untapped\n  Creatures and other permanents: Dusk Legion Zealot 1/1; Falkenrath Noble 2/2 (flying); Prophetic Prism\n  Graveyard: Ponder; Night's Whisper\n\nSTACK: empty\n\nWHAT THE ENGINE LETS YOU DO NOW (mana checked against your untapped mana)\n  play a land: Island #21, Mountain, Plains #34, Island #23\n  cast: Spellstutter Sprite {1}{U}; Ancestral Blade {1}{W}; Momentary Blink {1}{W}\n  can attack this turn: Inspiring Overseer 2/1; Murmuring Mystic 1/5\n\nCARD TEXT\nAncestral Blade: When this Equipment enters, create a 1/1 white Soldier creature token, then attach this Equipment to it. / Equipped creature gets +1/+1. / Equip {1}\nAsh Barrens: {T}: Add {C}. / Basic landcycling {1}\nCandy Trail: When this artifact enters, scry 2. / {2}, {T}, Sacrifice this artifact: You gain 3 life and draw a card.\nDusk Legion Zealot: When this creature enters, you draw a card and you lose 1 life.\nFalkenrath Noble: Flying / Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.\nInspiring Overseer: Flying / When this creature enters, you gain 1 life and draw a card.\nMomentary Blink: Exile target creature you control, then return it to the battlefield under its owner's control. / Flashback {3}{U}\nMurmuring Mystic: Whenever you cast an instant or sorcery spell, create a 1/1 blue Bird Illusion creature token with flying.\nNight's Whisper: You draw two cards and lose 2 life.\nPonder: Look at the top three cards of your library, then put them back in any order. You may shuffle. / Draw a card.\nProphetic Prism: When this artifact enters, draw a card. / {1}, {T}: Add one mana of any color.\nSpellstutter Sprite: Flash / Flying / When this creature enters, counter target spell with mana value X or less, where X is the number of Faeries you control.\n\nIt is your turn 10. What do you do this turn?\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "ch3-pauper-001",
+   "run": "ch3-pauper",
+   "momentNo": 13,
+   "moment": "turn",
+   "frameSeq": 728,
+   "turn": 15,
+   "phase": "MAIN1",
+   "question": "It is your turn 15. What do you do this turn?",
+   "reply": "Their Falkenrath Noble is the only evasive threat to my monarchy, so Journey to Nowhere takes it. Oblivion Ring takes Gray Merchant, their biggest body. The opponent is tapped out, so nothing can interfere. I hold the ground with my blockers instead of attacking, so I keep the Monarch, and I crack the Clue with the leftover mana.\n\nPLAN: Play a Plains, exile Falkenrath Noble with Journey to Nowhere and Gray Merchant with Oblivion Ring, crack the Clue, and don't attack so I keep the Monarch.\nSTEPS:\n1. play land Plains #31\n2. cast Journey to Nowhere -> Falkenrath Noble\n3. cast Oblivion Ring -> Gray Merchant of Asphodel\n4. activate Clue Token\n5. attack with none\nEND",
+   "steps": [
+    "play land Plains #31",
+    "cast Journey to Nowhere -> Falkenrath Noble",
+    "cast Oblivion Ring -> Gray Merchant of Asphodel",
+    "activate Clue Token",
+    "attack with none"
+   ],
+   "plan": "Play a Plains, exile Falkenrath Noble with Journey to Nowhere and Gray Merchant with Oblivion Ring, crack the Clue, and don't attack so I keep the Monarch.",
+   "failed": {
+    "step": 4,
+    "text": "activate Clue Token",
+    "reason": "that activation was cancelled: Clue Token went back to where it was (a cost, a target or the mana could not be chosen or paid)"
+   },
+   "recordedUser": "It is your turn 15. What do you do this turn?\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (you): you land Plains [27]; you cast Thraben Inspector [17]; you cast Thraben Inspector [17];\nT2 (opp): opp land Island [94]; opp cast Ponder [84];\nT3 (you): you land Mountain [26]; you cast Ancestral Blade [2]; you cast Ancestral Blade [2]; you attack: Thraben Inspector [17]; opp no blocks; opp life 20->19;\nT4 (opp): opp land Swamp [81]; opp cast Disfigure [90]; Thraben Inspector [17] died / to graveyard;\nT5 (you): you land Island [24]; you attack: Soldier Token [138]; opp no blocks; opp life 19->17; you cast Inspiring Overseer [5]; you cast Inspiring Overseer [5]; you life 20->21;\nT6 (opp): opp land Island [100]; opp cast Man-o'-War [103]; opp cast Man-o'-War [103]; Inspiring Overseer [5] returned to hand;\nT7 (you): you land Plains [28]; you cast Inspiring Overseer [5]; you cast Inspiring Overseer [5]; you life 21->22; you attack: Soldier Token [138]; opp no blocks; opp life 17->15;\nT8 (opp): opp cast Snap [69]; Inspiring Overseer [5] returned to hand; opp attack: Man-o'-War [103]; you no blocks; you life 22->20; opp cast Crypt Rats [105];\nT9 (you): you land Plains [35]; you cast Faith's Fetters [1]; you cast Faith's Fetters [1]; you life 20->24; you attack: Soldier Token [138]; opp no blocks; opp life 15->13;\nT10 (opp): opp land Swamp [79]; opp attack: Man-o'-War [103]; you no blocks; you life 24->22; opp cast Falkenrath Noble [85];\nT11 (you): you land Plains [29]; you cast Inspiring Overseer [5]; you cast Inspiring Overseer [5]; you life 22->23; you cast Militia Bugler [15]; you cast Militia Bugler [15]; you attack: Soldier Token [138]; opp no blocks; opp life 13->11;\nT12 (opp): opp land Island [96]; opp cast Gray Merchant of Asphodel [87]; opp cast Gray Merchant of Asphodel [87]; you life 23->19; opp life 11->15;\nT13 (you): you land Plains [34]; you cast Palace Sentinels [7]; you cast Palace Sentinels [7]; you cast Ichor Wellspring [8]; you cast Ichor Wellspring [8]; you cast Thought Scour [36]; you milled Momentary Blink [25]; you milled Firebrand Archer [37]; you cast The Monarch [139];\nT14 (opp): opp cast Gravedigger [106]; opp cast Brainstorm [102];\nT15 (you):\n\nNOW\nTurn 15, your turn, first main phase. You have priority.\n\nYOU (Human): life 19, hand 6, library 17, graveyard 4, exile 0\n  Hand: Island #22 (Land - Island); Plains #31 (Land - Plains); Oblivion Ring {2}{W} (Enchantment); Plains #33 (Land - Plains); Plains #30 (Land - Plains); Journey to Nowhere {1}{W} (Enchantment)\n  Untapped mana: 7 (Plains, Mountain, Island, Plains, Plains, Plains, Plains: W R U W W W W). Land played this turn: no.\n  Lands: Plains #27, Mountain, Island #24, Plains #28, Plains #35, Plains #29, Plains #34 -- 7 untapped\n  Creatures and other permanents: Clue Token (token); Ancestral Blade attached to Soldier Token (equip); Soldier Token 2/2 (token); Faith's Fetters attached to Crypt Rats (enchant); Inspiring Overseer 2/1 (flying); Militia Bugler 2/3 (vigilance); Palace Sentinels 2/4; Ichor Wellspring\n  Graveyard: Thraben Inspector; Momentary Blink; Firebrand Archer; Thought Scour\n  Command zone: The Monarch\n\nOPPONENT (Forge AI): life 15, hand 2 (hidden), library 24, graveyard 4, exile 0\n  Lands: Island #94 (tapped), Swamp #81 (tapped), Island #100 (tapped), Swamp #79 (tapped), Island #96 (tapped) -- 0 untapped\n  Creatures and other permanents: Man-o'-War 2/2; Crypt Rats 1/1; Falkenrath Noble 2/2 (flying); Gray Merchant of Asphodel 2/4; Gravedigger 2/2 (summoning sick)\n  Graveyard: Ponder; Disfigure; Snap; Brainstorm\n\nSTACK: empty\n\nWHAT THE ENGINE LETS YOU DO NOW (mana checked against your untapped mana)\n  play a land: Island #22, Plains #31, Plains #33, Plains #30\n  cast: Oblivion Ring {2}{W}; Journey to Nowhere {1}{W}; Momentary Blink (flashback {3}{U}) from your graveyard\n  activate on the battlefield (the engine's list; for a permanent with more than one, write \"activate <card>: <cost or words of the ability>\"):\n    Clue Token: {2}, Sacrifice this token: Draw a card.\n    Ancestral Blade: Equip {1} ({1}: Attach to target creature you control. Equip only as a sorcery.)\n  can attack this turn: Soldier Token 2/2; Inspiring Overseer 2/1; Militia Bugler 2/3; Palace Sentinels 2/4\n\nCARD TEXT\nAncestral Blade: When this Equipment enters, create a 1/1 white Soldier creature token, then attach this Equipment to it. / Equipped creature gets +1/+1. / Equip {1}\nBrainstorm: Draw three cards, then put two cards from your hand on top of your library in any order.\nCrypt Rats: {X}: This creature deals X damage to each creature and each player. Spend only black mana on X.\nDisfigure: Target creature gets -2/-2 until end of turn.\nFaith's Fetters: Enchant permanent / When this Aura enters, you gain 4 life. / Enchanted permanent can't attack or block, and its activated abilities can't be activated unless they're mana abilities.\nFalkenrath Noble: Flying / Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.\nFirebrand Archer: Whenever you cast a noncreature spell, this creature deals 1 damage to each opponent.\nGravedigger: When this creature enters, you may return target creature card from your graveyard to your hand.\nGray Merchant of Asphodel: When this creature enters, each opponent loses X life, where X is your devotion to black. You gain life equal to the life lost this way.\nIchor Wellspring: When this artifact enters or is put into a graveyard from the battlefield, draw a card.\nInspiring Overseer: Flying / When this creature enters, you gain 1 life and draw a card.\nJourney to Nowhere: When this enchantment enters, exile target creature. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nMan-o'-War: When this creature enters, return target creature to its owner's hand.\nMilitia Bugler: Vigilance / When this creature enters, look at the top four cards of your library. You may reveal a creature card with power 2 or less from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\nMomentary Blink: Exile target creature you control, then return it to the battlefield under its owner's control. / Flashback {3}{U}\nOblivion Ring: When this enchantment enters, exile another target nonland permanent. / When this enchantment leaves the battlefield, return the exiled card to the battlefield under its owner's control.\nPalace Sentinels: When this creature enters, you become the monarch.\nPonder: Look at the top three cards of your library, then put them back in any order. You may shuffle. / Draw a card.\nSnap: Return target creature to its owner's hand. Untap up to two lands.\nThe Monarch: At the beginning of your end step, draw a card. / Whenever a creature deals combat damage to you, its controller becomes the monarch.\nThought Scour: Target player mills two cards. / Draw a card.\nThraben Inspector: When this creature enters, investigate.\n\nIt is your turn 15. What do you do this turn?\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  },
+  {
+   "log": "cg4-peasant-001",
+   "run": "cg4-peasant",
+   "momentNo": 14,
+   "moment": "turn",
+   "frameSeq": 241,
+   "turn": 8,
+   "phase": "MAIN1",
+   "question": "It is your turn 8. What do you do this turn?",
+   "reply": "Mulldrifter costs 5 and I have 4 mana, so I evoke it for card draw. That also puts it in my graveyard, so next turn Animate Dead can bring it back for two more cards. Animate Dead has no target right now, and attacking a 2/1 into their 3/2 Bloodbraid Elf is bad.\n\nPLAN: Play Swamp, then evoke Mulldrifter to draw two cards and set up Animate Dead for next turn. No attack.\nSTEPS:\n1. play land Swamp #13\n2. cast Mulldrifter\n3. choose evoke\n4. attack with none\nEND",
+   "steps": [
+    "play land Swamp #13",
+    "cast Mulldrifter",
+    "choose evoke",
+    "attack with none"
+   ],
+   "plan": "Play Swamp, then evoke Mulldrifter to draw two cards and set up Animate Dead for next turn. No attack.",
+   "failed": {
+    "step": 2,
+    "text": "cast Mulldrifter",
+    "reason": "it costs {4}{U} (5 mana) and you have 4 untapped mana sources (Peculiar Lighthouse, Island, Island, Swamp)"
+   },
+   "recordedUser": "It is your turn 8. What do you do this turn?\n\nGAME SO FAR (\"you\" is you, \"opp\" the opponent; [n] is a card's number)\nT1 (opp): opp land Mountain [101];\nT2 (you): you land Peculiar Lighthouse [22]; you cast Mishra's Bauble [4]; Mishra's Bauble [4] died / to graveyard; you cast Mishra's Bauble [4];\nT3 (opp): you cast Mishra's Bauble [4]; opp land Island [84]; opp cast Goblin Bombardment [81];\nT4 (you): you land Island [32]; you cast Preordain [37];\nT5 (opp): opp land Forest [91]; opp cast Slickshot Lockpicker [73];\nT6 (you): you land Island [33]; you cast Floodpits Drowner [21]; you cast Floodpits Drowner [21];\nT7 (opp): opp land Island [83]; opp cast Bloodbraid Elf [80]; opp cast Bloodbraid Elf [80]; opp cast Faithless Looting [66]; opp discard Mountain [96]; opp discard Unable to Scream [102];\nT8 (you):\n\nNOW\nTurn 8, your turn, first main phase. You have priority.\n\nYOU (Human): life 20, hand 7, library 27, graveyard 2, exile 0\n  Hand: Bountiful Landscape (Land); Sink into Stupor {1}{U}{U} (Instant); Mulldrifter {4}{U} (Creature - Elemental 2/2); Swamp #13 (Land - Swamp); Swamp #9 (Land - Swamp); Animate Dead {1}{B} (Enchantment - Aura); Swamp #10 (Land - Swamp)\n  Untapped mana: 3 (Peculiar Lighthouse, Island, Island: U/R U U). Land played this turn: no.\n  Lands: Peculiar Lighthouse, Island #32, Island #33 -- 3 untapped\n  Creatures and other permanents: Floodpits Drowner 2/1 (flash, vigilance)\n  Graveyard: Mishra's Bauble; Preordain\n\nOPPONENT (Forge AI): life 20, hand 3 (hidden), library 27, graveyard 3, exile 0\n  Lands: Mountain #101 (tapped), Island #84 (tapped), Forest (tapped), Island #83 (tapped) -- 0 untapped\n  Creatures and other permanents: Goblin Bombardment; Slickshot Lockpicker 2/3 (tapped; plot); Bloodbraid Elf 3/2 (haste, cascade)\n  Graveyard: Mountain #96; Unable to Scream; Faithless Looting\n\nSTACK: empty\n\nWHAT THE ENGINE LETS YOU DO NOW (mana checked against your untapped mana)\n  play a land: Bountiful Landscape, Swamp #13, Swamp #9, Swamp #10\n  cast: Sink into Stupor {1}{U}{U}\n  in your hand, but your untapped mana (3) cannot pay for it now: Mulldrifter {4}{U}; Animate Dead {1}{B}\n  activate: Bountiful Landscape (from your hand); Sink into Stupor (from your hand)\n  can attack this turn: Floodpits Drowner 2/1\n\nCARD TEXT\nAnimate Dead: Enchant creature card in a graveyard / When this Aura enters, if it's on the battlefield, it loses \"enchant creature card in a graveyard\" and gains \"enchant creature put onto the battlefield with this Aura.\" Return enchanted creature card to the battlefield under your control and attach this Aura to it. When this Aura leaves the battlefield, that creature's controller sacrifices it. / Enchanted creature gets -1/-0.\nBloodbraid Elf: Haste / Cascade\nBountiful Landscape: {T}: Add {C}. / {T}, Sacrifice this land: Search your library for a basic Forest, Island, or Mountain card, put it onto the battlefield tapped, then shuffle. / Cycling {G}{U}{R}\nFaithless Looting: Draw two cards, then discard two cards. / Flashback {2}{R}\nFloodpits Drowner: Flash / Vigilance / When this creature enters, tap target creature an opponent controls and put a stun counter on it. / {1}{U}, {T}: Shuffle this creature and target creature with a stun counter on it into their owners' libraries.\nGoblin Bombardment: Sacrifice a creature: This enchantment deals 1 damage to any target.\nMishra's Bauble: {T}, Sacrifice this artifact: Look at the top card of target player's library. Draw a card at the beginning of the next turn's upkeep.\nMulldrifter: Flying / When this creature enters, draw two cards. / Evoke {2}{U}\nPeculiar Lighthouse: This land enters tapped unless a player has 13 or less life. / {T}: Add {U} or {R}.\nPreordain: Scry 2, then draw a card.\nSink into Stupor: Return target spell or nonland permanent an opponent controls to its owner's hand. / // / As this land enters, you may pay 3 life. If you don't, it enters tapped. / {T}: Add {U}.\nSlickshot Lockpicker: When this creature enters, target instant or sorcery card in your graveyard gains flashback until end of turn. The flashback cost is equal to its mana cost. / Plot {2}{U}\nUnable to Scream: Enchant creature / Enchanted creature loses all abilities and is a Toy artifact creature with base power and toughness 0/2 in addition to its other types. / As long as enchanted creature is face down, it can't be turned face up.\n\nIt is your turn 8. What do you do this turn?\nReply with PLAN:, STEPS: and END, as the system prompt shows.\n"
+  }
+ ],
+ "all": [
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 1,
+   "moment": "mulligan",
+   "correction": 0,
+   "frameSeq": 6,
+   "turn": 0,
+   "phase": null,
+   "replies": [
+    "PLAN: Keep this hand: three lands, Mind Stone, and cheap plays.\nSTEPS:\n1. keep\nEND"
+   ],
+   "steps": [
+    "keep"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 2,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 22,
+   "turn": 2,
+   "phase": "MAIN1",
+   "replies": [
+    "Swiftspear needs red mana and I have no Mountain, so nothing is castable with one land. I'll play a Plains and pass.\n\nPLAN: Play Plains and end the turn, since nothing costs one mana that I can pay for.\nSTEPS:\n1. play land Plains #32\n2. hold\nEND"
+   ],
+   "steps": [
+    "play land Plains #32",
+    "hold"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 3,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 48,
+   "turn": 4,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Play Island and cast Mind Stone to ramp toward Oblivion Ring and more next turn.\nSTEPS:\n1. play land Island #27\n2. cast Mind Stone\nEND"
+   ],
+   "steps": [
+    "play land Island #27",
+    "cast Mind Stone"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 4,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 96,
+   "turn": 6,
+   "phase": "MAIN1",
+   "replies": [
+    "The opponent has no creatures, so I'll develop. I play the tapped Wind-Scarred Crag now, since 3 mana is enough for Perilous Myr and Bonesplitter. That also gives me red next turn for Swiftspear.\n\nPLAN: Play Wind-Scarred Crag, then cast Perilous Myr and Bonesplitter with the 3 available mana.\nSTEPS:\n1. play land Wind-Scarred Crag\n2. cast Perilous Myr\n3. cast Bonesplitter\n4. hold\nEND"
+   ],
+   "steps": [
+    "play land Wind-Scarred Crag",
+    "cast Perilous Myr",
+    "cast Bonesplitter",
+    "hold"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 5,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 184,
+   "turn": 8,
+   "phase": "MAIN1",
+   "replies": [
+    "Their only creature is a Solemn Simulacrum, so O-Ring stays in hand for a real threat. I'll develop and put Bonesplitter on the Myr, which makes any block bad for them.\n\nPLAN: Play Plains, cast Monastery Swiftspear, equip Bonesplitter to Perilous Myr, and attack with the Myr alone.\nSTEPS:\n1. play land Plains #34\n2. cast Monastery Swiftspear\n3. activate Bonesplitter -> Perilous Myr\n4. attack with Perilous Myr\nEND"
+   ],
+   "steps": [
+    "play land Plains #34",
+    "cast Monastery Swiftspear",
+    "activate Bonesplitter -> Perilous Myr",
+    "attack with Perilous Myr"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 6,
+   "moment": "question",
+   "correction": 0,
+   "frameSeq": 270,
+   "turn": 8,
+   "phase": "COMBAT_DAMAGE",
+   "replies": [
+    "PLAN: Send the Myr's 2 damage at the opponent's face, since they have no creatures and my Swiftspear should not be hit.\nSTEPS:\n1. target opponent\nEND"
+   ],
+   "steps": [
+    "target opponent"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 7,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 280,
+   "turn": 8,
+   "phase": "COMBAT_DAMAGE",
+   "replies": [
+    "PLAN: Let the opponent's draw trigger and my Perilous Myr trigger resolve; nothing worth responding with.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 8,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 303,
+   "turn": 9,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Let Stoneforge Mystic resolve; I have no good response, and I'll deal with it on my turn with O-Ring.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 9,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 303,
+   "turn": 9,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Let the Stoneforge Mystic trigger resolve; I have no useful response, and I'll save Oblivion Ring for a better target.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 10,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 322,
+   "turn": 9,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Let Man-o'-War resolve, since I have no useful response.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 11,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 322,
+   "turn": 9,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Let the Man-o'-War trigger resolve. Nothing I can do at instant speed helps, so I'll keep Mind Stone and recast Swiftspear on my turn.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 12,
+   "moment": "end-step",
+   "correction": 0,
+   "frameSeq": 336,
+   "turn": 9,
+   "phase": "END_OF_TURN",
+   "replies": [
+    "PLAN: Pass. Oblivion Ring is sorcery-speed, and I'd rather keep Mind Stone for mana than sacrifice it to draw.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 13,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 344,
+   "turn": 10,
+   "phase": "MAIN1",
+   "replies": [
+    "The opponent's creatures are summoning sick, and I can't flash back Battle Screech yet because I only have one white creature besides the Birds. I'll use all my mana on board development and not attack, since a Swiftspear attack into their untapped blockers would be a bad trade.\n\nPLAN: Play Plains, cast Swiftspear with the Crag's red mana, then cast Battle Screech for two flying Birds, and hold back.\nSTEPS:\n1. play land Plains #37\n2. cast Monastery Swiftspear\n3. cast Battle Screech\n4. attack with none\nEND"
+   ],
+   "steps": [
+    "play land Plains #37",
+    "cast Monastery Swiftspear",
+    "cast Battle Screech",
+    "attack with none"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 14,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 429,
+   "turn": 11,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Nothing useful can be done in response, so let Gray Merchant resolve and keep Mind Stone.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 15,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 429,
+   "turn": 11,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Let the Gray Merchant trigger resolve, since I have no useful response with only 1 mana available.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 16,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 448,
+   "turn": 11,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Let Shadowspear resolve, since I have no counterspell and only one mana available.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 17,
+   "moment": "blocks",
+   "correction": 0,
+   "frameSeq": 459,
+   "turn": 11,
+   "phase": "COMBAT_DECLARE_BLOCKERS",
+   "replies": [
+    "PLAN: Take the 2 damage with no blocks, so I keep my flyers and Swiftspear and have O-Ring ready for next turn.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 18,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 471,
+   "turn": 12,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Play Island, Stomp the Stoneforge Mystic, O-Ring the Shadowspear, equip Bonesplitter to Swiftspear, then attack with everything. Both spells trigger prowess.\nSTEPS:\n1. play land Island #22\n2. cast Stomp -> Stoneforge Mystic\n3. cast Oblivion Ring -> Shadowspear\n4. activate Bonesplitter -> Monastery Swiftspear\n5. attack with Monastery Swiftspear, Bird Token #140, Bird Token #141\nEND"
+   ],
+   "steps": [
+    "play land Island #22",
+    "cast Stomp -> Stoneforge Mystic",
+    "cast Oblivion Ring -> Shadowspear",
+    "activate Bonesplitter -> Monastery Swiftspear",
+    "attack with Monastery Swiftspear, Bird Token #140, Bird Token #141"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 19,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 646,
+   "turn": 14,
+   "phase": "MAIN1",
+   "replies": [
+    "Crypt Rats could sweep my board next turn. They have five black sources, and the ability needs no tap. I'll bounce it with Petty Theft so they must spend mana recasting it, then cast Borrower from exile as a flyer. Their five ground blockers make a ground attack bad, and they have no flyers, so only the two Birds attack.\n\nPLAN: Petty Theft on Crypt Rats, recast Brazen Borrower as a creature from exile, then attack with the two Bird tokens.\nSTEPS:\n1. cast Brazen Borrower -> Crypt Rats\n2. cast Brazen Borrower\n3. attack with Bird Token #140, Bird Token #141\nEND"
+   ],
+   "steps": [
+    "cast Brazen Borrower -> Crypt Rats",
+    "cast Brazen Borrower",
+    "attack with Bird Token #140, Bird Token #141"
+   ],
+   "failed": {
+    "step": 2,
+    "text": "cast Brazen Borrower",
+    "reason": "Brazen Borrower is already on the battlefield; for its ability write \"activate Brazen Borrower\""
+   }
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 20,
+   "moment": "turn",
+   "correction": 1,
+   "frameSeq": 668,
+   "turn": 14,
+   "phase": "MAIN1",
+   "replies": [
+    "Brazen Borrower's Petty Theft already bounced Crypt Rats. The opponent is tapped out and has no flyers, so the two Birds attack safely. I'm holding the ground creatures back to avoid bad double blocks. After combat I'll sacrifice Mind Stone to draw, since I have spare mana.\n\nPLAN: Attack with only the two flying Bird tokens, then sacrifice Mind Stone to draw a card.\nSTEPS:\n1. attack with Bird Token #140, Bird Token #141\n2. activate Mind Stone: Draw a card\nEND"
+   ],
+   "steps": [
+    "attack with Bird Token #140, Bird Token #141",
+    "activate Mind Stone: Draw a card"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 21,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 728,
+   "turn": 15,
+   "phase": "UPKEEP",
+   "replies": [
+    "PLAN: I have no useful response to the Crypt Rats ability, so I let it resolve.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 22,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 740,
+   "turn": 15,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Let Solemn Simulacrum resolve; I have no useful response with 2 untapped mana.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 23,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 740,
+   "turn": 15,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Nothing useful to respond with, so let the trigger resolve.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 24,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 757,
+   "turn": 15,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Let Kor Skyfisher resolve, since I have nothing worth doing in response with 2 mana.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 25,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 757,
+   "turn": 15,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Let the Kor Skyfisher trigger resolve, since I have no useful response with 2 mana.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 26,
+   "moment": "blocks",
+   "correction": 0,
+   "frameSeq": 777,
+   "turn": 15,
+   "phase": "COMBAT_DECLARE_BLOCKERS",
+   "replies": [
+    "PLAN: No blocks. Both of my creatures already have 1 damage, so any block would trade them for 2/2s, and I'd rather keep them for the attack.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 27,
+   "moment": "end-step",
+   "correction": 0,
+   "frameSeq": 788,
+   "turn": 15,
+   "phase": "END_OF_TURN",
+   "replies": [
+    "PLAN: Nothing useful to cast at instant speed with 2 mana, so pass.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 28,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 795,
+   "turn": 16,
+   "phase": "MAIN1",
+   "replies": [
+    "Attacking with everything leaves me open to a lethal swing back, so I'm keeping Bonecrusher Giant home and sending only Swiftspear.\n\nPLAN: Play Island, cast Eagles of the North for first strike, and attack with only Monastery Swiftspear. Bonecrusher Giant and Eagles stay back as blockers.\nSTEPS:\n1. play land Island #21\n2. cast Eagles of the North\n3. attack with Monastery Swiftspear\nEND"
+   ],
+   "steps": [
+    "play land Island #21",
+    "cast Eagles of the North",
+    "attack with Monastery Swiftspear"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 29,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 887,
+   "turn": 17,
+   "phase": "MAIN2",
+   "replies": [
+    "PLAN: Let Murmuring Mystic resolve, since I can't respond meaningfully with 1 untapped mana.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 30,
+   "moment": "end-step",
+   "correction": 0,
+   "frameSeq": 893,
+   "turn": 17,
+   "phase": "END_OF_TURN",
+   "replies": [
+    "PLAN: Pass. I keep Eagles of the North in hand to cast on my turn, since I have seven lands and plainscycling would only trade it for a Plains.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 31,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 900,
+   "turn": 18,
+   "phase": "MAIN1",
+   "replies": [
+    "The opponent has six untapped potential blockers at 7 life, so no attack is worth making. I'll develop instead and remove Murmuring Mystic, which would otherwise make a stream of flying Birds. I'm keeping Eagles of the North in hand to cast next turn.\n\nPLAN: Cast Skyclave Apparition exiling Murmuring Mystic, then hold back without attacking.\nSTEPS:\n1. cast Skyclave Apparition -> Murmuring Mystic\n2. hold\nEND"
+   ],
+   "steps": [
+    "cast Skyclave Apparition -> Murmuring Mystic",
+    "hold"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 32,
+   "moment": "end-step",
+   "correction": 0,
+   "frameSeq": 974,
+   "turn": 19,
+   "phase": "END_OF_TURN",
+   "replies": [
+    "PLAN: Nothing worth doing at instant speed: Eagles of the North only offers plainscycling for {1}, and I would rather keep it to cast later.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 33,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 981,
+   "turn": 20,
+   "phase": "MAIN1",
+   "replies": [
+    "Their five untapped blockers make lethal unlikely, but Eagles of the North gives my attackers first strike and +1/+0. That should let them kill most blockers without taking damage. Eagles stays home as a flying blocker, and Skyclave Apparition stays home so I don't give them an Illusion token.\n\nPLAN: Play Island, cast Eagles of the North for first strike and +1/+0, then attack with Bonecrusher Giant and Monastery Swiftspear.\nSTEPS:\n1. play land Island #26\n2. cast Eagles of the North\n3. attack with Bonecrusher Giant, Monastery Swiftspear\nEND"
+   ],
+   "steps": [
+    "play land Island #26",
+    "cast Eagles of the North",
+    "attack with Bonecrusher Giant, Monastery Swiftspear"
+   ],
+   "failed": null
+  },
+  {
+   "log": "s2-search-p0-s6-001",
+   "momentNo": 34,
+   "moment": "blocks",
+   "correction": 0,
+   "frameSeq": 1074,
+   "turn": 21,
+   "phase": "COMBAT_DECLARE_BLOCKERS",
+   "replies": [
+    "The opponent's attackers total 12 damage and I'm at 8, so I have to block at least 5 power's worth. Eagles of the North blocks Kor Skyfisher: it kills the 2/3 and survives. Skyclave Apparition chump-blocks Restless Reef, the 4/4 deathtouch. That leaves me at 2 life. Apparition dying gives the opponent a 4/4 token for the exiled Murmuring Mystic, but I have no better block.\n\nPLAN: Eagles of the North blocks Kor Skyfisher and kills it. Skyclave Apparition chump-blocks Restless Reef to keep me alive.\nSTEPS:\n1. block Kor Skyfisher with Eagles of the North\n2. block Restless Reef with Skyclave Apparition\nEND"
+   ],
+   "steps": [
+    "block Kor Skyfisher with Eagles of the North",
+    "block Restless Reef with Skyclave Apparition"
+   ],
+   "failed": null
+  },
+  {
+   "log": "m20-search-p10-001",
+   "momentNo": 1,
+   "moment": "mulligan",
+   "correction": 0,
+   "frameSeq": 9,
+   "turn": 0,
+   "phase": null,
+   "replies": [
+    "PLAN: Keep this hand: three Islands and a good curve of cheap creatures.\nSTEPS:\n1. keep\nEND"
+   ],
+   "steps": [
+    "keep"
+   ],
+   "failed": null
+  },
+  {
+   "log": "m20-search-p10-001",
+   "momentNo": 2,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 29,
+   "turn": 2,
+   "phase": "MAIN1",
+   "replies": [
+    "I have no lands yet, so this is my first land drop. With one Island, Candy Trail is the only castable card, and its scry 2 helps me find white sources, since my hand has only Islands.\n\nPLAN: Play an Island and cast Candy Trail to scry 2.\nSTEPS:\n1. play land Island #24\n2. cast Candy Trail\nEND"
+   ],
+   "steps": [
+    "play land Island #24",
+    "cast Candy Trail"
+   ],
+   "failed": null
+  },
+  {
+   "log": "m20-search-p10-001",
+   "momentNo": 3,
+   "moment": "question",
+   "correction": 0,
+   "frameSeq": 61,
+   "turn": 2,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Bottom Ghostly Flicker and keep Island #21 on top, since I need a fourth land for Murmuring Mystic.\nSTEPS:\n1. target Ghostly Flicker\nEND"
+   ],
+   "steps": [
+    "target Ghostly Flicker"
+   ],
+   "failed": null
+  },
+  {
+   "log": "m20-search-p10-001",
+   "momentNo": 4,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 99,
+   "turn": 4,
+   "phase": "MAIN1",
+   "replies": [
+    "I have only Islands, so I can't cast the white cards yet. I'll play an Island and sacrifice Candy Trail to gain 3 life and draw, hoping to find a white source.\n\nPLAN: Play Island, then activate Candy Trail to draw a card and gain 3 life.\nSTEPS:\n1. play land Island #20\n2. activate Candy Trail\n3. hold\nEND"
+   ],
+   "steps": [
+    "play land Island #20",
+    "activate Candy Trail",
+    "hold"
+   ],
+   "failed": null
+  },
+  {
+   "log": "m20-search-p10-001",
+   "momentNo": 5,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 151,
+   "turn": 6,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Play Plains and cast Inspiring Overseer to draw a card and gain 1 life, using all three mana.\nSTEPS:\n1. play land Plains\n2. cast Inspiring Overseer\nEND"
+   ],
+   "steps": [
+    "play land Plains",
+    "cast Inspiring Overseer"
+   ],
+   "failed": null
+  },
+  {
+   "log": "m20-search-p10-001",
+   "momentNo": 6,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 216,
+   "turn": 8,
+   "phase": "MAIN1",
+   "replies": [
+    "Falkenrath Noble can block my 2/1 flyer and kill it, so I won't attack. The opponent is tapped out, so I'll use all four mana on Murmuring Mystic, a sturdy blocker that makes Bird tokens off my instants.\n\nPLAN: Play an Island and cast Murmuring Mystic, with no attack.\nSTEPS:\n1. play land Island #22\n2. cast Murmuring Mystic\n3. attack with none\nEND"
+   ],
+   "steps": [
+    "play land Island #22",
+    "cast Murmuring Mystic",
+    "attack with none"
+   ],
+   "failed": null
+  },
+  {
+   "log": "m20-search-p10-001",
+   "momentNo": 7,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 306,
+   "turn": 10,
+   "phase": "MAIN1",
+   "replies": [
+    "Blinking Inspiring Overseer gains 1 life and draws a card, and casting Momentary Blink also triggers Murmuring Mystic for a Bird token. Ancestral Blade then adds a 2/2 Soldier. Blinked Overseer would be summoning sick and Falkenrath Noble can block in the air, so I won't attack.\n\nPLAN: Play an Island, cast Momentary Blink on Inspiring Overseer, then cast Ancestral Blade. No attack.\nSTEPS:\n1. play land Island #21\n2. cast Momentary Blink -> Inspiring Overseer\n3. cast Ancestral Blade\n4. attack with none\nEND"
+   ],
+   "steps": [
+    "play land Island #21",
+    "cast Momentary Blink -> Inspiring Overseer",
+    "cast Ancestral Blade",
+    "attack with none"
+   ],
+   "failed": {
+    "step": 3,
+    "text": "cast Ancestral Blade",
+    "reason": "it costs {1}{W}, which needs 1 white mana, and your untapped mana makes no white (you have 3 untapped mana sources (Island, Island, Island))"
+   }
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 1,
+   "moment": "play-draw",
+   "correction": 0,
+   "frameSeq": 5,
+   "turn": 0,
+   "phase": null,
+   "replies": [
+    "PLAN: Play first to get tempo advantage against the AI.\nSTEPS:\n1. choose play\nEND"
+   ],
+   "steps": [
+    "choose play"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 2,
+   "moment": "mulligan",
+   "correction": 0,
+   "frameSeq": 15,
+   "turn": 0,
+   "phase": null,
+   "replies": [
+    "PLAN: Keep this hand: it has two lands, cheap white creatures, and card draw to find more lands.\nSTEPS:\n1. keep\nEND"
+   ],
+   "steps": [
+    "keep"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 3,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 20,
+   "turn": 1,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Play Plains and cast Thraben Inspector to get a body and a Clue.\nSTEPS:\n1. play land Plains\n2. cast Thraben Inspector\nEND"
+   ],
+   "steps": [
+    "play land Plains",
+    "cast Thraben Inspector"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 4,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 78,
+   "turn": 3,
+   "phase": "MAIN1",
+   "replies": [
+    "Their board is empty, so I play a land, cast Ancestral Blade for a 2/2 Soldier, and attack with the Inspector.\n\nPLAN: Play Mountain, cast Ancestral Blade, then attack with Thraben Inspector.\nSTEPS:\n1. play land Mountain\n2. cast Ancestral Blade\n3. attack with Thraben Inspector\nEND"
+   ],
+   "steps": [
+    "play land Mountain",
+    "cast Ancestral Blade",
+    "attack with Thraben Inspector"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 5,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 168,
+   "turn": 5,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Play Island for three mana, attack with the equipped Soldier token into the empty board, then cast Inspiring Overseer after combat to draw a card and gain 1 life.\nSTEPS:\n1. play land Island #24\n2. attack with Soldier Token\n3. cast Inspiring Overseer\nEND"
+   ],
+   "steps": [
+    "play land Island #24",
+    "attack with Soldier Token",
+    "cast Inspiring Overseer"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 6,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 255,
+   "turn": 7,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Play Plains, cast Inspiring Overseer to draw a card and gain 1 life, then attack with the equipped Soldier token while the opponent is tapped out.\nSTEPS:\n1. play land Plains #28\n2. cast Inspiring Overseer\n3. attack with Soldier Token\nEND"
+   ],
+   "steps": [
+    "play land Plains #28",
+    "cast Inspiring Overseer",
+    "attack with Soldier Token"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 7,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 349,
+   "turn": 9,
+   "phase": "MAIN1",
+   "replies": [
+    "The opponent's Crypt Rats is the main threat to my small creatures, so I'll lock it down with Faith's Fetters. Fetters also gains me 4 life, and the Rats can no longer block. Their Man-o'-War is tapped, so my Soldier can attack freely.\n\nPLAN: Play Plains, put Faith's Fetters on Crypt Rats, then attack with the Soldier Token.\nSTEPS:\n1. play land Plains #35\n2. cast Faith's Fetters -> Crypt Rats\n3. attack with Soldier Token\nEND"
+   ],
+   "steps": [
+    "play land Plains #35",
+    "cast Faith's Fetters -> Crypt Rats",
+    "attack with Soldier Token"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 8,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 450,
+   "turn": 11,
+   "phase": "MAIN1",
+   "replies": [
+    "Opponent is tapped out, so there are no tricks to fear. I play a land and cast Inspiring Overseer and Militia Bugler for card advantage. Then I attack with the 3/3 equipped Soldier. Falkenrath Noble can't profitably block it, and Crypt Rats is locked down by Faith's Fetters.\n\nPLAN: Play Plains, cast Inspiring Overseer and Militia Bugler, then attack with the equipped Soldier Token.\nSTEPS:\n1. play land Plains #29\n2. cast Inspiring Overseer\n3. cast Militia Bugler\n4. attack with Soldier Token\nEND"
+   ],
+   "steps": [
+    "play land Plains #29",
+    "cast Inspiring Overseer",
+    "cast Militia Bugler",
+    "attack with Soldier Token"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 9,
+   "moment": "question",
+   "correction": 0,
+   "frameSeq": 516,
+   "turn": 11,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Take Palace Sentinels to become monarch later, then attack with the Soldier Token as planned.\nSTEPS:\n1. target Palace Sentinels\n2. attack with Soldier Token\nEND"
+   ],
+   "steps": [
+    "target Palace Sentinels",
+    "attack with Soldier Token"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 10,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 577,
+   "turn": 13,
+   "phase": "MAIN1",
+   "replies": [
+    "Monarch is worth taking, and my blockers can protect it. I won't attack. With seven mana I can cast Palace Sentinels, Ichor Wellspring and Thought Scour to draw extra cards.\n\nPLAN: Play a Plains, cast Palace Sentinels to become monarch, then cast Ichor Wellspring and Thought Scour for cards. No attack, so my creatures stay back to guard the monarchy.\nSTEPS:\n1. play land Plains #34\n2. cast Palace Sentinels\n3. cast Ichor Wellspring\n4. cast Thought Scour -> me\n5. attack with none\nEND"
+   ],
+   "steps": [
+    "play land Plains #34",
+    "cast Palace Sentinels",
+    "cast Ichor Wellspring",
+    "cast Thought Scour -> me",
+    "attack with none"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 11,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 711,
+   "turn": 14,
+   "phase": "MAIN2",
+   "replies": [
+    "PLAN: Nothing to respond with since all my mana is tapped, so let Gravedigger resolve.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 12,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 711,
+   "turn": 14,
+   "phase": "MAIN2",
+   "replies": [
+    "PLAN: I have no untapped mana and nothing to respond with, so I let Brainstorm resolve.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "ch3-pauper-001",
+   "momentNo": 13,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 728,
+   "turn": 15,
+   "phase": "MAIN1",
+   "replies": [
+    "Their Falkenrath Noble is the only evasive threat to my monarchy, so Journey to Nowhere takes it. Oblivion Ring takes Gray Merchant, their biggest body. The opponent is tapped out, so nothing can interfere. I hold the ground with my blockers instead of attacking, so I keep the Monarch, and I crack the Clue with the leftover mana.\n\nPLAN: Play a Plains, exile Falkenrath Noble with Journey to Nowhere and Gray Merchant with Oblivion Ring, crack the Clue, and don't attack so I keep the Monarch.\nSTEPS:\n1. play land Plains #31\n2. cast Journey to Nowhere -> Falkenrath Noble\n3. cast Oblivion Ring -> Gray Merchant of Asphodel\n4. activate Clue Token\n5. attack with none\nEND"
+   ],
+   "steps": [
+    "play land Plains #31",
+    "cast Journey to Nowhere -> Falkenrath Noble",
+    "cast Oblivion Ring -> Gray Merchant of Asphodel",
+    "activate Clue Token",
+    "attack with none"
+   ],
+   "failed": {
+    "step": 4,
+    "text": "activate Clue Token",
+    "reason": "that activation was cancelled: Clue Token went back to where it was (a cost, a target or the mana could not be chosen or paid)"
+   }
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 1,
+   "moment": "mulligan",
+   "correction": 0,
+   "frameSeq": 6,
+   "turn": 0,
+   "phase": null,
+   "replies": [
+    "PLAN: Keep this hand: it has three lands, cheap card selection (Preordain, Bauble), and Mulldrifter for card advantage.\nSTEPS:\n1. keep\nEND"
+   ],
+   "steps": [
+    "keep"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 2,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 20,
+   "turn": 2,
+   "phase": "MAIN1",
+   "replies": [
+    "Playing the tapped land now costs nothing, and the free Bauble gets a card. Next turn I'll have an untapped Island for Preordain.\n\nPLAN: Play Peculiar Lighthouse tapped, cast Mishra's Bauble, and sacrifice it targeting myself to draw a card.\nSTEPS:\n1. play land Peculiar Lighthouse\n2. cast Mishra's Bauble\n3. activate Mishra's Bauble -> me\nEND"
+   ],
+   "steps": [
+    "play land Peculiar Lighthouse",
+    "cast Mishra's Bauble",
+    "activate Mishra's Bauble -> me"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 3,
+   "moment": "question",
+   "correction": 0,
+   "frameSeq": 53,
+   "turn": 2,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Answer yes to sacrifice the Bauble, since that is the cost of its ability and draws a card next upkeep.\nSTEPS:\n1. choose Yes\nEND"
+   ],
+   "steps": [
+    "choose Yes"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 4,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 85,
+   "turn": 3,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: I have no untapped mana and nothing I can cast, so I let Goblin Bombardment resolve.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 5,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 93,
+   "turn": 4,
+   "phase": "MAIN1",
+   "replies": [
+    "I'm behind on lands, so I play an Island and cast Preordain to dig for more.\n\nPLAN: Play Island #32, then cast Preordain to smooth my draws.\nSTEPS:\n1. play land Island #32\n2. cast Preordain\nEND"
+   ],
+   "steps": [
+    "play land Island #32",
+    "cast Preordain"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 6,
+   "moment": "question",
+   "correction": 0,
+   "frameSeq": 120,
+   "turn": 4,
+   "phase": "MAIN1",
+   "replies": [
+    "I have plenty of lands and no creature in my graveyard, so both reanimation Auras are dead weight right now. I'll bottom both to dig toward live cards.\n\nPLAN: Put Dance of the Dead and Animate Dead on the bottom of the library.\nSTEPS:\n1. target Dance of the Dead\n2. target Animate Dead\nEND"
+   ],
+   "steps": [
+    "target Dance of the Dead",
+    "target Animate Dead"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 7,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 143,
+   "turn": 5,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Nothing useful to do with one mana, so let the creature resolve.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 8,
+   "moment": "end-step",
+   "correction": 0,
+   "frameSeq": 150,
+   "turn": 5,
+   "phase": "END_OF_TURN",
+   "replies": [
+    "PLAN: Nothing useful to cast with 1 mana, so I pass.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 9,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 157,
+   "turn": 6,
+   "phase": "MAIN1",
+   "replies": [
+    "I play Island #33 and cast Floodpits Drowner now, targeting Slickshot Lockpicker. The stun counter keeps the Lockpicker tapped down, and next turn I can pay {1}{U} to shuffle it away.\n\nPLAN: Play Island #33, then cast Floodpits Drowner to tap and stun Slickshot Lockpicker.\nSTEPS:\n1. play land Island #33\n2. cast Floodpits Drowner\n3. target Slickshot Lockpicker\nEND"
+   ],
+   "steps": [
+    "play land Island #33",
+    "cast Floodpits Drowner",
+    "target Slickshot Lockpicker"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 10,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 207,
+   "turn": 7,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: I can't do anything useful with one untapped mana, so I let the cascade resolve.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 11,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 207,
+   "turn": 7,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: Nothing useful to do with one untapped mana, so let the spell resolve.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 12,
+   "moment": "response",
+   "correction": 0,
+   "frameSeq": 224,
+   "turn": 7,
+   "phase": "MAIN1",
+   "replies": [
+    "PLAN: I can't afford anything useful with one untapped mana, so I let Bloodbraid Elf resolve.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 13,
+   "moment": "end-step",
+   "correction": 0,
+   "frameSeq": 235,
+   "turn": 7,
+   "phase": "END_OF_TURN",
+   "replies": [
+    "PLAN: Nothing is castable with 1 untapped mana, so I pass.\nSTEPS:\n1. pass\nEND"
+   ],
+   "steps": [
+    "pass"
+   ],
+   "failed": null
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 14,
+   "moment": "turn",
+   "correction": 0,
+   "frameSeq": 241,
+   "turn": 8,
+   "phase": "MAIN1",
+   "replies": [
+    "Mulldrifter costs 5 and I have 4 mana, so I evoke it for card draw. That also puts it in my graveyard, so next turn Animate Dead can bring it back for two more cards. Animate Dead has no target right now, and attacking a 2/1 into their 3/2 Bloodbraid Elf is bad.\n\nPLAN: Play Swamp, then evoke Mulldrifter to draw two cards and set up Animate Dead for next turn. No attack.\nSTEPS:\n1. play land Swamp #13\n2. cast Mulldrifter\n3. choose evoke\n4. attack with none\nEND"
+   ],
+   "steps": [
+    "play land Swamp #13",
+    "cast Mulldrifter",
+    "choose evoke",
+    "attack with none"
+   ],
+   "failed": {
+    "step": 2,
+    "text": "cast Mulldrifter",
+    "reason": "it costs {4}{U} (5 mana) and you have 4 untapped mana sources (Peculiar Lighthouse, Island, Island, Swamp)"
+   }
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 15,
+   "moment": "turn",
+   "correction": 1,
+   "frameSeq": 241,
+   "turn": 8,
+   "phase": "MAIN1",
+   "replies": [
+    "Mulldrifter costs 5 and I have only 4 mana, so I'll evoke it for {2}{U} to draw two cards. Animate Dead has no creature to target, since neither graveyard holds one. Drowner stays home as a blocker against Bloodbraid Elf.\n\nPLAN: Evoke Mulldrifter to draw two cards, then don't attack.\nSTEPS:\n1. cast Mulldrifter\n2. choose evoke\n3. attack with none\nEND"
+   ],
+   "steps": [
+    "cast Mulldrifter",
+    "choose evoke",
+    "attack with none"
+   ],
+   "failed": {
+    "step": 1,
+    "text": "cast Mulldrifter",
+    "reason": "it costs {4}{U} (5 mana) and you have 4 untapped mana sources (Peculiar Lighthouse, Island, Island, Swamp)"
+   }
+  },
+  {
+   "log": "cg4-peasant-001",
+   "momentNo": 16,
+   "moment": "turn",
+   "correction": 2,
+   "frameSeq": 241,
+   "turn": 8,
+   "phase": "MAIN1",
+   "replies": [
+    "Mulldrifter's full cost is 5 mana and I only have 4, and I can't tell whether the engine accepts an evoke cast. So I'll skip it, keep my mana open for Sink into Stupor on the opponent's turn, and keep Drowner back as a blocker.\n\nPLAN: Don't attack, and hold up Sink into Stupor mana during the opponent's turn.\nSTEPS:\n1. attack with none\n2. pass\nEND"
+   ],
+   "steps": [
+    "attack with none",
+    "pass"
+   ],
+   "failed": null
+  }
+ ]
+}

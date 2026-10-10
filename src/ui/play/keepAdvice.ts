@@ -11,7 +11,7 @@
 import type { GameLog } from '../../log.ts';
 import type { GameStateBody } from '../../protocol.ts';
 import { getAnswer, onAnswerSettled, restoreAnswer, type Answer } from '../answers.ts';
-import { gameAdvice, gameOfKey, knownGames, planKey, restoreAdvice, type AdviceEntry } from './autoPlan.ts';
+import { baseAnswerKey, gameAdvice, gameOfKey, knownGames, momentAnswerKey, planKey, restoreAdvice, type AdviceEntry } from './autoPlan.ts';
 import { loadStoredAdvice, saveStoredAdvice, sessionAdviceStorage, type StoredAnswer, type StoredEntry } from './adviceStore.ts';
 import { liveDecision } from './liveDecision.ts';
 import { answerWasShown, coachUseStorage, noteAnswerShown } from '../../coachUse.ts';
@@ -47,7 +47,18 @@ export function persistAdvice(game: string, storage: Store | null, log: GameLog 
   const entries: StoredEntry[] = g.entries.map((e) => {
     const f = log?.frames[e.frameIndex];
     const turn = e.decision?.state.turn ?? (f?.type === 'state' ? ((f.body as GameStateBody).turn ?? null) : null);
-    return { key: e.key, kind: e.kind, label: e.label, forTurn: e.forTurn, frameIndex: e.frameIndex, turn, seq: e.seq, answer: keptAnswer(getAnswer(e.key)) };
+    return {
+      key: e.key,
+      kind: e.kind,
+      label: e.label,
+      forTurn: e.forTurn,
+      frameIndex: e.frameIndex,
+      turn,
+      seq: e.seq,
+      answer: keptAnswer(getAnswer(e.key)),
+      ...(e.moment ? { moment: e.moment } : {}),
+      ...(e.attempt !== undefined ? { attempt: e.attempt } : {}),
+    };
   });
   // A cycle counts as asked once its plan has an answer that ended; one cut short by the reload is asked again.
   const plans = [...g.plans].filter((t) => {
@@ -55,7 +66,13 @@ export function persistAdvice(game: string, storage: Store | null, log: GameLog 
     if (!e) return true;
     return !!e.answer && !e.answer.cut;
   });
-  return saveStoredAdvice(storage, { game, at: now(), plans, entries });
+  // Plan mode: the same for the moments (an entry's key may be a correction's, `~c<n>`).
+  const moments = [...g.moments].filter((id) => {
+    const e = entries.find((x) => baseAnswerKey(x.key) === momentAnswerKey(game, id));
+    if (!e) return true;
+    return !!e.answer && !e.answer.cut;
+  });
+  return saveStoredAdvice(storage, { game, at: now(), plans, moments, entries });
 }
 
 /**
@@ -67,7 +84,7 @@ export function persistAdvice(game: string, storage: Store | null, log: GameLog 
 export function restoreKeptAdvice(game: string, storage: Pick<Storage, 'getItem'> | null, log: GameLog, seat: number): boolean {
   if (gameAdvice(game)?.entries.length) return false;
   const kept = loadStoredAdvice(storage, game);
-  if (!kept || (!kept.entries.length && !kept.plans.length)) return false;
+  if (!kept || (!kept.entries.length && !kept.plans.length && !kept.moments?.length)) return false;
   const entries: AdviceEntry[] = kept.entries.map((e) => ({
     key: e.key,
     kind: e.kind,
@@ -76,8 +93,10 @@ export function restoreKeptAdvice(game: string, storage: Pick<Storage, 'getItem'
     frameIndex: e.frameIndex,
     seq: e.seq,
     decision: momentAt(log, e.frameIndex, e.turn, seat),
+    ...(e.moment ? { moment: e.moment } : {}),
+    ...(e.attempt !== undefined ? { attempt: e.attempt } : {}),
   }));
-  if (!restoreAdvice(game, entries, kept.plans)) return false;
+  if (!restoreAdvice(game, entries, kept.plans, kept.moments ?? [])) return false;
   for (const e of kept.entries) if (e.answer) restoreAnswer(e.key, e.answer);
   return true;
 }

@@ -90,12 +90,12 @@ export async function coachPrompt(log: GameLog, d: Decision, opts: { live?: bool
   return buildCoachPrompt(log, d, cards, { ...(guide ? { guide } : {}), ...(cube ? { cube } : {}), format, ...(opts.plan ? { plan: opts.plan } : {}) });
 }
 
-/** Settings → Coach style for live play (absent = short). */
+/** Settings → Coach style for live play (absent = plan). */
 export function liveStyle(): CoachStyle {
   try {
-    return loadSettings().coachStyle ?? 'short';
+    return loadSettings().coachStyle ?? 'plan';
   } catch {
-    return 'short';
+    return 'plan';
   }
 }
 
@@ -321,6 +321,7 @@ export function AnswerBox({
   feedback = null,
   title = null,
   terse = false,
+  body = null,
 }: {
   answer: Answer | undefined;
   askLabel: string;
@@ -341,6 +342,12 @@ export function AnswerBox({
    * back to the structured layout.
    */
   terse?: boolean;
+  /**
+   * The answer's text drawn by the caller instead (the live coach's plan mode:
+   * the plan and its checked steps, ui/play/PlanView.tsx); the waiting lines,
+   * errors, feedback and buttons stay.
+   */
+  body?: ReactNode;
 }) {
   const [copyState, setCopyState] = useState<'idle' | 'busy' | 'ok' | 'err'>('idle');
   const copy = async () => {
@@ -396,9 +403,10 @@ export function AnswerBox({
           Waiting for the coach…{answer.queuePosition ? ` (${answer.queuePosition === 1 ? 'one question' : `${answer.queuePosition} questions`} ahead)` : ''}
         </p>
       )}
-      {parts && (parts.answer || parts.rule || parts.confidence) && <AnswerHead answer={parts.answer} rule={parts.rule} confidence={parts.confidence} why={parts.confidenceWhy} />}
-      {showTerse && terseParts && <TerseView parts={terseParts} streaming={streaming} />}
-      {answer && answer.text && !showTerse && <Markdown text={parts ? parts.body : answer.text} streaming={streaming} />}
+      {body}
+      {!body && parts && (parts.answer || parts.rule || parts.confidence) && <AnswerHead answer={parts.answer} rule={parts.rule} confidence={parts.confidence} why={parts.confidenceWhy} />}
+      {!body && showTerse && terseParts && <TerseView parts={terseParts} streaming={streaming} />}
+      {!body && answer && answer.text && !showTerse && <Markdown text={parts ? parts.body : answer.text} streaming={streaming} />}
       {answer?.status === 'streaming' && !answer.text && (
         <p className="muted small pulse" role="status">
           {thinkingNow ?? (answer.thinking ? 'Thinking it through…' : answer.source === 'helper' ? 'Waiting for Claude Code on your PC…' : 'Waiting for Claude…')}

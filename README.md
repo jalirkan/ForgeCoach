@@ -117,7 +117,43 @@ source: *Automatic* (the default: the helper when it is found, else your key),
 Sonnet 5.5 → `sonnet`, Haiku 4.5 → `haiku` for Claude Code). Either way the
 coach gets the decision's state and the exact text of the cards involved.
 
-**Auto-coach** (the switch on the play screen) plans your next turn during your
+**Auto-coach in plan mode (the default).** Settings → Coach style → *Steps*
+coaches the way Claude Sonnet played its test games against Forge through
+mtg-table's LLM seat (decision D419, "plan mode"; about one failed step a game,
+and it beat plain Forge 9 of 10). The coach answers each moment with a one-line
+`PLAN:` and numbered steps in fixed verbs (`play land`, `cast X -> target`,
+`activate X: ability`, `attack with …`, `block X with Y`, `target`, `choose`,
+`keep`/`mulligan`, `pass`, `hold`); the play screen shows the plan as the
+headline and the steps as a checklist, ticked off as the game log shows them
+done, with the coach's reasoning behind *Why*. Auto-coach asks at the seat's
+moments, each once: your opening hand (and play or draw), your turn after the
+draw (the first main phase, or the attack when the main phase had nothing to
+play), an opponent's spell or ability you could answer, blocks, the opponent's
+end step when you could cast something then, and an engine question your plan
+does not already answer. **Every step is checked before you see it** against
+what the engine allows: the engine's own lists of what you may cast and
+activate (`state.playable`, `state.activatable`), the mana your untapped
+sources make (colours count, one step after another), the land drop, which of
+your creatures can attack or block, the open question's answers. A step that
+cannot be done goes back to the coach with the reason — "Step 2 'cast Hill
+Giant' cannot be done: it costs {3}{R} (4 mana) and you have 2 untapped mana
+sources" — as a fresh call, at most twice (the panel says *Asking the coach
+again*); after that the last plan is shown with the step marked *can't be
+done*. What only the engine knows (a target the card's text forbids, a cost
+reducer, a creature that can't block) still goes through. Each moment is one
+fresh call with the whole picture (the game so far, the board in plain words,
+what the engine lets you do, the card text, your play guide): in the seat's
+tests a fresh call per moment did as well as a running session (7/10 vs 8/10 on
+10 paired deals) at a third of the cost. Plan mode asks the live model
+(Sonnet unless Settings → Live coach model says otherwise) with low thinking,
+as the seat ran (`--thinking low`; effort *low* with an API key; *Off* when
+Coach thinking says Off). Expect one call per moment: in the seat's 89
+recorded games, a median of 33 calls a game (1.7 per turn, most of them short
+— a response or the end step, often a single `pass`), about 2 of them
+corrections. The code is `src/livePlan/` (ported from
+mtg-table `tools/llm-seat`) and `src/ui/play/PlanCoach.tsx`.
+
+**Auto-coach in the Short and Detailed styles** plans your next turn during your
 opponent's end step: one question per turn cycle, asked as their turn ends so
 the plan is there when yours starts (at the start of your own turn when the
 engine skipped their end step, and on turn 1 when you are on the play). The
@@ -159,8 +195,8 @@ what is not in the hand or spend mana that is not there, so it is a choice in
 Settings, not the default. Replays, the film room, reviews, practice and the
 bench keep Settings → Model and Coach thinking.
 
-Settings → **Coach style** sets how the coach answers while you play: *Short*
-(the default) is a few commands and one short reason —
+Settings → **Coach style** sets how the coach answers while you play: *Steps*
+(the default, plan mode above); *Short* is a few commands and one short reason —
 `Play: Cast Shock → their Bears`, `Mana: R from Mountain`, `Why: …` — with the
 rule, the confidence and the details behind *More*, and Claude Code thinking as
 little as the model allows (*Off*, unless Coach thinking says *Low*);
@@ -1066,8 +1102,9 @@ A finding is one of these:
 With `--coach fake`, a helper that answers at once checks that the coach
 panel never blanks during the opponent's turn — not even while the next plan
 is written: the last plan stays in view until the new one has text — and that
-auto-coach asks at most once per turn cycle (`PLAYTEST_COACH_MS=N` slows its
-answers). The fake engine's even games put Blood Artist on your battlefield,
+auto-coach asks at most once per turn cycle — in plan mode, once per moment;
+the fake coach answers in the steps format and its steps always check out, so
+a correction is a finding too (`PLAYTEST_COACH_MS=N` slows its answers). The fake engine's even games put Blood Artist on your battlefield,
 so a creature dying asks "Select target player" with both buttons off: only
 a portrait click moves the game on. With `--coach real`, each question's latency is
 recorded.

@@ -26,8 +26,17 @@
  * disappears while a new plan is written: until the new plan has text, the one
  * before it (`previousPlan`) stays in view, labelled. The player's own asks
  * ("ask" entries) sit beside it and never clear it.
+ *
+ * Plan mode (Settings → Coach style: Steps, the default; mtg-table D419) asks at
+ * the LLM seat's moments instead (livePlan/moments.ts: the turn, the mulligan, a
+ * response, blocks, the end step, a question), each once: `momentsAsked` /
+ * `markMomentAsked` keep the moment ids, an entry carries its `moment`, and a
+ * correction replaces the entry's key with the next attempt's (`replaceAdviceKey`),
+ * so what is shown and kept across a reload is always the newest attempt.
  */
 import type { GameStateBody } from '../../protocol.ts';
+import type { MomentKind } from '../../livePlan/moments.ts';
+import type { ChoiceQuestion } from '../../livePlan/prompt.ts';
 import type { GameLog } from '../../log.ts';
 import type { Decision } from '../../decisions.ts';
 import { phaseLabel } from '../../decisions.ts';
@@ -103,6 +112,30 @@ export interface AdviceEntry {
   decision: Decision | null;
   /** Order of asking (a counter, not a clock). */
   seq: number;
+  /** Plan mode: the moment it answers (its question and, for an engine question, the answers). */
+  moment?: PlanMoment | null;
+  /** Plan mode: 0 for the first call, n for the n-th correction. */
+  attempt?: number;
+}
+
+/** A plan-mode moment as an entry keeps it (livePlan/moments.ts `Moment`, plain data). */
+export interface PlanMoment {
+  kind: MomentKind;
+  id: string;
+  question: string;
+  label: string;
+  atAttack?: boolean;
+  ask?: ChoiceQuestion | null;
+}
+
+/** The answers-store key of a plan-mode moment (the first attempt; corrections add `~c<n>`). */
+export function momentAnswerKey(game: string, momentId: string): string {
+  return `${game}:live:m:${momentId}`;
+}
+
+/** An answers-store key without its correction suffix. */
+export function baseAnswerKey(key: string): string {
+  return key.replace(/~c\d+$/, '');
 }
 
 /** How many entries one game keeps (the newest first). */
@@ -112,6 +145,8 @@ const MAX_GAMES = 3;
 interface GameAdvice {
   entries: AdviceEntry[];
   plans: Set<number>;
+  /** Plan mode: the moments auto-coach has asked. */
+  moments: Set<string>;
 }
 
 const games = new Map<string, GameAdvice>();
@@ -122,7 +157,7 @@ const EMPTY: readonly AdviceEntry[] = Object.freeze([]);
 function gameOf(game: string): GameAdvice {
   let g = games.get(game);
   if (!g) {
-    g = { entries: [], plans: new Set() };
+    g = { entries: [], plans: new Set(), moments: new Set() };
     games.set(game, g);
     while (games.size > MAX_GAMES) games.delete(games.keys().next().value!);
   }
@@ -159,6 +194,29 @@ export function plansAsked(game: string | null): ReadonlySet<number> {
 
 export function markPlanAsked(game: string, forTurn: number): void {
   gameOf(game).plans.add(forTurn);
+}
+
+/** The moments (plan mode) auto-coach has asked in this game. */
+export function momentsAsked(game: string | null): ReadonlySet<string> {
+  return (game && games.get(game)?.moments) || new Set<string>();
+}
+
+export function markMomentAsked(game: string, momentId: string): void {
+  gameOf(game).moments.add(momentId);
+}
+
+/**
+ * A correction's attempt takes the place of the one before it: the same entry,
+ * under the new answers-store key, keeping its place in the order.
+ */
+export function replaceAdviceKey(game: string, oldKey: string, newKey: string, attempt: number): AdviceEntry | null {
+  const g = games.get(game);
+  const at = g?.entries.findIndex((e) => e.key === oldKey) ?? -1;
+  if (!g || at < 0) return null;
+  const entry = { ...g.entries[at]!, key: newKey, attempt };
+  g.entries = g.entries.map((e, i) => (i === at ? entry : e)).filter((e, i) => i === at || e.key !== newKey);
+  notify();
+  return entry;
 }
 
 /** The plan on screen: the newest one asked. */
@@ -215,9 +273,9 @@ export function gameOfKey(key: string): string | null {
 }
 
 /** What one game seat has, for adviceStore.ts. */
-export function gameAdvice(game: string): { entries: readonly AdviceEntry[]; plans: ReadonlySet<number> } | null {
+export function gameAdvice(game: string): { entries: readonly AdviceEntry[]; plans: ReadonlySet<number>; moments: ReadonlySet<string> } | null {
   const g = games.get(game);
-  return g ? { entries: g.entries, plans: g.plans } : null;
+  return g ? { entries: g.entries, plans: g.plans, moments: g.moments } : null;
 }
 
 /**
@@ -225,12 +283,13 @@ export function gameAdvice(game: string): { entries: readonly AdviceEntry[]; pla
  * already has advice for the game. Returns whether it did. The order counter
  * moves past the kept entries, so newer advice still sorts first.
  */
-export function restoreAdvice(game: string, entries: AdviceEntry[], plans: Iterable<number>): boolean {
+export function restoreAdvice(game: string, entries: AdviceEntry[], plans: Iterable<number>, moments: Iterable<string> = []): boolean {
   const had = games.get(game);
-  if (had && (had.entries.length || had.plans.size)) return false;
+  if (had && (had.entries.length || had.plans.size || had.moments.size)) return false;
   const g = gameOf(game);
   g.entries = [...entries].sort((a, b) => b.seq - a.seq).slice(0, MAX_ADVICE);
   g.plans = new Set(plans);
+  g.moments = new Set(moments);
   for (const e of g.entries) seq = Math.max(seq, e.seq);
   notify();
   return true;
