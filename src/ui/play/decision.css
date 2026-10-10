@@ -1,0 +1,471 @@
+/*
+ * ForgeCoach — ui/play/decision.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The decision slot (DecisionSlot.tsx) and the "it's you" signals, plus the
+ * desktop's turn-steps column (PlayView's grid). Builds on the action bar's
+ * .ab-* rules in play.css / controls.css; gold is you, blue the opponent.
+ *
+ *   .decision-slot.is-pending   the engine waits on this seat: glow, the
+ *                               arrival pulse, a strong eyebrow, the
+ *                               brightest primary on screen
+ *   .decision-slot.is-nudged    still pending after a while: it breathes
+ *   .decision-slot.is-opponent  "Waiting for …", in the opponent's blue
+ *   .game.play.is-your-move     your half of the board gets a warm wash
+ *   .opp-waiting                the waiting line under the opponent's half
+ */
+
+/* ------------------------------------------------------------------ */
+/* Desktop: board | turn steps | sidebar */
+
+@media (min-width: 1024px) {
+  /* The strip's 124 px come out of the sidebar and the slot, never the hand: at 1440 px the hand keeps the
+     width it had with the strip in the sidebar (cards overlap more on a narrower hand, and a lifted card
+     then covers its neighbour's middle). */
+  .game.play.is-wide .play-cols.has-strip {
+    grid-template-columns: minmax(0, 1fr) 124px 250px;
+  }
+  .game.play.is-wide .play-cols.has-strip.has-coach {
+    grid-template-columns: minmax(0, 1fr) 124px clamp(250px, 17.5vw, 340px);
+  }
+  .game.play.is-wide .play-cols.has-strip .play-dock {
+    grid-template-columns: var(--ds-slot-w) minmax(0, 1fr);
+  }
+  .game.play.is-wide {
+    /* The slot: 300 px at 1024, about 360 at 1440, 380 at most. */
+    --ds-slot-w: clamp(300px, 25vw, 380px);
+  }
+  .game.play.is-wide .play-main {
+    /* the slot's question grows over the board up to this width */
+    container-type: inline-size;
+  }
+  .play-strip-col {
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--line-2);
+    background: #0b0d11;
+  }
+  /* Interim, until lane 2's <PhaseStrip orientation="vertical"> lands: the sidebar strip, stood upright. */
+  .play-strip-col > .pstrip-side {
+    flex: 1;
+    min-height: 0;
+    border-bottom: 0;
+    padding: 8px 6px;
+  }
+  .play-strip-col > .pstrip-side .pside-head {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+  .play-strip-col > .pstrip-side .pside-head .grow {
+    display: none;
+  }
+  .play-strip-col > .pstrip-side .pbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .play-strip-col > .pstrip-side .pbar > li {
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .play-strip-col > .pstrip-side .pbar-cell {
+    height: 32px;
+  }
+  .play-strip-col > .pstrip-side .pbar-cell.is-current {
+    height: 64px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* The slot */
+
+.decision-slot {
+  --ds-glow: var(--you, var(--accent));
+  position: relative;
+  transition:
+    box-shadow 0.25s,
+    background 0.25s;
+}
+.ds-kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  border-bottom-width: 1px;
+  background: transparent;
+  color: inherit;
+  font: 600 10.5px/1 var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.8;
+  flex: none;
+}
+.ab-big .ds-kbd {
+  background: rgba(0, 0, 0, 0.14);
+  border-color: rgba(0, 0, 0, 0.45);
+  opacity: 1;
+}
+.ab-pool-pip .ds-kbd {
+  min-width: 14px;
+  height: 14px;
+  margin-left: 3px;
+  font-size: 9.5px;
+}
+@media (hover: none) {
+  .ds-kbd {
+    display: none;
+  }
+}
+
+/* It's you: glow, the eyebrow as a gold tab, the primary the brightest thing on screen. */
+.game.play .actionbar.decision-slot.is-pending {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ds-glow) 15%, var(--surface-2)), var(--surface));
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--ds-glow) 85%, transparent),
+    0 0 30px color-mix(in srgb, var(--ds-glow) 30%, transparent);
+}
+.decision-slot .ab-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.decision-slot.is-pending .ab-eyebrow > span {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--ds-glow);
+  color: var(--accent-ink);
+}
+.decision-slot .ab-eyebrow.is-theirs {
+  color: var(--opp, #6f9fe0);
+}
+.decision-slot.is-opponent .ab-title-text {
+  color: color-mix(in srgb, var(--opp, #6f9fe0) 70%, var(--text));
+}
+.game.play .decision-slot.is-pending .ab-big:not(:disabled) {
+  background: linear-gradient(180deg, #ffd98a, var(--ds-glow));
+  color: var(--accent-ink);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, #ffe2a6 70%, transparent),
+    0 8px 26px color-mix(in srgb, var(--ds-glow) 50%, transparent);
+}
+.decision-slot:not(.is-pending) .ab-big:not(:disabled) {
+  box-shadow: none;
+}
+.ds-nudge {
+  color: var(--ds-glow);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* The arrival pulse: plays twice for each new decision (remounted per decision). */
+.ds-arrive {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  animation: ds-arrive 0.9s ease-out 2;
+}
+@keyframes ds-arrive {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ds-glow) 80%, transparent);
+    background: color-mix(in srgb, var(--ds-glow) 22%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 16px color-mix(in srgb, var(--ds-glow) 0%, transparent);
+    background: transparent;
+  }
+}
+/* Still waiting on you: a slow breath. */
+.game.play .actionbar.decision-slot.is-nudged {
+  animation: ds-breathe 2.4s ease-in-out infinite;
+}
+@keyframes ds-breathe {
+  50% {
+    box-shadow:
+      inset 0 0 0 3px var(--ds-glow),
+      0 0 44px color-mix(in srgb, var(--ds-glow) 55%, transparent);
+  }
+}
+.ds-wait-spin {
+  border-top-color: var(--opp, #6f9fe0);
+}
+
+/* ---- AUTO-PASS toggles (desktop) */
+.ds-autopass {
+  /* its own named row under the buttons ("auto" would be the keyword: auto-placement into the free 'ask' row) */
+  grid-area: pass;
+  min-width: 0;
+  margin-top: 4px;
+}
+.ds-autopass-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 2px 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ds-autopass-sub {
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--faint);
+}
+.ds-toggles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 4px;
+}
+.ds-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 2px 4px 2px 7px;
+  border-radius: 7px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  text-align: left;
+  text-transform: uppercase;
+}
+.ds-toggle .ds-kbd {
+  margin-left: 2px;
+  min-width: 15px;
+  height: 15px;
+  font-size: 9.5px;
+}
+.ds-toggle:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+.ds-toggle:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+.ds-toggle.is-lit {
+  border-color: var(--ok, #6fbf73);
+  background: color-mix(in srgb, var(--ok, #6fbf73) 22%, var(--surface));
+  color: var(--text);
+}
+.ds-toggle.is-lit:disabled {
+  opacity: 0.8;
+}
+.ab-eot.is-lit {
+  color: var(--ok, #6fbf73);
+}
+
+/* ---- Desktop: the slot beside the hand, as tall as it needs */
+@media (min-width: 1024px) {
+  /* One fixed height (never a board that jumps with each mode). Only the words' row gives way: it takes
+     what the buttons and toggles leave and scrolls if a long instruction needs more, so the primary and
+     the toggles never drop below the dock's edge. */
+  .game.play.is-wide .play-dock {
+    height: max(var(--hand-h), clamp(280px, 34vh, 320px));
+  }
+  .game.play.is-wide .decision-slot .ab-text {
+    /* the bar's align-items: start would let the words take their own height and run under the buttons */
+    align-self: stretch;
+    min-height: 0;
+    overflow: hidden auto;
+    scrollbar-width: thin;
+  }
+  .game.play.is-wide .actionbar.decision-slot {
+    grid-template-areas: 'text' 'ask' 'tools' 'go' 'pass';
+    grid-template-rows: minmax(0, 1fr) auto auto auto auto;
+    overflow: visible;
+    gap: 6px;
+  }
+  /* The instruction wraps in full (no clamp): it is the line that says what to do. */
+  .game.play.is-wide .decision-slot .ab-sub {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+  .game.play.is-wide .decision-slot .ab-title-text {
+    -webkit-line-clamp: 3;
+  }
+  /* "Pay {R} for <the engine's whole first line>": two lines at most, the cost always on the first. */
+  .game.play.is-wide .decision-slot .ab-pay-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  .game.play.is-wide .decision-slot .ab-tools {
+    gap: 4px;
+  }
+}
+
+/* ---- Phones: the slot sits directly above the hand; its eyebrow says whose move it is. */
+@media (max-width: 1023px) {
+  .game.play .decision-slot .ab-eyebrow {
+    margin-bottom: 0;
+    font-size: 9.5px;
+  }
+  .game.play .decision-slot.is-idle .ab-eyebrow {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* A question inside the slot (AskDialog placement="slot"): no scrim, no
+   portal; it grows upward over the board from the slot's own corner. */
+
+.ds-ask {
+  grid-area: ask;
+  min-width: 0;
+}
+.game.play.is-wide .play-dock:has(.ask-layer.is-slot) {
+  z-index: 40;
+}
+.decision-slot.has-ask.ab-ask .ab-go,
+.decision-slot.has-ask.ab-ask .ab-tools {
+  display: none;
+}
+.ask-layer.is-slot {
+  position: absolute;
+  inset: auto auto 0 0;
+  z-index: 30;
+  display: block;
+  width: max(100%, min(460px, calc(100cqw - 16px)));
+  padding: 0;
+  background: none;
+  animation: none;
+}
+.ask-layer.is-slot:has(.ask-wide) {
+  width: max(100%, min(820px, calc(100cqw - 16px)));
+}
+.ask-dialog.is-slot {
+  width: 100%;
+  max-height: 60vh;
+  border: 2px solid color-mix(in srgb, var(--you, var(--accent)) 80%, transparent);
+  border-radius: 14px;
+  box-shadow:
+    0 0 32px color-mix(in srgb, var(--you, var(--accent)) 30%, transparent),
+    0 24px 60px rgba(0, 0, 0, 0.55);
+  animation: ds-rise 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+  transform-origin: bottom left;
+}
+@keyframes ds-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+.ask-peek.is-slot {
+  position: static;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  height: 44px;
+  margin: 2px 0;
+  border-radius: 10px;
+  border-color: var(--you, var(--accent));
+}
+.ask-peek.is-slot .ask-kbd {
+  margin-left: 6px;
+}
+.ask-optkey {
+  margin-left: 6px;
+}
+.ask-card > .ask-optkey {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 2;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* The board: your half warm while it is your move; the opponent's line while it is theirs */
+
+.game.play.is-your-move .board .player.player-me {
+  border-color: color-mix(in srgb, var(--you) 65%, transparent);
+  background-color: var(--surface);
+  background-image: linear-gradient(0deg, color-mix(in srgb, var(--you) 17%, transparent), color-mix(in srgb, var(--you) 5%, transparent));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--you) 35%, transparent),
+    0 0 26px color-mix(in srgb, var(--you) 20%, transparent);
+  /* drawn over the scenery that fills the half, so the edge reads even with Fill each side on */
+  outline: 2px solid color-mix(in srgb, var(--you) 70%, transparent);
+  outline-offset: -2px;
+  transition:
+    box-shadow 0.3s,
+    border-color 0.3s;
+}
+.opp-waiting {
+  position: absolute;
+  left: 50%;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 5px 13px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--opp, #6f9fe0) 55%, transparent);
+  background: rgba(9, 13, 21, 0.9);
+  color: #d3e2f6;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+.opp-waiting-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--opp, #6f9fe0);
+  animation: ds-dot 1.4s ease-in-out infinite;
+}
+@keyframes ds-dot {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-arrive,
+  .opp-waiting-dot,
+  .ask-dialog.is-slot {
+    animation: none;
+  }
+  /* no breathing: a steady, thicker border instead */
+  .game.play .actionbar.decision-slot.is-nudged {
+    animation: none;
+    box-shadow:
+      inset 0 0 0 3px var(--ds-glow),
+      0 0 40px color-mix(in srgb, var(--ds-glow) 45%, transparent);
+  }
+}

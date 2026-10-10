@@ -4,8 +4,10 @@
  *
  * Playing a game against the Forge AI — or, at a table of two (mtg-table
  * M59), against a friend through the engine, either seat — from the player's seat: the replay
- * board made interactive, an action bar that always has one obvious primary
- * button, your hand along the bottom, and the coach beside the board.
+ * board made interactive, the decision slot (DecisionSlot.tsx: one fixed
+ * panel for every engine question, impossible to miss while the engine waits
+ * on you) beside your hand, the turn's steps in their own column, and the
+ * coach beside the board.
  *
  * The engine is the judge of every click (mtg-table protocol §4.1): cards the
  * engine names are outlined, cards a click plausibly drives are lightly
@@ -15,7 +17,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActBody, AnswerValue, AnyCard, Card, GameStateBody } from '../../protocol.ts';
-import { isHidden, MANA_COLORS, opponentIsHuman, undoOf } from '../../protocol.ts';
+import { isHidden, MANA_COLORS, opponentIsHuman, undoOf, yieldOf } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import type { PlaySession, PlaySnapshot } from '../../play/session.ts';
 import { activeGuideId, listGuides } from '../../guide.ts';
@@ -34,7 +36,8 @@ import { Logo } from '../Logo.tsx';
 import { Sheet } from '../Sheet.tsx';
 import { allCardNames, cx, readLS, stateCardNames, writeLS } from '../util.ts';
 import { AskDialog, OpeningDialog, openingKind } from './AskDialog.tsx';
-import { ActionBar } from './ActionBar.tsx';
+import { DecisionSlot, OppWaitingLine } from './DecisionSlot.tsx';
+import { attentionOf, inputCounter, markedTitle, nudgeDelay, passToggles, yieldLit } from './decisionModel.ts';
 import { GameOverCard } from './GameOverCard.tsx';
 import type { FriendReviewView } from './useFriendReview.ts';
 import { FilmRoom } from '../filmroom/FilmRoom.tsx';
@@ -181,7 +184,15 @@ export function PlayView({
     // Only a new notice flashes; the state it names cards from is read as of then.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastNotice]);
-  const act = useCallback((body: ActBody) => void session.act(body), [session]);
+  // The last act's time: the "Your move" nudge counts from a decision's arrival or the last click, whichever is later.
+  const [lastAct, setLastAct] = useState<number | null>(null);
+  const act = useCallback(
+    (body: ActBody) => {
+      setLastAct(Date.now());
+      void session.act(body);
+    },
+    [session],
+  );
   const pressOk = useCallback(() => {
     if (!view.ok.enabled) return;
     setBusy('ok');
@@ -448,6 +459,8 @@ export function PlayView({
   // ---- keyboard
   const pool = useMemo(() => state?.players.find((p) => p.id === seat)?.manaPool ?? null, [state, seat]);
   const undo = undoOf(state);
+  const yielding = yieldOf(state);
+  const lit = useMemo(() => yieldLit(yielding, seat), [yielding, seat]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
@@ -461,6 +474,7 @@ export function PlayView({
           canUndo: undo.can,
           poolColors: pool ? MANA_COLORS.filter((c) => pool[c] > 0) : [],
           overlay,
+          yieldLit: lit,
         },
       );
       if (!plan) return;
@@ -490,10 +504,11 @@ export function PlayView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, logOpen, wide, pressOk, doCancel, doAct]);
+  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, logOpen, wide, pressOk, doCancel, doAct, lit]);
 
   // ---- the board seam (playBoard.ts): the parts of the board read this instead of taking props
   const playBoard = usePlayBoardValue({ state, input, ask, seat, log, view, connected, over: !!over, act, inputSeen: snap.inputSeen });
+
 
   // ---- render
   const me = state?.players.find((p) => p.id === seat) ?? null;
@@ -511,6 +526,32 @@ export function PlayView({
   const myMove = !!(ask || (input && view.mode !== 'waiting' && view.mode !== 'yield' && !over));
   const match = matchBox(hello, over, snap.previousLogs, seat);
 
+  // ---- "it's you": whether the engine waits on this seat, from engine facts only (decisionModel.ts)
+  const attention = useMemo(
+    () => attentionOf({ connected, over: !!over, ask, input, view, state, seat, oppName, inputSeq: snap.inputSeq }),
+    [connected, over, ask, input, view, state, seat, oppName, snap.inputSeq],
+  );
+  // The second nudge: a decision left pending (no act) for NUDGE_MS — "Your move — …" and a "● " on the tab.
+  const [pendingSince, setPendingSince] = useState<number | null>(null);
+  useEffect(() => setPendingSince(attention.key ? Date.now() : null), [attention.key]);
+  const [nudged, setNudged] = useState(false);
+  useEffect(() => {
+    setNudged(false);
+    const ms = nudgeDelay({ pendingSince, lastAct, now: Date.now() });
+    if (ms === null) return;
+    const t = setTimeout(() => setNudged(true), ms);
+    return () => clearTimeout(t);
+  }, [pendingSince, lastAct]);
+  useEffect(() => {
+    if (!nudged) return;
+    document.title = markedTitle(document.title, true);
+    return () => {
+      document.title = markedTitle(document.title, false);
+    };
+  }, [nudged]);
+  const toggles = useMemo(() => passToggles({ yielding, seat, view, canAct: playBoard.canAct }), [yielding, seat, view, playBoard.canAct]);
+  const counter = useMemo(() => inputCounter(input, view), [input, view]);
+
   // The stack: always in view while it is not empty, in one place over the board (endstep-style).
   const stackNow = useMemo(() => stackEntries(state, seat), [state, seat]);
   const stackPanel =
@@ -527,7 +568,13 @@ export function PlayView({
         hideHand
         stackElsewhere
         combatMarks={pairs}
-        overlay={<><CombatArrows links={links} version={state} /><BoardScenery log={log} frameIndex={Math.max(0, frameIndex)} seat={seat} /></>}
+        overlay={
+          <>
+            <CombatArrows links={links} version={state} />
+            <BoardScenery log={log} frameIndex={Math.max(0, frameIndex)} seat={seat} />
+            <OppWaitingLine line={attention.line} />
+          </>
+        }
       />
     ) : (
       <div className="board board-empty">
@@ -564,9 +611,26 @@ export function PlayView({
     />
   );
 
+  // The engine's questions: inside the decision slot on a desktop (one place for every decision), a modal / bottom sheet on a phone.
+  const answer = useCallback((value: AnswerValue) => ask && void session.answer(ask.askId, value), [ask, session]);
+  const askNode = ask ? (
+    <AskDialog ask={ask} state={state} onAnswer={answer} onPreviewCard={previewId} onConcede={canConcede ? () => setConcede(true) : null} placement={wide ? 'slot' : 'modal'} />
+  ) : !over && input && openingKind(input, state) ? (
+    <OpeningDialog
+      key={input.prompt}
+      input={input}
+      state={state}
+      seat={seat}
+      onChoose={(b) => (b === 'ok' ? pressOk() : pressCancel())}
+      onPreviewCard={previewId}
+      onConcede={canConcede ? () => setConcede(true) : null}
+      placement={wide ? 'slot' : 'modal'}
+    />
+  ) : null;
+
   const dock = (
     <div className="play-dock" ref={dockRef}>
-      <ActionBar
+      <DecisionSlot
         view={view}
         busy={busy}
         pool={pool}
@@ -579,6 +643,11 @@ export function PlayView({
         selection={selection}
         flash={flash}
         wide={wide}
+        attention={attention}
+        nudged={nudged}
+        counter={counter}
+        toggles={toggles}
+        ask={wide ? askNode : null}
       />
       <HandDock player={me} landOpen={landOpen} collapsed={handHidden} onToggle={toggleHand} />
     </div>
@@ -665,7 +734,18 @@ export function PlayView({
     <CardActionsContext.Provider value={actions}>
       <BoardStateRef.Provider value={boardStateRef}>
         <PlayContext.Provider value={play}>
-          <div className={cx('game', 'play', wide ? 'is-wide' : 'is-narrow', `mode-${view.mode}`, selection.active && 'is-selecting')} data-input-seq={snap.inputSeq}>
+          <div
+            className={cx(
+              'game',
+              'play',
+              wide ? 'is-wide' : 'is-narrow',
+              `mode-${view.mode}`,
+              selection.active && 'is-selecting',
+              attention.attention === 'pending' && 'is-your-move',
+              attention.attention === 'opponent' && 'is-their-move',
+            )}
+            data-input-seq={snap.inputSeq}
+          >
             {/* Phones: the steps across the very top, above everything (endstep-style). */}
             {!wide && strip('bar')}
             {!wide && header}
@@ -700,7 +780,7 @@ export function PlayView({
             ) : null}
 
             {wide ? (
-              <div className={cx('play-cols', coachOpen && 'has-coach')}>
+              <div className={cx('play-cols', 'has-strip', coachOpen && 'has-coach')}>
                 <main className="play-main">
                   <div className={cx('play-board', stackPanel && !stackFolded && 'has-stack')}>
                     {board}
@@ -709,11 +789,15 @@ export function PlayView({
                   </div>
                   {dock}
                 </main>
-                {/* One sidebar: the turn and its steps, then the coach (foldable). */}
+                {/* The turn's steps in their own column between the board and the sidebar (endstep-style). */}
+                <aside className="play-strip-col" aria-label="Turn steps">
+                  {/* lane 2: <PhaseStrip orientation="vertical" oppLabel={…} /> — it reads the rest from usePlayBoard() */}
+                  <PhaseStrip state={state} seat={seat} interactive={stripInteractive} onAct={act} variant="side" oppLabel={vsHuman ? oppName : 'Forge'} />
+                </aside>
+                {/* The sidebar: the match, the win chance, then the coach (foldable). */}
                 <aside className="play-side">
                   {header}
                   {match && <MatchScore match={match} />}
-                  {strip('side')}
                   {wcModel && <WinChanceStrip {...winChance} />}
                   {coachOpen ? (
                     <div className="play-side-coach">{coach}</div>
@@ -770,12 +854,7 @@ export function PlayView({
               />
             )}
           </div>
-          {ask && (
-            <AskDialog ask={ask} state={state} onAnswer={(value: AnswerValue) => void session.answer(ask.askId, value)} onPreviewCard={previewId} onConcede={canConcede ? () => setConcede(true) : null} />
-          )}
-          {!ask && !over && input && openingKind(input, state) && (
-            <OpeningDialog key={input.prompt} input={input} state={state} seat={seat} onChoose={(b) => (b === 'ok' ? pressOk() : pressCancel())} onPreviewCard={previewId} onConcede={canConcede ? () => setConcede(true) : null} />
-          )}
+          {!wide && askNode}
           <LogDrawer log={log} open={logOpen} onClose={closeLog} />
           <CardDetail card={detail?.card ?? null} state={detail?.state ?? null} seat={seat ?? 0} onClose={() => setDetail(null)} />
           {wide && <HoverPreview name={hover.name} rect={hover.rect} />}
