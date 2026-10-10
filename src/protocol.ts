@@ -98,6 +98,26 @@
  *       AI-vs-AI recordings. A separate key, so `playable` keeps its meaning. A
  *       click is still `clickCard`. `activatableOf` is its one reader.
  *
+ * 2026-10-10 — **a yield to the opponent's next move, and what an input has
+ * chosen** (`docs/protocol.md` §2.2, §3.1, §4):
+ *   M64 `yieldTo {kind: "endStepOrOpponent"}` (D421): pass priority until an
+ *       opponent acts — an item they control goes on the stack, or they attack
+ *       this seat or its permanents — or the current turn's end step begins,
+ *       whichever is first; the seat then gets priority there, even when its
+ *       stops skip that end step. `state.yield.kind` names it while it runs
+ *       (`playerId` the turn player, `phase: "END_OF_TURN"`). Refused with
+ *       `notice {title: "yieldTo"}` in the end step and cleanup.
+ *   M65 `input.selectable.chosen` (D422): what the seat has already chosen in
+ *       the input that is up — `{cardIds, playerIds, blocks, attacks}`; `null`
+ *       when no selection is up or the bridge cannot say. `chosenOf` is its
+ *       one reader.
+ *   M66 `input.selectable.playerIds` (D423): the players a click would be
+ *       taken for in that input; `[]` when a player click does nothing there;
+ *       `null` when the bridge cannot say. `selectablePlayersOf` is its one
+ *       reader.
+ *   All three are absent before M64–M66: a reader treats absent as "this
+ *   frame does not say", never as "none".
+ *
  * **Every M6 field is declared optional here**, and that is not defensiveness
  * for its own sake: fifteen committed recordings predate them,
  * `web/test/render.test.tsx` folds every frame of all of them, and a required
@@ -488,14 +508,20 @@ export interface PlayerState {
   phaseStops?: PhaseStops;
 }
 
-/** §3 (M6) — which of the three engine yields is running (report 11 §4.1). */
-export const YIELD_KINDS = ['endOfTurn', 'marker', 'stack'] as const;
+/**
+ * §3 (M6) — which engine yield is running (report 11 §4.1). `endStepOrOpponent`
+ * is amendment **M64** (D421): absent from every stream before it.
+ */
+export const YIELD_KINDS = ['endOfTurn', 'marker', 'stack', 'endStepOrOpponent'] as const;
 export type YieldKind = (typeof YIELD_KINDS)[number];
 
 /**
  * §3 (M6, report 11 §4.4). The active pass-to, straight off `YieldController`:
  * `SetAutoPassUntilEndOfTurn` → `endOfTurn`, `SetMarker` → `marker` (with the
  * marked seat and phase), `StackYield` → `stack`. `null` when none is running.
+ * **M64**: `endStepOrOpponent` — a yield to the turn's end step that an
+ * opponent's action ends first; `playerId` is the turn player, `phase`
+ * `"END_OF_TURN"`.
  *
  * Forge enforces **one at a time** (`YieldController:127-158`), so this is one
  * object and not three flags. Every one of them is cancelled by the engine's own
@@ -504,9 +530,9 @@ export type YieldKind = (typeof YIELD_KINDS)[number];
  */
 export interface YieldState {
   kind: YieldKind;
-  /** The seat the marker belongs to; `null` for a yield that names no seat. */
+  /** The seat the marker belongs to (M64: whose end step); `null` for a yield that names no seat. */
   playerId: number | null;
-  /** The marked `PhaseType`; `null` for `endOfTurn` and `stack`. */
+  /** The marked `PhaseType` (M64: `"END_OF_TURN"`); `null` for `endOfTurn` and `stack`. */
   phase: string | null;
 }
 
@@ -1343,7 +1369,88 @@ export interface Selectable {
   cardIds: number[];
   min: number;
   max: number;
+  /** Still computed from `cardIds` alone; a player-only choice reads `"none"` — see `playerIds`. */
   mode: SelectableMode;
+  /**
+   * §4 (**M66**, D423) — the players a click (`clickPlayer`) would be taken for
+   * in the input that is up: a target, a list entry, a defender. `[]` when a
+   * player click does nothing there; `null` when the bridge cannot say; absent
+   * before M66. Read it with {@link selectablePlayersOf}.
+   */
+  playerIds?: number[] | null;
+  /**
+   * §4 (**M65**, D422) — what the seat has already chosen in the input that is
+   * up; `null` when no selection is up or the bridge cannot say; absent before
+   * M65. Read it with {@link chosenOf}.
+   */
+  chosen?: SelectionChosen | null;
+}
+
+/** §4 (M65). A blocker the seat has declared, and the attacker it blocks (one row per pair). */
+export interface ChosenBlock {
+  blockerId: number;
+  attackerId: number;
+}
+
+/** §4 (M65). An attacker the seat has declared, and what it attacks (as `combat.bands[].defender`). */
+export interface ChosenAttack {
+  attackerId: number;
+  defender: { kind: 'player' | 'card'; id: number };
+}
+
+/**
+ * §4 (M65). The selection so far, ids ascending. `cardIds` / `playerIds`: the
+ * targets chosen, the list entries ticked — or, in a declaration, the blockers
+ * / attackers. `blocks` only in a block declaration, `attacks` only in an
+ * attack declaration; `[]` otherwise.
+ */
+export interface SelectionChosen {
+  cardIds: number[];
+  playerIds: number[];
+  blocks: ChosenBlock[];
+  attacks: ChosenAttack[];
+}
+
+const intList = (v: unknown): number[] | null =>
+  Array.isArray(v) && v.every((x) => Number.isInteger(x)) ? (v as number[]) : null;
+
+/**
+ * **Amendment M66 — the ONE reader of `input.selectable.playerIds`.** The
+ * players a click would be taken for, `[]` when a player click does nothing in
+ * this input, or `null` when the frame does not say (before M66, an input the
+ * bridge does not read, a malformed field). Never read `null` as "no player is
+ * clickable".
+ */
+export function selectablePlayersOf(input: InputBody | null | undefined): readonly number[] | null {
+  return intList(input?.selectable?.playerIds);
+}
+
+/**
+ * **Amendment M65 — the ONE reader of `input.selectable.chosen`.** What the seat
+ * has chosen so far in the input that is up, or `null` when the frame does not
+ * say (before M65, no selection up, an input the bridge does not read). A
+ * malformed row is dropped; a malformed list makes the whole answer `null`.
+ */
+export function chosenOf(input: InputBody | null | undefined): SelectionChosen | null {
+  const c: unknown = input?.selectable?.chosen;
+  if (c === null || typeof c !== 'object') return null;
+  const o = c as Record<string, unknown>;
+  const cardIds = intList(o.cardIds);
+  const playerIds = intList(o.playerIds);
+  if (cardIds === null || playerIds === null || !Array.isArray(o.blocks) || !Array.isArray(o.attacks)) return null;
+  const blocks = (o.blocks as unknown[]).filter(
+    (b): b is ChosenBlock =>
+      b !== null && typeof b === 'object' && Number.isInteger((b as ChosenBlock).blockerId) &&
+      Number.isInteger((b as ChosenBlock).attackerId),
+  );
+  const attacks = (o.attacks as unknown[]).filter(
+    (a): a is ChosenAttack =>
+      a !== null && typeof a === 'object' && Number.isInteger((a as ChosenAttack).attackerId) &&
+      (a as ChosenAttack).defender !== null && typeof (a as ChosenAttack).defender === 'object' &&
+      ((a as ChosenAttack).defender.kind === 'player' || (a as ChosenAttack).defender.kind === 'card') &&
+      Number.isInteger((a as ChosenAttack).defender.id),
+  );
+  return { cardIds, playerIds, blocks, attacks };
 }
 
 /**

@@ -59,8 +59,12 @@ export interface PassTarget {
 /** "To EOT" — the secondary button. */
 export const PASS_EOT: PassTarget = { id: 'eot', label: 'Pass until end of turn', key: 'E', body: yieldTo('endOfTurn') };
 
-/** The ▲ menu: every other pass-ahead `yieldTo` the protocol has (M37), plus a single pass. */
-export function passMenu(view: InputView): PassTarget[] {
+/**
+ * The ▲ menu: every other pass-ahead `yieldTo` the protocol has (M37), plus a
+ * single pass. `theyAct`: the engine offers M64's "until they act" and this is
+ * not the end step or cleanup (decisionModel.ts `theyActWhyNot`).
+ */
+export function passMenu(view: InputView, opts: { theyAct?: boolean } = {}): PassTarget[] {
   const out: PassTarget[] = [
     { id: 'once', label: 'Pass priority once', key: 'P', body: { action: 'passPriority' } },
   ];
@@ -70,5 +74,6 @@ export function passMenu(view: InputView): PassTarget[] {
     { id: 'myturn', label: 'Pass until my next turn', key: 'T', body: yieldTo('marker', 'UPKEEP', 'own') },
     { id: 'before', label: 'Pass until just before my turn', key: 'B', body: yieldTo('marker', 'END_OF_TURN', 'opp') },
   );
+  if (opts.theyAct) out.push({ id: 'theyAct', label: 'Pass until they act', key: 'Y', body: yieldTo('endStepOrOpponent') });
   return out;
 }

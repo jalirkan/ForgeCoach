@@ -319,6 +319,7 @@ function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
         blocking && 'is-blocking',
         card.token && 'is-token',
         mark === 'select' && 'is-select',
+        chosen === 'pick' && 'is-chosen',
         mark === 'act' && 'is-act',
         hint && 'is-hint',
         dim && 'is-dim',

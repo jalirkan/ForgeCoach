@@ -431,6 +431,38 @@ const scenarios = [
   },
 
   {
+    name: 'an engine since M64–M66: Until they act [Y] lights and stops; the defender glows; the engine’s own count of attackers',
+    engine: { scene: 'main3', selection: true },
+    async run({ page, engine, app }) {
+      const u = ui(page);
+      await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+      await u.mode('main');
+      // M64: the toggle beside the others, its key printed on it.
+      const toggle = page.locator('.ds-autopass [data-toggle="theyAct"]');
+      await toggle.waitFor({ timeout: STEP_MS });
+      check(/until they act/i.test((await toggle.innerText()) ?? '') && /Y/.test(await toggle.innerText()), `the toggle reads "Until they act [Y]" (${await toggle.innerText()})`);
+      await page.mouse.move(5, 5);
+      await sent(engine, 'yieldTo', () => page.keyboard.press('y'));
+      const y = engine.acts().filter((a) => a.action === 'yieldTo').at(-1);
+      check(y?.kind === 'endStepOrOpponent', `Y sent the M64 yield (${JSON.stringify(y)})`);
+      await page.locator('.ds-autopass [data-toggle="theyAct"][aria-pressed="true"]').waitFor({ timeout: STEP_MS });
+      // A lit toggle is the engine's Cancel, and only stops the yield.
+      await sent(engine, 'buttonCancel', () => toggle.click());
+      await page.locator('.ds-autopass [data-toggle="theyAct"][aria-pressed="false"]').waitFor({ timeout: STEP_MS });
+      check(engine.game.yieldState === null && engine.game.phase === 'MAIN1', 'the yield stopped and the turn went on');
+      // To combat: the defending player is the one portrait that takes a click (M66).
+      await sent(engine, 'buttonOk', () => u.ok());
+      await u.mode('attack');
+      await page.locator('.phead[data-phead-player="1"] button.avatar.is-select').waitFor({ timeout: STEP_MS });
+      check(!(await page.locator('.phead[data-phead-player="0"] button.avatar.is-select').count()), 'your own portrait is not a choice while attacking');
+      // M65: an attacker the engine reports (declared from its own board, not clicked here) is counted on the button.
+      const goblin = mine(engine, 'Raging Goblin', 'battlefield');
+      engine.seatAct({ action: 'clickCard', cardId: goblin });
+      await page.locator('.actionbar [data-primary]', { hasText: 'Attack with 1' }).waitFor({ timeout: STEP_MS });
+    },
+  },
+
+  {
     name: 'an engine from before M61: no list, the graveyard creature without a keyword opens its details',
     engine: { scene: 'graveyard' },
     async run({ page, engine, app }) {
@@ -438,6 +470,9 @@ const scenarios = [
       await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
       await u.mode('main');
       check(!JSON.parse(engine.lastState).body.hasOwnProperty('playable'), 'the old engine writes no playable key');
+      // Nor M64–M66: no "Until they act" beside the other toggles.
+      await page.locator('.ds-autopass [data-toggle="eot"]').waitFor({ timeout: STEP_MS });
+      check(!(await page.locator('[data-toggle="theyAct"]').count()), 'no Until they act on an engine before M64');
       const familiar = mine(engine, 'Cauldron Familiar', 'graveyard');
       await page.locator('.phead[data-phead-player="0"] [data-zone-pill="graveyard"]').click();
       const tile = page.locator(`.zv-grid .tile[data-card-id="${familiar}"]`);

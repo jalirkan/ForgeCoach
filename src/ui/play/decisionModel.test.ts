@@ -10,7 +10,22 @@ import { describe, expect, it } from 'vitest';
 import type { AskBody, GameStateBody, InputBody, YieldState } from '../../protocol.ts';
 import { describeInput } from './inputView.ts';
 import { selectionSummary } from './selection.ts';
-import { NUDGE_MS, attentionOf, choiceCounter, inputCounter, inputPending, markedTitle, nudgeDelay, passToggles, slotButtons, slotTitle, yieldLit } from './decisionModel.ts';
+import {
+  NUDGE_MS,
+  THEY_ACT_END_STEP,
+  attentionOf,
+  choiceCounter,
+  inputCounter,
+  inputPending,
+  markedTitle,
+  nudgeDelay,
+  offersTheyAct,
+  passToggles,
+  slotButtons,
+  slotTitle,
+  theyActWhyNot,
+  yieldLit,
+} from './decisionModel.ts';
 
 const ME = 1;
 const OPP = 0;
@@ -108,6 +123,42 @@ describe('the counter line', () => {
   });
 });
 
+describe('the counter line from the engine’s own count (M65 selectable.chosen)', () => {
+  const chosen = (cardIds: number[], playerIds: number[] = []) => ({ cardIds, playerIds, blocks: [], attacks: [] });
+  it('counts chosen cards and players against selectable.min/max, over the prompt’s lines', () => {
+    const two = input('Fireball - Select up to two targets\nTargeted:\nGoblin Guide\n(1 more can be targeted)', true, true, {
+      mode: 'cards',
+      cardIds: [5, 6],
+      min: 0,
+      max: 3,
+      chosen: chosen([5], [0]),
+    });
+    expect(inputCounter(two, describeInput(two, state(), ME))).toBe('2/3 · up to 1 more');
+  });
+  it('a discard says how many are picked; with no stated count, "N chosen"', () => {
+    const discard = input('Discard 2 cards', false, false, { mode: 'cards', cardIds: [5, 6, 7], min: 2, max: 2, chosen: chosen([6]) });
+    expect(inputCounter(discard, describeInput(discard, state(), ME))).toBe('1/2 · need 1 more');
+    const open = input('Lightning Bolt - Select any target', false, true, { mode: 'cards', cardIds: [5], min: 0, max: 0, chosen: chosen([5]) });
+    expect(inputCounter(open, describeInput(open, state(), ME))).toBe('1 chosen');
+  });
+  it('null chosen is "this frame does not say": the prompt’s count, as before', () => {
+    const none = input('Lightning Bolt - Select any target', false, true, { mode: 'cards', cardIds: [5, 6], min: 1, max: 1, chosen: null });
+    expect(inputCounter(none, describeInput(none, state(), ME))).toBe('0/1 · need 1 more');
+  });
+});
+
+describe('a player-only choice (M66 selectable.playerIds)', () => {
+  it('is pending though selectable.mode reads "none"', () => {
+    const only = input('Blood Artist - Select target player', false, false, { playerIds: [0, 1] });
+    expect(inputPending(only, describeInput(only, state(), ME))).toBe(true);
+    expect(att({ input: only }).attention).toBe('pending');
+  });
+  it('[] is a fact: priority with no player to click is pending only by its buttons', () => {
+    const prio = input('Priority: You', false, false, { playerIds: [] });
+    expect(inputPending(prio, describeInput(prio, state({ phase: 'UPKEEP' }), ME))).toBe(false);
+  });
+});
+
 describe('the slot’s buttons and their keys', () => {
   const view = (inp: InputBody, st = state()) => describeInput(inp, st, ME);
   it('priority: Pass priority [Space] and the engine’s other button [Esc]', () => {
@@ -164,6 +215,42 @@ describe('auto-pass toggles', () => {
     expect(on[1]).toMatchObject({ lit: false, enabled: false });
     const noCancel = passToggles({ yielding: y('endOfTurn', null, null), seat: ME, view: { ...running, cancel: { ...running.cancel, enabled: false } }, canAct: true });
     expect(noCancel[0]!.enabled).toBe(false);
+  });
+  it('M64 "until they act": lit from endStepOrOpponent, [Y], a lit one sends Cancel', () => {
+    expect(yieldLit(y('endStepOrOpponent', 'END_OF_TURN', OPP), ME)).toMatchObject({ theyAct: true, before: false, eot: false });
+    const prio = describeInput(input('Priority: You'), state({ phase: 'UPKEEP' }), ME);
+    const off = passToggles({ yielding: null, seat: ME, view: prio, canAct: true, theyAct: true, phase: 'UPKEEP' });
+    expect(off.map((t) => [t.id, t.label, t.kbd])).toEqual([
+      ['eot', 'End of turn', 'E'],
+      ['before', 'Before my turn', 'B'],
+      ['myturn', 'My next turn', 'T'],
+      ['theyAct', 'Until they act', 'Y'],
+    ]);
+    expect(off[3]).toMatchObject({ lit: false, enabled: true, body: { action: 'yieldTo', kind: 'endStepOrOpponent' } });
+    const running = describeInput(input('Yielding until Forge AI’s End step.', false, true), state(), ME);
+    const on = passToggles({ yielding: y('endStepOrOpponent', 'END_OF_TURN', OPP), seat: ME, view: running, canAct: true, theyAct: true, phase: 'MAIN1' });
+    expect(on.find((t) => t.id === 'theyAct')).toMatchObject({ lit: true, enabled: true, body: { action: 'buttonCancel' } });
+  });
+  it('M64: off in the end step and cleanup (the engine refuses it there), saying why', () => {
+    for (const phase of ['END_OF_TURN', 'CLEANUP']) {
+      const v = describeInput(input('Priority: You'), state({ phase }), ME);
+      const t = passToggles({ yielding: null, seat: ME, view: v, canAct: true, theyAct: true, phase }).find((x) => x.id === 'theyAct')!;
+      expect(t.enabled).toBe(false);
+      expect(t.title).toContain('end step');
+      expect(theyActWhyNot({ offered: true, phase, lit: false })).toBe(THEY_ACT_END_STEP);
+    }
+    expect(theyActWhyNot({ offered: true, phase: 'MAIN2', lit: false })).toBeNull();
+    expect(theyActWhyNot({ offered: false, phase: 'MAIN2', lit: false })).toMatch(/update/);
+    expect(theyActWhyNot({ offered: true, phase: 'END_OF_TURN', lit: true })).toBeNull();
+  });
+  it('M64: only on an engine that shows it has it (M65/M66 keys on its inputs, or the yield running)', () => {
+    const old = input('Priority: You');
+    expect(offersTheyAct(old, null)).toBe(false);
+    expect(offersTheyAct(input('Priority: You', true, false, { playerIds: null }), null)).toBe(true);
+    expect(offersTheyAct(input('Priority: You', true, false, { chosen: null }), null)).toBe(true);
+    expect(offersTheyAct(null, y('endStepOrOpponent', 'END_OF_TURN', ME))).toBe(true);
+    const prio = describeInput(old, state({ phase: 'UPKEEP' }), ME);
+    expect(passToggles({ yielding: null, seat: ME, view: prio, canAct: true }).map((t) => t.id)).not.toContain('theyAct');
   });
   it('are all off while the board may not act (an ask open, the game over)', () => {
     const prio = describeInput(input('Priority: You'), state({ phase: 'UPKEEP' }), ME);

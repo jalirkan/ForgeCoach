@@ -592,9 +592,11 @@ async function runFake(app) {
     const rand = rng(opts.seed * 7919 + i);
     // Every other game an engine with mtg-table M61 (`state.playable`), its graveyard holding Cauldron Familiar.
     const m61 = i % 2 === 1;
-    // The others: Blood Artist out, so a creature dying asks "Select target player" with both buttons off (J107's hang).
-    const engine = await startFakeEngine({ dropMode: 'default', ...(m61 ? { playable: true, scene: 'graveyard' } : { deathTrigger: true }) });
-    const game = { id: i + 1, mode: 'fake', seed: opts.seed, decks: { mine: `fake (Mountains and goblins${m61 ? '; M61, Cauldron Familiar in the graveyard' : '; Blood Artist out'})`, theirs: 'fake' }, findings: [], shots: 0, t0: Date.now() };
+    // The others: Blood Artist out, so a creature dying asks "Select target player" with both buttons off (J107's hang);
+    // every other one of those an engine since M64–M66 (M61 too), whose inputs say which players a click takes and what is chosen.
+    const m66 = !m61 && i % 4 === 0;
+    const engine = await startFakeEngine({ dropMode: 'default', ...(m61 ? { playable: true, scene: 'graveyard' } : { deathTrigger: true, ...(m66 ? { playable: true, selection: true } : {}) }) });
+    const game = { id: i + 1, mode: 'fake', seed: opts.seed, decks: { mine: `fake (Mountains and goblins${m61 ? '; M61, Cauldron Familiar in the graveyard' : m66 ? '; M61 and M64–M66, Blood Artist out' : '; Blood Artist out'})`, theirs: 'fake' }, findings: [], shots: 0, t0: Date.now() };
     const s = await newSeatPage('solo', app, phoneFor('solo', i));
     game.viewport = s.phone ? 'phone' : 'desktop';
     if (helper) s.helperAsks = helper.asks;

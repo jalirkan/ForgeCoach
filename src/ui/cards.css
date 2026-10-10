@@ -574,6 +574,12 @@
 .tile.is-select .tile-card {
   box-shadow: 0 0 0 2.5px var(--accent-2), 0 0 18px rgba(240, 199, 127, 0.55), 0 2px 6px rgba(0, 0, 0, 0.45);
 }
+/* Already chosen in the open input (a target, a list entry: the engine's
+   M65 `selectable.chosen`): a solid ring outside the select glow. */
+.tile.is-chosen .tile-card {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
 /* Declared (or being declared) attackers and blockers read red / blue even
    while the engine still offers them for a click. */
 .tile.is-attacking .tile-card {

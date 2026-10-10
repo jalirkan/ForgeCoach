@@ -207,3 +207,24 @@ describe('combatMarks: an attacker and its blockers share a numbered badge', () 
     expect(m.get(9)!.n).toBe(1);
   });
 });
+
+describe('declarations still under way (M65 chosen.attacks)', () => {
+  it('draws a pending line from an attacker to what it attacks before state.combat names it', () => {
+    const st = state([creature(1, 0)], [creature(9, 1), { ...(creature(7, 1) as object), types: 'Legendary Planeswalker - Jace' } as AnyCard], null);
+    const links = combatLinks(st, new Map(), [
+      { attackerId: 1, defender: { kind: 'player', id: 1 } },
+      { attackerId: 1, defender: { kind: 'card', id: 7 } },
+      { attackerId: 42, defender: { kind: 'player', id: 1 } },
+    ]);
+    expect(links).toEqual([
+      { kind: 'attack', from: { card: 1 }, to: { player: 1 }, n: 0, pending: true },
+      { kind: 'attack', from: { card: 1 }, to: { card: 7 }, n: 0, pending: true },
+    ]);
+  });
+  it('the engine’s band wins over a pending row; the badge carries the pending defender', () => {
+    const st = state([creature(1, 0)], [creature(9, 1)], [band([1], [], { kind: 'player', id: 1 })]);
+    expect(combatLinks(st, new Map(), [{ attackerId: 1, defender: { kind: 'player', id: 1 } }]).filter((l) => l.pending)).toEqual([]);
+    const marks = combatMarks(state([creature(1, 0)], [creature(9, 1)], null), new Map(), new Set([1]), null, [{ attackerId: 1, defender: { kind: 'player', id: 1 } }]);
+    expect(marks.get(1)).toMatchObject({ role: 'attacker', pending: true, defender: { kind: 'player', id: 1 } });
+  });
+});

@@ -61,6 +61,20 @@ glossary: "the bot", "the engine on your PC", "Claude Code on your PC"). The log
   sit beside it; game-scoped history in module state (survives a folded
   panel). `answers.ts` slots keep one plan and one own question per seat; a
   stale own question is stopped when the moment moves on (text kept).
+  mtg-table M64–M66 (D421–D423) on the board: the auto-pass row's **Until they
+  act [Y]** is `yieldTo {kind:"endStepOrOpponent"}` (lit from `state.yield`, a
+  lit one sends Cancel; off in END_OF_TURN/CLEANUP, where the engine refuses
+  it), shown only once the engine shows it has it — no capability list, so
+  `decisionModel.ts` `offersTheyAct`: an input carrying the M65/M66 keys (one
+  bridge release) or that yield running; the phone's ▲ menu too. M65
+  `chosenOf` (`selection.ts` `wireChoice`) replaces the browser's own clicks
+  for attackers/blockers/pairings and the slot's count (`inputCounter`), marks
+  chosen targets (`.tile.is-chosen`, `button.avatar.is-chosen`) and pending
+  attack lines (`combatLines` `pendingAttacks`); M66 `selectablePlayersOf`
+  decides which portraits take a click (`inputView.ts` `playerClickable(ctx,
+  id)`, a player-only choice's `clickWhat`, `handAffordance.ts`, `livePlan`
+  `selectChoices`). Absent / null keeps the old behaviour exactly; the fake
+  engine's `selection` flag (`--selection`) emits all three.
 - `cube/` — Draft & build, the deck assistant for two-player paper cube drafts
   (pure, tested in node): `parseCube.ts` (Justin's cube markdown: sections,
   theme codes, lowercase tags, prices, lands groups, archetypes), `colors.ts`,

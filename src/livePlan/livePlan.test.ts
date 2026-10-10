@@ -6,13 +6,13 @@
 // Scryfall snapshots the cube tests use (cards.ts's mapping).
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import type { GameStateBody } from '../protocol.ts';
+import type { GameStateBody, InputBody } from '../protocol.ts';
 import { MOMENTS, cardsAt, cardsFor, loadLog, snapshotOf, type RecordedMoment } from './testdata/load.ts';
 import { buildPlanPrompt, correctionFor, momentOf, reviewReply, type Snapshot } from './coach.ts';
 import { oracleFromCards } from './oracle.ts';
 import { matchAbility, matchRef, parsePlan, parseRef, partialPlan, splitNames } from './parse.ts';
 import { MAX_CORRECTIONS, PLAN_SYSTEM, REPLY_FORMAT, REPLY_REMINDER } from './prompt.ts';
-import { dueMoment, momentAt } from './moments.ts';
+import { dueMoment, momentAt, selectChoices } from './moments.ts';
 import { planProgress } from './progress.ts';
 import { ManaBudget } from './mana.ts';
 import { HUMAN_OPPONENT_PHRASE } from '../opponent.ts';
@@ -339,5 +339,25 @@ describe('card text', () => {
     expect(o.faceCost('Brazen Borrower', 'Petty Theft')).toBe('{1}{U}');
     expect(o.text('Monastery Swiftspear')).toBe('Haste\nProwess');
     expect(o.text('Stomp')).toBe(o.text('Bonecrusher Giant'));
+  });
+});
+
+describe('selectChoices: the players a target may be (M66 selectable.playerIds)', () => {
+  const st = { players: [{ id: 0, zones: {} }, { id: 1, zones: {} }], stackCards: [] } as unknown as GameStateBody;
+  const inp = (prompt: string, sel: Partial<InputBody['selectable']>): InputBody =>
+    ({ prompt, buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: true } }, selectable: { cardIds: [], min: 1, max: 1, mode: 'none', ...sel } }) as InputBody;
+  it('takes the listed players when the frame says (a player-only choice reads mode "none")', () => {
+    const q = selectChoices(inp('Choose a player', { playerIds: [0, 1] }), st, 0);
+    expect(q?.choices.filter((c) => c.playerId !== undefined)).toEqual([
+      { label: 'me', playerId: 0 },
+      { label: 'opponent', playerId: 1 },
+    ]);
+    // One listed player and nothing else to choose: no question to ask.
+    expect(selectChoices(inp('Lava Spike - Select target opponent', { playerIds: [1] }), st, 0)).toBeNull();
+  });
+  it('without the list (null or absent) the prompt’s words decide, as before', () => {
+    const q = selectChoices(inp('Blood Artist - Select target player', { mode: 'players', playerIds: null }), st, 0);
+    expect(q?.choices.filter((c) => c.playerId !== undefined).map((c) => c.playerId)).toEqual([0, 1]);
+    expect(selectChoices(inp('Lava Spike - Select target opponent', {}), st, 0)).toBeNull();
   });
 });
