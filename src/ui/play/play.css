@@ -1595,6 +1595,12 @@ button.avatar.is-select {
 .hand-dock-peek > * {
   pointer-events: none;
 }
+.hand-dock-peek .peek-card.is-dim {
+  opacity: 0.4;
+}
+.game.play.is-selecting .hand-dock-peek .peek-card.is-dim {
+  opacity: 1;
+}
 .peek-card {
   --cw: 64px;
   --ch: calc(var(--cw) * 88 / 63);

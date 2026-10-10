@@ -38,6 +38,16 @@ function land(id: number, name: string, extra: Partial<Card> = {}): Card {
 const plain = (c: Card) => ({ card: c, attachments: 0 });
 
 describe('groupLands', () => {
+  it('tapped and untapped lands of one name never share a pile', () => {
+    const g = groupLands([land(1, 'Plains'), land(2, 'Plains', { tapped: true }), land(3, 'Plains'), land(4, 'Plains', { tapped: true })].map(plain));
+    expect(g).toHaveLength(2);
+    for (const pile of g) expect(new Set(pile.map((c) => c.tapped)).size).toBe(1);
+    expect(g.map((p) => p.map((c) => c.id))).toEqual([[1, 3], [2, 4]]);
+  });
+  it('a land with an attachment stays alone, and so does one with counters', () => {
+    const g = groupLands([{ card: land(1, 'Island'), attachments: 2 }, plain(land(2, 'Island')), plain(land(3, 'Island')), plain(land(4, 'Island', { counters: { CHARGE: 1 } }))]);
+    expect(g.map((p) => p.map((c) => c.id)).sort()).toEqual([[1], [2, 3], [4]].sort());
+  });
   it('piles identical basics, split by tapped state, untapped first', () => {
     const g = groupLands([land(1, 'Island'), land(2, 'Island', { tapped: true }), land(3, 'Island'), land(4, 'Plains'), land(5, 'Island', { tapped: true })].map(plain));
     expect(g.map((p) => p.map((c) => c.id))).toEqual([[1, 3], [4], [2, 5]]);

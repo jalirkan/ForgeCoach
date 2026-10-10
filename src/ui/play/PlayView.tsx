@@ -21,20 +21,20 @@ import { isHidden, MANA_COLORS, opponentIsHuman, undoOf, yieldOf } from '../../p
 import type { GameLog } from '../../log.ts';
 import type { PlaySession, PlaySnapshot } from '../../play/session.ts';
 import { activeGuideId, listGuides } from '../../guide.ts';
-import { canPay, chosenColors, turnFacts, untappedManaSources } from '../../state.ts';
+import { turnFacts } from '../../state.ts';
 import { cardIndex } from '../../decisions.ts';
 import { seatDisplayName } from '../../play/aiName.ts';
 import { tableLines } from '../../play/tableView.ts';
 import { Board } from '../Board.tsx';
 import { CardDetail, HoverPreview } from '../CardDetail.tsx';
 import { BoardStateRef, CardActionsContext, PlayContext, type CardActions, type PlayInteraction } from '../cardContext.ts';
-import { cachedMap, prefetchCards, safeCached, useCardsVersion } from '../cardData.ts';
+import { prefetchCards, safeCached, useCardsVersion } from '../cardData.ts';
 import { GuideSheet } from '../GuideSheet.tsx';
 import { useMediaQuery } from '../hooks.ts';
 import { IconFlag, IconGear, IconKeyboard, IconMore, IconSpark, IconX } from '../Icons.tsx';
 import { Logo } from '../Logo.tsx';
 import { Sheet } from '../Sheet.tsx';
-import { allCardNames, cx, readLS, stateCardNames, writeLS } from '../util.ts';
+import { allCardNames, cx, readLS, writeLS } from '../util.ts';
 import { AskDialog, OpeningDialog, openingKind } from './AskDialog.tsx';
 import { DecisionSlot, OppWaitingLine } from './DecisionSlot.tsx';
 import { attentionOf, inputCounter, markedTitle, nudgeDelay, passToggles, yieldLit } from './decisionModel.ts';
@@ -47,6 +47,7 @@ import { PhaseStrip } from './PhaseStrip.tsx';
 import { PlayBoardContext, usePlayBoardValue } from './playBoard.ts';
 import { cardRole, describeInput, handNeeded, noticeLine, playerClickable, type ClickContext } from './inputView.ts';
 import { lastStateFrame } from './liveDecision.ts';
+import { playableHints } from './handAffordance.ts';
 import { PlayCoach } from './PlayCoach.tsx';
 import { ZonePickPanel } from './ZonePickPanel.tsx';
 import { StackPanel } from '../StackPanel.tsx';
@@ -96,9 +97,7 @@ function useTicker(on: boolean): number {
   return now;
 }
 
-function isLandCard(c: Card): boolean {
-  return /\bland\b/i.test(c.types ?? '');
-}
+const NO_HINTS: ReadonlySet<number> = new Set();
 
 export function PlayView({
   session,
@@ -220,27 +219,9 @@ export function PlayView({
       return null;
     }
   }, [log, state, seat, frameIndex]);
-  const affordable = useMemo(() => {
-    const out = new Set<number>();
-    if (!state || seat === null || view.mode !== 'main') return out;
-    const me = state.players.find((p) => p.id === seat);
-    if (!me) return out;
-    try {
-      const cards = cachedMap(stateCardNames(state));
-      const chosen = log && frameIndex >= 0 ? chosenColors(log, frameIndex, seat, cards) : undefined;
-      const sources = untappedManaSources(state, seat, cards, chosen);
-      for (const any of me.zones.hand.cards) {
-        if (isHidden(any)) continue;
-        const c = any as Card;
-        if (isLandCard(c)) {
-          if (landOpen) out.add(c.id);
-        } else if (c.manaCost !== null && canPay(c.manaCost, sources, me.manaPool as unknown as Record<string, number>)) out.add(c.id);
-      }
-    } catch {
-      /* hints only */
-    }
-    return out;
-  }, [state, seat, view.mode, landOpen, cardsVersion, log, frameIndex]);
+  // The hand glow follows the engine's own `state.playable` (M61) and nothing else: no client-side
+  // mana arithmetic, and no glow at all on an engine that does not say (handAffordance.ts).
+  const affordable = useMemo(() => playableHints(state, view.mode) ?? NO_HINTS, [state, view.mode]);
 
   // ---- attackers / blockers chosen so far (the wire does not say until you confirm)
   const [chosenAtk, setChosenAtk] = useState<ReadonlySet<number>>(() => new Set());
