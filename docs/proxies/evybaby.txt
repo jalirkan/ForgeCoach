@@ -1,0 +1,360 @@
+1 Descendant of Storms
+1 Elite Interceptor
+1 Giant Killer
+1 Isamaru, Hound of Konda
+1 Leonardo, Leader in Blue
+1 Loam Lion
+1 Momo, Friendly Flier
+1 Novice Inspector
+1 Nurturing Pixie
+1 Thraben Inspector
+1 Ambrosia Whiteheart
+1 Belladonna Took
+1 Brightblade Stoat
+1 Cathar Commando
+1 Lion Sash
+1 Shepherd of the Flock
+1 Splitskin Doll
+1 Sun-Blessed Healer
+1 Thalia, Guardian of Thraben
+1 Voice of Victory
+1 Elite Spellbinder
+1 Mischievous Pup
+1 Porcelain Legionnaire
+1 Rescue Girl, First Responder
+1 Flickering Hound
+1 Okoye, Dora Milaje Leader
+1 Palace Jailer
+1 Witch Enchanter
+1 Angel of Invention
+1 Regal Caracal
+1 Starfield Shepherd
+1 Eagles of the North
+1 Salt Road Packbeast
+1 Sun Titan
+1 Ephemerate
+1 Mana Tithe
+1 Path to Exile
+1 Swords to Plowshares
+1 Reprieve
+1 Take Up the Shield
+1 Prismatic Ending
+1 Generous Revival
+1 Practiced Offense
+1 Wrath of God
+1 Borough Backup
+1 Political Triumph
+1 Ossification
+1 The Mountain-king's Return
+1 The Legend of Yangchen
+1 Cogwork Wrestler
+1 Faerie Seer
+1 Flitterwing Nuisance
+1 Spectral Sailor
+1 Spyglass Siren
+1 Bilbo, Luckwearer
+1 Emrakul's Messenger
+1 Faerie Vandal
+1 Glamer Gifter
+1 Lakeshore Apothecary
+1 Master's Councillors
+1 Mischievous Mystic
+1 Moon-Circuit Hacker
+1 Picklock Prankster
+1 Spellstutter Sprite
+1 Staunch Crewmate
+1 Unwelcome Sprite
+1 Archaeomender
+1 Brazen Borrower
+1 Vendilion Clique
+1 Winter Eladrin
+1 High Fae Trickster
+1 Micromancer
+1 Ninja of the Deep Hours
+1 Whirler Rogue
+1 Icefall Regent
+1 Daring Waverider
+1 Hullbreaker Horror
+1 Brainstorm
+1 Divergent Equation
+1 Vapor Snag
+1 Counterspell
+1 Deduce
+1 Essence Scatter
+1 Plunder the Trollshaws
+1 Think Twice
+1 Faebloom Trick
+1 Hard Evidence
+1 Ponder
+1 Preordain
+1 Flow State
+1 Stock Up
+1 Trickster's Stratagem
+1 Lórien Revealed
+1 Atlantis Attacks
+1 Sewer-veillance Cam
+1 Surgical Skullbomb
+1 Futurist Forge
+1 Control Magic
+1 Carrion Feeder
+1 Cauldron Familiar
+1 Dockside Chef
+1 Dream Beavers
+1 Forsaken Miner
+1 Infestation Sage
+1 Nezumi Linkbreaker
+1 Bloodghast
+1 Mintstrosity
+1 Nezumi Prowler
+1 Red Room Recruit
+1 Super Shredder
+1 Umbral Collar Zealot
+1 Vampire Gourmand
+1 Virus Beetle
+1 Zulaport Cutthroat
+1 Experimental Confectioner
+1 Oroku Saki, Shredder Rising
+1 Thieving Sprite
+1 Thought-Stalker Warlock
+1 Vengeful Rebel
+1 Yahenni, Undying Partisan
+1 Elektra, Daughter of the Hand
+1 Gollum, Silent Slinker
+1 Rankle, Master of Pranks
+1 Junji, the Midnight Sky
+1 Throat Slitter
+1 Apex Witchstalker
+1 Arbiter of Woe
+1 Troll of Khazad-dûm
+1 Fatal Push
+1 Stab
+1 Candy Grapple
+1 Cast Down
+1 Deadly Dispute
+1 Go for the Throat
+1 Savor
+1 Dismember
+1 Night's Whisper
+1 Strategic Betrayal
+1 Cornered by Black Mages
+1 Cost of Brilliance
+1 Arcane Omens
+1 Crude Bent Blade
+1 Anchovy & Banana Pizza
+1 Okiba Reckoner Raid
+1 Life of Toshiro Umezawa
+1 Obsessive Pursuit
+1 The Witch's Vanity
+1 Down, Down to Goblin-town
+1 Clockwork Percussionist
+1 Goblin Welder
+1 Kellan, Planar Trailblazer
+1 Monastery Swiftspear
+1 Pompous Battlemage
+1 Rabbit Battery
+1 Stadium Headliner
+1 Voldaren Epicure
+1 Bothersome Noisemaker
+1 Casey Jones, Jury-Rig Justiciar
+1 Embereth Shieldbreaker
+1 Goblin Engineer
+1 Searslicer Goblin
+1 Sokenzan Smelter
+1 Stingcaster Mage
+1 Young Pyromancer
+1 Bonecrusher Giant
+1 Dori, Bearer of Friends
+1 Rubble Rouser
+1 Squee, Goblin Nabob
+1 Battlesong Berserker
+1 Flametongue Kavu
+1 Glóin the Mighty
+1 Hellrider
+1 Twinshot Sniper
+1 Oliphaunt
+1 Chandra, Torch of Defiance
+1 Burst Lightning
+1 Flashback
+1 Galvanic Blast
+1 Lightning Bolt
+1 Monstrous Rage
+1 Voltage Surge
+1 Abrade
+1 Faithless Looting
+1 Firebolt
+1 Flame Slash
+1 Gleeful Demolition
+1 Fiery Confluence
+1 Awaken the Inferno
+1 Burn Down the House
+1 Experimental Synthesizer
+1 Hexgold Halberd
+1 Mouser Foundry
+1 Spicy Oatmeal Pizza
+1 Tablet of Discovery
+1 Dragonwing Glider
+1 Kumano Faces Kakkazan
+1 Goblin Bombardment
+1 Burn, Burn, Tree and Fern
+1 Birds of Paradise
+1 Elvish Mystic
+1 Haywire Mite
+1 Llanowar Elves
+1 Nasty Little Rabbit
+1 Studious First-Year
+1 Wild Nacatl
+1 Courier of Comestibles
+1 Environmental Scientist
+1 Fblthp, Knows the Way
+1 Frog Butler
+1 Nessian Hornbeetle
+1 Nishoba Brawler
+1 Quirion Dryad
+1 Scavenging Ooze
+1 Three Tree Rootweaver
+1 Tough Cookie
+1 Traveling Botanist
+1 Contagious Vorrac
+1 Jewel Thief
+1 Mirkwood Pathmaker
+1 Spinner of Souls
+1 Stickytongue Sentinel
+1 Surrak, Elusive Hunter
+1 Leatherhead, Swamp Stalker
+1 Ulvenwald Oddity
+1 Wicked Wolf
+1 Hivespine Wolverine
+1 Ka-Zar of the Savage Land
+1 Ragamuffin Raptor
+1 Thragtusk
+1 Carnage Tyrant
+1 Galewind Moose
+1 Generous Ent
+1 Savage Land Dinosaur
+1 Ram Through
+1 Bushwhack
+1 Pest Infestation
+1 Farseek
+1 Knockout Maneuver
+1 Troll Negotiations
+1 Snarl Song
+1 Lumbering Worldwagon
+1 Hunter's Talent
+1 Up the Beanstalk
+1 Welcome to Sweettooth
+1 Down in the Valley
+1 Sylvan Scavenging
+1 Boseiju Reaches Skyward
+1 Circuit Mender
+1 Sundering Archaic
+1 Together as One
+1 Mishra's Bauble
+1 Skateboard
+1 The Underworld Cookbook
+1 Witch's Oven
+1 Potioner's Trove
+1 Strixhaven Skycoach
+1 Eriette's Tempting Apple
+1 Aang, Swift Savior
+1 Empyrean Eagle
+1 Soulherder
+1 Spell Queller
+1 The Mighty Thor, Jane Foster
+1 Threadbind Clique
+1 Don & Leo, Problem Solvers
+1 Drown in the Loch
+1 Sneaky Snacker
+1 Theorix Charm
+1 Dreadwing Scavenger
+1 Halo Forager
+1 Spellscorn Coven
+1 Deceit
+1 Asmoranomardicadaistinaculdacar
+1 Oni-Cult Anvil
+1 Alesha, Who Laughs at Fate
+1 Kolaghan's Command
+1 Mayhem Devil
+1 Ob Nixilis, the Adversary
+1 Murderous Redcap
+1 Burning-Tree Emissary
+1 Questing Druid
+1 Ruby, Daring Tracker
+1 Territorial Kavu
+1 Ashroot Animist
+1 Writhing Chrysalis
+1 Vibrance
+1 Emmara, Soul of the Accord
+1 Qasali Pridemage
+1 Voice of Resurgence
+1 Loxodon Smiter
+1 March of the Multitudes
+1 Brightglass Gearhulk
+1 Okoye, Mighty and Adored
+1 Killian, Ink Duelist
+1 Scolding Administrator
+1 Silverquill Charm
+1 Zealous Persecution
+1 Lingering Souls
+1 Lurrus of the Dream-Den
+1 Twisted Fates
+1 Captain Storm, Cosmium Raider
+1 Expressive Iteration
+1 Third Path Iconoclast
+1 Twinned Vision
+1 Saheeli, Jewel of Avishkar
+1 Metalhead
+1 Stress Dream
+1 Brilliance Unleashed
+1 Vinereap Mentor
+1 Greta, Sweettooth Scourge
+1 Primal Witchstalker
+1 Tainted Treats
+1 Disruptive Stormbrood
+1 Large Bear
+1 Pizza Face, Gastromancer
+1 Lightning Helix
+1 Mechanized Ninja Cavalry
+1 Pursue the Past
+1 Practiced Scrollsmith
+1 Ark of Hunger
+1 Showdown of the Skalds
+1 Warrior's Blades
+1 Coiling Oracle
+1 Quandrix Charm
+1 Mirkwood Nurturer
+1 Paradox Surveyor
+1 Lessons from Life
+1 Thranduil, Sindarin Liege
+1 Dragonbroods' Relic
+1 Everything Pizza
+1 Path to the World Tree
+1 Hallowed Fountain
+1 Watery Grave
+1 Blood Crypt
+1 Stomping Ground
+1 Temple Garden
+1 Godless Shrine
+1 Steam Vents
+1 Overgrown Tomb
+1 Sacred Foundry
+1 Breeding Pool
+1 Meticulous Archive
+1 Undercity Sewers
+1 Raucous Theater
+1 Commercial District
+1 Lush Portico
+1 Shadowy Backstreet
+1 Thundering Falls
+1 Underground Mortuary
+1 Elegant Parlor
+1 Hedge Maze
+1 Arid Mesa
+1 Bloodstained Mire
+1 Flooded Strand
+1 Marsh Flats
+1 Misty Rainforest
+1 Polluted Delta
+1 Scalding Tarn
+1 Verdant Catacombs
+1 Windswept Heath
+1 Wooded Foothills

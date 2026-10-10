@@ -1,0 +1,180 @@
+1 Mox Pearl
+1 Mother of Runes
+1 Thraben Inspector
+1 Thalia, Guardian of Thraben
+1 Stoneforge Mystic
+1 Adeline, Resplendent Cathar
+1 Ocelot Pride
+1 Luminarch Aspirant
+1 Elite Spellbinder
+1 Containment Priest
+1 Swords to Plowshares
+1 Council's Judgment
+1 Ephemerate
+1 Skyclave Apparition
+1 Flickerwisp
+1 Loran of the Third Path
+1 Palace Jailer
+1 Restoration Angel
+1 Solitude
+1 The Wandering Emperor
+1 Balance
+1 Wrath of God
+1 Serra Paragon
+1 Elspeth, Sun's Champion
+1 Sun Titan
+1 Mox Sapphire
+1 Ancestral Recall
+1 Time Walk
+1 Brainstorm
+1 Ponder
+1 Preordain
+1 Frantic Search
+1 Force of Will
+1 Mana Drain
+1 Counterspell
+1 Memory Lapse
+1 Delver of Secrets
+1 Snapcaster Mage
+1 Jace, Vryn's Prodigy
+1 Ledger Shredder
+1 Brazen Borrower
+1 Treasure Cruise
+1 Tinker
+1 Show and Tell
+1 Urza, Lord High Artificer
+1 Kappa Cannoneer
+1 Thieving Skydiver
+1 Phyrexian Metamorph
+1 Mystic Confluence
+1 Jace, the Mind Sculptor
+1 Mox Jet
+1 Dark Ritual
+1 Entomb
+1 Reanimate
+1 Animate Dead
+1 Necromancy
+1 Exhume
+1 Thoughtseize
+1 Hymn to Tourach
+1 Demonic Tutor
+1 Dark Confidant
+1 Bloodghast
+1 Ophiomancer
+1 Fatal Push
+1 Bone Shards
+1 Infernal Grasp
+1 Collective Brutality
+1 Orcish Bowmasters
+1 Liliana of the Veil
+1 Toxic Deluge
+1 Grief
+1 Recurring Nightmare
+1 Sheoldred, the Apocalypse
+1 Archon of Cruelty
+1 Griselbrand
+1 Mox Ruby
+1 Lightning Bolt
+1 Chain Lightning
+1 Fireblast
+1 Pyrokinesis
+1 Unholy Heat
+1 Goblin Guide
+1 Monastery Swiftspear
+1 Ragavan, Nimble Pilferer
+1 Dragon's Rage Channeler
+1 Faithless Looting
+1 Young Pyromancer
+1 Goblin Welder
+1 Goblin Rabblemaster
+1 Fable of the Mirror-Breaker
+1 Goblin Bombardment
+1 Laelia, the Blade Reforged
+1 Goblin Engineer
+1 Bonecrusher Giant
+1 Seasoned Pyromancer
+1 Fiery Confluence
+1 Sneak Attack
+1 Chandra, Torch of Defiance
+1 Fury
+1 Inferno Titan
+1 Mox Emerald
+1 Llanowar Elves
+1 Birds of Paradise
+1 Delighted Halfling
+1 Sylvan Library
+1 Lotus Cobra
+1 Sakura-Tribe Elder
+1 Scavenging Ooze
+1 Tireless Tracker
+1 Six
+1 Survival of the Fittest
+1 Endurance
+1 Eternal Witness
+1 Courser of Kruphix
+1 Green Sun's Zenith
+1 Questing Beast
+1 Beast Within
+1 Garruk Wildspeaker
+1 Titania, Protector of Argoth
+1 Thragtusk
+1 Nissa, Who Shakes the World
+1 Natural Order
+1 Primeval Titan
+1 Avenger of Zendikar
+1 Craterhoof Behemoth
+1 Teferi, Time Raveler
+1 Teferi, Hero of Dominaria
+1 Baleful Strix
+1 Psychic Frog
+1 Expressive Iteration
+1 Third Path Iconoclast
+1 Kolaghan's Command
+1 Bloodtithe Harvester
+1 Wrenn and Six
+1 Minsc & Boo, Timeless Heroes
+1 Knight of the Reliquary
+1 Voice of Resurgence
+1 Lingering Souls
+1 Tidehollow Sculler
+1 Uro, Titan of Nature's Wrath
+1 Oko, Thief of Crowns
+1 Grist, the Hunger Tide
+1 Deathrite Shaman
+1 Lightning Helix
+1 Phlage, Titan of Fire's Fury
+1 Black Lotus
+1 Sol Ring
+1 Mishra's Bauble
+1 Skullclamp
+1 Walking Ballista
+1 Smuggler's Copter
+1 Umezawa's Jitte
+1 Retrofitter Foundry
+1 Batterskull
+1 Karn, Scion of Urza
+1 Wurmcoil Engine
+1 Kaldra Compleat
+1 Myr Battlesphere
+1 Emrakul, the Aeons Torn
+1 Tundra
+1 Underground Sea
+1 Badlands
+1 Taiga
+1 Savannah
+1 Scrubland
+1 Volcanic Island
+1 Bayou
+1 Plateau
+1 Tropical Island
+1 Flooded Strand
+1 Polluted Delta
+1 Bloodstained Mire
+1 Wooded Foothills
+1 Windswept Heath
+1 Marsh Flats
+1 Scalding Tarn
+1 Verdant Catacombs
+1 Arid Mesa
+1 Misty Rainforest
+1 Ancient Tomb

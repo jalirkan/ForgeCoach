@@ -8,7 +8,7 @@ import { buildGridWhyPrompt, GRID_WHY_GUIDE_MAX, GRID_WHY_SYSTEM, gridWhyCards }
 const ctx = context('synergy', loadMeta());
 const infos = loadInfos('synergy', loadCube('synergy'));
 const RAKDOS = ['Blood Artist', 'Viscera Seer', 'Goblin Bombardment', 'Bloodghast', 'Fatal Push', 'Lightning Bolt', 'Mayhem Devil', 'Priest of Forgotten Gods', 'Young Pyromancer', 'Zulaport Cutthroat'];
-const GRID = ['Carrion Feeder', 'Juri, Master of the Revue', 'Skullclamp', 'Wood Elves', 'Lotus Cobra', 'Eternal Witness', 'Opt', 'Ponder', 'Mana Leak'];
+const GRID = ['Carrion Feeder', 'Juri, Master of the Revue', 'Yawgmoth, Thran Physician', 'Wood Elves', 'Lotus Cobra', 'Eternal Witness', 'Opt', 'Ponder', 'Mana Leak'];
 const blurb = gridBlurb(recommendGrid(GRID, RAKDOS, ctx), RAKDOS, ctx)!;
 
 describe('buildGridWhyPrompt', () => {

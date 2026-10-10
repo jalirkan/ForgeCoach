@@ -1,0 +1,180 @@
+1 Thraben Inspector
+1 Doomed Traveler
+1 Faerie Guidemother
+1 Seeker of the Way
+1 Stormfront Pegasus
+1 Kor Skyfisher
+1 Attended Knight
+1 Lone Missionary
+1 Search Party Captain
+1 Inspiring Overseer
+1 Militia Bugler
+1 Palace Sentinels
+1 Eagles of the North
+1 Battle Screech
+1 Triplicate Spirits
+1 Raise the Alarm
+1 Rally the Peasants
+1 Prismatic Strands
+1 Ephemerate
+1 Momentary Blink
+1 Ancestral Blade
+1 Journey to Nowhere
+1 Oblivion Ring
+1 Settle Beyond Reality
+1 Sunlance
+1 Faith's Fetters
+1 Faerie Seer
+1 Delver of Secrets
+1 Spellstutter Sprite
+1 Moon-Circuit Hacker
+1 Augur of Bolas
+1 Ninja of the Deep Hours
+1 Pestermite
+1 Man-o'-War
+1 Mist Raven
+1 Cloudkin Seer
+1 Archaeomancer
+1 Murmuring Mystic
+1 Mulldrifter
+1 Tolarian Terror
+1 Brainstorm
+1 Ponder
+1 Preordain
+1 Thought Scour
+1 Snap
+1 Counterspell
+1 Mana Leak
+1 Exclude
+1 Ghostly Flicker
+1 Hard Evidence
+1 Deep Analysis
+1 Treasure Cruise
+1 Mire Triton
+1 Carrier Thrall
+1 Nested Shambler
+1 Unwilling Ingredient
+1 Plagued Rusalka
+1 Dusk Legion Zealot
+1 Chittering Rats
+1 Gravedigger
+1 Falkenrath Noble
+1 Crypt Rats
+1 Okiba-Gang Shinobi
+1 Thorn of the Black Rose
+1 Gray Merchant of Asphodel
+1 Gurmag Angler
+1 Cast Down
+1 Disfigure
+1 Tragic Slip
+1 Vicious Offering
+1 Snuff Out
+1 Village Rites
+1 Deadly Dispute
+1 Night's Whisper
+1 Unearth
+1 Tortured Existence
+1 Blood Fountain
+1 Ecstatic Awakener
+1 Monastery Swiftspear
+1 Fanatical Firebrand
+1 Firebrand Archer
+1 Mogg War Marshal
+1 Goblin Bushwhacker
+1 Rimrock Knight
+1 Beetleback Chief
+1 Guttersnipe
+1 Ardent Elementalist
+1 Bogardan Dragonheart
+1 Dragon Fodder
+1 Kuldotha Rebirth
+1 Hordeling Outburst
+1 Raid Bombardment
+1 Experimental Synthesizer
+1 Lightning Bolt
+1 Chain Lightning
+1 Burst Lightning
+1 Galvanic Discharge
+1 Flame Slash
+1 Fireball
+1 Rolling Thunder
+1 Faithless Looting
+1 Wrenn's Resolve
+1 Skewer the Critics
+1 Fling
+1 Llanowar Elves
+1 Arbor Elf
+1 Utopia Sprawl
+1 Sakura-Tribe Elder
+1 Wall of Roots
+1 Satyr Wayfinder
+1 Nest Invader
+1 Basking Broodscale
+1 Jewel Thief
+1 Llanowar Visionary
+1 Yavimaya Elder
+1 Mother Bear
+1 Werebear
+1 Owlbear
+1 Conclave Naturalists
+1 Krosan Tusker
+1 Annoyed Altisaur
+1 Generous Ent
+1 Wildheart Invoker
+1 Sprout Swarm
+1 Saproling Migration
+1 Rancor
+1 Ram Through
+1 Bushwhack
+1 Pulse of Murasa
+1 Grapple with the Past
+1 Silver Drake
+1 Judge's Familiar
+1 Cavern Harpy
+1 Dinrova Horror
+1 Body Dropper
+1 Fireblade Artist
+1 Writhing Chrysalis
+1 Branching Bolt
+1 Selesnya Evangel
+1 Qasali Pridemage
+1 Izzet Charm
+1 Bloodwater Entity
+1 Glowspore Shaman
+1 Desecrator Hag
+1 Tenth District Legionnaire
+1 Dog Walker
+1 Bonesplitter
+1 Vault Skirge
+1 Prophetic Prism
+1 Mind Stone
+1 Ichor Wellspring
+1 Chromatic Star
+1 Candy Trail
+1 Flayer Husk
+1 Myr Sire
+1 Perilous Myr
+1 Serrated Arrows
+1 Renegade Freighter
+1 Guardian Idol
+1 Ulamog's Crusher
+1 Tranquil Cove
+1 Dismal Backwater
+1 Bloodfell Caves
+1 Rugged Highlands
+1 Blossoming Sands
+1 Scoured Barrens
+1 Swiftwater Cliffs
+1 Jungle Hollow
+1 Wind-Scarred Crag
+1 Thornwood Falls
+1 Azorius Chancery
+1 Dimir Aqueduct
+1 Rakdos Carnarium
+1 Gruul Turf
+1 Selesnya Sanctuary
+1 Izzet Boilerworks
+1 Golgari Rot Farm
+1 Boros Garrison
+1 Evolving Wilds
+1 Ash Barrens

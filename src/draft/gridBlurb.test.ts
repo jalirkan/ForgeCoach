@@ -10,7 +10,7 @@ import { colourBaselines, labCardView } from './labStats.ts';
 
 const synergy = context('synergy', loadMeta());
 const RAKDOS = ['Blood Artist', 'Viscera Seer', 'Goblin Bombardment', 'Bloodghast', 'Fatal Push', 'Lightning Bolt', 'Mayhem Devil', 'Priest of Forgotten Gods', 'Young Pyromancer', 'Zulaport Cutthroat'];
-const GRID = ['Carrion Feeder', 'Juri, Master of the Revue', 'Skullclamp', 'Wood Elves', 'Lotus Cobra', 'Eternal Witness', 'Opt', 'Ponder', 'Mana Leak'];
+const GRID = ['Carrion Feeder', 'Juri, Master of the Revue', 'Yawgmoth, Thran Physician', 'Wood Elves', 'Lotus Cobra', 'Eternal Witness', 'Opt', 'Ponder', 'Mana Leak'];
 
 const vCube = loadCube('vintage');
 const human = parseHumanCards(JSON.parse(readFileSync(new URL('../../public/cubes/vintage-cube-180.human.json', import.meta.url), 'utf8')));
@@ -48,9 +48,9 @@ describe('gridBlurb', () => {
     }
     // Values high to low.
     expect(b.cards.map((c) => c.value)).toEqual([...b.cards.map((c) => c.value)].sort((x, y) => y - x));
-    // Skullclamp: the pool's sacrifice theme, named, with a pool card it pairs with.
-    const clamp = b.cards.find((c) => c.name === 'Skullclamp')!;
-    expect(clamp.reasons.join(' ')).toMatch(/^Sacrifice with (Blood Artist|Viscera Seer|Goblin Bombardment|Zulaport Cutthroat|Priest of Forgotten Gods|Bloodghast|Mayhem Devil|Young Pyromancer)/);
+    // Yawgmoth: the pool's sacrifice theme, named, with a pool card it pairs with.
+    const yawg = b.cards.find((c) => c.name === 'Yawgmoth, Thran Physician')!;
+    expect(yawg.reasons.find((r) => r.startsWith('Sacrifice'))).toMatch(/^Sacrifice with (Blood Artist|Viscera Seer|Goblin Bombardment|Zulaport Cutthroat|Priest of Forgotten Gods|Bloodghast|Mayhem Devil|Young Pyromancer)/);
     // What it leaves the AI: the reply line and the margin.
     expect(b.leaves).toBe(`Leaves the AI the ${a.best!.reply!.line.label.toLowerCase()} (${a.best!.reply!.cards.join(', ')}): ${Math.round(a.best!.reply!.value)} to it vs ${Math.round(a.best!.mine)} to you (+${Math.round((a.best!.mine - a.best!.reply!.value) * 10) / 10} your way).`);
   });
@@ -120,6 +120,6 @@ describe('strengthText: the labStats / human.ts honesty rule', () => {
     expect(hum).toBeGreaterThan(0);
   });
   it('says nothing without numbers', () => {
-    expect(strengthText('Skullclamp', context('synergy'), new Map())).toBeNull();
+    expect(strengthText('Yawgmoth, Thran Physician', context('synergy'), new Map())).toBeNull();
   });
 });

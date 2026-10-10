@@ -1,0 +1,180 @@
+1 Thraben Inspector
+1 Recruitment Officer
+1 Doomed Traveler
+1 Seeker of the Way
+1 Charming Prince
+1 Kor Skyfisher
+1 Stoneforge Mystic
+1 Selfless Spirit
+1 Attended Knight
+1 Blade Splicer
+1 Flickerwisp
+1 Skyclave Apparition
+1 Inspiring Overseer
+1 Elite Spellbinder
+1 Restoration Angel
+1 Eagles of the North
+1 Swords to Plowshares
+1 Journey to Nowhere
+1 Oblivion Ring
+1 Fateful Absence
+1 Ephemerate
+1 Momentary Blink
+1 Battle Screech
+1 Secure the Wastes
+1 Rally the Peasants
+1 Unbreakable Formation
+1 Faerie Seer
+1 Delver of Secrets
+1 Spectral Sailor
+1 Spellstutter Sprite
+1 Moon-Circuit Hacker
+1 Augur of Bolas
+1 Snapcaster Mage
+1 Phantasmal Image
+1 Ledger Shredder
+1 Thing in the Ice
+1 Ninja of the Deep Hours
+1 Brazen Borrower
+1 Man-o'-War
+1 Pestermite
+1 Archaeomancer
+1 Murmuring Mystic
+1 Mulldrifter
+1 Tolarian Terror
+1 Brainstorm
+1 Ponder
+1 Preordain
+1 Counterspell
+1 Mana Leak
+1 Exclude
+1 Repulse
+1 Treasure Cruise
+1 Nested Shambler
+1 Carrier Thrall
+1 Mire Triton
+1 Bloodghast
+1 Kitesail Freebooter
+1 Woe Strider
+1 Chittering Rats
+1 Vampire Nighthawk
+1 Plaguecrafter
+1 Falkenrath Noble
+1 Okiba-Gang Shinobi
+1 Shriekmaw
+1 Murderous Rider
+1 Ravenous Chupacabra
+1 Gravedigger
+1 Gray Merchant of Asphodel
+1 Gurmag Angler
+1 Crypt Rats
+1 Fatal Push
+1 Cast Down
+1 Bone Shards
+1 Village Rites
+1 Deadly Dispute
+1 Night's Whisper
+1 Unearth
+1 Davriel, Rogue Shadowmage
+1 Monastery Swiftspear
+1 Fervent Champion
+1 Bomat Courier
+1 Young Pyromancer
+1 Kari Zev, Skyship Raider
+1 Mogg War Marshal
+1 Rimrock Knight
+1 Embereth Shieldbreaker
+1 Beetleback Chief
+1 Guttersnipe
+1 Pia Nalaar
+1 Bonecrusher Giant
+1 Flametongue Kavu
+1 Hellrider
+1 Siege-Gang Commander
+1 Tibalt, Rakish Instigator
+1 Lightning Bolt
+1 Chain Lightning
+1 Arc Trail
+1 Sweltering Suns
+1 Fireball
+1 Rolling Thunder
+1 Hordeling Outburst
+1 Experimental Synthesizer
+1 Wrenn's Resolve
+1 Fling
+1 Llanowar Elves
+1 Satyr Wayfinder
+1 Wall of Roots
+1 Sakura-Tribe Elder
+1 Scavenging Ooze
+1 Nest Invader
+1 Werebear
+1 Jewel Thief
+1 Tireless Tracker
+1 Sentinel of the Nameless City
+1 Eternal Witness
+1 Lovestruck Beast
+1 Thrashing Brontodon
+1 Llanowar Visionary
+1 Yavimaya Elder
+1 Conclave Naturalists
+1 Thragtusk
+1 Krosan Tusker
+1 Annoyed Altisaur
+1 Generous Ent
+1 Saproling Migration
+1 Rancor
+1 Ram Through
+1 Primal Might
+1 Pulse of Murasa
+1 Grapple with the Past
+1 Reflector Mage
+1 Soulherder
+1 Baleful Strix
+1 Ertai Resurrected
+1 Bloodtithe Harvester
+1 Mayhem Devil
+1 Writhing Chrysalis
+1 Branching Bolt
+1 Trostani Discordant
+1 Qasali Pridemage
+1 Saheeli, Sublime Artificer
+1 Fire // Ice
+1 Vraska, Swarm's Eminence
+1 Grim Flayer
+1 Nahiri, Storm of Stone
+1 Lightning Helix
+1 Bonesplitter
+1 Vault Skirge
+1 Shadowspear
+1 Vulshok Morningstar
+1 Mind Stone
+1 Guardian Idol
+1 Myr Sire
+1 Perilous Myr
+1 Hangarback Walker
+1 Walking Ballista
+1 Renegade Freighter
+1 Serrated Arrows
+1 Solemn Simulacrum
+1 The Mightstone and Weakstone
+1 Restless Anchorage
+1 Restless Reef
+1 Restless Vents
+1 Restless Ridgeline
+1 Restless Prairie
+1 Restless Spire
+1 Restless Cottage
+1 Restless Bivouac
+1 Restless Fortress
+1 Restless Vinestalk
+1 Tranquil Cove
+1 Dismal Backwater
+1 Bloodfell Caves
+1 Rugged Highlands
+1 Blossoming Sands
+1 Swiftwater Cliffs
+1 Jungle Hollow
+1 Wind-Scarred Crag
+1 Evolving Wilds
+1 Ash Barrens
