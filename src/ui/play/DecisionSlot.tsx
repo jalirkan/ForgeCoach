@@ -105,6 +105,8 @@ export function DecisionSlot({
   const eyebrow = pending ? 'Decision' : view.mode === 'over' ? 'Game over' : 'Waiting';
   const hasTools = poolColors.length > 0 || rest.length > 0;
   const eot = toggles.find((t) => t.id === 'eot');
+  // "Your move — " runs inline with the title (a wrap, never a squeezed column of its own).
+  const nudge = nudged && pending ? <span className="ds-nudge">{NUDGE_PREFIX}</span> : null;
 
   return (
     <div
@@ -121,17 +123,20 @@ export function DecisionSlot({
         </div>
         <div className="ab-title" role="status" aria-live="polite">
           {waiting || theirs ? <span className={cx('spinner', theirs && 'ds-wait-spin')} /> : <ModeIcon mode={view.mode} />}
-          {nudged && pending && <span className="ds-nudge">{NUDGE_PREFIX}</span>}
           {theirs && attention.line ? (
             <span className="ab-title-text">{attention.line}</span>
           ) : view.payCost ? (
             // endstep: "Pay {1} for Skullclamp", the cost as mana symbols.
             <span className="ab-title-text ab-pay-title">
+              {nudge}
               Pay <ManaCost cost={view.payCost} size={wide ? 'md' : 'sm'} />
               {view.payFor ? ` for ${view.payFor}` : ''}
             </span>
           ) : (
-            <span className="ab-title-text">{view.title}</span>
+            <span className="ab-title-text">
+              {nudge}
+              {view.title}
+            </span>
           )}
           <button className="icon-btn ab-icon ab-keys" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)" onClick={onHelp}>
             <IconKeyboard size={15} />

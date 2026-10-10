@@ -29,7 +29,11 @@
     grid-template-columns: minmax(0, 1fr) 124px clamp(250px, 17.5vw, 340px);
   }
   .game.play.is-wide .play-cols.has-strip .play-dock {
-    grid-template-columns: clamp(250px, 18vw, 300px) minmax(0, 1fr);
+    grid-template-columns: var(--ds-slot-w) minmax(0, 1fr);
+  }
+  .game.play.is-wide {
+    /* The slot: 300 px at 1024, about 360 at 1440, 380 at most. */
+    --ds-slot-w: clamp(300px, 25vw, 380px);
   }
   .game.play.is-wide .play-main {
     /* the slot's question grows over the board up to this width */
@@ -200,8 +204,10 @@
 
 /* ---- AUTO-PASS toggles (desktop) */
 .ds-autopass {
-  grid-area: auto;
+  /* its own named row under the buttons ("auto" would be the keyword: auto-placement into the free 'ask' row) */
+  grid-area: pass;
   min-width: 0;
+  margin-top: 4px;
 }
 .ds-autopass-head {
   display: flex;
@@ -272,22 +278,33 @@
 
 /* ---- Desktop: the slot beside the hand, as tall as it needs */
 @media (min-width: 1024px) {
-  /* One fixed height (never a board that jumps with each mode): the slot's words clip, its buttons never do. */
+  /* One fixed height (never a board that jumps with each mode). Only the words' row gives way: it takes
+     what the buttons and toggles leave and scrolls if a long instruction needs more, so the primary and
+     the toggles never drop below the dock's edge. */
   .game.play.is-wide .play-dock {
-    height: max(var(--hand-h), 280px);
+    height: max(var(--hand-h), clamp(280px, 34vh, 320px));
   }
   .game.play.is-wide .decision-slot .ab-text {
+    /* the bar's align-items: start would let the words take their own height and run under the buttons */
+    align-self: stretch;
     min-height: 0;
-    overflow: hidden;
+    overflow: hidden auto;
+    scrollbar-width: thin;
   }
   .game.play.is-wide .actionbar.decision-slot {
-    grid-template-areas: 'text' 'ask' 'tools' 'go' 'auto';
+    grid-template-areas: 'text' 'ask' 'tools' 'go' 'pass';
     grid-template-rows: minmax(0, 1fr) auto auto auto auto;
     overflow: visible;
     gap: 6px;
   }
+  /* The instruction wraps in full (no clamp): it is the line that says what to do. */
   .game.play.is-wide .decision-slot .ab-sub {
-    -webkit-line-clamp: 2;
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+  .game.play.is-wide .decision-slot .ab-title-text {
+    -webkit-line-clamp: 3;
   }
   /* "Pay {R} for <the engine's whole first line>": two lines at most, the cost always on the first. */
   .game.play.is-wide .decision-slot .ab-pay-title {
