@@ -6,19 +6,23 @@
  * header, stack and combat between them.
  */
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import type { AnyCard, Card, GameStateBody, PlayerState } from '../protocol.ts';
+import type { Card, GameStateBody, PlayerState } from '../protocol.ts';
 import { isHidden, MANA_COLORS } from '../protocol.ts';
 import type { GameLog } from '../log.ts';
-import { cardIndex, cardName, phaseLabel } from '../decisions.ts';
+import { phaseLabel } from '../decisions.ts';
 import { chosenColors, manaSummary, turnFacts, type ManaSource } from '../state.ts';
 import { cachedMap, useCardsVersion } from './cardData.ts';
-import { BoardMarksContext, useBoardMarks, useCardActions, usePlay, type BoardMarks, type CardCombatMark } from './cardContext.ts';
+import { BoardMarksContext, usePlay, type BoardMarks, type CardCombatMark } from './cardContext.ts';
 import { combatMarks } from './play/combatLines.ts';
+import { combatLayout, hideSickMark, laneRole, type CombatLayout, type LaneTarget } from './play/combatLayout.ts';
+import { CombatLane } from './play/CombatLane.tsx';
+import { CombatArrows } from './play/CombatArrows.tsx';
+import { useLaneMotion } from './play/laneMotion.ts';
 import { StackPanel } from './StackPanel.tsx';
 import { BoardArrows } from './BoardArrows.tsx';
 import { stackEntries, stackMarks, type StackEntry } from './stackModel.ts';
-import { CardBack, CardTile, LandPile, displayName } from './CardTile.tsx';
-import { IconHeart, IconShield, IconSword } from './Icons.tsx';
+import { CardBack, CardTile, LandPile } from './CardTile.tsx';
+import { IconHeart } from './Icons.tsx';
 import { Pip } from './Mana.tsx';
 import { ZoneViewer, type ViewableZone } from './ZoneViewer.tsx';
 import { groupLands, pileWeight } from './landPiles.ts';
@@ -52,6 +56,24 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackEl
     for (const p of state.players) for (const c of p.zones.battlefield.cards) if (!isHidden(c)) m.set(c.id, c as Card);
     return m;
   }, [state]);
+  // Combat is drawn by placement: the attack lane and the blockers in front of their attackers.
+  const layout = useMemo(
+    () =>
+      combatLayout(
+        state,
+        {
+          player: (id) => {
+            const p = state.players.find((x) => x.id === id);
+            return id === seat ? 'You' : p ? seatDisplayName(log.hello, p, p.name) : 'a player';
+          },
+          avatar: (id) => state.players.find((x) => x.id === id)?.name ?? '?',
+        },
+        combat,
+      ),
+    [state, seat, log.hello, combat],
+  );
+  const boardRef = useRef<HTMLDivElement>(null);
+  useLaneMotion(boardRef, layout);
 
   if (!me) {
     return (
@@ -62,12 +84,13 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackEl
   }
   return (
     <BoardMarksContext.Provider value={marks}>
-      <div className="board">
+      <div ref={boardRef} className={cx('board', layout.columns.length > 0 && 'in-combat', hideSickMark(state, seat) && 'hide-sick')}>
         {opps.map((p) => (
-          <PlayerArea key={p.id} player={p} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} top />
+          <PlayerArea key={p.id} player={p} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} layout={layout} top />
         ))}
         <Midline state={state} seat={seat} stack={stackElsewhere ? [] : stack} />
-        <PlayerArea player={me} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} hideHand={hideHand} />
+        <PlayerArea player={me} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} layout={layout} hideHand={hideHand} />
+        <CombatArrows lines={layout.lines} version={state} />
         {overlay}
       </div>
       <BoardArrows entries={stack} version={state} />
@@ -77,7 +100,7 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackEl
 
 // ---------------------------------------------------------------------------
 
-function groupBattlefield(player: PlayerState, byId: Map<number, Card>) {
+function groupBattlefield(player: PlayerState, byId: Map<number, Card>, placed: ReadonlySet<number>) {
   const landCards: { card: Card; attachments: number }[] = [];
   const creatures: { card: Card; att: Card[] }[] = [];
   const other: { card: Card; att: Card[] }[] = [];
@@ -85,6 +108,7 @@ function groupBattlefield(player: PlayerState, byId: Map<number, Card>) {
     if (isHidden(any)) continue;
     const c = any as Card;
     if (c.attachedToId !== null && byId.has(c.attachedToId)) continue; // drawn on its host
+    if (placed.has(c.id)) continue; // drawn in a combat lane
     const att = c.attachmentIds.map((id) => byId.get(id)).filter((x): x is Card => !!x);
     const kind = typeKind(c.types);
     if (kind === 'land') landCards.push({ card: c, attachments: att.length });
@@ -111,6 +135,7 @@ const PlayerArea = memo(function PlayerArea({
   frameIndex,
   seat,
   byId,
+  layout,
   top,
   hideHand,
 }: {
@@ -120,12 +145,21 @@ const PlayerArea = memo(function PlayerArea({
   frameIndex: number;
   seat: number;
   byId: Map<number, Card>;
+  layout: CombatLayout;
   top?: boolean;
   hideHand?: boolean;
 }) {
-  const { lands, creatures, other } = useMemo(() => groupBattlefield(player, byId), [player, byId]);
+  const { lands, creatures, other } = useMemo(() => groupBattlefield(player, byId, layout.placed), [player, byId, layout.placed]);
   const mine = player.id === seat;
   const side = mine ? 'me' : 'opp';
+  const role = laneRole(layout, player.id, seat);
+  const attachmentsOf = (c: Card) => c.attachmentIds.map((id) => byId.get(id)).filter((x): x is Card => !!x);
+  const lane = role.attack ? 'attack' : role.block ? 'block' : null;
+  const chipped = (card: Card, att: Card[]) => {
+    const tile = <CardTile key={card.id} card={card} attachments={att} side={side} />;
+    const t = layout.pendingChips.get(card.id);
+    return t ? <PendingChip key={card.id} target={t}>{tile}</PendingChip> : tile;
+  };
   const permanents = [...creatures, ...other];
   const landWeight = lands.reduce((n, g) => n + pileWeight(g), 0);
   const permWeight = rowWeight(permanents.map((p) => p.card)) + (creatures.length && other.length ? 0.15 : 0);
@@ -138,9 +172,7 @@ const PlayerArea = memo(function PlayerArea({
         count={permanents.length}
         dense={density(permWeight)}
       >
-        {creatures.map(({ card, att }) => (
-          <CardTile key={card.id} card={card} attachments={att} side={side} />
-        ))}
+        {creatures.map(({ card, att }) => chipped(card, att))}
         {creatures.length > 0 && other.length > 0 && <span className="bf-gap" aria-hidden="true" />}
         {other.map(({ card, att }) => (
           <CardTile key={card.id} card={card} attachments={att} side={side} />
@@ -156,6 +188,12 @@ const PlayerArea = memo(function PlayerArea({
     ),
   ].filter(Boolean);
   if (top) rows.reverse();
+  // The lane sits nearest the centre line: below their rows, above yours.
+  if (lane) {
+    const el = <CombatLane key="lane" layout={layout} kind={lane} playerId={player.id} side={side} byId={byId} attachmentsOf={attachmentsOf} />;
+    if (top) rows.push(el);
+    else rows.unshift(el);
+  }
   const empty = rows.length === 0;
   // Portrait phones: the rows' height and the side's floor (ui/boardFit.ts, play.css).
   const fit = phoneSideFit({ permanents: permanents.length > 0, lands: lands.length > 0, maxAttach: Math.max(0, ...permanents.map((p) => p.att.length)) });
@@ -178,8 +216,13 @@ const PlayerArea = memo(function PlayerArea({
             '--ch-lands': lands.length ? 1 : 0,
             '--ch-perm': permanents.length ? 1 : 0,
             '--attach-h': permanents.some((p) => p.att.length > 0) ? '34px' : '0px',
+            // The combat lane's height in lane card widths (a lying card is one width tall).
+            '--lane-k': lane ? (lane === 'attack' && !layout.upright ? 1 : 88 / 63).toFixed(2) : 0,
+            '--lane-w': layout.weight.toFixed(2),
+            '--lane-n': layout.columns.length,
           } as CSSProperties
         }
+        data-lane={lane ?? undefined}
       >
         {empty ? <div className="bf-empty">No permanents</div> : rows}
       </div>
@@ -188,6 +231,18 @@ const PlayerArea = memo(function PlayerArea({
     </section>
   );
 });
+
+/** A creature being declared as an attacker against a planeswalker: the chip says which. */
+function PendingChip({ target, children }: { target: LaneTarget; children: ReactNode }) {
+  return (
+    <span className="lane-slot is-pending-attack">
+      {children}
+      <span className={cx('lane-chip', `lane-chip-${target.kind}`)} title={`Attacking ${target.label}`} aria-label={`attacking ${target.label}`}>
+        {target.initial}
+      </span>
+    </span>
+  );
+}
 
 function Row({ kind, label, count, dense, children }: { kind: 'permanents' | 'lands'; label: string; count: number; dense?: string; children: React.ReactNode }) {
   const fade = useEdgeFade();
@@ -432,7 +487,8 @@ function OppHand({ n }: { n: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// The line between the two sides: turn/phase, stack, combat.
+// The line between the two sides: turn/phase and (replay) the stack. Combat is
+// drawn on the sides themselves: the attack and block lanes (play/CombatLane.tsx).
 
 const STEPS: { label: string; phases: string[] }[] = [
   { label: 'Upkeep', phases: ['UNTAP', 'UPKEEP'] },
@@ -448,7 +504,6 @@ function Midline({ state, seat, stack }: { state: GameStateBody; seat: number; s
     <div className="midline">
       <PhaseHeader state={state} seat={seat} />
       {stack.length > 0 && <StackPanel entries={stack} state={state} variant="inline" />}
-      {state.combat && state.combat.bands.length > 0 && <CombatPanel state={state} seat={seat} />}
     </div>
   );
 }
@@ -482,80 +537,6 @@ export function PhaseHeader({ state, seat }: { state: GameStateBody; seat: numbe
         <span className="phase-label">{phaseLabel(state.phase)}</span>
         {prio && <span className="muted"> · priority: {prio}</span>}
       </div>
-    </div>
-  );
-}
-
-function CardRef({ card, state }: { card: AnyCard | undefined; state: GameStateBody }) {
-  const actions = useCardActions();
-  if (!card) return <span className="card-ref muted">a card</span>;
-  if (isHidden(card)) return <span className="card-ref muted">{cardName(card)}</span>;
-  const c = card as Card;
-  return (
-    <button className="card-ref" onClick={() => actions.open(c, state)}>
-      {displayName(c)}
-      {c.power !== null && c.toughness !== null && typeKind(c.types) === 'creature' && (
-        <span className="card-ref-pt">
-          {c.power}/{c.toughness}
-        </span>
-      )}
-    </button>
-  );
-}
-
-function CombatPanel({ state, seat }: { state: GameStateBody; seat: number }) {
-  const idx = useMemo(() => cardIndex(state), [state]);
-  const play = usePlay();
-  const marks = useBoardMarks();
-  // In play, blockers you have clicked but not yet confirmed (the engine reports them on confirm).
-  const blockersOf = (b: { attackerIds: number[]; blockerIds: number[] }) => {
-    const extra = play ? b.attackerIds.flatMap((a) => play.blockersFor(a)).filter((id) => !b.blockerIds.includes(id)) : [];
-    return [...b.blockerIds, ...extra];
-  };
-  const defenderName = (d: { kind: 'player' | 'card'; id: number } | null) => {
-    if (!d) return 'someone';
-    if (d.kind === 'player') return d.id === seat ? 'You' : state.players.find((p) => p.id === d.id)?.name ?? 'Opponent';
-    return cardName(idx.get(d.id));
-  };
-  return (
-    <div className="mid-panel combat-panel">
-      <div className="mid-title">
-        <IconSword size={14} /> Combat
-      </div>
-      <ul className="combat-list">
-        {state.combat!.bands.map((b, i) => {
-          const n = b.attackerIds.map((id) => marks?.combat?.get(id)?.n).find((x) => x !== undefined);
-          return (
-          <li key={i} className="combat-band">
-            {n !== undefined && (
-              <span className="cmb-num" aria-label={`Pair ${n}`}>
-                {n}
-              </span>
-            )}
-            <div className="combat-side combat-att">
-              {b.attackerIds.map((id) => (
-                <CardRef key={id} card={idx.get(id)} state={state} />
-              ))}
-            </div>
-            <div className="combat-arrow">
-              <span>→</span> <b>{defenderName(b.defender)}</b>
-            </div>
-            <div className="combat-side combat-blk">
-              {blockersOf(b).length === 0 ? (
-                <span className="muted">unblocked</span>
-              ) : (
-                <>
-                  <IconShield size={12} />
-                  {blockersOf(b).map((id) => (
-                    <CardRef key={id} card={idx.get(id)} state={state} />
-                  ))}
-                </>
-              )}
-            </div>
-          </li>
-          );
-        })}
-      </ul>
     </div>
   );
 }

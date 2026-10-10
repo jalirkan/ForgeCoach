@@ -169,8 +169,7 @@
 }
 
 /* Stack items: one line each (the source, who, then the text, cut short). */
-.game.play .stack-list,
-.game.play .combat-list {
+.game.play .stack-list {
   gap: 4px;
 }
 .game.play .stack-item {
@@ -1022,21 +1021,6 @@ button.avatar.is-chosen {
     background: var(--accent);
     box-shadow: none;
   }
-  /* one combat band per line: attackers → defender · blockers */
-  .play-phone-main .combat-band {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 8px;
-    padding: 6px 8px;
-  }
-  .play-phone-main .combat-side {
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-  .play-phone-main .combat-blk {
-    justify-content: flex-start;
-  }
 
   /* ---- action bar: words on top, buttons under them, the primary one widest */
   .actionbar {
@@ -1197,8 +1181,10 @@ button.avatar.is-chosen {
   .play-phone-main .player > .battlefield {
     flex: 1 1 0;
     /* every row at the floor size, plus the paddings (ui/boardFit.ts phoneSideFit) */
-    min-height: var(--side-min, calc(var(--fit-pad, 26px) + var(--fit-rows, 1.8) * var(--fit-floor) * 88 / 63));
+    min-height: var(--side-min, calc(var(--fit-pad, 26px) + var(--fit-rows, 1.8) * var(--fit-floor) * 88 / 63 + var(--lane-h, 0px)));
     container: side / size;
+    /* The combat lane on a phone: a thin band (play/lane.css), its height a constant per lane kind. */
+    --lane-h: calc(var(--lane-k, 0) * 50px + min(var(--lane-k, 0), 1) * 12px);
     justify-content: safe center;
   }
   .play-phone-main .battlefield,
@@ -1207,7 +1193,7 @@ button.avatar.is-chosen {
   }
   .play-phone-main .bf-row {
     --land-k: 0.8;
-    --cw-fit: clamp(var(--fit-floor), calc((100cqh - var(--fit-pad, 26px)) / var(--fit-rows, 1.8) * 63 / 88), 104px);
+    --cw-fit: clamp(var(--fit-floor), calc((100cqh - var(--fit-pad, 26px) - var(--lane-h, 0px)) / var(--fit-rows, 1.8) * 63 / 88), 104px);
     --cw: var(--cw-fit);
     flex: none;
     gap: 0;
@@ -1462,9 +1448,6 @@ button.avatar.is-chosen {
   .game.play.is-wide .play-board .mid-hint {
     margin-left: 0;
     flex-basis: 100%;
-  }
-  .game.play.is-wide .play-board .combat-band {
-    padding: 4px 8px;
   }
 
   /* ---- the rails: who, life, zones */
