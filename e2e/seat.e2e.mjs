@@ -20,8 +20,10 @@
  * stack, attack, the AI's spell, a block, Shock's target ask, game over, the
  * next game); a seat dropped with a question open (engine took the default /
  * engine asked again); an engine restarted under the same game id after the
- * result and mid-game; live watch on /observe never opening /ws; the coach's
- * "Copy prompt" with no helper.
+ * result and mid-game; live watch on /observe never opening /ws; combat damage
+ * by the engine's rule (mtg-table M67: no defender row without trample, the
+ * engine's refusal shown, a trampler's excess); the coach's "Copy prompt" with
+ * no helper.
  *
  * Environment: BUILD=0 (reuse dist/), APP_URL (test a running ForgeCoach
  * instead; it must be on a Vite port), HEADLESS=0, ONLY=<substring of a
@@ -484,6 +486,65 @@ const scenarios = [
       await page.locator('.zv-grid').waitFor({ state: 'detached', timeout: STEP_MS });
       await u.openHand();
       check(/\bis-act\b/.test((await u.card(mine(engine, 'Hill Giant')).getAttribute('class')) ?? ''), 'a hand card is outlined as before');
+    },
+  },
+
+  {
+    name: 'combat damage follows the engine (M67): no defender row without trample, and the engine’s refusal shown',
+    engine: { scene: 'combat' },
+    async run({ page, engine, app }) {
+      const u = ui(page);
+      const answers = () => engine.frames('/ws', 'answer').map((f) => f.body);
+      await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+      await u.mode('main');
+      await sent(engine, 'buttonOk', () => u.ok()); // to combat
+      await u.mode('attack');
+      // Hill Giant (no trample) into two Memnites: the engine's question has no row for the bot.
+      const giant = mine(engine, 'Hill Giant', 'battlefield');
+      await sent(engine, 'clickCard', () => u.click(giant));
+      await sent(engine, 'buttonOk', () => u.ok());
+      if (await page.locator('.ask-peek').isVisible().catch(() => false)) await page.locator('.ask-peek').click();
+      await u.dialog.waitFor({ timeout: STEP_MS });
+      check(engine.game.askBody?.kind === 'assign_damage' && engine.game.askBody.defenderAllowed === false, 'the engine asks assign_damage, defenderAllowed false');
+      const labels = await u.dialog.locator('.ask-row-label').allInnerTexts();
+      check(labels.length === 2 && !labels.includes('Forge AI'), `two blocker rows and no Forge AI row (${labels.join(', ')})`);
+      check(!(await u.dialog.locator('[data-refused]').count()), 'no refusal on a first asking');
+      // The engine refuses the split (a rule the dialog does not know): the same question, with its reason.
+      engine.game.refuseNext = 'Blockers take damage in order: Memnite needs lethal damage (1) before Memnite gets any.';
+      const asked = engine.game.askBody.askId;
+      await u.dialog.locator('.ask-actions .btn-primary:not([disabled])').click({ timeout: STEP_MS });
+      await engine.waitFor(() => engine.game.askBody && engine.game.askBody.askId !== asked, 'the question asked again', STEP_MS);
+      await u.dialog.locator('[data-refused]', { hasText: 'Memnite needs lethal damage' }).waitFor({ timeout: STEP_MS });
+      check((await u.dialog.locator('.ask-row-label').allInnerTexts()).length === 2, 'still no Forge AI row');
+      await u.dialog.locator('.ask-actions .btn-primary:not([disabled])').click({ timeout: STEP_MS });
+      await engine.waitFor(() => engine.game.phase === 'MAIN2', 'combat over', STEP_MS);
+      const sentSplits = answers().map((a) => a.value);
+      check(sentSplits.length === 2 && sentSplits.every((v) => v && !('0' in v)), `no split put damage on the bot (${JSON.stringify(sentSplits)})`);
+      check(engine.game.players[1].life === 3 && engine.game.players[1].battlefield.length === 0, 'the bot on 3 life, both Memnites dead');
+      await u.mode('main');
+    },
+  },
+
+  {
+    name: 'combat damage follows the engine (M67): a trampler’s excess goes to the player',
+    engine: { scene: 'combat' },
+    async run({ page, engine, app }) {
+      const u = ui(page);
+      await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+      await u.mode('main');
+      await sent(engine, 'buttonOk', () => u.ok());
+      await u.mode('attack');
+      await sent(engine, 'clickCard', () => u.click(mine(engine, 'Colossal Dreadmaw', 'battlefield')));
+      await sent(engine, 'buttonOk', () => u.ok());
+      if (await page.locator('.ask-peek').isVisible().catch(() => false)) await page.locator('.ask-peek').click();
+      await u.dialog.waitFor({ timeout: STEP_MS });
+      check(engine.game.askBody?.defenderAllowed === true, 'defenderAllowed true for a trampler');
+      const labels = await u.dialog.locator('.ask-row-label').allInnerTexts();
+      check(labels.includes('Forge AI') && labels.length === 3, `the Forge AI row beside two blockers (${labels.join(', ')})`);
+      await u.dialog.locator('.ask-actions .btn-primary:not([disabled])').click({ timeout: STEP_MS });
+      await engine.waitFor(() => engine.over, 'game over', STEP_MS);
+      const v = engine.frames('/ws', 'answer').at(-1).body.value;
+      check(v['0'] === 4 && v['1'] === 1 && v['2'] === 1, `lethal to each Memnite, 4 to the bot (${JSON.stringify(v)})`);
     },
   },
 

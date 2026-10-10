@@ -118,6 +118,17 @@
  *   All three are absent before M64–M66: a reader treats absent as "this
  *   frame does not say", never as "none".
  *
+ * 2026-10-10 — **the bridge is the rules gate for combat damage**
+ * (`docs/protocol.md` §5.2, §5.3):
+ *   M67 `assign_damage.defenderAllowed` and `assign_damage.reason` (D424): may
+ *       target 0, the defender, take damage (Forge's own rule: trample, or
+ *       "divided as you choose" with `overrideOrder`); and why the bridge
+ *       refused the last answer (`null` on a first asking — a refused answer is
+ *       never applied, the same question comes again under a new `askId`).
+ *       `targets[].lethal` is now the damage Forge's dialog counts as lethal
+ *       (deathtouch, planeswalkers and damage already assigned included).
+ *       Absent before M67. `assignDamageRuleOf` is their one reader.
+ *
  * **Every M6 field is declared optional here**, and that is not defensiveness
  * for its own sake: fifteen committed recordings predate them,
  * `web/test/render.test.tsx` folds every frame of all of them, and a required
@@ -1753,8 +1764,51 @@ export interface AssignDamageAsk extends AskBase<'assign_damage'> {
   /** Forge's own flags, passed through. */
   overrideOrder: boolean;
   maySkip: boolean;
-  /** Index 0 is the defender (`defender: true`); blockers follow with `lethal`. */
-  targets: Array<AskOption & { lethal?: number; defender?: boolean }>;
+  /**
+   * Amendment M67 (D424): may target 0, the defender, take damage. Forge's own
+   * rule, read by the bridge: the attacker has trample (and there is a
+   * defender), or it may divide its damage "as you choose" with `overrideOrder`.
+   * Absent before M67 — read it with `assignDamageRuleOf`, never as `true`.
+   */
+  defenderAllowed?: boolean;
+  /**
+   * Amendment M67: why the bridge refused the previous answer to this same
+   * question, a sentence to show the player; `null` on a first asking. Absent
+   * before M67.
+   */
+  reason?: string | null;
+  /**
+   * Index 0 is the defender (`defender: true`); blockers follow with `lethal`
+   * — since M67 the damage Forge's dialog counts as lethal for that blocker.
+   */
+  targets: Array<AskOption & { lethal?: number | null; defender?: boolean }>;
+}
+
+/** What an `assign_damage` ask says about its own rule (M67); see `assignDamageRuleOf`. */
+export interface AssignDamageRule {
+  /** May target 0 take damage: `true` / `false`, or `null` when the bridge predates M67 and does not say. */
+  defenderAllowed: boolean | null;
+  /** The bridge's refusal of the previous answer, or `null` (a first asking, or a bridge before M67). */
+  reason: string | null;
+  /** Lethal damage per target id (blockers only), as the bridge computed it. */
+  lethal: Map<number, number>;
+}
+
+/**
+ * The one reader of M67's fields. A bridge before M67 says nothing about the
+ * defender — `defenderAllowed: null`, and a client decides from the engine's
+ * own state (the attacker's `keywords`), never from arithmetic of its own.
+ */
+export function assignDamageRuleOf(ask: AssignDamageAsk): AssignDamageRule {
+  const lethal = new Map<number, number>();
+  for (const t of ask.targets) {
+    if (t.defender !== true && typeof t.lethal === 'number' && Number.isInteger(t.lethal)) lethal.set(t.id, t.lethal);
+  }
+  return {
+    defenderAllowed: typeof ask.defenderAllowed === 'boolean' ? ask.defenderAllowed : null,
+    reason: typeof ask.reason === 'string' && ask.reason !== '' ? ask.reason : null,
+    lethal,
+  };
 }
 
 /**
