@@ -7,7 +7,7 @@
  * only route; every mode keeps its own screen and behaviour.
  */
 import type { ReactNode } from 'react';
-import { CUBES } from '../cube/cubes.ts';
+import { DRAFT_CUBES } from '../cube/cubes.ts';
 
 export interface Tile {
   id: string;
@@ -35,7 +35,7 @@ export function lobbyTiles(o: { onPlay: () => void; onDraftBuild: () => void; sa
     { id: 'play', title: 'Play vs Forge', line: o.playLine ?? 'A full game against the Forge AI, the coach beside the board.', glyph: G.play, onClick: o.onPlay, primary: true },
     { id: 'draft', title: 'Draft vs AI', line: 'Booster, Winston or Grid against the cube lab’s drafter.', glyph: G.draft, onClick: () => (location.hash = '#draft') },
     { id: 'build', title: 'Draft & build', line: 'Track a paper draft; the best 40 with its reasons.', glyph: G.build, onClick: o.onDraftBuild },
-    { id: 'cube', title: 'The cubes', line: `${CUBES.length} cubes, with the lab’s numbers.`, glyph: G.cube, onClick: () => (location.hash = `#cube/${CUBES[0]?.id ?? 'synergy'}`) },
+    { id: 'cube', title: 'The cubes', line: `${DRAFT_CUBES.length} cubes, with the lab’s numbers.`, glyph: G.cube, onClick: () => (location.hash = `#cube/${DRAFT_CUBES[0]?.id ?? 'synergy'}`) },
     { id: 'review', title: 'Review a game', line: `${o.samples} recorded games, or your own frames.jsonl.`, glyph: G.review, onClick: () => scrollTo('lobby-review') },
     { id: 'practice', title: 'Practice', line: 'Puzzles from your own games: what would you do here?', glyph: G.practice, onClick: () => (location.hash = '#practice') },
     { id: 'live', title: 'Watch live', line: 'Follow a game in mtg-table’s own board, read-only.', glyph: G.live, onClick: () => scrollTo('lobby-live') },

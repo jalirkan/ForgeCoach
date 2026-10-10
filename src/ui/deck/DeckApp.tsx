@@ -12,8 +12,8 @@ import './deck.css';
 import '../forge-theme.css';
 import '../draft/draft.css';
 import './skin.css';
-import { CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';
-import { deletePool, listPools, newPool, savePool, type SavedPool } from '../../cube/pools.ts';
+import { DRAFT_CUBES, OWNED_DECKS, cubeInfo, loadCubeDoc, type CubeInfo } from '../../cube/cubes.ts';
+import { deckPool, deletePool, listPools, newPool, savePool, type SavedPool } from '../../cube/pools.ts';
 import { parseMeta } from '../../cube/meta.ts';
 import { poolColours } from '../../cube/pick.ts';
 import { colourLabel } from '../../cube/colors.ts';
@@ -59,13 +59,22 @@ export default function DeckApp({ onExit, onSettings }: { onExit: () => void; on
     setPools(listPools());
   }, []);
 
-  const create = (c: CubeInfo) => {
-    const d = new Date();
-    const p = newPool(c.id, `${c.title} · ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`);
+  const open_ = (p: SavedPool, t: Tab) => {
     savePool(p);
     setPools(listPools());
     setOpenId(p.id);
-    setTab('pool');
+    setTab(t);
+  };
+  const create = (c: CubeInfo) => {
+    const d = new Date();
+    const name = `${c.title} · ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+    if (c.kind !== 'deck') return open_(newPool(c.id, name), 'pool');
+    // A deck you own: the pool is the whole list, so it opens on the builds. If the list can't be
+    // fetched, an empty pool still opens (paste or pick the cards there).
+    loadCubeDoc(c, import.meta.env.BASE_URL).then(
+      (cube) => open_(deckPool(c.id, name, cube.cards.map((x) => x.name)), 'build'),
+      () => open_(newPool(c.id, name), 'pool'),
+    );
   };
 
   if (!open) {
@@ -129,7 +138,7 @@ function DeckHome({
         <section className="load-section">
           <h2 className="section-h">Start a draft</h2>
           <div className="cube-grid">
-            {CUBES.map((c) => (
+            {DRAFT_CUBES.map((c) => (
               <button key={c.id} className="cube-tile" onClick={() => onCreate(c)}>
                 <span className={cx('cube-art', `art-${c.accent}`)} aria-hidden="true">
                   <PipRow colors={[...c.accent]} />
@@ -149,6 +158,32 @@ function DeckHome({
             ))}
           </div>
         </section>
+
+        {OWNED_DECKS.length > 0 && (
+          <section className="load-section">
+            <h2 className="section-h">Build from a deck you own</h2>
+            <div className="cube-grid">
+              {OWNED_DECKS.map((c) => (
+                <button key={c.id} className="cube-tile" onClick={() => onCreate(c)}>
+                  <span className={cx('cube-art', `art-${c.accent}`)} aria-hidden="true">
+                    <PipRow colors={[...c.accent]} />
+                  </span>
+                  <span className="cube-body">
+                    <span className="cube-title">{c.title}</span>
+                    <span className="cube-blurb">{c.blurb}</span>
+                    <span className="cube-meta">
+                      <span>{c.size} cards</span>
+                      <span>The whole list</span>
+                    </span>
+                  </span>
+                  <span className="sample-go">
+                    <IconPlus size={18} />
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="load-section">
           <h2 className="section-h">Your pools</h2>

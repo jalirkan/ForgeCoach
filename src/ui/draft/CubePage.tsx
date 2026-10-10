@@ -73,9 +73,15 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
         </div>
         <div className="cp-side">
           {meta && <MiniCurve names={all} meta={meta} />}
-          <a className="btn-gold cp-draft" href="#draft/setup">
-            Draft this cube
-          </a>
+          {info.kind === 'deck' ? (
+            <a className="btn-gold cp-draft" href="#deck">
+              Build a 40 from it
+            </a>
+          ) : (
+            <a className="btn-gold cp-draft" href="#draft/setup">
+              Draft this cube
+            </a>
+          )}
         </div>
       </div>
 
@@ -83,9 +89,11 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
         <a href={`#cube/${info.id}`} aria-current={view === 'cards' ? 'page' : undefined}>
           Cards
         </a>
-        <a href={`#cube/${info.id}/guide`} aria-current={view === 'guide' ? 'page' : undefined}>
-          How to draft
-        </a>
+        {info.kind !== 'deck' && (
+          <a href={`#cube/${info.id}/guide`} aria-current={view === 'guide' ? 'page' : undefined}>
+            How to draft
+          </a>
+        )}
       </nav>
 
       {view === 'guide' ? (

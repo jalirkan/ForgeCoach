@@ -10,7 +10,7 @@ import { aiStep, apply, legalLines, newDraft, toAct, type GridDraft } from '../.
 import { buildPickPrompt } from '../../draft/pickPrompt.ts';
 import { buildDecks } from '../builder.ts';
 import { buildDeckPrompt } from '../deckPrompt.ts';
-import { CUBES } from '../cubes.ts';
+import { DRAFT_CUBES } from '../cubes.ts';
 import { parseMeta, type CubeMeta } from '../meta.ts';
 import { archetypeRows } from '../metaView.ts';
 import { context, loadCube, loadInfos, loadRealMeta, samplePool, type CubeId } from '../testdata/load.ts';
@@ -22,9 +22,9 @@ const doc = (id: string) => readFileSync(new URL(`../../../public/cubes/${id}-cu
 /** Cubes with no guide: Evan's list has no archetypes to write one from (its How to draft tab says so). */
 const NO_GUIDE = ['evybaby'];
 
-describe('every cube has a guide, and every card a guide names is in its cube', () => {
+describe('every drafted cube has a guide, and every card a guide names is in its cube', () => {
   it('one guide per listed cube, found by id and by the document title', () => {
-    const guided = CUBES.filter((c) => !NO_GUIDE.includes(c.id));
+    const guided = DRAFT_CUBES.filter((c) => !NO_GUIDE.includes(c.id));
     expect(GUIDES.map((g) => g.cubeId).sort()).toEqual(guided.map((c) => c.id).sort());
     for (const c of NO_GUIDE) {
       expect(guideFor(c)).toBeNull();

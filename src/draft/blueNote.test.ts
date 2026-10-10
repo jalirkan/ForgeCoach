@@ -5,11 +5,11 @@ import { join, relative } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BLUE_J111 } from './blueJ111.ts';
 import { blueCaveat, blueOverdraftLine, blueStatsFor, buildShowsPairRate, hasBlue } from './blueNote.ts';
-import { CUBES } from '../cube/cubes.ts';
+import { DRAFT_CUBES } from '../cube/cubes.ts';
 
 describe('J111 data', () => {
   it('covers every cube but Evan’s, and only real cubes', () => {
-    const ids = CUBES.map((c) => c.id);
+    const ids = DRAFT_CUBES.map((c) => c.id);
     expect(Object.keys(BLUE_J111).sort()).toEqual(ids.filter((id) => id !== 'evybaby').sort());
     expect(Object.keys(BLUE_J111)).toHaveLength(7);
   });

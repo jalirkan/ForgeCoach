@@ -6,7 +6,7 @@
  * "Compare cubes" table. Cubes marked labData: false skip the shipped fetch.
  */
 import { useEffect, useState } from 'react';
-import { CUBES, loadShippedMeta } from '../../cube/cubes.ts';
+import { DRAFT_CUBES, loadShippedMeta } from '../../cube/cubes.ts';
 import type { CompareInput } from '../../cube/flatness.ts';
 import { getImportedMeta } from '../../cube/metaStore.ts';
 
@@ -18,7 +18,7 @@ export function useAllMetas(tick: unknown): { loading: boolean; inputs: CompareI
   useEffect(() => {
     let live = true;
     Promise.all(
-      CUBES.map(async (c): Promise<CompareInput> => {
+      DRAFT_CUBES.map(async (c): Promise<CompareInput> => {
         const imported = await getImportedMeta(c.id).catch(() => null);
         if (imported) return { id: c.id, title: c.title, meta: imported, source: 'imported' };
         const shipped = c.labData === false ? null : await loadShippedMeta(c, BASE);

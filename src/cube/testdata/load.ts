@@ -8,7 +8,7 @@ import { parseMeta, type CubeMeta } from '../meta.ts';
 import { cubeInfo } from '../cubes.ts';
 import { makeContext, type CubeContext } from '../score.ts';
 
-export type CubeId = 'synergy' | 'modern-era' | 'vintage' | 'pauper' | 'omega' | 'fair-fight' | 'peasant' | 'evybaby';
+export type CubeId = 'synergy' | 'modern-era' | 'vintage' | 'pauper' | 'omega' | 'fair-fight' | 'peasant' | 'evybaby' | 'counter-blitz';
 
 /** A cube's file stem under public/cubes/, from the registry. */
 export const cubeFile = (id: CubeId): string => cubeInfo(id)?.file ?? `${id}-cube-180`;

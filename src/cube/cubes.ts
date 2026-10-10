@@ -32,6 +32,12 @@ export interface CubeInfo {
   humanData?: boolean;
   /** True when a 17Lands human pick model ships beside the document (<file>.picks.json, cube/humanPicks.ts; docs/human-picks.md). */
   humanPicks?: boolean;
+  /**
+   * 'deck': a deck the player owns (a Commander precon), not a cube: the deck assistant builds 40s
+   * from the whole list and its cube page lists it, but it is never drafted (`DRAFT_CUBES`) and has
+   * no lab data. Absent: a cube.
+   */
+  kind?: 'deck';
 }
 
 /** The crumb name: `short`, else the title without " Cube". */
@@ -48,7 +54,15 @@ export const CUBES: CubeInfo[] = [
   // Evan's own list, as he titled it (public/cubes/evybaby-cube-360.md): no themes, archetypes or guide.
   // Its lab meta (J110) drafted around the 13 cards Forge lacks; those have no lab numbers (meta.ts).
   { id: 'evybaby', file: 'evybaby-cube-360', title: "Evybaby's New Cube", short: 'Evybaby', size: 360, blurb: 'Evan’s cube: 360 cards, Avatar to Middle-earth to pizza, with shocks, surveil lands and fetches.', accent: 'WUBRG', humanPicks: true },
+  // Justin's Final Fantasy X Commander deck (public/cubes/counter-blitz-fic.md): its 88 cards that work outside Commander, basics aside.
+  { id: 'counter-blitz', file: 'counter-blitz-fic', title: 'Counter Blitz', size: 88, blurb: 'Your Final Fantasy X Commander deck: +1/+1 counters in green, white and blue. Build 40s from it.', accent: 'WUG', labData: false, kind: 'deck' },
 ];
+
+/** The cubes that can be drafted (Draft vs AI, with a friend, the lab's pages): every entry but a deck. */
+export const DRAFT_CUBES: CubeInfo[] = CUBES.filter((c) => c.kind !== 'deck');
+
+/** The decks the player owns, to build from whole (the deck assistant). */
+export const OWNED_DECKS: CubeInfo[] = CUBES.filter((c) => c.kind === 'deck');
 
 export function cubeInfo(id: string): CubeInfo | undefined {
   return CUBES.find((c) => c.id === id);
