@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { aiFlagsFromDoc } from '../draft/aiFlags.ts';
 import { labCards } from '../draft/cards.ts';
-import { forForge, matchDeck } from '../draft/deck.ts';
+import { FORGE_SIDEBOARD_MAX, forForge, matchDeck } from '../draft/deck.ts';
 import { newDraft, selfPlay, type BoosterDraft, type GridDraft, type WinstonDraft } from '../draft/draft.ts';
 import { guideFor } from './guides/index.ts';
 import { buildDecks } from './builder.ts';
@@ -164,5 +164,14 @@ describe('cards Forge has no script for (draft/deck.ts forForge)', () => {
     expect(forForge(d, missing)).toEqual({ deck: { ...d, sideboard: [[1, 'Opt']] }, blocked: ['Twisted Fates'] });
     expect(forForge(d, undefined)).toEqual({ deck: d, blocked: [] });
     expect(forForge(d, [])).toEqual({ deck: d, blocked: [] });
+  });
+
+  it("the engine's sideboard stops at Forge's 15 (more and it asks again between games, forever)", () => {
+    const side = names.slice(0, 40).map((n) => [1, n] as [number, string]);
+    const d = { name: 'Justin', main: [[23, 'Opt'], [17, 'Mountain']] as Array<[number, string]>, sideboard: [[3, 'Island'], ...side] as Array<[number, string]> };
+    const got = forForge(d, undefined).deck.sideboard!;
+    expect(got.reduce((s, [n]) => s + n, 0)).toBe(FORGE_SIDEBOARD_MAX);
+    expect(got.slice(0, 2)).toEqual([[3, 'Island'], side[0]]);
+    expect(forForge(d, undefined).deck.main).toBe(d.main);
   });
 });
