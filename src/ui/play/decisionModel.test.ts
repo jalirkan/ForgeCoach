@@ -188,6 +188,30 @@ describe('the slot’s buttons and their keys', () => {
   });
 });
 
+describe('declaring blockers', () => {
+  const BLOCK = 'Select creatures to block Bird Token (91) or select another attacker to declare blockers for.';
+  const view = (inp: InputBody) => describeInput(inp, state({ activePlayer: OPP }), ME);
+  const blockView = (ok: boolean) => view({ ...input(BLOCK, ok, false), buttons: { ok: { label: 'OK', enabled: ok }, cancel: { label: 'Cancel', enabled: false } } });
+  it('the instruction is the engine’s flow, beside the count', () => {
+    const v = blockView(true);
+    const sel = selectionSummary(v, { attackers: 0, blockers: 2 });
+    expect(sel.count).toBe(2);
+    expect(sel.line).toBe('Click an attacker, then your creature that blocks it. Click another attacker to switch. Click a blocker again, or its ×, to take it off.');
+    expect(v.blockingAttackerId).toBe(91);
+  });
+  it('Confirm follows the engine’s ok.enabled exactly; the engine’s Cancel is off here, so there is no second button', () => {
+    const on = slotButtons(blockView(true), selectionSummary(blockView(true), { attackers: 0, blockers: 1 }), { canUndo: false, undoDepth: 0, wide: true });
+    expect(on).toEqual([expect.objectContaining({ id: 'primary', which: 'ok', words: 'Confirm blocks', kbd: 'Space', enabled: true })]);
+    const off = slotButtons(blockView(false), selectionSummary(blockView(false), { attackers: 0, blockers: 0 }), { canUndo: false, undoDepth: 0, wide: true });
+    expect(off[0]).toMatchObject({ which: 'ok', enabled: false });
+  });
+  it('an enabled Cancel in a block declaration is shown, not hidden ([Esc])', () => {
+    const v = view({ ...input(BLOCK, true, true), buttons: { ok: { label: 'OK', enabled: true }, cancel: { label: 'Reset', enabled: true } } });
+    const b = slotButtons(v, selectionSummary(v, { attackers: 0, blockers: 1 }), { canUndo: false, undoDepth: 0, wide: true });
+    expect(b.find((x) => x.id === 'other')).toMatchObject({ which: 'cancel', kbd: 'Esc', enabled: true });
+  });
+});
+
 describe('auto-pass toggles', () => {
   const y = (kind: YieldState['kind'], phase: string | null, playerId: number | null): YieldState => ({ kind, phase, playerId });
   it('are lit from state.yield: end of turn, before my turn (the opponent’s end step), my next turn, the stack', () => {

@@ -53,8 +53,8 @@ import { ZonePickPanel } from './ZonePickPanel.tsx';
 import { StackPanel } from '../StackPanel.tsx';
 import { stackEntries } from '../stackModel.ts';
 import { zonePick } from './zonePick.ts';
-import { CombatArrows } from './CombatArrows.tsx';
-import { combatLinks, combatMarks } from './combatLines.ts';
+import { combatMarks } from './combatLines.ts';
+import { attackRefusal, blockRefusal, clickAttacker, clickBlocker, takeOff, type BlockPlan } from './blockPlan.ts';
 import { selectionSummary, wireChoice } from './selection.ts';
 import { matchBox, tableMatchLine, type MatchBox } from '../../play/match.ts';
 import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
@@ -179,7 +179,14 @@ export function PlayView({
     if (seenNotice.current === id) return;
     seenNotice.current = id;
     if (lastNotice.level === 'info' && lastNotice.source === 'engine') return;
-    setFlash(noticeLine(lastNotice.title, lastNotice.text, snap.state));
+    // A block the engine refused: say why in the game's terms, never "cannot be selected now".
+    const refused =
+      view.mode === 'block'
+        ? blockRefusal(lastNotice.title, lastNotice.text, snap.state, blockTry.current, view.blockingAttackerId, seat)
+        : view.mode === 'attack'
+          ? attackRefusal(lastNotice.title, lastNotice.text, snap.state, seat)
+          : null;
+    setFlash(refused ?? noticeLine(lastNotice.title, lastNotice.text, snap.state));
     // Only a new notice flashes; the state it names cards from is read as of then.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastNotice]);
@@ -235,6 +242,20 @@ export function PlayView({
     (c: AnyCard) => !isHidden(c) && (c as Card).controller === seat && (c as Card).zone === 'battlefield' && /creature/i.test((c as Card).types ?? ''),
     [seat],
   );
+  // The blocks chosen so far (the engine's M65 word, else this browser's clicks), read by the
+  // block clicks below; the wire choice itself is worked out further down.
+  const blocksRef = useRef<ReadonlyMap<number, number | null>>(new Map());
+  /** The last block a click tried, to word the engine's refusal in the game's terms. */
+  const blockTry = useRef<{ blocker: number; attacker: number } | null>(null);
+  /** Send a block plan's clicks, in order: each one is the engine's own `clickCard`. */
+  const sendBlockPlan = useCallback(
+    (plan: BlockPlan) => {
+      blockTry.current = plan.tries;
+      setChosenBlk(plan.next);
+      for (const id of plan.clicks) act({ action: 'clickCard', cardId: id });
+    },
+    [act],
+  );
   const clickCard = useCallback(
     (c: AnyCard) => {
       if (view.mode === 'attack' && isMyCreature(c)) {
@@ -245,19 +266,20 @@ export function PlayView({
           return n;
         });
       } else if (view.mode === 'block' && isMyCreature(c)) {
-        // Forge's InputBlock: a click on a creature already blocking the current attacker takes the block
-        // back; on a free creature it blocks the current attacker; on one blocking another attacker it does nothing.
-        setChosenBlk((m) => {
-          const n = new Map(m);
-          const now = view.blockingAttackerId;
-          if (!n.has(c.id)) n.set(c.id, now);
-          else if (n.get(c.id) === now || now === null) n.delete(c.id);
-          return n;
-        });
+        // Forge's InputBlock (blockPlan.ts): a click blocks the named attacker or takes that block off;
+        // a creature blocking another attacker is moved to the named one through the engine's clicks.
+        return sendBlockPlan(clickBlocker(c.id, view.blockingAttackerId, blocksRef.current));
+      } else if (view.mode === 'block' && !isHidden(c) && (c as Card).attacking) {
+        return sendBlockPlan(clickAttacker(c.id, blocksRef.current));
       }
       act({ action: 'clickCard', cardId: c.id });
     },
-    [view.mode, view.blockingAttackerId, isMyCreature, act],
+    [view.mode, view.blockingAttackerId, isMyCreature, act, sendBlockPlan],
+  );
+  /** The × on a declared blocker: its block comes off through the engine's clicks. */
+  const unblock = useCallback(
+    (blockerId: number) => sendBlockPlan(takeOff(blockerId, view.blockingAttackerId, blocksRef.current)),
+    [view.blockingAttackerId, sendBlockPlan],
   );
   const alphaStrike = useCallback(() => {
     const me = state?.players.find((p) => p.id === seat);
@@ -283,15 +305,12 @@ export function PlayView({
   const wire = useMemo(() => wireChoice(chosenOf(input), view.mode), [input, view.mode]);
   const atkNow = wire && view.mode === 'attack' ? wire.attackers : chosenAtk;
   const blkNow = wire && view.mode === 'block' ? wire.blockers : chosenBlk;
+  blocksRef.current = blkNow;
 
   // ---- the selection under way (dims the rest of the board) and the combat lines
   const selection = useMemo(() => selectionSummary(view, { attackers: atkNow.size, blockers: blkNow.size }), [view, atkNow, blkNow]);
   // Cards the engine wants clicked that the board has no tile for (a graveyard target): their own panel.
   const offBoard = useMemo(() => (ask || over ? null : zonePick(input, state, seat, view.mode)), [ask, over, input, state, seat, view.mode]);
-  const links = useMemo(
-    () => combatLinks(state, view.mode === 'block' ? blkNow : undefined, view.mode === 'attack' ? wire?.attacks : undefined),
-    [state, view.mode, blkNow, wire],
-  );
   // Every attacker and its blockers share a number on the board (endstep-style), clicks not yet confirmed included.
   const pairs = useMemo(
     () =>
@@ -325,8 +344,9 @@ export function PlayView({
       clickPlayer: (id: number) => {
         if (playerClickable(ctx, id)) act({ action: 'clickPlayer', playerId: id });
       },
+      unblock: view.mode === 'block' && view.ok.enabled ? unblock : undefined,
     }),
-    [ctx, affordable, act, clickCard, atkNow, blkNow, wire],
+    [ctx, affordable, act, clickCard, atkNow, blkNow, wire, view.mode, view.ok.enabled, unblock],
   );
 
   // ---- details / hover
@@ -420,7 +440,7 @@ export function PlayView({
             ? q('.player-me .battlefield')
             : view.mode === 'pay'
               ? q('.player-me .bf-chips') ?? q('.player-me .battlefield')
-              : q('.combat-panel') ?? q('.player-me .battlefield');
+              : q('.combat-lane') ?? q('.player-me .battlefield');
       el?.scrollIntoView({ block: view.mode === 'attack' ? 'start' : 'center', behavior: 'smooth' });
     }, 60);
     return () => clearTimeout(t);
@@ -580,7 +600,6 @@ export function PlayView({
         combatMarks={pairs}
         overlay={
           <>
-            <CombatArrows links={links} version={state} />
             <BoardScenery log={log} frameIndex={Math.max(0, frameIndex)} seat={seat} />
             <OppWaitingLine line={attention.line} />
           </>

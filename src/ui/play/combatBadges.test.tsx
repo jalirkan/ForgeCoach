@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The pair badges on the board ("you can't tell who you're blocking"): the
- * attacker and its blocker carry the same number, the attacker a block click
- * goes to is marked, and the combat strip numbers its rows to match.
+ * attacker and its blocker carry the same number (the blocker also sits in
+ * front of it, combatLayout.ts), and the attacker a block click goes to is
+ * marked.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';

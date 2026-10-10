@@ -478,7 +478,10 @@ export function cardRole(card: AnyCard, ctx: ClickContext): CardRole {
       if (mine && zone === 'battlefield' && !c.tapped) return 'act';
       return null;
     case 'attack':
-      if (mine && zone === 'battlefield' && isCreature(c) && (!c.tapped || c.attacking)) return 'act';
+      // The engine's own flag: a creature that came under your control this turn (the "Zz" mark,
+      // `sick`) is never outlined as an attacker unless the wire lists haste; one already attacking stays
+      // clickable so the click can call it back.
+      if (mine && zone === 'battlefield' && isCreature(c) && (c.attacking || (!c.tapped && (!c.sick || keywordsOf(c).includes('HASTE'))))) return 'act';
       // Choosing a defender: an opposing planeswalker or battle.
       if (!mine && zone === 'battlefield' && /planeswalker|battle/i.test(c.types ?? '')) return 'act';
       return null;

@@ -28,14 +28,15 @@ describe('selectionSummary', () => {
     expect(selectionSummary(v, none)).toEqual({ active: false, count: null, line: null, confirm: null });
   });
 
-  it('words a block: No blocks until one is assigned, then a live count', () => {
+  it('words a block: the engine’s flow (attacker first, then the creature; switch; take off), No blocks until one is assigned, then a live count', () => {
     const v = describeInput(input('Select creatures to block Soldier Token (91) or select another attacker to declare blockers for.'), null, 0);
     expect(v.mode).toBe('block');
+    const how = 'Click an attacker, then your creature that blocks it. Click another attacker to switch. Click a blocker again, or its ×, to take it off.';
     const zero = selectionSummary(v, none);
-    expect(zero).toMatchObject({ active: true, count: 0, confirm: 'No blocks' });
+    expect(zero).toMatchObject({ active: true, count: 0, confirm: 'No blocks', line: how });
     const two = selectionSummary(v, { attackers: 0, blockers: 2 });
-    expect(two).toMatchObject({ count: 2, confirm: 'Confirm blocks', line: '2 blockers assigned — same number = who blocks whom' });
-    expect(selectionSummary(v, { attackers: 0, blockers: 1 }).line).toBe('1 blocker assigned — same number = who blocks whom');
+    expect(two).toMatchObject({ count: 2, confirm: 'Confirm blocks', line: how });
+    expect(two.line).not.toMatch(/same number/);
   });
 
   it('counts attackers', () => {

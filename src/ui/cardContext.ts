@@ -53,6 +53,11 @@ export interface PlayInteraction {
   /** Whether this player is already chosen in the open input (M65); absent: never. */
   playerChosen?(playerId: number): boolean;
   clickPlayer(playerId: number): void;
+  /**
+   * Take a declared blocker off (the × on a blocker in the block lane), through
+   * the engine's own clicks; absent outside a block declaration.
+   */
+  unblock?(blockerId: number): void;
 }
 export const PlayContext = createContext<PlayInteraction | null>(null);
 export const usePlay = () => useContext(PlayContext);
@@ -72,6 +77,10 @@ export interface CardCombatMark {
   role: 'attacker' | 'blocker';
   pending: boolean;
   current: boolean;
+  /** A blocker's attacker (the combat lane places it in front of that card). */
+  attackerId?: number | null;
+  /** What an attacker attacks, when the wire says. */
+  defender?: { kind: 'player' | 'card'; id: number } | null;
 }
 export interface BoardMarks {
   stack: ReadonlyMap<number, CardStackMarks>;

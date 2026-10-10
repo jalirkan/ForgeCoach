@@ -13,7 +13,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import type { AnyCard, Card } from '../protocol.ts';
 import { isHidden } from '../protocol.ts';
-import type { CardInfo } from '../cards.ts';
+import { imageForCard, type CardInfo } from '../cards.ts';
 import { useCardInfo, useTileCardInfo } from './cardData.ts';
 import { createLongPress, pressBuzz, pressTimers } from './longPress.ts';
 import { useBoardMarks, useBoardStateRef, useCardActions, usePlay, type CardStackMarks, type PlayInteraction, type PlayMark } from './cardContext.ts';
@@ -171,8 +171,7 @@ function ptClass(now: string | null, printed: string | undefined): '' | 'up' | '
 
 /** Image URLs for a visible, face-up card (none for face-down cards). */
 function imageOf(card: Card, info: CardInfo | undefined): { src: string; srcSet?: string } | null {
-  if (!card.name || card.faceDown || !info?.found) return null;
-  const img = info.image;
+  const img = imageForCard(info, card);
   if (!img) return null;
   const src = img.normal ?? img.small ?? img.large;
   if (!src) return null;
@@ -197,7 +196,7 @@ export function CardFace({ card, info, kind, eager }: { card: Card; info: CardIn
   const img = imageOf(card, info);
   const [state, setState] = useState<{ src: string; ok: boolean | null } | null>(null);
   const status = state && img && state.src === img.src ? state.ok : null;
-  const art = info?.image?.artCrop;
+  const art = imageForCard(info, card)?.artCrop;
   // A token with no art (yet, or ever) is a compact translucent label, not a card-coloured box.
   const placeholderToken = card.token && !card.faceDown && status !== true;
   return (

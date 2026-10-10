@@ -138,6 +138,42 @@ function mapImages(i: SfImages | undefined): CardImages | undefined {
   return Object.keys(out).length ? out : undefined;
 }
 
+/**
+ * The images of the face a card is showing, by the name the wire gives it.
+ *
+ * The wire's `name` is the CURRENT face (Forge's getCurrentState: a transformed
+ * card, or one returned by disturb, names its back face), and Scryfall keeps one
+ * `image_uris` per face on a double-faced card with none on the card itself, so
+ * `info.image` alone is always the front. Matches a face by name (case,
+ * diacritics and Forge's "/" vs "//" spelling ignored; a "A // B" name also tries
+ * each half), then falls back to the first face that has an image, then the
+ * card's own image. A card with no per-face images (a normal, split, adventure,
+ * or meld card) comes out as `info.image`, as before. Never infers anything: it
+ * only reads the name it is given.
+ */
+export function imageForFace(info: CardInfo | undefined, faceName: string | null | undefined): CardImages | undefined {
+  if (!info) return undefined;
+  const faces = info.faces ?? [];
+  if (faceName && faces.some((f) => f.image)) {
+    const full = cleanCardName(faceName);
+    const wanted = [full, ...(full.includes(' // ') ? full.split(' // ') : [])].map(keyOf);
+    for (const w of wanted) {
+      const hit = faces.find((f) => f.image && keyOf(f.name) === w);
+      if (hit) return hit.image;
+    }
+  }
+  return faces.find((f) => f.image)?.image ?? info.image;
+}
+
+/**
+ * What a card on the table draws: its current face's images, or none for a
+ * face-down card (its face is never shown from here, whatever `alt` carries).
+ */
+export function imageForCard(info: CardInfo | undefined, card: { name: string; faceDown: boolean }): CardImages | undefined {
+  if (!card.name || card.faceDown || !info?.found) return undefined;
+  return imageForFace(info, card.name);
+}
+
 export function emptyCard(name: string): CardInfo {
   return { name, found: false, manaCost: '', typeLine: '', oracleText: '', producedMana: [], colors: [] };
 }
