@@ -29,6 +29,7 @@
  */
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import type { GameStateBody, SetYieldMode } from '../protocol.ts';
+import { imageForFace } from '../cards.ts';
 import { useCardInfo } from './cardData.ts';
 import { useCardActions } from './cardContext.ts';
 import { IconCheck, IconChevronDown, IconFastForward, IconLayers, TypeGlyph } from './Icons.tsx';
@@ -100,7 +101,7 @@ function StackRow({ entry: e, state }: { entry: StackEntry; state: GameStateBody
   const info = useCardInfo(e.name);
   const actions = useCardActions();
   const [wide, setWide] = useState(false);
-  const art = e.name ? info?.image?.artCrop ?? info?.faces?.[0]?.image?.artCrop : undefined;
+  const art = e.name ? imageForFace(info, e.name)?.artCrop : undefined;
   const text = stackText(e);
   const kind = typeKind(e.source?.types || info?.typeLine);
   return (
@@ -161,7 +162,7 @@ function StackRow({ entry: e, state }: { entry: StackEntry; state: GameStateBody
 function SourceArt({ entry: e, state, className }: { entry: StackEntry; state: GameStateBody; className: string }) {
   const info = useCardInfo(e.name);
   const actions = useCardActions();
-  const art = e.name ? info?.image?.artCrop ?? info?.faces?.[0]?.image?.artCrop : undefined;
+  const art = e.name ? imageForFace(info, e.name)?.artCrop : undefined;
   const kind = typeKind(e.source?.types || info?.typeLine);
   return (
     <button
