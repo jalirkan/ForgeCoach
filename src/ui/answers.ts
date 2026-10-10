@@ -7,7 +7,7 @@
  * whatever the store has for the selected key.
  */
 import { useSyncExternalStore } from 'react';
-import { askClaude, liveModelOf, liveThinkingOf, loadSettings, type AskPrompt, type CoachResult, type Settings, type StreamHandlers } from '../claude.ts';
+import { askClaude, liveModelOf, liveThinkingOf, loadSettings, planThinkingOf, type AskPrompt, type CoachResult, type Settings, type StreamHandlers } from '../claude.ts';
 import { askHelper, chooseSource, detectHelper, helperFresh, helperThinking, pageHelperTarget, peekHelper, type ActiveSource, type SourceNeed } from '../coachHelper.ts';
 
 /** 'queued': the coach helper has it in line behind another question (D325). */
@@ -240,9 +240,12 @@ export interface StartOptions {
    * unless the player chose one) and, for the short style, live thinking
    * (`liveThinkingOf`: Off, the lowest, unless Coach thinking is set to Low or Off).
    * 'detailed' (Settings → Coach style: Detailed): the live model, with Coach
-   * thinking as set. Other screens keep Settings → Model and Coach thinking.
+   * thinking as set. 'plan' (plan mode, mtg-table D419): the live model with low
+   * thinking (`planThinkingOf`; Off when Coach thinking says Off), and effort low
+   * for the API key — the setting the LLM seat was tested with. Other screens
+   * keep Settings → Model and Coach thinking.
    */
-  live?: 'short' | 'detailed';
+  live?: 'plan' | 'short' | 'detailed';
 }
 
 const THINKING_ORDER = { off: 0, low: 1, default: 2 } as const;
@@ -282,7 +285,7 @@ export async function startAnswer(key: string, makePrompt: () => Promise<AskProm
     return;
   }
   // D346: a thinking cap goes only to a helper that lists it, so learn what it lists first.
-  const setThinking = opts.live === 'short' ? liveThinkingOf(settings) : (settings.coachThinking ?? 'default');
+  const setThinking = opts.live === 'short' ? liveThinkingOf(settings) : opts.live === 'plan' ? planThinkingOf(settings) : (settings.coachThinking ?? 'default');
   const model = opts.live ? liveModelOf(settings) : settings.model;
   const wantThinking = opts.thinkingCap && THINKING_ORDER[opts.thinkingCap] < THINKING_ORDER[setThinking] ? opts.thinkingCap : setThinking;
   if (source === 'helper' && wantThinking !== 'default' && !(helper?.state === 'ok' && helperFresh())) {
@@ -339,7 +342,7 @@ export async function startAnswer(key: string, makePrompt: () => Promise<AskProm
               if (!ctrl.signal.aborted) own({ status: 'streaming', queuePosition: null, thinkingSince: answers.get(key)?.text ? null : now() });
             },
           })
-        : await askClaude(prompt, handlers, { signal: ctrl.signal, settings: model === settings.model ? settings : { ...settings, model } });
+        : await askClaude(prompt, handlers, { signal: ctrl.signal, settings: model === settings.model ? settings : { ...settings, model }, ...(opts.live === 'plan' ? { effort: 'low' as const } : {}) });
     own({
       status: 'done',
       text: res.text || answers.get(key)?.text || '',
@@ -374,7 +377,7 @@ function safeSettings(): Settings {
   try {
     return loadSettings();
   } catch {
-    return { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'short' };
+    return { apiKey: '', model: 'claude-opus-5-5', coachSource: 'auto', answerFirst: false, coachThinking: 'default', coachStyle: 'plan' };
   }
 }
 
