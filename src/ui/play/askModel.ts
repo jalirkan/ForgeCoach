@@ -504,7 +504,9 @@ export function skipAction(ask: AskBody): SkipAction | null {
     case 'manipulate_list':
       return { label: 'Keep order', value: defaultAnswer(ask), title: 'Leave the cards as they are' };
     case 'sideboard':
-      return { label: 'Keep deck', value: null, title: 'No sideboarding — play the same deck' };
+      // The same deck, sent as its own indices: the bridge turns a null answer
+      // into an empty deck, which Forge's deck-size check refuses and asks again.
+      return { label: 'Keep deck', value: range(ask.main.length), title: 'No sideboarding — play the same deck' };
     case 'assign_damage':
       return { label: 'Auto-assign', value: null, title: 'Let the engine assign the damage' };
     case 'assign_amount':
