@@ -146,7 +146,7 @@ describe('detectHelper', () => {
     const tunnelTarget = { baseUrl: 'http://127.0.0.1:8643', token: null, tunnel: true as const };
     const none = await detectHelper({ fetch: fakeFetch(() => Promise.reject(new TypeError('Failed to fetch'))).f, target: tunnelTarget, force: true });
     expect(none).toMatchObject({ state: 'down', reason: 'not_running' });
-    expect(none.state === 'down' && none.message).toMatch(/Cloudflare tunnel.*own Anthropic API key in Settings.*own mtg-table coach helper/);
+    expect(none.state === 'down' && none.message).toMatch(/Cloudflare tunnel.*own Anthropic API key in Settings.*own mtg-table \(its coach helper\)/);
     const refused = await detectHelper({ fetch: fakeFetch(() => json({ type: 'error', message: 'origin not allowed' }, 403)).f, target: tunnelTarget, force: true });
     expect(refused).toMatchObject({ state: 'down', reason: 'unauthorized' });
     expect(refused.state === 'down' && refused.message).toMatch(/wsAllowedOrigins/);

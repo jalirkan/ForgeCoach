@@ -292,7 +292,7 @@ export function pickFilm(input: FilmInput): Film {
   const { log, decisions } = input;
   const ev = input.evalPoints ?? null;
   if (ev && ev.length >= 2) return { source: 'eval', moments: turningPoints(decisions, ev, 'eval'), note: null };
-  const missing = input.evalMissing ?? 'No win chance: the coach helper has no evaluator model.';
+  const missing = input.evalMissing ?? 'No win chance: the engine on your PC has no win-chance model.';
   if (input.report) {
     const rm = reviewMoments(log, decisions, input.report);
     if (rm.length) return { source: 'review', moments: rm, note: missing };

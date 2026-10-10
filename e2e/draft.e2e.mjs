@@ -26,7 +26,7 @@
  * With a helper that can wake a sleeping engine (D308: /health `engine_start:
  * 1`), and an engine it started itself, it also lets the engine fall asleep
  * twice (the bridge's --idle-timeout, IDLE_TIMEOUT seconds with no seat):
- * before Play vs Forge, which must POST /engine/start and reach the table,
+ * before Play vs Bot, which must POST /engine/start and reach the table,
  * and before Begin the duel, whose set-up must say the engine sleeps and
  * whose POST /match must wake it.
  *
@@ -263,26 +263,26 @@ async function main() {
     u.searchParams.set('seat', SEAT_URL);
     u.searchParams.set('coach', COACH_URL);
     log(`app ${u}  seed ${SEED}`);
-    // ---- D308: Play vs Forge wakes a sleeping engine, then takes the seat
+    // ---- D308: Play vs Bot wakes a sleeping engine, then takes the seat
     if (wake) {
       await waitAsleep();
       await page.goto(u.toString());
       const wakeReq = page.waitForResponse((r) => r.url() === `${COACH_URL}/engine/start` && r.request().method() === 'POST', { timeout: 240_000 });
-      await page.locator('.lobby-tile', { hasText: 'Play vs Forge' }).click();
+      await page.locator('.lobby-tile', { hasText: 'Play vs Bot' }).click();
       await page.getByText('Waking the engine…').first().waitFor({ timeout: 15_000 });
       await page.screenshot({ path: path.join(OUT, 'draft-0-waking.png') });
       const wr = await wakeReq;
       const wb = await wr.json().catch(() => ({}));
       if (wr.status() !== 200 || wb.ok !== true) throw new Fail(`POST /engine/start → ${wr.status()}: ${JSON.stringify(wb)}`);
-      log(`Play vs Forge: POST /engine/start → 200 (already ${wb.already}, ${wb.ms ?? '?'} ms)`);
+      log(`Play vs Bot: POST /engine/start → 200 (already ${wb.already}, ${wb.ms ?? '?'} ms)`);
       const h0 = await waitFrame(frames, 0, (f) => f.type === 'hello_ok', 120_000);
-      if (!h0) throw new Fail('no hello_ok after waking the engine for Play vs Forge');
-      log(`Play vs Forge took the seat: gameId ${h0.body.gameId}`);
+      if (!h0) throw new Fail('no hello_ok after waking the engine for Play vs Bot');
+      log(`Play vs Bot took the seat: gameId ${h0.body.gameId}`);
     }
     await page.goto(u.toString());
 
-    // ---- the lobby → Draft vs AI
-    await page.locator('.lobby-tile', { hasText: 'Draft vs AI' }).click();
+    // ---- the lobby → Draft vs Bot
+    await page.locator('.lobby-tile', { hasText: 'Draft vs Bot' }).click();
     await page.getByRole('radio', { name: 'Grid' }).click();
     await page.locator('.adv-toggle').click();
     await page.getByRole('radiogroup', { name: 'First pick' }).getByRole('radio', { name: 'You' }).click();

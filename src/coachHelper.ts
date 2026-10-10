@@ -263,14 +263,14 @@ export function forgetHelper(baseUrl?: string): void {
   else cache.clear();
 }
 
-const NOT_RUNNING = 'The coach helper isn’t running. Start `./scripts/play.sh` in mtg-table (it starts the helper), with Claude Code installed and logged in.';
+const NOT_RUNNING = 'Claude Code on your PC isn’t reachable. Start ForgeCoach on your PC (the app-menu launcher, or `./scripts/play.sh` in mtg-table) with Claude Code installed and logged in.';
 
 /** mtg-table D408: what a friend on a tunnel page needs for a coach. */
 export function tunnelCoachMessage(host: string | null = null): string {
   const page = host ? `https://${host}` : 'this page’s address';
   return 'This page comes through your friend’s Cloudflare tunnel, so the coach can’t use their computer. '
     + 'To get advice, add your own Anthropic API key in Settings (coach source: API key), '
-    + `or run your own mtg-table coach helper on this computer with ${page} in its config.json wsAllowedOrigins.`;
+    + `or run your own mtg-table (its coach helper) on this computer with ${page} in its config.json wsAllowedOrigins.`;
 }
 
 function tunnelHost(): string | null {
@@ -368,9 +368,9 @@ function helperQueue(q: unknown): HelperQueue | null {
 /** Why the helper turned this page away (403): its address (Origin) or the pairing token. */
 export function refusedMessage(raw: string): string {
   if (/origin/i.test(raw)) {
-    return 'The coach helper doesn’t accept requests from this page’s address. Add it to `wsAllowedOrigins` in mtg-table’s config.json, or open ForgeCoach from an allowed address.';
+    return 'The engine on your PC doesn’t accept requests from this page’s address. Add it to `wsAllowedOrigins` in mtg-table’s config.json, or open ForgeCoach from an allowed address.';
   }
-  return 'The coach helper refused this page (pairing token missing or wrong). Open the link `play.sh` printed.';
+  return 'The engine on your PC refused this page (its pairing token is missing or wrong). Open the link `play.sh` printed.';
 }
 
 /** A helper-reported problem in words the player can act on. */
@@ -380,7 +380,7 @@ export function helperProblem(raw: string): string {
     return 'Claude Code on your PC isn’t logged in. Run `claude` in a terminal and log in, then try again.';
   }
   if (/not found|ENOENT|no such file|not installed|command not found/i.test(msg)) {
-    return 'The coach helper can’t find Claude Code on your PC. Install Claude Code and log in, then restart `./scripts/play.sh`.';
+    return 'Claude Code isn’t installed on your PC (or can’t be found). Install it and log in, then start ForgeCoach again.';
   }
   if (/usage limit|rate limit|quota/i.test(msg)) return `Claude Code hit a usage limit: ${msg}`;
   return msg ? `Claude Code on your PC couldn’t answer: ${msg}` : 'Claude Code on your PC couldn’t answer.';
@@ -418,7 +418,7 @@ export interface AskHelperOptions {
 }
 
 /** A helper from before D362 has no /vision. */
-const NO_VISION = 'This coach helper can’t read photos yet. Update mtg-table (it added photo reading in D362) and restart `./scripts/play.sh`, or add an Anthropic API key in Settings.';
+const NO_VISION = 'Your mtg-table is too old to read photos. Update it and start ForgeCoach again, or add an Anthropic API key in Settings.';
 
 /**
  * Streams the coach's answer from Claude Code on the player's PC. With
@@ -469,11 +469,11 @@ export async function askHelper(prompt: AskPrompt, h: StreamHandlers, opts: AskH
     }
     if (res.status === 429) throw new CoachError(BUSY, 'helper_busy', 429);
     if (images && res.status === 404) throw new CoachError(NO_VISION, 'not_found', 404);
-    if (images && res.status === 413) throw new CoachError('The photos are too large for the coach helper. Send fewer at a time.', 'bad_request', 413);
+    if (images && res.status === 413) throw new CoachError('The photos are too large to send in one go. Send fewer at a time.', 'bad_request', 413);
     if (res.status === 401 || res.status === 403) throw new CoachError(refusedMessage(msg), 'auth', res.status);
     throw new CoachError(helperProblem(msg || `HTTP ${res.status}`), res.status >= 500 ? 'server' : 'unknown', res.status);
   }
-  if (!res.body) throw new CoachError('The coach helper sent an empty reply.', 'server');
+  if (!res.body) throw new CoachError('Claude Code on your PC sent an empty reply. Try again.', 'server');
 
   let text = '';
   let end: { stopReason: string | null; model: string } | null = null;
@@ -530,10 +530,10 @@ export async function askHelper(prompt: AskPrompt, h: StreamHandlers, opts: AskH
       throw e;
     }
     if (opts.signal?.aborted || (e instanceof Error && e.name === 'AbortError')) throw aborted();
-    throw new CoachError('The connection to the coach helper broke mid-answer. Try again.', 'network');
+    throw new CoachError('The connection to Claude Code on your PC broke mid-answer. Try again.', 'network');
   }
   if (opts.signal?.aborted) throw aborted();
-  if (!end) throw new CoachError('The coach helper stopped mid-answer. Try again.', 'server');
+  if (!end) throw new CoachError('Claude Code on your PC stopped mid-answer. Try again.', 'server');
   const { stopReason, model: answeredBy } = end as { stopReason: string | null; model: string };
   return { text, stopReason, refused: stopReason === 'refusal', model: answeredBy };
 }

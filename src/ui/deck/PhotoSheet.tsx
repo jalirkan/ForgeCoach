@@ -173,12 +173,12 @@ export function PhotoSheet({ open, onClose, ctx, pool, onChange }: { open: boole
 
   const sourceLine =
     source === 'helper'
-      ? 'Read by Claude Code on your PC (mtg-table’s coach helper).'
+      ? 'Read by Claude Code on your PC.'
       : source === 'apiKey'
         ? 'Read by Claude with your API key (sent straight to api.anthropic.com).'
         : checking
-          ? 'Looking for the coach helper…'
-          : 'Nothing can read photos yet: start `./scripts/play.sh` in mtg-table, or add an API key in Settings.';
+          ? 'Looking for Claude Code on your PC…'
+          : 'Nothing can read photos yet: start ForgeCoach on your PC with Claude Code logged in, or add an API key in Settings.';
 
   const footer =
     stage === 'review' && model && plan ? (

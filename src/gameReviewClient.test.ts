@@ -108,7 +108,7 @@ describe('startReview', () => {
   it('handles an unreachable helper and nonsense answers', async () => {
     const down = await startReview(local, { gameId: 'g' }, scripted([new TypeError('Failed to fetch')]).f);
     expect(down).toMatchObject({ ok: false, status: 0 });
-    expect(!down.ok && down.message).toMatch(/Couldn’t reach the coach helper/);
+    expect(!down.ok && down.message).toMatch(/Couldn’t reach the engine on your PC/);
     const noId = await startReview(local, { gameId: 'g' }, scripted([{ status: 202, body: { ok: true, id: '../x' } }]).f);
     expect(!noId.ok && noId.message).toMatch(/no usable id/);
     const arr = await startReview(local, { gameId: 'g' }, scripted([{ status: 202, body: [1, 2] }]).f);

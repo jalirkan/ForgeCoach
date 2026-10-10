@@ -7,7 +7,7 @@
  * NDJSON `text` lines and a `done`). The playtest points the page at it with
  * `?coach=<url>` and counts the questions per game and turn: auto-coach's
  * cadence, and whether the panel ever goes blank, are read against it.
- * `/health` carries no `engine` key, so the page's Play vs Forge takes the
+ * `/health` carries no `engine` key, so the page's Play vs Bot takes the
  * seat at once (an older helper: "running").
  *
  * Plan mode (the live coach's default, mtg-table D419): a question whose system

@@ -664,7 +664,7 @@ async function runSolo(app) {
     await s.page.goto(url);
     const got = await s.tap.until(() => !!s.tap.hello && !!s.tap.state, 120_000);
     if (!got) {
-      await s.finding({ kind: 'no-seat', what: 'Play vs Forge did not reach the table in 120 s' });
+      await s.finding({ kind: 'no-seat', what: 'Play vs Bot did not reach the table in 120 s' });
       game.result = 'abandoned (no seat)';
       report.games.push(stripGame(game));
       await s.ctx.close();

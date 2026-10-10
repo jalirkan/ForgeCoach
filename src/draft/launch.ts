@@ -311,10 +311,10 @@ export function checkRequest(r: MatchRequest): string | null {
 }
 
 const STATUS_WORDS: Record<number, string> = {
-  403: 'The helper refused this page (origin or pairing token).',
+  403: 'The engine on your PC refused this page (its address or pairing token).',
   409: 'A match is already being started — wait a moment.',
   413: 'The decks are too large to send.',
-  503: 'The helper has no match launcher: start ForgeCoach again (the app-menu launcher, or ./scripts/play.sh).',
+  503: 'The engine on your PC has no match launcher: start ForgeCoach again (the app-menu launcher, or ./scripts/play.sh).',
   504: 'The engine took more than three minutes to start.',
 };
 
@@ -341,8 +341,8 @@ async function post(path: string, body: string | undefined, opts: LaunchOptions)
       message: opts.signal?.aborted
         ? 'Cancelled.'
         : aborted
-          ? 'The helper didn’t answer within three minutes.'
-          : 'Couldn’t reach the helper on this computer: start ForgeCoach again (the app-menu launcher, or ./scripts/play.sh).',
+          ? 'The engine on your PC didn’t answer within three minutes.'
+          : 'Couldn’t reach the engine on your PC: start ForgeCoach again (the app-menu launcher, or ./scripts/play.sh).',
     };
   } finally {
     to.done();

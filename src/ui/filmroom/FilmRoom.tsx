@@ -99,9 +99,9 @@ export function useFilm(log: GameLog, decisions: readonly Decision[], report: Re
       ? `The win chance could not be scored${series.error ? ` (${series.error})` : ''}.`
       : helper?.state === 'ok' || helper?.state === 'down'
         ? helper.state === 'ok'
-          ? 'No win chance: the coach helper has no evaluator model.'
-          : 'No win chance: the coach helper is not running.'
-        : 'No win chance: no coach helper.';
+          ? 'No win chance: the engine on your PC has no win-chance model.'
+          : 'No win chance: the engine on your PC isn’t running.'
+        : 'No win chance: the engine on your PC isn’t running.';
     const film = pickFilm({ log, decisions, evalPoints: model && series.done ? series.points : null, evalMissing, report });
     return { film, scoring: null, model };
   }, [looked, model, series.done, series.error, series.points, series.total, helper?.state, log, decisions, report]);
@@ -201,7 +201,7 @@ export function FilmRoom({
       </div>
       {!film ? (
         <p className="film-wait tiny muted pulse" role="status">
-          {scoring ? `Scoring your positions for the win chance… ${scoring.done}/${scoring.total}` : 'Looking for the coach helper…'}
+          {scoring ? `Scoring your positions for the win chance… ${scoring.done}/${scoring.total}` : 'Looking for the engine on your PC…'}
         </p>
       ) : (
         <>
