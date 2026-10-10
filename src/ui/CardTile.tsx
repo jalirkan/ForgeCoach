@@ -14,7 +14,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProper
 import type { AnyCard, Card } from '../protocol.ts';
 import { isHidden } from '../protocol.ts';
 import { imageForCard, type CardInfo } from '../cards.ts';
-import { useCardInfo } from './cardData.ts';
+import { useCardInfo, useTileCardInfo } from './cardData.ts';
 import { createLongPress, pressBuzz, pressTimers } from './longPress.ts';
 import { useBoardMarks, useBoardStateRef, useCardActions, usePlay, type CardStackMarks, type PlayInteraction, type PlayMark } from './cardContext.ts';
 import { PILE_SHOWN, pilePlan } from './landPiles.ts';
@@ -179,6 +179,15 @@ function imageOf(card: Card, info: CardInfo | undefined): { src: string; srcSet?
   return { src, srcSet: set || undefined };
 }
 
+/** The subtle glyph of a token placeholder: a dashed ring (a card that is not a card). Drawn by CSS only under `.is-ph`. */
+function TokenMark() {
+  return (
+    <svg className="tile-token-mark" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true" focusable="false">
+      <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="2.6 2" />
+    </svg>
+  );
+}
+
 /**
  * The card face: a text face (name, cost, art crop, type) that is always there
  * and sized like a card, and the full card image on top of it once it loads.
@@ -188,10 +197,13 @@ export function CardFace({ card, info, kind, eager }: { card: Card; info: CardIn
   const [state, setState] = useState<{ src: string; ok: boolean | null } | null>(null);
   const status = state && img && state.src === img.src ? state.ok : null;
   const art = imageForCard(info, card)?.artCrop;
+  // A token with no art (yet, or ever) is a compact translucent label, not a card-coloured box.
+  const placeholderToken = card.token && !card.faceDown && status !== true;
   return (
-    <div className={cx('tile-card', status === true && 'has-img')}>
+    <div className={cx('tile-card', status === true && 'has-img', placeholderToken && 'is-ph')}>
       <div className="tile-face">
         <div className="tile-head">
+          {placeholderToken && <TokenMark />}
           <span className="tile-name">{displayName(card)}</span>
           <span className="tile-cost">
             <ManaCost cost={card.manaCost} size="sm" />
@@ -291,7 +303,7 @@ function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
   const stackMarks = inHand ? undefined : boardMarks?.stack.get(card.id);
   const combatMark = inHand ? undefined : boardMarks?.combat?.get(card.id);
   const name = card.name || card.alt?.name || '';
-  const info = useCardInfo(name || null);
+  const info = useTileCardInfo(card, name || null);
   const { open, handlers, mark, hint, chosen, playing } = useOpen(card);
   const attacking = card.attacking || chosen === 'attack';
   const blocking = card.blocking || chosen === 'block';
