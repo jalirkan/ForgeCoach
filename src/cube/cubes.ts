@@ -48,8 +48,9 @@ export interface CubeInfo {
   art?: string;
   /**
    * 'deck': a deck the player owns (a Commander precon), not a cube: the deck assistant builds 40s
-   * from the whole list and its cube page lists it, but it is never drafted (`DRAFT_CUBES`) and has
-   * no lab data. Absent: a cube.
+   * from the whole list and its cube page lists it; it is drafted only against the AI
+   * (`AI_DRAFT_CUBES`), never with a friend (the draft room knows only mtg-table's cubes) or on the
+   * lab's pages (`DRAFT_CUBES`), and has no lab data. Absent: a cube.
    */
   kind?: 'deck';
 }
@@ -85,20 +86,21 @@ export function customCubeInfo(c: CustomCube): CubeInfo {
 /** Every cube: the shipped ones, then yours (refreshed in place, so a list read at render time is current). */
 export const CUBES: CubeInfo[] = [...SHIPPED_CUBES];
 
-/**
- * The cubes that can be drafted (Draft vs AI, with a friend, the lab's pages): every entry but a deck.
- * Refreshed in place with `CUBES`.
- */
+/** The cubes proper (Draft with a friend, the lab's pages, the lobby's count): every entry but a deck. Refreshed in place with `CUBES`. */
 export const DRAFT_CUBES: CubeInfo[] = [];
+
+/** What Draft vs AI offers: the cubes, then the decks the player owns (small lists: fewer grids, a shorter Winston stack). */
+export const AI_DRAFT_CUBES: CubeInfo[] = [];
 
 /** The decks the player owns, to build from whole (the deck assistant). */
 export const OWNED_DECKS: readonly CubeInfo[] = SHIPPED_CUBES.filter((c) => c.kind === 'deck');
 
-/** Re-reads your cubes from this browser's storage into `CUBES` (after the builder saves or deletes one). */
+/** Re-reads your cubes from this browser's storage into `CUBES`, `DRAFT_CUBES` and `AI_DRAFT_CUBES` (after the builder saves or deletes one). */
 export function refreshCustomCubes(list: CustomCube[] = listCustomCubes()): void {
   const mine = list.filter((c) => !SHIPPED_CUBES.some((s) => s.id === c.id)).map(customCubeInfo);
   CUBES.splice(SHIPPED_CUBES.length, CUBES.length - SHIPPED_CUBES.length, ...mine);
   DRAFT_CUBES.splice(0, DRAFT_CUBES.length, ...CUBES.filter((c) => c.kind !== 'deck'));
+  AI_DRAFT_CUBES.splice(0, AI_DRAFT_CUBES.length, ...DRAFT_CUBES, ...OWNED_DECKS);
 }
 refreshCustomCubes();
 

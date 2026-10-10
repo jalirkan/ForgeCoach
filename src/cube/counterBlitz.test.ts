@@ -4,11 +4,14 @@
  *
  * Counter Blitz: Justin's Final Fantasy X Commander deck (public/cubes/counter-blitz-fic.md),
  * a deck he owns rather than a cube (cubes.ts `kind: 'deck'`). The document, the registry (never
- * drafted, no lab data), the whole-list pool the deck assistant opens, and the 40s built from it.
+ * drafted with a friend or on the lab's pages, no lab data), the whole-list pool the deck assistant opens,
+ * the 40s built from it, and Draft vs AI on it (Booster and Winston; too small for Grid).
  */
 import { describe, expect, it } from 'vitest';
+import { labCards } from '../draft/cards.ts';
+import { gridFits, newDraft, selfPlay, type BoosterDraft, type WinstonDraft } from '../draft/draft.ts';
 import { buildDecks } from './builder.ts';
-import { CUBES, DRAFT_CUBES, OWNED_DECKS, cubeInfo, loadShippedMeta } from './cubes.ts';
+import { AI_DRAFT_CUBES, CUBES, DRAFT_CUBES, OWNED_DECKS, cubeInfo, loadShippedMeta } from './cubes.ts';
 import { guideFor } from './guides/index.ts';
 import { COUNTER_BLITZ_GUIDE_ID, COUNTER_BLITZ_GUIDE_TEXT, defaultGuide } from '../guide.ts';
 import { mentionedCards } from './parseCube.ts';
@@ -67,11 +70,12 @@ describe('the Counter Blitz document', () => {
 describe('Counter Blitz in the registry', () => {
   const info = cubeInfo('counter-blitz')!;
 
-  it('is a deck: listed, sized, never drafted, no lab data, no draft guide', async () => {
+  it('is a deck: listed, sized, drafted only against the AI (after the cubes), no lab data, no draft guide', async () => {
     expect(info).toMatchObject({ file: 'counter-blitz-fic', size: 88, kind: 'deck', labData: false });
     expect(OWNED_DECKS.map((c) => c.id)).toEqual(['counter-blitz']);
     expect(DRAFT_CUBES.some((c) => c.id === 'counter-blitz')).toBe(false);
     expect(DRAFT_CUBES).toHaveLength(CUBES.length - 1);
+    expect(AI_DRAFT_CUBES.map((c) => c.id)).toEqual([...DRAFT_CUBES.map((c) => c.id), 'counter-blitz']);
     expect(guideFor('counter-blitz')).toBeNull();
     let asked = 0;
     const fetcher = async () => {
@@ -98,6 +102,31 @@ describe('building from the whole deck', () => {
       expect(b.spells.length + b.nonbasics.length + Object.values(b.basics).reduce((s, n) => s + (n ?? 0), 0)).toBe(40);
       expect(b.colors).toHaveLength(2);
       for (const n of [...b.spells, ...b.nonbasics]) expect(COMMANDER_ONLY.includes(n), n).toBe(false);
+    }
+  });
+});
+
+describe('Draft vs AI on the deck', () => {
+  const ctx = context('counter-blitz');
+  const cards = labCards(ctx);
+
+  it('is too small for Grid (9 grids leave a drafter short of playables); every cube fits', () => {
+    expect(gridFits(88)).toBe(false);
+    for (const c of DRAFT_CUBES) expect(gridFits(c.size), c.id).toBe(true);
+  });
+
+  it('Winston and a two-seat booster draft leave both drafters a 40-card deck with nothing missing', () => {
+    for (const seed of [1, 2, 3]) {
+      const w = selfPlay(newDraft({ cubeId: 'counter-blitz', format: 'winston', cube: names, seed, youFirst: true, now: 0 }), cards) as WinstonDraft;
+      const b = selfPlay(newDraft({ cubeId: 'counter-blitz', format: 'booster', cube: names, seed, youFirst: true, seats: 2, now: 0 }), cards) as BoosterDraft;
+      expect(w.done && b.done, `seed ${seed}`).toBe(true);
+      expect(w.dealt).toHaveLength(88);
+      expect(b.packSize).toBe(14);
+      for (const pool of [w.picks.you, w.picks.ai, b.picks.you, b.picks.ai]) {
+        const d = buildDecks(labOnly(ctx), pool)[0]!;
+        expect(d.missing, `seed ${seed}`).toBe(0);
+        expect(d.spells.length + d.nonbasics.length + Object.values(d.basics).reduce((s, n) => s + (n ?? 0), 0)).toBe(40);
+      }
     }
   });
 });
