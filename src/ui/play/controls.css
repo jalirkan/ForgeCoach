@@ -120,6 +120,39 @@
   background: var(--ok);
 }
 
+/* phone: a gold (you) and a blue (opponent) underline per step where Forge stops */
+.pstrip-bar .pbar-cell {
+  justify-content: center;
+  gap: 5px;
+}
+.pbar-under {
+  display: flex;
+  gap: 2px;
+  width: 78%;
+  height: 3px;
+  flex: none;
+}
+.pbar-under i {
+  flex: 1;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.07);
+}
+.pbar-under i.is-own.is-on {
+  background: var(--you);
+}
+.pbar-under i.is-opp.is-on {
+  background: var(--opp);
+}
+.pbar-cell.is-current .pbar-under i {
+  background: rgba(0, 0, 0, 0.25);
+}
+.pbar-cell.is-current .pbar-under i.is-on {
+  background: rgba(0, 0, 0, 0.65);
+}
+.pbar-cell.is-pending .pbar-under {
+  animation: pstop-pulse 0.9s ease-in-out infinite alternate;
+}
+
 /* the stop switches */
 .pstop-pop {
   position: absolute;
@@ -330,6 +363,263 @@
   background: var(--ok-soft);
   color: var(--ok);
   font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Phase strip: the vertical column (its own column beside the board) */
+
+.pstrip-v {
+  --pv-cell: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  padding: 8px 6px 6px;
+  background: linear-gradient(180deg, #121419, #0e1014);
+  border-left: 1px solid var(--line-2);
+  text-align: center;
+}
+.pv-head {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.pv-whose {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.turn-you .pv-whose {
+  color: var(--you);
+}
+.turn-opp .pv-whose {
+  color: var(--opp);
+}
+.pv-turn {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pv-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--muted);
+}
+.pv-prio {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pv-prio-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.pv-prio.is-you {
+  color: var(--you);
+  border-color: color-mix(in srgb, var(--you) 70%, transparent);
+  background: var(--accent-soft);
+}
+.pv-prio.is-you .pv-prio-dot {
+  background: var(--you);
+}
+.pv-prio.is-opp {
+  color: var(--opp);
+  border-color: color-mix(in srgb, var(--opp) 60%, transparent);
+}
+.pv-prio.is-opp .pv-prio-dot {
+  background: var(--opp);
+}
+.pv-play {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+.pv-play[data-who='you'] {
+  color: var(--you);
+}
+.pv-play[data-who='opp'] {
+  color: var(--opp);
+}
+.pv-col {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pv-glabel {
+  flex: none;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-style: italic;
+  line-height: 1;
+  color: var(--faint);
+}
+.pcell {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 24px;
+  max-height: var(--pv-cell);
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.pcell.is-current {
+  flex: 3 1 0;
+  max-height: calc(var(--pv-cell) * 3);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+}
+/* each half is a button clipped to its side of the diagonal */
+.pcell-half {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.12s;
+}
+.pcell-half.is-you {
+  left: 0;
+  width: 100%;
+  clip-path: polygon(0 0, 58% 0, 42% 100%, 0 100%);
+}
+.pcell-half.is-opp {
+  left: 0;
+  width: 100%;
+  clip-path: polygon(58% 0, 100% 0, 100% 100%, 42% 100%);
+}
+.pcell-half.is-you.is-on {
+  background: var(--you);
+}
+.pcell-half.is-opp.is-on {
+  background: var(--opp);
+}
+.pcell-half:hover:not(:disabled):not(.is-on) {
+  background: rgba(255, 255, 255, 0.09);
+}
+.pcell-half.is-you:hover:not(:disabled):not(.is-on) {
+  background: color-mix(in srgb, var(--you) 28%, transparent);
+}
+.pcell-half.is-opp:hover:not(:disabled):not(.is-on) {
+  background: color-mix(in srgb, var(--opp) 28%, transparent);
+}
+.pcell-half:disabled {
+  cursor: default;
+}
+.pcell-half:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+.pcell.is-pending .pcell-half {
+  animation: pstop-pulse 0.9s ease-in-out infinite alternate;
+}
+.pcell-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 4px;
+  pointer-events: none;
+}
+.pcell-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+}
+.pcell.is-past .pcell-tag {
+  color: var(--muted);
+}
+.pcell-title {
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+}
+.pcell-line {
+  font-size: 10.5px;
+  line-height: 1.25;
+  color: var(--text-2);
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+}
+.pcell .pbar-yield {
+  top: 4px;
+  right: 6px;
+  z-index: 1;
+}
+.pv-legend {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.pv-sw {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--you);
+}
+.pv-sw.is-opp {
+  background: var(--opp);
+  margin-left: 4px;
+}
+.pstrip-v .pside-yieldline {
+  flex: none;
+  font-size: 11px;
 }
 
 /* ------------------------------------------------------------------ */
