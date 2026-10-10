@@ -1,0 +1,180 @@
+1 Thraben Inspector
+1 Esper Sentinel
+1 Portable Hole
+1 Adanto Vanguard
+1 Luminarch Aspirant
+1 Seasoned Hallowblade
+1 Stoneforge Mystic
+1 Thalia, Guardian of Thraben
+1 Selfless Spirit
+1 Brimaz, King of Oreskos
+1 Blade Splicer
+1 Flickerwisp
+1 Loran of the Third Path
+1 Skyclave Apparition
+1 Restoration Angel
+1 Archangel Avacyn
+1 Solitude
+1 Elspeth, Sun's Champion
+1 Elspeth, Knight-Errant
+1 Swords to Plowshares
+1 Path to Exile
+1 Prismatic Ending
+1 March of Otherworldly Light
+1 Wrath of God
+1 Ranger-Captain of Eos
+1 Gideon, Ally of Zendikar
+1 Delver of Secrets
+1 Ledger Shredder
+1 Snapcaster Mage
+1 Phantasmal Image
+1 Brazen Borrower
+1 Barrin, Tolarian Archmage
+1 Vendilion Clique
+1 Mulldrifter
+1 Murktide Regent
+1 Torrential Gearhulk
+1 Jace, the Mind Sculptor
+1 Jace, Vryn's Prodigy
+1 Counterspell
+1 Mana Leak
+1 Remand
+1 Archmage's Charm
+1 Preordain
+1 Ponder
+1 Opt
+1 Chart a Course
+1 Cryptic Command
+1 Fading Hope
+1 Memory Deluge
+1 Tolarian Terror
+1 Glen Elendra Archmage
+1 Faerie Mastermind
+1 Thoughtseize
+1 Inquisition of Kozilek
+1 Fatal Push
+1 Bloodchief's Thirst
+1 Go for the Throat
+1 Heartless Act
+1 Hero's Downfall
+1 Damnation
+1 Dark Confidant
+1 Kitesail Freebooter
+1 Bloodghast
+1 Evolved Sleeper
+1 Vampire Nighthawk
+1 Liliana of the Veil
+1 Sheoldred, the Apocalypse
+1 Grief
+1 Archon of Cruelty
+1 Griselbrand
+1 Persist
+1 Collective Brutality
+1 Murderous Rider
+1 Bone Shards
+1 Dauthi Voidwalker
+1 Deadly Dispute
+1 Bloodsoaked Champion
+1 Rankle, Master of Pranks
+1 Lightning Bolt
+1 Burst Lightning
+1 Play with Fire
+1 Fury
+1 Unholy Heat
+1 Monastery Swiftspear
+1 Ragavan, Nimble Pilferer
+1 Goblin Guide
+1 Kari Zev, Skyship Raider
+1 Young Pyromancer
+1 Eidolon of the Great Revel
+1 Bonecrusher Giant
+1 Goblin Rabblemaster
+1 Hellrider
+1 Glorybringer
+1 Inferno Titan
+1 Chandra, Torch of Defiance
+1 Fable of the Mirror-Breaker
+1 Light Up the Stage
+1 Flame Slash
+1 Anger of the Gods
+1 Embercleave
+1 Seasoned Pyromancer
+1 Thundermaw Hellkite
+1 Dragon's Rage Channeler
+1 Rampaging Ferocidon
+1 Llanowar Elves
+1 Elvish Mystic
+1 Noble Hierarch
+1 Birds of Paradise
+1 Sakura-Tribe Elder
+1 Scavenging Ooze
+1 Tarmogoyf
+1 Lotus Cobra
+1 Courser of Kruphix
+1 Eternal Witness
+1 Tireless Tracker
+1 Thragtusk
+1 Polukranos, World Eater
+1 Primeval Titan
+1 Craterhoof Behemoth
+1 Hornet Queen
+1 Garruk Wildspeaker
+1 Nissa, Who Shakes the World
+1 Rancor
+1 Beast Within
+1 Collected Company
+1 Rampant Growth
+1 Oracle of Mul Daya
+1 Elder Gargaroth
+1 Questing Beast
+1 Steel Leaf Champion
+1 Spell Queller
+1 Teferi, Time Raveler
+1 Psychic Frog
+1 Thief of Sanity
+1 Kolaghan's Command
+1 Terminate
+1 Bloodbraid Elf
+1 Minsc & Boo, Timeless Heroes
+1 Voice of Resurgence
+1 Knight of the Reliquary
+1 Lingering Souls
+1 Tidehollow Sculler
+1 Expressive Iteration
+1 Prismari Command
+1 Grist, the Hunger Tide
+1 Abrupt Decay
+1 Lightning Helix
+1 Ajani Vengeant
+1 Oko, Thief of Crowns
+1 Uro, Titan of Nature's Wrath
+1 Smuggler's Copter
+1 Shadowspear
+1 Batterskull
+1 Sword of Fire and Ice
+1 Walking Ballista
+1 Wurmcoil Engine
+1 Mind Stone
+1 Everflowing Chalice
+1 Karn Liberated
+1 The One Ring
+1 Hallowed Fountain
+1 Watery Grave
+1 Blood Crypt
+1 Stomping Ground
+1 Temple Garden
+1 Godless Shrine
+1 Steam Vents
+1 Overgrown Tomb
+1 Sacred Foundry
+1 Breeding Pool
+1 Hengegate Pathway
+1 Clearwater Pathway
+1 Blightstep Pathway
+1 Cragcrown Pathway
+1 Branchloft Pathway
+1 Brightclimb Pathway
+1 Riverglide Pathway
+1 Darkbore Pathway
+1 Needleverge Pathway
+1 Barkchannel Pathway
