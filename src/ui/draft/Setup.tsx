@@ -21,7 +21,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';
 import type { CubeMeta } from '../../cube/meta.ts';
 import { aiFlagsFromDoc, noFlags, withMetaFlags, type AiFlags } from '../../draft/aiFlags.ts';
-import { deckCount, exportList, forForge, mainNames, toMatchDeck, type DeckState } from '../../draft/deck.ts';
+import { deckCount, exportList, forForge, mainNames, sideboardFit, toMatchDeck, type DeckState, type FitFacts } from '../../draft/deck.ts';
 import { boosterPackSize, BOOSTER_PACKS, progress, SEAT_OPTIONS, type Draft, type Format } from '../../draft/draft.ts';
 import {
   AI_POLICIES,
@@ -403,6 +403,7 @@ export function MatchSetup({
   meta,
   cubeNames,
   forgeMissing,
+  factsOf,
   title,
   onBack,
   onAbandon,
@@ -419,6 +420,8 @@ export function MatchSetup({
   cubeNames: string[];
   /** The cube's cards Forge has no script for yet (cube/parseCube.ts): kept out of what the engine is handed. */
   forgeMissing?: string[];
+  /** A card's facts, to send Forge the 15 sideboard cards that fit the deck's colours (draft/deck.ts sideboardFit). */
+  factsOf?: (name: string) => FitFacts | undefined;
   title: string;
   onBack: () => void;
   onAbandon: () => void;
@@ -439,7 +442,10 @@ export function MatchSetup({
   const flags = useAiFlags(draft.cubeId, meta, cubeNames);
   const cube = cubeInfo(draft.cubeId);
   const deckName = draftDeckName(title, deckColours);
-  const forge = useMemo(() => (deck ? forForge(toMatchDeck(deckName, deck), forgeMissing) : null), [deck, deckName, forgeMissing]);
+  const forge = useMemo(
+    () => (deck ? forForge(toMatchDeck(deckName, deck), forgeMissing, factsOf && sideboardFit(deckColours, factsOf)) : null),
+    [deck, deckName, forgeMissing, factsOf, deckColours],
+  );
   const yours = forge?.deck ?? null;
   const blocked = forge?.blocked ?? [];
   // Your own deck only: the AI's list never reaches the export.

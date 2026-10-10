@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { aiFlagsFromDoc } from '../draft/aiFlags.ts';
 import { labCards } from '../draft/cards.ts';
-import { FORGE_SIDEBOARD_MAX, forForge, matchDeck } from '../draft/deck.ts';
+import { FORGE_SIDEBOARD_MAX, forForge, matchDeck, sideboardFit, type FitFacts } from '../draft/deck.ts';
 import { newDraft, selfPlay, type BoosterDraft, type GridDraft, type WinstonDraft } from '../draft/draft.ts';
 import { guideFor } from './guides/index.ts';
 import { buildDecks } from './builder.ts';
@@ -173,5 +173,23 @@ describe('cards Forge has no script for (draft/deck.ts forForge)', () => {
     expect(got.reduce((s, [n]) => s + n, 0)).toBe(FORGE_SIDEBOARD_MAX);
     expect(got.slice(0, 2)).toEqual([[3, 'Island'], side[0]]);
     expect(forForge(d, undefined).deck.main).toBe(d.main);
+  });
+
+  it('with a fit, the 15 Forge gets are the ones the deck could bring in', () => {
+    const facts: Record<string, FitFacts> = {
+      'Lightning Helix': { colors: 'RW', land: false, produces: '' },
+      'Swords to Plowshares': { colors: 'W', land: false, produces: '' },
+      'Mind Stone': { colors: '', land: false, produces: 'C' },
+      'Godless Shrine': { colors: '', land: true, produces: 'WB' },
+      'Sacred Foundry': { colors: '', land: true, produces: 'RW' },
+      Brainstorm: { colors: 'U', land: false, produces: '' },
+    };
+    const fit = sideboardFit('WB', (n) => facts[n]);
+    expect(['Swords to Plowshares', 'Mind Stone', 'Godless Shrine', 'Sacred Foundry', 'Lightning Helix', 'Brainstorm'].map(fit)).toEqual([3, 2, 1.5, 1, 0, 0]);
+    const blue = Array.from({ length: 20 }, (_, i) => [1, `Blue ${i}`] as [number, string]);
+    const d = { name: 'Justin', main: [[40, 'Plains']] as Array<[number, string]>, sideboard: [...blue, [1, 'Godless Shrine'], [1, 'Swords to Plowshares']] as Array<[number, string]> };
+    const got = forForge(d, undefined, fit).deck.sideboard!;
+    expect(got.slice(0, 2)).toEqual([[1, 'Swords to Plowshares'], [1, 'Godless Shrine']]);
+    expect(got.reduce((s, [n]) => s + n, 0)).toBe(FORGE_SIDEBOARD_MAX);
   });
 });

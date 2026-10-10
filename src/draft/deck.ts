@@ -93,9 +93,12 @@ export function matchDeck(name: string, b: DeckBuild, pool: string[]): MatchDeck
  * any in the main deck are named in `blocked` for the player to take out.
  * The export (`exportList`) keeps everything, for other games.
  */
-export function forForge(d: MatchDeck, missing: Iterable<string> | undefined): { deck: MatchDeck; blocked: string[] } {
+export function forForge(d: MatchDeck, missing: Iterable<string> | undefined, fit?: (name: string) => number): { deck: MatchDeck; blocked: string[] } {
   const out = new Set(missing ?? []);
-  const deck: MatchDeck = d.sideboard ? { ...d, sideboard: capSideboard(d.sideboard.filter(([, n]) => !out.has(n))) } : d;
+  const side = d.sideboard?.filter(([, n]) => !out.has(n));
+  // The cards the deck could bring in go first (stable: equal fits keep their order).
+  const ranked = side && fit ? side.map((e, i) => ({ e, i, f: fit(e[1]) })).sort((a, b) => b.f - a.f || a.i - b.i).map((x) => x.e) : side;
+  const deck: MatchDeck = ranked ? { ...d, sideboard: capSideboard(ranked) } : d;
   return { deck, blocked: d.main.filter(([, n]) => out.has(n)).map(([, n]) => n) };
 }
 
@@ -106,6 +109,32 @@ export function forForge(d: MatchDeck, missing: Iterable<string> | undefined): {
  * the engine gets the first 15 copies; the export keeps the whole pool.
  */
 export const FORGE_SIDEBOARD_MAX = 15;
+
+/** The facts `sideboardFit` reads (cube/facts.ts CardFacts). */
+export interface FitFacts {
+  colors: string;
+  land: boolean;
+  produces: string;
+}
+
+/**
+ * How well a sideboard card fits a deck of these colours, for the 15 Forge
+ * gets: a spell in the deck's colours 3, a colourless spell 2, a land making
+ * two of them 1.5 and one of them 1, anything else (or unknown) 0.
+ */
+export function sideboardFit(deckColours: string, facts: (name: string) => FitFacts | undefined): (name: string) => number {
+  const mine = new Set(deckColours.split(''));
+  return (name) => {
+    const f = facts(name);
+    if (!f) return 0;
+    if (f.land) {
+      const n = [...f.produces].filter((c) => mine.has(c)).length;
+      return n >= 2 ? 1.5 : n === 1 ? 1 : 0;
+    }
+    if (!f.colors) return 2;
+    return [...f.colors].every((c) => mine.has(c)) ? 3 : 0;
+  };
+}
 
 function capSideboard(side: Array<[number, string]>): Array<[number, string]> {
   let left = FORGE_SIDEBOARD_MAX;
