@@ -21,9 +21,15 @@
  *     sends the documented default instead;
  *   - a numeric `text` ask's one-click way out is `null` (§5.4, M25/M29);
  *   - the client checks only the numbers the engine sent (min/max, totals,
- *     per-target max, atLeastOne) — it never invents a rules bound.
+ *     per-target max, atLeastOne) — it never invents a rules bound;
+ *   - `assign_damage` offers the defender (index 0) only when the engine says
+ *     it may take damage (`defenderAllowed`, mtg-table M67/D424); an older
+ *     engine says nothing, and then only an attacker whose own `keywords`
+ *     carry TRAMPLE gets the row. The engine checks every split and asks again
+ *     with a `reason` when it refuses one.
  */
-import type { AnswerValue, AskBody, AskOption, InputBody } from '../../protocol.ts';
+import { assignDamageRuleOf } from '../../protocol.ts';
+import type { AnswerValue, AskBody, AskOption, AssignDamageAsk, InputBody } from '../../protocol.ts';
 
 // ---------------------------------------------------------------------------
 // Drafts — what the player has built so far
@@ -101,12 +107,13 @@ export function choiceBounds(ask: { min: number; max: number; options: unknown[]
   return { lo, hi };
 }
 
-function damageDefault(targets: DamageTarget[], total: number): Record<string, number> {
+function damageDefault(targets: DamageTarget[], total: number, toDefender: boolean): Record<string, number> {
   const n = targets.length;
   if (n === 0) return {};
   if (n === 1) return { '0': total };
   // Blockers in the engine's order, each up to its `lethal`; whatever is left
-  // stays on the last blocker. Never on the defender (index 0) by default.
+  // goes to the defender (index 0) only when the engine said it may take
+  // damage, else it stays on the last blocker.
   const out: Record<string, number> = {};
   let left = total;
   for (let i = 1; i < n && left > 0; i++) {
@@ -117,10 +124,33 @@ function damageDefault(targets: DamageTarget[], total: number): Record<string, n
     left -= give;
   }
   if (left > 0) {
-    const last = String(n - 1);
+    const last = toDefender ? '0' : String(n - 1);
     out[last] = (out[last] ?? 0) + left;
   }
   return out;
+}
+
+/**
+ * May the defender (target 0) take damage? The engine's own word when it
+ * sends one (`defenderAllowed`, M67); an older engine sends none, and then only
+ * an attacker whose wire `keywords` carry TRAMPLE (engine state, not a rules
+ * computation). `attackerKeywords` is that attacker's `keywords`, if known.
+ */
+export function defenderAllowed(ask: AssignDamageAsk, attackerKeywords: readonly string[] | null | undefined): boolean {
+  const said = assignDamageRuleOf(ask).defenderAllowed;
+  if (said !== null) return said;
+  return Array.isArray(attackerKeywords) && attackerKeywords.includes('TRAMPLE');
+}
+
+/** The rows the damage dialog shows: every target, less the defender when it may take none. */
+export function damageRows(ask: AssignDamageAsk, allowed: boolean): DamageTarget[] {
+  const rows = ask.targets as DamageTarget[];
+  return allowed ? rows : rows.filter((t) => t.defender !== true);
+}
+
+/** Why the engine refused the last split of this same question, or null (M67). */
+export function damageRefusal(ask: AssignDamageAsk): string | null {
+  return assignDamageRuleOf(ask).reason;
 }
 
 function amountDefault(targets: AmountTarget[], total: number, atLeastOne: boolean): Record<string, number> {
@@ -186,7 +216,7 @@ export function defaultDraft(ask: AskBody): AskDraft {
     case 'sideboard':
       return { shape: 'indices', indices: range(ask.main.length) };
     case 'assign_damage':
-      return { shape: 'amounts', amounts: damageDefault(ask.targets, ask.total) };
+      return { shape: 'amounts', amounts: damageDefault(ask.targets, ask.total, ask.defenderAllowed === true) };
     case 'assign_amount':
       return { shape: 'amounts', amounts: amountDefault(ask.targets, ask.total, ask.atLeastOne) };
   }
@@ -412,6 +442,10 @@ export function validateDraft(ask: AskBody, draft: AskDraft): Validation {
         if (!Number.isInteger(i) || i < 0 || i >= n) return no('Assign again');
         if (!Number.isInteger(v) || v < 0) return no('Whole numbers only');
         if (v > amountCap(ask, i)) return no(`${targets[i]!.label}: at most ${amountCap(ask, i)}`);
+      }
+      // The engine's own word (M67): a defender it says may take no damage gets none.
+      if (ask.kind === 'assign_damage' && ask.defenderAllowed === false && (draft.amounts['0'] ?? 0) > 0) {
+        return no(`${targets[0]?.label ?? 'The defending player'} can't take this damage`);
       }
       if (ask.kind === 'assign_amount' && ask.atLeastOne) {
         const empty = targets.find((t) => (draft.amounts[String(t.id)] ?? 0) < 1);

@@ -68,6 +68,15 @@ export interface SelectionSummary {
 
 const SELECTING = new Set<InputView['mode']>(['attack', 'block', 'target', 'discard', 'pay']);
 
+/**
+ * How a block declaration works, as the engine takes clicks (InputBlock, read
+ * from the pinned jar): a click on an attacker names it, a click on your
+ * creature blocks the named attacker, and a click on a creature already
+ * blocking the named attacker takes that block off. The × on a blocker takes
+ * it off whatever is named (blockPlan.ts `takeOff`).
+ */
+export const BLOCK_HOW = 'Click an attacker, then your creature that blocks it. Click another attacker to switch. Click a blocker again, or its ×, to take it off.';
+
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export function selectionSummary(view: InputView, picked: { attackers: number; blockers: number }): SelectionSummary {
@@ -78,7 +87,8 @@ export function selectionSummary(view: InputView, picked: { attackers: number; b
       return {
         active: true,
         count: n,
-        line: n > 0 ? `${plural(n, 'blocker')} assigned — same number = who blocks whom` : 'Click your creature to block the outlined attacker',
+        // Forge's own flow (InputBlock, play/blockPlan.ts): attacker first, then the creature; the count is beside it.
+        line: BLOCK_HOW,
         confirm: n > 0 ? 'Confirm blocks' : 'No blocks',
       };
     }

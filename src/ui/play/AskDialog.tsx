@@ -23,8 +23,9 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { AnswerValue, AnyCard, AskBody, AskOption, Card, GameStateBody, InputBody } from '../../protocol.ts';
-import { isHidden } from '../../protocol.ts';
+import { isHidden, keywordsOf } from '../../protocol.ts';
 import { cardIndex } from '../../decisions.ts';
+import { imageForFace } from '../../cards.ts';
 import { prefetchCards, useCardInfo } from '../cardData.ts';
 import { IconCheck, IconChevronDown, IconEye, IconPlay, IconPlus, IconX, TypeGlyph } from '../Icons.tsx';
 import { ManaCost, Pip, SymbolText } from '../Mana.tsx';
@@ -38,6 +39,9 @@ import {
   colorSymbol,
   countPhrase,
   answerFromDraft,
+  damageRefusal,
+  damageRows,
+  defenderAllowed,
   groupOptions,
   initialDraft,
   isCardList,
@@ -56,7 +60,6 @@ import {
   validateDraft,
   type AbilityOption,
   type AskDraft,
-  type DamageTarget,
   type AmountTarget,
 } from './askModel.ts';
 import { digitMode, digitSlots, planAskKey } from './askKeys.ts';
@@ -309,7 +312,7 @@ function visibleCard(card: AnyCard | undefined | null): Card | null {
 /** Small art square for rows. */
 function Thumb({ name, card, hidden }: { name: string | null; card?: Card | null; hidden?: boolean }) {
   const info = useCardInfo(hidden ? null : name);
-  const art = info?.image?.artCrop ?? info?.faces?.[0]?.image?.artCrop;
+  const art = imageForFace(info, name)?.artCrop;
   const kind = typeKind(card?.types || info?.typeLine);
   if (hidden) return <span className="ask-thumb ask-thumb-back" aria-hidden="true" />;
   return (
@@ -322,7 +325,7 @@ function Thumb({ name, card, hidden }: { name: string | null; card?: Card | null
 /** A whole card: Scryfall image when cached, a clean frame otherwise. */
 function CardFace({ name, card, hidden, label }: { name: string | null; card?: Card | null; hidden?: boolean; label: string }) {
   const info = useCardInfo(hidden ? null : name);
-  const img = info?.image?.normal ?? info?.faces?.[0]?.image?.normal;
+  const img = imageForFace(info, name)?.normal;
   const [loaded, setLoaded] = useState(false);
   if (hidden) {
     return (
@@ -1100,12 +1103,17 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
       const attacker = nameOf(ask.attackerId);
       const amounts = draft.shape === 'amounts' ? draft.amounts : {};
       const sum = amountsTotal(amounts);
+      // The defender's row only when the engine says it may take damage (M67);
+      // an older engine says nothing, and then only for a trampler.
+      const atk = ask.attackerId === null ? undefined : index.get(ask.attackerId);
+      const rows = damageRows(ask, defenderAllowed(ask, keywordsOf(atk)));
+      const refused = damageRefusal(ask);
       return (
         <AskShell
           {...common}
           eyebrow="Combat damage"
           title={`Assign ${ask.total} damage${attacker ? ` from ${attacker}` : ''}`}
-          detail={ask.targets.length > 2 ? 'Split it between the blockers' : undefined}
+          detail={rows.filter((t) => t.defender !== true).length > 1 ? 'Split it between the blockers' : undefined}
           peek={`Assign ${ask.total} combat damage`}
           hint={v.hint}
           hintTone={v.ok ? 'ok' : 'warn'}
@@ -1117,9 +1125,14 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
             </>
           }
         >
+          {refused !== null && (
+            <p className="ask-refused" role="alert" data-refused="">
+              That split wasn’t allowed: {refused}
+            </p>
+          )}
           <Meter value={sum} total={ask.total} />
           <ul className="ask-rows">
-            {(ask.targets as DamageTarget[]).map((t) => {
+            {rows.map((t) => {
               const n = amounts[String(t.id)] ?? 0;
               const lethal = typeof t.lethal === 'number' ? t.lethal : null;
               const room = Math.min(ask.total, n + (ask.total - sum));

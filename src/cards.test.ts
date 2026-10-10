@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { __resetCardCacheForTests, cleanCardName, isLookupName, getCachedCard, getCards, mapScryfallCard, type ScryfallCard } from './cards.ts';
+import { __resetCardCacheForTests, cleanCardName, isLookupName, getCachedCard, getCards, getCachedToken, getToken, mapScryfallCard, pickToken, tokenBaseName, tokenRef, tokenSearchUrl, type ScryfallCard } from './cards.ts';
 
 type Call = { url: string; init?: RequestInit };
 let calls: Call[];
@@ -233,5 +233,163 @@ describe('isLookupName', () => {
     expect(calls).toHaveLength(0);
     expect(got.get('Goblin Token')!.found).toBe(false);
     expect(got.size).toBe(3);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Tokens
+
+function tokenCard(name: string, type_line: string, power: string | undefined, toughness: string | undefined, released_at: string, img = true): ScryfallCard {
+  return {
+    object: 'card',
+    name,
+    type_line,
+    power,
+    toughness,
+    released_at,
+    ...(img ? { image_uris: { small: `${name}-${released_at}-s`, normal: `${name}-${released_at}-n`, art_crop: `${name}-${released_at}-a` } } : {}),
+  };
+}
+const bird = { name: 'Bird Token', token: true, types: 'Creature - Bird', power: '1', toughness: '1', counters: {} };
+
+/** A canned /cards/search answer for the Bird search (order=released, newest first, as Scryfall sends it). */
+const birdSearch: ScryfallCard[] = [
+  tokenCard('Bird', 'Token Creature — Bird', '2', '2', '2025-02-01'),
+  tokenCard('Bird', 'Token Creature — Bird', '1', '1', '2024-08-02'),
+  tokenCard('Bird', 'Token Creature — Bird', '1', '1', '2022-05-06'),
+  tokenCard('Bird Spirit', 'Token Creature — Bird Spirit', '1', '1', '2025-06-01'),
+  tokenCard('Bird', 'Token Creature — Bird', '1', '1', '2025-09-09', false), // no image
+  tokenCard('Birds of Paradise Token', 'Token Artifact — Bird', undefined, undefined, '2025-10-01'),
+];
+
+function installSearch(data: ScryfallCard[] | 404 | 500) {
+  const fn = vi.fn(async (url: string) => {
+    calls.push({ url });
+    if (!url.includes('/cards/search')) return json({}, 500);
+    if (data === 404) return json({ object: 'error', code: 'not_found' }, 404);
+    if (data === 500) return json({ object: 'error' }, 500);
+    return json({ object: 'list', data });
+  });
+  vi.stubGlobal('fetch', fn);
+  return fn;
+}
+
+describe('token keys and the search query', () => {
+  it('knows a token by the flag or the name, and takes the base name off', () => {
+    expect(tokenBaseName('Bird Token')).toBe('Bird');
+    expect(tokenBaseName('Phyrexian Golem Token')).toBe('Phyrexian Golem');
+    expect(tokenRef(bird)?.base).toBe('Bird');
+    expect(tokenRef({ name: 'Clue Token' })?.base).toBe('Clue');
+    expect(tokenRef({ name: 'Lightning Bolt', token: false })).toBeNull();
+    expect(tokenRef({ name: '', token: true })).toBeNull();
+    expect(tokenRef({ name: 'Token', token: true })).toBeNull();
+    expect(tokenRef(null)).toBeNull();
+  });
+  it('the key tells a 1/1 Bird from a 2/2 Bird and from a Bird of another type', () => {
+    const k = (o: object) => tokenRef({ ...bird, ...o })!.key;
+    expect(k({})).not.toBe(k({ power: '2', toughness: '2' }));
+    expect(k({})).not.toBe(k({ types: 'Artifact Creature - Bird' }));
+    expect(k({})).toBe(k({ name: 'bird token' }));
+  });
+  it('counters are not part of the key: a 1/1 Bird with a +1/+1 counter is still the 1/1 Bird', () => {
+    const pumped = tokenRef({ ...bird, power: '2', toughness: '2', counters: { P1P1: 1 } })!;
+    expect(pumped.key).toBe(tokenRef(bird)!.key);
+    expect([pumped.power, pumped.toughness]).toEqual(['1', '1']);
+  });
+  it('the query is one token search on the base name, newest printing first', () => {
+    const u = new URL(tokenSearchUrl('Phyrexian Golem'));
+    expect(u.origin + u.pathname).toBe('https://api.scryfall.com/cards/search');
+    expect(u.searchParams.get('q')).toBe('t:token name:"Phyrexian Golem"');
+    expect(u.searchParams.get('unique')).toBe('art');
+    expect(u.searchParams.get('order')).toBe('released');
+    expect(u.searchParams.get('dir')).toBe('desc');
+    expect(new URL(tokenSearchUrl('Bird" OR name:"x')).searchParams.get('q')).toBe('t:token name:"Bird  OR name: x"');
+  });
+  it('a token is still never looked up as a real card', () => {
+    expect(isLookupName('Bird Token')).toBe(false);
+  });
+});
+
+describe('pickToken: type and P/T filtering', () => {
+  it('keeps the newest printing with the right P/T and type, with an image', () => {
+    const ref = tokenRef(bird)!;
+    const c = pickToken(birdSearch, ref)!;
+    expect(c.released_at).toBe('2024-08-02');
+    expect(c.power).toBe('1');
+  });
+  it('a 2/2 Bird picks the 2/2', () => {
+    expect(pickToken(birdSearch, tokenRef({ ...bird, power: '2', toughness: '2' })!)!.released_at).toBe('2025-02-01');
+  });
+  it('a type the wire has that the result lacks rules it out; no types on the wire filters nothing', () => {
+    expect(pickToken(birdSearch, tokenRef({ ...bird, types: 'Creature - Bird Warrior' })!)).toBeUndefined();
+    expect(pickToken(birdSearch, tokenRef({ ...bird, types: '' })!)!.released_at).toBe('2024-08-02');
+  });
+  it('without a P/T on the wire (a Clue) the type decides, and an exact name beats a partial one', () => {
+    const clue = tokenCard('Clue', 'Token Artifact — Clue', undefined, undefined, '2023-01-01');
+    const other = tokenCard('Clue Hound', 'Token Artifact — Clue', undefined, undefined, '2025-01-01');
+    expect(pickToken([other, clue], tokenRef({ name: 'Clue Token', token: true, types: 'Artifact - Clue', power: null, toughness: null })!)).toBe(clue);
+  });
+  it('nothing matches: undefined', () => {
+    expect(pickToken(birdSearch, tokenRef({ ...bird, power: '9', toughness: '9' })!)).toBeUndefined();
+    expect(pickToken([], tokenRef(bird)!)).toBeUndefined();
+  });
+});
+
+describe('getToken', () => {
+  it('one search, the matching image, cached under the P/T key', async () => {
+    const fn = installSearch(birdSearch);
+    const ref = tokenRef(bird)!;
+    expect(getCachedToken(ref)).toBeUndefined();
+    const info = await getToken(ref);
+    expect(info.found).toBe(true);
+    expect(info.image?.normal).toBe('Bird-2024-08-02-n');
+    expect(info.power).toBe('1');
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(calls[0].url).toBe(tokenSearchUrl('Bird'));
+    expect(getCachedToken(ref)?.image?.normal).toBe('Bird-2024-08-02-n');
+    await getToken(ref);
+    expect(fn).toHaveBeenCalledTimes(1);
+    // The 2/2 Bird is another key: its own search, its own art.
+    const big = await getToken(tokenRef({ ...bird, power: '2', toughness: '2' })!);
+    expect(big.image?.normal).toBe('Bird-2025-02-01-n');
+    expect(fn).toHaveBeenCalledTimes(2);
+    expect(getCachedToken(ref)?.image?.normal).toBe('Bird-2024-08-02-n');
+  });
+  it('concurrent asks for one token share one request', async () => {
+    const fn = installSearch(birdSearch);
+    const ref = tokenRef(bird)!;
+    await Promise.all([getToken(ref), getToken(ref), getToken(ref)]);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+  it('a miss (no match, or a 404) is remembered: no repeated requests', async () => {
+    const fn = installSearch(birdSearch);
+    const odd = tokenRef({ ...bird, power: '9', toughness: '9' })!;
+    expect((await getToken(odd)).found).toBe(false);
+    expect((await getToken(odd)).found).toBe(false);
+    expect(fn).toHaveBeenCalledTimes(1);
+    const none = installSearch(404);
+    const ref = tokenRef({ name: 'Zzyzx Token', token: true, types: 'Creature - Zzyzx', power: '1', toughness: '1' })!;
+    await getToken(ref);
+    await getToken(ref);
+    expect(none).toHaveBeenCalledTimes(1);
+    expect(getCachedToken(ref)?.found).toBe(false);
+  });
+  it('a server error is not cached, so a later ask tries again', async () => {
+    const fn = installSearch(500);
+    const ref = tokenRef(bird)!;
+    expect((await getToken(ref)).found).toBe(false);
+    expect(getCachedToken(ref)).toBeUndefined();
+    await getToken(ref);
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+  it('real cards are untouched: getCards on a real name still uses the collection endpoint, a token name never fetches', async () => {
+    const fn = installFetch([simpleCard('Lightning Bolt')]);
+    const got = await getCards(['Lightning Bolt', 'Bird Token']);
+    expect(got.get('Lightning Bolt')!.found).toBe(true);
+    expect(got.get('Bird Token')!.found).toBe(false);
+    expect(fn.mock.calls.map((c) => c[0])).toEqual(['https://api.scryfall.com/cards/collection']);
+    expect(getCachedCard('Lightning Bolt')?.found).toBe(true);
+    expect(getCachedCard('Bird Token')).toBeUndefined();
   });
 });

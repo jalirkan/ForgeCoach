@@ -27,11 +27,12 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
 import type { AnyCard, AskBody, AskOption, Card, GameStateBody, InputBody, PlayerState } from '../../protocol.ts';
-import { ASK_KINDS } from '../../protocol.ts';
+import { ASK_KINDS, keywordsOf } from '../../protocol.ts';
+import { cardIndex } from '../../decisions.ts';
 import { PlayContext, type PlayInteraction } from '../cardContext.ts';
 import { AskDialog } from './AskDialog.tsx';
 import { FIXTURE_ASKS } from './askFixtures.ts';
-import { askOptions, choiceBounds, initialDraft, orderBounds, range, skipAction, validateDraft, type AskDraft } from './askModel.ts';
+import { askOptions, choiceBounds, damageRows, defenderAllowed, initialDraft, orderBounds, range, skipAction, validateDraft, type AskDraft } from './askModel.ts';
 import { cardRole, describeInput } from './inputView.ts';
 import { ZonePickPanel } from './ZonePickPanel.tsx';
 import { zonePick } from './zonePick.ts';
@@ -238,8 +239,13 @@ describe('ask coverage: every ask kind and variant renders a way to answer', () 
     const a = actionable(html);
     expect(a.ok, a.why).toBe(true);
     expect(reachable(f.ask)).toBe(true);
-    // Every engine label reaches the screen (a concealed card's "???" included).
-    for (const o of askOptions(f.ask)) if (f.ask.kind !== 'sideboard') expect(html).toContain(o.label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').slice(0, 12));
+    // Every engine label reaches the screen (a concealed card's "???" included)
+    // -- except a defender the engine says may take no damage (M67), or, on an
+    // older engine, one a non-trampler's dialog does not offer.
+    const shown = f.ask.kind === 'assign_damage'
+      ? damageRows(f.ask, defenderAllowed(f.ask, keywordsOf(f.ask.attackerId === null || !f.state ? undefined : cardIndex(f.state).get(f.ask.attackerId))))
+      : askOptions(f.ask);
+    for (const o of shown) if (f.ask.kind !== 'sideboard') expect(html).toContain(o.label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').slice(0, 12));
   });
 });
 

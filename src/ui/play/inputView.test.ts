@@ -292,6 +292,21 @@ describe('cardRole', () => {
     expect(cardRole(mine!, c)).toBeNull();
   });
 
+  it('attacking: a creature that entered this turn (the engine’s sick flag) is no attacker candidate unless the wire lists haste', () => {
+    const atk = input('Select creatures to attack Forge AI or select player/card you wish to attack.', { buttons: { ok: { label: 'OK', enabled: true }, cancel: { label: 'Alpha Strike', enabled: true } } });
+    const lark = card(70, ME, 'battlefield', 'Creature - Elemental', { name: 'Reveillark', sick: true, keywords: ['FLYING'] });
+    const goblin = card(71, ME, 'battlefield', 'Creature - Goblin', { name: 'Raging Goblin', sick: true, keywords: ['HASTE'] });
+    const bear = card(72, ME, 'battlefield', 'Creature - Bear');
+    const st = state({ phase: 'COMBAT_DECLARE_ATTACKERS' });
+    const c = ctxFor(atk, st);
+    expect(cardRole(lark, c)).toBeNull();
+    expect(cardRole(goblin, c)).toBe('act');
+    expect(cardRole(bear, c)).toBe('act');
+    // Tapped: no; already attacking (to call it back): yes.
+    expect(cardRole({ ...bear, tapped: true } as Card, c)).toBeNull();
+    expect(cardRole({ ...lark, attacking: true, tapped: true } as Card, c)).toBe('act');
+  });
+
   it('blocking: your creatures and their attackers', () => {
     const st = state({ activePlayer: OPP });
     const c = ctxFor(input('Select creatures to block Card 5 (5) or select another attacker to declare blockers for.'), st);

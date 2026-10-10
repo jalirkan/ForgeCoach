@@ -1310,12 +1310,7 @@ button.zone-pill:disabled {
   border-color: rgba(166, 144, 242, 0.35);
   background: linear-gradient(180deg, rgba(166, 144, 242, 0.06), var(--bg-2));
 }
-.combat-panel {
-  border-color: rgba(239, 111, 108, 0.3);
-  background: linear-gradient(180deg, rgba(239, 111, 108, 0.05), var(--bg-2));
-}
-.stack-list,
-.combat-list {
+.stack-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1368,34 +1363,6 @@ button.card-ref:hover {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.combat-band {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) auto minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  padding: 7px 8px;
-  border-radius: 8px;
-  background: var(--surface);
-  font-size: 13px;
-}
-.combat-side {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-}
-.combat-blk {
-  color: #9fc6f4;
-  justify-content: flex-end;
-}
-.combat-arrow {
-  color: var(--muted);
-  white-space: nowrap;
-}
-.combat-arrow b {
-  color: var(--text);
-}
-
 /* ------------------------------------------------------------------ */
 /* Coach panel */
 
@@ -2602,13 +2569,6 @@ textarea:focus {
   .phase-now {
     margin-left: auto;
     text-align: right;
-  }
-  .combat-band {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-  .combat-blk {
-    justify-content: flex-start;
   }
   .zone-pill {
     height: 24px;

@@ -141,7 +141,10 @@
   }
   .game.play.is-wide .play-board .bf-row {
     --rows-h: calc(var(--ch-lands, 1) * var(--land-k) + var(--ch-perm, 1));
-    --cw-h: calc((100cqh - 18px - var(--attach-h, 0px)) / var(--rows-h) * 63 / 88);
+    /* The combat lane's height (play/lane.css computes the lane's card width the same way). */
+    --lane-cw: clamp(38px, min(calc((100cqw - 46px - 10px * var(--lane-n, 1)) / max(var(--lane-w, 1), 1)), 22cqh), 112px);
+    --lane-h: calc(var(--lane-cw) * var(--lane-k, 0) + 16px * min(var(--lane-k, 0), 1));
+    --cw-h: calc((100cqh - 18px - var(--attach-h, 0px) - var(--lane-h)) / var(--rows-h) * 63 / 88);
     --cw-w: calc((100cqw - 24px) / var(--slots-row, 6) - 9px);
     --cw-fit: clamp(58px, min(var(--cw-h), var(--cw-w)), 200px);
     --cw: var(--cw-fit);
@@ -169,6 +172,9 @@
   }
 }
 @container side (max-height: 250px) {
+  .game.play.is-wide .play-board .battlefield[data-lane] {
+    flex-wrap: wrap;
+  }
   .game.play.is-wide .play-board .battlefield {
     flex-direction: row;
     align-items: center;
@@ -852,24 +858,58 @@
   white-space: nowrap;
   pointer-events: none;
 }
-.cmb-num {
-  display: inline-grid;
-  place-items: center;
+
+/* ------------------------------------------------------------------ */
+/* A token with no art: a compact, translucent label (name, type; the P/T
+   badge is the overlay's) the same size as a card tile, so the scenery shows
+   through and nothing reflows. Specificity beats play/board.css's token frame. */
+
+.tile-token-mark {
+  display: none;
+}
+.tile .tile-card.is-ph {
+  background: transparent;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.tile .tile-card.is-ph .tile-face {
+  padding: 8% 7% 24%;
+  gap: 4%;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  background: color-mix(in srgb, color-mix(in srgb, var(--tc) 22%, #14161b) 55%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--tc) 45%, rgba(255, 255, 255, 0.35));
+}
+.tile .tile-card.is-ph .tile-head {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1 1 auto;
+}
+.tile .tile-card.is-ph .tile-token-mark {
+  display: block;
   flex: none;
-  min-width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  border: 2px solid var(--bad);
-  font-weight: 800;
-  font-size: 12px;
-  color: var(--text);
-  background: var(--bg);
+  color: var(--tc);
+  opacity: 0.8;
 }
-.combat-band:has(.cmb-num) {
-  grid-template-columns: auto minmax(0, 1.2fr) auto minmax(0, 1fr);
+.tile .tile-card.is-ph .tile-cost,
+.tile .tile-card.is-ph .tile-art {
+  display: none;
 }
-@media (max-width: 560px) {
-  .combat-band:has(.cmb-num) {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
+.tile .tile-card.is-ph .tile-name {
+  font-family: inherit;
+  font-size: clamp(9px, calc(var(--cw) * 0.12), 13px);
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  -webkit-line-clamp: 2;
+}
+.tile .tile-card.is-ph .tile-type {
+  justify-content: center;
+  opacity: 0.85;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+.tile .tile-card.is-ph .tile-type svg {
+  display: none;
 }
