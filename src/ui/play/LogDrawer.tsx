@@ -4,8 +4,10 @@
  *
  * The game log in plain words, newest at the bottom, grouped endstep-style:
  * a turn header ("T3 · Your turn"), then the parts of the turn ("Main phase",
- * "Combat") as small subheads, each line with a small glyph for what kind of
- * event it is. On a desktop it is a floating panel you can drag by its header
+ * "Combat") as small subheads (a new one only when the part changes), each
+ * line with a small glyph for what kind of event it is. Triggered abilities
+ * fold under a ▶ (closed by default; what a reader opened is remembered
+ * until the drawer closes). On a desktop it is a floating panel you can drag by its header
  * (the board stays live underneath); on a phone it is a bottom sheet. Card
  * names open the card. The lines come from `eventLog.ts`; the drawer idea is
  * mtg-table's web/src/render/LogDrawer.tsx (GPL-3.0-or-later, the mtg-table
@@ -15,7 +17,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { createPortal } from 'react-dom';
 import type { GameStateBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
-import { gameEventLog, sectionsOf, type LogKind, type LogLine, type LogTurn } from '../../eventLog.ts';
+import { foldSummary, foldTriggers, gameEventLog, sectionsOf, type LogKind, type LogLine, type LogSeg, type LogTurn } from '../../eventLog.ts';
 import { playerLabel } from '../../review.ts';
 import { useCardActions } from '../cardContext.ts';
 import { clampPanel, parsePos, type PanelPos } from '../floating.ts';
@@ -40,6 +42,8 @@ const GLYPH: Record<LogKind, string> = {
   land: '▲',
   cast: '✦',
   ability: '△',
+  trigger: '☆',
+  activated: '◇',
   attack: '✕',
   block: '◆',
   damage: '✸',
@@ -59,6 +63,18 @@ export function LogDrawer({ log, upTo, open, onClose }: { log: GameLog | null; u
   const bodyRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const stick = useRef(true);
+  // Which trigger folds the reader opened ("<turn>:<first line>"); forgotten when the drawer closes.
+  const [openFolds, setOpenFolds] = useState<ReadonlySet<string>>(() => new Set());
+  const toggleFold = useCallback((k: string) => {
+    setOpenFolds((cur) => {
+      const next = new Set(cur);
+      if (!next.delete(k)) next.add(k);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    if (!open) setOpenFolds((cur) => (cur.size ? new Set() : cur));
+  }, [open]);
   const total = turns.reduce((n, t) => n + t.lines.length, 0);
 
   // ---- where the floating panel sits (remembered), and dragging it by the header
@@ -148,7 +164,7 @@ export function LogDrawer({ log, upTo, open, onClose }: { log: GameLog | null; u
         {!log || turns.length === 0 ? (
           <p className="muted log-empty">Nothing has happened yet.</p>
         ) : (
-          turns.map((t, i) => <TurnBlock key={`${t.turn}-${t.frameIndex}`} t={t} log={log} current={i === turns.length - 1 && !log.over && upTo === undefined} />)
+          turns.map((t, i) => <TurnBlock key={`${t.turn}-${t.frameIndex}`} t={t} log={log} current={i === turns.length - 1 && !log.over && upTo === undefined} openFolds={openFolds} onToggle={toggleFold} />)
         )}
       </div>
     </aside>
@@ -166,7 +182,7 @@ export function LogDrawer({ log, upTo, open, onClose }: { log: GameLog | null; u
   );
 }
 
-function TurnBlock({ t, log, current }: { t: LogTurn; log: GameLog; current: boolean }) {
+export function TurnBlock({ t, log, current, openFolds, onToggle }: { t: LogTurn; log: GameLog; current: boolean; openFolds: ReadonlySet<string>; onToggle: (key: string) => void }) {
   const mine = t.activePlayer === log.seat;
   const sections = useMemo(() => sectionsOf(t.lines), [t.lines]);
   return (
@@ -187,11 +203,13 @@ function TurnBlock({ t, log, current }: { t: LogTurn; log: GameLog; current: boo
       ) : (
         sections.map((s, i) => (
           <div key={i} className="log-section">
-            {(sections.length > 1 || s.section !== 'Before the game') && <div className="log-section-head">{s.section}</div>}
+            {s.section !== 'Before the game' && <div className="log-section-head">{s.section}</div>}
             <ol className="log-lines">
-              {s.lines.map((l, j) => (
-                <Line key={j} l={l} log={log} />
-              ))}
+              {foldTriggers(s.lines, s.start).map((it) => {
+                if (it.type === 'line') return <Line key={`l${it.index}`} l={it.line} log={log} />;
+                const k = `${t.turn}:${it.key}`;
+                return <Fold key={`f${k}`} lines={it.lines} log={log} open={openFolds.has(k)} onToggle={() => onToggle(k)} />;
+              })}
             </ol>
           </div>
         ))
@@ -200,8 +218,34 @@ function TurnBlock({ t, log, current }: { t: LogTurn; log: GameLog; current: boo
   );
 }
 
+/** A run of triggered abilities under a ▶: one summary row, the lines beneath it when opened. */
+function Fold({ lines, log, open, onToggle }: { lines: LogLine[]; log: GameLog; open: boolean; onToggle: () => void }) {
+  const who = lines[0]!.who === null ? 'none' : lines[0]!.who === log.seat ? 'you' : 'opp';
+  return (
+    <li className={cx('log-fold', open && 'is-open')}>
+      <button type="button" className={cx('log-line', 'log-fold-head', 'k-trigger', `w-${who}`)} aria-expanded={open} onClick={onToggle}>
+        <span className="log-caret" aria-hidden="true">
+          {open ? '▼' : '▶'}
+        </span>
+        <span className="log-glyph" aria-hidden="true">
+          {GLYPH.trigger}
+        </span>
+        <span className="log-text">
+          <Segs segs={foldSummary(lines)} l={lines[0]!} log={log} plain />
+        </span>
+      </button>
+      {open && (
+        <ol className="log-lines log-fold-lines">
+          {lines.map((l, j) => (
+            <Line key={j} l={l} log={log} />
+          ))}
+        </ol>
+      )}
+    </li>
+  );
+}
+
 function Line({ l, log }: { l: LogLine; log: GameLog }) {
-  const actions = useCardActions();
   const who = l.who === null ? 'none' : l.who === log.seat ? 'you' : 'opp';
   return (
     <li className={cx('log-line', `k-${l.kind}`, `w-${who}`)}>
@@ -209,28 +253,38 @@ function Line({ l, log }: { l: LogLine; log: GameLog }) {
         {GLYPH[l.kind]}
       </span>
       <span className="log-text">
-        {l.segs.map((s, i) => {
-          if (typeof s === 'string') return <span key={i}>{s}</span>;
-          if ('player' in s) return <b key={i} className={cx('log-player', s.player === log.seat ? 'is-you' : 'is-opp')}>{s.name}</b>;
-          const card = s.card;
-          if (!card) return <span key={i} className="log-card is-plain">{s.name}</span>;
-          return (
-            <button
-              key={i}
-              type="button"
-              className="log-card"
-              onClick={() => {
-                const f = log.frames[l.frameIndex];
-                actions.open(card, f && f.type === 'state' ? (f.body as GameStateBody) : null);
-              }}
-              onMouseEnter={(e) => actions.hover(s.name, e.currentTarget.getBoundingClientRect())}
-              onMouseLeave={() => actions.hover(null)}
-            >
-              {s.name}
-            </button>
-          );
-        })}
+        <Segs segs={l.segs} l={l} log={log} />
       </span>
     </li>
+  );
+}
+
+/** A line's pieces: plain text, players in their colour, card names in bold (a button that opens the card, unless `plain`). */
+function Segs({ segs, l, log, plain }: { segs: readonly LogSeg[]; l: LogLine; log: GameLog; plain?: boolean }) {
+  const actions = useCardActions();
+  return (
+    <>
+      {segs.map((s, i) => {
+        if (typeof s === 'string') return <span key={i}>{s}</span>;
+        if ('player' in s) return <b key={i} className={cx('log-player', s.player === log.seat ? 'is-you' : 'is-opp')}>{s.name}</b>;
+        const card = s.card;
+        if (!card || plain) return <b key={i} className="log-card is-plain">{s.name}</b>;
+        return (
+          <button
+            key={i}
+            type="button"
+            className="log-card"
+            onClick={() => {
+              const f = log.frames[l.frameIndex];
+              actions.open(card, f && f.type === 'state' ? (f.body as GameStateBody) : null);
+            }}
+            onMouseEnter={(e) => actions.hover(s.name, e.currentTarget.getBoundingClientRect())}
+            onMouseLeave={() => actions.hover(null)}
+          >
+            {s.name}
+          </button>
+        );
+      })}
+    </>
   );
 }

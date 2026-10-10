@@ -938,6 +938,10 @@
 :root[data-skin='felt'] .log-line.w-you {
   border-left-color: rgba(233, 226, 207, 0.4);
 }
+:root[data-skin='felt'] .log-line.k-trigger .log-glyph,
+:root[data-skin='felt'] .log-line.k-activated .log-glyph {
+  color: rgba(233, 226, 207, 0.7);
+}
 :root[data-skin='felt'] .btn.btn-outline {
   background: rgba(233, 226, 207, 0.08);
 }
