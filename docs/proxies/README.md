@@ -12,6 +12,35 @@ These are playtest copies for playing at home with friends. Never sell them or t
 
 The Vintage Cube's 180 cards on S33 stock should cost about **$45–60 plus about $15 US shipping**. That works out to about **$0.35 a card**, well under the $1 budget. Delivery takes about two to three weeks.
 
+## First order: three cubes, 540 cards (612 bracket)
+
+Chosen 2026-10-10: **Vintage + Synergy + Peasant.**
+
+| Cube | What it plays like | Cards shared with the Vintage Cube |
+|---|---|---|
+| Vintage | Power Nine, Moxen, cheat-into-play decks | 180 |
+| Synergy | All eras, a middle power level, nine overlapping themes, no combos | 62 |
+| Peasant | Commons and uncommons, ten guild decks (MatEffect's design) | 22 |
+
+Why these three:
+
+- **They're three different experiences.** You get high power, mid power and low power, so each cube feels like its own night.
+- **They don't share many cards.** That way most of the 540 cards in the order are different cards.
+- **Omega was left out on purpose.** It shares 108 of its 180 cards with the Vintage Cube. Order Omega later only if you want both on the shelf.
+- **Modern-Era is the closest alternative to Synergy.** It shares 78 cards with the Vintage Cube, and bought as real cards it would cost about $918.
+- **Pauper and Fair Fight are cheap to buy as real cards** (about $78 and $158 at the cheapest printings), so they gain the least from being proxied.
+
+**How to order it** (one order, still easy to sort when it arrives):
+
+1. In MPC Autofill, make **three projects**, one per list: [`vintage.txt`](vintage.txt), [`synergy.txt`](synergy.txt) and [`peasant.txt`](peasant.txt).
+2. Give each project its **own card back**, the same back for every card in that project. When the box arrives, you sort the cubes by their backs. Within a cube every back matches, so the draft stays fair.
+3. Set each project to **S33** and export **three XMLs**. Put all three in the desktop tool's folder.
+4. Run the desktop tool once. It merges XMLs with the same stock into one order. 540 cards fits in the 612-card bracket, so you pay that bracket's price.
+
+[`order-1-540.txt`](order-1-540.txt) is all 540 lines in one file, in case you'd rather paste them into a single project (all with one back).
+
+The order has **72 spare slots** (612 − 540), and you pay for them either way. Good ways to fill them: tokens, the Vintage Cube's swap-in cards, and spare copies of the two-sided cards. Ask Claude for a "fill the 72" list.
+
 ## The lists
 
 | File | Cube | Cards | Two-sided cards |
