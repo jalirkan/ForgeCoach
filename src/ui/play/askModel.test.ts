@@ -329,7 +329,8 @@ describe('sideboard — main ++ side is one index space', () => {
     const v = fixtureAsk('human-sideboard-7#a1').answer as number[];
     expect(v).toContain(ask.main.length); // the first sideboard card is index main.length
     expect(validateDraft(ask, { shape: 'indices', indices: v }).hint).toMatch(/1 card in from the sideboard/);
-    expect(skipAction(ask)).toMatchObject({ label: 'Keep deck', value: null });
+    // Keep deck is the deck itself, never null: the bridge reads null as an empty deck (Forge then asks forever).
+    expect(skipAction(ask)).toMatchObject({ label: 'Keep deck', value: Array.from({ length: ask.main.length }, (_, i) => i) });
     expect(validateDraft(ask, { shape: 'indices', indices: [] }).ok).toBe(false);
   });
   test('PaperCard labels are looked up without their set code', () => {
