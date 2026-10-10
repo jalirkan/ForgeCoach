@@ -99,6 +99,16 @@ export function arcBetween(a: RectBox, b: RectBox, bowScale = 1): { path: string
 export type RectLookup = (key: RectKey) => RectBox | undefined;
 
 /**
+ * Is the badge's centre inside its scroll container's visible box? A stack
+ * badge scrolled out of the fan's list is still "on screen" by the viewport,
+ * and a line to it would end on nothing.
+ */
+export function centreWithin(box: RectBox, clip: RectBox): boolean {
+  const c = centre(box);
+  return c.x >= clip.x && c.x <= clip.x + clip.width && c.y >= clip.y && c.y <= clip.y + clip.height;
+}
+
+/**
  * Every stack line this frame draws: item → source (an ability's host on the
  * battlefield) and item → each target. The item end is its row in the stack
  * panel, or — when the panel is folded or off screen — its source card.

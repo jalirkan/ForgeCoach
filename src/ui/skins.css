@@ -255,18 +255,35 @@
 :root[data-skin='stack'] .stackp-item.is-mine {
   border-left-color: var(--skin-you);
 }
-:root[data-skin='stack'] .stackp-item + .stackp-item {
+:root[data-skin='stack'] .stackp-inline .stackp-item + .stackp-item {
   margin-top: -3px;
 }
-/* Under the top: a step down in the pile. */
+/* Under the top: a step down in the pile (the replay's strip; the float's fan steps back on its own). */
 :root[data-skin='stack'] .stackp-item:not(.is-next) {
   background: var(--skin-card-under);
+}
+:root[data-skin='stack'] .stackp-inline .stackp-item:not(.is-next) {
   transform: scale(0.97);
   transform-origin: top;
   z-index: 0;
 }
-:root[data-skin='stack'] .stackp-item.is-next {
+:root[data-skin='stack'] .stackp-inline .stackp-item.is-next {
   z-index: 1;
+}
+:root[data-skin='stack'] .stackp-fan > .stackp-fan-item.is-back {
+  box-shadow: 0 -3px 9px rgba(0, 0, 0, 0.4);
+}
+:root[data-skin='stack'] .stackp-tcount,
+:root[data-skin='stack'] .stackp-yield-btn {
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] .stackp-yield-btn {
+  border-color: rgba(53, 49, 42, 0.3);
+}
+:root[data-skin='stack'] .stackp-yield-btn.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
 }
 :root[data-skin='stack'] .stackp-name {
   color: var(--skin-ink);
@@ -852,6 +869,9 @@
   border-color: var(--line-2);
 }
 :root[data-skin='felt'] .stackp-item.is-next {
+  border-color: var(--skin-bone);
+}
+:root[data-skin='felt'] .stackp-yield-btn.is-on {
   border-color: var(--skin-bone);
 }
 :root[data-skin='felt'] .answer {

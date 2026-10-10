@@ -10,6 +10,11 @@
 :root {
   --stack-mine: var(--accent);
   --stack-theirs: var(--bad);
+  /* The board's lines: the gold of the panel's "next" badge and the board's numbers. */
+  --stack-line: var(--accent);
+  /* The fan: how much of a deeper item the one in front covers (content never sits there). */
+  --fan-tuck: 12px;
+  --fan-step: 7px;
 }
 
 .stackp {
@@ -242,6 +247,129 @@
 .play-board.has-stack .board {
   padding-right: calc(min(300px, 32%) + 18px) !important;
 }
+/* ---- the fan (float only): a pile, 1 nearest and whole, each deeper item a
+   step back. DOM order stays 1…n (e2e reads it); the pile is drawn bottom-up,
+   so a deeper item peeks out above the one in front. The z-order falls with n
+   (inline, stackModel.ts fanPlace), so the item in front covers only the
+   deeper one's tucked bottom edge — never its number badge, where the board's
+   lines start. */
+.stackp-fan {
+  flex-direction: column-reverse;
+  gap: 0;
+  padding-top: 2px;
+}
+.stackp-fan > .stackp-fan-item {
+  position: relative;
+}
+.stackp-fan > .stackp-fan-item.is-next {
+  grid-template-columns: auto minmax(0, 1fr);
+  box-shadow: 0 -6px 14px rgba(0, 0, 0, 0.35), 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.stackp-fan > .stackp-fan-item.is-back {
+  grid-template-columns: auto 30px minmax(0, 1fr);
+  gap: 7px;
+  padding: 5px 8px calc(var(--fan-tuck) + 5px);
+  margin-bottom: calc(-1 * var(--fan-tuck));
+  /* Each step back is a little narrower, tucked to the left: a fanned pile. */
+  margin-right: calc(min(var(--fan-i, 1), 5) * var(--fan-step));
+  background: color-mix(in srgb, var(--surface-2) 82%, var(--bg));
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.3);
+}
+.stackp-fan > .stackp-fan-item.is-back .stackp-name {
+  font-size: 12.5px;
+}
+/* One line: the kind gives way first, the target count and the yield control never wrap. */
+.stackp-fan > .stackp-fan-item.is-back .stackp-line {
+  align-items: center;
+  min-height: 20px;
+}
+.stackp-fan > .stackp-fan-item.is-back .stackp-kind {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stackp-fan > .stackp-fan-item.is-back .stackp-yield {
+  margin-left: auto;
+  flex: none;
+}
+.stackp-fan .stackp-art-strip {
+  width: 100%;
+  height: 64px;
+  margin: 4px 0 3px;
+  border-radius: 6px;
+}
+.stackp-fan .stackp-art-strip .card-back {
+  --cw: 64px;
+  transform: rotate(90deg) scale(1.4);
+}
+.stackp-fan .stackp-art-thumb {
+  width: 30px;
+  height: 24px;
+}
+.stackp-fan .stackp-art-thumb .card-back {
+  --cw: 30px;
+  transform: rotate(90deg) scale(0.8);
+}
+.stackp-tcount {
+  flex: none;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+/* ---- "Always yield": the engine's per-item offer (StackPanel YieldControls) */
+.stackp-yield {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.stackp-yield.is-compact {
+  margin-top: 0;
+  flex-wrap: nowrap;
+}
+.stackp-yield-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.stackp-yield.is-compact .stackp-yield-btn {
+  height: 20px;
+  padding: 0 6px;
+  font-size: 10.5px;
+}
+.stackp-yield-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.stackp-yield-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.stackp-yield-btn.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-2);
+}
+.stackp-yield-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ---- the replay: a strip between the two sides */
 .stackp-inline {
   box-shadow: none;
@@ -284,6 +412,35 @@
   }
   .stackp-float .stackp-text {
     -webkit-line-clamp: 1;
+  }
+  /* The fan on a phone: side by side, 1 at the left; each deeper item tucks
+     its left edge under the one before it, its badge clear of it. */
+  .stackp-float .stackp-fan {
+    padding-top: 0;
+  }
+  .stackp-float .stackp-fan > .stackp-fan-item.is-next {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .stackp-float .stackp-fan > .stackp-fan-item.is-back {
+    flex: 0 0 min(210px, 64%);
+    grid-template-columns: auto minmax(0, 1fr);
+    margin: 0 0 0 calc(-1 * var(--fan-tuck));
+    padding: 5px 7px 5px calc(var(--fan-tuck) + 7px);
+    box-shadow: -4px 0 10px rgba(0, 0, 0, 0.3);
+  }
+  .stackp-float .stackp-fan .stackp-art-strip {
+    width: 100%;
+    height: 34px;
+    margin: 2px 0;
+  }
+  /* No room for a thumbnail or the target count behind the front item (the
+     lines show the targets); the number, kind, name and yield control stay. */
+  .stackp-float .stackp-fan .is-back .stackp-tcount {
+    display: none;
+  }
+  /* No room for a thumbnail behind the front item; the number, kind and name stay. */
+  .stackp-float .stackp-fan .stackp-art-thumb {
+    display: none;
   }
   .stackp-float .stackp-head {
     padding: 4px 6px 3px 9px;
@@ -352,11 +509,8 @@
   stroke-width: 5;
 }
 .stack-arrow-line {
-  stroke: var(--stack-theirs);
+  stroke: var(--stack-line);
   stroke-width: 2.25;
-}
-.stack-arrow.is-mine .stack-arrow-line {
-  stroke: var(--stack-mine);
 }
 .stack-arrow.is-source .stack-arrow-line {
   stroke-dasharray: 5 5;
@@ -366,14 +520,11 @@
   opacity: 0.7;
 }
 .stack-arrow-head {
-  fill: var(--stack-theirs);
-}
-.stack-arrow.is-mine .stack-arrow-head {
-  fill: var(--stack-mine);
+  fill: var(--stack-line);
 }
 .stack-arrow-badge circle {
   fill: var(--bg);
-  stroke: var(--accent);
+  stroke: var(--stack-line);
   stroke-width: 2;
 }
 .stack-arrow-badge text {
