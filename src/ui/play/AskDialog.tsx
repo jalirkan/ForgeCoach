@@ -4,15 +4,19 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The engine's blocking questions (mtg-table protocol §5), as calm, playable
- * dialogs: a centred modal on desktop that can be minimised to peek at the
- * board, a bottom sheet on phones. Adapted from mtg-table
- * web/src/render/AskModal.tsx — the answer logic lives in askModel.ts.
+ * dialogs: a centred modal that can be minimised to peek at the board, a
+ * bottom sheet on phones — or, with `placement="slot"`, inside the play
+ * board's decision slot (DecisionSlot.tsx): no portal, no scrim, no focus
+ * trap, the same classes. Adapted from mtg-table web/src/render/AskModal.tsx —
+ * the answer logic lives in askModel.ts, the keys in askKeys.ts.
  *
  *   <AskDialog ask state onAnswer onPreviewCard />   — all eleven ask kinds
  *   <OpeningDialog input state seat onChoose />      — keep/mulligan, play/draw
  *                                                       (those are `input`s)
  *
- * Keyboard: Enter confirms, Esc minimises (it never declines), Tab stays inside.
+ * Keyboard (askKeys.ts): 1–9 pick the numbered option, Space / Enter confirm,
+ * Esc hides / shows the question (it never declines; "Choose how to play"
+ * keeps its safe never-mind), Tab stays inside the modal.
  * Labels are the engine's and are printed verbatim (a concealed card's option
  * is "???"; its name is never looked up).
  */
@@ -55,6 +59,8 @@ import {
   type DamageTarget,
   type AmountTarget,
 } from './askModel.ts';
+import { digitMode, digitSlots, planAskKey } from './askKeys.ts';
+import { choiceCounter } from './decisionModel.ts';
 import './ask.css';
 
 // ---------------------------------------------------------------------------
@@ -71,7 +77,13 @@ export interface AskDialogProps {
   onPreviewCard?: (cardId: number) => void;
   /** Ask to concede the game (the board's confirmation); shown in the question's head when given. */
   onConcede?: (() => void) | null;
+  /** Where it renders: a modal (the default: replay, the gallery) or inside the board's decision slot. */
+  placement?: AskPlacement;
 }
+
+/** 'modal': portal, scrim, focus trap. 'slot': in place in the decision slot, none of those. */
+export type AskPlacement = 'modal' | 'slot';
+const PlacementContext = createContext<AskPlacement>('modal');
 
 /**
  * The board's Concede, offered inside an engine question too: the question is
@@ -81,12 +93,14 @@ export interface AskDialogProps {
  */
 const ConcedeContext = createContext<(() => void) | null>(null);
 
-export function AskDialog({ onConcede = null, ...props }: AskDialogProps) {
+export function AskDialog({ onConcede = null, placement = 'modal', ...props }: AskDialogProps) {
   // Remount per askId: a new question never inherits the last one's draft.
   return (
-    <ConcedeContext.Provider value={onConcede}>
-      <AskDialogInner key={props.ask.askId} {...props} />
-    </ConcedeContext.Provider>
+    <PlacementContext.Provider value={placement}>
+      <ConcedeContext.Provider value={onConcede}>
+        <AskDialogInner key={props.ask.askId} {...props} />
+      </ConcedeContext.Provider>
+    </PlacementContext.Provider>
   );
 }
 
@@ -101,6 +115,8 @@ export interface OpeningDialogProps {
   onPreviewCard?: (cardId: number) => void;
   /** Ask to concede the game, as {@link AskDialogProps.onConcede}. */
   onConcede?: (() => void) | null;
+  /** As {@link AskDialogProps.placement}. */
+  placement?: AskPlacement;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,40 +138,58 @@ interface ShellProps {
   wide?: boolean;
   /** Short text for the minimised pill. */
   peek: string;
+  /** How many options carry a printed digit, and what pressing one does (askKeys.ts). */
+  digits?: number;
+  onDigit?: (index: number) => void;
+  /** Esc's safe way out instead of hiding (ability_menu's never mind). */
+  onEsc?: (() => void) | null;
 }
 
-function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hintTone = 'warn', onEnter, timeoutMs = 0, wide, peek }: ShellProps) {
+function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hintTone = 'warn', onEnter, timeoutMs = 0, wide, peek, digits = 0, onDigit, onEsc = null }: ShellProps) {
+  const placement = useContext(PlacementContext);
+  const slot = placement === 'slot';
   const [minimized, setMinimized] = useState(false);
   const [started] = useState(() => Date.now());
   const box = useRef<HTMLElement>(null);
   const concede = useContext(ConcedeContext);
-  const enter = useRef(onEnter);
-  enter.current = onEnter;
+  // The latest handlers, read by the one window listener.
+  const live = useRef({ onEnter, onDigit, onEsc, digits, minimized, slot });
+  live.current = { onEnter, onDigit, onEsc, digits, minimized, slot };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      // Another sheet (the card detail) on top owns its own keys.
-      if (t?.closest?.('.sheet')) return;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        setMinimized((m) => !m);
-        return;
-      }
-      if (minimized) return;
-      if (e.key === 'Enter' && !e.isComposing && !e.repeat) {
-        if (!box.current?.contains(t) && t !== document.body) return;
-        // A focused secondary button keeps native Enter; option rows and inputs confirm.
-        if (t instanceof HTMLButtonElement && !t.classList.contains('ask-opt')) return;
-        if (t instanceof HTMLTextAreaElement) return;
-        e.preventDefault();
-        enter.current?.();
-      }
+      const l = live.current;
+      const plan = planAskKey(
+        {
+          key: e.key,
+          code: e.code,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          altKey: e.altKey,
+          isComposing: e.isComposing,
+          repeat: e.repeat,
+          targetTag: t?.tagName,
+          targetEditable: t?.isContentEditable,
+          inAsk: !!t && !!box.current?.contains(t),
+          onOption: !!t?.classList?.contains('ask-opt'),
+          // Another sheet (the card detail) on top owns its own keys.
+          inSheet: !!t?.closest?.('.sheet'),
+        },
+        { placement: l.slot ? 'slot' : 'modal', minimized: l.minimized, canConfirm: !!l.onEnter, digits: l.onDigit ? l.digits : 0, escSkips: !!l.onEsc },
+      );
+      if (!plan) return;
+      // The question's key, and only the question's: the board's keys (playKeys.ts) must not also see it.
+      e.preventDefault();
+      e.stopPropagation();
+      if (plan.kind === 'hide') setMinimized((m) => !m);
+      else if (plan.kind === 'skip') l.onEsc?.();
+      else if (plan.kind === 'confirm') l.onEnter?.();
+      else l.onDigit?.(plan.index);
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [minimized]);
+  }, []);
 
   useEffect(() => {
     if (minimized) return;
@@ -177,27 +211,37 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
       </div>
     ) : null;
 
+  // In the slot nothing is portaled: the question sits where every decision sits.
+  const place = slot ? (node: ReactNode) => <>{node}</> : portal;
+
   if (minimized) {
-    return portal(
-      <button type="button" className="ask-peek" onClick={() => setMinimized(false)} aria-label={`Answer: ${peek}`}>
+    return place(
+      <button type="button" className={cx('ask-peek', slot && 'is-slot')} onClick={() => setMinimized(false)} aria-label={`Answer: ${peek}`} title="Show the question (Esc)">
         <span className="ask-peek-dot" aria-hidden="true" />
         <span className="ask-peek-text">{peek}</span>
-        <span className="ask-peek-cta">Answer</span>
+        <span className="ask-peek-cta">
+          Answer
+          {slot && (
+            <kbd className="ask-kbd" aria-hidden="true">
+              Esc
+            </kbd>
+          )}
+        </span>
       </button>,
     );
   }
 
-  return portal(
-    <div className="ask-layer">
+  return place(
+    <div className={cx('ask-layer', slot && 'is-slot')}>
       <section
-        className={cx('ask-dialog', wide && 'ask-wide')}
+        className={cx('ask-dialog', wide && 'ask-wide', slot && 'is-slot')}
         role="dialog"
-        aria-modal="true"
+        aria-modal={slot ? undefined : 'true'}
         aria-labelledby={`ask-title-${shellKey}`}
         tabIndex={-1}
         ref={box}
         onKeyDown={(e) => {
-          if (e.key !== 'Tab') return;
+          if (slot || e.key !== 'Tab') return;
           const stops = focusables(box.current);
           if (stops.length === 0) return;
           const first = stops[0]!;
@@ -226,7 +270,7 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
               Concede…
             </button>
           )}
-          <button type="button" className="icon-btn ask-min" onClick={() => setMinimized(true)} title="Peek at the board (Esc)" aria-label="Minimise to see the board">
+          <button type="button" className="icon-btn ask-min" onClick={() => setMinimized(true)} title={onEsc ? 'Peek at the board' : 'Peek at the board (Esc)'} aria-label="Minimise to see the board">
             <IconChevronDown size={18} />
           </button>
         </header>
@@ -389,14 +433,26 @@ interface PickProps {
   disabled?: (o: AskOption) => boolean;
   /** Extra tag per option. */
   tag?: (o: AskOption) => ReactNode;
+  /** Print 1–9 on the first nine (the keys askKeys.ts digitSlots maps in the same order). */
+  keyed?: boolean;
+}
+
+/** The digit printed on option `i` (0-based), when keyed. */
+function OptKey({ i, keyed }: { i: number; keyed?: boolean }) {
+  if (!keyed || i >= 9) return null;
+  return (
+    <kbd className="ask-kbd ask-optkey" aria-hidden="true">
+      {i + 1}
+    </kbd>
+  );
 }
 
 /** Rows with a radio/check indicator — the generic list. */
-function RowPicker({ options, chosen, max, onChange, onSendNow, onPreview, disabled, tag }: PickProps) {
+function RowPicker({ options, chosen, max, onChange, onSendNow, onPreview, disabled, tag, keyed }: PickProps) {
   const radio = max === 1;
   return (
     <ul className="ask-rows" role={radio ? 'radiogroup' : 'group'}>
-      {options.map((o) => {
+      {options.map((o, i) => {
         const on = chosen.includes(o.id);
         const off = disabled?.(o) ?? false;
         const full = !on && !radio && max >= 0 && chosen.length >= max;
@@ -430,6 +486,7 @@ function RowPicker({ options, chosen, max, onChange, onSendNow, onPreview, disab
               </span>
               {tag?.(o)}
               {card && <ManaCost cost={card.manaCost} size="sm" />}
+              <OptKey i={i} keyed={keyed} />
               <PreviewBtn cardId={o.cardId} onPreview={onPreview} label={o.label} />
             </OptButton>
           </li>
@@ -440,11 +497,11 @@ function RowPicker({ options, chosen, max, onChange, onSendNow, onPreview, disab
 }
 
 /** Cards as cards: a grid, identical copies collapsed with a count. */
-function CardPicker({ options, chosen, max, onChange, onSendNow, onPreview }: PickProps) {
+function CardPicker({ options, chosen, max, onChange, onSendNow, onPreview, keyed }: PickProps) {
   const groups = useMemo(() => groupOptions(options), [options]);
   return (
     <ul className="ask-cards">
-      {groups.map((g) => {
+      {groups.map((g, i) => {
         const picked = g.ids.filter((id) => chosen.includes(id)).length;
         const hidden = optionIsHidden(g.option);
         const card = visibleCard(g.option.card);
@@ -464,6 +521,7 @@ function CardPicker({ options, chosen, max, onChange, onSendNow, onPreview }: Pi
             >
               <CardFace name={lookupName(g.option)} card={card} hidden={hidden} label={g.label} />
               {g.ids.length > 1 && <span className="ask-card-count">×{g.ids.length}</span>}
+              <OptKey i={i} keyed={keyed} />
               {picked > 0 && (
                 <span className="ask-card-check" aria-hidden="true">
                   {g.ids.length > 1 && max !== 1 ? picked : <IconCheck size={14} />}
@@ -483,10 +541,10 @@ function CardPicker({ options, chosen, max, onChange, onSendNow, onPreview }: Pi
   );
 }
 
-function ChipPicker({ options, chosen, max, onChange, onSendNow, color }: PickProps & { color?: boolean }) {
+function ChipPicker({ options, chosen, max, onChange, onSendNow, color, keyed }: PickProps & { color?: boolean }) {
   return (
     <ul className={cx('ask-chips', color && 'ask-chips-color')}>
-      {options.map((o) => {
+      {options.map((o, i) => {
         const on = chosen.includes(o.id);
         const sym = color ? colorSymbol(o.label) : null;
         return (
@@ -503,6 +561,7 @@ function ChipPicker({ options, chosen, max, onChange, onSendNow, color }: PickPr
             >
               {sym && <Pip sym={sym} size="md" />}
               <span>{o.label}</span>
+              <OptKey i={i} keyed={keyed} />
             </button>
           </li>
         );
@@ -616,14 +675,18 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
     if (v.ok) send(answerFromDraft(ask, draft));
   };
   const skip = skipAction(ask);
+  // ability_menu's Cancel is its safe "never mind" and Esc's one exception (askKeys.ts).
+  const escSkips = ask.kind === 'ability_menu' && !!skip;
   const skipBtn = skip && (
-    <button type="button" className="btn btn-quiet ask-btn" disabled={sent} title={skip.title} onClick={() => send(skip.value)} data-answer="skip">
+    <button type="button" className="btn btn-quiet ask-btn" disabled={sent} title={escSkips ? `${skip.title} (Esc)` : skip.title} onClick={() => send(skip.value)} data-answer="skip">
       {skip.label}
+      {escSkips && <Kbd k="Esc" />}
     </button>
   );
   const primary = (label: string) => (
-    <button type="button" className="btn btn-primary ask-btn" disabled={!v.ok || sent} onClick={confirm} data-answer="confirm">
+    <button type="button" className="btn btn-primary ask-btn" disabled={!v.ok || sent} onClick={confirm} data-answer="confirm" title={`${label} (Space or Enter)`}>
       {label}
+      <Kbd k="Space" />
     </button>
   );
   const indices = draft.shape === 'indices' ? draft.indices : [];
@@ -632,7 +695,30 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
     const d: AskDraft = { shape: 'indices', indices: next };
     if (validateDraft(ask, d).ok) send(answerFromDraft(ask, d));
   };
-  const common = { shellKey: ask.askId, timeoutMs: ask.timeoutMs };
+  // 1–9: the numbered options (askKeys.ts). One pick answers at once, several toggle — as a click would.
+  const slots = digitSlots(ask);
+  const dmode = digitMode(ask);
+  const pickDigit = (i: number) => {
+    const ids = slots[i];
+    if (!ids || sentRef.current) return;
+    if (ask.kind === 'ability_menu') {
+      const o = ask.options.find((x) => x.id === ids[0]);
+      if (o?.canPlay) send(o.id);
+      return;
+    }
+    if (ask.kind === 'options') {
+      send(ids[0]!);
+      return;
+    }
+    if (ask.kind !== 'choose_list' && ask.kind !== 'choose_entities') return;
+    if (dmode === 'send') {
+      sendIndices([ids[0]!]);
+      return;
+    }
+    const max = choiceBounds(ask).hi === 1 ? 1 : ask.max;
+    setIndices(ids.length === 1 ? toggleChoice(indices, ids[0]!, max) : toggleGroup(indices, ids, max));
+  };
+  const common = { shellKey: ask.askId, timeoutMs: ask.timeoutMs, digits: slots.length, onDigit: pickDigit, onEsc: escSkips ? () => send(skip!.value) : null };
 
   switch (ask.kind) {
     case 'ability_menu': {
@@ -673,6 +759,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
                     <span className="ask-row-meta">{!o.canPlay ? 'Can’t be played right now' : o.isSpell ? 'Cast' : 'Activate'}</span>
                   </span>
                   <span className={cx('tag', o.isSpell ? 'tag-turn' : 'tag-prio')}>{o.isSpell ? 'Spell' : 'Ability'}</span>
+                  {i < 9 && <Kbd k={String(i + 1)} className="ask-optkey" />}
                 </button>
               </li>
             ))}
@@ -688,6 +775,8 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
       return (
         <AskShell
           {...common}
+          digits={2}
+          onDigit={(i) => (i === 0 ? yes() : no())}
           eyebrow={tidy(ask.title) || 'Confirm'}
           title={tidy(ask.prompt)}
           peek={tidy(ask.prompt)}
@@ -696,9 +785,11 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
             <>
               <button type="button" className={cx('btn ask-btn ask-btn-big', ask.defaultYes ? 'btn-quiet' : 'btn-primary')} disabled={sent} onClick={no} data-answer="no">
                 {ask.noLabel || 'No'}
+                <Kbd k="2" />
               </button>
               <button type="button" className={cx('btn ask-btn ask-btn-big', ask.defaultYes ? 'btn-primary' : 'btn-quiet')} disabled={sent} onClick={yes} data-answer="yes">
                 {ask.yesLabel || 'Yes'}
+                <Kbd k="1" />
               </button>
             </>
           }
@@ -746,6 +837,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
             onChange={(next) => setDraft({ shape: 'index', index: next[0] ?? -1 })}
             onSendNow={(next) => send(next[0]!)}
             onPreview={onPreviewCard}
+            keyed
           />
         </AskShell>
       );
@@ -813,6 +905,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
             footer={
               <button type="button" className="btn btn-primary ask-btn" disabled={sent} onClick={() => send([])} data-autofocus="" data-answer="ok">
                 OK
+                <Kbd k="Space" />
               </button>
             }
           >
@@ -827,7 +920,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
           eyebrow={countPhrase(lo, hi)}
           title={tidy(ask.prompt)}
           peek={tidy(ask.prompt)}
-          hint={v.hint}
+          hint={hi > 1 ? choiceCounter(indices.length, lo, hi) ?? v.hint : v.hint}
           hintTone={v.ok ? 'ok' : 'warn'}
           onEnter={confirm}
           wide={isCardList(ask.options) && ask.options.length > 3}
@@ -846,6 +939,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
             onSendNow={sendIndices}
             onPreview={onPreviewCard}
             tag={(o) => (ask.preselected.includes(o.id) ? <span className="tag tag-muted">suggested</span> : null)}
+            keyed
           />
         </AskShell>
       );
@@ -861,7 +955,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
           title={tidy(ask.prompt)}
           detail={dr ? <RevealSummary reveal={dr} owner={playerName(dr.owner)} onPreview={onPreviewCard} /> : undefined}
           peek={tidy(ask.prompt)}
-          hint={v.hint}
+          hint={hi > 1 ? choiceCounter(indices.length, lo, hi) ?? v.hint : v.hint}
           hintTone={v.ok ? 'ok' : 'warn'}
           onEnter={confirm}
           wide={isCardList(ask.options) && groupOptions(ask.options).length > 3}
@@ -872,7 +966,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
             </>
           }
         >
-          <ListPicker options={ask.options} chosen={indices} max={hi === 1 ? 1 : ask.max} onChange={setIndices} onSendNow={sendIndices} onPreview={onPreviewCard} />
+          <ListPicker options={ask.options} chosen={indices} max={hi === 1 ? 1 : ask.max} onChange={setIndices} onSendNow={sendIndices} onPreview={onPreviewCard} keyed />
         </AskShell>
       );
     }
@@ -908,6 +1002,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
                 )}
                 <button type="button" className="btn btn-primary ask-btn" disabled={!v.ok || sent} onClick={() => sendOrder(false)} data-answer="confirm" data-autofocus="">
                   OK
+                  <Kbd k="Space" />
                 </button>
               </>
             ) : (
@@ -1445,11 +1540,22 @@ function handOf(state: GameStateBody | null, seat: number | null | undefined): C
   return (p?.zones.hand.cards ?? []).filter((c): c is Card => !isHidden(c));
 }
 
-export function OpeningDialog({ onConcede = null, ...props }: OpeningDialogProps) {
+export function OpeningDialog({ onConcede = null, placement = 'modal', ...props }: OpeningDialogProps) {
   return (
-    <ConcedeContext.Provider value={onConcede}>
-      <OpeningDialogInner {...props} />
-    </ConcedeContext.Provider>
+    <PlacementContext.Provider value={placement}>
+      <ConcedeContext.Provider value={onConcede}>
+        <OpeningDialogInner {...props} />
+      </ConcedeContext.Provider>
+    </PlacementContext.Provider>
+  );
+}
+
+/** A key printed on a button (Endstep's `CONFIRM [SPACE]`); not part of the button's name. */
+function Kbd({ k, className }: { k: string; className?: string }) {
+  return (
+    <kbd className={cx('ask-kbd', className)} aria-hidden="true">
+      {k}
+    </kbd>
   );
 }
 
@@ -1471,29 +1577,15 @@ function OpeningDialogInner({ input, state, seat, onChoose, onPreviewCard }: Ope
     .map((l) => tidy(l))
     .filter(Boolean);
   const key = `${kind ?? 'input'}-${input.buttons.ok.label}-${input.prompt}`;
-  // 1 = the engine's OK (Keep / Play), 2 = its other button (Mulligan / Draw), endstep-style.
-  const chooseRef = useRef(choose);
-  chooseRef.current = choose;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
-      const t = e.target as HTMLElement | null;
-      if (t?.closest?.('.sheet') || t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
-      if (e.key === '1' || e.key === '2') {
-        e.preventDefault();
-        e.stopPropagation();
-        chooseRef.current(e.key === '1' ? 'ok' : 'cancel');
-      }
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, []);
+  // 1 = the engine's OK (Keep / Play), 2 = its other button (Mulligan / Draw), endstep-style (askKeys.ts).
+  const digits = { digits: 2, onDigit: (i: number) => choose(i === 0 ? 'ok' : 'cancel') };
 
   if (kind === 'play_draw') {
     const question = lines[lines.length - 1] ?? 'Play or draw?';
     const context = lines.length > 1 ? lines.slice(0, -1).join(' ') : undefined;
     return (
       <AskShell
+        {...digits}
         shellKey={key}
         eyebrow="Before the game"
         detail={context}
@@ -1539,6 +1631,7 @@ function OpeningDialogInner({ input, state, seat, onChoose, onPreviewCard }: Ope
   const context = lines.length > 1 ? lines.slice(0, -1).join(' ').replace(/^Human,\s*/i, '').replace(/^you are/i, 'You are') : '';
   return (
     <AskShell
+      {...digits}
       shellKey={key}
       eyebrow={mull ? (n > 0 ? `${n} cards · ${lands} land${lands === 1 ? '' : 's'}${context ? ` · ${context}` : ''}` : context || 'Before the game') : 'Decide'}
       title={<span className={cx(mull && 'ask-title-serif')}>{title}</span>}

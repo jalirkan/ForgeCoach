@@ -171,13 +171,13 @@ export async function evalPosition(req: EvalRequest, opts: EvalOptions = {}): Pr
     }
     if (res.ok) {
       const a = parseEvalAnswer(answer);
-      if (a && opts.explain && !a.explain) return { ok: false, status: 0, message: 'The coach helper did not explain its win chance.' };
-      return a ?? { ok: false, status: 0, message: 'The coach helper’s win chance answer could not be read.' };
+      if (a && opts.explain && !a.explain) return { ok: false, status: 0, message: 'The engine on your PC did not explain its win chance.' };
+      return a ?? { ok: false, status: 0, message: 'The win chance from your PC could not be read.' };
     }
     const m = (answer as { message?: unknown } | null)?.message;
-    return { ok: false, status: res.status, message: typeof m === 'string' && m.trim() ? m.trim().slice(0, 300) : `The coach helper answered ${res.status}.` };
+    return { ok: false, status: res.status, message: typeof m === 'string' && m.trim() ? m.trim().slice(0, 300) : `The engine on your PC answered HTTP ${res.status}.` };
   } catch {
-    return { ok: false, status: 0, message: opts.signal?.aborted ? 'Stopped.' : 'The coach helper did not answer.' };
+    return { ok: false, status: 0, message: opts.signal?.aborted ? 'Stopped.' : 'The engine on your PC did not answer.' };
   } finally {
     if (timer) clearTimeout(timer);
     opts.signal?.removeEventListener('abort', onAbort);

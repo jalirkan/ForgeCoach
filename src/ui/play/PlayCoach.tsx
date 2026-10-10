@@ -16,7 +16,8 @@
  * - At most one question at a time per seat for the plan and one for your own
  *   asks (answers.ts slots; the coach helper's replaceRunning, mtg-table D410).
  *
- * Live answers take Settings → Coach style: short commands by default, and
+ * Live answers take Settings → Coach style: Steps (plan mode, PlanCoach.tsx) by
+ * default; this file is the Short and Detailed styles: short commands, and
  * Settings → Live coach model (claude.ts `liveModelOf`: Sonnet unless chosen) with
  * the least thinking unless Coach thinking says Low — measured on recorded late-game plans.
  */
@@ -55,10 +56,11 @@ import {
 } from './autoPlan.ts';
 import { keepAdviceInBrowser, persistAdvice, restoreKeptAdvice } from './keepAdvice.ts';
 import { sessionAdviceStorage } from './adviceStore.ts';
+import { PlanCoach } from './PlanCoach.tsx';
 import './coach.css';
 
 const AUTO_KEY = 'forgecoach.autoCoach';
-export const AUTO_HELP = 'Plans your next turn during your opponent’s end step.';
+export const AUTO_HELP = 'Plans your next turn at their end step.';
 
 /**
  * The live coach's supersede keys (D325), one per tab — a tab is one seat, also
@@ -76,7 +78,31 @@ function useAdvice(game: string | null): readonly AdviceEntry[] {
   return useSyncExternalStore(subscribeAdvice, () => adviceFor(game));
 }
 
-export const PlayCoach = memo(function PlayCoach({
+type PlayCoachProps = {
+  log: GameLog | null;
+  state: GameStateBody | null;
+  input: InputBody | null;
+  ask: AskBody | null;
+  seat: number | null;
+  /** The engine is waiting on this seat (there is something to decide). */
+  myMove: boolean;
+  guideName: string | null;
+  onOpenGuides: () => void;
+  onOpenSettings: () => void;
+  /** Desktop sidebar: fold the coach away (the phase steps stay). */
+  onCollapse?: () => void;
+};
+
+/**
+ * The live coach: plan mode (Settings → Coach style: Steps, the default;
+ * PlanCoach.tsx) or the short / detailed styles below.
+ */
+export const PlayCoach = memo(function PlayCoach(props: PlayCoachProps) {
+  const availability = useCoachAvailability();
+  return (availability.settings.coachStyle ?? 'plan') === 'plan' ? <PlanCoach {...props} /> : <StyleCoach {...props} />;
+});
+
+const StyleCoach = memo(function StyleCoach({
   log,
   state,
   input,
@@ -105,7 +131,7 @@ export const PlayCoach = memo(function PlayCoach({
   // Auto-coach only asks when something can answer (Claude Code on the PC, or an API key).
   const availability = useCoachAvailability();
   const coachReady = availability.ready;
-  const terse = (availability.settings.coachStyle ?? 'short') === 'short';
+  const terse = availability.settings.coachStyle === 'short';
   const moment = useMemo(() => (log ? { log, state, input, ask, seat } : null), [log, state, input, ask, seat]);
   const key = moment && myMove ? momentKey(moment) : null;
   const decision: Decision | null = useMemo(() => (moment && myMove ? liveDecision(moment) : null), [moment, myMove]);
@@ -215,7 +241,7 @@ export const PlayCoach = memo(function PlayCoach({
     <div className="coach play-coach">
       <div className="pc-head">
         <div className="pc-title">Coach</div>
-        <label className="switch" title={`${AUTO_HELP} Uses Claude Code on your PC, or your API key.`}>
+        <label className="switch" title={`${AUTO_HELP} Answers come from Claude Code on your PC or your API key (Settings → Coach source).`}>
           <input
             type="checkbox"
             checked={auto}

@@ -8,17 +8,21 @@
  * board cards — and redaction: a concealed or face-down source shows no name
  * and no art, a blanked text stays blank. Real frames from mtg-table's
  * recordings (human-auto-42 seq 903: a spell under a triggered ability that
- * targets a land), plus hand-made concealed cases.
+ * targets a land), plus hand-made concealed cases. The float's fan (order,
+ * data attributes, every badge an anchor) and its "Always yield" control
+ * (only when the engine offers it, disabled unless the board may act, lit
+ * from `yielded`, and the `yieldKey` never in the markup).
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
 import type { AnyCard, Card, GameStateBody, StackItem } from '../protocol.ts';
-import { buildStackArrows, cardKey, playerKey, stackKey, type RectBox, type RectKey } from './arrows.ts';
+import { buildStackArrows, cardKey, centreWithin, playerKey, stackKey, type RectBox, type RectKey } from './arrows.ts';
 import { ArrowPaths } from './BoardArrows.tsx';
 import { BoardMarksContext } from './cardContext.ts';
 import { CardTile } from './CardTile.tsx';
-import { StackPanel } from './StackPanel.tsx';
-import { stackEntries, stackKind, stackMarks, stackPlayerMarks, stackText } from './stackModel.ts';
+import { PlayBoardContext, type PlayBoard } from './play/playBoard.ts';
+import { StackPanel, YieldControls } from './StackPanel.tsx';
+import { fanPlace, stackEntries, stackKind, stackMarks, stackPlayerMarks, stackText, yieldActOf, yieldControlOf } from './stackModel.ts';
 
 function card(id: number, name: string, zone: string, extra: Partial<Card> = {}): Card {
   return {
@@ -258,5 +262,225 @@ describe('badges on board cards', () => {
       </BoardMarksContext.Provider>,
     );
     expect(inHand).not.toContain('smk');
+  });
+});
+
+// ---- the float's fan and its "Always yield" control
+
+function board(canAct: boolean): PlayBoard {
+  return {
+    state: null,
+    input: null,
+    ask: null,
+    seat: 0,
+    log: null,
+    view: {} as PlayBoard['view'],
+    connected: true,
+    over: false,
+    act: () => undefined,
+    canAct,
+  };
+}
+
+/** Three items, bottom first: a spell, an opponent's ability, and this seat's optional trigger on top. */
+const KEY_SPELL = 'yQZspell';
+const KEY_OPP = 'yQZopp';
+const KEY_TRIG = 'yQZtrig';
+const three = state(
+  [
+    item(60, 29, { text: 'S.H.I.E.L.D. Helicarrier', isAbility: false, yieldKey: KEY_SPELL }),
+    item(61, 90, { controller: 1, text: '{T}: Forge AI pings you.', isAbility: true, yieldKey: KEY_OPP, targetPlayerIds: [0] }),
+    item(62, 31, { text: 'When Quake enters, you may draw a card.', isAbility: true, isOptionalTrigger: true, yieldKey: KEY_TRIG, yielded: 'yes' }),
+  ],
+  [quake, island],
+  [heli],
+  [card(90, 'Prodigal Pyromancer', 'battlefield', { controller: 1, owner: 1 } as Partial<Card>)],
+);
+
+function floatHtml(st: GameStateBody, b: PlayBoard | null): string {
+  const panel = <StackPanel entries={stackEntries(st, 0)} state={st} variant="float" onFold={() => undefined} />;
+  return renderToStaticMarkup(b ? <PlayBoardContext.Provider value={b}>{panel}</PlayBoardContext.Provider> : panel);
+}
+
+describe('the fan (float)', () => {
+  test('order and data attributes: 1…n in the markup, 1 whole and in front, the rest a step back', () => {
+    const html = floatHtml(three, board(true));
+    expect(html).toContain('data-stack-panel=""');
+    expect(html).toMatch(/class="stackp-n">3</);
+    expect([...html.matchAll(/data-stack-item="(\d+)" data-stack-n="(\d+)"/g)].map((m) => [Number(m[1]), Number(m[2])])).toEqual([
+      [62, 1],
+      [61, 2],
+      [60, 3],
+    ]);
+    expect(html).toContain('stackp-fan');
+    // Every item keeps its number badge (the board's lines start there).
+    expect(html.match(/class="stackp-num"/g)).toHaveLength(3);
+    // 1 is whole: its kind, text and the "next" word; the others show kind, name and number.
+    expect(html).toMatch(/is-next[^"]*"[^>]*data-stack-item="62"/);
+    expect(html).toMatch(/is-back[^"]*"[^>]*data-stack-item="61"/);
+    expect(html).toContain('you may draw a card.');
+    expect(html).toContain('Activated ability');
+    expect(html).toContain('Prodigal Pyromancer');
+    expect(html).toContain('>Spell<');
+  });
+
+  test('the pile: each deeper item lower in z, so the one in front only covers its tucked edge', () => {
+    const zs = [1, 2, 3, 4].map((n) => fanPlace(n, 4));
+    expect(zs.map((p) => p.depth)).toEqual([0, 1, 2, 3]);
+    for (let i = 1; i < zs.length; i++) expect(zs[i]!.z).toBeLessThan(zs[i - 1]!.z);
+    expect(floatHtml(three, null)).toMatch(/data-stack-item="62" data-stack-n="1" style="--fan-i:0;z-index:3"/);
+  });
+
+  test('numbering matches the board: the badge on a card is the panel item\'s number', () => {
+    const es = stackEntries(three, 0);
+    const marks = stackMarks(es);
+    const html = floatHtml(three, null);
+    for (const [cardId, m] of marks) {
+      for (const n of m.sources) {
+        const e = es.find((x) => x.n === n)!;
+        expect(e.item.sourceCardId).toBe(cardId);
+        expect(html).toContain(`data-stack-item="${e.item.id}" data-stack-n="${n}"`);
+      }
+    }
+    expect(stackPlayerMarks(es).get(0)).toEqual([2]);
+  });
+
+  test('the yieldKey never reaches the markup', () => {
+    for (const b of [board(true), board(false), null]) {
+      const html = floatHtml(three, b);
+      expect(html).not.toMatch(/yQZ/);
+    }
+    const inline = renderToStaticMarkup(
+      <PlayBoardContext.Provider value={board(true)}>
+        <StackPanel entries={stackEntries(three, 0)} state={three} variant="inline" />
+      </PlayBoardContext.Provider>,
+    );
+    expect(inline).not.toMatch(/yQZ/);
+  });
+
+  test('the inline (replay) variant is unchanged: no fan, no yield control', () => {
+    const inline = renderToStaticMarkup(<StackPanel entries={stackEntries(three, 0)} state={three} variant="inline" />);
+    expect(inline).not.toContain('stackp-fan');
+    expect(inline).not.toContain('stackp-yield');
+    expect(inline.match(/class="stackp-num"/g)).toHaveLength(3);
+  });
+
+  test('the existing redaction cases hold in the fan', () => {
+    const concealed = { id: 77, hidden: true, zone: 'stack', owner: 1, controller: 1 } as unknown as AnyCard;
+    const morph = card(78, '', 'battlefield', { faceDown: true, controller: 1, owner: 1 } as Partial<Card>);
+    const st = state(
+      [item(1, 77, { controller: 1, text: '' }), item(2, 78, { controller: 1, text: '', isAbility: true, targetCardIds: [77], yieldKey: 'yQZhid' })],
+      [],
+      [concealed],
+      [morph],
+    );
+    const html = floatHtml(st, board(true));
+    expect(html).toContain('Face-down card');
+    expect(html).toContain('Hidden');
+    expect(html).not.toContain('<img');
+    expect(html).not.toMatch(/yQZ/);
+    expect(html).toContain('a hidden card');
+  });
+});
+
+describe('"Always yield"', () => {
+  const es = () => stackEntries(three, 0);
+  const at = (id: number) => es().find((e) => e.item.id === id)!;
+  const ctl = (id: number, b: PlayBoard | null) =>
+    renderToStaticMarkup(b ? <PlayBoardContext.Provider value={b}><YieldControls entry={at(id)} /></PlayBoardContext.Provider> : <YieldControls entry={at(id)} />);
+
+  test('the model: what the engine offers, never the key', () => {
+    expect(yieldControlOf(at(60).item, true)).toBeNull(); // a spell: isAbility false
+    expect(yieldControlOf(item(1, 1, { isAbility: true, yieldKey: null }), true)).toBeNull(); // no key
+    expect(yieldControlOf(item(1, 1, { isAbility: true, yieldKey: '' }), true)).toBeNull();
+    expect(yieldControlOf(item(1, 1, { isAbility: true }), true)).toBeNull(); // pre-M6
+    expect(yieldControlOf(at(61).item, false)).toEqual({ kind: 'auto', auto: { on: false, send: 'yes' } });
+    expect(yieldControlOf({ ...at(61).item, yielded: 'yes' }, false)).toEqual({ kind: 'auto', auto: { on: true, send: 'clear' } });
+    // Yes/No only for an optional trigger this seat controls.
+    expect(yieldControlOf(at(62).item, true)).toEqual({ kind: 'trigger', yes: { on: true, send: 'clear' }, no: { on: false, send: 'no' } });
+    expect(yieldControlOf(at(62).item, false)?.kind).toBe('auto');
+    expect(JSON.stringify(yieldControlOf(at(62).item, true))).not.toMatch(/yQZ/);
+  });
+
+  test('a press sends setYield with the key, only when the board may act', () => {
+    expect(yieldActOf(at(62).item, 'clear', true)).toEqual({ action: 'setYield', yieldKey: KEY_TRIG, mode: 'clear' });
+    expect(yieldActOf(at(61).item, 'yes', true)).toEqual({ action: 'setYield', yieldKey: KEY_OPP, mode: 'yes' });
+    expect(yieldActOf(at(61).item, 'yes', false)).toBeNull();
+    expect(yieldActOf(at(60).item, 'yes', true)).toBeNull(); // a spell: nothing to yield
+  });
+
+  test('absent when not offered, and absent off the play screen', () => {
+    expect(ctl(60, board(true))).toBe('');
+    expect(ctl(61, null)).toBe('');
+    expect(ctl(62, null)).toBe('');
+    expect(floatHtml(three, null)).not.toContain('stackp-yield');
+  });
+
+  test('a plain ability: one "Always yield" toggle', () => {
+    const html = ctl(61, board(true));
+    expect(html).toContain('data-yield-control="auto"');
+    expect(html).toContain('Always yield');
+    expect(html).toContain('aria-pressed="false"');
+    expect(html).toContain('data-yield-mode="yes"');
+    expect(html).not.toContain('disabled');
+  });
+
+  test('an optional trigger of mine: Always yes / Always no, lit from yielded', () => {
+    const html = ctl(62, board(true));
+    expect(html).toContain('data-yield-control="trigger"');
+    expect(html).toMatch(/aria-pressed="true"[^>]*data-yield-mode="clear"[^>]*aria-label="Always yes"/);
+    expect(html).toMatch(/aria-pressed="false"[^>]*data-yield-mode="no"[^>]*aria-label="Always no"/);
+    expect(html).toContain('is-on');
+  });
+
+  test('disabled unless the board may act', () => {
+    const html = ctl(61, board(false));
+    expect(html).toMatch(/<button[^>]*disabled=""/);
+    expect(ctl(62, board(false)).match(/disabled=""/g)).toHaveLength(2);
+  });
+
+  test('in the fan: on the item in front and the ones behind, only where offered', () => {
+    const html = floatHtml(three, board(true));
+    const rows = html.split('data-stack-item=').slice(1);
+    expect(rows[0]).toContain('data-yield-control="trigger"'); // 62, mine, optional
+    expect(rows[1]).toContain('data-yield-control="auto"'); // 61, the AI's ability
+    expect(rows[2]).not.toContain('stackp-yield'); // 60, a spell
+  });
+});
+
+describe('the lines anchor on every badge', () => {
+  test('each item with a source on the board or a target starts at its own badge', () => {
+    const es = stackEntries(three, 0);
+    // The fan's measured badges: 3 at the top of the pile, 1 at the bottom, all clear of each other.
+    const badges = new Map<RectKey, RectBox>([
+      [stackKey(60), { x: 1010, y: 200, width: 24, height: 24 }],
+      [stackKey(61), { x: 1010, y: 237, width: 24, height: 24 }],
+      [stackKey(62), { x: 1010, y: 274, width: 24, height: 24 }],
+      [cardKey(31), { x: 400, y: 400, width: 80, height: 110 }],
+      [cardKey(90), { x: 400, y: 100, width: 80, height: 110 }],
+      [playerKey(0), { x: 40, y: 700, width: 60, height: 30 }],
+    ]);
+    const arrows = buildStackArrows(es, (k) => badges.get(k));
+    expect(arrows.map((a) => [a.cls, a.from, a.to])).toEqual([
+      ['source', 's:62', 'c:31'],
+      ['source', 's:61', 'c:90'],
+      ['target', 's:61', 'p:0'],
+    ]);
+    for (const a of arrows) {
+      const b = badges.get(a.from)!;
+      const start = a.path.match(/^M([\d.]+) ([\d.]+)/)!;
+      const [x, y] = [Number(start[1]), Number(start[2])];
+      // The line leaves from the badge's own edge.
+      expect(x).toBeGreaterThanOrEqual(b.x - 0.1);
+      expect(x).toBeLessThanOrEqual(b.x + b.width + 0.1);
+      expect(y).toBeGreaterThanOrEqual(b.y - 0.1);
+      expect(y).toBeLessThanOrEqual(b.y + b.height + 0.1);
+    }
+  });
+
+  test('a badge scrolled out of the list is no anchor', () => {
+    const list = { x: 1000, y: 220, width: 280, height: 200 };
+    expect(centreWithin({ x: 1010, y: 237, width: 24, height: 24 }, list)).toBe(true);
+    expect(centreWithin({ x: 1010, y: 190, width: 24, height: 24 }, list)).toBe(false);
   });
 });

@@ -2,8 +2,8 @@
  * ForgeCoach — ui/LoadScreen.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The start page: the lobby tiles route to every mode (Play vs Forge, Draft vs
- * AI, Draft & build, the cubes, review, live). Under them, Play vs Forge's
+ * The start page: the lobby tiles route to every mode (Play vs Bot, Draft vs
+ * Bot, Draft & build, practice, review, the cubes, live). Under them, Play vs Bot's
  * engine panel (connection status, how to start the engine, its address);
  * then reviewing a recorded game (sample or file) and following a live game.
  */
@@ -31,14 +31,14 @@ export const SAMPLES: SampleInfo[] = [
   {
     id: 'human-auto-42',
     title: 'Auto-play, seed 42',
-    blurb: 'Pacho’s S.H.I.E.L.D. deck against the Forge AI, every click recorded.',
-    meta: ['Human vs Forge AI', '40-card decks', 'Loss'],
+    blurb: 'Pacho’s S.H.I.E.L.D. deck against Forge’s own AI, every click recorded.',
+    meta: ['You vs Forge’s AI', '40-card decks', 'Loss'],
   },
   {
     id: 'human-comfort-13',
     title: 'Comfort game, seed 13',
-    blurb: 'The same deck played by hand over the web client — upkeep stops and all.',
-    meta: ['Human vs Forge AI', '40-card decks', 'Loss'],
+    blurb: 'The same deck played by hand on mtg-table’s board — upkeep stops and all.',
+    meta: ['You vs Forge’s AI', '40-card decks', 'Loss'],
   },
 ];
 
@@ -96,7 +96,7 @@ function seatStatusText(play: PlayStatus | null, url: string): string | null {
   if (play.status === 'connecting' || play.status === 'idle') {
     return play.attempts > 0 ? `Looking for the engine… (attempt ${play.attempts + 1})` : 'Connecting to the engine…';
   }
-  if (play.status === 'refused') return 'Another window has the player’s seat.';
+  if (play.status === 'refused') return 'Another window has your seat. Close it, then try again.';
   return `Couldn’t reach the engine at ${redactSeatUrl(url)}.`;
 }
 
@@ -128,7 +128,7 @@ function SeatStatusBox({ play, url }: { play: PlayStatus | null; url: string }) 
 }
 
 /**
- * Play vs Forge's engine panel, under the lobby tiles (the tile itself is the
+ * Play vs Bot's engine panel, under the lobby tiles (the tile itself is the
  * Play button): the connection's status with Cancel / Try again, and how to
  * start the engine, with the engine's address.
  */
@@ -160,9 +160,9 @@ function EnginePanel({
   const choices = usePlayChoices(play?.status ?? null);
   if (engineServed && !play) return null;
   return (
-    <section className="play-card engine-panel" aria-label="The Forge engine">
+    <section className="play-card engine-panel" aria-label="The engine">
       <div className="engine-panel-head">
-        <span className="fx-label">Play vs Forge · the engine</span>
+        <span className="fx-label">Play vs Bot · the engine</span>
         {busy ? (
           <button className="btn btn-quiet btn-sm" onClick={onCancel}>
             <span className="spinner" /> Cancel
@@ -195,10 +195,10 @@ function EnginePanel({
               <CopyCmd cmd={cmd} />
             </li>
             <li>
-              Wait for <i>Engine ready on ws://…</i>. Close any mtg-table board tab first — only one window can hold the player’s seat.
+              Wait for <i>Engine ready on ws://…</i>. Close any mtg-table board tab first: only one window can hold your seat.
             </li>
             <li>
-              Press <b>Play vs Forge</b>. Chrome may ask to let this page reach devices on your local network — allow it. Safari blocks it; use Chrome or Firefox.
+              Press <b>Play vs Bot</b>. Chrome may ask to let this page reach devices on your local network — allow it. Safari blocks it; use Chrome or Firefox.
             </li>
           </ol>
           <form
@@ -259,11 +259,11 @@ function EngineConnect({
           <div className={cx('engine-connect-icon', busy && 'is-busy', failed && 'is-bad')} aria-hidden="true">
             {busy ? <span className="spinner spinner-lg" /> : <IconPlay size={26} />}
           </div>
-          <h1 className="engine-connect-title">{busy ? 'Joining your table…' : failed ? 'Can’t reach the table' : 'Play vs Forge'}</h1>
+          <h1 className="engine-connect-title">{busy ? 'Joining your table…' : failed ? 'Can’t reach the table' : 'Play vs Bot'}</h1>
           <p className="muted engine-connect-sub">
             {failed
               ? 'Is the engine still running on your computer, and is this phone on the same network?'
-              : 'The Forge engine on your computer served this page. You play from here; the coach is one tap away.'}
+              : 'The engine on your computer served this page. You play from here; the coach is one tap away.'}
           </p>
           <SeatStatusBox play={play} url={seatUrl} />
           {choices.policies.length > 0 && !busy && <PlayPolicyPicker policies={choices.policies} />}
@@ -348,11 +348,11 @@ export function LoadScreen({
         <section className="hero">
           <div className="fx-label lobby-kicker">The table</div>
           <h1>
-            Play Forge. <span className="accent">Get coached.</span>
+            Play Magic. <span className="accent">Get coached.</span>
           </h1>
           <p className="hero-sub">
-            A clean, calm table for games against the Forge AI — with a coach that sees the exact board and every card’s real
-            text, and a full review when the game is done.
+            A calm table for games against a bot or a friend, with a coach that sees the exact board and every card’s real text —
+            then a look back at what happened.
           </p>
         </section>
 
@@ -410,7 +410,7 @@ export function LoadScreen({
 
         <div className="load-two">
           <section className="load-section">
-            <h2 className="section-h">Your own recording</h2>
+            <h2 className="section-h">Open your own game</h2>
             <button className={cx('drop', loading === 'file' && 'is-busy')} onClick={() => fileRef.current?.click()} disabled={!!loading}>
               <span className="drop-icon">{loading === 'file' ? <span className="spinner" /> : <IconUpload size={22} />}</span>
               <span className="drop-title">Open frames.jsonl</span>
@@ -440,7 +440,7 @@ export function LoadScreen({
             </h2>
             <div className="live-box">
               <p className="small muted">
-                Playing in mtg-table’s own board instead? Follow along here, read-only, from its <code>/observe</code> socket.
+                Playing on mtg-table’s own board instead? Follow the game here, read-only.
               </p>
               <form
                 className="field-row"

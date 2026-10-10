@@ -32,13 +32,13 @@ const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ b
 
 export function lobbyTiles(o: { onPlay: () => void; onDraftBuild: () => void; samples: number; playLine?: string }): Tile[] {
   return [
-    { id: 'play', title: 'Play vs Forge', line: o.playLine ?? 'A full game against the Forge AI, the coach beside the board.', glyph: G.play, onClick: o.onPlay, primary: true },
-    { id: 'draft', title: 'Draft vs AI', line: 'Booster, Winston or Grid against the cube lab’s drafter.', glyph: G.draft, onClick: () => (location.hash = '#draft') },
-    { id: 'build', title: 'Draft & build', line: 'Track a paper draft; the best 40 with its reasons.', glyph: G.build, onClick: o.onDraftBuild },
-    { id: 'cube', title: 'The cubes', line: `${DRAFT_CUBES.length} cubes, with the lab’s numbers.`, glyph: G.cube, onClick: () => (location.hash = `#cube/${DRAFT_CUBES[0]?.id ?? 'synergy'}`) },
-    { id: 'review', title: 'Review a game', line: `${o.samples} recorded games, or your own frames.jsonl.`, glyph: G.review, onClick: () => scrollTo('lobby-review') },
+    { id: 'play', title: 'Play vs Bot', line: o.playLine ?? 'A full game against the bot, with the coach beside the board.', glyph: G.play, onClick: o.onPlay, primary: true },
+    { id: 'draft', title: 'Draft vs Bot', line: 'Draft a cube against bots, or with a friend, then play your deck.', glyph: G.draft, onClick: () => (location.hash = '#draft') },
+    { id: 'build', title: 'Draft & build', line: 'For a paper draft: track your pool, get each pick called, build the best 40.', glyph: G.build, onClick: o.onDraftBuild },
     { id: 'practice', title: 'Practice', line: 'Puzzles from your own games: what would you do here?', glyph: G.practice, onClick: () => (location.hash = '#practice') },
-    { id: 'live', title: 'Watch live', line: 'Follow a game in mtg-table’s own board, read-only.', glyph: G.live, onClick: () => scrollTo('lobby-live') },
+    { id: 'review', title: 'Review a game', line: `Step through a recorded game with the coach: ${o.samples} samples, or your own.`, glyph: G.review, onClick: () => scrollTo('lobby-review') },
+    { id: 'cube', title: 'The cubes', line: `${DRAFT_CUBES.length} cubes: their cards, themes and the lab’s numbers.`, glyph: G.cube, onClick: () => (location.hash = `#cube/${DRAFT_CUBES[0]?.id ?? 'synergy'}`) },
+    { id: 'live', title: 'Watch live', line: 'Follow a game on mtg-table’s own board, read-only.', glyph: G.live, onClick: () => scrollTo('lobby-live') },
   ];
 }
 

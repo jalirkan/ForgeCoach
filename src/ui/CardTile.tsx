@@ -251,6 +251,8 @@ interface TileProps {
   inHand?: boolean;
   /** Ownership frame on the battlefield (gold for yours, crimson for theirs). */
   side?: TileSide;
+  /** The engine says this hand card is not a legal answer now (handAffordance.ts): drawn faded, still clickable. */
+  dim?: boolean;
 }
 
 function counterText(k: string, n: number): string {
@@ -285,7 +287,7 @@ function mergeMarks(all: (CardStackMarks | undefined)[]): CardStackMarks | undef
   return { sources: [...new Set(got.flatMap((m) => m.sources))].sort((a, b) => a - b), targets: [...new Set(got.flatMap((m) => m.targets))].sort((a, b) => a - b) };
 }
 
-function TileInner({ card, attachments, inHand, side }: TileProps) {
+function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
   const boardMarks = useBoardMarks();
   const stackMarks = inHand ? undefined : boardMarks?.stack.get(card.id);
   const combatMark = inHand ? undefined : boardMarks?.combat?.get(card.id);
@@ -319,6 +321,7 @@ function TileInner({ card, attachments, inHand, side }: TileProps) {
         mark === 'select' && 'is-select',
         mark === 'act' && 'is-act',
         hint && 'is-hint',
+        dim && 'is-dim',
         attachments && attachments.length > 0 && 'has-attach',
         stackMarks && (stackMarks.targets.length > 0 ? 'is-stack-target' : stackMarks.sources.length > 0 && 'is-stack-source'),
         combatMark && `is-pair-${combatMark.role}`,
@@ -408,7 +411,7 @@ function TileInner({ card, attachments, inHand, side }: TileProps) {
 }
 
 export const CardTile = memo(TileInner, (a, b) => {
-  if (a.inHand !== b.inHand || a.side !== b.side) return false;
+  if (a.inHand !== b.inHand || a.side !== b.side || !!a.dim !== !!b.dim) return false;
   if (tileSig(a.card) !== tileSig(b.card)) return false;
   const aa = a.attachments ?? [];
   const bb = b.attachments ?? [];

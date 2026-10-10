@@ -7,10 +7,30 @@
  * NDJSON `text` lines and a `done`). The playtest points the page at it with
  * `?coach=<url>` and counts the questions per game and turn: auto-coach's
  * cadence, and whether the panel ever goes blank, are read against it.
- * `/health` carries no `engine` key, so the page's Play vs Forge takes the
+ * `/health` carries no `engine` key, so the page's Play vs Bot takes the
  * seat at once (an older helper: "running").
+ *
+ * Plan mode (the live coach's default, mtg-table D419): a question whose system
+ * prompt is the plan format's is answered in that format — keep at the opening
+ * hand, "choose play" at the coin toss, the first listed answer of an engine
+ * question, else pass — so the steps check out and no correction is asked.
+ * Its `type` is "moment <first line>", which the cadence check counts per game.
  */
 import http from 'node:http';
+
+/** A plan-mode reply (PLAN:, STEPS:, END) that the page's check accepts at any moment. */
+export function planAnswer(user) {
+  const q = String(user).split('\n')[0] ?? '';
+  let step = 'pass';
+  if (/Do you keep it\?/.test(q)) step = 'keep';
+  else if (/play first or draw first/.test(q)) step = 'choose play';
+  else if (/^The engine asks you:/.test(q)) {
+    const choices = /^(?:Choices|Legal targets): (.*)\.$/m.exec(user)?.[1] ?? '';
+    const pick = choices.replace(/\s*\(choose .*\)$/, '').split('; ')[0]?.replace(/ \((yours|the opponent's)\)$/, '');
+    if (pick) step = `${/^Legal targets/m.test(user) ? 'target' : 'choose'} ${pick}`;
+  } else if (/^It is your turn/.test(q)) step = 'hold';
+  return `A fake coach: nothing to add.\nPLAN: Nothing new for now; keep your mana up.\nSTEPS:\n1. ${step}\nEND`;
+}
 
 export function startFakeHelper({ port = 0, answerMs = 50 } = {}) {
   const asks = [];
@@ -39,10 +59,15 @@ export function startFakeHelper({ port = 0, answerMs = 50 } = {}) {
           /* counted anyway */
         }
         const at = Date.now();
-        const type = /^Decision type: (.+)$/m.exec(String(j.user ?? ''))?.[1] ?? null;
-        asks.push({ at, supersedes: j.supersedes ?? null, userLen: (j.user ?? '').length, type });
+        const user = String(j.user ?? '');
+        const planMode = /^REPLY FORMAT\./.test(String(j.system ?? ''));
+        const first = user.split('\n')[0] ?? '';
+        const type = planMode ? `moment ${first.slice(0, 120)}` : (/^Decision type: (.+)$/m.exec(user)?.[1] ?? null);
+        asks.push({ at, supersedes: j.supersedes ?? null, userLen: user.length, type, thinking: j.thinking ?? null, model: j.model ?? null });
         res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
-        const text = '**Answer:** Pass and keep your mana up.\n\n**Rule:** hold up interaction when you are ahead.\n\n**Confidence:** medium — a fake helper said so.';
+        const text = planMode
+          ? planAnswer(user)
+          : '**Answer:** Pass and keep your mana up.\n\n**Rule:** hold up interaction when you are ahead.\n\n**Confidence:** medium — a fake helper said so.';
         setTimeout(() => {
           res.write(JSON.stringify({ type: 'text', text }) + '\n');
           res.end(JSON.stringify({ type: 'done', stopReason: 'end_turn', model: 'fake' }) + '\n');

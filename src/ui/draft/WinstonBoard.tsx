@@ -79,7 +79,7 @@ export function WinstonBoard({
       ) : (
         <div className="wwait">
           <span className="wwait-dot" />
-          <p className="serif-i">The AI is looking at pile {d.look + 1}…</p>
+          <p className="serif-i">The bot is looking at pile {d.look + 1}…</p>
         </div>
       )}
     </div>

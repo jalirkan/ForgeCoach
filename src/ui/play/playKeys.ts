@@ -6,10 +6,16 @@
  * mtg-table's web/src/keys.ts (GPL-3.0-or-later, the mtg-table authors): the
  * same bindings where Forge has one, the engine's own `enabled` flags as the
  * only gates, and no rules logic.
+ *
+ * Two scopes that never meet: the board's keys (planPlayKey, below) while no
+ * question is open, and the question's own (askKeys.ts) while one is — the act
+ * guard sends nothing but concede behind an ask. KEY_BINDINGS lists both, and
+ * playKeys.test.ts holds that no key does two things in one scope and mode.
  */
 import type { ActBody, ManaColor } from '../../protocol.ts';
 import { MANA_COLORS } from '../../protocol.ts';
-import type { InputView } from './inputView.ts';
+import type { InputMode, InputView } from './inputView.ts';
+import type { YieldLit } from './decisionModel.ts';
 
 export interface KeyRow {
   chord: string;
@@ -17,18 +23,52 @@ export interface KeyRow {
 }
 
 export const PLAY_KEYS: KeyRow[] = [
-  { chord: 'Space / Enter', what: 'the highlighted (primary) button — usually OK / pass' },
-  { chord: 'Esc', what: 'the engine’s Cancel button (End Turn, Alpha Strike, Cancel…)' },
+  { chord: 'Space / Enter', what: 'the highlighted (primary) button — usually OK / pass; in a question, Confirm' },
+  { chord: 'Esc', what: 'the engine’s Cancel button (End Turn, Cancel…); in a question, hide or show it (never declines — “Choose how to play”: never mind)' },
+  { chord: '1 – 9', what: 'in a question, the option with that number (one pick answers at once; several pick toggles)' },
   { chord: 'P', what: 'pass priority once' },
-  { chord: 'E', what: 'pass until end of turn (Cancel stops it)' },
-  { chord: 'T', what: 'pass until my next turn' },
-  { chord: 'B', what: 'pass until just before my turn (opponent’s end step)' },
-  { chord: 'A', what: 'attack with everything (while declaring attackers)' },
+  { chord: 'E', what: 'auto-pass: until end of turn (again, while it runs, to stop it)' },
+  { chord: 'B', what: 'auto-pass: until just before my turn (their end step)' },
+  { chord: 'T', what: 'auto-pass: until my next turn' },
+  { chord: 'A', what: 'alpha strike while declaring attackers; Auto pay while paying' },
   { chord: 'Ctrl+Z', what: 'undo the last mana tap' },
-  { chord: 'W U B R G C', what: 'spend one floating mana of that colour' },
+  { chord: 'W U B R G C', what: 'spend one floating mana of that colour (B spends black while black floats)' },
   { chord: 'L', what: 'open the game log' },
   { chord: 'Shift+B', what: 'report a bug (this screen, with your recent game log)' },
   { chord: '?', what: 'show this list' },
+];
+
+/** Where a key works: on the board (no question open) or inside an open question. */
+export type KeyScope = 'board' | 'ask';
+
+export interface KeyBinding {
+  /** Event keys, lowercased (`' '`, `'enter'`, `'escape'`, `'a'`, `'ctrl+z'`, `'1'`). */
+  keys: readonly string[];
+  scope: KeyScope;
+  /** The input modes it works in; null: every mode. */
+  modes: readonly InputMode[] | null;
+  what: string;
+  /** Wins over a letter binding while it applies (floating mana over B). */
+  precedence?: boolean;
+}
+
+/** Every binding, by scope and mode: the table playKeys.test.ts checks for overlaps and against the planners. */
+export const KEY_BINDINGS: readonly KeyBinding[] = [
+  { keys: [' ', 'enter'], scope: 'board', modes: null, what: 'primary button' },
+  { keys: ['escape'], scope: 'board', modes: null, what: 'engine Cancel' },
+  { keys: ['p'], scope: 'board', modes: null, what: 'pass priority once' },
+  { keys: ['e'], scope: 'board', modes: null, what: 'auto-pass: end of turn' },
+  { keys: ['b'], scope: 'board', modes: null, what: 'auto-pass: before my turn' },
+  { keys: ['t'], scope: 'board', modes: null, what: 'auto-pass: my next turn' },
+  { keys: ['a', 'ctrl+a'], scope: 'board', modes: ['attack'], what: 'alpha strike' },
+  { keys: ['a'], scope: 'board', modes: ['pay'], what: 'auto pay (the engine’s OK)' },
+  { keys: ['ctrl+z'], scope: 'board', modes: null, what: 'undo' },
+  { keys: ['w', 'u', 'b', 'r', 'g', 'c'], scope: 'board', modes: null, what: 'spend floating mana', precedence: true },
+  { keys: ['l'], scope: 'board', modes: null, what: 'game log' },
+  { keys: ['?', 'h'], scope: 'board', modes: null, what: 'keyboard help' },
+  { keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9'], scope: 'ask', modes: null, what: 'pick option n' },
+  { keys: [' ', 'enter'], scope: 'ask', modes: null, what: 'confirm' },
+  { keys: ['escape'], scope: 'ask', modes: null, what: 'hide / show (ability_menu: never mind)' },
 ];
 
 export interface KeyLike {
@@ -50,6 +90,8 @@ export interface PlayKeyContext {
   poolColors: readonly ManaColor[];
   /** Esc should close an overlay first. */
   overlay: boolean;
+  /** Which auto-pass toggle is lit (decisionModel.ts yieldLit): its key then stops it. */
+  yieldLit?: YieldLit;
 }
 
 export type PlayKeyPlan =
@@ -101,19 +143,23 @@ export function planPlayKey(e: KeyLike, ctx: PlayKeyContext): PlayKeyPlan | null
     if (ctx.view.primary === 'cancel') return { kind: 'cancel' };
     return { kind: 'inert', why: ctx.view.needClick ? `tap a highlighted ${ctx.view.clickWhat === 'player' ? 'player' : 'card'} first` : 'nothing to confirm right now' };
   }
+  // An auto-pass key on its lit toggle stops the yield: the engine's Cancel (there is no cancel-yield act).
+  const stop = (lit: boolean | undefined, body: ActBody, label: string): PlayKeyPlan =>
+    lit ? (ctx.view.cancel.enabled ? { kind: 'cancel' } : { kind: 'inert', why: 'the engine is not offering Cancel right now' }) : { kind: 'act', body, label };
   switch (key) {
     case 'p':
       return { kind: 'act', body: { action: 'passPriority' }, label: 'Pass priority' };
     case 'e':
-      return { kind: 'act', body: { action: 'yieldTo', kind: 'endOfTurn' }, label: 'Pass to end of turn' };
+      return stop(ctx.yieldLit?.eot, { action: 'yieldTo', kind: 'endOfTurn' }, 'Pass to end of turn');
     case 't':
-      return { kind: 'act', body: { action: 'yieldTo', kind: 'marker', phase: 'UPKEEP', turn: 'own' }, label: 'Pass to my turn' };
+      return stop(ctx.yieldLit?.myturn, { action: 'yieldTo', kind: 'marker', phase: 'UPKEEP', turn: 'own' }, 'Pass to my turn');
     case 'b':
-      return { kind: 'act', body: { action: 'yieldTo', kind: 'marker', phase: 'END_OF_TURN', turn: 'opp' }, label: 'Pass to before my turn' };
+      return stop(ctx.yieldLit?.before, { action: 'yieldTo', kind: 'marker', phase: 'END_OF_TURN', turn: 'opp' }, 'Pass to before my turn');
     case 'a':
-      return ctx.view.mode === 'attack'
-        ? { kind: 'act', body: { action: 'alphaStrike' }, label: 'Attack with everything' }
-        : { kind: 'inert', why: 'A attacks with everything — only while declaring attackers' };
+      if (ctx.view.mode === 'attack') return { kind: 'act', body: { action: 'alphaStrike' }, label: 'Attack with everything' };
+      // Paying: A is the engine's OK, which Forge labels "Auto" (Auto pay).
+      if (ctx.view.mode === 'pay') return ctx.view.ok.enabled ? { kind: 'ok' } : { kind: 'inert', why: 'Auto pay is not available right now' };
+      return { kind: 'inert', why: 'A attacks with everything while declaring attackers, and auto-pays while paying' };
     case '?':
     case 'h':
       return { kind: 'help' };

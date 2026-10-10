@@ -3,8 +3,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The readable game log: the §3.6 events of every state frame as plain lines
- * ("Forge AI cast Lightning Bolt", "Grizzly Bears died", "You: 20 → 17 life"),
- * grouped under turn headers, oldest first.
+ * ("Forge AI cast Lightning Bolt → Grizzly Bears", "Grizzly Bears died",
+ * "You: life 20 → 17"), grouped under turn headers, oldest first. A cast reads
+ * its targets off the SAME frame's stack item (matched by `stackId`), named
+ * through the frame resolver; an item that already resolved has no arrow.
+ * Triggered abilities are their own kind so the drawer can fold them.
  *
  * Names come from review.ts's per-frame resolver, the same rule the post-game
  * summary uses: an id is named only from the snapshot its event arrived with or
@@ -16,8 +19,9 @@
  * Built incrementally: a live game's GameLog is append-only, so the walk keeps
  * its place per session header and only reads the new frames.
  */
-import type { Card, EntityRef, GameStateBody } from './protocol.ts';
+import type { Card, EntityRef, GameStateBody, StackItem } from './protocol.ts';
 import type { GameLog } from './log.ts';
+import { stackKind } from './ui/stackModel.ts';
 import { frameResolver, indexOf, playerLabel, type CardIndex, type FrameResolver } from './review.ts';
 
 /** One piece of a line: text, a card (tappable to read it), or a player. */
@@ -27,6 +31,8 @@ export type LogKind =
   | 'land'
   | 'cast'
   | 'ability'
+  | 'trigger'
+  | 'activated'
   | 'attack'
   | 'block'
   | 'damage'
@@ -124,6 +130,17 @@ export function gameEventLog(log: GameLog, upTo = Infinity): LogTurn[] {
   return out;
 }
 
+/** What a `cast` event is: a spell, a trigger, an activated ability, or an ability we cannot tell more about. */
+function castKind(e: { cardId: number; controller: number; stackId: number; text: string }, item: StackItem | undefined, pending: boolean, s: GameStateBody): 'cast' | 'trigger' | 'activated' | 'ability' {
+  const flagged = !!item && (item.isAbility === true || !!item.isOptionalTrigger);
+  // The card went to the stack from somewhere this frame (or the one before): a spell.
+  if (pending && !flagged) return 'cast';
+  // Read the engine's own flags and the source's zone, else Forge's trigger wording.
+  const real: StackItem = item ?? { id: e.stackId, sourceCardId: e.cardId, controller: e.controller, text: e.text, targetCardIds: [], targetPlayerIds: [], isAbility: true };
+  const k = stackKind({ ...real, text: real.text || e.text }, s.stackCards?.find((c) => c.id === real.sourceCardId));
+  return k === 'spell' ? 'cast' : k === 'triggered' ? 'trigger' : k === 'activated' ? 'activated' : 'ability';
+}
+
 function foldFrame(w: Walk, log: GameLog, fi: number, s: GameStateBody, r: FrameResolver): void {
   const ensure = (turn: number, active: number | null): LogTurn => {
     const cur = w.turns[w.turns.length - 1];
@@ -162,15 +179,28 @@ function foldFrame(w: Walk, log: GameLog, fi: number, s: GameStateBody, r: Frame
         add('land', e.player, player(e.player), ' played ', card(e.cardId, 'a land'));
         break;
       case 'cast': {
-        const spell = w.pendingToStack.has(e.cardId);
+        const pending = w.pendingToStack.has(e.cardId);
         w.pendingToStack.delete(e.cardId);
-        if (spell) {
-          add('cast', e.controller, player(e.controller), ' cast ', card(e.cardId, 'a spell'));
+        // The stack item this cast put up, if it is still there on this frame.
+        const item = s.stack?.find((x) => x.id === e.stackId);
+        const kind = castKind(e, item, pending, s);
+        const targets: LogSeg[] = [];
+        if (item) {
+          for (const id of item.targetCardIds) targets.push(card(id));
+          for (const id of item.targetPlayerIds) targets.push(player(id));
+        }
+        const arrow: LogSeg[] = [];
+        targets.forEach((tg, i) => arrow.push(i === 0 ? ' → ' : ', ', tg));
+        if (kind === 'cast') {
+          add('cast', e.controller, player(e.controller), ' cast ', card(e.cardId, 'a spell'), ...arrow);
         } else {
           const name = r.nameOf(e.cardId);
           // The stack text usually starts "Name - "; the name is already a segment.
-          const text = e.text === '' ? '' : shorten(abilityText(e.text, name), ABILITY_TEXT_MAX);
-          add('ability', e.controller, card(e.cardId, 'a hidden source'), text ? ` ability: ${text}` : ' ability');
+          // With the targets listed, the engine's "(Targeting: …)" tail would say them twice.
+          const raw = targets.length ? e.text.replace(/\s*\(Targeting:.*\)\s*$/s, '') : e.text;
+          const text = raw === '' ? '' : shorten(abilityText(raw, name), ABILITY_TEXT_MAX);
+          const verb = kind === 'trigger' ? ' triggered' : kind === 'activated' ? ' activated' : ' ability';
+          add(kind, e.controller, card(e.cardId, 'a hidden source'), text ? `${verb}: ${text}` : verb, ...arrow);
         }
         break;
       }
@@ -211,7 +241,7 @@ function foldFrame(w: Walk, log: GameLog, fi: number, s: GameStateBody, r: Frame
         add('damage', controllerOf(e.sourceCardId), card(e.sourceCardId, 'a source'), ` dealt ${e.amount} ${e.combat ? 'combat ' : ''}damage to `, entity(e.target));
         break;
       case 'life':
-        if (e.from !== e.to) add('life', e.player, player(e.player), ` ${e.to > e.from ? 'gained' : 'lost'} ${Math.abs(e.to - e.from)} life (${e.from} → ${e.to})`);
+        if (e.from !== e.to) add('life', e.player, player(e.player), `: life ${e.from} → ${e.to}`);
         break;
       case 'poison':
         add('life', e.player, player(e.player), ` got ${e.amount} poison counter${e.amount === 1 ? '' : 's'} (${e.from + e.amount} total)`);
@@ -325,14 +355,47 @@ export function phaseSection(phase: string | null): string {
   return 'End step';
 }
 
-/** A turn's lines cut into runs by section ("Main phase", "Combat"…), in order. */
-export function sectionsOf(lines: readonly LogLine[]): { section: string; lines: LogLine[] }[] {
-  const out: { section: string; lines: LogLine[] }[] = [];
-  for (const l of lines) {
+/** A turn's lines cut into runs by section ("Main phase", "Combat"…), in order. `start` is the index of the run's first line in `lines`. */
+export function sectionsOf(lines: readonly LogLine[]): { section: string; start: number; lines: LogLine[] }[] {
+  const out: { section: string; start: number; lines: LogLine[] }[] = [];
+  lines.forEach((l, i) => {
     const section = phaseSection(l.phase);
     const cur = out[out.length - 1];
     if (cur && cur.section === section) cur.lines.push(l);
-    else out.push({ section, lines: [l] });
-  }
+    else out.push({ section, start: i, lines: [l] });
+  });
   return out;
+}
+
+/** One row of a section: a plain line, or a run of consecutive triggers the drawer folds. */
+export type LogItem = { type: 'line'; line: LogLine; /** Its index in its turn's lines. */ index: number } | { type: 'fold'; /** Stable while the log grows: the run's first line's index in its turn. */ key: number; lines: LogLine[] };
+
+/** A section's lines with each run of consecutive `trigger` lines gathered into one fold. `start` is the section's `start`. */
+export function foldTriggers(lines: readonly LogLine[], start = 0): LogItem[] {
+  const out: LogItem[] = [];
+  lines.forEach((line, i) => {
+    if (line.kind !== 'trigger') {
+      out.push({ type: 'line', line, index: start + i });
+      return;
+    }
+    const cur = out[out.length - 1];
+    if (cur && cur.type === 'fold') cur.lines.push(line);
+    else out.push({ type: 'fold', key: start + i, lines: [line] });
+  });
+  return out;
+}
+
+/** The folded header's words: "Goblin Guide triggered" for one, "3 triggers: A, B and 1 more" for a run. */
+export function foldSummary(lines: readonly LogLine[]): LogSeg[] {
+  const sources: LogSeg[] = [];
+  for (const l of lines) {
+    const first = l.segs[0];
+    if (first && typeof first !== 'string' && !sources.some((x) => typeof x !== 'string' && 'id' in x && 'id' in first && x.id === first.id)) sources.push(first);
+  }
+  if (lines.length === 1) return [sources[0] ?? 'A hidden source', ' triggered'];
+  const shown = sources.slice(0, 3);
+  const segs: LogSeg[] = [`${lines.length} triggers`];
+  shown.forEach((sg, i) => segs.push(i === 0 ? ': ' : ', ', sg));
+  if (sources.length > shown.length) segs.push(` and ${sources.length - shown.length} more`);
+  return segs;
 }

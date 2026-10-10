@@ -180,7 +180,7 @@ export function DraftSetup({
           <span />
         )}
         <button className="link-back is-right" onClick={onPaper}>
-          Paper draft helper
+          Draft &amp; build (paper)
         </button>
       </header>
       <div className="setup-head">
@@ -327,8 +327,8 @@ export function DraftSetup({
                   <path d="M8 2v2.5M6 8h.01M10 8h.01" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6" />
                 </svg>
               </span>
-              <span className="seat-row-name">{i === 0 ? 'Forge AI' : `Bot ${i + 1}`}</span>
-              <span className="tag-plain">{i === 0 ? 'Your opponent' : 'Forge AI'}</span>
+              <span className="seat-row-name">{`Bot ${i + 1}`}</span>
+              <span className="tag-plain">{i === 0 ? 'Your opponent' : 'Drafts only'}</span>
               {i > 0 && (
                 <button className="seat-remove" onClick={() => setPlayers(Math.max(2, players - 2))}>
                   Remove
@@ -337,7 +337,7 @@ export function DraftSetup({
             </div>
           ))}
           <p className="setup-small">
-            {seats > 2 ? 'Every seat is the cube lab’s drafter. You play the match against Forge AI, the seat on your left.' : 'The cube lab’s drafter: lab ratings, the cube’s themes, two colours a third of the way in.'}
+            {seats > 2 ? 'Every bot drafts like the cube lab’s drafter. You play your match against Bot 1, the seat on your left.' : 'The bot drafts like the cube lab’s drafter: lab ratings, the cube’s themes, two colours a third of the way in.'}
           </p>
           <p className="setup-line">Open packs, draft cards, build a 40-card deck.</p>
           <footer className="setup-foot">
@@ -510,14 +510,14 @@ export function MatchSetup({
       : !ready
       ? 'Your deck needs at least 40 cards.'
       : status === null
-        ? 'Looking for the match launcher on this computer…'
+        ? 'Looking for the engine on your PC…'
         : status === 'ready'
-          ? `Best of ${games === 3 ? 'three' : 'one'} against the AI’s draft. Its list stays hidden, as at a real table.`
+          ? `Best of ${games === 3 ? 'three' : 'one'} against the bot’s deck. Its list stays hidden, as at a real table.`
           : status === 'asleep'
-            ? `The engine is sleeping; it starts when you press Begin. Best of ${games === 3 ? 'three' : 'one'} against the AI’s draft, its list hidden.`
+            ? `The engine is sleeping; it starts when you press Begin. Best of ${games === 3 ? 'three' : 'one'} against the bot’s deck, its list hidden.`
           : status === 'down'
-            ? 'ForgeCoach’s engine isn’t running (it stops an hour after the last game). Start ForgeCoach again — the app-menu launcher, or ./scripts/play.sh — and Begin unlocks.'
-            : 'This engine has no match launcher: update mtg-table and start it again with ./scripts/play.sh.';
+            ? 'The engine on your PC isn’t running (it stops an hour after the last game). Start ForgeCoach again — the app-menu launcher, or ./scripts/play.sh — and Begin unlocks.'
+            : 'This engine can’t start a match from here: update mtg-table and start ForgeCoach again.';
 
   return (
     <div className="fx setup match">
@@ -581,7 +581,7 @@ export function MatchSetup({
             <span>AI</span>
           </span>
           <div className="seat-name">{opponent && opponent.id !== 'plain' ? opponent.label : 'Forge AI'}</div>
-          <div className="fx-label sub-h">The AI’s deck</div>
+          <div className="fx-label sub-h">The bot’s deck</div>
           <div className={cx('deck-tile', ai && 'is-on')}>
             <div>
               <div className="deck-tile-name">{ai ? aiLabel : 'Building…'}</div>
@@ -592,7 +592,7 @@ export function MatchSetup({
           {weakTotal > 0 && (
             <div className="warn-box">
               <div className="fx-label">
-                {weakTotal} card{weakTotal === 1 ? '' : 's'} the AI can’t pilot well
+                {weakTotal} card{weakTotal === 1 ? '' : 's'} the bot can’t pilot well
               </div>
               <p>{weak.join(', ')}</p>
             </div>
@@ -610,8 +610,8 @@ export function MatchSetup({
           </div>
           {policies.length > 0 && (
             <>
-              <div className="fx-label sub-h">Opponent AI</div>
-              <div className="profiles is-stack" role="group" aria-label="Opponent AI">
+              <div className="fx-label sub-h">Which bot</div>
+              <div className="profiles is-stack" role="group" aria-label="Which bot">
                 {policies.map((p) => (
                   <button key={p.id} className={cx('profile', policy === p.id && 'is-on')} onClick={() => setPolicy(p.id)} aria-pressed={policy === p.id}>
                     <span className="profile-t">
@@ -631,7 +631,7 @@ export function MatchSetup({
           {result.ok ? (
             <>
               <p className="serif-i">
-                The engine is dealing your match: {result.yourDeck.name} ({result.yourDeck.cards}) against the AI’s deck ({result.aiDeck.cards}), best of {result.games}
+                The engine is dealing your match: {result.yourDeck.name} ({result.yourDeck.cards}) against the bot’s deck ({result.aiDeck.cards}), best of {result.games}
                 {result.aiPolicy === 'search' ? ', against the search AI: expect a pause of a second or more at its plays, attacks and blocks' : result.aiPolicy === 'outlets' ? ', against Forge with sacrifice play' : ''}.
               </p>
               {result.warnings.length > 0 && (
@@ -671,7 +671,7 @@ export function MatchSetup({
           New draft
           <small>this pool stays in Draft &amp; build</small>
         </button>
-        <button className="btn-begin" onClick={() => void begin()} disabled={!canBegin} title={supported ? undefined : 'Needs the match launcher (mtg-table)'}>
+        <button className="btn-begin" onClick={() => void begin()} disabled={!canBegin} title={supported ? undefined : 'Needs the engine on your PC (mtg-table)'}>
           {busy ? 'Starting the engine…' : 'Begin the duel'} <kbd>⏎</kbd>
         </button>
       </footer>

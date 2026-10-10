@@ -35,9 +35,11 @@ The launcher is [`public/forgecoach.sh`](public/forgecoach.sh). It never runs
 `sudo` on its own (`remote-setup` runs one only after you answer yes at a
 terminal prompt) and updates itself once a day.
 
-ForgeCoach is a 2D client for playing *Magic: The Gathering* against the Forge
-AI, with a coach beside the board. You play from the web page; the Forge engine
-runs on your own computer via [mtg-table](https://github.com/jalirkan/mtg-table).
+ForgeCoach is a practice table for *Magic: The Gathering*: play a bot or a
+friend with a coach beside the board, then look back at what happened. You play
+from the web page; the engine (Forge) runs on your own computer via
+[mtg-table](https://github.com/jalirkan/mtg-table). The bot is the search AI by
+default, with Forge's own AI one tap away.
 At any decision you can ask Claude for the play it would make, with the reason,
 the heuristic and the trap to avoid, and after the game you get a short review.
 The coach reads the engine's own state (what is tapped, what was cast, mana in
@@ -47,7 +49,7 @@ Recorded games can be replayed and reviewed, and a game played elsewhere can be
 watched live (see below). It is a static page: there is no ForgeCoach server,
 and your API key, logs and deck guides stay in your browser.
 
-## Play vs Forge
+## Play vs Bot
 
 1. In an mtg-table checkout, start the engine:
 
@@ -59,7 +61,7 @@ and your API key, logs and deck guides stay in your browser.
    `play.sh`: `--deck`, `--ai-deck`, `--ai-profile`, `--mirror`, `--seed`,
    `--games`.
 2. Close any mtg-table board tab. Only one window can hold your seat.
-3. Open ForgeCoach and click **Play vs Forge**. The engine address can be
+3. Open ForgeCoach and click **Play vs Bot**. The engine address can be
    changed there if you use another port.
 
 Browser notes, because the page is `https://` and the engine is on your machine:
@@ -113,11 +115,54 @@ blocks, responses, engine questions). The coach can answer three ways:
 
 Settings → **Coach source** shows whether the helper is running and picks the
 source: *Automatic* (the default: the helper when it is found, else your key),
-*Claude Code* or *API key*. The model choice applies to both (Opus 5.5 → `opus`,
+*Claude Code* or *API key*. The model choices apply to both (Opus 5.5 → `opus`,
 Sonnet 5.5 → `sonnet`, Haiku 4.5 → `haiku` for Claude Code). Either way the
 coach gets the decision's state and the exact text of the cards involved.
 
-**Auto-coach** (the switch on the play screen) plans your next turn during your
+**Which model does what.** Settings has two model choices. **Live coach
+model** coaches you during a game (Auto-coach and *Ask about this*):
+*Automatic* is Sonnet 5.5, or Haiku 4.5 when Model is Haiku; in the Steps style
+each moment is a fresh question with low thinking. **Model** (Opus 5.5 by
+default) is everything else: replays, game and engine reviews, the film room,
+practice, the deck assistant and draft help.
+
+**Auto-coach in plan mode (the default).** Settings → Coach style → *Steps*
+coaches the way Claude Sonnet played its test games against Forge through
+mtg-table's LLM seat (decision D419, "plan mode"; about one failed step a game,
+and it beat plain Forge 9 of 10). The coach answers each moment with a one-line
+`PLAN:` and numbered steps in fixed verbs (`play land`, `cast X -> target`,
+`activate X: ability`, `attack with …`, `block X with Y`, `target`, `choose`,
+`keep`/`mulligan`, `pass`, `hold`); the play screen shows the plan as the
+headline and the steps as a checklist, ticked off as the game log shows them
+done, with the coach's reasoning behind *Why*. Auto-coach asks at the seat's
+moments, each once: your opening hand (and play or draw), your turn after the
+draw (the first main phase, or the attack when the main phase had nothing to
+play), an opponent's spell or ability you could answer, blocks, the opponent's
+end step when you could cast something then, and an engine question your plan
+does not already answer. **Every step is checked before you see it** against
+what the engine allows: the engine's own lists of what you may cast and
+activate (`state.playable`, `state.activatable`), the mana your untapped
+sources make (colours count, one step after another), the land drop, which of
+your creatures can attack or block, the open question's answers. A step that
+cannot be done goes back to the coach with the reason — "Step 2 'cast Hill
+Giant' cannot be done: it costs {3}{R} (4 mana) and you have 2 untapped mana
+sources" — as a fresh call, at most twice (the panel says *Asking the coach
+again*); after that the last plan is shown with the step marked *can't be
+done*. What only the engine knows (a target the card's text forbids, a cost
+reducer, a creature that can't block) still goes through. Each moment is one
+fresh call with the whole picture (the game so far, the board in plain words,
+what the engine lets you do, the card text, your play guide): in the seat's
+tests a fresh call per moment did as well as a running session (7/10 vs 8/10 on
+10 paired deals) at a third of the cost. Plan mode asks the live model
+(Sonnet unless Settings → Live coach model says otherwise) with low thinking,
+as the seat ran (`--thinking low`; effort *low* with an API key; *Off* when
+Coach thinking says Off). Expect one call per moment: in the seat's 89
+recorded games, a median of 33 calls a game (1.7 per turn, most of them short
+— a response or the end step, often a single `pass`), about 2 of them
+corrections. The code is `src/livePlan/` (ported from
+mtg-table `tools/llm-seat`) and `src/ui/play/PlanCoach.tsx`.
+
+**Auto-coach in the Short and Detailed styles** plans your next turn during your
 opponent's end step: one question per turn cycle, asked as their turn ends so
 the plan is there when yours starts (at the start of your own turn when the
 engine skipped their end step, and on turn 1 when you are on the play). The
@@ -159,8 +204,8 @@ what is not in the hand or spend mana that is not there, so it is a choice in
 Settings, not the default. Replays, the film room, reviews, practice and the
 bench keep Settings → Model and Coach thinking.
 
-Settings → **Coach style** sets how the coach answers while you play: *Short*
-(the default) is a few commands and one short reason —
+Settings → **Coach style** sets how the coach answers while you play: *Steps*
+(the default, plan mode above); *Short* is a few commands and one short reason —
 `Play: Cast Shock → their Bears`, `Mana: R from Mountain`, `Why: …` — with the
 rule, the confidence and the details behind *More*, and Claude Code thinking as
 little as the model allows (*Off*, unless Coach thinking says *Low*);
@@ -197,9 +242,9 @@ treat it as a moment to think, not a play to copy. Settings → **Answer first**
 (off by default) asks the coach to start with the play in one line, so it shows
 before the explanation has finished streaming.
 
-Settings → **Look** picks the skin: **Classic** (the default), **Stack** (a dark
-table, the game stack as a pile of cream items, the coach's reasoning as a
-separate dark pile topped by its call in amber) or **Hot Felt** (green baize,
+Settings → **Look** picks the skin: **Stack** (the default: a dark table, the
+game stack as a pile of cream items, the coach's reasoning as a separate dark
+pile topped by its call in amber), **Classic** (the original dark look) or **Hot Felt** (green baize,
 where the only warm colour is win chance on the review's option bars). Cards
 are always the real card images. `?skin=stack` (or `felt`, `classic`) in the
 URL previews one without saving it.
@@ -385,7 +430,7 @@ it in full: 152 of its 180 cards are in 17Lands' data, while the other cubes
 share 12–58% of their cards with a powered environment unlike theirs (see
 Synergy below). The numbers
 also feed the card value the builder, swaps and pick advice use (the deck
-assistant and your pick helper in Draft vs AI): for a nonland card with
+assistant and your pick helper in Draft vs Bot): for a nonland card with
 human numbers, the value mixes them in by precision, discounted ×0.8 for the
 Arena/paper gap, and the card sheet and the advice say "value uses human data
 (17Lands)". A pre-registered split-half test decided it
@@ -447,10 +492,10 @@ half, `npm run human-blend -- DIR/*.half0.json DIR/*.half1.json` runs it. Part
 `npm run human-blend -- --cube <id> DIR` tests a cube, `npm run human-blend --
 agree DIR` prints the lab agreement table.
 
-**Play the deck vs Forge.** Download the `.dck`, save it in mtg-table's
+**Play the deck vs the bot.** Download the `.dck`, save it in mtg-table's
 `decks/` folder, start the engine with it —
 `./scripts/play.sh --engine-only --deck decks/<name>.dck --mirror` (or
-`--ai-deck decks/<other>.dck`) — and press **Play vs Forge**.
+`--ai-deck decks/<other>.dck`) — and press **Play vs Bot**.
 
 ## Draft with a friend
 
@@ -467,7 +512,7 @@ wire format is in `docs/draft-room.md` in mtg-table.
 
    Add `--pause-lab` to stop the overnight lab from starting new jobs while you
    play. A lab job that is already running carries on.
-2. Open **Draft vs AI → Draft with a friend** (`#draft/friend`), pick a cube,
+2. Open **Draft vs Bot → Draft with a friend** (`#draft/friend`), pick a cube,
    type your name and press **Create room**.
 3. Copy your friend's link (**On your Wi-Fi**) and send it. It opens the draft
    from your PC (`http://<your PC's address>:8644/#draft/friend/join?…`). Your
@@ -666,7 +711,7 @@ interval excludes zero, *Close call* when it includes zero (*a tie* when the
 regret is zero: as good as the engine's best within noise), *Best play*.
 Numbers from a short-horizon grade (to the end of the turn, scored by an
 evaluator) are labelled as such, never as win rates. The yardstick is the best
-play against Forge's Default AI playing both seats. After a Draft vs AI match
+play against Forge's Default AI playing both seats. After a Draft vs Bot match
 the review sends the cube list and the AI picks you saw, so the engine draws
 the opponent's hidden cards from the pool — never the AI's list; for other
 games it plays them as basic lands, and the screen warns that the numbers
@@ -1066,8 +1111,9 @@ A finding is one of these:
 With `--coach fake`, a helper that answers at once checks that the coach
 panel never blanks during the opponent's turn — not even while the next plan
 is written: the last plan stays in view until the new one has text — and that
-auto-coach asks at most once per turn cycle (`PLAYTEST_COACH_MS=N` slows its
-answers). The fake engine's even games put Blood Artist on your battlefield,
+auto-coach asks at most once per turn cycle — in plan mode, once per moment;
+the fake coach answers in the steps format and its steps always check out, so
+a correction is a finding too (`PLAYTEST_COACH_MS=N` slows its answers). The fake engine's even games put Blood Artist on your battlefield,
 so a creature dying asks "Select target player" with both buttons off: only
 a portrait click moves the game on. With `--coach real`, each question's latency is
 recorded.

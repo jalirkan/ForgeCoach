@@ -81,14 +81,14 @@ export function chooseRoute(room: { id: string; seat: 0 | 1 } | null, rooms: rea
 
 /** Plain words for where a route goes, for the panel. */
 export function routeWords(r: BugRoute | null, friend: boolean): string {
-  if (!r) return 'No coach helper or room to send it to from this page: download the report and send the file.';
+  if (!r) return 'Nowhere to send it from this page: download the report and send the file.';
   if (r.kind === 'room') return friend ? 'Sent to the computer running the room (your friend’s), with what your screen shows — your own hand included.' : 'Sent to this room’s computer (yours), saved in mtg-table’s var/bugs/.';
-  return 'Sent to the coach helper on this computer, saved in mtg-table’s var/bugs/.';
+  return 'Sent to the engine on your PC, saved in mtg-table’s var/bugs/.';
 }
 
 function messageFor(status: number, code: string, body: Record<string, unknown>, via: 'room' | 'helper'): string {
   const said = typeof body.message === 'string' ? body.message.slice(0, 300) : '';
-  if (status === 404) return via === 'room' ? 'This room does not take bug reports yet (mtg-table needs updating). Download the report instead.' : 'This coach helper does not take bug reports yet (update mtg-table, then restart play.sh). Download the report instead.';
+  if (status === 404) return via === 'room' ? 'This room does not take bug reports yet (mtg-table needs updating). Download the report instead.' : 'The engine on your PC does not take bug reports yet: update mtg-table, then start ForgeCoach again. Download the report instead.';
   if (status === 413) return 'The report is too large to send. Download it instead.';
   if (status === 429) return said || 'Too many reports just now — wait a few minutes, or download this one.';
   if (status === 507) return said || 'The bug folder on that computer is full. Download the report instead.';
@@ -115,7 +115,7 @@ export async function sendReport(report: BugReport, route: BugRoute, opts: { fet
   try {
     r = await f(url, { method: 'POST', headers, body: JSON.stringify(report), ...(ac ? { signal: ac.signal } : {}) });
   } catch {
-    return { ok: false, via, status: 0, code: 'offline', message: via === 'room' ? 'The room’s computer cannot be reached.' : 'No coach helper answered on this computer (is play.sh running?).' };
+    return { ok: false, via, status: 0, code: 'offline', message: via === 'room' ? 'The room’s computer cannot be reached.' : 'The engine on your PC did not answer (is ForgeCoach running?).' };
   } finally {
     if (timer) clearTimeout(timer);
   }

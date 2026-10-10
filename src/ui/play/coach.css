@@ -114,3 +114,104 @@
 .pc-ask-row .btn {
   flex: none;
 }
+
+/* Plan mode (PlanView): the plan's sentence, its numbered steps as a checklist, the why. */
+.plan-view {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.plan-headline {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.plan-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.plan-step {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  min-width: 0;
+}
+.plan-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-2);
+  border: 1px solid var(--line-2);
+  align-self: center;
+}
+.plan-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.plan-step.is-done {
+  background: transparent;
+  color: var(--text-2);
+  font-weight: 500;
+}
+.plan-step.is-done .plan-mark {
+  color: var(--ok, var(--accent));
+  border-color: currentColor;
+}
+.plan-step.is-bad {
+  background: var(--surface-3);
+}
+.plan-step.is-bad .plan-mark {
+  color: var(--bad, var(--text));
+  border-color: currentColor;
+}
+.plan-bad {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--bad, var(--text-2));
+}
+.plan-view.is-complete .plan-step:not(.is-done) {
+  background: transparent;
+  font-weight: 500;
+}
+.plan-status {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.plan-why-toggle {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+}
+.plan-why {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

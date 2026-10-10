@@ -382,12 +382,12 @@ export async function roomSupport(opts: { fetch?: FetchLike; target?: HelperTarg
   const t = opts.target ?? pageHelperTarget();
   try {
     const r = await f(`${t.baseUrl}/health`, { headers: t.token ? { [TOKEN_HEADER]: t.token } : {} });
-    if (!r.ok) return { on: false, roomPort: null, reason: `the coach helper answered HTTP ${r.status}` };
+    if (!r.ok) return { on: false, roomPort: null, reason: `the engine on your PC answered HTTP ${r.status}` };
     const j = (await r.json()) as Record<string, unknown>;
     if (j.draftRoom === 1 && isInt(j.roomPort)) return { on: true, roomPort: j.roomPort, revoke: j.roomRevoke === 1 };
-    return { on: false, roomPort: null, reason: 'the coach helper runs without the draft room' };
+    return { on: false, roomPort: null, reason: 'the engine on your PC runs without the draft room' };
   } catch {
-    return { on: false, roomPort: null, reason: 'no coach helper on this machine' };
+    return { on: false, roomPort: null, reason: 'the engine on your PC isn’t running' };
   }
 }
 
@@ -411,12 +411,12 @@ export async function createRoom(req: CreateRequest, opts: { fetch?: FetchLike; 
   try {
     r = await f(`${t.baseUrl}/room`, { method: 'POST', headers: h, body: JSON.stringify(req) });
   } catch {
-    throw new RoomError('Could not reach the coach helper on this machine. Start the engine with ./scripts/play.sh --engine-only --lan --draft-room.', 0, 'offline');
+    throw new RoomError('Couldn’t reach the engine on your PC. Start it with ./scripts/play.sh --engine-only --lan --draft-room.', 0, 'offline');
   }
-  if (r.status === 404) throw new RoomError('The coach helper runs without the draft room. Start it with ./scripts/play.sh --engine-only --lan --draft-room.', 404, 'off');
+  if (r.status === 404) throw new RoomError('The engine on your PC runs without the draft room. Start it with ./scripts/play.sh --engine-only --lan --draft-room.', 404, 'off');
   if (!r.ok) throw await errorOf(r, 'Making the room');
   const c = parseCreated(await r.json());
-  if (!c) throw new RoomError('The coach helper answered something that is not a room.', r.status, 'bad');
+  if (!c) throw new RoomError('The engine on your PC answered something that is not a room.', r.status, 'bad');
   return c;
 }
 
@@ -429,11 +429,11 @@ async function ownerCall(path: string, what: string, opts: { fetch?: FetchLike; 
   try {
     r = await f(`${t.baseUrl}${path}`, { method: 'POST', headers: h, body: '{}' });
   } catch {
-    throw new RoomError('Could not reach the coach helper on this machine (the room’s computer).', 0, 'offline');
+    throw new RoomError('Couldn’t reach the engine on the room’s computer.', 0, 'offline');
   }
   if (r.status === 404) {
     const e = await errorOf(r, what);
-    throw e.code === 'gone' ? e : new RoomError('This coach helper cannot do that: update mtg-table (D408).', 404, 'off');
+    throw e.code === 'gone' ? e : new RoomError('Your mtg-table can’t do that yet: update it and start ForgeCoach again.', 404, 'off');
   }
   if (!r.ok) throw await errorOf(r, what);
   return (await r.json()) as Record<string, unknown>;
@@ -447,7 +447,7 @@ async function ownerCall(path: string, what: string, opts: { fetch?: FetchLike; 
 export async function closeRoom(id: string, opts: { fetch?: FetchLike; target?: HelperTarget } = {}): Promise<void> {
   if (!ROOM_ID.test(id)) throw new RoomError('Not a room id.', 0, 'bad');
   const j = await ownerCall(`/room/${encodeURIComponent(id)}/close`, 'Closing the room', opts);
-  if (j.ok !== true) throw new RoomError('The coach helper did not close the room.', 0, 'bad');
+  if (j.ok !== true) throw new RoomError('The engine on your PC did not close the room.', 0, 'bad');
 }
 
 /**
@@ -460,7 +460,7 @@ export async function newFriendLink(id: string, opts: { fetch?: FetchLike; targe
   const j = await ownerCall(`/room/${encodeURIComponent(id)}/friend-link`, 'Making a new link', opts);
   const b = j.bases as Record<string, unknown> | undefined;
   if (j.ok !== true || j.id !== id || !isStr(j.friendToken) || !ROOM_TOKEN.test(j.friendToken) || !b || !isStr(b.local) || !strs(b.lan, 32) || !(b.public === null || isStr(b.public))) {
-    throw new RoomError('The coach helper answered something that is not a new link.', 0, 'bad');
+    throw new RoomError('The engine on your PC answered something that is not a new link.', 0, 'bad');
   }
   return friendLinks({ id, friendToken: j.friendToken, bases: { local: b.local, lan: b.lan, public: b.public } });
 }

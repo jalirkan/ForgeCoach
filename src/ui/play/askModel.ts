@@ -450,7 +450,7 @@ export function skipAction(ask: AskBody): SkipAction | null {
     case 'confirm':
       return null;
     case 'options':
-      return { label: 'Skip', value: null, title: 'Let Forge use its default' };
+      return { label: 'Skip', value: null, title: 'Let the engine use its default' };
     case 'text':
       return ask.numeric
         ? { label: 'Cancel', value: null, title: 'Cancel the custom number — always ends the question' }
@@ -460,21 +460,21 @@ export function skipAction(ask: AskBody): SkipAction | null {
       const { lo, hi } = choiceBounds(ask);
       if (lo === 0) return { label: hi === 1 ? 'Decline' : 'Choose none', value: [], title: 'Choose nothing' };
       // Unsatisfiable on the engine's own numbers: never leave the player stuck.
-      if (lo > ask.options.length) return { label: 'Continue', value: defaultAnswer(ask), title: 'Send Forge’s default' };
+      if (lo > ask.options.length) return { label: 'Continue', value: defaultAnswer(ask), title: 'Use the engine’s default' };
       return null;
     }
     case 'choose_entities':
-      return { label: ask.min <= 0 ? 'Choose none' : 'Skip', value: null, title: 'Decline — Forge chooses nothing or its default' };
+      return { label: ask.min <= 0 ? 'Choose none' : 'Skip', value: null, title: 'Decline — the engine chooses nothing or its default' };
     case 'order':
-      return { label: 'Default order', value: defaultAnswer(ask), title: 'Use the order Forge proposed' };
+      return { label: 'Default order', value: defaultAnswer(ask), title: 'Use the order the engine proposed' };
     case 'manipulate_list':
       return { label: 'Keep order', value: defaultAnswer(ask), title: 'Leave the cards as they are' };
     case 'sideboard':
       return { label: 'Keep deck', value: null, title: 'No sideboarding — play the same deck' };
     case 'assign_damage':
-      return { label: 'Auto-assign', value: null, title: 'Let Forge assign the damage' };
+      return { label: 'Auto-assign', value: null, title: 'Let the engine assign the damage' };
     case 'assign_amount':
-      return { label: 'Skip', value: null, title: 'Let Forge decide' };
+      return { label: 'Skip', value: null, title: 'Let the engine decide' };
   }
 }
 

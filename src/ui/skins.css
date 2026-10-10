@@ -227,7 +227,11 @@
   background: var(--skin-card);
   color: var(--skin-ink);
 }
+:root[data-skin='stack'] .pcell.is-current {
+  box-shadow: inset 0 0 0 2px var(--skin-ink);
+}
 :root[data-skin='stack'] .pside-prio.is-you,
+:root[data-skin='stack'] .pv-prio.is-you,
 :root[data-skin='stack'] .tag-prio {
   background: transparent;
   color: var(--accent-2);
@@ -255,18 +259,35 @@
 :root[data-skin='stack'] .stackp-item.is-mine {
   border-left-color: var(--skin-you);
 }
-:root[data-skin='stack'] .stackp-item + .stackp-item {
+:root[data-skin='stack'] .stackp-inline .stackp-item + .stackp-item {
   margin-top: -3px;
 }
-/* Under the top: a step down in the pile. */
+/* Under the top: a step down in the pile (the replay's strip; the float's fan steps back on its own). */
 :root[data-skin='stack'] .stackp-item:not(.is-next) {
   background: var(--skin-card-under);
+}
+:root[data-skin='stack'] .stackp-inline .stackp-item:not(.is-next) {
   transform: scale(0.97);
   transform-origin: top;
   z-index: 0;
 }
-:root[data-skin='stack'] .stackp-item.is-next {
+:root[data-skin='stack'] .stackp-inline .stackp-item.is-next {
   z-index: 1;
+}
+:root[data-skin='stack'] .stackp-fan > .stackp-fan-item.is-back {
+  box-shadow: 0 -3px 9px rgba(0, 0, 0, 0.4);
+}
+:root[data-skin='stack'] .stackp-tcount,
+:root[data-skin='stack'] .stackp-yield-btn {
+  color: var(--skin-ink-2);
+}
+:root[data-skin='stack'] .stackp-yield-btn {
+  border-color: rgba(53, 49, 42, 0.3);
+}
+:root[data-skin='stack'] .stackp-yield-btn.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
 }
 :root[data-skin='stack'] .stackp-name {
   color: var(--skin-ink);
@@ -790,7 +811,7 @@
   font-weight: 700;
   letter-spacing: 0.02em;
 }
-:root[data-skin='felt'] :is(.phase-steps li, .pbar-label) {
+:root[data-skin='felt'] :is(.phase-steps li, .pbar-label, .pcell-tag) {
   font-family: var(--skin-cond);
   letter-spacing: 0.04em;
 }
@@ -840,6 +861,9 @@
 :root[data-skin='felt'] .flag-attack {
   background: #b35a7d;
 }
+:root[data-skin='felt'] .pcell.is-current {
+  box-shadow: inset 0 0 0 2px var(--skin-bone);
+}
 :root[data-skin='felt'] .phase-steps li.is-now,
 :root[data-skin='felt'] .pbar-cell.is-current {
   background: var(--skin-bone);
@@ -852,6 +876,9 @@
   border-color: var(--line-2);
 }
 :root[data-skin='felt'] .stackp-item.is-next {
+  border-color: var(--skin-bone);
+}
+:root[data-skin='felt'] .stackp-yield-btn.is-on {
   border-color: var(--skin-bone);
 }
 :root[data-skin='felt'] .answer {
@@ -937,6 +964,10 @@
 }
 :root[data-skin='felt'] .log-line.w-you {
   border-left-color: rgba(233, 226, 207, 0.4);
+}
+:root[data-skin='felt'] .log-line.k-trigger .log-glyph,
+:root[data-skin='felt'] .log-line.k-activated .log-glyph {
+  color: rgba(233, 226, 207, 0.7);
 }
 :root[data-skin='felt'] .btn.btn-outline {
   background: rgba(233, 226, 207, 0.08);

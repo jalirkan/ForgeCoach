@@ -387,14 +387,14 @@ function ExportBox({ b, pool, problems, name }: { b: DeckBuild; pool: string[]; 
         </div>
         <details className="ex-how">
           <summary>
-            <IconPlay size={13} /> Play it vs Forge <IconChevronDown size={13} />
+            <IconPlay size={13} /> Play it vs the bot <IconChevronDown size={13} />
           </summary>
           <ol>
             <li>
               Save <code>{slug}.dck</code> into your mtg-table checkout’s <code>decks/</code> folder.
             </li>
             <li>
-              Start the engine with it (<code>--mirror</code>: the AI plays a copy; or <code>--ai-deck decks/other.dck</code>):
+              Start the engine with it (<code>--mirror</code>: the bot plays a copy; or <code>--ai-deck decks/other.dck</code>):
               <div className="cmd">
                 <code>{cmd}</code>
                 <button className="icon-btn" aria-label="Copy command" onClick={() => copy('cmd', cmd)}>
@@ -403,7 +403,7 @@ function ExportBox({ b, pool, problems, name }: { b: DeckBuild; pool: string[]; 
               </div>
             </li>
             <li>
-              Back on the start page, press <b>Play vs Forge</b>. Add a play guide for the deck from the coach’s <i>Play guide</i> menu.
+              Back on the start page, press <b>Play vs Bot</b>. Add a play guide for the deck from the coach’s <i>Play guide</i> menu.
             </li>
           </ol>
         </details>

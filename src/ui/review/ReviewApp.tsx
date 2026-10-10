@@ -421,12 +421,12 @@ function LoadPanel({
       )}
       <p className="muted tiny">
         {runner.available === null
-          ? 'Looking for the coach helper…'
+          ? 'Looking for the engine on your PC…'
           : runner.canRun
-            ? `The coach helper on this computer can grade game ${log.header.gameId}.`
+            ? `The engine on your PC can grade game ${log.header.gameId}.`
             : runner.available
               ? 'This log has no game id the engine can look up; open a report file instead.'
-              : 'Running a review needs mtg-table’s coach helper (./scripts/play.sh) with the bridge built. Or open a report made with tools/coach-grade.sh review — drop it anywhere on this page.'}
+              : 'An engine review runs on the engine on your PC (./scripts/play.sh, with the bridge built). Or open a report made with tools/coach-grade.sh review — drop it anywhere on this page.'}
       </p>
     </div>
   );

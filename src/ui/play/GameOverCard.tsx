@@ -65,7 +65,7 @@ export function GameOverCard({
   onLeave,
   filmRoom = null,
   vsHuman = false,
-  leaveLabel = 'Back to start',
+  leaveLabel = 'Back to the start',
   matchLine = null,
   friendReview = null,
 }: {

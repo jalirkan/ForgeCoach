@@ -516,19 +516,34 @@ function coachSummary(game, seats, w) {
   const qs = all.filter((c) => !c.over);
   const perRound = {};
   for (const q of qs) perRound[q.round ?? 0] = (perRound[q.round ?? 0] ?? 0) + 1;
-  // Auto-coach asks one plan per turn cycle: per planned turn, one question (the fake helper says which
-  // turn each plans); a question about a moment is never auto-coach's (the monkey never asks).
-  const typeOfQ = (q) => (s.helperAsks ?? []).find((a) => Math.abs(a.at - q.start) < 1500)?.type ?? null;
+  // Auto-coach asks one plan per turn cycle (Short / Detailed styles: the fake helper says which turn each
+  // plans), or — plan mode, the default (mtg-table D419) — once per moment: the same question (its first line)
+  // twice in a turn is a cadence finding for the once-a-turn moments (the turn, the end step, blocks, the
+  // opening hand; two spells of one name can each be answered, two questions can read alike). A correction ("Step n … cannot be done", "Your last reply could not be
+  // read") is the same moment's, not a new one; the fake coach's steps always check out, so none is expected.
+  // A question about a moment is never auto-coach's (the monkey never asks).
+  // the helper's record of the question: the one nearest in time (two can come within a second)
+  const typeOfQ = (q) => {
+    const near = (s.helperAsks ?? []).filter((a) => Math.abs(a.at - q.start) < 1500).sort((a, b) => Math.abs(a.at - q.start) - Math.abs(b.at - q.start));
+    return near[0]?.type ?? null;
+  };
   const byPlan = {};
   for (const q of qs) {
-    const t = /^plan my turn (\d+)/.exec(typeOfQ(q) ?? '')?.[1];
-    const k = t ? `plan ${t}` : `other ${typeOfQ(q) ?? '?'}`;
+    const type = typeOfQ(q) ?? '';
+    const t = /^plan my turn (\d+)/.exec(type)?.[1];
+    const moment = /^moment (.*)$/.exec(type)?.[1];
+    const k = t ? `plan ${t}` : moment !== undefined ? `T${q.turn} ${moment}` : `other ${type || '?'}`;
     (byPlan[k] ??= []).push(q);
   }
-  const over = Object.entries(byPlan).filter(([k, l]) => l.length > 1 || k.startsWith('other'));
+  const corrections = Object.keys(byPlan).filter((k) => / (Step \d+ '.*' cannot be done|Your last reply could not be read)/.test(k));
+  const ONCE = / (It is your turn|It is the opponent's end step|The opponent attacks with|The game is starting|You won the coin toss)/;
+  const over = Object.entries(byPlan).filter(([k, l]) => !corrections.includes(k) && ((l.length > 1 && (!k.startsWith('T') || ONCE.test(k))) || k.startsWith('other')));
+  if (opts.coach === 'fake' && corrections.length) {
+    game.findings.push({ game: game.id, seat: s.label, kind: 'coach-correction', what: `the page sent the fake coach's steps back: ${corrections.slice(0, 3).join(' | ')}`, shot: null });
+  }
   if (opts.coach === 'fake' && over.length) {
     const words = (l) => l.map((q) => `T${q.turn} ${q.phase ?? '?'}${q.sockets > 1 ? ' after a reload' : ''}`).join(' + ');
-    game.findings.push({ game: game.id, seat: s.label, kind: 'coach-cadence', what: `auto-coach asked more than once per turn cycle: ${over.map(([k, l]) => `${k} ×${l.length} (${words(l)})`).join(', ')}`, shot: null });
+    game.findings.push({ game: game.id, seat: s.label, kind: 'coach-cadence', what: `auto-coach asked more than once per moment: ${over.map(([k, l]) => `${k} ×${l.length} (${words(l)})`).join(', ')}`, shot: null });
   }
   let lat = qs.filter((q) => q.end && !q.failed).map((q) => q.end - q.start);
   let source = 'page';
@@ -548,7 +563,7 @@ function coachSummary(game, seats, w) {
     promptKB = done.map((l) => /([\d.]+) KB prompt/.exec(l)?.[1]).filter(Boolean).map(Number);
     source = 'helper log';
   }
-  const list = qs.map((q) => ({ at: Math.round((q.start - game.t0) / 100) / 10, ms: q.end ? q.end - q.start : null, turn: q.turn, phase: q.phase, stopped: q.failed ?? null, type: (s.helperAsks ?? []).find((a) => Math.abs(a.at - q.start) < 1500)?.type ?? null }));
+  const list = qs.map((q) => ({ at: Math.round((q.start - game.t0) / 100) / 10, ms: q.end ? q.end - q.start : null, turn: q.turn, phase: q.phase, stopped: q.failed ?? null, type: typeOfQ(q) }));
   return { questions: qs.length, afterOver: all.length - qs.length, list, answered: lat.length, latencySource: source, ...(firstText.length ? { firstTextMs: firstText } : {}), ...(promptKB.length ? { promptKB } : {}), perRound, latencyMs: lat, stopped: qs.filter((q) => q.failed).length, blankSamples: w.blanks, oppTurnSamples: w.samples };
 }
 
@@ -649,7 +664,7 @@ async function runSolo(app) {
     await s.page.goto(url);
     const got = await s.tap.until(() => !!s.tap.hello && !!s.tap.state, 120_000);
     if (!got) {
-      await s.finding({ kind: 'no-seat', what: 'Play vs Forge did not reach the table in 120 s' });
+      await s.finding({ kind: 'no-seat', what: 'Play vs Bot did not reach the table in 120 s' });
       game.result = 'abandoned (no seat)';
       report.games.push(stripGame(game));
       await s.ctx.close();

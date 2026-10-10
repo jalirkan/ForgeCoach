@@ -19,8 +19,9 @@
  * or face-down source (§3.3) has no name and no art here, and an empty `text`
  * (the bridge blanked it, §3.6) is "Hidden", never filled in.
  */
-import type { AnyCard, Card, GameStateBody, StackItem } from '../protocol.ts';
-import { isHidden } from '../protocol.ts';
+import type { AnyCard, Card, GameStateBody, SetYieldAct, SetYieldMode, StackItem } from '../protocol.ts';
+import { isHidden, stackYield } from '../protocol.ts';
+import { setYield } from '../play/acts.ts';
 import type { CardStackMarks } from './cardContext.ts';
 
 export type StackKind = 'spell' | 'activated' | 'triggered' | 'ability';
@@ -150,4 +151,62 @@ export function stackPlayerMarks(entries: StackEntry[]): Map<number, number[]> {
   const m = new Map<number, number[]>();
   for (const e of entries) for (const t of e.targets) if (t.kind === 'player') m.set(t.id, [...(m.get(t.id) ?? []), e.n]);
   return m;
+}
+
+/**
+ * The fan (StackPanel `float`): where each item sits in the pile. 1 — the one
+ * that resolves next — is nearest and on top, each deeper item one step
+ * further back. The z-order strictly falls with `n`, so a nearer item only
+ * ever covers the far edge of the one behind it (stack.css tucks that edge,
+ * which holds no content); every number badge sits clear of it, which is what
+ * BoardArrows anchors its lines on.
+ */
+export function fanPlace(n: number, count: number): { depth: number; z: number } {
+  return { depth: n - 1, z: count - n + 1 };
+}
+
+/** One button of the "Always yield" control: lit, and the mode a press sends. */
+export interface YieldButton {
+  on: boolean;
+  send: SetYieldMode;
+}
+
+/**
+ * The per-item "Always yield" control, as the engine offers it (M36/M37), or
+ * null when it does not. `stackYield(item).offered` is the engine's own two
+ * guards (an ability, with a key); nothing here is read from the text.
+ *
+ * - `auto`: one toggle, "Always yield" — `yes` (Forge's auto-yield) and, once
+ *   lit from `item.yielded`, `clear` to be asked again.
+ * - `trigger`: an optional trigger this seat controls — "Always yes" /
+ *   "Always no" (ACCEPT / DECLINE + auto-yield); pressing the lit one clears it.
+ *
+ * The key itself never appears here: the caller takes it from `stackYield` at
+ * the moment it sends the act, and it travels only in that act.
+ */
+export type YieldControl = { kind: 'auto'; auto: YieldButton } | { kind: 'trigger'; yes: YieldButton; no: YieldButton };
+
+export function yieldControlOf(item: StackItem, mine: boolean): YieldControl | null {
+  const y = stackYield(item);
+  if (!y.offered || y.yieldKey === null) return null;
+  if (y.optionalTrigger && mine) {
+    return {
+      kind: 'trigger',
+      yes: { on: y.mode === 'yes', send: y.mode === 'yes' ? 'clear' : 'yes' },
+      no: { on: y.mode === 'no', send: y.mode === 'no' ? 'clear' : 'no' },
+    };
+  }
+  const on = y.mode !== null;
+  return { kind: 'auto', auto: { on, send: on ? 'clear' : 'yes' } };
+}
+
+/**
+ * The act a press of the control sends: `setYield {yieldKey, mode}`, the key
+ * read from the item at that moment — the one place it leaves the state — or
+ * null when the board may not act or the engine offers no yield.
+ */
+export function yieldActOf(item: StackItem, mode: SetYieldMode, canAct: boolean): SetYieldAct | null {
+  const y = stackYield(item);
+  if (!canAct || !y.offered || y.yieldKey === null) return null;
+  return setYield(y.yieldKey, mode);
 }

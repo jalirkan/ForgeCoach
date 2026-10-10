@@ -693,7 +693,7 @@ function HandIn({ state, room, deckText: md, blocked, opponent, onOpenReview }: 
       <p>
         {midMatch
           ? <>Game {next.game} next. Sideboard if you like — edit your deck above with any of your own picks and basic lands — or keep it; when both decks are in, the game starts. {chooserWords}</>
-          : <>Hand your deck to the room: it is checked against your own picks (basic lands are free) and stays private — {opponent} sees its name and size, never the list. When both decks are in, the room starts {bo3 ? 'game 1 of a best of three' : 'a game'} between you on its computer’s Forge.{bo3 ? ` Between games you may sideboard. ${chooserWords}` : ''}</>}
+          : <>Hand your deck to the room: it is checked against your own picks (basic lands are free) and stays private — {opponent} sees its name and size, never the list. When both decks are in, the room starts {bo3 ? 'game 1 of a best of three' : 'a game'} between you on its computer.{bo3 ? ` Between games you may sideboard. ${chooserWords}` : ''}</>}
       </p>
       <ul className="fr-rooms">
         <li>

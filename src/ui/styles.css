@@ -2924,3 +2924,20 @@ textarea:focus {
 .play-note .link-btn {
   margin-left: 6px;
 }
+
+/* Settings: a group heading ("During a game", "Everything else", …) above its fields. */
+.settings-group {
+  margin: 6px 0 -8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.settings-group:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}

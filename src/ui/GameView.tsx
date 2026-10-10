@@ -242,7 +242,7 @@ export function GameView({
   const opp = players.find((p) => p.id !== log.seat);
   const over = log.over;
 
-  const dockTitle = decision ? stripRound(decision.label) : frame ? `${frame.state.activePlayer === log.seat ? 'Your' : "Opp's"} ${phaseLabel(frame.state.phase)}` : 'Nothing yet';
+  const dockTitle = decision ? stripRound(decision.label) : frame ? `${frame.state.activePlayer === log.seat ? 'Your' : 'Their'} ${phaseLabel(frame.state.phase)}` : 'Nothing yet';
   const dockSub = decision ? `R${decision.state.round} · ${actionsSummary(decision)}` : frame ? `Round ${frame.state.round} · frame #${frame.frameIndex}` : '';
 
   // The win-chance line (mtg-table D361; Settings → Show win chance): markers jump to a decision.
@@ -311,7 +311,7 @@ export function GameView({
       <BoardStateRef.Provider value={boardStateRef}>
         <div className={cx('game', wide ? 'is-wide' : 'is-narrow')}>
           <header className="topbar">
-            <button className="logo-btn" onClick={onClose} aria-label="Back to start">
+            <button className="logo-btn" onClick={onClose} aria-label="Back to the start">
               <Logo compact={!wide} />
             </button>
             <div className="topbar-title">

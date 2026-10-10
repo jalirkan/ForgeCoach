@@ -19,8 +19,15 @@
  * streaming) is kept with its text, but its cycle is not marked asked, so
  * auto-coach asks it again; a finished, stopped or failed plan is final until
  * Ask again or the next cycle.
+ *
+ * Plan mode (mtg-table D419) keeps the same way the moments auto-coach asked
+ * (`moments`) and, per entry, its moment (question, kind, the engine question's
+ * answers) and which attempt it is, so the plan's steps can be checked again
+ * after a reload.
  */
 import type { AnswerStatus } from '../answers.ts';
+import type { PlanMoment } from './autoPlan.ts';
+import type { Choice, ChoiceQuestion } from '../../livePlan/prompt.ts';
 
 export const ADVICE_STORE_KEY = 'forgecoach.liveAdvice.v1';
 /** How many games' advice is kept (the newest). */
@@ -54,6 +61,9 @@ export interface StoredEntry {
   turn: number | null;
   seq: number;
   answer: StoredAnswer | null;
+  /** Plan mode: the moment and the attempt. */
+  moment?: PlanMoment;
+  attempt?: number;
 }
 
 export interface StoredGame {
@@ -62,6 +72,8 @@ export interface StoredGame {
   at: number;
   /** The turns whose plan auto-coach asked for, and got an answer to. */
   plans: number[];
+  /** Plan mode: the moments auto-coach asked, and got an answer to. */
+  moments?: string[];
   entries: StoredEntry[];
 }
 
@@ -88,6 +100,43 @@ function cleanAnswer(a: unknown): StoredAnswer | null {
   };
 }
 
+const KINDS = new Set(['mulligan', 'play-draw', 'turn', 'response', 'blocks', 'end-step', 'question', 'now']);
+
+function cleanChoice(c: unknown): Choice | null {
+  if (!c || typeof c !== 'object') return null;
+  const o = c as Record<string, unknown>;
+  if (!isStr(o.label)) return null;
+  return {
+    label: o.label.slice(0, 300),
+    ...(isNum(o.cardId) ? { cardId: o.cardId } : {}),
+    ...(isNum(o.playerId) ? { playerId: o.playerId } : {}),
+    ...(typeof o.value === 'boolean' ? { value: o.value } : {}),
+  };
+}
+
+function cleanAsk(a: unknown): ChoiceQuestion | null {
+  if (!a || typeof a !== 'object') return null;
+  const o = a as Record<string, unknown>;
+  if (!isStr(o.prompt) || !Array.isArray(o.choices) || !isNum(o.min) || !isNum(o.max)) return null;
+  const choices = o.choices.slice(0, 60).map(cleanChoice).filter((x): x is Choice => x !== null);
+  return { prompt: o.prompt.slice(0, 1000), choices, min: o.min, max: o.max, ...(isNum(o.cardId) ? { cardId: o.cardId } : {}) };
+}
+
+function cleanMoment(m: unknown): PlanMoment | null {
+  if (!m || typeof m !== 'object') return null;
+  const o = m as Record<string, unknown>;
+  if (!isStr(o.kind) || !KINDS.has(o.kind) || !isStr(o.id) || !isStr(o.question) || !isStr(o.label)) return null;
+  const ask = cleanAsk(o.ask);
+  return {
+    kind: o.kind as PlanMoment['kind'],
+    id: o.id.slice(0, 300),
+    question: o.question.slice(0, 4000),
+    label: o.label.slice(0, 200),
+    ...(o.atAttack === true ? { atAttack: true } : {}),
+    ...(ask ? { ask } : {}),
+  };
+}
+
 function cleanEntry(e: unknown): StoredEntry | null {
   if (!e || typeof e !== 'object') return null;
   const o = e as Record<string, unknown>;
@@ -101,6 +150,8 @@ function cleanEntry(e: unknown): StoredEntry | null {
     turn: isNum(o.turn) ? o.turn : null,
     seq: o.seq,
     answer: cleanAnswer(o.answer),
+    ...(cleanMoment(o.moment) ? { moment: cleanMoment(o.moment)! } : {}),
+    ...(isNum(o.attempt) ? { attempt: o.attempt } : {}),
   };
 }
 
@@ -112,6 +163,7 @@ function cleanGame(g: unknown): StoredGame | null {
     game: o.game,
     at: o.at,
     plans: o.plans.filter(isNum),
+    ...(Array.isArray(o.moments) ? { moments: o.moments.filter(isStr).slice(0, 400) } : {}),
     entries: o.entries.map(cleanEntry).filter((x): x is StoredEntry => x !== null).slice(0, MAX_STORED_ENTRIES),
   };
 }
@@ -141,6 +193,7 @@ export function saveStoredAdvice(storage: Write | null, g: StoredGame): boolean 
       game: g.game,
       at: g.at,
       plans: [...new Set(g.plans)].sort((a, b) => a - b),
+      ...(g.moments?.length ? { moments: [...new Set(g.moments)].slice(-400) } : {}),
       entries: g.entries.slice(0, MAX_STORED_ENTRIES).map((e) => (e.answer ? { ...e, answer: { ...e.answer, text: e.answer.text.slice(0, MAX_ANSWER_CHARS) } } : e)),
     };
     const games = [one, ...readAll(storage).filter((x) => x.game !== g.game)].sort((a, b) => b.at - a.at).slice(0, MAX_STORED_GAMES);

@@ -11,9 +11,9 @@ import type { CubeGuide } from './types.ts';
 export const PEASANT_GUIDE: CubeGuide = {
   cubeId: 'peasant',
   docTitle: /peasant cube/i,
-  teaser: 'Commons and uncommons: ten guild decks, real engines like Goblin Bombardment, and reanimator.',
+  teaser: 'Common and uncommon spells, rare dual lands: ten guild decks, real engines like Goblin Bombardment, and reanimator.',
   summary:
-    'Commons and uncommons only, adapted from the most-followed peasant cube on Cube Cobra. It is faster and stronger than the Pauper cube: the uncommons bring engines (Goblin Bombardment, Mayhem Devil, Soulherder, Syr Konrad) and a real reanimator deck (Reanimate, Animate Dead, Dance of the Dead). There are no bombs, so games turn on synergy, removal and two-for-ones. Each of the ten colour pairs has two or three gold signposts. The mana is Landscapes, Duskmourn duals, City of Brass and Ash Barrens.',
+    'Common and uncommon spells, adapted card for card from the most-followed peasant cube on Cube Cobra. It is faster and stronger than the Pauper cube: the uncommons bring engines (Goblin Bombardment, Mayhem Devil, Soulherder, Syr Konrad) and a real reanimator deck (Reanimate, Animate Dead, Dance of the Dead). There are no bombs, so games turn on synergy, removal and two-for-ones. Each of the ten colour pairs has two or three gold signposts. The lands are the designer’s, rare ones included: Landscapes, a shock land, surveil land or Horizon Canopy for each pair, City of Brass and Prismatic Vista.',
   archetypes: [
     {
       id: 'WU-blink',
@@ -130,7 +130,7 @@ export const PEASANT_GUIDE: CubeGuide = {
     valuing: [
       'The uncommon engines are what is scarce: Goblin Bombardment, Mayhem Devil, Soulherder, Syr Konrad, Reanimate. Take them over a fourth removal spell.',
       'Removal is good but not everywhere: 26 spells, most of them black and red, so cheap white and black removal goes early.',
-      'Fixing comes late: every colour pair has four lands (its Duskmourn dual and three Landscapes), plus City of Brass and Ash Barrens.',
+      'Fixing comes late: every colour pair has four lands (its rare dual and three Landscapes), plus City of Brass and Prismatic Vista.',
       'Synergy matters: the gold signposts are strong in their deck and weak outside it, so read what the other drafter is taking.',
     ],
     formats: {
@@ -139,7 +139,7 @@ export const PEASANT_GUIDE: CubeGuide = {
       booster: FORMATS.booster,
     },
     splash:
-      'Each Landscape fetches one of three basic types, so a splash for one or two removal spells is easy: count three sources. City of Brass and Ash Barrens make any colour.',
+      'Each Landscape fetches one of three basic types, so a splash for one or two removal spells is easy: count three sources. City of Brass and Prismatic Vista make any colour.',
   },
   forge: {
     points: [

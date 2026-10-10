@@ -54,8 +54,8 @@ function hashOf(s: string): string {
  * `notice`: a line over the offer (the room's connection state).
  */
 export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, notice }: { game: DraftGame; draft: Draft; onLeave: () => void; onSettings: () => void; opponent?: string; notice?: string | null }) {
-  const them = opponent ?? 'the AI';
-  const Them = opponent ?? 'The AI';
+  const them = opponent ?? 'the bot';
+  const Them = opponent ?? 'The bot';
   const ctx = game.data.ctx!;
   const meta = useCubeMeta(ctx)!;
   const hints = game.saved?.hints ?? true;
@@ -134,7 +134,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
     const n = w.piles[w.look]?.length ?? 0;
     title = d.done ? 'Draft complete' : `Pile ${w.look + 1}`;
     offer = `${n} card${n === 1 ? '' : 's'} in the pile · ${w.stack.length} in the stack`;
-    if (!mine) waiting = `The AI looks at pile ${w.look + 1}…`;
+    if (!mine) waiting = `${Them} looks at pile ${w.look + 1}…`;
     const pass = canPass(w);
     status = mine ? (pass ? (w.piles.slice(w.look + 1).every((p) => !p.length) ? 'Pass, and you take the top card of the stack blind' : 'Pass, and the pile grows by a card') : 'The stack is empty: this pile is yours') : null;
     primary = { label: 'Take pile', onClick: () => game.act({ kind: 'take' }), disabled: !mine, kbd: 'Enter' };
@@ -201,7 +201,7 @@ export function PickScreen({ game, draft: d, onLeave, onSettings, opponent, noti
 
   const seats: Seat[] = [
     { id: 'you', label: 'You', active: mine },
-    { id: 'ai', label: opponent ?? 'Forge AI', bot: !opponent, active: !mine && !d.done, onClick: () => setAiOpen(true) },
+    { id: 'ai', label: opponent ?? 'Bot 1', bot: !opponent, active: !mine && !d.done, onClick: () => setAiOpen(true) },
     ...(d.format === 'booster' ? d.bots.map((_, i) => ({ id: `bot${i + 2}`, label: `Bot ${i + 2}`, bot: true })) : []),
   ];
   const lastBlind = d.log[d.log.length - 1];
@@ -338,7 +338,7 @@ function PickCoach({ open, onClose, game, d, advice, onSettings, opponent }: { o
         idleText={
           opponent
             ? `The coach reads this pick, your pool, ${opponent}’s picks (a grid draft is face up) and every card’s text. Its advice stays in this browser: ${opponent} never sees it.`
-            : 'The coach reads this pick, your pool, what you know the AI has and every card’s text. It never sees the AI’s hidden picks.'
+            : 'The coach reads this pick, your pool, what you know the bot has and every card’s text. It never sees the bot’s hidden picks.'
         }
         onAsk={() => void startAnswer(key, makePrompt)}
         onStop={() => stopAnswer(key)}
