@@ -178,6 +178,13 @@ export const PlanCoach = memo(function PlanCoach({
     void runPlanMoment({ game, base: askKey(game, nowMoment.id), kind: 'ask', moment: nowMoment, log, seat: me, decision, slot: askSlot(game), supersedes: ASK_SUPERSEDE });
   }, [log, game, decision, nowMoment, me]);
 
+  // The prompt for the moment on screen (Copy prompt without asking).
+  const nowPrompt = useCallback(async () => {
+    if (!log || !decision || !nowMoment || me === null) throw new Error('Nothing to ask about yet.');
+    const snap = snapshotOf(decision);
+    return buildPlanPrompt(log, snap, me, await cardsForPrompt(planPromptNames(snap)), nowMoment.question, { guide: safeGuide(), moment: nowMoment });
+  }, [log, decision, nowMoment, me]);
+
   const plan = currentPlan(advice);
   const planAnswer = useAnswer(plan?.key ?? null);
   const standIn = standInPlan(advice, !!planAnswer?.text);
@@ -216,7 +223,19 @@ export const PlanCoach = memo(function PlanCoach({
         <span className="guide-name">{guideName ?? 'None'}</span>
         <IconChevronDown size={14} />
       </button>
-      {nowMoment && !askedNow && (
+      {nowMoment && !askedNow && !plan && !showAsk ? (
+        // Nothing on screen yet: the full box, so "Copy prompt" works with no coach connected.
+        <AnswerBox
+          answer={undefined}
+          askLabel="Ask coach"
+          idleText={auto ? `Auto-coach is on: it ${PLAN_AUTO_HELP.charAt(0).toLowerCase()}${PLAN_AUTO_HELP.slice(1)} Ask any time about this moment.` : 'What should you do right now? The coach answers in steps, checked against what the engine allows.'}
+          onAsk={askNow}
+          onStop={() => undefined}
+          makePrompt={nowPrompt}
+          onOpenSettings={onOpenSettings}
+          title={nowMoment.label}
+        />
+      ) : nowMoment && !askedNow && (
         <div className="card-box pc-ask-row">
           <span className="pc-ask-what">{nowMoment.label}</span>
           <button className="btn btn-quiet btn-sm" onClick={askNow} title="Ask the coach for steps for this exact moment (the plan stays)">
@@ -235,7 +254,7 @@ export const PlanCoach = memo(function PlanCoach({
           <ReadOnlyPlan entry={standIn} log={log} seat={me} />
         </div>
       )}
-      {!plan && !showAsk && (
+      {!plan && !showAsk && !(nowMoment && !askedNow) && (
         <div className="card-box notice pc-wait">
           <p className="muted small">
             {!state
