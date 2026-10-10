@@ -38,7 +38,8 @@ import './draft.css';
 import './friend.css';
 import { CUBES, cubeInfo } from '../../cube/cubes.ts';
 import { newPool, savePool } from '../../cube/pools.ts';
-import { deckCount, exportList, forForge, toMatchDeck } from '../../draft/deck.ts';
+import { deckCount, exportList, forForge, sideboardFit, toMatchDeck } from '../../draft/deck.ts';
+import { deckColoursOf } from './Setup.tsx';
 import {
   cleanName, createRoom, cubeHash, forgetRoom, friendLinks, loadRooms, ownerRoomBase, parseJoinHash, replayMatches, RoomClient, RoomError, roomSupport,
   saveRoom, type RoomState, type SavedRoom,
@@ -507,7 +508,7 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
     );
   }
   // Cards Forge has no script for yet stay off the sideboard the room hands the engine; in the main deck they are named below.
-  const { deck: md, blocked } = forForge(toMatchDeck(deckName, deck), ctx?.cube.forgeMissing);
+  const { deck: md, blocked } = forForge(toMatchDeck(deckName, deck), ctx?.cube.forgeMissing, ctx && sideboardFit(deckColoursOf(deck, (n) => ctx.facts.get(n)?.colors ?? ''), (n) => ctx.facts.get(n)));
   // This seat's own deck and picks only: the friend's list never comes to this page.
   const list = exportList(deckName, deck);
   return (

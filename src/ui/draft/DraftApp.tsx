@@ -61,6 +61,7 @@ export default function DraftApp({ onExit }: { onExit: () => void }) {
   }, [saved, view, go]);
 
   const ctx = game.data.ctx;
+  const factsOf = useCallback((n: string) => ctx?.facts.get(n), [ctx]);
   const deck = useMemo(() => saved?.deck ?? (draft?.done ? initialDeck(draft.picks.you) : null), [saved?.deck, draft]);
   const known = useMemo(() => (draft ? knownAiCards(draft) : []), [draft]);
   const pending = !!saved && 'pending' in (saved.draft as object);
@@ -109,6 +110,7 @@ export default function DraftApp({ onExit }: { onExit: () => void }) {
         meta={game.data.meta}
         cubeNames={ctx.cube.cards.map((c) => c.name)}
         forgeMissing={ctx.cube.forgeMissing}
+        factsOf={factsOf}
         title={saved.title || 'Practice draft'}
         onBack={() => go('build')}
         onAbandon={() => {
