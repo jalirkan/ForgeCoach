@@ -54,7 +54,7 @@ A calm coach sitting next to you at the table.
 | **Auto-coach** | the coach asking on its own at the moments that matter | — |
 | **Steps / Short / Detailed** | the three coach styles during a game | plan mode (Steps), terse |
 | **Play vs Bot** | a game against the bot | Play vs Forge |
-| **Draft vs Bot** | a cube draft against bots, then a match | Draft vs AI, Practice draft |
+| **Draft vs Bot** | a cube draft against bots, then a match | Draft vs AI |
 | **Draft with a friend** | a two-person grid draft through your PC, then a best of three | — |
 | **Draft & build** | the deck assistant for paper drafts | Paper draft helper |
 | **replay** | stepping through a recorded game | — |

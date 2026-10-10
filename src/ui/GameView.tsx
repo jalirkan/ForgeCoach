@@ -311,7 +311,7 @@ export function GameView({
       <BoardStateRef.Provider value={boardStateRef}>
         <div className={cx('game', wide ? 'is-wide' : 'is-narrow')}>
           <header className="topbar">
-            <button className="logo-btn" onClick={onClose} aria-label="Back to start">
+            <button className="logo-btn" onClick={onClose} aria-label="Back to the start">
               <Logo compact={!wide} />
             </button>
             <div className="topbar-title">
