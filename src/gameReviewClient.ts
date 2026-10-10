@@ -120,16 +120,16 @@ export function checkReviewRequest(r: ReviewRequest): string | null {
 }
 
 const STATUS_WORDS: Record<number, string> = {
-  400: 'The helper refused the request.',
-  403: 'The helper refused this page (origin or pairing token).',
+  400: 'The engine on your PC refused the request.',
+  403: 'The engine on your PC refused this page (its address or pairing token).',
   404: 'The engine has no log for this game (only games played through this engine can be reviewed).',
-  405: 'This helper does not take that request.',
-  413: 'The request is too large for the helper.',
+  405: 'Your mtg-table does not take that request: update it and start ForgeCoach again.',
+  413: 'The request is too large for the engine on your PC.',
   429: 'The engine is already reviewing other games and its queue is full — try again when one finishes.',
-  503: 'Engine review is off on this helper (the bridge is not built, or it was started with --no-review).',
+  503: 'Engine review is off on your PC (the bridge is not built, or play.sh was started with --no-review).',
 };
 
-const UNREACHABLE = 'Couldn’t reach the coach helper on this computer: start ForgeCoach again (the app-menu launcher, or ./scripts/play.sh).';
+const UNREACHABLE = 'Couldn’t reach the engine on your PC: start ForgeCoach again (the app-menu launcher, or ./scripts/play.sh).';
 
 async function call(path: string, init: RequestInit, target: HelperTarget, f: ReviewFetch): Promise<{ status: number; ok: boolean; body: Record<string, unknown> } | ReviewRefused> {
   let res: Pick<Response, 'ok' | 'status' | 'json'>;
@@ -151,7 +151,7 @@ async function call(path: string, init: RequestInit, target: HelperTarget, f: Re
 function refusal(status: number, body: Record<string, unknown>): ReviewRefused {
   const msg = cleanText(body.message, 300);
   // 503 and 429 have a fixed meaning; say what to do about it.
-  const message = status === 503 || status === 429 ? STATUS_WORDS[status]! : (msg ?? STATUS_WORDS[status] ?? `The helper answered HTTP ${status}.`);
+  const message = status === 503 || status === 429 ? STATUS_WORDS[status]! : (msg ?? STATUS_WORDS[status] ?? `The engine on your PC answered HTTP ${status}.`);
   return { ok: false, status, message };
 }
 
@@ -169,7 +169,7 @@ export async function startReview(target: HelperTarget, req: ReviewRequest, f: R
   if ('message' in r) return r;
   if (!r.ok || r.body.ok !== true) return refusal(r.status, r.body);
   const id = typeof r.body.id === 'string' && REVIEW_ID.test(r.body.id) ? r.body.id : null;
-  if (!id) return { ok: false, status: 0, message: 'The helper accepted the review but gave no usable id.' };
+  if (!id) return { ok: false, status: 0, message: 'The engine accepted the review but gave no usable id.' };
   return { ok: true, id, state: stateOf(r.body.state) ?? 'queued', position: int(r.body.position, 0, 1000) };
 }
 
@@ -180,7 +180,7 @@ export async function pollReview(target: HelperTarget, id: string, f: ReviewFetc
   if ('message' in r) return r;
   if (!r.ok || r.body.ok !== true) return refusal(r.status, r.body);
   const state = stateOf(r.body.state);
-  if (!state) return { ok: false, status: 0, message: 'The helper answered with an unknown review state.' };
+  if (!state) return { ok: false, status: 0, message: 'The engine answered with an unknown review state.' };
   const stage = typeof r.body.stage === 'string' && (STAGES as readonly string[]).includes(r.body.stage) ? (r.body.stage as ReviewStage) : null;
   let error = cleanText(r.body.error, 400);
   let report: ReviewReport | null = null;

@@ -170,7 +170,7 @@ export function CubeGuideView({
       </section>
 
       <section className="cg-sec">
-        <h3 className="cg-h">Playing against the Forge AI</h3>
+        <h3 className="cg-h">Playing against the bot</h3>
         <ul className="cg-list">
           {guide.forge.points.map((p, i) => (
             <li key={i}>{p}</li>
@@ -188,7 +188,7 @@ export function CubeGuideView({
                 <span className="cg-flag is-soft">Random</span> {guide.forge.flagged.random.join(' · ')}
               </p>
             )}
-            <p className="cg-caveat">Flags from Forge 2.0.14’s card scripts. “All”: the AI plays the card badly. “Random”: left out of random AI decks.</p>
+            <p className="cg-caveat">Flags from Forge 2.0.14’s card scripts. “All”: Forge’s AI plays the card badly. “Random”: left out of Forge’s random decks.</p>
           </div>
         )}
       </section>

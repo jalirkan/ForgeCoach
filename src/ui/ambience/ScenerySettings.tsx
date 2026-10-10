@@ -107,7 +107,7 @@ export function ScenerySettings() {
         </select>
       </label>
       <span className="field-help">
-        Lands you play grow scenes on your side of the board. Applies at once. <a href="#ambience">Preview and test packs</a>.
+        The lands each player plays grow a scene on their side of the board. Changes here apply at once, without Save. <a href="#ambience">Preview and test packs</a>.
       </span>
     </fieldset>
   );

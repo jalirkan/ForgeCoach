@@ -2,7 +2,7 @@
   "id": ".",
   "name": "ForgeCoach",
   "short_name": "ForgeCoach",
-  "description": "Play Magic against the Forge AI with a coach beside the board.",
+  "description": "A practice table for Magic: play a bot or a friend with a coach beside the board.",
   "lang": "en",
   "dir": "ltr",
   "start_url": ".",

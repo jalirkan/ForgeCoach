@@ -71,7 +71,7 @@ export function isCoachStyle(x: unknown): x is CoachStyle {
 }
 
 /**
- * The site's look: 'classic' (default, the original dark look), 'stack' (a dark
+ * The site's look: 'classic' (the original dark look), 'stack' (the default: a dark
  * table with cream game objects and amber for priority and the coach's call) or
  * 'felt' (green baize, calm; the only warm colour is win chance on option bars).
  * Applied as `data-skin` on the root element (ui/skin.ts, ui/skins.css).

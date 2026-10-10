@@ -142,7 +142,7 @@ describe('the calls', () => {
     const off = fakeFetch(() => json({ ok: true }));
     expect((await roomSupport({ fetch: off.f, target: { baseUrl: 'http://127.0.0.1:8643', token: null } })).on).toBe(false);
     const down = fakeFetch(() => Promise.reject(new Error('refused')));
-    expect((await roomSupport({ fetch: down.f, target: { baseUrl: 'http://127.0.0.1:8643', token: null } })).reason).toMatch(/no coach helper/);
+    expect((await roomSupport({ fetch: down.f, target: { baseUrl: 'http://127.0.0.1:8643', token: null } })).reason).toMatch(/isn’t running/);
   });
   it('createRoom posts to the helper, with the LAN token when the page has one', async () => {
     const created = { ok: true, id: 'rAbcdEFG1', seat: 0, token: 'a'.repeat(22), friendToken: 'b'.repeat(22), roomPort: 8644, bases: { local: 'http://127.0.0.1:8644', lan: [], public: null }, cube: { id: 'synergy', title: 'S', hash: 'h', size: 9 }, grids: 1, expiresAt: '' };

@@ -199,7 +199,7 @@ const MAX_NOTICES = 20;
 const CLOSE_WAIT_MS = 1_000;
 
 export const REFUSED_DETAIL =
-  'Another window is the player (probably the mtg-table board tab) — close it and retry';
+  'Another window has your seat (probably the mtg-table board tab): close it and retry';
 export const REPLACED_DETAIL = 'This seat was opened in another window or device, which has it now. Retry here to take it back.';
 export const TABLE_UNREACHABLE_DETAIL =
   'Could not reach the game on the room’s computer. The game may be over, or the engine there stopped. Check with whoever made the room.';
@@ -209,9 +209,9 @@ export function unreachableDetail(rawUrl: string, retryInMs: number | null): str
   const port = portOf(rawUrl);
   const url = redactSeatUrl(rawUrl);
   return (
-    `Could not reach the Forge engine at ${url}. Start it in your mtg-table checkout with ` +
+    `Couldn’t reach the engine at ${url}. Start it in your mtg-table checkout with ` +
     `\`./scripts/play.sh --engine-only${port === '8642' ? '' : ` --port ${port}`}\`, and close any mtg-table ` +
-    `board tab (it would take the seat). Chrome may ask to let this page access devices on your local network — allow it ` +
+    `board tab (it would take your seat). Chrome may ask to let this page access devices on your local network — allow it ` +
     `(Safari blocks it). The page must be served from https://jalirkan.github.io, localhost or the bridge itself ` +
     `(\`--lan\`), or the bridge refuses the handshake.` +
     (retryInMs === null ? '' : ` Retrying in ${(Math.round(retryInMs / 100) / 10).toString()} s.`)
@@ -226,7 +226,7 @@ function portOf(url: string): string {
   }
 }
 
-export const AI_DECK_WARNING_REDACTED = 'The AI’s deck has cards it can’t play well (hidden by ForgeCoach: they are the AI’s cards).';
+export const AI_DECK_WARNING_REDACTED = 'The bot’s deck has cards it can’t play well (not named here: they are the bot’s cards).';
 
 /**
  * Forge's start-of-match warning about the AI's deck (Match.prepareAllZones →
@@ -558,7 +558,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
         isTable
           ? `${TABLE_UNREACHABLE_DETAIL} Gave up after ${attempts.toString()} attempts — press Retry.`
           : everOpened
-          ? `Lost the engine at ${redactSeatUrl(url)} and ${attempts.toString()} reconnects failed. Is the bridge still running? Press Retry.`
+          ? `Lost the engine at ${redactSeatUrl(url)} and ${attempts.toString()} reconnects failed. Is the engine still running? Press Retry.`
           : `${unreachableDetail(url, null)} Gave up after ${attempts.toString()} attempts — press Retry.`,
       );
       return;

@@ -65,7 +65,7 @@ export function RoomOwnerControls({
       }
     } catch (e) {
       if (e instanceof RoomError && e.code === 'gone' && what === 'close') onClosed();
-      else setError(e instanceof RoomError ? e.message : 'That did not reach the coach helper.');
+      else setError(e instanceof RoomError ? e.message : 'That did not reach the engine on your PC.');
     } finally {
       setBusy(false);
     }

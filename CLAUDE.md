@@ -2,10 +2,12 @@
 
 Static Vite + React 18 + TypeScript site (GitHub Pages:
 https://jalirkan.github.io/ForgeCoach/). Primarily a playable 2D client: the
-user plays Magic against the Forge AI (an mtg-table engine on their machine,
-`./scripts/play.sh --engine-only`) with a coach beside the board. Replay/review
-of recorded logs and live-watching are secondary. No backend: everything runs in the browser. The product brief is
-`docs/brief.md`; the log format is mtg-table's `docs/protocol.md` (§3 state,
+user plays Magic against the bot (Forge through an mtg-table engine on their
+machine, `./scripts/play.sh --engine-only`; the search AI by default) or a friend,
+with a coach beside the board. Replay/review of recorded logs and live-watching
+are secondary. No backend: everything runs in the browser. The product brief is
+`docs/brief.md`; player-facing words follow `docs/voice.md` (identity, voice,
+glossary: "the bot", "the engine on your PC", "Claude Code on your PC"). The log format is mtg-table's `docs/protocol.md` (§3 state,
 §5 asks, §8 frame log).
 
 ## Architecture (src/)
@@ -69,7 +71,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   17Lands numbers, the human GIH WR relative to the format average, ×0.8,
   weighted by precision — `cardValue`; adopted by the pre-registered
   split-half test in `docs/human-blend.md`, `npm run human-blend`; synergy;
-  the Draft vs AI drafter's ratings and deck use `labValue`/`labOnly`, never
+  the Draft vs Bot drafter's ratings and deck use `labValue`/`labOnly`, never
   human data), `builder.ts` (best 40s, reasons,
   cuts, swaps, thin-pool 18-land / three-colour builds, text and `.dck`
   export), `pick.ts` (Grid / Winston advice), `deckPrompt.ts` (deterministic
@@ -118,7 +120,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   `ui/LabTrust.tsx` + `labtrust.css` (the lab's gold rule, never human blue)
   in LabNumbers, CardInfoSheet; the note in grid/Winston (`pick.ts`) and
   booster (PickScreen) reasons. No model calls.
-- `cube/deckExport.ts` + `ui/DeckExport.tsx` — deck export, the same on every deck screen: `deckListText` (`Deck` / `<qty> <name>` / blank / `Sideboard`, the form Arena, MTGO, Moxfield, Cockatrice and untap.in import; basics counted and last; the sideboard is the rest of the pool; names as the cube documents give them — split cards `A // B`, DFC/adventure by the front face, tested in `deckExport.test.ts`), `dckFileText` (Forge; `builder.ts` `deckText`/`dckText` wrap these via `listFromBuild`), `codFileText` (Cockatrice), `countLine` ("40 cards + 5 sideboard"); `draft/deck.ts` `exportList` makes one from the `DeckState` on screen. UI: `CopyDeckButton` (one tap, "Copied"; without a usable clipboard — a plain-http LAN/phone page is not a secure context — a dialog with the list selected) and the `DeckExport` panel (count, copy, .txt / .dck / .cod downloads, Share… where `navigator.share` exists, Show list). Placed in `DeckEditor` (Copy list beside Submit: the stat bar, the phone dock; the panel under Basic Lands), Draft vs AI's `MatchSetup` (under your deck), FriendApp's room screen (Your deck, before and after Hand in, between games) and `BuildView` (Copy list by the build tabs; the Export panel). Only the player's own deck and pool: never the AI's list or the friend's deck. E2E: `e2e/friend.e2e.mjs` step 7.
+- `cube/deckExport.ts` + `ui/DeckExport.tsx` — deck export, the same on every deck screen: `deckListText` (`Deck` / `<qty> <name>` / blank / `Sideboard`, the form Arena, MTGO, Moxfield, Cockatrice and untap.in import; basics counted and last; the sideboard is the rest of the pool; names as the cube documents give them — split cards `A // B`, DFC/adventure by the front face, tested in `deckExport.test.ts`), `dckFileText` (Forge; `builder.ts` `deckText`/`dckText` wrap these via `listFromBuild`), `codFileText` (Cockatrice), `countLine` ("40 cards + 5 sideboard"); `draft/deck.ts` `exportList` makes one from the `DeckState` on screen. UI: `CopyDeckButton` (one tap, "Copied"; without a usable clipboard — a plain-http LAN/phone page is not a secure context — a dialog with the list selected) and the `DeckExport` panel (count, copy, .txt / .dck / .cod downloads, Share… where `navigator.share` exists, Show list). Placed in `DeckEditor` (Copy list beside Submit: the stat bar, the phone dock; the panel under Basic Lands), Draft vs Bot's `MatchSetup` (under your deck), FriendApp's room screen (Your deck, before and after Hand in, between games) and `BuildView` (Copy list by the build tabs; the Export panel). Only the player's own deck and pool: never the AI's list or the friend's deck. E2E: `e2e/friend.e2e.mjs` step 7.
 - `ui/deck/` — the Draft & build screens (lazy-loaded from `#deck`):
   `DeckApp` (home, pools, workspace, meta import), `PoolView`, `BuildView`
   (builds, score, swaps, export, coach via `answers.ts` `startAnswer`),
@@ -127,7 +129,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   the browser, read through `startAnswer(…, { need: 'vision' })` — the
   helper's `/vision` (mtg-table D362) or the key's image blocks — then the
   review checklist; nothing enters the pool until the player confirms).
-- `draft/` — Draft vs AI (pure, tested in node): `rng.ts`, `weights.ts`,
+- `draft/` — Draft vs Bot (pure, tested in node): `rng.ts`, `weights.ts`,
   `labStats.ts` (the pick screen's Lab numbers panel: taken-when-seen /
   avg pick — or `early` when the lab writes it —, made the 40, deck win rate
   with a Wilson 95% interval, strong/weak only when the interval excludes 0.5,
@@ -169,7 +171,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   `draft/testdata/grid-golden.json` is the Grid cross-check. It is the same file
   as mtg-table's `fixtures/draft-room/grid-golden.json`, and both draft.ts and
   mtg-table's `tools/draft-room.mjs` must reproduce it.
-- `ui/draft/` — Draft vs AI screens (lazy, `#draft`, `#draft/build`,
+- `ui/draft/` — Draft vs Bot screens (lazy, `#draft`, `#draft/build`,
   `#draft/match`), Draft with a friend (`FriendApp`, lazy, `#draft/friend[/join?…|/r/<id>/<seat>[/build]]`;
   `useFriendRoom`: one seat as a `DraftGame`, so `PickScreen` (its `opponent` prop
   names the friend instead of the AI) and `DeckEditor` are reused unchanged; the
@@ -203,7 +205,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   made-up numbers; `lab/testdata/warehouse-exporter-sample.json` is mtg-table's
   exporter sample, read as is in the tests). Optional schema-1 `series` (per-night `cubes` rows: games, avgTurns, onPlayWinRate [+ onPlayLo/Hi]; per-night `pairs` rows: games, winRate, lo, hi), null when absent; `lab/trends.ts` lines nights up for the Trends charts (gaps stay gaps). UI: `ui/lab/DataPage.tsx` (lazy) + `data.css`, `ui/lab/TrendChart.tsx` (dependency-free SVG: one axis, bands, crosshair tooltip, legend + end labels, a numbers table).
 - `lab/ledger.ts` — the morning report's data (`#lab/report`): the runner's public, allowlisted decision ledger `ledger.json` (schema 1, mtg-table D366's private ledger rebuilt from an allowlist by the runner) on the `lab-status` branch: id, opted-in public title and `public_decides:`, the rule's short form (D-numbers, `gate N`, `*_RULE`), outcome + cause, `checked`, headline numbers, finish time, follow-up ids/templates and states. Strict parser (tokens for ids, metrics, rules, templates; free text cleaned and capped; bad entries dropped and counted), the window (`?since=12h|24h|48h|7d|<time>`, default 24 h), `entryVerdict` (pass only when done with pre-registered checks, fail only when a check or the pilot failed, else no verdict — never stronger than the outcome), deterministic `entrySummary` / `nightSummary` / `reportPrompt`, `followupNow` from status.json. Sample: `public/ledger-sample.json` (made up). UI: `ui/lab/ReportPage.tsx` (lazy, "Overnight" in `LabTabs`) + `report.css`; "Ask the coach to explain this night" via `startAnswer`.
-- `gameReview.ts` — mtg-table's engine review report (`docs/game-review.md` there, D353): strict validator to a view model (honesty enforced: an interval including zero is never a mistake; a zero-regret close call is a tie; leaf = short-horizon, not a win rate; `knowledge.opponentModel` basic-lands → warning), log matching, option labels from the redacted state, timeline, and the deterministic `reviewExplainPrompt`. `gameReviewClient.ts` — the helper's `/health` `review: 1`, `POST /review`, `GET /review/<id>`, `runReview` polling (injected fetch). `draft/reviewInput.ts` — `oppPool` / `oppKnown` only for the Draft vs AI match the saved draft launched.
+- `gameReview.ts` — mtg-table's engine review report (`docs/game-review.md` there, D353): strict validator to a view model (honesty enforced: an interval including zero is never a mistake; a zero-regret close call is a tie; leaf = short-horizon, not a win rate; `knowledge.opponentModel` basic-lands → warning), log matching, option labels from the redacted state, timeline, and the deterministic `reviewExplainPrompt`. `gameReviewClient.ts` — the helper's `/health` `review: 1`, `POST /review`, `GET /review/<id>`, `runReview` polling (injected fetch). `draft/reviewInput.ts` — `oppPool` / `oppKnown` only for the Draft vs Bot match the saved draft launched.
 - `filmRoom.ts` — the film room: the three biggest turning points of the viewer's own decisions (score just before a decision → the next scored position after it ends; source: the helper's win chance, else the engine review report, else a labelled life/board/hand heuristic) and a deterministic per-moment coach prompt (prompt.ts's state table, options, what was done, both scores; **Rule:** / **Confidence:**). UI: `ui/filmroom/FilmRoom.tsx` on the game-over card, the replay's Game review tab and the engine review screen.
 - `practice/puzzles.ts` — practice puzzles from the player's own games (pure, tested): the film room's turning points plus the engine review's graded calls, one per decision; options are the report's own tokens when graded, else read from the viewer's state (main: playable lands, spells the untapped mana covers, what was played; attack: untapped non-sick creatures); `checkAnswer` (engine: best / tie / close — an interval including zero is never a mistake — / worse only when the interval excludes zero; ungraded: only "as in the game" / "different"); the book in localStorage (`forgecoach.practice.v1`, no boards: the log is re-read); `puzzlePrompt` = film prompt + practice section. UI: `ui/practice/` (`PracticeApp`, lazy `#practice[/<id>]`; `practiceData.ts`: Your record scan, samples, `rememberGame` called by the film room for saved games).
 - `ui/review/` — the engine review screen (lazy `ReviewApp`, opened from GameView's top bar, the game-over card, or `#sample=<id>&review=1`): timeline, `OptionBars`, the replay `Board` at `stateFrame`, the coach via `startAnswer`. Sample report: `public/samples/human-auto-42.review.json` (engine-made); tests also use the hand-made `src/testdata/human-auto-42.review.handmade.json`.
@@ -227,7 +229,7 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
 ## Seat rule
 
 ForgeCoach takes the player's seat on `/ws` only when the user clicks **Play vs
-Forge** (`play/session.ts`). Live-watch must stay on `/observe` (or HTTP
+Bot** (`play/session.ts`). Live-watch must stay on `/observe` (or HTTP
 polling): it must never connect to `/ws`, because the seat admits one client and
 a watcher would lock out the player's board.
 

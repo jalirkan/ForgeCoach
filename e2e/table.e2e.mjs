@@ -41,7 +41,7 @@
  *      friend's seat; the host's first engine review comes in (real
  *      coach-grade, idle priority) and opens on the host's room page;
  *   9. one person against Forge (the board's Concede in one-human play): the
- *      host goes back to the start page, Play vs Forge wakes the engine, and a
+ *      host goes back to the start page, Play vs Bot wakes the engine, and a
  *      real click on Concede works while the opening dialog is open.
  *
  * Environment: MTG_TABLE (default ../mtg-table, a checkout with D406/D407),
@@ -458,9 +458,9 @@ async function main() {
     // ---- 9. one person against Forge: the board's Concede while the opening dialog is open
     const pages = await serveSite(site);
     await host.goto(pages.url);
-    await host.locator('.lobby-tile', { hasText: 'Play vs Forge' }).click();
+    await host.locator('.lobby-tile', { hasText: 'Play vs Bot' }).click();
     await host.locator('.topbar-game').first().waitFor({ timeout: 120_000 });
-    check(!/You vs (Sam|Justin)/.test(await host.locator('.topbar-game').first().innerText()), 'Play vs Forge after the table: a game against the AI');
+    check(!/You vs (Sam|Justin)/.test(await host.locator('.topbar-game').first().innerText()), 'Play vs Bot after the table: a game against the AI');
     await host.locator('.ask-layer').waitFor({ timeout: 60_000 });
     await concedeFromBoard(host);
     await host.getByText('You lost').waitFor({ timeout: 60_000 });

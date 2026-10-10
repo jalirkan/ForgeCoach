@@ -223,7 +223,7 @@ function PuzzleList({
         {samples === 'error' && <p className="tiny pz-err">The sample games could not be downloaded.</p>}
         {!order.length && scan !== 'busy' && (
           <p className="tiny muted">
-            No puzzles yet. Games you finish against Forge land in <a href="#history">Your record</a>; their turning points become puzzles here. The film room and the
+            No puzzles yet. Games you finish against the bot land in <a href="#history">Your record</a>; their turning points become puzzles here. The film room and the
             engine review add theirs too.
           </p>
         )}
