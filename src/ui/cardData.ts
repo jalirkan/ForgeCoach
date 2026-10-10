@@ -5,9 +5,10 @@
  * Bridges cards.ts (async Scryfall cache) to React: a version counter that
  * bumps whenever new card data lands, so memoised tiles re-render once.
  */
-import { useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { CardInfo } from '../cards.ts';
-import { getCachedCard, getCards, initCardCache, isLookupName } from '../cards.ts';
+import type { TokenSource } from '../cards.ts';
+import { getCachedCard, getCachedToken, getCards, getToken, initCardCache, isLookupName, tokenRef } from '../cards.ts';
 
 let version = 0;
 const listeners = new Set<() => void>();
@@ -55,6 +56,29 @@ export function useCardsVersion(): number {
 export function useCardInfo(name: string | null | undefined): CardInfo | undefined {
   const v = useCardsVersion();
   return useMemo(() => (name ? safeCached(name) : undefined), [name, v]);
+}
+
+const tokensRequested = new Set<string>();
+
+/**
+ * Card info for a wire card: a real card by name, a token by what it is (base
+ * name, types, base P/T — one Scryfall search per distinct token, once per
+ * session). Undefined until it arrives, and for a token Scryfall has no art for.
+ */
+export function useTileCardInfo(card: TokenSource, name: string | null | undefined): CardInfo | undefined {
+  const ref = useMemo(() => tokenRef(card), [card.name, card.token, card.types, card.power, card.toughness, card.counters]);
+  const v = useCardsVersion();
+  const real = useCardInfo(ref ? null : name);
+  const key = ref?.key;
+  useEffect(() => {
+    if (!ref || tokensRequested.has(ref.key)) return;
+    tokensRequested.add(ref.key);
+    ensureInit();
+    getToken(ref)
+      .then(bump)
+      .catch(() => undefined);
+  }, [key]);
+  return useMemo(() => (ref ? getCachedToken(ref) : real), [ref, real, v]);
 }
 
 export function safeCached(name: string): CardInfo | undefined {
