@@ -226,6 +226,13 @@ button.ask-row:hover:not(:disabled) {
 .ask-lethal-ok {
   color: var(--ok);
 }
+/* The engine refused the last split of this question (mtg-table M67). */
+.ask-refused {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--accent-2);
+}
 .ask-delta-up {
   color: var(--ok);
 }
