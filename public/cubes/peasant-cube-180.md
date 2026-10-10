@@ -1,16 +1,14 @@
 # The Peasant Cube — two-player edition (180 cards)
 
-*Adapted 2026-10-03 for Justin and a friend (Grid or Winston draft, 40-card decks, best-of-3) from MatEffect's The Peasant Cube on Cube Cobra. Commons and uncommons only. Every name was verified on Scryfall and every card exists in Forge 2.0.14. Prices are the cheapest non-promo paper printing on Scryfall that day (USD). Price is listed for information only.*
+*Adapted 2026-10-03 for Justin and a friend (Grid or Winston draft, 40-card decks, best-of-3) from MatEffect's The Peasant Cube on Cube Cobra; the source's rare lands restored 2026-10-10. Spells are commons and uncommons; the lands are the designer's, rare duals included. Every name was verified on Scryfall and every card exists in Forge 2.0.14. Prices are the cheapest non-promo paper printing on Scryfall (USD): the 11 rare lands on 2026-10-10, everything else on 2026-10-03. Price is listed for information only.*
 
 ## Source and credit
 
-This is a faithful adaptation, not a new design. The card choices, archetypes and design philosophy are those of **The Peasant Cube** by **MatEffect** (cubecobra.com/cube/overview/thepeasantcube). It is the most-followed peasant cube on Cube Cobra (1,510 followers and more than 10,500 recorded decks on 2026-10-03), a 540-card list that its owner updates with every new set. It was fetched from Cube Cobra's JSON export on 2026-10-03, when the list had last been updated that same day.
+This is a faithful adaptation, not a new design. The card choices, archetypes and design philosophy are those of **The Peasant Cube** by **MatEffect** (cubecobra.com/cube/overview/thepeasantcube). It is the most-followed peasant cube on Cube Cobra (1,510 followers and more than 10,500 recorded decks on 2026-10-03), a 540-card list that its owner updates with every new set. It was fetched from Cube Cobra's JSON export on 2026-10-03, when the list had last been updated that same day, and checked again on 2026-10-10: the owner last updated it on 2026-10-04, and the 540 cards and the `180` tag are the same as on 2026-10-03.
 
-The owner keeps a **Twobert module**: 180 of the 540 cards carry the tag `180`, his own cut for two players (five packs of nine each). This edition is that tagged cut. Its 169 spells and nonrare lands are kept card for card. The only changes are to the 11 rare lands in it, because this edition holds to a strict commons-and-uncommons rule:
+The owner keeps a **Twobert module**: 180 of the 540 cards carry the tag `180`, his own cut for two players (five packs of nine each). This edition is that tagged cut, kept card for card, lands included. Its 11 rare lands are the owner's fixing: a rare dual for each colour pair (six shock lands, three surveil lands and Horizon Canopy for Selesnya) and Prismatic Vista.
 
-- The ten two-colour rare duals (Meticulous Archive, Undercity Sewers, Blood Crypt, Stomping Ground, Horizon Canopy, Godless Shrine, Steam Vents, Underground Mortuary, Sacred Foundry, Breeding Pool) became the ten Duskmourn common duals, one per colour pair. These enter untapped once any player is at 13 life or less, which keeps the source's intent for aggro decks: duals that can come in untapped. The Jank Diver Peasant Cube uses the same ten.
-- Prismatic Vista became Ash Barrens, which is in MatEffect's full 540.
-- City of Brass stays. It was printed at uncommon in Arabian Nights, so it passes the rule.
+The first version (2026-10-03) held the lands to commons and uncommons too, and swapped those 11 for the ten Duskmourn common duals and Ash Barrens. Justin chose the designer's version on 2026-10-10, so the rare lands are back.
 
 The owner's design notes ask for cards that are good on their own and also fun and synergistic in several archetypes: powerful commons and uncommons, in an environment built for them that still stays healthy. He rates it 7–8 on the Strix scale for a peasant cube. Cards printed at common or uncommon on Arena or MTGO also count in the original. The original's archetypes are those in the table below.
 
@@ -18,12 +16,14 @@ The owner's design notes ask for cards that are good on their own and also fun a
 
 Five other popular peasant cubes were read alongside it on the same day: Emmmzyne's *Peasant Cube (2026)*, *Jank Diver Peasant Cube*, *The Spooty Peasant Cube*, PrestonL's *Peasant 180* and *Sammich's Peasant Cube*.
 
-- **They agree on** the rarity rule (any printing at common or uncommon counts), on synergy over raw power, and on two-colour guild archetypes. MatEffect's and PrestonL's archetype lists agree on WU blink, BR sacrifice, RG stompy, UR spells and BG graveyard. They also agree on a common core: Thraben Inspector, Whirler Rogue, Soulherder, Floodpits Drowner, Marionette Apprentice, Morbid Opportunist, Circuit Mender and Rabbit Battery are in all six lists. 122 of this edition's 180 cards appear in at least three of the six.
+- **They agree on** the rarity rule (any printing at common or uncommon counts), on synergy over raw power, and on two-colour guild archetypes. MatEffect's and PrestonL's archetype lists agree on WU blink, BR sacrifice, RG stompy, UR spells and BG graveyard. They also agree on a common core: Thraben Inspector, Whirler Rogue, Soulherder, Floodpits Drowner, Marionette Apprentice, Morbid Opportunist, Circuit Mender and Rabbit Battery are in all six lists. 121 of this edition's 180 cards appear in at least three of the six.
 - **They differ on** fixing, power and printings. MatEffect and Spooty allow rare dual lands for fixing; Emma, Sammich, Jank Diver and Peasant 180 use only common and uncommon lands. Power level varies: Emma includes Force of Will and other strong older uncommons, and Spooty aims high. Sammich leaves out Gut, True Soul Zealot, the monarch and the initiative for power level. MatEffect accepts digital-only printings; Emma does not. Jank Diver is built to be drafted on Arena.
 
-## The commons and uncommons rule
+## The rarity rule
 
-A card is in bounds if it has **ever been printed at common or uncommon in a paper set**. The test was Scryfall's `rarity` on every printing (`!"Name" unique=prints`), with art-series cards, tokens and memorabilia left out. All 180 cards pass with a paper printing, so no digital-only downshift is needed (the source's Goblin Trenches, Thopter Squadron and Honored Hydra are only uncommon on MTGO or Arena, and none of them is in the 180). 108 of the cards have only ever been uncommon; 72 have a common printing. Some surprises that pass: City of Brass (Arabian Nights), Swords to Plowshares, Fact or Fiction, Reanimate, Goblin Bombardment and Mishra's Bauble (all uncommon once). In the full 540, the 30 cards that fail are all rare lands (shocks, surveil lands, fast lands, Horizon Canopy, Fabled Passage, Prismatic Vista, Multiversal Passage and others).
+- **Spells are commons and uncommons.** A spell is in bounds if it has **ever been printed at common or uncommon in a paper set**. The test was Scryfall's `rarity` on every printing (`!"Name" unique=prints`), with art-series cards, tokens and memorabilia left out. All 158 spells pass with a paper printing, so no digital-only downshift is needed (the source's Goblin Trenches, Thopter Squadron and Honored Hydra are only uncommon on MTGO or Arena, and none of them is in the 180). Some surprises that pass: Swords to Plowshares, Fact or Fiction, Reanimate, Goblin Bombardment and Mishra's Bauble (all uncommon once).
+- **Lands follow the designer.** MatEffect allows rare lands for fixing, and so does this edition: the 11 rare lands in his cut are kept. The other 11 lands are the ten common Landscapes and City of Brass (uncommon in Arabian Nights).
+- **The count:** 108 of the 180 cards have been printed no lower than uncommon, 61 have a common printing, and 11 are rare lands with no common or uncommon printing. In the full 540, 30 cards have no common or uncommon printing, all of them rare lands (shocks, surveil lands, fast lands, Horizon Canopy, Fabled Passage, Prismatic Vista, Multiversal Passage and others); 11 of them are in the 180.
 
 ## Design principles
 
@@ -31,7 +31,7 @@ A card is in bounds if it has **ever been printed at common or uncommon in a pap
 2. **Ten overlapping themes.** Most nonland cards belong to two. A blink creature is also a flier; a token maker is also sacrifice fodder; a looter fills the graveyard for reanimation.
 3. **Real interaction.** 26 removal spells and three counterspells: Swords, Path, Cast Out and All-Fates Stalker in white; Fatal Push, Bitter Triumph, Power Word Kill, Dismember, Bone Shards, Chupacabra and Shriekmaw in black; Bolt, Chain Lightning, Firebolt, Abrade and Choco-Comet in red; Floodpits Drowner, Sink into Stupor and Unable to Scream in blue; Hunter's Talent in green; Dinrova Horror, Mayhem Devil and Rise of the Witch-king in gold.
 4. **Uncommons bring engines.** Goblin Bombardment, Mayhem Devil, Syr Konrad, Soulherder, Ashnod's Altar and Spawning Pit are real engines, and Reanimate, Animate Dead and Dance of the Dead make reanimator a real deck. One combo is kept from the source on purpose: Scurry Oak plus Mighty Mutanimals makes infinite Squirrels.
-5. **Mana for two colours plus a splash.** Every colour pair has four lands: its Duskmourn dual and the three Landscapes that can fetch either of its basics. City of Brass, Ash Barrens, Environmental Scientist, Summon: Fenrir and the Lander makers fill the gaps. Witch Enchanter and Sink into Stupor are spells that can be played as lands.
+5. **Mana for two colours plus a splash.** Every colour pair has four lands: its rare dual and the three Landscapes that can fetch either of its basics. City of Brass, Prismatic Vista, Environmental Scientist, Summon: Fenrir and the Lander makers fill the gaps. Witch Enchanter and Sink into Stupor are spells that can be played as lands.
 6. **Balanced colours.** 23–25 cards in each colour, 23 gold, 14 colourless, 22 lands.
 
 ## The themes and how they connect
@@ -102,8 +102,8 @@ Signal Pest — AGG 0.38 · Mishra's Bauble — SPL 1.21 · Bonesplitter — AGG
 
 ### Lands (22)
 Landscapes: Bountiful Landscape 0.25 · Contaminated Landscape 0.22 · Deceptive Landscape 0.21 · Foreboding Landscape 0.24 · Perilous Landscape 0.10 · Seething Landscape 0.24 · Shattered Landscape 0.23 · Sheltering Landscape 0.22 · Tranquil Landscape 0.25 · Twisted Landscape 0.24
-Duals: Abandoned Campground 0.26 · Murky Sewer 0.21 · Razortrap Gorge 0.26 · Bleeding Woods 0.21 · Etched Cornfield 0.20 · Neglected Manor 0.19 · Peculiar Lighthouse 0.22 · Strangled Cemetery 0.25 · Raucous Carnival 0.25 · Lakeside Shack 0.18
-Any colour: City of Brass 9.17 · Ash Barrens 0.15
+Duals: Meticulous Archive 15.09 · Undercity Sewers 8.97 · Blood Crypt 8.68 · Stomping Ground 7.03 · Horizon Canopy 3.04 · Godless Shrine 8.71 · Steam Vents 9.68 · Underground Mortuary 16.42 · Sacred Foundry 10.76 · Breeding Pool 9.15
+Any colour: City of Brass 9.17 · Prismatic Vista 28.10
 
 ## Decks this cube wants you to find
 
@@ -128,12 +128,12 @@ Any colour: City of Brass 9.17 · Ash Barrens 0.15
 
 ## How it differs from our Pauper cube
 
-- **Rarity:** the Pauper cube is commons only. Here 108 of the 180 cards have only ever been uncommon, so the gold signposts are real gold uncommons (Mayhem Devil, Bloodbraid Elf, Soulherder) and there are legends (Syr Konrad, Gonti, Honest Rutstein).
+- **Rarity:** the Pauper cube is commons only. Here the spells are commons and uncommons and the lands include rare duals; 108 of the 180 cards have been printed no lower than uncommon, so the gold signposts are real gold uncommons (Mayhem Devil, Bloodbraid Elf, Soulherder) and there are legends (Syr Konrad, Gonti, Honest Rutstein).
 - **Ten lanes instead of eight:** WB and GU are full archetypes here, with their own signposts.
 - **Reanimator exists:** Reanimate, Animate Dead and Dance of the Dead make UB and WB reanimator decks. The Pauper cube has none.
 - **Stronger engines, one combo:** Goblin Bombardment, Ashnod's Altar, Mayhem Devil and Scurry Oak with Mighty Mutanimals. The Pauper cube avoided combos and left out Goblin Bombardment.
-- **Newer cards:** half the list (92 cards) was first printed in 2022 or later (Duskmourn, Bloomburrow, Outlaws, Final Fantasy, Teenage Mutant Ninja Turtles, Edge of Eternities), while the Pauper cube leans on classic commons. Only 26 cards are in both cubes.
-- **Mana:** Landscapes and Duskmourn duals instead of gain lands and bounce lands, plus City of Brass.
+- **Newer cards:** 85 of the 180 were first printed in 2022 or later (Duskmourn, Bloomburrow, Outlaws, Final Fantasy, Teenage Mutant Ninja Turtles, Edge of Eternities), while the Pauper cube leans on classic commons. Only 25 cards are in both cubes.
+- **Mana:** Landscapes and rare duals (shock lands, surveil lands, Horizon Canopy) instead of gain lands and bounce lands, plus City of Brass and Prismatic Vista. Fixing is better here, so a splash is easier.
 - **Same tools:** grid or Winston for two, 40-card decks, best-of-3.
 
 ## How to draft it
@@ -146,9 +146,11 @@ The owner's own suggestion for two players is five packs of nine cards each. Bui
 
 ## Cost
 
-- **Everything real: $145.20** for all 180 cards (White 15.61, Blue 22.39, Black 42.07, Red 11.95, Green 12.79, Gold 8.12, Colorless 18.52, Lands 13.75).
-- The 12 cards over $3 (Dance of the Dead 15.82, City of Brass 9.17, Sink into Stupor 8.39, Ashnod's Altar 8.15, Animate Dead 7.10, Lively Dirge 6.15, Witch Enchanter 5.31, Lórien Revealed 4.22, Sprout Swarm 3.91, Ephemerate 3.70, Oketra's Monument 3.57, Goblin Bombardment 3.07) are $78.56 together. The other 168 cost about $67.
+- **Everything real: $268.45** for all 180 cards (White 15.61, Blue 22.39, Black 42.07, Red 11.95, Green 12.79, Gold 8.12, Colorless 18.52, Lands 137.00).
+- The 11 rare lands are $125.63 of that (Prismatic Vista 28.10, Underground Mortuary 16.42, Meticulous Archive 15.09, Sacred Foundry 10.76, Steam Vents 9.68, Breeding Pool 9.15, Undercity Sewers 8.97, Godless Shrine 8.71, Blood Crypt 8.68, Stomping Ground 7.03, Horizon Canopy 3.04). The common duals and Ash Barrens they replaced were $2.38.
+- The 12 other cards over $3 (Dance of the Dead 15.82, City of Brass 9.17, Sink into Stupor 8.39, Ashnod's Altar 8.15, Animate Dead 7.10, Lively Dirge 6.15, Witch Enchanter 5.31, Lórien Revealed 4.22, Sprout Swarm 3.91, Ephemerate 3.70, Oketra's Monument 3.57, Goblin Bombardment 3.07) are $78.56 together. The other 157 cost about $64.
 - Cost was not a selection criterion. Proxy anything you would rather not buy. Basic lands are not counted.
 
 ## Iteration log
 - v1 (2026-10-03): MatEffect's Twobert cut (the `180` tag of The Peasant Cube, fetched 2026-10-03), kept card for card except the 11 rare lands: ten rare duals became the ten Duskmourn common duals, and Prismatic Vista became Ash Barrens.
+- v2 (2026-10-10): the designer's lands restored. The 11 rare lands are back (Meticulous Archive, Undercity Sewers, Blood Crypt, Stomping Ground, Horizon Canopy, Godless Shrine, Steam Vents, Underground Mortuary, Sacred Foundry, Breeding Pool, Prismatic Vista) in place of the Duskmourn duals and Ash Barrens, so all 180 now match the source's `180` tag. Checked against the source that day: unchanged since 2026-10-03. The lab's numbers were measured on v1; the 11 rare lands have none until the lab runs again.

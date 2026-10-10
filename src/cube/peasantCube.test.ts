@@ -2,7 +2,7 @@
  * ForgeCoach — cube/peasantCube.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The Peasant Cube document: MatEffect's Twobert cut with common/uncommon lands.
+ * The Peasant Cube document: MatEffect's Twobert cut, card for card, his rare lands included.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -25,14 +25,19 @@ describe('the Peasant document', () => {
     expect([...infos.values()].filter((i) => i.found)).toHaveLength(180);
   });
 
-  it('gold pairs, front-face names, and common/uncommon lands only', () => {
+  it('gold pairs, front-face names, and the designer\'s rare lands', () => {
     expect(by.get('Elas il-Kor, Sadistic Pilgrim')).toMatchObject({ pair: 'WB', themes: ['SAC'] });
     expect(by.get('Sink into Stupor')).toMatchObject({ section: 'Blue', tags: ['removal'] });
     expect(by.get('Summon: Fenrir')).toMatchObject({ section: 'Green', themes: ['RMP'] });
     const lands = c.cards.filter((x) => x.land);
     expect(lands).toHaveLength(22);
     expect(lands.filter((x) => x.group === 'Duals')).toHaveLength(10);
-    for (const rare of ['Steam Vents', 'Blood Crypt', 'Horizon Canopy', 'Prismatic Vista']) expect(by.has(rare), rare).toBe(false);
+    expect(lands.filter((x) => x.group === 'Duals').map((x) => x.name)).toEqual([
+      'Meticulous Archive', 'Undercity Sewers', 'Blood Crypt', 'Stomping Ground', 'Horizon Canopy',
+      'Godless Shrine', 'Steam Vents', 'Underground Mortuary', 'Sacred Foundry', 'Breeding Pool',
+    ]);
+    expect(by.get('Prismatic Vista')).toMatchObject({ land: true, group: 'Any colour' });
+    for (const gone of ['Abandoned Campground', 'Lakeside Shack', 'Ash Barrens']) expect(by.has(gone), gone).toBe(false);
   });
 
   it('states its Forge AI flags', () => {

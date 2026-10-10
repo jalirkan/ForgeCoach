@@ -44,7 +44,7 @@ export const CUBES: CubeInfo[] = [
   { id: 'pauper', file: 'pauper-cube-180', title: 'Pauper Cube', size: 180, blurb: 'All commons: blink, ninjas, tokens, sacrifice.', accent: 'WG' },
   { id: 'omega', file: 'omega-cube-180', title: 'Omega Cube', size: 180, blurb: 'The greatest hits at one fair power level: no Power, no cheats.', accent: 'WB', humanPicks: true },
   { id: 'fair-fight', file: 'fair-fight-cube-180', title: 'Fair Fight Cube', size: 180, blurb: 'Every rarity at a Pauper power level: no bombs, answers for everything.', accent: 'RW', humanPicks: true },
-  { id: 'peasant', file: 'peasant-cube-180', title: 'Peasant Cube', size: 180, blurb: 'Commons and uncommons: ten guild decks from the most-followed peasant cube.', accent: 'BG', humanPicks: true },
+  { id: 'peasant', file: 'peasant-cube-180', title: 'Peasant Cube', size: 180, blurb: 'Common and uncommon spells, rare dual lands: ten guild decks from the most-followed peasant cube.', accent: 'BG', humanPicks: true },
   // Evan's own list, as he titled it (public/cubes/evybaby-cube-360.md): no themes, archetypes or guide.
   // Its lab meta (J110) drafted around the 13 cards Forge lacks; those have no lab numbers (meta.ts).
   { id: 'evybaby', file: 'evybaby-cube-360', title: "Evybaby's New Cube", short: 'Evybaby', size: 360, blurb: 'Evan’s cube: 360 cards, Avatar to Middle-earth to pizza, with shocks, surveil lands and fetches.', accent: 'WUBRG', humanPicks: true },
