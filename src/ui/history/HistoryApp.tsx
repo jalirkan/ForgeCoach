@@ -58,7 +58,7 @@ export default function HistoryApp() {
     try {
       const text = await historyKV().getLog(r.id);
       if (!text) throw new Error('The log for this game is no longer stored.');
-      setReview({ log: parseLog(text), title: `Review · vs ${r.aiDeck ?? 'Forge'}` });
+      setReview({ log: parseLog(text), title: `Review · vs ${r.aiDeck ?? 'the bot'}` });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -101,7 +101,7 @@ export default function HistoryApp() {
             <div className="hs-since lg-mono">
               {first && last
                 ? `First game ${formatWhen(first.date).split(' · ')[0]} · last played ${ago(last.date)}`
-                : 'Games you play against Forge in ForgeCoach land here.'}
+                : 'Every game you finish against the bot lands here.'}
             </div>
           </div>
         </header>
@@ -116,8 +116,8 @@ export default function HistoryApp() {
               <i>No games on record yet.</i>
             </p>
             <p className="lg-muted">
-              Every game you finish with <b>Play vs Forge</b> is recorded here — your deck, the AI’s deck and profile, the result and the turns — with the
-              log kept so you can open its review later. Everything stays in this browser.
+              Every game you finish with <b>Play vs Bot</b> or <b>Draft vs Bot</b> lands here — your deck, the bot’s deck, the result and the
+              turns — with its log, so you can review it later. It all stays in this browser.
             </p>
             <a className="lg-btn" href="#">
               Play a game
@@ -276,13 +276,13 @@ function MatchRow({ r, onOpen }: { r: GameRecord; onOpen: () => void }) {
           {initial(r.aiDeck ?? 'F')}
         </span>
         <span className="hs-vs">
-          vs <span className="hs-opp">{r.aiDeck ?? 'Forge AI'}</span>
+          vs <span className="hs-opp">{r.aiDeck ?? 'the bot'}</span>
         </span>
         <span className="hs-when lg-mono">{formatWhen(r.date)}</span>
         <span className={cx('lg-chip', r.result === 'win' ? 'lg-chip-win' : r.result === 'loss' ? 'lg-chip-loss' : undefined)}>{RESULT_LABEL[r.result]}</span>
       </div>
       <div className="hs-row-meta lg-mono">
-        <span>{r.aiProfile ?? 'Forge AI'}</span>
+        <span>{r.aiProfile ?? 'Bot'}</span>
         {r.turns !== null && <span>{r.turns} turns</span>}
         {r.gameNumber !== null && r.gameCount ? (
           <span>
@@ -299,7 +299,7 @@ function MatchRow({ r, onOpen }: { r: GameRecord; onOpen: () => void }) {
   return (
     <li className="hs-row">
       {r.hasLog ? (
-        <button type="button" className="hs-row-btn" onClick={onOpen} aria-label={`Review the game vs ${r.aiDeck ?? 'Forge'}, ${RESULT_LABEL[r.result]}`}>
+        <button type="button" className="hs-row-btn" onClick={onOpen} aria-label={`Review the game vs ${r.aiDeck ?? 'the bot'}, ${RESULT_LABEL[r.result]}`}>
           {body}
         </button>
       ) : (

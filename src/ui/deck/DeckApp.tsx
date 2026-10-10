@@ -118,12 +118,12 @@ function DeckHome({
       <main className="load-main">
         <section className="hero">
           <button className="link-back" onClick={onExit}>
-            <IconChevronLeft size={14} /> Play &amp; review
+            <IconChevronLeft size={14} /> Back to the start
           </button>
           <h1>
-            Draft &amp; build. <span className="accent">Play the best 40.</span>
+            Draft &amp; build. <span className="accent">Build the best 40.</span>
           </h1>
-          <p className="hero-sub">For two-player Grid and Winston drafts of your cubes: track the pool as you draft, get each pick called, then the strongest 40-card deck with its reasons — and a coach to argue with.</p>
+          <p className="hero-sub">For a paper Grid or Winston draft of your cube with a friend: track your pool as you draft, get each pick called, then build the strongest 40 with its reasons — and a coach to argue with.</p>
         </section>
 
         <section className="load-section">

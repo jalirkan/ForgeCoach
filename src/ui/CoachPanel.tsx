@@ -160,7 +160,7 @@ export function CoachPanel({
       {tab === 'moment' ? (
         frameMode ? (
           <div className="card-box notice">
-            <p>You're browsing raw state frames. The coach works on decisions — the moments you had to act.</p>
+            <p>You’re browsing every state. The coach works on decisions — the moments you had to act.</p>
             <button className="btn btn-quiet" onClick={onJumpToDecision}>
               Jump to the nearest decision
             </button>
@@ -204,11 +204,11 @@ const MomentView = memo(function MomentView({ log, d, onOpenSettings }: { log: G
           <span className="muted">Round {d.state.round} ·</span> {stripRound(d.label)}
         </h2>
       </div>
-      {engine && <div className="engine-prompt" title="What Forge was asking">{engine}</div>}
+      {engine && <div className="engine-prompt" title="What the engine was asking">{engine}</div>}
       <div className="card-box did">
         <div className="box-h">What you did</div>
         {d.actions.length === 0 ? (
-          <p className="muted small">This recording has no actions (an AI-vs-AI log). Ask the coach what it would do here.</p>
+          <p className="muted small">This recording has no actions of yours (a bot-vs-bot game). Ask the coach what it would do here.</p>
         ) : (
           <ol className="did-list">
             {d.actions.map((a, i) => (

@@ -418,7 +418,7 @@ export interface AskHelperOptions {
 }
 
 /** A helper from before D362 has no /vision. */
-const NO_VISION = 'Your mtg-table is too old to read photos. Update it and start ForgeCoach again, or add an Anthropic API key in Settings.';
+const NO_VISION = 'Claude Code on your PC can’t read photos with this mtg-table. Update mtg-table and start ForgeCoach again, or add an Anthropic API key in Settings.';
 
 /**
  * Streams the coach's answer from Claude Code on the player's PC. With
