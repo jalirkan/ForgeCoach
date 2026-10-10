@@ -34,8 +34,9 @@ export interface CubeInfo {
   humanPicks?: boolean;
   /**
    * 'deck': a deck the player owns (a Commander precon), not a cube: the deck assistant builds 40s
-   * from the whole list and its cube page lists it, but it is never drafted (`DRAFT_CUBES`) and has
-   * no lab data. Absent: a cube.
+   * from the whole list and its cube page lists it; it is drafted only against the AI
+   * (`AI_DRAFT_CUBES`), never with a friend (the draft room knows only mtg-table's cubes) or on the
+   * lab's pages (`DRAFT_CUBES`), and has no lab data. Absent: a cube.
    */
   kind?: 'deck';
 }
@@ -58,8 +59,11 @@ export const CUBES: CubeInfo[] = [
   { id: 'counter-blitz', file: 'counter-blitz-fic', title: 'Counter Blitz', size: 88, blurb: 'Your Final Fantasy X Commander deck: +1/+1 counters in green, white and blue. Build 40s from it.', accent: 'WUG', labData: false, kind: 'deck' },
 ];
 
-/** The cubes that can be drafted (Draft vs AI, with a friend, the lab's pages): every entry but a deck. */
+/** The cubes proper (Draft with a friend, the lab's pages, the lobby's count): every entry but a deck. */
 export const DRAFT_CUBES: CubeInfo[] = CUBES.filter((c) => c.kind !== 'deck');
+
+/** What Draft vs AI offers: the cubes, then the decks the player owns (small lists: fewer grids, a shorter Winston stack). */
+export const AI_DRAFT_CUBES: CubeInfo[] = [...DRAFT_CUBES, ...CUBES.filter((c) => c.kind === 'deck')];
 
 /** The decks the player owns, to build from whole (the deck assistant). */
 export const OWNED_DECKS: CubeInfo[] = CUBES.filter((c) => c.kind === 'deck');

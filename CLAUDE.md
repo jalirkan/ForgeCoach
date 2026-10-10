@@ -219,8 +219,11 @@ of recorded logs and live-watching are secondary. No backend: everything runs in
   `counter-blitz-fic.md` is **Counter Blitz**, Justin's Final Fantasy X
   Commander precon (Wizards' list via MTGJSON; id `counter-blitz`, size 88):
   not a cube but a deck he owns, `CubeInfo.kind: 'deck'`. `cubes.ts`
-  `DRAFT_CUBES` (Draft vs AI, with a friend, the meta pages, the lobby count)
-  leaves it out; `OWNED_DECKS` puts it under the deck assistant's "Build from a
+  `DRAFT_CUBES` (with a friend — the room knows only mtg-table's cubes —, the
+  meta pages, the lobby count) leaves it out; `AI_DRAFT_CUBES` (Draft vs AI's
+  picker) lists it after the cubes, as Booster or Winston only (`draft.ts`
+  `gridFits`: 88 cards fill 9 grids, a drafter ends short of playables);
+  `OWNED_DECKS` puts it under the deck assistant's "Build from a
   deck you own", whose tile opens a pool of the whole list on the Build tab
   (`pools.ts` `deckPool`); its cube page offers "Build a 40 from it" and no
   How to draft. Basics are left out, and so are the three cards that make mana

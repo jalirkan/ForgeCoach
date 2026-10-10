@@ -43,6 +43,15 @@ export type Format = 'grid' | 'winston' | 'booster';
 
 export const GRID_ROUNDS = 18;
 export const WINSTON_CARDS = 90;
+
+/**
+ * Grid needs its full 18 grids for two 40-card decks: a smaller list (a deck the player owns, 88 cards:
+ * 9 grids, about 26 picks each) leaves a drafter several playables short, so Draft vs AI offers Booster and
+ * Winston only.
+ */
+export function gridFits(cubeSize: number): boolean {
+  return cubeSize >= GRID_ROUNDS * 9;
+}
 export const BOOSTER_PACKS = 3;
 export const BOOSTER_SIZE = 15;
 export const SEAT_OPTIONS = [2, 4, 6, 8] as const;
