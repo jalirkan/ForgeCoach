@@ -791,8 +791,8 @@ export function PlayView({
                 </main>
                 {/* The turn's steps in their own column between the board and the sidebar (endstep-style). */}
                 <aside className="play-strip-col" aria-label="Turn steps">
-                  {/* lane 2: <PhaseStrip orientation="vertical" oppLabel={…} /> — it reads the rest from usePlayBoard() */}
-                  <PhaseStrip state={state} seat={seat} interactive={stripInteractive} onAct={act} variant="side" oppLabel={vsHuman ? oppName : 'Forge'} />
+                  {/* Lane 2's vertical strip: it reads state, seat, log and act from usePlayBoard() and toggles only when canAct. */}
+                  <PhaseStrip orientation="vertical" oppLabel={vsHuman ? oppName : 'Forge'} />
                 </aside>
                 {/* The sidebar: the match, the win chance, then the coach (foldable). */}
                 <aside className="play-side">

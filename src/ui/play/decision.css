@@ -47,34 +47,6 @@
     border-left: 1px solid var(--line-2);
     background: #0b0d11;
   }
-  /* Interim, until lane 2's <PhaseStrip orientation="vertical"> lands: the sidebar strip, stood upright. */
-  .play-strip-col > .pstrip-side {
-    flex: 1;
-    min-height: 0;
-    border-bottom: 0;
-    padding: 8px 6px;
-  }
-  .play-strip-col > .pstrip-side .pside-head {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 4px;
-  }
-  .play-strip-col > .pstrip-side .pside-head .grow {
-    display: none;
-  }
-  .play-strip-col > .pstrip-side .pbar {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .play-strip-col > .pstrip-side .pbar > li {
-    border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  }
-  .play-strip-col > .pstrip-side .pbar-cell {
-    height: 32px;
-  }
-  .play-strip-col > .pstrip-side .pbar-cell.is-current {
-    height: 64px;
-  }
 }
 
 /* ------------------------------------------------------------------ */
