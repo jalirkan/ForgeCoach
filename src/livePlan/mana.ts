@@ -74,8 +74,29 @@ export function addClause(text: string | null): { colors: Colors; amount: number
   return { colors: all, amount: Math.max(1, syms.length) };
 }
 
-/** A tap-for-mana line of an oracle text, or null. */
-const manaLine = (text: string | null): string | null => String(text ?? '').split('\n').find((l) => /\{T\}[^:]*:\s*Add\b/i.test(l)) ?? null;
+const MANA_LINE = /^([^:\n]*\{T\}[^:\n]*):\s*Add\b/i;
+
+/**
+ * Does a mana ability's cost need mana ("{1}, {T}: Add one mana of any
+ * color", "{W/U}, {T}: Add {W}{W}…")?  A FILTER turns mana into mana: it adds
+ * none of its own, and Forge's Auto payment never uses it (mtg-table
+ * s2-search-p20-s6: Prophetic Prism, the only white, counted as a seventh mana
+ * of any colour; Welcoming Vampire {2}{W} could not be paid).
+ */
+export const isFilterCost = (cost: string | null | undefined): boolean =>
+  (String(cost ?? '').match(/\{[^}]+\}/g) ?? []).some((x) => !/^\{(T|Q|E)\}$/i.test(x));
+
+/** The tap-for-mana lines of an oracle text: the first whose cost needs no mana (or null), and whether any filter line is there. */
+export function manaLines(text: string | null): { free: string | null; filter: boolean } {
+  const lines = String(text ?? '')
+    .split('\n')
+    .map((l) => [l, MANA_LINE.exec(l)] as const)
+    .filter((x): x is readonly [string, RegExpExecArray] => x[1] !== null);
+  return { free: lines.find(([, m]) => !isFilterCost(m[1]))?.[0] ?? null, filter: lines.some(([, m]) => isFilterCost(m[1])) };
+}
+
+/** A tap-for-mana line of an oracle text whose cost needs no mana, or null. */
+const manaLine = (text: string | null): string | null => manaLines(text).free;
 
 export interface ManaSource {
   id: number;
@@ -103,6 +124,7 @@ export function sourceOf(c: LooseCard, oracle: Oracle | null): { colors: Colors;
     if (basics.length) return { colors: new Set(basics), amount: 1, known: true };
     const line = manaLine(text);
     if (line) return { ...addClause(line)!, known: true };
+    if (manaLines(text).filter) return null;   // a filter land with no free line (Sungrass Prairie): no mana of its own
     return { colors: 'any', amount: 1, known: false };
   }
   const line = manaLine(text);
