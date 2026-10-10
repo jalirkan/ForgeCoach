@@ -499,7 +499,7 @@ export function PlayView({
   // M59: at a table of two the other seat is a person, named as they named themselves in the room.
   const vsHuman = opponentIsHuman(hello) || snap.table !== null;
   // M56: the AI the player chose in match setup, by the picker's name; "Forge AI" (the engine's) before it.
-  const oppName = seatDisplayName(hello, opp, vsHuman ? 'Your opponent' : 'Forge AI');
+  const oppName = seatDisplayName(hello, opp, vsHuman ? 'Your opponent' : 'The bot');
   const tableNow = useTicker(snap.table !== null && !over);
   const tableNotes = over ? [] : tableLines(snap.table, snap.tableSkewMs, tableNow, vsHuman && opp?.name ? oppName : undefined);
   const gameNo = hello?.gameNumber && (hello.gameCount ?? hello.match?.games) ? `Game ${hello.gameNumber} of ${hello.gameCount ?? hello.match?.games}` : null;
@@ -569,7 +569,7 @@ export function PlayView({
   // Phase stops can be changed while this is a live seat with nothing else open (M33).
   const stripInteractive = connected && !!state && !ask && !over;
   const strip = (variant: 'bar' | 'side') => (
-    <PhaseStrip state={state} seat={seat} interactive={stripInteractive} onAct={act} variant={variant} {...(vsHuman ? { oppLabel: oppName } : {})} />
+    <PhaseStrip state={state} seat={seat} interactive={stripInteractive} onAct={act} variant={variant} oppLabel={oppName} />
   );
   const toggleCoach = () =>
     setCoachOpen((o) => {
