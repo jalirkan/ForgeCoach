@@ -870,8 +870,7 @@
   color: #1f3a33;
   box-shadow: none;
 }
-:root[data-skin='felt'] .stackp,
-:root[data-skin='felt'] .combat-panel {
+:root[data-skin='felt'] .stackp {
   background: rgba(14, 32, 27, 0.4);
   border-color: var(--line-2);
 }
@@ -998,9 +997,6 @@
 }
 :root[data-skin='felt'] button.avatar.is-select::after {
   box-shadow: inset 0 0 0 1px rgba(246, 241, 228, 0.6), inset 0 0 16px rgba(246, 241, 228, 0.35);
-}
-:root[data-skin='felt'] .combat-panel {
-  border-color: rgba(231, 154, 180, 0.3);
 }
 
 /* ---- The cube section's drawn card faces keep their own type ------------- */
