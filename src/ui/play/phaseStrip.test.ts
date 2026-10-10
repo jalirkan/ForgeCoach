@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
+import { parseLog } from '../../log.ts';
 import type { GameStateBody } from '../../protocol.ts';
-import { settlePending, stopKey, stripModel, toggleStopAct, yieldWords } from './phaseStrip.ts';
+import { HALVES, PHASES, halfAct, halfOn, halfWords, onThePlay, settlePending, stepCopy, stepInstruction, stopKey, stripGroups, stripModel, toggleStopAct, yieldWords } from './phaseStrip.ts';
 import { buttonWords, canPassAhead, passMenu, primaryView } from './actionWords.ts';
 import { describeInput } from './inputView.ts';
 
@@ -137,5 +140,90 @@ describe('action words', () => {
   it('keeps the engine label when it already says it', () => {
     const v = prio('Priority: Upkeep', 'OK', 'End Turn');
     expect(buttonWords(v, v.cancel)).toBe('Skip to end of turn');
+  });
+});
+
+describe('the vertical strip: halves', () => {
+  it('maps YOU to a stop on my turn (own) and OPP to a stop on theirs', () => {
+    expect(HALVES.map((h) => [h.half, h.turn])).toEqual([
+      ['you', 'own'],
+      ['opp', 'opp'],
+    ]);
+    const m = stripModel(board(), 0, { interactive: true });
+    expect(halfAct(m, 'MAIN1', 'you')).toEqual({ action: 'setPhaseStop', phase: 'MAIN1', turn: 'own', stop: false });
+    expect(halfAct(m, 'MAIN1', 'opp')).toEqual({ action: 'setPhaseStop', phase: 'MAIN1', turn: 'opp', stop: true });
+    expect(halfAct(m, 'END_OF_TURN', 'opp')).toEqual({ action: 'setPhaseStop', phase: 'END_OF_TURN', turn: 'opp', stop: false });
+    const main1 = m.cells.find((c) => c.phase === 'MAIN1')!;
+    expect([halfOn(main1, 'you'), halfOn(main1, 'opp')]).toEqual([true, false]);
+  });
+
+  it('never offers an act for UNTAP, nor when stops cannot be changed', () => {
+    const live = stripModel(board(), 0, { interactive: true });
+    expect(halfAct(live, 'UNTAP', 'you')).toBeNull();
+    expect(halfAct(live, 'UNTAP', 'opp')).toBeNull();
+    expect(live.cells.find((c) => c.phase === 'UNTAP')!.toggleable).toBe(false);
+    const idle = stripModel(board(), 0, { interactive: false });
+    for (const c of PHASES) for (const h of HALVES) expect(halfAct(idle, c.phase, h.half)).toBeNull();
+    const old = stripModel(board({}, null), 0, { interactive: true });
+    expect(halfAct(old, 'MAIN1', 'you')).toBeNull();
+  });
+
+  it('keeps Forge’s defaults when the frame has none, and says what a tap does', () => {
+    const m = stripModel(board({}, null), 0, { interactive: true });
+    expect(m.cells.filter((c) => halfOn(c, 'opp')).map((c) => c.short)).toEqual(['BC', 'DA', 'DB', 'ET']);
+    const live = stripModel(board(), 0, { interactive: true });
+    expect(halfWords(live.cells.find((c) => c.phase === 'MAIN1')!, 'you')).toMatch(/turn off/);
+    expect(halfWords(live.cells.find((c) => c.phase === 'MAIN1')!, 'opp')).toMatch(/turn on/);
+    expect(halfWords(m.cells.find((c) => c.phase === 'MAIN1')!, 'you')).not.toMatch(/turn o/);
+  });
+
+  it('groups the column: opening steps, combat, main, ending', () => {
+    const g = stripGroups(stripModel(board(), 0).cells);
+    expect(g.map((x) => x.label)).toEqual([null, 'combat', 'main', 'ending']);
+    expect(g.map((x) => x.cells.map((c) => c.short))).toEqual([
+      ['UT', 'UP', 'DR', 'M1'],
+      ['BC', 'DA', 'DB', 'FS', 'CD', 'EC'],
+      ['M2'],
+      ['ET', 'CL'],
+    ]);
+  });
+});
+
+describe('stepInstruction', () => {
+  it('has a line for every phase the strip draws', () => {
+    for (const d of PHASES) {
+      expect(stepInstruction(d.phase), d.phase).toMatch(/\S — \S/);
+      expect(stepCopy(d.phase)!.line.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('words the common steps as the board does', () => {
+    expect(stepInstruction('MAIN1')).toBe('Main 1 — Cast or pass.');
+    expect(stepInstruction('COMBAT_DECLARE_ATTACKERS')).toBe('Atk — Declare attackers');
+    expect(stepInstruction('COMBAT_DECLARE_BLOCKERS')).toBe('Blk — Declare blockers');
+    expect(stepInstruction('END_OF_TURN')).toBe('End — End-of-turn triggers');
+    expect(stepInstruction('SOMETHING_NEW')).toBeNull();
+  });
+});
+
+describe('onThePlay', () => {
+  const sample = (n: string) => parseLog(gunzipSync(readFileSync(new URL(`../../../public/samples/${n}.jsonl.gz`, import.meta.url))).toString('utf8'));
+
+  it('reads the player of the first turn-1 event, not turn parity', () => {
+    expect(onThePlay(sample('human-auto-42'))).toBe(0);
+    // human-comfort-13: the AI (player 1) goes first, so the seat is on the draw.
+    const comfort = sample('human-comfort-13');
+    expect(comfort.seat).toBe(0);
+    expect(onThePlay(comfort)).toBe(1);
+  });
+
+  it('is null with no log, an empty log or a log that joined after turn 1', () => {
+    expect(onThePlay(null)).toBeNull();
+    expect(onThePlay({ frames: [] })).toBeNull();
+    const late = sample('human-auto-42');
+    const frames = late.frames.map((f) =>
+      f.type === 'state' ? { ...f, body: { ...(f.body as object), events: ((f.body as { events: { kind: string; turn?: number }[] }).events ?? []).filter((e) => !(e.kind === 'turn' && e.turn === 1)) } } : f,
+    ) as typeof late.frames;
+    expect(onThePlay({ frames })).toBeNull();
   });
 });

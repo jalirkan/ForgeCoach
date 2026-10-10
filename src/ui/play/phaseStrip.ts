@@ -15,6 +15,7 @@
 import type { GameStateBody, PhaseStops, SetPhaseStopAct, YieldState } from '../../protocol.ts';
 import { phaseStopsOf, yieldOf } from '../../protocol.ts';
 import { setPhaseStop } from '../../play/acts.ts';
+import type { GameLog } from '../../log.ts';
 
 export type StopTurn = 'own' | 'opp';
 
@@ -24,25 +25,27 @@ export interface PhaseDef {
   short: string;
   /** One or two words, for the desktop column. */
   label: string;
+  /** The vertical strip's cell caption (short, upper-cased by CSS): BEG., ATK, BLK, 1ST … */
+  tag: string;
   /** Words for the tooltip / hint ("declare-blockers step"). */
   words: string;
   combat: boolean;
 }
 
 export const PHASES: readonly PhaseDef[] = [
-  { phase: 'UNTAP', short: 'UT', label: 'Untap', words: 'untap step', combat: false },
-  { phase: 'UPKEEP', short: 'UP', label: 'Upkeep', words: 'upkeep', combat: false },
-  { phase: 'DRAW', short: 'DR', label: 'Draw', words: 'draw step', combat: false },
-  { phase: 'MAIN1', short: 'M1', label: 'Main 1', words: 'first main phase', combat: false },
-  { phase: 'COMBAT_BEGIN', short: 'BC', label: 'Beginning', words: 'beginning of combat', combat: true },
-  { phase: 'COMBAT_DECLARE_ATTACKERS', short: 'DA', label: 'Attackers', words: 'declare-attackers step', combat: true },
-  { phase: 'COMBAT_DECLARE_BLOCKERS', short: 'DB', label: 'Blockers', words: 'declare-blockers step', combat: true },
-  { phase: 'COMBAT_FIRST_STRIKE_DAMAGE', short: 'FS', label: 'First strike', words: 'first-strike damage step', combat: true },
-  { phase: 'COMBAT_DAMAGE', short: 'CD', label: 'Damage', words: 'combat damage step', combat: true },
-  { phase: 'COMBAT_END', short: 'EC', label: 'End combat', words: 'end of combat', combat: true },
-  { phase: 'MAIN2', short: 'M2', label: 'Main 2', words: 'second main phase', combat: false },
-  { phase: 'END_OF_TURN', short: 'ET', label: 'End', words: 'end step', combat: false },
-  { phase: 'CLEANUP', short: 'CL', label: 'Cleanup', words: 'cleanup step', combat: false },
+  { phase: 'UNTAP', short: 'UT', label: 'Untap', tag: 'Untap', words: 'untap step', combat: false },
+  { phase: 'UPKEEP', short: 'UP', label: 'Upkeep', tag: 'Upkeep', words: 'upkeep', combat: false },
+  { phase: 'DRAW', short: 'DR', label: 'Draw', tag: 'Draw', words: 'draw step', combat: false },
+  { phase: 'MAIN1', short: 'M1', label: 'Main 1', tag: 'Main 1', words: 'first main phase', combat: false },
+  { phase: 'COMBAT_BEGIN', short: 'BC', label: 'Beginning', tag: 'Beg.', words: 'beginning of combat', combat: true },
+  { phase: 'COMBAT_DECLARE_ATTACKERS', short: 'DA', label: 'Attackers', tag: 'Atk', words: 'declare-attackers step', combat: true },
+  { phase: 'COMBAT_DECLARE_BLOCKERS', short: 'DB', label: 'Blockers', tag: 'Blk', words: 'declare-blockers step', combat: true },
+  { phase: 'COMBAT_FIRST_STRIKE_DAMAGE', short: 'FS', label: 'First strike', tag: '1st', words: 'first-strike damage step', combat: true },
+  { phase: 'COMBAT_DAMAGE', short: 'CD', label: 'Damage', tag: 'Dmg', words: 'combat damage step', combat: true },
+  { phase: 'COMBAT_END', short: 'EC', label: 'End combat', tag: 'End c.', words: 'end of combat', combat: true },
+  { phase: 'MAIN2', short: 'M2', label: 'Main 2', tag: 'Main 2', words: 'second main phase', combat: false },
+  { phase: 'END_OF_TURN', short: 'ET', label: 'End', tag: 'End', words: 'end step', combat: false },
+  { phase: 'CLEANUP', short: 'CL', label: 'Cleanup', tag: 'Clean', words: 'cleanup step', combat: false },
 ];
 
 /** Forge has no stop preference for UNTAP (`CMatchUI.actuateMatchPreferences` loops 1…12). */
@@ -174,4 +177,94 @@ export function yieldWords(y: YieldState | null, seat: number | null): string | 
   const d = PHASES.find((p) => p.phase === y.phase);
   const whose = y.playerId === null ? '' : y.playerId === seat ? 'your ' : 'their ';
   return `Passing to ${whose}${d?.words ?? 'the marked step'}`;
+}
+
+/* ------------------------------------------------------------------ */
+/* The vertical strip: groups, halves, the current step's words, who is on the play */
+
+/** The two halves of a vertical cell and the stop each one is: YOU = a stop on my turn (`own`), OPP = on theirs. */
+export const HALVES = [
+  { half: 'you', turn: 'own' },
+  { half: 'opp', turn: 'opp' },
+] as const;
+export type Half = (typeof HALVES)[number]['half'];
+
+export const halfTurn = (half: Half): StopTurn => (half === 'you' ? 'own' : 'opp');
+
+/** Whether a half of this cell is filled (a stop is set for that player here). */
+export const halfOn = (cell: Pick<PhaseCell, 'stopOwn' | 'stopOpp'>, half: Half): boolean => (half === 'you' ? cell.stopOwn : cell.stopOpp);
+
+/** What tapping a half sends, or `null` when it cannot be tapped (UNTAP, no stops on the stream, not interactive). */
+export const halfAct = (model: StripModel, phase: string, half: Half): SetPhaseStopAct | null => toggleStopAct(model, phase, halfTurn(half));
+
+/** Words for a half's button (its accessible name): what it is now and what a tap does. */
+export function halfWords(cell: PhaseCell, half: Half): string {
+  const on = halfOn(cell, half);
+  const whose = half === 'you' ? 'your' : 'the opponent’s';
+  if (!cell.toggleable) return `${on ? 'Stops' : 'Skips'} at the ${cell.words} on ${whose} turn`;
+  return `${on ? 'Stop' : 'No stop'} at the ${cell.words} on ${whose} turn — ${on ? 'turn off' : 'turn on'}`;
+}
+
+export interface StripGroup {
+  /** The small italic label above the group, or `null` for the opening steps. */
+  label: string | null;
+  cells: PhaseCell[];
+}
+
+/**
+ * The vertical column's grouping, as the Endstep board draws it: the opening
+ * steps and Main 1 unlabelled, then "combat", "main" (Main 2) and "ending".
+ */
+export function stripGroups(cells: readonly PhaseCell[]): StripGroup[] {
+  const label = (phase: string): string | null =>
+    phase === 'COMBAT_BEGIN' ? 'combat' : phase === 'MAIN2' ? 'main' : phase === 'END_OF_TURN' ? 'ending' : null;
+  const out: StripGroup[] = [];
+  for (const c of cells) {
+    const l = label(c.phase);
+    if (!out.length || l !== null) out.push({ label: l, cells: [] });
+    out[out.length - 1]!.cells.push(c);
+  }
+  return out;
+}
+
+const STEP_COPY: Record<string, { title: string; line: string }> = {
+  UNTAP: { title: 'Untap', line: 'Permanents untap.' },
+  UPKEEP: { title: 'Upkeep', line: 'Upkeep triggers.' },
+  DRAW: { title: 'Draw', line: 'Draw a card.' },
+  MAIN1: { title: 'Main 1', line: 'Cast or pass.' },
+  COMBAT_BEGIN: { title: 'Beg.', line: 'Beginning of combat.' },
+  COMBAT_DECLARE_ATTACKERS: { title: 'Atk', line: 'Declare attackers' },
+  COMBAT_DECLARE_BLOCKERS: { title: 'Blk', line: 'Declare blockers' },
+  COMBAT_FIRST_STRIKE_DAMAGE: { title: '1st', line: 'First-strike damage' },
+  COMBAT_DAMAGE: { title: 'Dmg', line: 'Combat damage' },
+  COMBAT_END: { title: 'End c.', line: 'End of combat' },
+  MAIN2: { title: 'Main 2', line: 'Cast or pass.' },
+  END_OF_TURN: { title: 'End', line: 'End-of-turn triggers' },
+  CLEANUP: { title: 'Clean', line: 'Discard to hand size.' },
+};
+
+/** Static copy for a step: a short title and one line of what the step is. No rules logic, no card text. */
+export function stepCopy(phase: string): { title: string; line: string } | null {
+  return STEP_COPY[phase] ?? null;
+}
+
+/** "Main 1 — Cast or pass." — one line for the current step; `null` for a phase the client does not know. */
+export function stepInstruction(phase: string): string | null {
+  const c = stepCopy(phase);
+  return c ? `${c.title} — ${c.line}` : null;
+}
+
+/**
+ * Who was on the play: the player of the first `turn` event whose turn is 1, read from the log's own
+ * events (never from turn parity). `null` when the log has no such event (a game joined mid-way).
+ */
+export function onThePlay(log: Pick<GameLog, 'frames'> | null): number | null {
+  if (!log) return null;
+  for (const f of log.frames) {
+    if (f.type !== 'state') continue;
+    for (const e of (f.body as GameStateBody).events ?? []) {
+      if (e.kind === 'turn' && e.turn === 1) return e.player;
+    }
+  }
+  return null;
 }
