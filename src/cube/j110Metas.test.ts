@@ -21,7 +21,7 @@ import { context, cubeFile, loadCube, loadRealMeta, type CubeId } from './testda
 const J110: CubeId[] = ['omega', 'fair-fight', 'peasant', 'evybaby'];
 
 /** Peasant v2's rare lands, new since the lab's run. */
-const PEASANT_UNMEASURED = ['Meticulous Archive', 'Undercity Sewers', 'Blood Crypt', 'Stomping Ground', 'Horizon Canopy', 'Godless Shrine', 'Steam Vents', 'Underground Mortuary', 'Sacred Foundry', 'Breeding Pool', 'Prismatic Vista'];
+const PEASANT_RARE_LANDS = ['Meticulous Archive', 'Undercity Sewers', 'Blood Crypt', 'Stomping Ground', 'Horizon Canopy', 'Godless Shrine', 'Steam Vents', 'Underground Mortuary', 'Sacred Foundry', 'Breeding Pool', 'Prismatic Vista'];
 /** Peasant v1's lands those replaced: the lab drafted them, the cube no longer has them. */
 const PEASANT_RETIRED = ['Abandoned Campground', 'Murky Sewer', 'Razortrap Gorge', 'Bleeding Woods', 'Etched Cornfield', 'Neglected Manor', 'Peculiar Lighthouse', 'Strangled Cemetery', 'Raucous Carnival', 'Lakeside Shack', 'Ash Barrens'];
 
@@ -29,9 +29,7 @@ describe.each(J110)('the J110 meta for %s', (id) => {
   const cube = loadCube(id);
   const meta = loadRealMeta(id);
   const missing = new Set(cube.forgeMissing ?? []);
-  const unmeasured = new Set(id === 'peasant' ? PEASANT_UNMEASURED : []);
-  const retired = new Set(id === 'peasant' ? PEASANT_RETIRED : []);
-  const names = new Set(cube.cards.map((c) => c.name));
+      const names = new Set(cube.cards.map((c) => c.name));
 
   it('parses, maps to its own cube, and the registry asks for it', () => {
     expect(meta.schema).toBe(1);
@@ -41,9 +39,9 @@ describe.each(J110)('the J110 meta for %s', (id) => {
   });
 
   it("names only the cube's cards, and every card Forge can play", () => {
-    for (const n of Object.keys(meta.cards)) expect(names.has(n) || retired.has(n), n).toBe(true);
-    for (const c of meta.cube.cards ?? []) expect(names.has(c.name) || retired.has(c.name), c.name).toBe(true);
-    for (const n of names) expect(n in meta.cards || missing.has(n) || unmeasured.has(n), n).toBe(true);
+    for (const n of Object.keys(meta.cards)) expect(names.has(n), n).toBe(true);
+    for (const c of meta.cube.cards ?? []) expect(names.has(c.name), c.name).toBe(true);
+    for (const n of names) expect(n in meta.cards || missing.has(n), n).toBe(true);
   });
 
   it('rests on 100+ drafts, with 80+ games on at least 81% of the playable nonland cards', () => {
@@ -81,27 +79,24 @@ describe("Evan's cards Forge lacks", () => {
   });
 });
 
-describe("Peasant's rare lands, new since the lab's run", () => {
+describe("Peasant's rare lands (v2 meta, J123)", () => {
   const cube = loadCube('peasant');
   const meta = loadRealMeta('peasant');
   const ctx = context('peasant', meta);
   const names = new Set(cube.cards.map((c) => c.name));
 
-  it('are in the cube and have no lab numbers, not zeros', () => {
-    for (const n of PEASANT_UNMEASURED) {
+  it('are in the cube and carry their own lab numbers', () => {
+    for (const n of PEASANT_RARE_LANDS) {
       expect(names.has(n), n).toBe(true);
-      expect(meta.cards[n], n).toBeUndefined();
-      expect(labCardView(meta, n, ''), n).toBeNull();
+      expect(meta.cards[n]?.games, n).toBeGreaterThan(0);
+      expect(metaValue(n, ctx)?.games, n).toBeGreaterThan(0);
     }
   });
 
-  it('are valued by the no-meta prior as fixing lands, and the lands they replaced are gone from the cube', () => {
-    for (const n of PEASANT_UNMEASURED) {
-      expect(metaValue(n, ctx), n).toBeNull();
-      expect(labValue(n, ctx), n).toBe(cardPrior(n, ctx));
-      expect(ctx.facts.get(n)?.produces.length ?? 0, n).toBeGreaterThanOrEqual(2);
+  it('replaced the v1 lands, which are gone from the cube and the meta', () => {
+    for (const n of PEASANT_RETIRED) {
+      expect(names.has(n), n).toBe(false);
+      expect(meta.cards[n], n).toBeUndefined();
     }
-    for (const n of PEASANT_RETIRED) expect(names.has(n), n).toBe(false);
-    expect(metaValue('Mayhem Devil', ctx)?.games).toBeGreaterThan(0);
   });
 });
