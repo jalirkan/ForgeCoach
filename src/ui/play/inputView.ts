@@ -175,10 +175,10 @@ export function describeInput(
   });
   const quiet = (v: InputView): InputView => ({ ...v, ok: btn(undefined), cancel: btn(undefined) });
   if (opts.over) return quiet(base('over', 'Game over'));
-  if (opts.ask) return quiet(base('ask', 'Forge has a question for you', 'Answer it in the dialog.'));
+  if (opts.ask) return quiet(base('ask', 'The engine has a question for you', 'Answer it in the dialog.'));
   if (!input) {
-    const who = state ? playerName(state, state.priority ?? state.activePlayer, seat) : 'Forge';
-    return base('waiting', state?.phase ? `${who === 'You' ? 'Forge' : who} is thinking…` : 'Setting up the game…');
+    const who = state ? playerName(state, state.priority ?? state.activePlayer, seat) : 'The engine';
+    return base('waiting', state?.phase ? `${who === 'You' ? 'The engine' : who} is thinking…` : 'Setting up the game…');
   }
   const p = input.prompt ?? '';
   const ok = input.buttons.ok;
@@ -237,7 +237,7 @@ export function describeInput(
       ...v,
       mode: 'pay',
       title: pay.forName ? `Pay for ${pay.forName}` : 'Pay the mana cost',
-      detail: 'Tap your lands (they glow) to pay' + (ok.enabled ? ', or Auto pay to let Forge pick them.' : '.'),
+      detail: 'Tap your lands (they glow) to pay' + (ok.enabled ? ', or Auto pay to let the engine pick them.' : '.'),
       payCost: pay.cost,
       payFor: pay.forName,
       ok: btn(ok, ok.enabled ? 'auto pay' : null),
@@ -311,7 +311,7 @@ export function describeInput(
           ? 'Play a land and cast spells by tapping cards in your hand. Pass when you’re ready for combat.'
           : 'Combat is done. Play anything else you want, then pass to end your turn.',
         ok: btn(ok, first ? 'go to combat' : 'end turn'),
-        cancel: btn(cancel, /end turn/i.test(cancel.label) ? 'skip to opponent’s turn' : null),
+        cancel: btn(cancel, /end turn/i.test(cancel.label) ? 'skip to their turn' : null),
       };
     }
     const who = mine ? 'Your' : `${playerName(state, state.activePlayer, seat)}’s`;

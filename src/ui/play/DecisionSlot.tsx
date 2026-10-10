@@ -161,7 +161,7 @@ export function DecisionSlot({
           showEngine &&
           !theirs && (
             <div className="ab-sub ab-engine" title={view.engineText}>
-              <span className="ab-engine-k">Forge</span> {engine}
+              <span className="ab-engine-k">Engine</span> {engine}
             </div>
           )
         )}
@@ -198,7 +198,7 @@ export function DecisionSlot({
           data-primary="1"
           title={
             primary!.which && primary!.enabled
-              ? `${primary!.words}${primary!.engine ? ` (Forge: ${primary!.engine})` : ''} — ${primary!.kbd}`
+              ? `${primary!.words}${primary!.engine ? ` (engine: ${primary!.engine})` : ''} — ${primary!.kbd}`
               : view.needClick
                 ? `Tap a highlighted ${view.clickWhat} first`
                 : primary!.words

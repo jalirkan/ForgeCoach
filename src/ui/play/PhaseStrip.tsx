@@ -59,7 +59,7 @@ export function PhaseStrip({
   variant = 'bar',
   orientation = 'horizontal',
   log: logProp,
-  oppLabel = 'Forge',
+  oppLabel = 'The bot',
 }: {
   /** Omitted: the play board's (vertical only; horizontal reads its props as it always has). */
   state?: GameStateBody | null;
@@ -216,7 +216,7 @@ function StopPopover({
         </button>
       </div>
       {noStop ? (
-        <p className="pstop-hint">Forge never stops in the untap step.</p>
+        <p className="pstop-hint">No one gets priority in the untap step, so it never stops there.</p>
       ) : (
         <>
           {(['own', 'opp'] as const).map((turn) => {
@@ -231,10 +231,10 @@ function StopPopover({
           })}
           <p className="pstop-hint">
             {model.canToggle
-              ? 'On: Forge pauses here so you can act. Off: it passes for you.'
+              ? 'On: the game stops here so you can act. Off: it passes for you.'
               : model.live
                 ? 'You can change stops while it is your game and no question is open.'
-                : 'This engine does not send phase stops — these are Forge’s defaults.'}
+                : 'This engine does not send phase stops — these are its defaults.'}
           </p>
         </>
       )}

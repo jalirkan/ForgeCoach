@@ -257,7 +257,7 @@ export interface PassToggle {
 
 const TOGGLES: { id: PassToggleId; label: string; kbd: string | null; body: ActBody; what: string }[] = [
   { id: 'eot', label: 'End of turn', kbd: 'E', body: yieldTo('endOfTurn'), what: 'Pass until the end of this turn' },
-  { id: 'before', label: 'Before my turn', kbd: 'B', body: yieldTo('marker', 'END_OF_TURN', 'opp'), what: 'Pass until the opponent’s end step, just before your turn' },
+  { id: 'before', label: 'Before my turn', kbd: 'B', body: yieldTo('marker', 'END_OF_TURN', 'opp'), what: 'Pass until their end step, just before your turn' },
   { id: 'myturn', label: 'My next turn', kbd: 'T', body: yieldTo('marker', 'UPKEEP', 'own'), what: 'Pass until your next upkeep' },
   { id: 'stack', label: 'Stack resolves', kbd: null, body: yieldTo('stack'), what: 'Pass until the stack resolves' },
 ];

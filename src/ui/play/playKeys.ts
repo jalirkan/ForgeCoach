@@ -28,7 +28,7 @@ export const PLAY_KEYS: KeyRow[] = [
   { chord: '1 – 9', what: 'in a question, the option with that number (one pick answers at once; several pick toggles)' },
   { chord: 'P', what: 'pass priority once' },
   { chord: 'E', what: 'auto-pass: until end of turn (again, while it runs, to stop it)' },
-  { chord: 'B', what: 'auto-pass: until just before my turn (opponent’s end step)' },
+  { chord: 'B', what: 'auto-pass: until just before my turn (their end step)' },
   { chord: 'T', what: 'auto-pass: until my next turn' },
   { chord: 'A', what: 'alpha strike while declaring attackers; Auto pay while paying' },
   { chord: 'Ctrl+Z', what: 'undo the last mana tap' },
