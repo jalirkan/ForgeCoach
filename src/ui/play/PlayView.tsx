@@ -26,6 +26,7 @@ import { cardIndex } from '../../decisions.ts';
 import { seatDisplayName } from '../../play/aiName.ts';
 import { tableLines } from '../../play/tableView.ts';
 import { Board } from '../Board.tsx';
+import { useHoverGuard } from '../hoverGuard.ts';
 import { CardDetail, HoverPreview } from '../CardDetail.tsx';
 import { BoardStateRef, CardActionsContext, PlayContext, type CardActions, type PlayInteraction } from '../cardContext.ts';
 import { prefetchCards, safeCached, useCardsVersion } from '../cardData.ts';
@@ -352,6 +353,8 @@ export function PlayView({
   // ---- details / hover
   const [detail, setDetail] = useState<{ card: AnyCard; state: GameStateBody | null } | null>(null);
   const [hover, setHover] = useState<{ name: string | null; rect: DOMRect | null }>({ name: null, rect: null });
+  const clearHover = useCallback(() => setHover({ name: null, rect: null }), []);
+  useHoverGuard(hover.name, clearHover);
   const actions = useMemo<CardActions>(
     () => ({
       open: (card, st) => {
