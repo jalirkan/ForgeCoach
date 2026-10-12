@@ -224,3 +224,25 @@ describe('the manifest’s growth (spec 1.6)', () => {
     expect(r.pack!.growth).toEqual(DEFAULT_GROWTH);
   });
 });
+
+describe('the preview’s land count per biome', () => {
+  it('adds lands after the rest, and drops a land’s latest plays, leaving every other play where it was', async () => {
+    const { simLandCount, simSetLandCount } = await import('./sim.ts');
+    const base: SimPlay[] = [
+      { kind: 'land', player: 1, name: 'Island' },
+      { kind: 'land', player: 2, name: 'Forest' },
+      { kind: 'creature', player: 1 },
+      { kind: 'land', player: 1, name: 'Island' },
+    ];
+    const up = simSetLandCount(base, 1, 'Island', 3);
+    expect(up.slice(0, 4)).toEqual(base);
+    expect(simLandCount(up, 1, 'Island')).toBe(3);
+    expect(islandSlotOf(up)).toMatchObject({ stage: 2, progress: 0.5 });
+    const down = simSetLandCount(up, 1, 'Island', 1);
+    expect(down).toEqual(base.slice(0, 3));
+    expect(simSetLandCount(base, 2, 'Forest', 0)).toEqual([base[0], base[2], base[3]]);
+    expect(simSetLandCount(base, 1, 'Island', 2)).toEqual(base);
+  });
+});
+
+const islandSlotOf = (plays: SimPlay[]) => slotsOf(sceneryFromLog(simLog(plays), Infinity), 1).find((s) => s.biome === 'island');

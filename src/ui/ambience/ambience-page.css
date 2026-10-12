@@ -247,6 +247,32 @@
   box-sizing: border-box;
   resize: vertical;
 }
+/* Spec 1.6: a land count per biome, for stepping through the growth land by land. */
+.amb-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.amb-count {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr) 1.4em 6.5em;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.amb-count input[type='range'] {
+  accent-color: var(--tone, var(--accent));
+  min-width: 0;
+}
+.amb-count-n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.amb-count-stage {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .amb-field {
   display: flex;
   flex-direction: column;

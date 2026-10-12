@@ -9,6 +9,8 @@
  * toggle, the full-area accent (spec 1.4) with a built-in placeholder, and a
  * pack URL with its validation and its effect files listed, or a pasted
  * manifest previewed as is — how an art pack is tried with no engine running.
+ * Spec 1.6: a land count per biome for either side (1–7 and back), so the
+ * growth between stages can be stepped through land by land.
  *
  * Everything here is made up in the page (ambience/sim.ts). It never opens a
  * socket to the engine.
@@ -18,7 +20,7 @@ import type { Card, GameStateBody } from '../../protocol.ts';
 import { BIOME_LABEL, sceneryFromLog, slotsOf, type Biome } from '../../ambience/model.ts';
 import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '../../ambience/effects.ts';
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
-import { SIM_PLAYERS, simLog, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
+import { SIM_PLAYERS, simLandCount, simLog, simSetLandCount, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
 import { browserLoader, checkEffectFiles, fetchManifest, manifestUrlFor, preloadPack, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
 import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
 import { currentPrefs, loadSceneryPrefs, saveSceneryPrefs } from '../../ambience/prefs.ts';
@@ -75,6 +77,8 @@ export default function AmbiencePage() {
   // Spec 1.4: preview the built-in full-area placeholder where the pack gives none; and a pasted manifest previewed as is.
   const [areaPreview, setAreaPreview] = useState(false);
   const [pastedPack, setPastedPack] = useState<ScenePack | null>(null);
+  // Spec 1.6: which side the land-count sliders play for.
+  const [countSide, setCountSide] = useState<number>(SIM_PLAYERS[0]);
 
   const log = useMemo(() => simLog(plays), [plays]);
   const scenery = useMemo(() => sceneryFromLog(log, Infinity), [log]);
@@ -273,6 +277,8 @@ export default function AmbiencePage() {
             )}
           </div>
 
+          <LandCountCard plays={plays} setPlays={setPlays} side={countSide} setSide={setCountSide} scenery={scenery} />
+
           <EffectsCard pack={pack} reduced={reduced} onFire={fireEffect} />
 
           <div className="amb-card">
@@ -282,7 +288,7 @@ export default function AmbiencePage() {
                 Stage <b>{stage ? stage : 'auto'}</b>
               </span>
               <input type="range" min={0} max={maxStage} step={1} value={stage} onChange={(e) => setStage(Number(e.target.value))} aria-label="Stage (0 = from the lands)" />
-              <span className="amb-hint">Auto follows the lands: 1 / 2–3 / 4–5 / 6+.</span>
+              <span className="amb-hint">Auto follows the lands: 1 / 2–3 / 4–5 / 6+, and between two stages the next one fades in a little with every land (spec 1.6). A fixed stage draws whole stages.</span>
             </label>
             <div className="amb-field">
               <span>Motion</span>
@@ -363,6 +369,63 @@ export default function AmbiencePage() {
   );
 }
 
+/** The basic land that makes each biome, for the land-count sliders. */
+const COUNT_LANDS: { biome: Biome; name: SimLandName; tone: string }[] = [
+  { biome: 'island', name: 'Island', tone: 'U' },
+  { biome: 'swamp', name: 'Swamp', tone: 'B' },
+  { biome: 'mountain', name: 'Mountain', tone: 'R' },
+  { biome: 'forest', name: 'Forest', tone: 'G' },
+  { biome: 'plains', name: 'Plains', tone: 'W' },
+  { biome: 'wastes', name: 'Wastes', tone: 'C' },
+];
+const MAX_COUNT_LANDS = 7;
+
+/**
+ * Spec 1.6: a land count per biome for one side. Moving a slider one step
+ * plays (or takes back) one land, so the slot grows (or shrinks) land by land,
+ * cross-fading toward the next stage, with the land's flash and effects.
+ */
+function LandCountCard({ plays, setPlays, side, setSide, scenery }: { plays: SimPlay[]; setPlays: (f: (p: SimPlay[]) => SimPlay[]) => void; side: number; setSide: (p: number) => void; scenery: ReturnType<typeof sceneryFromLog> }) {
+  const slots = slotsOf(scenery, side);
+  return (
+    <div className="amb-card">
+      <h2>Lands</h2>
+      <div className="amb-seg" role="radiogroup" aria-label="Lands for">
+        {[SIM_PLAYERS[0], SIM_PLAYERS[1]].map((p) => (
+          <button key={p} role="radio" aria-checked={side === p} className={side === p ? 'is-on' : ''} onClick={() => setSide(p)} data-count-side={p}>
+            {p === SIM_PLAYERS[0] ? 'You' : 'Opponent'}
+          </button>
+        ))}
+      </div>
+      <div className="amb-counts">
+        {COUNT_LANDS.map((l) => {
+          const n = simLandCount(plays, side, l.name);
+          const s = slots.find((x) => x.biome === l.biome);
+          const growth = s ? `stage ${s.stage}${s.progress && s.progress < 1 ? ` +${Math.round(s.progress * 100)}%` : ''}` : '—';
+          return (
+            <label key={l.biome} className={`amb-count t-${l.tone}`}>
+              <span className="amb-count-name">{BIOME_LABEL[l.biome]}</span>
+              <input
+                type="range"
+                min={0}
+                max={MAX_COUNT_LANDS}
+                step={1}
+                value={Math.min(n, MAX_COUNT_LANDS)}
+                onChange={(e) => setPlays((cur) => simSetLandCount(cur, side, l.name, Number(e.target.value)))}
+                aria-label={`${BIOME_LABEL[l.biome]} lands`}
+                data-count={`${side}:${l.biome}`}
+              />
+              <b className="amb-count-n">{n}</b>
+              <span className="amb-count-stage">{growth}</span>
+            </label>
+          );
+        })}
+      </div>
+      <span className="amb-hint">One step plays or takes back one basic land of that biome: between two stages the next stage fades in a little with every land.</span>
+    </div>
+  );
+}
+
 function describe(e: SceneryEvent): string {
   const who = e.kind === 'damage' ? (e.player === SIM_PLAYERS[0] ? 'you' : 'opponent') : e.player === SIM_PLAYERS[0] ? 'you' : 'opponent';
   if (e.kind === 'land') return `land · ${who} · ${e.biome} slot ${e.slot + 1}${e.newSlot ? ' (new)' : ''} · stage ${e.prevStage}→${e.stage}`;
@@ -374,7 +437,7 @@ function describe(e: SceneryEvent): string {
 function MockSide({ title, player, top, slots, creatures, strip, plays, scrim }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; creatures: number[]; strip: React.ReactNode; plays: SimPlay[]; scrim?: boolean }) {
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const lands = plays.filter((p): p is Extract<SimPlay, { kind: 'land' }> => p.kind === 'land' && p.player === player);
-  const summary = slots.length ? slots.map((s) => `${BIOME_LABEL[s.biome]} ${fmt(s.weight)} · stage ${s.stage}`).join('   ') : 'No lands yet';
+  const summary = slots.length ? slots.map((s) => `${BIOME_LABEL[s.biome]} ${fmt(s.weight)} · stage ${s.stage}${s.progress && s.progress < 1 ? ` +${Math.round(s.progress * 100)}%` : ''}`).join('   ') : 'No lands yet';
   const chips = (
     <div className="amb-chips" aria-label={`${title}'s lands`}>
       {lands.map((l, i) => (
