@@ -246,3 +246,16 @@ describe('the preview’s land count per biome', () => {
 });
 
 const islandSlotOf = (plays: SimPlay[]) => slotsOf(sceneryFromLog(simLog(plays), Infinity), 1).find((s) => s.biome === 'island');
+
+describe('the spec’s growth example', () => {
+  it('validates with no errors or warnings, and reads its growth', () => {
+    const md = readFileSync(new URL('../../docs/scenery-pack-spec.md', import.meta.url), 'utf8');
+    const block = /<!-- example-growth -->\s*```json\n([\s\S]*?)```/.exec(md);
+    expect(block).not.toBeNull();
+    const r = validateManifest(JSON.parse(block![1]!), BASE);
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([]);
+    expect(r.pack!.growth).toEqual({ crossfade: true, seconds: 2 });
+    expect(nextStageFade(stageProgress(1.5), true, r.pack!.growth!)).toBe(0.5);
+  });
+});

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.5)
+# Scenery pack spec (schema 1, version 1.6)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -22,6 +22,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.3 | Optional **board accents** (§2, *Board accents*): per biome and stage, an `overlay` list of corner and edge pieces drawn in the player's area outside the strip, with `overlayMode` (`replace` / `add`) across stages; their budgets (§3); the rendering rules (beneath the cards, small widths, reduced motion, Settings → Board accents). A pack may have accents and no stage art. |
 | 1.4 | One more accent piece, the **full-area** piece (§2, *Full-area accents*): `anchor: "area"`, one transparent picture across the whole player area, beneath the strip and the cards, with `fit`, an optional `safe` rect or `position`, `minWidthPx`; at most one per stage; its own budget (§3). Every other piece and every 1.0–1.3 pack is unchanged. |
 | 1.5 | The **half board** (§2, *The half board*): the scenery fills each player's whole half of the board (Settings → Fill each side, on by default), split side by side in proportion to their lands, each biome at its own stage, both halves upright with a mist band along the centre line, and a soft dark scrim under the card rows. Optional per-stage **`half`** pictures (an opaque desktop picture and an optional portrait `phone` one, with the scene's `subjectBand` — and optional `focal` / `safe` — for the crop) and a top-level **`half`** layout (`seamRatio`, `minShare`, `mist`); their budget (§3). A 1.0–1.4 pack fills the half with its strip art, cover-cropped. |
+| 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
 
@@ -47,7 +48,8 @@ other game information.
   | 6+ | 4 |
 
   A pack may change these thresholds and may define up to 6 stages. A slot past a pack's last stage shows that last stage.
-- **Width.** Slot width grows a little with stage (+18% per stage), times the biome's `slot.weight`.
+- **Growth between stages (1.6).** Between two thresholds a biome also has a **progress** toward its next stage: the fraction of the way from its stage's threshold to the next one (3 lands is stage 2 at ½; 5 lands is stage 3 at ½; 6 or more is fully grown). Each land moves it, and the scene follows: the next stage's pictures fade in over the current ones by that much (§2, *Growth between stages*). A 2nd, 4th and 6th land arrive at a stage's own pictures exactly as before; the 3rd and 5th land halfway between.
+- **Width.** Slot width grows a little with stage (+18% per stage), and from 1.6 smoothly with every land in between (stage plus progress), times the biome's `slot.weight`.
 - **Bloom.** When a stage adds layers, the new layers *bloom in*. A layer whose `id` is also in the previous stage stays where it is and does not bloom again. Every land arrival also flashes its slot with a soft glow.
 - **Events.** The scenery engine also emits *creature entered* (with the creature's colours), *attack declared* and *damage dealt* (to a player or to a creature). Each plays a short one-shot **effect**: the pack's own (§2, *Effects*), or else a built-in placeholder.
 - **Accents (1.3).** Besides the strip, each player's area can carry a few **accents**: pictures in its corners and bands along its edges (vines creeping in as the forest grows, frost and spray for islands, ash for mountains). They grow with the same stages, sit beneath every card and control, and are a separate setting (Settings → Board accents, on whenever the scenery is on).
@@ -75,6 +77,8 @@ and a key under `effects` that is not an effect event.
 | `stageThresholds` | 1–6 increasing numbers, 0.5–40 | `[1, 2, 4, 6]` | Land weight at which stage 1, 2, … begins. |
 | `biomes` | object | — | **Required.** Keyed by biome name, with at least one usable biome (or at least one effect, or one accent piece). Biomes left out use the built-in scene. |
 | `effects` | object | — | 1.2. One-shot effects for every biome, and `maxConcurrent`. See *Effects*. |
+| `half` | object | see *The half board* | 1.5. How each half is shared between biomes and meets the other half. |
+| `growth` | object | `{ "crossfade": true, "seconds": 1.2 }` | 1.6. The growth between stages: whether the next stage cross-fades in land by land, and how long one land's fade takes. See *Growth between stages*. |
 
 ### `strip`
 
@@ -747,6 +751,87 @@ blend), not over the phone one. The island declares 7.4 MB of half pictures
 must stay error- and warning-free.
 
 
+### Growth between stages (1.6)
+
+The stages are still the levels a biome arrives at (1 / 2–3 / 4–5 / 6+
+lands); 1.6 fills in the space between them. A biome's **progress** toward
+its next stage (§1) sets how strongly the next stage shows over the current
+one, eased (sine in-out, so half the way is half the picture; a dual's
+quarter-land is about a seventh):
+
+| Lands (default thresholds) | Drawn |
+| --- | --- |
+| 1 | stage 1 |
+| 2 | stage 2 |
+| 3 | stage 2, with stage 3 at ½ over it |
+| 4 | stage 3 |
+| 5 | stage 3, with stage 4 at ½ over it |
+| 6+ | stage 4 |
+
+**What fades in, and what does not.**
+- **Half pictures** (1.5): the next stage's `half` picture over the current one, each in its own crop (its own `subjectBand`, `focal`, `safe`). With the half filled, a slot draws at most **two pictures** once a fade has run.
+- **Strip layers**: the next stage's **still** (`image`) layers whose file or box differs from the current stage's layer with the same `id`, or whose `id` is new. A layer kept unchanged (same `id`, file and box) is drawn once.
+- **Moving layers** (`video`, `sprite`) are the current stage's only: the next stage's loops start when the stage is reached, so the moving-layer budget (§3) is unchanged. A stage-4 loop arrives at 6 lands, as before.
+- **Accents** (1.3, 1.4): a corner or edge piece that is new in the next stage (a new `id` at that anchor) is drawn already, **still**, at the same fraction of its `opacity`; a piece replaced under the same `id` changes at the threshold. A **full-area** piece whose picture changes (`front-s2` → `front-s3`) cross-fades like a half picture. Fading pieces come after every full piece, so the ≤ 6 cap cuts them first, and they never count as moving. ForgeCoach's built-in accents and its built-in scene grow the same way (a built-in layer that is new in the next stage fades in).
+- **The bloom and the flash stay.** A land still flashes its slot (or plays the pack's `landfall`); layers that first appear still bloom; `stageUp` still plays when a land crosses a threshold.
+
+**Motion.** A land's change fades over `growth.seconds` (1.2 s by default),
+from the old fraction to the new. At a threshold the next stage's picture,
+already half in, keeps fading up to full while the old one stays beneath it,
+so a stage-up is as smooth as the lands between. With reduced motion
+(`prefers-reduced-motion`, or Settings → Motion → Stills only) every change
+is at once. Losing a land runs the same fade backwards.
+
+**Loading.** Stage 1 is preloaded before the scenery shows, as before. As a
+slot reaches a stage, ForgeCoach warms that stage's and the **next** stage's
+pictures in the background (the half picture, the phone one on a phone; else
+the still layers), so the next stage is there before the first land toward
+it. A next picture that fails to load is simply not drawn.
+
+**The preview.** `#ambience` → *Lands* has a slider per biome for either side:
+one step plays or takes back one basic land, so the growth can be stepped
+through land by land with no game (§6).
+
+**Top-level `growth`** (every field optional; a pack without it gets the
+defaults, so every 1.0–1.5 pack grows between stages unchanged):
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `crossfade` | boolean | `true` | `false`: the pictures and accents change only at the thresholds, as in 1.5 (the slot width still grows with every land). For art whose stages do not blend well, such as stages composed differently. |
+| `seconds` | 0–5 | 1.2 | How long one land's fade takes. 0: at once. |
+
+As elsewhere, a bad value falls back to its default, with a warning.
+
+**How to paint for it.** Nothing new is needed: the stages you already paint
+are the levels, and ForgeCoach blends neighbouring stages. The blend reads
+best when each stage is "the same place grown" (§4): the same horizon, the
+same subject in the same place, new things added rather than moved. Two
+stages composed differently show both compositions, half-transparent, at the
+3rd and 5th land; a pack whose stages are like that sets `crossfade: false`.
+
+<!-- example-growth -->
+```json
+{
+  "schema": 1,
+  "spec": "1.6",
+  "name": "Justin's tidewater, slower growth",
+  "growth": { "crossfade": true, "seconds": 2 },
+  "biomes": {
+    "island": {
+      "stages": [
+        { "layers": [{ "id": "sky", "kind": "image", "src": "island/s1-sky.webp" }] },
+        { "layers": [{ "id": "sky", "kind": "image", "src": "island/s2-sky.webp" }] }
+      ]
+    }
+  }
+}
+```
+
+Each land's fade takes 2 s; at 1½ lands (an Island and a dual) the stage-2
+sky shows at about half over stage 1's. `src/ambience/growth.test.ts`
+validates this exact block. If you change it, it must stay error- and
+warning-free.
+
 ## 3. Files and budgets
 
 | What | Format | Size |
@@ -788,7 +873,7 @@ Budgets for full-area accents (1.4), an extension of the accents' budget: their 
 Budgets for half pictures (1.5), counted apart from the strip's 6 MB, the effects' 4 MB and the accents:
 - **≤ 8 MB per biome** of half pictures, **phone pictures and both 2x files included** (declare `bytes` on each `half`; a `half` repeated across stages counts once; the validator warns past it). Four stages at about 1.6–2 MB each (desktop 1x ~0.35 MB, 2x ~0.8 MB; phone 1x ~0.25 MB, 2x ~0.55 MB) fit.
 - **Per stage**: a desktop picture, opaque WebP (quality 80–85) or AVIF, **2048 × 640** at 1x and **4096 × 1280** as `src2x` (16 : 5); and optionally a phone picture, **1024 × 1280** and **2048 × 2560** (4 : 5).
-- A device loads only the pictures its panels show, one per biome per half (stage 1's warm in the background, the phone ones on a phone-sized screen); the browser picks 1x or 2x by the screen's density, never more.
+- A device loads only the pictures its panels show, one per biome per half (stage 1's warm in the background, the phone ones on a phone-sized screen), and from 1.6 the next stage's too, which fades in between the thresholds; the browser picks 1x or 2x by the screen's density, never more.
 - No phone loops: moving layers play only over the desktop picture, and count against the 2 moving layers per stage as before.
 
 The whole pack should stay ≤ 30 MB, effects and accents included (half pictures count apart: up to 40 MB more for five biomes).
@@ -812,7 +897,7 @@ A narrow slot is about 130 px wide on a phone; a lone slot on a desktop can be
   | 3 | Life and light (palms, a sun or moon, an ember glow, light shafts). |
   | 4 | The paradise version: the richest composition, still at most two moving layers. |
 
-  Later stages should look like the same place grown, not a different picture. Reuse ids for layers that stay.
+  Later stages should look like the same place grown, not a different picture. Reuse ids for layers that stay. From 1.6 neighbouring stages are also cross-faded between the thresholds (*Growth between stages*), so this matters more: what stays in place blends cleanly.
 - **Motion.** Idle motion is slow and small (periods of 6–12 s). Nothing should flash or strobe. The bloom is the only fast moment.
 - **Reduced motion.** With `prefers-reduced-motion` (or Settings → Motion → Stills only), the strip shows stills only:
   - posters for videos and sprites;
@@ -868,7 +953,8 @@ board's fallback note say so, with these steps.
    - every error (why the pack was refused);
    - every warning (what was dropped or reset to a default), with the path of each field.
 3. Play lands for either side with the buttons, or press **Demo sequence**. **Undo** and **Reset** step back.
-4. Drag **Stage** to see every stage of every claimed biome without playing more lands.
+4. Drag **Stage** to see every stage of every claimed biome without playing more lands (whole stages, no growth between them).
+   **Lands** (1.6) sets a land count per biome for either side, 0–7: one step plays or takes back one land, so the growth between stages can be stepped through land by land, with each land's fade, flash and effects.
 5. Switch **Motion** to *Stills only* to check posters and reduced motion.
 6. **Creature enters** and **Attack** under *Play* change the made-up game, and fire the effects the engine derives from it. The event list shows what the engine emitted.
 7. **View → Board accents** turns the accents on and off on the preview (Settings → Board accents does it on the board). Narrow the window under 600 px to see the corners-only fit. The pasted-manifest check and the pack status list each biome's accent pieces per stage and their declared size, and the stages with a full-area piece (1.4).
