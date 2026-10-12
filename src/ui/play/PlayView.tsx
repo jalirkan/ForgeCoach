@@ -58,7 +58,7 @@ import { StackPanel } from '../StackPanel.tsx';
 import { stackEntries } from '../stackModel.ts';
 import { zonePick } from './zonePick.ts';
 import { combatMarks } from './combatLines.ts';
-import { attackRefusal, blockRefusal, clickAttacker, clickBlocker, takeOff, type BlockPlan } from './blockPlan.ts';
+import { attackRefusal, blockRefusal, clickAttacker, clickBlocker, type BlockPlan } from './blockPlan.ts';
 import { selectionSummary, wireChoice } from './selection.ts';
 import { matchBox, tableMatchLine, type MatchBox } from '../../play/match.ts';
 import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
@@ -300,11 +300,6 @@ export function PlayView({
     },
     [view.mode, view.blockingAttackerId, isMyCreature, act, sendBlockPlan],
   );
-  /** The × on a declared blocker: its block comes off through the engine's clicks. */
-  const unblock = useCallback(
-    (blockerId: number) => sendBlockPlan(takeOff(blockerId, view.blockingAttackerId, blocksRef.current)),
-    [view.blockingAttackerId, sendBlockPlan],
-  );
   const alphaStrike = useCallback(() => {
     const me = state?.players.find((p) => p.id === seat);
     const all = (me?.zones.battlefield.cards ?? []).filter((c) => isMyCreature(c) && !(c as Card).tapped && !(c as Card).sick).map((c) => c.id);
@@ -335,17 +330,16 @@ export function PlayView({
   const selection = useMemo(() => selectionSummary(view, { attackers: atkNow.size, blockers: blkNow.size }), [view, atkNow, blkNow]);
   // Cards the engine wants clicked that the board has no tile for (a graveyard target): their own panel.
   const offBoard = useMemo(() => (ask || over ? null : zonePick(input, state, seat, view.mode)), [ask, over, input, state, seat, view.mode]);
-  // Every attacker and its blockers share a number on the board (endstep-style), clicks not yet confirmed included.
+  // An attacker and its blockers share a number and a line on the board (endstep-style), clicks not yet confirmed included.
   const pairs = useMemo(
     () =>
       combatMarks(
         state,
         view.mode === 'block' ? blkNow : undefined,
         view.mode === 'attack' ? atkNow : undefined,
-        view.mode === 'block' ? view.blockingAttackerId : null,
         view.mode === 'attack' ? wire?.attacks : undefined,
       ),
-    [state, view.mode, view.blockingAttackerId, blkNow, atkNow, wire],
+    [state, view.mode, blkNow, atkNow, wire],
   );
 
   // The coach's words name cards as the board shows them: the lane badges, else P/T (CoachText).
@@ -371,9 +365,8 @@ export function PlayView({
       clickPlayer: (id: number) => {
         if (playerClickable(ctx, id)) act({ action: 'clickPlayer', playerId: id });
       },
-      unblock: view.mode === 'block' && view.ok.enabled ? unblock : undefined,
     }),
-    [ctx, affordable, act, clickCard, atkNow, blkNow, wire, view.mode, view.ok.enabled, unblock],
+    [ctx, affordable, act, clickCard, atkNow, blkNow, wire],
   );
 
   // ---- details / hover

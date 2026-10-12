@@ -2,19 +2,20 @@
  * ForgeCoach — ui/play/combatLayout.test.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The combat lanes (combatLayout.ts, CombatLane.tsx, laneMotion.ts): who is
- * in the attack lane and in what order, the target as one label or a chip per
- * card, blockers placed in front of their attacker (confirmed and still being
- * declared), the few lines that remain, hidden information (a concealed id is
- * never placed; a face-down attacker's hidden face is never read), the cards'
- * own selectable attributes inside the lane, and a server render of a lane.
+ * The attack lane and the block lines (combatLayout.ts, CombatLane.tsx,
+ * laneMotion.ts): who is in the attack lane and in what order, the target as
+ * one label or a chip per card, a line from each attacker to each blocker
+ * (confirmed and still being declared) while the blockers stay in their rows,
+ * hidden information (a concealed id is never placed or joined; a face-down
+ * attacker's hidden face is never read), the cards' own selectable attributes
+ * inside the lane, and a server render of a lane.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { AnyCard, Card, CombatBand, GameStateBody } from '../../protocol.ts';
 import { BoardMarksContext, PlayContext, type PlayInteraction } from '../cardContext.ts';
 import { combatMarks } from './combatLines.ts';
-import { combatLayout, hideSickMark, laneRole, shortName, type LayoutNames } from './combatLayout.ts';
+import { combatLayout, hasAttackLane, hideSickMark, shortName, type LayoutNames } from './combatLayout.ts';
 import { CombatLane } from './CombatLane.tsx';
 import { movedIds, placementKeys } from './laneMotion.ts';
 
@@ -71,7 +72,7 @@ describe('the attack lane', () => {
     expect(JSON.stringify(l)).not.toContain('Secret Morph');
     // The board never holds the opponent's in-play face-down `alt` (faceDown.ts drops it on read): the lane draws a nameless card.
     const asRead = { ...fd, alt: null } as Card;
-    const html = renderToStaticMarkup(<CombatLane layout={lay(state([card(1, 0)], [asRead], [band([9], [])]))} kind="attack" playerId={1} side="opp" byId={new Map([[9, asRead]])} />);
+    const html = renderToStaticMarkup(<CombatLane layout={lay(state([card(1, 0)], [asRead], [band([9], [])]))} playerId={1} side="opp" byId={new Map([[9, asRead]])} />);
     expect(html).not.toContain('Secret Morph');
     expect(html).toContain('Face-down card');
   });
@@ -114,7 +115,7 @@ describe('the target', () => {
   it('an attacker still being declared against a planeswalker gets a chip and a line (M65 chosen.attacks)', () => {
     const pw = card(7, 1, { name: 'Elspeth, Sun’s Champion', types: 'Legendary Planeswalker - Elspeth' });
     const s = state([card(1, 0)], [pw], null, { activePlayer: 0, phase: 'COMBAT_DECLARE_ATTACKERS' });
-    const marks = combatMarks(s, new Map(), new Set([1]), null, [{ attackerId: 1, defender: { kind: 'card', id: 7 } }]);
+    const marks = combatMarks(s, new Map(), new Set([1]), [{ attackerId: 1, defender: { kind: 'card', id: 7 } }]);
     const l = combatLayout(s, names, marks);
     expect(l.columns).toEqual([]);
     expect(l.pendingChips.get(1)).toMatchObject({ label: 'Elspeth', initial: 'E' });
@@ -122,49 +123,39 @@ describe('the target', () => {
   });
 });
 
-describe('blocks by placement', () => {
-  it('puts each blocker in front of its attacker, several fanned in front of one', () => {
+describe('blocks as lines', () => {
+  it('joins each attacker to each of its blockers; the blockers stay in their rows', () => {
     const s = state([card(1, 0), card(2, 0), card(3, 0)], [card(9, 1, { tapped: true }), card(8, 1, { tapped: true })], [band([9], [1, 2]), band([8], [3])]);
     const l = lay(s);
-    expect(l.columns.map((c) => [c.attackerId, c.blockers.map((b) => b.id)])).toEqual([
-      [9, [1, 2]],
-      [8, [3]],
+    expect(l.lines).toEqual([
+      { kind: 'block', from: { card: 9 }, to: { card: 1 }, pending: false },
+      { kind: 'block', from: { card: 9 }, to: { card: 2 }, pending: false },
+      { kind: 'block', from: { card: 8 }, to: { card: 3 }, pending: false },
     ]);
-    expect(l.columns[0]!.weight).toBe(1.55);
-    expect(l.lines).toEqual([]);
-    expect(laneRole(l, 1, 0)).toEqual({ attack: true, block: false });
-    expect(laneRole(l, 0, 0)).toEqual({ attack: false, block: true });
+    expect([...l.placed].sort()).toEqual([8, 9]);
+    expect(l.columns[0]!.weight).toBe(1.4);
+    expect(hasAttackLane(l, 1)).toBe(true);
+    expect(hasAttackLane(l, 0)).toBe(false);
   });
 
-  it('places blocks still being declared (marked pending), the engine’s own word first', () => {
+  it('draws the blocks being declared too (marked pending); a pick with no attacker is not joined', () => {
     const s = state([card(1, 0), card(2, 0)], [card(9, 1), card(8, 1)], [band([9], []), band([8], [])]);
-    const l = lay(s, combatMarks(s, new Map([[1, 8], [2, null]]), new Set(), 8));
-    expect(l.columns.map((c) => [c.attackerId, c.current, c.blockers])).toEqual([
-      [9, false, []],
-      [8, true, [{ id: 1, pending: true, tapped: false, controller: 0 }]],
-    ]);
-    // A pick with no attacker named is not placed anywhere.
-    expect(l.placed.has(2)).toBe(false);
-  });
-
-  it('a blocker of two attackers sits in front of the first and gets a line to the second', () => {
-    const l = lay(state([card(1, 0)], [card(9, 1), card(8, 1)], [band([9], [1]), band([8], [1])]));
-    expect(l.columns[0]!.blockers.map((b) => b.id)).toEqual([1]);
-    expect(l.columns[1]!.blockers).toEqual([]);
-    expect(l.lines).toEqual([{ kind: 'block', from: { card: 1 }, to: { card: 8 }, pending: false }]);
-  });
-
-  it('while you declare blocks, your side shows the empty place in front of the named attacker', () => {
-    const s = state([card(1, 0)], [card(9, 1)], [band([9], [])]);
-    const l = lay(s, combatMarks(s, new Map(), new Set(), 9));
-    expect(laneRole(l, 0, 0)).toEqual({ attack: false, block: true });
-    const html = renderToStaticMarkup(<CombatLane layout={l} kind="block" playerId={0} side="me" byId={new Map()} />);
-    expect(html).toContain('lane-ghost');
-  });
-
-  it('never places a concealed blocker', () => {
-    const l = lay(state([hidden(1, 0)], [card(9, 1)], [band([9], [1])]));
+    const l = lay(s, combatMarks(s, new Map([[1, 8], [2, null]])));
+    expect(l.lines).toEqual([{ kind: 'block', from: { card: 8 }, to: { card: 1 }, pending: true }]);
     expect(l.placed.has(1)).toBe(false);
+  });
+
+  it('a blocker of two attackers gets a line from each', () => {
+    const l = lay(state([card(1, 0)], [card(9, 1), card(8, 1)], [band([9], [1]), band([8], [1])]));
+    expect(l.lines).toEqual([
+      { kind: 'block', from: { card: 9 }, to: { card: 1 }, pending: false },
+      { kind: 'block', from: { card: 8 }, to: { card: 1 }, pending: false },
+    ]);
+  });
+
+  it('never joins a concealed blocker, nor an attacker listed as blocking itself', () => {
+    expect(lay(state([hidden(1, 0)], [card(9, 1)], [band([9], [1])])).lines).toEqual([]);
+    expect(lay(state([], [card(9, 1)], [band([9], [9])])).lines).toEqual([]);
   });
 });
 
@@ -175,29 +166,27 @@ describe('the lane, rendered', () => {
   const l = lay(s);
   const byId = new Map<number, Card>([...atk, blk].map((c) => [c.id, c]));
 
-  it('an attack lane: the cards in the engine’s order, one target label, no list words', () => {
-    const html = renderToStaticMarkup(<CombatLane layout={l} kind="attack" playerId={1} side="opp" byId={byId} />);
+  it('an attack lane: the cards in the engine’s order, one target label, no list words, no blocker', () => {
+    const html = renderToStaticMarkup(<CombatLane layout={l} playerId={1} side="opp" byId={byId} />);
     expect(html).toContain('data-combat-lane="attack"');
     expect([...html.matchAll(/data-lane-col="(\d+)"/g)].map((m) => m[1])).toEqual(['9', '8']);
     expect(html).toMatch(/data-lane-label="1"[^>]*>.*→.* You</);
     expect(html).not.toMatch(/unblocked|Combat</i);
     expect(html).not.toContain('lane-chip');
+    expect(html).not.toContain('data-card-id="1"');
   });
 
-  it('a block lane: the blocker in its attacker’s column, the same columns, its pair number', () => {
+  it('the attacker with a blocker wears its pair number; the other none', () => {
     const html = renderToStaticMarkup(
       <BoardMarksContext.Provider value={{ stack: new Map(), combat: combatMarks(s) }}>
-        <CombatLane layout={l} kind="block" playerId={0} side="me" byId={byId} />
+        <CombatLane layout={l} playerId={1} side="opp" byId={byId} />
       </BoardMarksContext.Provider>,
     );
-    expect([...html.matchAll(/data-lane-col="(\d+)"/g)].map((m) => m[1])).toEqual(['9', '8']);
-    expect(html).toMatch(/data-blocks="9"[^>]*>.*data-card-id="1"/);
-    expect(html).toMatch(/tile-pair pair-blocker[^>]*>1</);
-    // The lane keeps the label's room on both sides of the centre line, so the columns line up.
-    expect(html).toContain('combat-lane is-block has-label');
+    expect(html.match(/tile-pair pair-attacker[^>]*>1</g)?.length).toBe(1);
+    expect(html.match(/tile-pair/g)?.length).toBe(1);
   });
 
-  it('the cards keep their own clicks: the engine’s selectable outline and data-mark, and a × only when the play screen offers it', () => {
+  it('the cards keep their own clicks: the engine’s selectable outline and data-mark', () => {
     const play: PlayInteraction = {
       mark: (c) => (c.id === 9 || c.id === 8 ? 'act' : null),
       hint: () => false,
@@ -206,32 +195,23 @@ describe('the lane, rendered', () => {
       blockersFor: () => [],
       playerMark: () => false,
       clickPlayer: () => undefined,
-      unblock: () => undefined,
     };
     const atkHtml = renderToStaticMarkup(
       <PlayContext.Provider value={play}>
-        <CombatLane layout={l} kind="attack" playerId={1} side="opp" byId={byId} />
+        <CombatLane layout={l} playerId={1} side="opp" byId={byId} />
       </PlayContext.Provider>,
     );
     expect(atkHtml.match(/data-mark="act"/g)?.length).toBe(2);
-    const blkHtml = renderToStaticMarkup(
-      <PlayContext.Provider value={play}>
-        <CombatLane layout={l} kind="block" playerId={0} side="me" byId={byId} />
-      </PlayContext.Provider>,
-    );
-    expect(blkHtml).toContain('aria-label="Take C1 off the block"');
-    const noPlay = renderToStaticMarkup(<CombatLane layout={l} kind="block" playerId={0} side="me" byId={byId} />);
-    expect(noPlay).not.toContain('lane-unblock');
   });
 });
 
 describe('motion and marks', () => {
-  it('knows which cards changed place (into a lane, between columns, back to the row)', () => {
+  it('knows which cards changed place (into the lane, back to the row); a blocker never moves', () => {
     const a = placementKeys(lay(state([card(1, 0)], [card(9, 1), card(8, 1)], [band([9], [1]), band([8], [])])));
     const b = placementKeys(lay(state([card(1, 0)], [card(9, 1), card(8, 1)], [band([9], []), band([8], [1])])));
-    expect(movedIds(a, b)).toEqual([1]);
-    expect(movedIds(b, new Map())).toEqual([1, 8, 9]);
-    expect(movedIds(new Map(), a)).toEqual([1, 8, 9]);
+    expect(movedIds(a, b)).toEqual([]);
+    expect(movedIds(b, new Map())).toEqual([8, 9]);
+    expect(movedIds(new Map(), a)).toEqual([8, 9]);
   });
 
   it('hides the summoning-sick mark in the other player’s combat only', () => {

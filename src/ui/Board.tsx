@@ -14,7 +14,7 @@ import { chosenColors, manaSummary, turnFacts, type ManaSource } from '../state.
 import { cachedMap, useCardsVersion } from './cardData.ts';
 import { BoardMarksContext, usePlay, type BoardMarks, type CardCombatMark } from './cardContext.ts';
 import { combatMarks } from './play/combatLines.ts';
-import { combatLayout, hideSickMark, laneRole, type CombatLayout, type LaneTarget } from './play/combatLayout.ts';
+import { combatLayout, hasAttackLane, hideSickMark, type CombatLayout, type LaneTarget } from './play/combatLayout.ts';
 import { CombatLane } from './play/CombatLane.tsx';
 import { CombatArrows } from './play/CombatArrows.tsx';
 import { useLaneMotion } from './play/laneMotion.ts';
@@ -57,7 +57,7 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackEl
     for (const p of state.players) for (const c of p.zones.battlefield.cards) if (!isHidden(c)) m.set(c.id, c as Card);
     return m;
   }, [state]);
-  // Combat is drawn by placement: the attack lane and the blockers in front of their attackers.
+  // Combat on the board: the attack lane, and a line from each attacker to each of its blockers.
   const layout = useMemo(
     () =>
       combatLayout(
@@ -153,9 +153,8 @@ const PlayerArea = memo(function PlayerArea({
   const { lands, creatures, other } = useMemo(() => groupBattlefield(player, byId, layout.placed), [player, byId, layout.placed]);
   const mine = player.id === seat;
   const side = mine ? 'me' : 'opp';
-  const role = laneRole(layout, player.id, seat);
   const attachmentsOf = (c: Card) => c.attachmentIds.map((id) => byId.get(id)).filter((x): x is Card => !!x);
-  const lane = role.attack ? 'attack' : role.block ? 'block' : null;
+  const lane = hasAttackLane(layout, player.id);
   const chipped = (card: Card, att: Card[]) => {
     const tile = <CardTile key={card.id} card={card} attachments={att} side={side} />;
     const t = layout.pendingChips.get(card.id);
@@ -191,7 +190,7 @@ const PlayerArea = memo(function PlayerArea({
   if (top) rows.reverse();
   // The lane sits nearest the centre line: below their rows, above yours.
   if (lane) {
-    const el = <CombatLane key="lane" layout={layout} kind={lane} playerId={player.id} side={side} byId={byId} attachmentsOf={attachmentsOf} />;
+    const el = <CombatLane key="lane" layout={layout} playerId={player.id} side={side} byId={byId} attachmentsOf={attachmentsOf} />;
     if (top) rows.push(el);
     else rows.unshift(el);
   }
@@ -218,12 +217,12 @@ const PlayerArea = memo(function PlayerArea({
             '--ch-perm': permanents.length ? 1 : 0,
             '--attach-h': permanents.some((p) => p.att.length > 0) ? '34px' : '0px',
             // The combat lane's height in lane card widths (a lying card is one width tall).
-            '--lane-k': lane ? (lane === 'attack' && !layout.upright ? 1 : 88 / 63).toFixed(2) : 0,
+            '--lane-k': lane ? (!layout.upright ? 1 : 88 / 63).toFixed(2) : 0,
             '--lane-w': layout.weight.toFixed(2),
             '--lane-n': layout.columns.length,
           } as CSSProperties
         }
-        data-lane={lane ?? undefined}
+        data-lane={lane ? 'attack' : undefined}
       >
         {empty ? <div className="bf-empty">No permanents</div> : rows}
       </div>
@@ -489,7 +488,7 @@ function OppHand({ n }: { n: number }) {
 
 // ---------------------------------------------------------------------------
 // The line between the two sides: turn/phase and (replay) the stack. Combat is
-// drawn on the sides themselves: the attack and block lanes (play/CombatLane.tsx).
+// drawn on the sides themselves: the attack lane (play/CombatLane.tsx) and the block lines (play/CombatArrows.tsx).
 
 const STEPS: { label: string; phases: string[] }[] = [
   { label: 'Upkeep', phases: ['UNTAP', 'UPKEEP'] },
