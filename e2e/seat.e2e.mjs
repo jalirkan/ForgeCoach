@@ -20,7 +20,10 @@
  * stack, attack, the AI's spell, a block, Shock's target ask, game over, the
  * next game); a seat dropped with a question open (engine took the default /
  * engine asked again); an engine restarted under the same game id after the
- * result and mid-game; live watch on /observe never opening /ws; combat damage
+ * result and mid-game; live watch on /observe never opening /ws; declaring
+ * attackers and blockers as the combat study has them (blocker first, badges
+ * and lines, No blocks / Done blocking, Alpha strike / Call back / Skip
+ * combat); combat damage
  * by the engine's rule (mtg-table M67: no defender row without trample, the
  * engine's refusal shown, a trampler's excess); the coach's "Copy prompt" with
  * no helper; the search hint ("What would the search AI do?", mtg-table D429)

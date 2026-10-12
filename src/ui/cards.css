@@ -836,6 +836,15 @@
   top: calc(50% - var(--cw) / 2 - 10px);
   left: calc(50% - var(--ch) / 2 - 8px);
 }
+/* The top side's badges sit on the edge that faces the centre line, where the block lines arrive. */
+.board .player-top .tile-pair {
+  top: auto;
+  bottom: -10px;
+}
+.board .player-top .tile.is-tapped .tile-pair {
+  top: auto;
+  bottom: calc(50% - var(--cw) / 2 - 10px);
+}
 .board .tile.is-pair-blocker .tile-card {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--info) 85%, transparent), 0 0 14px color-mix(in srgb, var(--info) 35%, transparent);
 }

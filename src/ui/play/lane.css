@@ -146,12 +146,20 @@
 .combat-lane .tile-pair,
 .combat-lane .tile.is-tapped .tile-pair {
   top: -6px;
+  bottom: auto;
   left: -6px;
   min-width: 20px;
   height: 20px;
   padding: 0 4px;
   font-size: 11px;
   border-width: 2px;
+}
+
+/* Their lane: the badge on the bottom edge, facing your blockers. */
+.board .player-top .combat-lane .tile-pair,
+.board .player-top .combat-lane .tile.is-tapped .tile-pair {
+  top: auto;
+  bottom: -6px;
 }
 
 /* The target: one label at the lane's edge, or a chip on each card's corner. */

@@ -275,6 +275,11 @@
     -webkit-line-clamp: unset;
     overflow: visible;
   }
+  /* The live count on a line of its own above the instruction ("● 1 SELECTED", then the line). */
+  .game.play.is-wide .decision-slot .ab-sub.ab-select .ab-select-count {
+    display: flex;
+    margin-bottom: 2px;
+  }
   .game.play.is-wide .decision-slot .ab-title-text {
     -webkit-line-clamp: 3;
   }
