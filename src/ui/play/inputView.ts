@@ -13,6 +13,7 @@
  * when it plausibly means something (your own cards while you are prompted),
  * and Forge answers a click it will not take with a "Not selectable" notice.
  */
+import { stackKind } from '../stackModel.ts';
 import { withoutEngineIds } from '../../engineText.ts';
 import type { AnyCard, AskBody, Card, GameStateBody, InputBody, InputButton } from '../../protocol.ts';
 import { isHidden, keywordsOf, playableOf, selectablePlayersOf } from '../../protocol.ts';
@@ -121,13 +122,15 @@ export function parsePay(prompt: string): { cost: string; forName: string | null
 }
 
 /** The stack's top item as words: "Forge AI cast Lightning Bolt". */
-export function topOfStack(state: GameStateBody, seat: number | null): { who: string; what: string; mine: boolean } | null {
+export function topOfStack(state: GameStateBody, seat: number | null): { who: string; what: string; mine: boolean; ability: boolean } | null {
   const top = state.stack[state.stack.length - 1];
   if (!top) return null;
   const idx = cardIndex(state);
   const src = top.sourceCardId !== null ? idx.get(top.sourceCardId) : undefined;
   const name = src ? cardName(src) : 'something';
-  return { who: playerName(state, top.controller, seat), what: name, mine: top.controller === seat };
+  // the stack panel's own reading of spell / ability (ui/stackModel.ts): a trigger was never "cast"
+  const ability = stackKind(top, src) !== 'spell';
+  return { who: playerName(state, top.controller, seat), what: name, mine: top.controller === seat, ability };
 }
 
 function firstLine(s: string): string {
@@ -358,7 +361,11 @@ function describeInputRaw(
       return {
         ...v,
         mode: 'stack',
-        title: top.mine ? `Your ${top.what} is on the stack` : `${top.who} cast ${top.what}`,
+        title: top.mine
+          ? `Your ${top.what}${top.ability ? '’s ability' : ''} is on the stack`
+          : top.ability
+            ? `${top.who}’s ${top.what} ability is on the stack`
+            : `${top.who} cast ${top.what}`,
         detail: top.mine ? 'Pass to let it resolve (the opponent may respond).' : 'Respond with an instant or ability — or pass and let it resolve.',
         ok: btn(ok, 'let it resolve'),
         cancel: btn(cancel, /end turn/i.test(cancel.label) ? 'skip to end of turn' : null),

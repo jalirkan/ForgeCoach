@@ -569,3 +569,12 @@ describe('describeInput names seats as the board does', () => {
     expect(describeInput(input('Priority: Human'), s, ME).title).toBe('Forge AI cast Card 5');
   });
 });
+
+describe('the stack decision title says spell or ability', () => {
+  it('a triggered ability of the bot’s is not "cast"', () => {
+    const s = state({ stack: [{ id: 51, sourceCardId: 5, controller: OPP, text: 'When Card 5 enters, draw a card.', targetCardIds: [], targetPlayerIds: [], isAbility: true }] as never, activePlayer: OPP, priority: ME });
+    expect(describeInput(input('Priority: Human'), s, ME, { nameOf: () => 'Search AI' }).title).toBe('Search AI’s Card 5 ability is on the stack');
+    const mine = state({ stack: [{ id: 52, sourceCardId: 4, controller: ME, text: 'When Card 4 enters, draw a card.', targetCardIds: [], targetPlayerIds: [], isAbility: true }] as never });
+    expect(describeInput(input('Priority: Human'), mine, ME).title).toBe('Your Card 4’s ability is on the stack');
+  });
+});

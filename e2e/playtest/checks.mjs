@@ -98,7 +98,9 @@ export async function combatPlaced(page, tap) {
   const seq = tap.stateSeq;
   // A creature blocking two attackers sits in front of one of them (the other gets a line).
   const of = new Map();
-  for (const b of bands) for (const blk of b.blockerIds) of.set(blk, [...(of.get(blk) ?? []), ...b.attackerIds]);
+  // A band whose attacker has left combat (removed, sacrificed) keeps its blockers with no attacker
+  // to stand in front of: nothing to place them by (seen against real Forge, 2026-10-12).
+  for (const b of bands) if (b.attackerIds.length) for (const blk of b.blockerIds) of.set(blk, [...(of.get(blk) ?? []), ...b.attackerIds]);
   const want = { atk: bands.flatMap((b) => b.attackerIds), blk: [...of] };
   const read = () =>
     page.evaluate(({ atk, blk }) => {
