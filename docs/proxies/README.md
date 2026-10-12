@@ -12,7 +12,34 @@ These are playtest copies for playing at home with friends. Never sell them or t
 
 The Vintage Cube's 180 cards on S33 stock should cost about **$45–60 plus about $15 US shipping**. That works out to about **$0.35 a card**, well under the $1 budget. Delivery takes about two to three weeks.
 
-## First order: three cubes, 540 cards (612 bracket)
+## Order 2 (chosen 2026-10-12): the MTGO Vintage Cube, 570 cards (612 bracket)
+
+This replaces order 1 below. Instead of three small cubes picked in advance, print one big, well-known cube and build your 180-card cubes out of it later.
+
+**What's in it:** [`order-2-vintage-570.txt`](order-2-vintage-570.txt) is 570 cards:
+
+- **The MTGO Vintage Cube, all 540 cards.** This is the version on Cube Cobra ("mtgovc", updated 2026-08-19), checked on 2026-10-12 and still the current version that day. [`mtgo-vintage-cube-540.txt`](mtgo-vintage-cube-540.txt) has these 540 on their own.
+- **30 more cards** from our two-player Vintage Cube that the MTGO list doesn't have, so that cube can be built from this box too. They are Thalia, Ephemerate, Restoration Angel, Wrath of God, Elspeth, Sun's Champion, Sun Titan, Delver of Secrets, Bloodghast, Ophiomancer, Goblin Guide, Young Pyromancer, Goblin Rabblemaster, Inferno Titan, Sylvan Library, Lotus Cobra, Sakura-Tribe Elder, Scavenging Ooze, Survival of the Fittest, Eternal Witness, Courser of Kruphix, Beast Within, Garruk Wildspeaker, Thragtusk, Primeval Titan, Avenger of Zendikar, Craterhoof Behemoth, Voice of Resurgence, Lightning Helix, Batterskull and Wurmcoil Engine.
+
+**Why this cube:**
+
+- It's the most-played powered cube there is: Wizards keeps it balanced for 8 players, and every archetype works.
+- 180-card cubes can be pulled out of it at any time. ForgeCoach's Vintage Cube (180) is one such cut, and with the 30 extras all of it is in the box.
+- Being able to change the cube later is the point. The box holds three times what any one draft needs, so you can swap cards in and out without printing again.
+
+**Cost:** 570 cards fall in MPC's 612 bracket, the same price as the 540-card order 1 (about $0.30–0.40 a card on S33 stock, plus shipping). That leaves **42 free slots**. Good uses:
+
+- tokens;
+- the back halves of the two meld cards (see below);
+- a few cards you expect to swap in.
+
+**Two-sided cards (12):** Ajani, Nacatl Pariah; Witch Enchanter; Tamiyo, Inquisitive Student; Jace, Vryn's Prodigy; Sink into Stupor; Concealing Curtains; Etali, Primal Conqueror; Fable of the Mirror-Breaker; Aang, Swift Savior; Jennifer Walters; and the meld pair Phyrexian Dragon Engine and The Mightstone and Weakstone.
+
+MPC Autofill adds the back faces itself. The meld pair's combined card (Urza, Planeswalker) is printed on the back halves. Check those two in the Autofill editor before you export.
+
+**How to order:** the same steps as below (Step by step). Paste [`order-2-vintage-570.txt`](order-2-vintage-570.txt) into one MPC Autofill project with one card back, set the stock to S33, and export.
+
+## Order 1 (superseded): three cubes, 540 cards (612 bracket)
 
 Chosen 2026-10-10: **Vintage + Synergy + Peasant.**
 
