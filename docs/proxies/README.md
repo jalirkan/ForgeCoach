@@ -35,6 +35,18 @@ This replaces order 1 below. Instead of three small cubes picked in advance, pri
 
 **Two-sided cards:** ten cards have a second face. Ajani, Nacatl Pariah; Witch Enchanter; Tamiyo, Inquisitive Student; Jace, Vryn's Prodigy; Sink into Stupor; Concealing Curtains; Etali, Primal Conqueror; Fable of the Mirror-Breaker; and Aang, Swift Savior *transform* or are *modal* (Jennifer Walters too).
 
+**Justin's choice (2026-10-12): the two-sided cards stay truly two-sided.** Every card goes in an opaque sleeve whose back is the cube back image, so a printed second face never shows. So print the ten with their real second face (Autofill's default for them), every other card with the cube back, and leave the helper cards out. The spare slots go to the next cube (below).
+
+**The 42 spare slots: a head start on an Old School cube (chosen 2026-10-12).** The next cube is **Craig Wescoe's 93/94 Old School Cube** ([Cube Cobra `13q8`](https://www.cubecobra.com/cube/list/13q8), 360 cards from Magic's 1993–94 sets), the same era as the card back.
+
+- **What's in the order:** [`order-2-oldschool-42.txt`](order-2-oldschool-42.txt) is its 42 most expensive cards that aren't in the Vintage box, priced on Scryfall on 2026-10-12. The originals sum to about **$17,000**: Juzám Djinn, Bazaar of Baghdad, Chaos Orb, Time Vault, Moat, The Abyss, Drop of Honey, Ali from Cairo, Serendib Djinn and so on, down to Spinal Villain at $54.
+- **What was skipped:** three cards were left out as impractical at the table even though they're pricey: Shahrazad (games inside the game), Falling Star (a card you drop onto the table) and Living Plane (weak).
+- **What's already covered:** 44 of the 360 are already in the Vintage box (the Moxen, Lotus, the duals, Library of Alexandria, Mishra's Workshop and more).
+- **What's left for later:** the other **274** are [`old-school-rest-274.txt`](old-school-rest-274.txt), a later order in MPC's 396 bracket, with room for its tokens and spares.
+- **The whole cube:** [`old-school-93-94-360.txt`](old-school-93-94-360.txt).
+
+The order is 570 + 42 = **612**. Paste [`order-2-vintage-570.txt`](order-2-vintage-570.txt) and [`order-2-oldschool-42.txt`](order-2-oldschool-42.txt) into the one project. The plan below (helpers and tokens) is the clear-sleeve alternative, kept for reference.
+
 With clear sleeves, a card whose back shows its other face stands out in a shuffled deck or a hand. So **every card gets the cube back, these ten included**. Each second face is printed as its own **helper card**, kept beside the deck and swapped in when the card flips. Players have always done this with checklist cards. The ten helpers are in the spare-slot list below.
 
 The meld pair (Phyrexian Dragon Engine, The Mightstone and Weakstone) needs nothing: their partners (Mishra, Claimed by Gix; Urza, Lord Protector) aren't in the cube, so they never meld. Print them as ordinary one-sided cards.
