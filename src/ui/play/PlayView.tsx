@@ -805,6 +805,7 @@ export function PlayView({
               attention.attention === 'opponent' && 'is-their-move',
             )}
             data-input-seq={snap.inputSeq}
+            data-frame-seq={snap.frameSeq}
           >
             {/* Phones: the steps across the very top, above everything (endstep-style). */}
             {!wide && strip('bar')}

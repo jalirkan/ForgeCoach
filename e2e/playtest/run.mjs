@@ -350,7 +350,7 @@ async function playGame(game, seats, { scripts, askModel, rand, hiddenFor, allow
   let reloaded = !opts.reload;
   for (const s of seats) {
     s.finding = s.finding ?? watchPage(game, s);
-    s.monkey = new Monkey({ page: s.page, tap: s.tap, rand, scripts, askModel, label: s.label, finding: s.finding });
+    s.monkey = new Monkey({ page: s.page, tap: s.tap, rand, scripts, askModel, label: s.label, finding: s.finding, ...(s.monkeyOpts ?? {}) });
   }
   const anyOver = () => seats.some((s) => s.tap.over);
   const allOver = () => seats.every((s) => s.tap.over);
@@ -434,7 +434,7 @@ async function playGame(game, seats, { scripts, askModel, rand, hiddenFor, allow
       if (opts.keyShots > 0) await keyShots(game, s);
       if (s.monkey.decisions - lastLeak >= 12) {
         lastLeak = s.monkey.decisions;
-        for (const p of await hiddenLeaks(s.page, hiddenFor(s), allowedFor(s))) await s.finding({ kind: 'hidden-info', what: p });
+        for (const p of await hiddenLeaks(s.page, () => hiddenFor(s), () => allowedFor(s), { tap: s.tap })) await s.finding({ kind: 'hidden-info', what: p });
       }
     }
   };
@@ -467,7 +467,7 @@ async function playGame(game, seats, { scripts, askModel, rand, hiddenFor, allow
     const want = draw ? /draw/i : won ? /You won/ : /You lost/;
     const ok = await s.page.getByText(want).first().waitFor({ timeout: 20_000 }).then(() => true).catch(() => false);
     if (!ok) await s.finding({ kind: 'over-card', what: `the game ended (${draw ? 'draw' : won ? 'won' : 'lost'}, ${s.tap.over.reason}) and the board does not say so` });
-    for (const p of await hiddenLeaks(s.page, hiddenFor(s), allowedFor(s))) await s.finding({ kind: 'hidden-info', what: `at the end: ${p}` });
+    for (const p of await hiddenLeaks(s.page, () => hiddenFor(s), () => allowedFor(s), { tap: s.tap })) await s.finding({ kind: 'hidden-info', what: `at the end: ${p}` });
   }
   const s0 = seats[0];
   game.result = abandoned ? `abandoned (${abandoned})` : s0.tap.over.winner === null ? 'draw' : s0.tap.over.winner === s0.tap.seat ? 'win' : 'loss';
@@ -659,6 +659,8 @@ async function runFake(app) {
     const game = { id: i + 1, mode: 'fake', seed: opts.seed, decks: { mine: `fake (Mountains and goblins${m61 ? '; M61, Cauldron Familiar in the graveyard' : m66 ? '; M61 and M64–M66, Blood Artist out' : '; Blood Artist out'})`, theirs: 'fake' }, findings: [], shots: 0, t0: Date.now() };
     const s = await newSeatPage('solo', app, phoneFor('solo', i));
     game.viewport = s.phone ? 'phone' : 'desktop';
+    // The games that start before the opening hand mulligan once: the London bottom (Forge's shape) is played every run.
+    s.monkeyOpts = { mulliganFirst: !m61 };
     if (helper) s.helperAsks = helper.asks;
     const url = `${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}${helper ? `&coach=${encodeURIComponent(helper.url)}` : ''}`;
     s.finding = watchPage(game, s);

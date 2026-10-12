@@ -8,15 +8,26 @@
  * each blocker in its attacker's column. Both lanes size their cards from the
  * same numbers (the lane's own width, the column count and weight, the side's
  * height), so their columns line up across the centre line.
+ *
+ * Any number of columns: the lane is one row that scrolls sideways when the
+ * cards no longer fit at their smallest readable width (never wraps: a wrapped
+ * row broke the columns' line-up and was cut off by the player's box on a
+ * phone). The two lanes scroll together (CombatLane.tsx), the edge that hides
+ * cards fades, and a "+3 ›" chip there says how many and scrolls to them.
  */
 
 .combat-lane {
+  --lane-more-w: 48px;
   container-type: inline-size;
   position: relative;
   flex: none;
   min-width: 0;
-  padding: 6px 0;
-  --lane-pad-l: 12px;
+  padding: 0;
+  --lane-pad-l: 0px;
+  /* Room inside the scroller for what sticks out of a card: badges, chips, the ×, "Blocking this". */
+  --lane-room-t: 10px;
+  --lane-room-b: 12px;
+  --lane-room-x: 14px;
 }
 .combat-lane.has-label {
   --lane-pad-l: 104px;
@@ -27,14 +38,88 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 .lane-cols {
-  /* The lane's card width: the same formula in both lanes (cards.css estimates it for the rows). */
-  --cw: clamp(38px, min(calc((100cqw - var(--lane-pad-l) - 12px - 10px * var(--lane-n, 1)) / max(var(--lane-w, 1), 1)), 22cqh), 112px);
+  /* The lane's card width: the same formula in both lanes (cards.css estimates it for the rows). Below the
+     smallest readable width the row scrolls instead of shrinking further. */
+  --cw: clamp(48px, min(calc((100cqw - var(--lane-pad-l) - 2 * var(--lane-room-x) - 10px * var(--lane-n, 1)) / max(var(--lane-w, 1), 1)), 22cqh), 112px);
   --ch: calc(var(--cw) * 88 / 63);
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  gap: 10px;
+  margin-left: var(--lane-pad-l);
+  padding: var(--lane-room-t) var(--lane-room-x) var(--lane-room-b);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.lane-cols::-webkit-scrollbar {
+  display: none;
+}
+/* Centred while it fits; from the start when it scrolls (centring an overflowing row would hide its start). */
+.lane-col:first-child {
+  margin-left: auto;
+}
+.lane-col:last-child {
+  margin-right: auto;
+}
+/* A lane that scrolls keeps a gutter at each end for its chips (never over a card), the same whatever the
+   scroll, so the row does not jump while it moves. With a target label the left chip shares its place. */
+.combat-lane[data-lane-scrolls] .lane-cols {
+  margin-left: calc(var(--lane-pad-l) + var(--lane-more-w));
+  margin-right: var(--lane-more-w);
+}
+.combat-lane.has-label[data-lane-scrolls] .lane-cols {
+  margin-left: var(--lane-pad-l);
+}
+.combat-lane.has-label .lane-more-left {
+  left: 6px;
+  top: 74%;
+}
+.combat-lane[data-lane-more~='left'] .lane-target {
+  top: 28%;
+}
+/* The edge that hides cards fades out. */
+.combat-lane[data-lane-more~='right'] .lane-cols {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent);
+}
+.combat-lane[data-lane-more~='left'] .lane-cols {
+  mask-image: linear-gradient(90deg, transparent, #000 36px);
+}
+.combat-lane[data-lane-more~='left'][data-lane-more~='right'] .lane-cols {
+  mask-image: linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 36px), transparent);
+}
+/* "+3 ›": how many cards that edge hides; a tap scrolls to them. */
+.lane-more {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 9;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   justify-content: center;
-  gap: 6px 10px;
-  padding: 0 12px 0 var(--lane-pad-l);
+  width: calc(var(--lane-more-w) - 6px);
+  min-height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  background: rgba(10, 11, 14, 0.82);
+  color: var(--accent-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+.lane-more:hover,
+.lane-more:focus-visible {
+  background: color-mix(in srgb, var(--accent) 30%, #0a0b0e);
+}
+.lane-more-right {
+  right: 3px;
+}
+.lane-more-left {
+  left: calc(var(--lane-pad-l) + 3px);
 }
 .lane-col {
   flex: none;
@@ -185,17 +270,35 @@
   opacity: 0.5;
 }
 
+/* The narrow board (phones and tablets upright) reserves the lane's height from its widest card
+   (play.css --lane-cw-max): the lane's cards never grow past it. */
+@media (max-width: 1023px) and (orientation: portrait) {
+  .play-phone-main .lane-cols {
+    --cw: clamp(44px, calc((100cqw - var(--lane-pad-l) - 2 * var(--lane-room-x) - 8px * var(--lane-n, 1)) / max(var(--lane-w, 1), 1)), var(--lane-cw-max, 64px));
+  }
+}
+
 @media (max-width: 560px) {
-  /* Phones: a thin band; blocks still read by position. */
+  /* Phones: a thin band; blocks still read by position; past five or so cards it scrolls. */
   .combat-lane {
-    padding: 4px 0;
+    --lane-room-x: 12px;
+    --lane-more-w: 42px;
   }
   .combat-lane.has-label {
     --lane-pad-l: 58px;
   }
   .lane-cols {
-    --cw: clamp(34px, calc((100cqw - var(--lane-pad-l) - 12px - 8px * var(--lane-n, 1)) / max(var(--lane-w, 1), 1)), 50px);
-    gap: 4px 8px;
+    --cw: clamp(44px, calc((100cqw - var(--lane-pad-l) - 2 * var(--lane-room-x) - 8px * var(--lane-n, 1)) / max(var(--lane-w, 1), 1)), var(--lane-cw-max, 50px));
+    gap: 8px;
+  }
+  .combat-lane .tile.is-pair-current .tile-slot::after {
+    font-size: 9px;
+    letter-spacing: 0.02em;
+    padding: 1px 5px;
+  }
+  .lane-more {
+    min-height: 26px;
+    font-size: 11px;
   }
   .lane-target {
     max-width: 50px;

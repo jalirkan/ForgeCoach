@@ -71,6 +71,14 @@ export interface InputView {
    * the only controls), or either.
    */
   clickWhat: 'card' | 'player' | 'card or player';
+  /**
+   * The click is on a card in your own hand and nowhere else: a prompt that
+   * names your hand and lists no card (the London mulligan's "Return 1 card(s)
+   * to the bottom of your library", "…from your hand"). Forge 2.0.14 sends
+   * these with no selection set and both players unlisted, so without this the
+   * board would outline the portraits and the battlefield instead of the hand.
+   */
+  fromHand?: boolean;
   /** The attacker named by a block prompt ("Select creatures to block X (12)"). */
   blockingAttackerId: number | null;
 }
@@ -425,6 +433,32 @@ function describeInputRaw(
     };
   }
 
+  // A pick from your hand that the engine does not list (Forge's InputSelectCardsFromList over the hand:
+  // the London mulligan's bottom, "…from your hand"): the hand is the control, never a portrait.
+  const fromHand = !selecting && !ok.enabled && HAND_PROMPT.test(p);
+  // Forge counts down what is left to pick ("Return 0 card(s)…" once all are picked, OK on): a pick
+  // stays a hand pick until it is confirmed, and a tap on a picked card takes it back.
+  const bottom = !selecting ? /^Return (\d+) card(?:\(s\)|s)? to the bottom of your library/im.exec(p) : null;
+  if (bottom) {
+    const n = Number(bottom[1]);
+    const auto = cancel.enabled && /^auto$/i.test(cancel.label.trim());
+    const done = n === 0 && ok.enabled;
+    return {
+      ...v,
+      mode: 'target',
+      title: done ? 'Put it on the bottom' : `Put ${n === 1 ? 'a card' : `${n} cards`} on the bottom`,
+      detail: done
+        ? 'Confirm your pick for the bottom of your library, or tap a picked card to take it back.'
+        : `Tap ${n === 1 ? 'a card' : `${n} cards`} in your hand to put on the bottom of your library.` + (auto ? ' Auto lets the engine pick.' : ''),
+      ok: btn(ok, done ? 'confirm' : null),
+      cancel: btn(cancel, auto ? 'engine picks' : null),
+      needClick: !ok.enabled,
+      clickWhat: 'card',
+      fromHand: true,
+      primary: v.primary,
+    };
+  }
+
   if (selecting || !ok.enabled) {
     const n = input.selectable.max;
     const cardPick = input.selectable.mode === 'cards' && input.selectable.cardIds.length > 0;
@@ -440,8 +474,9 @@ function describeInputRaw(
     const ask = dash ? dash[2]! : lines.length > 1 ? lines[lines.length - 1]! : lines[0] ?? 'Make a choice';
     // Nothing listed: the prompt says whether a player is wanted ("Select target player", "target opponent").
     // M66 decides when the frame says (a list: players and/or cards); else the prompt's words.
-    const clickWhat: InputView['clickWhat'] =
-      players !== null && selecting
+    const clickWhat: InputView['clickWhat'] = fromHand
+      ? 'card'
+      : players !== null && selecting
         ? onlyPlayers
           ? 'player'
           : playerPick
@@ -452,7 +487,9 @@ function describeInputRaw(
           : selecting
             ? 'card'
             : 'card or player';
-    const how = selecting
+    const how = fromHand
+      ? 'Tap a card in your hand to choose it.'
+      : selecting
       ? `Tap ${what} of the highlighted ${onlyPlayers ? 'players' : clickWhat === 'card or player' ? 'cards or players' : 'cards'}.`
       : clickWhat === 'player'
         ? 'Tap a player’s portrait (it glows) to choose them.'
@@ -464,6 +501,7 @@ function describeInputRaw(
       detail: source ? `${source} — ${how.charAt(0).toLowerCase()}${how.slice(1)}` : how,
       needClick: !ok.enabled,
       clickWhat,
+      fromHand,
       primary: v.primary,
     };
   }
@@ -596,6 +634,8 @@ export function cardRole(card: AnyCard, ctx: ClickContext): CardRole {
       if (input.selectable.mode === 'cards' && input.selectable.cardIds.length > 0) return null;
       // "Select target player": only the portraits take the click; a glowing board would hide them.
       if (view.clickWhat === 'player') return null;
+      // A pick from your hand the engine does not list: your hand cards, nothing else.
+      if (view.fromHand) return mine && zone === 'hand' ? 'act' : null;
       if (zone === 'battlefield' || (mine && zone === 'hand')) return view.needClick ? 'act' : mine ? 'act' : null;
       return null;
   }
@@ -642,5 +682,6 @@ export function playerClickable(ctx: ClickContext, playerId?: number): boolean {
     return playerId === undefined ? listed.length > 0 : listed.includes(playerId);
   }
   if (input.selectable.mode === 'players') return true;
+  if (view.fromHand) return false;
   return view.mode === 'target' && view.needClick && input.selectable.cardIds.length === 0;
 }

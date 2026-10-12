@@ -16,12 +16,20 @@
  * a click sends changes here). The only control of the lane's own is the ×
  * on a declared blocker, which asks the play screen to take the block off
  * through the engine's clicks (`PlayInteraction.unblock`).
+ *
+ * A lane is one row: past its cards' smallest readable width it scrolls
+ * sideways instead of wrapping (lane.css). The attack lane and the block lane
+ * scroll together, so a blocker stays in its attacker's column; the edge that
+ * hides cards fades, and a chip there ("+3 ›") says how many and scrolls to
+ * them. In a block declaration the attacker your next click goes to is
+ * scrolled into view.
  */
-import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Card } from '../../protocol.ts';
 import { usePlay } from '../cardContext.ts';
 import { CardTile, displayName, type TileSide } from '../CardTile.tsx';
 import { cx } from '../util.ts';
+import { edgeCounts } from '../boardFit.ts';
 import './lane.css';
 import type { CombatLayout, LaneColumn, LaneTarget } from './combatLayout.ts';
 
@@ -44,8 +52,77 @@ function TargetChip({ target }: { target: LaneTarget }) {
   );
 }
 
+/**
+ * The lane's sideways scroll: the counts of columns past each edge, the other lane kept at the same
+ * scroll, and the current attacker brought into view.
+ */
+function useLaneScroll(currentId: number | null) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState({ scrolls: false, before: 0, after: 0 });
+  const measure = useCallback(() => {
+    const el = ref.current;
+    const lane = el?.parentElement;
+    if (!el || !lane) return;
+    const box = el.getBoundingClientRect();
+    const st = getComputedStyle(el);
+    // The gutters a scrolling lane keeps for its chips: a row that would fit without them does not scroll.
+    const gutters = parseFloat(st.marginLeft || '0') + parseFloat(st.marginRight || '0') - (parseFloat(getComputedStyle(lane).getPropertyValue('--lane-pad-l')) || 0);
+    const scrolls = el.scrollWidth > el.clientWidth + 1 + (lane.hasAttribute('data-lane-scrolls') ? gutters : 0);
+    const viewLeft = box.left + parseFloat(st.paddingLeft || '0') * 0.5;
+    const viewRight = box.right - parseFloat(st.paddingRight || '0') * 0.5;
+    const cols = [...el.querySelectorAll<HTMLElement>(':scope > [data-lane-col]')].map((c) => c.getBoundingClientRect());
+    const next = { scrolls, ...(scrolls ? edgeCounts(viewLeft, viewRight, cols) : { before: 0, after: 0 }) };
+    setMore((m) => (m.scrolls === next.scrolls && m.before === next.before && m.after === next.after ? m : next));
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // One gesture moves both lanes: their columns are the same list at the same widths.
+    const onScroll = () => {
+      measure();
+      const board = el.closest('.board') ?? el.ownerDocument;
+      for (const other of board.querySelectorAll<HTMLElement>('[data-combat-lane] .lane-cols')) {
+        if (other !== el && Math.abs(other.scrollLeft - el.scrollLeft) > 0.5) other.scrollLeft = el.scrollLeft;
+      }
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    ro?.observe(el);
+    // A lane that appears (the first block) takes the scroll the other lane already has.
+    const board = el.closest('.board') ?? el.ownerDocument;
+    const peer = [...board.querySelectorAll<HTMLElement>('[data-combat-lane] .lane-cols')].find((o) => o !== el);
+    if (peer && peer.scrollLeft > 0) el.scrollLeft = peer.scrollLeft;
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      ro?.disconnect();
+    };
+  }, [measure]);
+  // The columns change with every state (a block, a fan): measure again after each render.
+  useEffect(measure);
+  // The attacker a block click goes to: into view, sideways only (never a jump of the page).
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || currentId === null) return;
+    const col = el.querySelector<HTMLElement>(`:scope > [data-lane-col="${currentId}"]`);
+    if (!col) return;
+    const box = el.getBoundingClientRect();
+    const r = col.getBoundingClientRect();
+    const pad = 24; // clear of the faded edge
+    if (r.left < box.left + pad) el.scrollLeft -= box.left + pad - r.left;
+    else if (r.right > box.right - pad) el.scrollLeft += r.right - (box.right - pad);
+  }, [currentId]);
+  const page = (dir: 1 | -1) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(60, el.clientWidth * 0.8), behavior: 'smooth' });
+  };
+  return { ref, more, page };
+}
+
 export function CombatLane({ layout, kind, playerId, side, byId, attachmentsOf }: CombatLaneProps) {
   const play = usePlay();
+  const scroll = useLaneScroll(layout.columns.find((c) => c.current)?.attackerId ?? null);
+  const edges = [scroll.more.before > 0 && 'left', scroll.more.after > 0 && 'right'].filter(Boolean).join(' ');
   const att = (c: Card) => attachmentsOf?.(c) ?? [];
   const count =
     kind === 'attack'
@@ -56,6 +133,8 @@ export function CombatLane({ layout, kind, playerId, side, byId, attachmentsOf }
     <div
       className={cx('combat-lane', `is-${kind}`, kind === 'attack' && layout.upright && 'is-upright', layout.laneTarget && 'has-label')}
       data-combat-lane={kind}
+      data-lane-scrolls={scroll.more.scrolls || undefined}
+      data-lane-more={edges || undefined}
       style={{ '--lane-w': layout.weight.toFixed(2), '--lane-n': layout.columns.length } as CSSProperties}
     >
       {kind === 'attack' && layout.laneTarget && (
@@ -63,13 +142,23 @@ export function CombatLane({ layout, kind, playerId, side, byId, attachmentsOf }
           <span aria-hidden="true">→</span> {layout.laneTarget.label}
         </span>
       )}
-      <div className="lane-cols" role="group" aria-label={label}>
+      <div ref={scroll.ref} className="lane-cols" role="group" aria-label={label}>
         {layout.columns.map((col) => (
           <div key={col.attackerId} className={cx('lane-col', col.current && 'is-current')} data-lane-col={col.attackerId} style={{ '--col-w': col.weight } as CSSProperties}>
             {kind === 'attack' ? <AttackSlot col={col} playerId={playerId} side={side} byId={byId} att={att} /> : <BlockSlot col={col} playerId={playerId} side={side} byId={byId} att={att} unblock={play?.unblock} />}
           </div>
         ))}
       </div>
+      {scroll.more.before > 0 && (
+        <button type="button" className="lane-more lane-more-left" onClick={() => scroll.page(-1)} aria-label={`${scroll.more.before} more to the left`} title={`${scroll.more.before} more to the left`}>
+          <span aria-hidden="true">‹</span> +{scroll.more.before}
+        </button>
+      )}
+      {scroll.more.after > 0 && (
+        <button type="button" className="lane-more lane-more-right" onClick={() => scroll.page(1)} aria-label={`${scroll.more.after} more to the right`} title={`${scroll.more.after} more to the right`}>
+          +{scroll.more.after} <span aria-hidden="true">›</span>
+        </button>
+      )}
     </div>
   );
 }

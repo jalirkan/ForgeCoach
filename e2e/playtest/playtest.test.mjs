@@ -176,6 +176,57 @@ describe('the monkey, on J109\'s two hangs that were not the board\'s', () => {
   });
 });
 
+describe('the monkey, on the London bottom as Forge sends it', () => {
+  // A real table (J109, friend, seq 15): "Return 1 card(s) to the bottom of your library", no card listed,
+  // OK off, Cancel "Auto". The monkey looked only off the hand: it clicked portraits (old board), or found
+  // nothing (M66's playerIds []) and called the bottom unreachable. The hand is the control.
+  const bottom = (highlighted = []) =>
+    input('Return 1 card(s) to the bottom of your library', {
+      buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Auto', enabled: true }, focus: 'ok' },
+      selectable: { cardIds: [], min: 0, max: 0, mode: 'none', playerIds: [] },
+      highlighted,
+    });
+  const atBottom = () => {
+    const t = new SeatTap('friend');
+    t.receive(frame('hello_ok', 1, { gameId: 'g', you: 1, players: [] }));
+    t.receive(frame('table', 16, { you: 1, seats: [{ seat: 0, deciding: false }, { seat: 1, deciding: true }] }));
+    t.receive(frame('input', 15, bottom()));
+    return t;
+  };
+  const card = (t, id, where, mark = 'act') => ({ t, id, ids: [id], mark, vis: true, where, disabled: false });
+
+  it('clicks a card in the hand, never a portrait or a battlefield card', async () => {
+    const t = atBottom();
+    const onClick = (sel) => {
+      if (sel === '[data-pt="pt2"]') t.sentFrame(JSON.stringify({ v: 1, seq: 3, t: 1, type: 'act', body: { action: 'clickCard', cardId: 77 } }));
+      t.receive(frame('input', 18, input('Waiting for Justin...', { buttons: OFF })));
+    };
+    const { m, clicks, findings } = stubMonkey(t, { onClick });
+    const dom = { ...noControls, cards: [card('pt1', 5, 'board'), card('pt2', 77, 'hand')], players: [{ t: 'pt3', id: 0, select: true, vis: true }] };
+    await m.openTarget(dom);
+    expect(clicks).toEqual(['[data-pt="pt2"]']);
+    expect(findings).toEqual([]);
+    expect(m.stats.rare['london-bottom']).toBe(1);
+  });
+
+  it('prefers a hand card not yet picked', async () => {
+    const t = atBottom();
+    t.receive(frame('input', 17, bottom([77])));
+    const onClick = () => t.receive(frame('input', 18, input('Waiting for Justin...', { buttons: OFF })));
+    const { m, clicks } = stubMonkey(t, { onClick });
+    await m.openTarget({ ...noControls, cards: [card('pt1', 77, 'hand'), card('pt2', 78, 'hand')] });
+    expect(clicks).toEqual(['[data-pt="pt2"]']);
+  });
+
+  it('a board that offers no hand card for it is a finding, even with portraits lit', async () => {
+    const t = atBottom();
+    const { m, findings } = stubMonkey(t);
+    await m.openTarget({ ...noControls, cards: [card('pt1', 5, 'board')], players: [{ t: 'pt3', id: 0, select: true, vis: true }] });
+    expect(findings.map((f) => f.kind)).toContain('unreachable-option');
+    expect(findings[0].what).toMatch(/a pick from your hand/);
+  });
+});
+
 describe('a click Playwright gave up on', () => {
   it('keeps the reason from the call log', () => {
     const msg = 'locator.click: Timeout 6000ms exceeded.\nCall log:\n\x1b[2m  - attempting click action\x1b[22m\n\x1b[2m      - <div class="ask-layer">…</div> intercepts pointer events\x1b[22m\n\x1b[2m    - retrying click action\x1b[22m';
@@ -216,6 +267,49 @@ describe('hidden information in the page', () => {
     const leaks = await hiddenLeaks(page(text), new Set(['Counterspell', 'Lightning Bolt', 'Forest', 'Opt', 'Brainstorm']), new Set(['Lightning Bolt']));
     expect(leaks).toHaveLength(1);
     expect(leaks[0]).toMatch(/^"Counterspell" is in the page/);
+  });
+
+  // The common-sense pass's one false leak: the opponent's spell went on the stack (public) while the
+  // check ran, so the page showed it before the checker counted it as shown. Judged by the page's own frame.
+  const opponentCasts = (t, seq, name) =>
+    t.receive(frame('state', seq, { gameId: 'g', turn: 4, phase: 'MAIN1', players: [], stack: [{ id: 50, text: `${name} - deals 3 damage` }], stackCards: [{ id: 50, name, controller: 1, zone: 'stack' }] }));
+  const atTurn4 = () => {
+    const t = new SeatTap('solo');
+    t.receive(frame('hello_ok', 1, { gameId: 'g', you: 0, players: [] }));
+    t.receive(frame('state', 11, { gameId: 'g', turn: 4, phase: 'MAIN1', players: [], stack: [] }));
+    return t;
+  };
+  const hidden = () => new Set(['Lightning Bolt', 'Counterspell']); // the opponent's deck, never shown on its own
+  const board = (t, text, seq, during = () => {}) => ({
+    evaluate: async () => {
+      during();
+      return { text, seq };
+    },
+  });
+
+  it('a public stack spell the page drew a frame before the tap heard of it is no leak', async () => {
+    const t = atTurn4();
+    const p = board(t, 'Stack 1 · Lightning Bolt — Forge AI', 12);
+    setTimeout(() => opponentCasts(t, 12, 'Lightning Bolt'), 80);
+    expect(await hiddenLeaks(p, hidden, () => t.seen, { tap: t, waitMs: 2000 })).toEqual([]);
+  });
+
+  it('nor one cast while the page was being read', async () => {
+    const t = atTurn4();
+    const p = board(t, 'Stack 1 · Lightning Bolt — Forge AI', 12, () => opponentCasts(t, 12, 'Lightning Bolt'));
+    expect(await hiddenLeaks(p, hidden, () => t.seen, { tap: t })).toEqual([]);
+  });
+
+  it('a name no frame up to the page’s own ever showed is still a leak, public spell beside it or not', async () => {
+    const t = atTurn4();
+    const p = board(t, 'Stack 1 · Lightning Bolt — Forge AI · Opponent hand: Counterspell', 12, () => opponentCasts(t, 12, 'Lightning Bolt'));
+    const leaks = await hiddenLeaks(p, hidden, () => t.seen, { tap: t });
+    expect(leaks).toHaveLength(1);
+    expect(leaks[0]).toMatch(/^"Counterspell" is in the page/);
+    // And a page ahead of a tap that never catches up is judged by what the tap has, after the wait.
+    const t2 = atTurn4();
+    const late = await hiddenLeaks(board(t2, 'Lightning Bolt', 13), hidden, () => t2.seen, { tap: t2, waitMs: 100 });
+    expect(late.map((l) => l.slice(0, 16))).toEqual(['"Lightning Bolt"']);
   });
 });
 

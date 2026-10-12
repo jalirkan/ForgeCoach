@@ -258,6 +258,12 @@ describe('connectSeat — connection', () => {
     expect(s.state?.turn).toBe(3);
     expect(s.input?.prompt).toBe('newer');
     expect(s.log!.frames.filter((f) => f.type === 'state')).toHaveLength(2);
+    // The board's data-frame-seq: the highest frame seq taken this game, whatever its type or order.
+    expect(s.frameSeq).toBe(6);
+    h.sock().msg({ v: 1, seq: 7, t: 7, type: 'table', body: { you: 0, seats: [] } });
+    h.sock().msg({ v: 1, seq: 0, t: 8, type: 'pong', body: {} });
+    h.flush();
+    expect(h.session.snapshot().frameSeq).toBe(7);
   });
 
   it('sends keepalive pings while open', () => {

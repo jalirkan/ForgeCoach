@@ -56,6 +56,7 @@ export class SeatTap {
     this.answered = new Set();
     this.stateSeq = 0;
     this.inputSeq = 0;
+    this.frameSeq = 0; // the highest seq of this game's frames (the board's `data-frame-seq` is its own count of the same)
     this.waiters = [];
   }
 
@@ -104,6 +105,7 @@ export class SeatTap {
           this.over = null;
           this.stateSeq = 0;
           this.inputSeq = 0;
+          this.frameSeq = 0;
           this.answered.clear();
         }
         this.hello = f.body;
@@ -137,6 +139,7 @@ export class SeatTap {
     }
     f.game = this.gameId;
     if (f.type !== 'ping' && f.type !== 'pong') {
+      if (f.seq > this.frameSeq) this.frameSeq = f.seq;
       this.frames.push(f);
       namesIn(f.body, this.seen, this.typeWords);
     }

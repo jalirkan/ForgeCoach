@@ -165,17 +165,32 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * Hidden names in the DOM. `hidden` is the set of names the other seat holds
  * where this one cannot see them; `allowed` what this seat may name anyway
  * (cards it was shown, its own deck). Text and attribute values both count.
+ *
+ * Both are judged against the frames the page had drawn when it was read, not
+ * a moment before: pass them as functions and the seat's `tap`, and the page
+ * is read first (with the board's `data-frame-seq`, the last frame it took),
+ * the tap is let catch up to that frame (up to `waitMs`), and only then are
+ * the two sets taken. Taken before the read, a spell the opponent cast while
+ * the page was read was on the stack in the DOM and not yet "shown" to the
+ * checker (the common-sense pass's one false leak). A name that no frame up
+ * to the page's own ever showed this seat is still a leak.
  */
-export async function hiddenLeaks(page, hidden, allowed) {
-  // Basic land names are also land types ("Savannah — Land — Forest"): never evidence of a leak.
-  const names = [...hidden].filter((n) => n && n.length >= 4 && !allowed.has(n) && !BASICS.has(n));
-  if (!names.length) return [];
-  const html = await page.evaluate(() => {
+export async function hiddenLeaks(page, hidden, allowed, { tap = null, waitMs = 3000 } = {}) {
+  const now = (x) => (typeof x === 'function' ? x() : x);
+  const read = await page.evaluate(() => {
     const parts = [document.body.innerText];
     for (const el of document.querySelectorAll('*')) for (const a of el.attributes) if (a.value && a.name !== 'class' && a.name !== 'style' && !a.name.startsWith('data-pt')) parts.push(a.value);
     for (const t of document.querySelectorAll('title')) parts.push(t.textContent);
-    return parts.join('\n');
+    const seq = Number(document.querySelector('.game.play')?.getAttribute('data-frame-seq') ?? NaN);
+    return { text: parts.join('\n'), seq };
   });
+  const html = typeof read === 'string' ? read : read.text;
+  const seq = typeof read === 'string' ? NaN : read.seq;
+  if (tap && Number.isFinite(seq) && seq > 0) await tap.until(() => tap.frameSeq >= seq, waitMs);
+  const shown = now(allowed);
+  // Basic land names are also land types ("Savannah — Land — Forest"): never evidence of a leak.
+  const names = [...now(hidden)].filter((n) => n && n.length >= 4 && !shown.has(n) && !BASICS.has(n));
+  if (!names.length) return [];
   const out = [];
   for (const n of names) {
     const re = new RegExp(`(?<![A-Za-z])${esc(n)}(?![A-Za-z])`);

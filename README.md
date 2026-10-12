@@ -1055,7 +1055,8 @@ whose prompts and card shapes are copied from recorded Forge games. It needs
 no mtg-table, no Forge and no network (fonts, Scryfall and the coach helper
 are stubbed). Scenarios:
 
-- a whole game: mulligan and the London bottom pick, a land, a creature paid
+- a whole game: mulligan and the London bottom pick (as Forge sends it: no
+  card listed, so your hand is the control and no portrait lights), a land, a creature paid
   with Auto, passing to resolve it, attacking, passing on the AI's spell,
   blocking, Shock's target question, the result and the next game — checked
   against the exact acts the engine received;
@@ -1066,7 +1067,13 @@ are stubbed). Scenarios:
   the result card) and mid-game (the board follows the new game);
 - live watch on `/observe`: the page opens no `/ws` socket and sends nothing,
   and a `/ws` live URL is refused before any socket opens;
-- the coach's “Copy prompt” with no helper and no key.
+- the coach's “Copy prompt” with no helper and no key;
+- a wide combat (scene `swarm`: eight attackers, eight blockers) on a phone
+  and a desktop, and a crowded table (scene `crowd`: ten creatures a side, a
+  hand of twelve, then ten attackers) on a phone, a tablet and a desktop:
+  every card, chip and × can be brought into view whole and tapped, a row or
+  lane that scrolls sideways says so, and the two combat lanes keep their
+  columns in line (`LANE_SHOT=<png>` saves the phone combat).
 
 ```bash
 npm run test:e2e                   # builds, serves dist/ on a Vite port, runs every scenario
@@ -1114,7 +1121,8 @@ A finding is one of these:
 - a stack panel or combat badges that disagree with the frames;
 - a Game Log that loses turns, or a seat that does not come back, after a
   mid-game reload;
-- a card the other seat holds hidden appearing in the page;
+- a card the other seat holds hidden appearing in the page (judged against the
+  frames the page had drawn when it was read: the board's `data-frame-seq`);
 - an engine id in what the player reads (`engine-id`: "Shock (4)" or
   "Construct Token #297" naming a card the state shows, "[[…]]", "(Exiled=0)");
 - a game past the turn cap;
