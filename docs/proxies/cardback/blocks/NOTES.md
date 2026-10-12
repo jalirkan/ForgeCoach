@@ -11,7 +11,7 @@ The labels on the review sheets are on the sheets only.
 | File | What it is |
 |---|---|
 | `tumbling-blocks-green.png`, `-blue.png`, `-garnet.png` | The finals: 1632×2220, 600 dpi, RGB, bleed to the edge |
-| `EMBLEM-OPTIONS.jpg` | Four treatments of the gold emblem, side by side, with the one I chose (D) |
+| `EMBLEM-OPTIONS.jpg` | The earlier emblem (D) next to the chosen plate, each as a 1:1 crop at 600 dpi with a thumbnail |
 | `CONTACT-SHEET.jpg` | The three finals side by side, and below them a hand of seven alternating backs |
 | `FANNED-HAND.jpg` | That hand at a larger size |
 | `CUT-SAFE.jpg` | The three finals with the cut line (red, 75 px in) and the safe line (blue, 135 px in) |
@@ -34,17 +34,10 @@ analytically from three numbers (`tools/lattice.py`):
   does not do so about a cube's centre: there the illusion flips, and a cube seen
   from above becomes one seen from below. So the 180° symmetry the back needs
   (the card must look the same from both seats) puts the centre on a vertex.
-- **The gold hexagon is the lattice's own hexagon.** Along any lattice line, the
-  edges run straight for at most 2S before the line crosses a rhombus. So exactly
-  one regular hexagon in the pattern has all six sides lying on lattice edges:
-  the hexagon of side 2S centred on that vertex. It is 395 × 456 px (16.7 ×
-  19.3 mm) and holds 12 whole rhombi, which read as three cubes stacked in a
-  corner. That hexagon is the emblem. Its outline is the joints between pieces,
-  so it "overlays the cubes" exactly, because it is made of them.
-- **No cluster of whole cubes can be 180° symmetric.** Turning the card swaps
-  every cube for an inverted one. So every emblem option is a union of whole
-  rhombi, chosen by testing each rhombus centre against a centrally symmetric
-  region. `check.py` confirms that each one maps onto itself.
+- **The emblem is a gold plate laid over the lattice** (the owner's choice, made
+  in a hand-tuning session on 2026-10-12; details below). The plate is centred
+  on O, and the cubes inside it are the same lattice, so they line up with the
+  cubes outside.
 - **The brass frame lies on lattice lines as well.** Its thick line runs at
   x = 816 ± 3 cube widths (223.6 px from the bleed edge), along the vertical
   joints. It also runs at y = 1110 ± 5 rows (255 px), along the long diagonals of
@@ -56,34 +49,62 @@ analytically from three numbers (`tools/lattice.py`):
   stopped at the cut line would show every wander, so there isn't one: the
   pattern runs out through the bleed.
 
-## The emblem: four options, and my pick
+## The emblem: the plate
 
-All four options are in `EMBLEM-OPTIONS.jpg`, each shown as a full card and as a
-centre zoom (green). All four sit on the same lattice.
+The owner wanted the plate from the original candidate
+(`direction/tumbling-blocks-1.png`), not a cluster of gilded lattice cubes. They
+also wanted the cubes inside it aligned with the cubes outside, and the cube
+corners touching the rim. The coordinator tuned it with the owner and passed it
+on as reference code. It is ported into `tools/render.py` as treatment `plate`,
+which is the default in `params.json`.
 
-- **A. Solid gold hexagon.** The 12-rhombus hexagon, inlaid flat in brushed
-  brass, keeping the three tones of the cubes (light, mid and dark gold). It is
-  clean and exact, and the smallest of the four.
-- **B. Brass outline, wood kept.** The same hexagon with brass stringing in
-  every joint, and the woods left as they are. It is delicate, and from across
-  the table it reads as a thin gold line, not as a gold emblem.
-- **C. Gold hexagram, raised.** A bigger cluster of 30 rhombi (every rhombus
-  within 3S of the centre), which makes a six-pointed star of cubes, bevelled.
-  It is bold, but it reads as a star rather than the hexagon the owner asked for.
-- **D. Raised hexagon in a brass star (chosen).** Hexagon A, slightly raised,
-  set inside the star of C, whose joints are drawn in brass stringing over the
-  wood. The raise is a bright chamfer just inside every gold edge, a faint dome
-  and a soft shadow on the wood around it. The shadow has no light direction,
-  so the symmetry holds.
+**The plate:**
 
-  This does what the owner described. The gold hexagon fits the cubes exactly,
-  and the brass star carries it out over the neighbouring cubes ("multiple
-  cubes"), still on lattice edges. That gives it the presence of the candidate's
-  emblem without cutting through any piece.
+- **Shape:** a flat-top regular hexagon (points left and right) centred on O.
+- **Size:** its outer apothem is 2S + rim + joint tip = 228 + 14 + 3.4641 =
+  **245.464 px**, a circumradius of 283.4 px (24.0 mm point to point).
+- **Joint tip:** a joint has a half-width of 3.0 px. Where two joints meet at a
+  120° corner, the dark tip reaches 3.0 / sin 60° = 3.464 px past the corner.
+- **Why this size:** the central column's top cube corner sits 2S above O, and by
+  symmetry five more corners sit 2S from O. Each of those corners' dark joint
+  tip then touches the rim's inner edge exactly: the gap is 0.000 px, recorded in
+  `check.json`. The owner checked this at 5×: touching, not inside, no gap.
 
-  To switch to another option, set `cluster` and `treatment` in
-  `tools/render.py` (`hex2`/`ring` with `solid`/`outline`/`raised`/`haloed`) and
-  re-run it.
+**Inside the plate:**
+
+- **The lattice:** the same lattice, aligned, at the same scale and with no shift.
+- **Golds:** three golds sampled from the original candidate's plate by k-means,
+  frozen in `PARAMS`. Light (190, 156, 91) is on the top face, mid (143, 113, 61)
+  on the left and dark (115, 81, 42) on the right.
+- **Grain:** a faint symmetric mottle at 0.04 amplitude.
+- **Joints:** dark, half-width 3.0 px, darkening by 0.7.
+
+**The rim:**
+
+- A 14 px band in light × 1.05, bevelled by
+  1 + 0.14·(1−t)² − 0.08·t² (t = 0 at the outer edge, 1 at the inner).
+- A 2 px dark line on the plate's outer edge (darkening by 0.7).
+- **No line on the rim's inner edge,** because that line is what made the
+  corners look swallowed.
+- A soft shadow on the wood outside: 0.16 · exp(−d/18).
+
+**What stays as it was:** the brass-strung star of 30 rhombi around it, on the
+sheets the owner chose from (`plate.halo`), and the brass frame.
+
+**Same on all three backs:** the plate's golds are identical on all three; only
+the wood's hue changes.
+
+**The port against the reference build:** I compared it with the coordinator's
+`build()` for variant K1. The interior and the rim match to ±1 in 8-bit. The only
+difference is that the port antialiases the plate's edge and the rim's inner
+edge where the reference used hard pixel masks. The positions are the same, and
+the edge just loses its staircase.
+
+The earlier pick, D, is beside the plate in `EMBLEM-OPTIONS.jpg`. D was 12
+lattice rhombi gilded in place: the one regular hexagon whose sides are joints,
+side 2S. It sat inside the star of 30 rhombi drawn in brass. The earlier options
+A–C (solid hexagon, brass outline, gold hexagram) are still in `render.py`
+(`solid`, `outline`, `raised`, `haloed`).
 
 ## Colour: one lightness map, three hues
 
@@ -91,7 +112,8 @@ Every face is set in OKLab. **The lightness of every pixel is computed once and
 shared by all three colourways.** That covers the grain, the joints, the brass,
 the gold, the per-piece tone and tilt, the chamfer and the shadow. A colourway
 only sets the hue and chroma of the mid face. The pale holly, the ebony and the
-gold are the same in all three.
+plate are the same in all three. The plate is laid over in sRGB like the
+reference, so its edge line and shadow multiply the wood beneath.
 
 | Face | OKLCh (L, C, h) | Mean sRGB on the final |
 |---|---|---|
@@ -100,7 +122,7 @@ gold are the same in all three.
 | mid, blue | 0.440, 0.034, 260 | 72, 83, 101 |
 | mid, garnet | 0.440, 0.064, 30 | 113, 69, 61 |
 | dark (ebony) | 0.255, 0.012, 62 | 39, 34, 29 |
-| gold top / left / right | 0.70 / 0.565 / 0.44 | 186,151,85 / 142,107,49 / 109,78,34 |
+| plate gold top / left / right | sRGB, from the candidate | 189,155,90 / 144,114,62 / 116,81,42 |
 
 The green's mid face is the measured median of `direction/tumbling-blocks-1.png`
 (L 0.439, C 0.020, h 173). The holly and the ebony match that candidate too.
@@ -141,39 +163,44 @@ piece, away from the joints, and added to the shared lightness map.
 - **180° symmetry:** each final equals its own 180° rotation exactly, with a
   maximum difference of 0. The renderer already produces this before
   `symmetrise()` enforces it: 0 there too.
+- **The plate:** the outer apothem is 245.4641 px and the rim's inner edge is at
+  231.4641 px. The cube corners sit at 228 px and their joint tips at
+  231.4641 px, so the gap from tip to rim is 0.000 px.
 - **Congruence (lightness):** across each pair of finals, OKLab L differs by at
-  most 0.0037 (mean 0.00026). That is under one 8-bit step (0.0039), so the
-  differences are rounding only.
+  most 0.0037 (green–blue), 0.0044 (green–garnet) and 0.0037 (blue–garnet), with
+  a mean of about 0.00025. That is within about one 8-bit step. The plate's
+  sRGB-multiplied shadow and edge line over different hues add the last few
+  thousandths.
 - **Congruence (edge maps):** Canny edges on L, after a 2 px blur. Within 4.5 px
-  of a lattice edge, the three finals have about 120,700 edge pixels each.
-  - Green vs blue: 29 pixels have no partner within 1 px.
-  - Green vs garnet: 31.
-  - Blue vs garnet: 13.
+  of a lattice edge, each final has about 121,300 edge pixels.
+  - Green vs blue: 36 pixels have no partner within 1 px.
+  - Green vs garnet: 32.
+  - Blue vs garnet: 10.
 
-  That is under 0.03%: one-pixel Canny flicker from rounding. Exact-pixel XOR is
-  about 2.4%, from the same flicker. Of each final's structural edges, 84.5% lie
-  on the lattice; the rest are the strongest grain lines. In
-  `tools/edge-overlay.png` (green's edges red, blue's green, garnet's blue),
-  white is where all three agree.
+  That is under 0.03%, which is rounding flicker. Exact-pixel XOR is 2.0–2.4%,
+  from the same flicker. Of each final's structural edges, 82% lie on the
+  lattice; the rest are the plate's rim and the strongest grain lines. In
+  `tools/edge-overlay.png`, white is where all three agree.
 - **Print:**
-  - **Holly:** the pale faces have a 99.5th percentile of (221, 202, 167) and a
-    single-pixel maximum of 228, so they stay under 235.
+  - **Holly:** the pale faces (measured away from the plate) have a 99.5th
+    percentile of (221, 202, 167) and a maximum of 228.
   - **Dark areas:** the darkest 0.5% of luminance, blurred to about 0.5 mm, is
-    26.4, and the 5th percentile is 33. The darkest single pixel is 17, from a
-    lightness floor of L 0.18. Nothing is pure black.
-  - **Gold** is a mid-toned ochre brass.
-  - **No neon:** saturation × value has a 99.5th percentile of 102/255.
+    26.4, and the 5th percentile is 33.3. The darkest single pixel is 4. It sits
+    on the plate's 2 px edge line over the shaded ebony, where the line darkens
+    by 0.7 as specified. That is a hairline, not a large area.
+  - **The plate's golds** are mid-toned ochre brass.
+  - **No neon:** saturation × value has a 99.5th percentile of 101/255.
 
 ## Print notes
 
 - The art bleeds to all four edges. Nothing that matters sits outside the safe
-  line: the emblem is in the middle and the frame is 89 px or more inside.
+  line: the plate (567 px point to point) is in the middle and the frame is 89 px or more inside.
 - The holly is the brightest large area and will show grime first. It is held
   to a mean of about 191 and capped at L 0.855. The owner has accepted that.
 - The joints (3.4 px), the brass stringing (6 px) and the frame lines (8 px and
   4 px) all print as lines of at least 1.5 px at MPC's effective 300 dpi.
 - Alternation: print the deck with the three files in rotation (green, blue,
-  garnet, ...). The cube size, grid origin, emblem and frame are identical, so a
+  garnet, ...). The cube size, grid origin, plate and frame are identical, so a
   hand switches colour and nothing else.
 
 ## Regenerate
@@ -190,4 +217,6 @@ $PY sheets.py contact       # CONTACT-SHEET.jpg, FANNED-HAND.jpg, CUT-SAFE.jpg
 ```
 
 The parameters live in `lattice.py` (canvas, S, centre, clusters) and in
-`render.py`'s `PARAMS` (colours, grain, joints, frame, seeds).
+`render.py`'s `PARAMS` (colours, grain, joints, the plate, the frame, seeds).
+`render.py options <dir> hex2:haloed hex2:plate ...` renders any emblem for
+comparison.

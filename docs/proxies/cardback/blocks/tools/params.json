@@ -19,7 +19,45 @@
   996.0
  ],
  "cluster": "hex2",
- "treatment": "haloed",
+ "treatment": "plate",
+ "plate": {
+  "rim_px": 14.0,
+  "joint_half_px": 3.0,
+  "joint_dark": 0.7,
+  "golds": {
+   "light": [
+    0.7465,
+    0.61,
+    0.3553
+   ],
+   "mid": [
+    0.5622,
+    0.4432,
+    0.2398
+   ],
+   "dark": [
+    0.4524,
+    0.316,
+    0.1655
+   ]
+  },
+  "rim_tone_x_light": 1.05,
+  "bevel": [
+   0.14,
+   0.08
+  ],
+  "grain_amp": 0.04,
+  "grain_seed": 11,
+  "grain_cells": [
+   52,
+   70
+  ],
+  "edge_line_half_px": 2.0,
+  "edge_line_dark": 0.7,
+  "shadow": 0.16,
+  "shadow_px": 18.0,
+  "halo": true
+ },
  "faces_L": {
   "light": 0.77,
   "mid": 0.44,

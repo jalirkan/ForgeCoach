@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image
 
 import lattice as G
+import render
 from colour import srgb_to_oklab
 
 HERE = Path(__file__).resolve().parent
@@ -46,6 +47,15 @@ for name in G.CLUSTERS:
     rep["geometry"][f"cluster_{name}"] = {"rhombi": int(len(np.unique(np.round(lat.rcx[m] * 4) * 1e5 + np.round(lat.rcy[m] * 4)))),
                                           "symmetric_180": bool(np.array_equal(m, m[::-1, ::-1])),
                                           "px": int(m.sum())}
+apo, tip = render.plate_apothem()
+pp = render.PARAMS["plate"]
+rep["geometry"]["plate"] = {
+    "shape": "flat-top regular hexagon centred on O", "outer_apothem_px": round(apo, 4),
+    "outer_circumradius_px": round(apo * 2 / np.sqrt(3), 3), "rim_px": pp["rim_px"],
+    "rim_inner_apothem_px": round(apo - pp["rim_px"], 4), "joint_half_px": pp["joint_half_px"],
+    "joint_tip_px": round(tip, 4), "cube_corner_distance_from_O_px": 2 * G.S,
+    # the corner's dark joint tip reaches 2S + tip; the rim's inner edge is at apo - rim: their gap
+    "joint_tip_to_rim_inner_edge_gap_px": round(apo - pp["rim_px"] - (2 * G.S + tip), 6)}
 ims, arrs, Ls = {}, {}, {}
 for cw in CW:
     im, a = load(cw)
@@ -54,15 +64,16 @@ for cw in CW:
     r = {"size": list(im.size), "dpi": [round(float(v)) for v in im.info.get("dpi", (0, 0))]}
     r["rot180_max_diff"] = int(np.abs(a.astype(np.int16) - a[::-1, ::-1]).max())
     # print safety
-    gold = G.cluster("hex2", lat.rcx, lat.rcy)
+    gold = G.cluster("hex2", lat.rcx, lat.rcy)      # the faces at the plate's heart (all under the plate)
     inner = lat.edge > 5
-    light = (lat.face == 0) & ~gold & inner
+    off = np.hypot(lat.x - G.OX, lat.y - G.OY) > 330    # wood only: clear of the plate and its shadow
+    light = (lat.face == 0) & off & inner
     r["light_face_rgb_p99_5"] = [int(np.percentile(a[..., k][light], 99.5)) for k in range(3)]
     r["light_face_rgb_max"] = int(a[light].max())
     r["light_face_mean_rgb"] = [int(round(v)) for v in a[light].mean(0)]
-    r["mid_face_mean_rgb"] = [int(round(v)) for v in a[(lat.face == 1) & ~gold & inner].mean(0)]
-    r["dark_face_mean_rgb"] = [int(round(v)) for v in a[(lat.face == 2) & ~gold & inner].mean(0)]
-    r["gold_face_mean_rgb"] = [[int(round(v)) for v in a[(lat.face == f) & gold & inner].mean(0)] for f in range(3)]
+    r["mid_face_mean_rgb"] = [int(round(v)) for v in a[(lat.face == 1) & off & inner].mean(0)]
+    r["dark_face_mean_rgb"] = [int(round(v)) for v in a[(lat.face == 2) & off & inner].mean(0)]
+    r["plate_face_mean_rgb_top_left_right"] = [[int(round(v)) for v in a[(lat.face == f) & gold & inner].mean(0)] for f in range(3)]
     lum = a.astype(np.float32) @ np.array([0.2126, 0.7152, 0.0722], np.float32)
     bl = cv2.GaussianBlur(lum, (0, 0), 12 / 2.355 * 2)       # about 0.5 mm
     r["darkest_0_5pct_blurred"] = round(float(np.percentile(bl, 0.5)), 1)

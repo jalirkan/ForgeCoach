@@ -42,42 +42,39 @@ def trimmed(im, radius=71):
 
 
 OPTIONS = [
-    ("A", "hex2", "solid", "Solid gold hexagon",
-     "12 rhombi; its six sides are lattice edges.\nThree gold cubes, flat inlay."),
-    ("B", "hex2", "outline", "Brass outline, wood kept",
-     "The same hexagon, drawn in brass\nstringing; the three woods stay."),
-    ("C", "ring", "raised", "Gold hexagram, raised",
-     "A larger cluster: 30 rhombi, a six-\npointed star of cubes, bevelled."),
-    ("D", "hex2", "haloed", "Raised hexagon in a brass star",
-     "Hexagon A, bevelled, set in the\nstar of C drawn in brass. Chosen."),
+    ("Before", "hex2", "haloed", "D: raised lattice hexagon in a brass star",
+     "12 lattice rhombi gilded in place (side 2S),\nthe star of 30 around it in brass stringing."),
+    ("Chosen", "hex2", "plate", "The plate (the owner's choice)",
+     "A flat-top gold plate laid over the lattice, after the\noriginal candidate's. Inside, the same lattice, aligned;\n"
+     "its six cube corners touch the 14 px rim's inner edge."),
 ]
 
 
 def options_sheet():
+    """The old D next to the chosen plate, each a 1:1 crop (900 x 900 px of the 600 dpi card) and a thumbnail."""
     lat = G.Lattice()
-    tw, th = 420, 571                 # full-card thumbnail
-    zw = 420                          # centre zoom
+    c = 450                           # half the 1:1 crop
+    tw, th = 330, 449
     pad, top = 30, 120
-    W = pad + len(OPTIONS) * (tw + pad)
-    H = top + th + 20 + zw + 150
+    W = pad + len(OPTIONS) * (2 * c + tw + 2 * pad)
+    H = top + 2 * c + 170
     sheet = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(sheet)
-    d.text((pad, 28), "Tumbling Blocks: the gold emblem, four treatments (green reference)", font=font(34, True), fill=INK)
-    d.text((pad, 74), "Every option sits on the same lattice: cube 197.45 px wide (8.4 mm), card centre on a lattice vertex, "
-           "so each is exactly 180-degree symmetric and identical in all three colourways.", font=font(19), fill=INK)
+    d.text((pad, 28), "Tumbling Blocks: the gold emblem, before and chosen (green, 1:1 at 600 dpi)", font=font(34, True), fill=INK)
+    d.text((pad, 74), "Same lattice under both: cube 197.45 px (8.4 mm), card centre on a lattice vertex, exact 180-degree symmetry.",
+           font=font(19), fill=INK)
     for i, (tag, cl, tr, title, note) in enumerate(OPTIONS):
         rgb, _ = render.symmetrise(render.colourise(render.build(cl, tr, lat=lat), "green"))
         im = Image.fromarray(rgb)
-        x = pad + i * (tw + pad)
-        sheet.paste(im.resize((tw, th), Image.LANCZOS), (x, top))
-        z = im.crop((G.OX - 440, G.OY - 440, G.OX + 440, G.OY + 440)).resize((zw, zw), Image.LANCZOS)
-        sheet.paste(z, (x, top + th + 20))
-        y = top + th + 20 + zw + 14
-        chosen = tag == "D"
-        d.text((x, y), f"{tag}  {title}", font=font(22, True), fill=(120, 70, 20) if chosen else INK)
-        d.multiline_text((x, y + 34), note, font=font(17), fill=INK, spacing=4)
+        x = pad + i * (2 * c + tw + 2 * pad)
+        sheet.paste(im.crop((int(G.OX) - c, int(G.OY) - c, int(G.OX) + c, int(G.OY) + c)), (x, top))
+        sheet.paste(im.resize((tw, th), Image.LANCZOS), (x + 2 * c + pad // 2, top))
+        y = top + 2 * c + 14
+        chosen = tag == "Chosen"
+        d.text((x, y), f"{tag}:  {title}", font=font(24, True), fill=(120, 70, 20) if chosen else INK)
+        d.multiline_text((x, y + 38), note, font=font(18), fill=INK, spacing=4)
         if chosen:
-            d.rectangle([x - 8, top - 8, x + tw + 8, y + 104], outline=(150, 112, 48), width=4)
+            d.rectangle([x - 10, top - 10, x + 2 * c + tw + pad // 2 + 10, y + 132], outline=(150, 112, 48), width=4)
     sheet.save(OUT / "EMBLEM-OPTIONS.jpg", quality=90)
 
 
