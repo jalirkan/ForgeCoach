@@ -2380,12 +2380,6 @@ button.seat-chip:hover {
   color: var(--text-2);
 }
 .setup-friend-cmd {
-  /* one piece, never broken mid-flag ("--engine-only"); scrolls inside itself on a narrow phone */
-  display: inline-block;
-  max-width: 100%;
-  overflow-x: auto;
-  vertical-align: bottom;
-  white-space: nowrap;
   font: 12px/1.4 var(--mono);
   color: var(--text-2);
   user-select: all;
@@ -2397,4 +2391,8 @@ button.seat-chip:hover {
   .setup-friend {
     text-align: left;
   }
+}
+
+.setup-friend-cmd .nowrap {
+  white-space: nowrap;
 }

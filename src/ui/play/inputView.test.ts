@@ -581,5 +581,7 @@ describe('the stack decision title says spell or ability', () => {
     expect(describeInput(input('Priority: Human'), s, ME, { nameOf: () => 'Search AI' }).title).toBe('Search AI’s Card 5 ability is on the stack');
     const mine = state({ stack: [{ id: 52, sourceCardId: 4, controller: ME, text: 'When Card 4 enters, draw a card.', targetCardIds: [], targetPlayerIds: [], isAbility: true }] as never });
     expect(describeInput(input('Priority: Human'), mine, ME).title).toBe('Your Card 4’s ability is on the stack');
+    const hidden = state({ stack: [{ id: 53, sourceCardId: 999, controller: OPP, text: '', targetCardIds: [], targetPlayerIds: [], isAbility: true }] as never, activePlayer: OPP, priority: ME });
+    expect(describeInput(input('Priority: Human'), hidden, ME, { nameOf: () => 'Search AI' }).title).toBe('Search AI has an ability on the stack');
   });
 });

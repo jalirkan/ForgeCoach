@@ -365,9 +365,13 @@ function describeInputRaw(
         ...v,
         mode: 'stack',
         title: top.mine
-          ? `Your ${top.what}${top.ability ? '’s ability' : ''} is on the stack`
+          ? top.ability && /^(an? |something$)/i.test(top.what)
+            ? 'Your ability is on the stack'
+            : `Your ${top.what}${top.ability ? '’s ability' : ''} is on the stack`
           : top.ability
-            ? `${top.who}’s ${top.what} ability is on the stack`
+            ? /^(an? |something$)/i.test(top.what)
+              ? `${top.who} has an ability on the stack` // a face-down or hidden source: never "Search AI’s a hidden card ability"
+              : `${top.who}’s ${top.what} ability is on the stack`
             : `${top.who} cast ${top.what}`,
         detail: top.mine ? 'Pass to let it resolve (the opponent may respond).' : 'Respond with an instant or ability — or pass and let it resolve.',
         ok: btn(ok, 'let it resolve'),

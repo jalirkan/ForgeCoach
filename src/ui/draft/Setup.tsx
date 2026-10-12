@@ -725,7 +725,16 @@ function FriendNeeds() {
   return (
     <p className="setup-friend tiny">
       {running ? 'The engine on your PC is running without the draft room.' : 'Draft with a friend needs the engine on your PC, with the draft room on.'} Start it in your mtg-table
-      checkout with <code className="setup-friend-cmd">{ROOM_CMD}</code>
+      checkout with{' '}
+      <code className="setup-friend-cmd">
+        {/* each word whole: a narrow phone wraps between the flags, never inside one ("--engine-only") */}
+        {ROOM_CMD.split(' ').map((w, i) => (
+          <span key={i}>
+            {i > 0 ? ' ' : ''}
+            <span className="nowrap">{w}</span>
+          </span>
+        ))}
+      </code>
     </p>
   );
 }
