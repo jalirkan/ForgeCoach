@@ -1,24 +1,34 @@
-3 Treasure
-3 Clue
+2 Treasure
+2 Clue
 2 Food
 1 Blood
 1 Map
-2 Construct
+1 Construct
 2 Wurm
 1 Phyrexian Germ
-2 Thopter
+1 Thopter
 1 Servo
-4 Spirit
+3 Spirit
 2 Elemental
-2 Goblin
+1 Goblin
 1 Goblin Shaman
-3 Soldier
-2 Human
-2 Beast
+2 Soldier
+1 Human
+1 Beast
 1 Insect
 1 Cat
 1 Snake
-2 Plant
+1 Plant
 1 Orc Army
 1 Marit Lage
 1 The Monarch
+1 Ajani, Nacatl Avenger
+1 Witch-Blessed Meadow
+1 Tamiyo, Seasoned Scholar
+1 Jace, Telepath Unbound
+1 Soporific Springs
+1 Revealing Eye
+1 Etali, Primal Sickness
+1 Reflection of Kiki-Jiki
+1 Aang and La, Ocean's Fury
+1 The Sensational She-Hulk
