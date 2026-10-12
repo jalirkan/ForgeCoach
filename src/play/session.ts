@@ -584,6 +584,9 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     clearRetry();
     attempts += 1;
     setStatus('connecting', everOpened ? `reconnecting (attempt ${attempts.toString()})` : null);
+    // A first try leaves status and detail as they were ('connecting', null), which setStatus does
+    // not publish; the count the board shows still moved.
+    changed();
     let s: SeatSocket;
     try {
       s = factory(url);
