@@ -76,6 +76,11 @@
   position: absolute;
   inset: 0;
 }
+/* The layer's opacity, and (spec 1.6) the growth fade toward the next stage, apart from the bloom on .scn-layer. */
+.scn-fade {
+  position: absolute;
+  inset: 0;
+}
 
 .scn-svg,
 .scn-fill {
@@ -954,7 +959,8 @@
   }
 }
 .scn-ovl-in {
-  animation: scn-ovl-in 1.2s ease-out both;
+  /* backwards, not both: once it has run it leaves the opacity to the piece (and its spec 1.6 fade transition). */
+  animation: scn-ovl-in 1.2s ease-out backwards;
 }
 @keyframes scn-ovl-in {
   from {

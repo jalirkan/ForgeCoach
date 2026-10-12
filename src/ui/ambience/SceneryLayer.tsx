@@ -27,7 +27,7 @@ import { accentsOn, fillOn } from '../../ambience/prefs.ts';
 import { HalfScrim } from './HalfScrim.tsx';
 import { halfUrls } from '../../ambience/manifest.ts';
 import { effectGate } from '../../ambience/effects.ts';
-import { browserLoader, preloadEffects, preloadOverlays } from '../../ambience/pack.ts';
+import { browserLoader, growthPictures, preloadEffects, preloadOverlays, warmPicture } from '../../ambience/pack.ts';
 import { useReducedMotion, useSceneryFx, useSceneryLoad, useSceneryPrefs, type PlaceCard } from './useScenery.ts';
 
 interface Target {
@@ -146,7 +146,7 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     });
   }, [load?.pack, accents]);
 
-  // Stage-1 half pictures (spec 1.5) warm the cache when the scenery fills the halves; later stages load when shown.
+  // Stage-1 half pictures (spec 1.5) warm the cache when the scenery fills the halves; later stages warm as slots grow (below).
   const fill = fillOn(prefs);
   useEffect(() => {
     if (!fill || !load?.pack) return;
@@ -159,6 +159,13 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
       for (const u of urls) await loader(narrow && u.phone ? u.phone : u.url, 'image').catch(() => {});
     })();
   }, [load?.pack, fill]);
+
+  // Spec 1.6: each slot's current and next stage's pictures warm as it grows, so the next stage can fade in from the first land toward it.
+  useEffect(() => {
+    if (!load?.pack) return;
+    const phone = window.innerWidth < 700;
+    for (const w of growthPictures(load.pack, scenery.players.flatMap((p) => p.slots), { half: fill, phone })) warmPicture(w);
+  }, [scenery, load?.pack, fill]);
 
   useLayoutEffect(() => {
     const next = findTargets(anchor.current, log, seat, state);

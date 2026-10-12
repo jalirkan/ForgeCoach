@@ -255,6 +255,29 @@ export function growthPictures(pack: ScenePack, slots: readonly { biome: Biome; 
   return out;
 }
 
+/** Pictures being warmed, held until they load (an unreferenced Image may be dropped mid-fetch). */
+const warming = new Set<HTMLImageElement>();
+/** Pictures warmed (or warming) this page load: each once. */
+const warmedSrcs = new Set<string>();
+
+/**
+ * Warm a still picture in the browser's cache, through the same `srcset` the
+ * renderer draws it with, so the file fetched is the one it will show. Each
+ * picture once per page load; never waits, never throws.
+ */
+export function warmPicture(p: { src: string; src2x: string | null }): void {
+  if (warmedSrcs.has(p.src) || typeof Image === 'undefined') return;
+  warmedSrcs.add(p.src);
+  const img = new Image();
+  img.decoding = 'async';
+  const done = () => warming.delete(img);
+  img.onload = done;
+  img.onerror = done;
+  warming.add(img);
+  if (p.src2x) img.srcset = `${p.src} 1x, ${p.src2x} 2x`;
+  img.src = p.src;
+}
+
 /** One effect file, fetched: did it load, and how big is it. */
 export interface EffectFileCheck {
   biome: Biome | null;
