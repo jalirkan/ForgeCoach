@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { HelloOkBody } from '../protocol.ts';
-import { aiPolicyName, seatDisplayName } from './aiName.ts';
+import { aiPolicyName, seatDisplayName, seatNamer } from './aiName.ts';
 
 function hello(aiPolicy?: unknown, withMatch = true): HelloOkBody {
   return {
@@ -66,5 +66,17 @@ describe('seatDisplayName', () => {
   });
   it('reads isAi from the handshake when the caller’s player lacks it', () => {
     expect(seatDisplayName(hello('search'), { id: 1, name: 'Forge AI' })).toBe('Search AI');
+  });
+});
+
+describe('seatNamer: one name per seat across the board (the stack, the decision slot, the Game Log)', () => {
+  it('"You", the bot as picked, never the engine’s seat label', () => {
+    const name = seatNamer(hello('search'), 0);
+    expect(name(0)).toBe('You');
+    expect(name(1)).toBe('Search AI');
+  });
+  it('an engine before M56 keeps its own name; an unknown seat is "The bot"', () => {
+    expect(seatNamer(hello(undefined, false), 0)(1)).toBe('Forge AI');
+    expect(seatNamer(null, 0)(7)).toBe('The bot');
   });
 });

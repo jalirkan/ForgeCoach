@@ -37,6 +37,9 @@
  *                            so it never meets a game Justin is playing)
  *
  * Environment: PLAYTEST_DEBUG_CLICKS=1 prints every click the page receives (what the monkey hit);
+ * PLAYTEST_SCRYFALL=1 lets the page reach Scryfall through Node's fetch (card art and oracle
+ * text, as a player sees them; off by default so a run never depends on it);
+ * PLAYTEST_DESKTOP=WxH the desktop window;
  * PLAYTEST_COACH_MS=N makes the fake coach take N ms per answer (default 50: a slow coach checks
  * that the last plan stays in view while the next is written);
  * MTG_TABLE (default ../mtg-table), FORGE_JAR (play.sh's), FORGE_RES (Forge's
@@ -272,12 +275,35 @@ function phoneFor(label, i = 0) {
   return label === 'friend' || (label === 'solo' && i % 2 === 1);
 }
 
+/**
+ * A request the page makes, made by Node instead and handed back (PLAYTEST_SCRYFALL=1): Node
+ * goes through the machine's proxy with its CA (NODE_USE_ENV_PROXY, NODE_EXTRA_CA_CERTS) where
+ * the browser may not.
+ */
+async function viaNode(route) {
+  const req = route.request();
+  try {
+    const r = await fetch(req.url(), {
+      method: req.method(),
+      headers: { 'User-Agent': 'ForgeCoach-playtest/1.0', Accept: req.headers().accept ?? '*/*', ...(req.postData() ? { 'Content-Type': 'application/json' } : {}) },
+      body: req.postData() ?? undefined,
+    });
+    const body = Buffer.from(await r.arrayBuffer());
+    await route.fulfill({ status: r.status, headers: { 'content-type': r.headers.get('content-type') ?? 'application/octet-stream', 'access-control-allow-origin': '*' }, body });
+  } catch {
+    await route.abort('connectionrefused').catch(() => {});
+  }
+}
+
 async function newSeatPage(label, appOrigin, phone = false) {
-  const ctx = await browser.newContext(phone ? PHONE : { viewport: { width: 1366, height: 900 } });
+  const [dw, dh] = (env.PLAYTEST_DESKTOP ?? '1366x900').split('x').map(Number);
+  const ctx = await browser.newContext(phone ? PHONE : { viewport: { width: dw || 1366, height: dh || 900 } });
   await ctx.route('**/*', (route) => {
     const u = new URL(route.request().url());
     if (u.hostname === '127.0.0.1' || u.hostname === 'localhost') return route.continue();
     if (u.hostname === 'fonts.googleapis.com') return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
+    // PLAYTEST_SCRYFALL=1: card art and text from Scryfall, as a player sees them (screenshots for a person)
+    if (/scryfall\.(com|io)$/.test(u.hostname) && env.PLAYTEST_SCRYFALL === '1') return viaNode(route);
     if (/scryfall\.(com|io)$/.test(u.hostname)) return route.fulfill({ status: 404, contentType: 'application/json', body: '{"object":"error","code":"not_found","status":404,"details":"playtest"}' });
     return route.abort('connectionrefused');
   });

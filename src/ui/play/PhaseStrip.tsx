@@ -265,7 +265,8 @@ function VerticalStrip({
       <header className="pv-head">
         <span className="pv-whose">{model.yourTurn === null ? 'Pre-game' : model.yourTurn ? 'Your turn' : 'Opp turn'}</span>
         <span className="pv-turn">T{model.turn}</span>
-        {model.activeName && <span className="pv-name">{model.activeName}</span>}
+        {/* whose turn by the board's names ("You", the bot as picked), never the engine's seat name ("Human", "Forge AI") */}
+        {model.yourTurn !== null && <span className="pv-name">{model.yourTurn ? 'You' : oppLabel}</span>}
         <span className={cx('pv-prio', model.priority === 'you' && 'is-you', model.priority === 'opp' && 'is-opp')} data-who={model.priority ?? 'none'} role="status">
           <span className="pv-prio-dot" aria-hidden="true" />
           Priority{model.priority ? ` · ${model.priority === 'you' ? 'you' : oppLabel}` : ''}

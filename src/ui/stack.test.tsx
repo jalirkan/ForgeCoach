@@ -533,3 +533,12 @@ describe('the lines anchor on every badge', () => {
     expect(centreWithin({ x: 1010, y: 190, width: 24, height: 24 }, list)).toBe(false);
   });
 });
+
+describe('the stack names seats as the board does', () => {
+  test('the controller and a player target by the board’s name (the bot as picked), never the engine’s seat label', () => {
+    const st = state([item(9, 29, { controller: 1, text: 'Shock deals 2 damage', targetPlayerIds: [0], isAbility: false })], [], [heli]);
+    const [e] = stackEntries(st, 0, (id) => (id === 1 ? 'Search AI' : 'You'));
+    expect(e!.controller).toBe('Search AI');
+    expect(e!.targets[0]!.label).toBe('You');
+  });
+});

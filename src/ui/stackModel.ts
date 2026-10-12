@@ -49,9 +49,10 @@ export interface StackEntry {
   sourceOnBoard: boolean;
 }
 
-function playerWord(state: GameStateBody, id: number | null, seat: number | null): string | null {
+function playerWord(state: GameStateBody, id: number | null, seat: number | null, nameOf?: (id: number) => string): string | null {
   if (id === null) return null;
   if (id === seat) return 'You';
+  if (nameOf) return nameOf(id);
   return state.players.find((p) => p.id === id)?.name ?? null;
 }
 
@@ -96,8 +97,8 @@ function cardWord(c: AnyCard | undefined): string {
   return k.name || 'a card';
 }
 
-/** The stack, top first, numbered from 1. */
-export function stackEntries(state: GameStateBody | null, seat: number | null): StackEntry[] {
+/** The stack, top first, numbered from 1. `nameOf`: the board's name for a seat (play/aiName.ts `seatNamer`), else the state's. */
+export function stackEntries(state: GameStateBody | null, seat: number | null, nameOf?: (id: number) => string): StackEntry[] {
   if (!state || state.stack.length === 0) return [];
   const onBoard = battlefieldIds(state);
   return [...state.stack].reverse().map((item, i) => {
@@ -112,12 +113,12 @@ export function stackEntries(state: GameStateBody | null, seat: number | null): 
       name,
       faceDown,
       kind: stackKind(item, raw),
-      controller: playerWord(state, item.controller, seat),
+      controller: playerWord(state, item.controller, seat, nameOf),
       mine: seat !== null && item.controller === seat,
       text: item.text,
       targets: [
         ...item.targetCardIds.map((id) => ({ kind: 'card' as const, id, label: cardWord(findCard(state, id)) })),
-        ...item.targetPlayerIds.map((id) => ({ kind: 'player' as const, id, label: playerWord(state, id, seat) ?? 'a player' })),
+        ...item.targetPlayerIds.map((id) => ({ kind: 'player' as const, id, label: playerWord(state, id, seat, nameOf) ?? 'a player' })),
       ],
       sourceOnBoard: item.sourceCardId !== null && onBoard.has(item.sourceCardId),
     };

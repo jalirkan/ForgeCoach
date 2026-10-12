@@ -62,18 +62,18 @@ export function choiceFromKey(k: string): DeckChoice | null {
 
 /** What you can play: the engine's decks, your Draft vs Bot deck, your saved pools, a fresh deck from each cube. */
 export function myDeckOptions(draft: SavedDraft | null, pools: readonly SavedPool[], cubes: readonly CubeRef[]): DeckOption[] {
-  const out: DeckOption[] = [{ choice: { kind: 'engine' }, label: 'As the engine has them (the last match’s decks)' }];
+  const out: DeckOption[] = [{ choice: { kind: 'engine' }, label: 'As the engine has them' }];
   if (draft?.deck && draft.draft.done) out.push({ choice: { kind: 'draft' }, label: `Your Draft vs Bot deck${draft.title ? ` — ${draft.title}` : ''}` });
-  for (const p of pools) if (p.cards.length >= 23) out.push({ choice: { kind: 'pool', id: p.id }, label: `${p.name} (best build of your pool)` });
+  for (const p of pools) if (p.cards.length >= 23) out.push({ choice: { kind: 'pool', id: p.id }, label: `${p.name} (best build)` });
   for (const c of cubes) out.push({ choice: { kind: 'cube', cube: c.id }, label: `A fresh ${c.title} deck` });
   return out;
 }
 
 /** What the bot can play (only with a deck of yours chosen): a fresh cube deck, its Draft vs Bot deck, your pools. */
 export function botDeckOptions(draft: SavedDraft | null, pools: readonly SavedPool[], cubes: readonly CubeRef[]): DeckOption[] {
-  const out: DeckOption[] = cubes.map((c) => ({ choice: { kind: 'cube', cube: c.id }, label: `A fresh ${c.title} deck (its list hidden)` }));
-  if (draft?.after?.aiDeck) out.push({ choice: { kind: 'draft' }, label: 'The bot’s deck from your Draft vs Bot (its list hidden)' });
-  for (const p of pools) if (p.cards.length >= 23) out.push({ choice: { kind: 'pool', id: p.id }, label: `${p.name} (your pool’s best build)` });
+  const out: DeckOption[] = cubes.map((c) => ({ choice: { kind: 'cube', cube: c.id }, label: `A fresh ${c.title} deck` }));
+  if (draft?.after?.aiDeck) out.push({ choice: { kind: 'draft' }, label: 'Its deck from your Draft vs Bot' });
+  for (const p of pools) if (p.cards.length >= 23) out.push({ choice: { kind: 'pool', id: p.id }, label: `${p.name} (best build)` });
   return out;
 }
 

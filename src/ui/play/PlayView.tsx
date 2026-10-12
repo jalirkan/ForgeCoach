@@ -25,7 +25,7 @@ import type { PlaySession, PlaySnapshot } from '../../play/session.ts';
 import { activeGuideId, listGuides } from '../../guide.ts';
 import { turnFacts } from '../../state.ts';
 import { cardIndex } from '../../decisions.ts';
-import { seatDisplayName } from '../../play/aiName.ts';
+import { seatNamer, seatDisplayName } from '../../play/aiName.ts';
 import { tableLines } from '../../play/tableView.ts';
 import { Board } from '../Board.tsx';
 import { CardDetail, HoverPreview } from '../CardDetail.tsx';
@@ -141,7 +141,9 @@ export function PlayView({
   }, [coachUseGame, againstAi]);
 
   if (import.meta.env.DEV) (window as unknown as { __forgecoach?: unknown }).__forgecoach = snap;
-  const view = useMemo(() => describeInput(input, state, seat, { ask, over: !!over }), [input, state, seat, ask, over]);
+  // Seats by the board's names (the bot as picked, a friend by their name), never the engine's labels ("Forge AI", "Human").
+  const nameOf = useMemo(() => seatNamer(log?.hello, seat, state?.players ?? []), [log?.hello, seat, state?.players]);
+  const view = useMemo(() => describeInput(input, state, seat, { ask, over: !!over, nameOf }), [input, state, seat, ask, over, nameOf]);
   // Report a bug (mtg-table D411): this seat's game as it stands, read only when a report is made.
   useBugContext(() => ({
     surface: snap.table ? 'table' : 'play',
@@ -606,7 +608,7 @@ export function PlayView({
   const counter = useMemo(() => inputCounter(input, view), [input, view]);
 
   // The stack: always in view while it is not empty, in one place over the board (endstep-style).
-  const stackNow = useMemo(() => stackEntries(state, seat), [state, seat]);
+  const stackNow = useMemo(() => stackEntries(state, seat, nameOf), [state, seat, nameOf]);
   const stackPanel =
     state && stackNow.length > 0 ? <StackPanel entries={stackNow} state={state} variant="float" folded={stackFolded} onFold={setStackFolded} /> : null;
   const zonePanel = offBoard ? <ZonePickPanel key={input?.prompt ?? ''} pick={offBoard} view={view} state={state} seat={seat} onOk={pressOk} onCancel={pressCancel} /> : null;

@@ -95,9 +95,13 @@ export function stepWords(phase: string | null): string {
   return STEP_WORDS[phase] ?? phase.toLowerCase().replace(/_/g, ' ');
 }
 
+/** The board's name for a seat, when the caller has one (play/aiName.ts `seatNamer`); set per describeInput call. */
+let seatName: ((id: number) => string) | null = null;
+
 function playerName(state: GameStateBody | null, id: number | null, seat: number | null): string {
   if (id === null) return 'Someone';
   if (id === seat) return 'You';
+  if (seatName) return seatName(id);
   return state?.players.find((p) => p.id === id)?.name ?? 'Opponent';
 }
 
@@ -190,9 +194,15 @@ export function describeInput(
   input: InputBody | null,
   state: GameStateBody | null,
   seat: number | null,
-  opts: { ask?: AskBody | null; over?: boolean } = {},
+  opts: { ask?: AskBody | null; over?: boolean; nameOf?: (id: number) => string } = {},
 ): InputView {
-  const v = describeInputRaw(input, state, seat, opts);
+  seatName = opts.nameOf ?? null;
+  let v: InputView;
+  try {
+    v = describeInputRaw(input, state, seat, opts);
+  } finally {
+    seatName = null;
+  }
   return {
     ...v,
     title: withoutEngineIds(v.title),

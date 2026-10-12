@@ -13,6 +13,7 @@
  * The history walker and the card-text formatter are exported because the
  * coach prompt uses them too.
  */
+import { seatDisplayName } from './play/aiName.ts';
 import type { AnyCard, Card, GameEvent, GameStateBody } from './protocol.ts';
 import { isHidden } from './protocol.ts';
 import type { GameLog } from './log.ts';
@@ -314,7 +315,8 @@ export function playerLabel(log: GameLog, id: number | null): string {
   if (id === null) return 'nobody';
   if (id === log.seat) return 'You';
   const p = log.hello?.players.find((x) => x.id === id);
-  return p?.name ?? `Player ${id}`;
+  // the bot by the opponent picker's name, never the engine's seat label (play/aiName.ts)
+  return p ? seatDisplayName(log.hello, p, `Player ${id}`) : `Player ${id}`;
 }
 
 function listNames(names: (string | null)[], unknown = 'a hidden card'): string {

@@ -557,3 +557,15 @@ describe('pickRefusal (common-sense pass item 2: a refused click says why)', () 
     expect(pickRefusal('Not selectable', 'card 3 cannot be selected now', state(), input('Priority: your main phase'))).toBeNull();
   });
 });
+
+describe('describeInput names seats as the board does', () => {
+  it('the bot’s spell on the stack and its step by the picked name, never "Forge AI"', () => {
+    const s = state({ stack: [{ id: 50, sourceCardId: 5, controller: OPP, text: 'Card 5', targetCardIds: [], targetPlayerIds: [], isAbility: false }] as never, activePlayer: OPP, priority: ME });
+    const v = describeInput(input('Priority: Human'), s, ME, { nameOf: (id) => (id === OPP ? 'Search AI' : 'You') });
+    expect(v.title).toBe('Search AI cast Card 5');
+    const step = describeInput(input('Priority: Human'), state({ activePlayer: OPP, priority: ME, phase: 'COMBAT_DECLARE_ATTACKERS' }), ME, { nameOf: () => 'Search AI' });
+    expect(step.title).toMatch(/^Search AI’s /);
+    // without a namer: the state's name, as before
+    expect(describeInput(input('Priority: Human'), s, ME).title).toBe('Forge AI cast Card 5');
+  });
+});
