@@ -54,7 +54,7 @@ export interface InputView {
   title: string;
   /** One sentence of how to do it. */
   detail: string | null;
-  /** The engine's own prompt, verbatim (shown small, never rewritten). */
+  /** The engine's own prompt (shown small), unchanged but for a leading "<seat name>, " (stripSeatVocative). */
   engineText: string;
   ok: ButtonView;
   cancel: ButtonView;
@@ -188,6 +188,27 @@ export function oneLine(s: string): string {
 }
 
 /**
+ * Forge addresses its prompts to the seat by its engine name ("Human, you have
+ * won the coin toss.", "Human, you are going first!"). The board already says
+ * "you", so a leading "<seat name>, " on any line is dropped and the rest of the
+ * sentence kept, its first letter raised. A prompt that does not start with the
+ * name, or a seat with no name, comes back as it was.
+ */
+export function stripSeatVocative(prompt: string, seatName: string | null | undefined): string {
+  const name = (seatName ?? '').trim();
+  if (!name || !prompt) return prompt;
+  const lead = `${name}, `;
+  return prompt
+    .split('\n')
+    .map((line) => {
+      if (!line.startsWith(lead) || line.length === lead.length) return line;
+      const rest = line.slice(lead.length);
+      return rest.charAt(0).toUpperCase() + rest.slice(1);
+    })
+    .join('\n');
+}
+
+/**
  * What the decision slot says about the engine's input. Every string a player
  * reads (the title, the line under it, Forge's own prompt, what a payment is
  * for) comes without the engine's card ids (engineText.ts); the ids it needs
@@ -224,11 +245,13 @@ function describeInputRaw(
   seat: number | null,
   opts: { ask?: AskBody | null; over?: boolean } = {},
 ): InputView {
+  const ownName = state && seat !== null ? (state.players.find((pl) => pl.id === seat)?.name ?? null) : null;
+  const prompt = stripSeatVocative(input?.prompt ?? '', ownName);
   const base = (mode: InputMode, title: string, detail: string | null = null): InputView => ({
     mode,
     title,
     detail,
-    engineText: input?.prompt ?? '',
+    engineText: prompt,
     ok: btn(input?.buttons.ok),
     cancel: btn(input?.buttons.cancel),
     primary: null,
@@ -245,7 +268,7 @@ function describeInputRaw(
     const who = state ? playerName(state, state.priority ?? state.activePlayer, seat) : 'The engine';
     return base('waiting', state?.phase ? `${who === 'You' ? 'The engine' : who} is thinking…` : 'Setting up the game…');
   }
-  const p = input.prompt ?? '';
+  const p = prompt;
   const ok = input.buttons.ok;
   const cancel = input.buttons.cancel;
   const focus = input.buttons.focus ?? null;

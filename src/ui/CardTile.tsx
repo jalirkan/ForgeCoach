@@ -15,6 +15,7 @@ import type { AnyCard, Card } from '../protocol.ts';
 import { isHidden } from '../protocol.ts';
 import { imageForCard, type CardInfo } from '../cards.ts';
 import { useCardInfo, useTileCardInfo } from './cardData.ts';
+import { HoverTracker } from './hoverGuard.ts';
 import { createLongPress, pressBuzz, pressTimers } from './longPress.ts';
 import { useBoardFocus } from './boardFocus.ts';
 import { useBoardMarks, useBoardStateRef, useCardActions, usePlay, type CardStackMarks, type PlayInteraction, type PlayMark } from './cardContext.ts';
@@ -113,9 +114,21 @@ function useOpen(card: AnyCard, onClicked?: (card: AnyCard) => void) {
     [activate, play],
   );
   const name = !isHidden(card) ? (card as Card).name || (card as Card).alt?.name || null : null;
+  // A tile that unmounts while it is the hovered one gets no pointerleave: clear the preview then.
+  const hoverRef = useRef<HoverTracker | null>(null);
+  if (!hoverRef.current) hoverRef.current = new HoverTracker();
+  useEffect(() => {
+    const tracker = hoverRef.current!;
+    return () => {
+      if (tracker.unmount()) actions.hover(null);
+    };
+  }, [actions]);
   const onEnter = useCallback(
     (e: PointerEvent<HTMLElement>) => {
-      if (e.pointerType === 'mouse' && name) actions.hover(name, e.currentTarget.getBoundingClientRect());
+      if (e.pointerType === 'mouse' && name) {
+        hoverRef.current!.enter();
+        actions.hover(name, e.currentTarget.getBoundingClientRect());
+      }
     },
     [actions, name],
   );
@@ -124,6 +137,7 @@ function useOpen(card: AnyCard, onClicked?: (card: AnyCard) => void) {
     (e: PointerEvent<HTMLElement>) => {
       // A touch that slides off the tile cancels; the mouse only ends its hover.
       if (e.pointerType !== 'mouse') press.cancel();
+      hoverRef.current!.leave();
       actions.hover(null);
     },
     [actions, press],

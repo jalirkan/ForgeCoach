@@ -312,6 +312,20 @@ describe('connectSeat — connection', () => {
     expect(s.detail).toMatch(/Gave up after 12 attempts/);
   });
 
+  it('publishes the first try even though status and detail did not change (a kept log waits before it dials)', () => {
+    const store = { load: () => new Promise<LoggedFrame[]>(() => undefined), append: async () => undefined, clear: async () => undefined };
+    const h = harness({ keepLog: true, tableLog: store, tableLogWaitMs: 100 });
+    const seen: number[] = [];
+    h.session.subscribe((s) => seen.push(s.attempts));
+    expect(h.session.snapshot()).toMatchObject({ status: 'connecting', attempts: 0 });
+    vi.advanceTimersByTime(150);
+    h.flush();
+    // The socket never opens nor closes (a page whose origin hangs the upgrade): the count is still shown.
+    expect(h.sockets).toHaveLength(1);
+    expect(h.session.snapshot()).toMatchObject({ status: 'connecting', attempts: 1 });
+    expect(seen.at(-1)).toBe(1);
+  });
+
   it('reconnects after a drop, resyncs, and does not duplicate re-delivered frames', () => {
     const rec = RECORDINGS['human-amount-7']!;
     const h = harness();

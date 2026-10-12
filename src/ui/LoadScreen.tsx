@@ -13,7 +13,8 @@ import './forge-theme.css';
 import './lobby.css';
 import { LobbyTiles, lobbyTiles } from './LobbyTiles.tsx';
 import { DEFAULT_LIVE_URL, FALLBACK_LIVE_URL } from '../live.ts';
-import { redactSeatUrl, type SeatStatus } from '../play/session.ts';
+import { type SeatStatus } from '../play/session.ts';
+import { CONNECT_SLOW_MS, seatBusy, seatStatusText as seatLine, type SeatStatusContext } from '../play/seatStatus.ts';
 import { PlayPolicyPicker, PlayProfilePicker, usePlayChoices } from './PlayProfile.tsx';
 import { TableDeckPicker } from './TableDecks.tsx';
 import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconPlay, IconUpload } from './Icons.tsx';
@@ -91,17 +92,10 @@ function CopyCmd({ cmd }: { cmd: string }) {
   );
 }
 
-/** What the seat status means, in words (never showing the pairing token). */
-function seatStatusText(play: PlayStatus | null, url: string): string | null {
-  if (!play) return null;
-  if (play.startingDecks) return 'Starting the game on your decks…';
-  if (play.waking) return 'Waking the engine…';
-  if (play.status === 'open') return 'Connected — waiting for the engine to deal…';
-  if (play.status === 'connecting' || play.status === 'idle') {
-    return play.attempts > 0 ? `Looking for the engine… (attempt ${play.attempts + 1})` : 'Connecting to the engine…';
-  }
-  if (play.status === 'refused') return 'Another window has your seat. Close it, then try again.';
-  return `Couldn’t reach the engine at ${redactSeatUrl(url)}.`;
+/** What the seat status means, in words: play/seatStatus.ts's line, or the start on picked decks. */
+function seatStatusText(play: PlayStatus | null, url: string, ctx: SeatStatusContext = {}): string | null {
+  if (play?.startingDecks) return 'Starting the game on your decks…';
+  return seatLine(play, url, ctx);
 }
 
 /** The Play tile's line while a connection is under way. */
@@ -111,10 +105,25 @@ function playLine(play: PlayStatus | null): string | undefined {
   return busy ? `${seatStatusText(play, '') ?? 'Connecting…'} Cancel is below.` : undefined;
 }
 
-function SeatStatusBox({ play, url }: { play: PlayStatus | null; url: string }) {
-  const text = seatStatusText(play, url);
+/** True once the seat has been connecting, with no open, for CONNECT_SLOW_MS; resets when the try changes. */
+function useConnectSlow(play: PlayStatus | null): boolean {
+  const connecting = !!play && !play.waking && (play.status === 'connecting' || play.status === 'idle');
+  const attempts = play?.attempts ?? 0;
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    if (!connecting) return;
+    const t = setTimeout(() => setSlow(true), CONNECT_SLOW_MS);
+    return () => clearTimeout(t);
+  }, [connecting, attempts]);
+  return connecting && slow;
+}
+
+function SeatStatusBox({ play, url, engineServed = false }: { play: PlayStatus | null; url: string; engineServed?: boolean }) {
+  const slow = useConnectSlow(play);
+  const text = seatStatusText(play, url, { engineServed, slow });
   if (!play || !text) return null;
-  const busy = play.status === 'connecting' || play.status === 'idle' || play.status === 'open';
+  const busy = seatBusy(play);
   const retry = play.detail ? /Retrying in ([\d.]+ s)/.exec(play.detail)?.[1] ?? null : null;
   return (
     <div className={cx('play-status', !busy ? 'is-bad' : play.status === 'open' ? 'is-ok' : 'is-wait')} role="status">
@@ -177,7 +186,7 @@ function EnginePanel({
           </button>
         ) : null}
       </div>
-      <SeatStatusBox play={play} url={url} />
+      <SeatStatusBox play={play} url={url} engineServed={engineServed} />
       {choices.match && <TableDeckPicker disabled={busy} />}
       {choices.policies.length > 0 && <PlayPolicyPicker policies={choices.policies} disabled={busy} />}
       {choices.profile && <PlayProfilePicker disabled={busy} />}
@@ -270,7 +279,7 @@ function EngineConnect({
               ? 'Is the engine still running on your computer, and is this phone on the same network?'
               : 'The engine on your computer served this page. You play from here; the coach is one tap away.'}
           </p>
-          <SeatStatusBox play={play} url={seatUrl} />
+          <SeatStatusBox play={play} url={seatUrl} engineServed />
           {choices.match && !busy && <TableDeckPicker />}
           {choices.policies.length > 0 && !busy && <PlayPolicyPicker policies={choices.policies} />}
           {choices.profile && !busy && <PlayProfilePicker />}

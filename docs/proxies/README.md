@@ -12,7 +12,102 @@ These are playtest copies for playing at home with friends. Never sell them or t
 
 The Vintage Cube's 180 cards on S33 stock should cost about **$45–60 plus about $15 US shipping**. That works out to about **$0.35 a card**, well under the $1 budget. Delivery takes about two to three weeks.
 
-## First order: three cubes, 540 cards (612 bracket)
+## Order 2 (chosen 2026-10-12): the MTGO Vintage Cube, 570 cards (612 bracket)
+
+This replaces order 1 below. Instead of three small cubes picked in advance, print one big, well-known cube and build your 180-card cubes out of it later.
+
+**What's in it:** [`order-2-vintage-570.txt`](order-2-vintage-570.txt) is 570 cards:
+
+- **The MTGO Vintage Cube, all 540 cards.** This is the version on Cube Cobra ("mtgovc", updated 2026-08-19), checked on 2026-10-12 and still the current version that day. [`mtgo-vintage-cube-540.txt`](mtgo-vintage-cube-540.txt) has these 540 on their own.
+- **30 more cards** from our two-player Vintage Cube that the MTGO list doesn't have, so that cube can be built from this box too. They are Thalia, Ephemerate, Restoration Angel, Wrath of God, Elspeth, Sun's Champion, Sun Titan, Delver of Secrets, Bloodghast, Ophiomancer, Goblin Guide, Young Pyromancer, Goblin Rabblemaster, Inferno Titan, Sylvan Library, Lotus Cobra, Sakura-Tribe Elder, Scavenging Ooze, Survival of the Fittest, Eternal Witness, Courser of Kruphix, Beast Within, Garruk Wildspeaker, Thragtusk, Primeval Titan, Avenger of Zendikar, Craterhoof Behemoth, Voice of Resurgence, Lightning Helix, Batterskull and Wurmcoil Engine.
+
+**Why this cube:**
+
+- It's the most-played powered cube there is: Wizards keeps it balanced for 8 players, and every archetype works.
+- 180-card cubes can be pulled out of it at any time. ForgeCoach's Vintage Cube (180) is one such cut, and with the 30 extras all of it is in the box.
+- Being able to change the cube later is the point. The box holds three times what any one draft needs, so you can swap cards in and out without printing again.
+
+**Cost:** 570 cards fall in MPC's 612 bracket, the same price as the 540-card order 1 (about $0.30–0.40 a card on S33 stock, plus shipping). That leaves **42 free slots**. Good uses:
+
+- tokens;
+- the back halves of the two meld cards (see below);
+- a few cards you expect to swap in.
+
+**Two-sided cards:** ten cards have a second face. Ajani, Nacatl Pariah; Witch Enchanter; Tamiyo, Inquisitive Student; Jace, Vryn's Prodigy; Sink into Stupor; Concealing Curtains; Etali, Primal Conqueror; Fable of the Mirror-Breaker; and Aang, Swift Savior *transform* or are *modal* (Jennifer Walters too).
+
+**Justin's choice (2026-10-12): the two-sided cards stay truly two-sided.** Every card goes in an opaque sleeve whose back is the cube back image, so a printed second face never shows. So print the ten with their real second face (Autofill's default for them), every other card with the cube back, and leave the helper cards out. The spare slots go to the next cube (below).
+
+**The 42 spare slots: a head start on an Old School cube (chosen 2026-10-12).** The next cube is **Craig Wescoe's 93/94 Old School Cube** ([Cube Cobra `13q8`](https://www.cubecobra.com/cube/list/13q8), 360 cards from Magic's 1993–94 sets), the same era as the card back.
+
+- **What's in the order:** [`order-2-oldschool-42.txt`](order-2-oldschool-42.txt) is its 42 most expensive cards that aren't in the Vintage box, priced on Scryfall on 2026-10-12. The originals sum to about **$17,000**: Juzám Djinn, Bazaar of Baghdad, Chaos Orb, Time Vault, Moat, The Abyss, Drop of Honey, Ali from Cairo, Serendib Djinn and so on, down to Spinal Villain at $54.
+- **What was skipped:** three cards were left out as impractical at the table even though they're pricey: Shahrazad (games inside the game), Falling Star (a card you drop onto the table) and Living Plane (weak).
+- **What's already covered:** 44 of the 360 are already in the Vintage box (the Moxen, Lotus, the duals, Library of Alexandria, Mishra's Workshop and more).
+- **What's left for later:** the other **274** are [`old-school-rest-274.txt`](old-school-rest-274.txt), a later order in MPC's 396 bracket, with room for its tokens and spares.
+- **The whole cube:** [`old-school-93-94-360.txt`](old-school-93-94-360.txt).
+
+The order is 570 + 42 = **612**. Paste [`order-2-vintage-570.txt`](order-2-vintage-570.txt) and [`order-2-oldschool-42.txt`](order-2-oldschool-42.txt) into the one project. The plan below (helpers and tokens) is the clear-sleeve alternative, kept for reference.
+
+With clear sleeves, a card whose back shows its other face stands out in a shuffled deck or a hand. So **every card gets the cube back, these ten included**. Each second face is printed as its own **helper card**, kept beside the deck and swapped in when the card flips. Players have always done this with checklist cards. The ten helpers are in the spare-slot list below.
+
+The meld pair (Phyrexian Dragon Engine, The Mightstone and Weakstone) needs nothing: their partners (Mishra, Claimed by Gix; Urza, Lord Protector) aren't in the cube, so they never meld. Print them as ordinary one-sided cards.
+
+**Card back:** [`cardback/vintage-cube-back.png`](cardback/vintage-cube-back.png) is our own design: a gold cube on dark ink, reading *Vintage Cube* and a small *Not for sale*. It is not Magic's back on purpose, so every card says "proxy" at a glance through a clear sleeve.
+
+- **Size:** 1632×2220 px, which is 600 dpi at 2.72×3.70 in. That's a poker card plus MPC's 1/8 in bleed on each side.
+- **Safe area:** everything that matters sits well inside the cut line.
+- **Source:** the design is [`cardback/vintage-cube-back.html`](cardback/vintage-cube-back.html), and [`cardback/render.sh`](cardback/render.sh) redraws the PNG.
+- **Where to set it:** MPC Autofill can't take a custom back, since only its contributors add images to its library. Let the tool fill the fronts, then on MakePlayingCards' own project page set the back to *same image for all cards* and upload this file. That also replaces the second faces Autofill would put behind the ten two-sided cards, which is what we want (see above).
+
+The words *Not for sale* also help with MPC's checks, which sometimes ask that proxies be marked.
+
+**The 42 spare slots:** [`order-2-tokens-42.txt`](order-2-tokens-42.txt) fills them with the ten helper cards for the two-sided cards' second faces, plus 32 tokens the cube's own cards make. The tokens are weighted toward the ones that come up most.
+
+The helpers are Ajani, Nacatl Avenger; Witch-Blessed Meadow; Tamiyo, Seasoned Scholar; Jace, Telepath Unbound; Soporific Springs; Revealing Eye; Etali, Primal Sickness; Reflection of Kiki-Jiki; Aang and La, Ocean's Fury; and The Sensational She-Hulk.
+
+The tokens:
+
+| Token | Copies | Made by, among others |
+|---|---|---|
+| Treasure | 2 | Ragavan, Fable, Hullbreacher |
+| Clue | 2 | Thraben Inspector, Tireless Tracker, Tamiyo |
+| Food | 2 | Oko, Generous Ent |
+| Blood | 1 | Bloodtithe Harvester, Voldaren Epicure |
+| Map | 1 | Get Lost |
+| Construct | 1 | Urza's Saga, Karn, Urza |
+| Wurm | 2 | Wurmcoil Engine (one deathtouch, one lifelink) |
+| Phyrexian Germ | 1 | Batterskull, Kaldra Compleat |
+| Thopter | 1 | Thopter Foundry, Retrofitter Foundry |
+| Servo | 1 | Retrofitter Foundry |
+| Spirit | 3 | Lingering Souls |
+| Elemental | 2 | Young Pyromancer, Seasoned Pyromancer |
+| Goblin | 1 | Goblin Rabblemaster |
+| Goblin Shaman | 1 | Fable of the Mirror-Breaker |
+| Soldier | 2 | Elspeth, Sun's Champion |
+| Human | 1 | Adeline |
+| Beast | 1 | Beast Within, Garruk, Thragtusk |
+| Insect | 1 | Grist |
+| Cat | 1 | Ocelot Pride |
+| Snake | 1 | Ophiomancer |
+| Plant | 1 | Avenger of Zendikar |
+| Orc Army | 1 | Orcish Bowmasters |
+| Marit Lage | 1 | Dark Depths |
+| The Monarch | 1 | Palace Jailer |
+
+That's 10 helpers + 32 tokens = 42, so the order comes to 570 + 42 = **612**, the bracket exactly.
+
+- **Tokens in Autofill:** paste the list into the same project. If a name brings up a real card instead of the token, open that slot and pick the token version.
+- **What these don't cover:** tokens that copy a card (Reflection of Kiki-Jiki's copies, for one) and counters. Use dice or a spare card for those.
+
+**Two names to know:** the MTGO list uses the Omenpaths names *Makdee and Itla, Skysnarers* and *Kavaero, Mind-Bitten*. Their paper printings are Spider-Woman, Stunning Savior and Superior Spider-Man. If Autofill can't find one, search the other name.
+
+**How to order:**
+
+1. Make one MPC Autofill project and paste both [`order-2-vintage-570.txt`](order-2-vintage-570.txt) and [`order-2-tokens-42.txt`](order-2-tokens-42.txt) into it.
+2. Set the stock to S33, export, and run the desktop tool.
+3. On MakePlayingCards, set the back to the card back image for all cards, then check out.
+3. Export, then follow the Step by step section below.
+
+## Order 1 (superseded): three cubes, 540 cards (612 bracket)
 
 Chosen 2026-10-10: **Vintage + Synergy + Peasant.**
 
