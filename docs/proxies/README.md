@@ -35,6 +35,8 @@ This replaces order 1 below. Instead of three small cubes picked in advance, pri
 
 **Two-sided cards:** ten cards have a second face. Ajani, Nacatl Pariah; Witch Enchanter; Tamiyo, Inquisitive Student; Jace, Vryn's Prodigy; Sink into Stupor; Concealing Curtains; Etali, Primal Conqueror; Fable of the Mirror-Breaker; and Aang, Swift Savior *transform* or are *modal* (Jennifer Walters too).
 
+**Justin's choice (2026-10-12): the two-sided cards stay truly two-sided.** Every card goes in an opaque sleeve whose back is the cube back image, so a printed second face never shows. So print the ten with their real second face (Autofill's default for them), every other card with the cube back, and leave the helper cards out. The spare slots are open again; what goes in them is still to be decided. The plan below (helpers and tokens) is the clear-sleeve alternative, kept for reference.
+
 With clear sleeves, a card whose back shows its other face stands out in a shuffled deck or a hand. So **every card gets the cube back, these ten included**. Each second face is printed as its own **helper card**, kept beside the deck and swapped in when the card flips. Players have always done this with checklist cards. The ten helpers are in the spare-slot list below.
 
 The meld pair (Phyrexian Dragon Engine, The Mightstone and Weakstone) needs nothing: their partners (Mishra, Claimed by Gix; Urza, Lord Protector) aren't in the cube, so they never meld. Print them as ordinary one-sided cards.
