@@ -147,6 +147,26 @@ export function noticeLine(title: string, text: string | null | undefined, state
   return words ? `${withoutEngineIds(title)} — ${words}` : withoutEngineIds(title);
 }
 
+/**
+ * The flash line when the engine refuses a click on a card ("Not selectable")
+ * while it asks for a pick — a target, cards to choose — outside combat
+ * (combat has its own, blockPlan.ts): in the engine's terms, the card is not
+ * one of the cards it offers (`selectable.cardIds`, the highlighted ones).
+ * Null when the input lists nothing to pick, the card is one it lists, or the
+ * board does not show the card.
+ */
+export function pickRefusal(title: string, text: string | null | undefined, state: GameStateBody | null, input: InputBody | null): string | null {
+  if (!state || !input || !/^not selectable$/i.test(title.trim())) return null;
+  const m = /\bcard (\d+)\b/.exec(text ?? '');
+  if (!m) return null;
+  const id = Number(m[1]);
+  const offered = input.selectable.cardIds;
+  if (offered.length === 0 || offered.includes(id)) return null;
+  const c = cardIndex(state).get(id);
+  if (!c || isHidden(c) || !c.name) return null;
+  return `${cardName(c)} isn’t one of the choices: the engine offers only the highlighted card${offered.length === 1 ? '' : 's'} here.`;
+}
+
 export function oneLine(s: string): string {
   return s
     .split('\n')

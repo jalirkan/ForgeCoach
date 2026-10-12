@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { Card, GameStateBody, InputBody } from '../../protocol.ts';
-import { cardRole, describeInput, handNeeded, noticeLine, parsePay, playerClickable } from './inputView.ts';
+import { cardRole, describeInput, handNeeded, noticeLine, parsePay, pickRefusal, playerClickable } from './inputView.ts';
 import { planPlayKey, type PlayKeyContext } from './playKeys.ts';
 import { liveDecision, liveKind, momentKey } from './liveDecision.ts';
 import { canPassAhead, PASS_EOT, passMenu, primaryView } from './actionWords.ts';
@@ -537,5 +537,18 @@ describe('J109: the board at the cleanup discard and at the friend’s priority'
     // Forge's End Turn (the input's Cancel) is the same pass as To EOT; a phone shows only To EOT.
     expect(v.cancel).toMatchObject({ label: 'End Turn', enabled: true });
     expect(canPassAhead(v)).toBe(true);
+  });
+});
+
+describe('pickRefusal (common-sense pass item 2: a refused click says why)', () => {
+  const pick = input('Lightning Bolt - Select target creature', { selectable: { cardIds: [4, 5], min: 1, max: 1, mode: 'cards' }, buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: true }, focus: 'cancel' } });
+  it('a card the engine does not offer: the engine offers only the highlighted cards', () => {
+    expect(pickRefusal('Not selectable', 'card 3 cannot be selected now', state(), pick)).toBe('Card 3 isn’t one of the choices: the engine offers only the highlighted cards here.');
+  });
+  it('nothing to add for an offered card, a hidden one, another notice, or an input that offers nothing', () => {
+    expect(pickRefusal('Not selectable', 'card 4 cannot be selected now', state(), pick)).toBeNull();
+    expect(pickRefusal('Not selectable', 'card 99 cannot be selected now', state(), pick)).toBeNull();
+    expect(pickRefusal('Reconnected', 'card 3', state(), pick)).toBeNull();
+    expect(pickRefusal('Not selectable', 'card 3 cannot be selected now', state(), input('Priority: your main phase'))).toBeNull();
   });
 });

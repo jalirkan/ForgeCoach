@@ -19,7 +19,7 @@
  * Built incrementally: a live game's GameLog is append-only, so the walk keeps
  * its place per session header and only reads the new frames.
  */
-import type { Card, EntityRef, GameStateBody, StackItem } from './protocol.ts';
+import type { Card, EntityRef, GameStateBody, InputBody, StackItem } from './protocol.ts';
 import type { GameLog } from './log.ts';
 import { cleanStackText, stackKind } from './ui/stackModel.ts';
 import { frameResolver, indexOf, playerLabel, type CardIndex, type FrameResolver } from './review.ts';
@@ -43,6 +43,7 @@ export type LogKind =
   | 'counter'
   | 'attach'
   | 'info'
+  | 'nochoice'
   | 'outcome';
 
 export interface LogLine {
@@ -69,6 +70,16 @@ export function lineText(line: LogLine): string {
   return line.segs.map((s) => (typeof s === 'string' ? s : s.name)).join('');
 }
 
+/** The newest "resolved with nothing for you to choose" line of the game, for the board's notice. */
+export function lastNoChoice(log: GameLog): LogLine | null {
+  const turns = gameEventLog(log);
+  for (let t = turns.length - 1; t >= 0; t--) {
+    const lines = turns[t]!.lines;
+    for (let i = lines.length - 1; i >= 0; i--) if (lines[i]!.kind === 'nochoice') return lines[i]!;
+  }
+  return null;
+}
+
 interface Walk {
   frames: GameLog['frames'];
   done: number;
@@ -79,6 +90,10 @@ interface Walk {
   sacrificed: Set<number>;
   /** The step the walk is in: the last state's phase, moved on by `phase` events. */
   phase: string | null;
+  /** The stack as the last state showed it (what a `resolved` event resolved). */
+  prevStack: StackItem[];
+  /** Stack items (ids) the viewing seat was asked something about while they were on top. */
+  asked: Set<number>;
 }
 
 const walks = new WeakMap<object, Walk>();
@@ -106,17 +121,24 @@ export function gameEventLog(log: GameLog, upTo = Infinity): LogTurn[] {
   let w = walks.get(key);
   // A different (or reset) frame list: start again.
   if (!w || w.done > log.frames.length || (w.done > 0 && w.frames[w.done - 1] !== log.frames[w.done - 1])) {
-    w = { frames: log.frames, done: 0, prevIdx: new Map(), turns: [], pendingToStack: new Set(), sacrificed: new Set(), phase: null };
+    w = { frames: log.frames, done: 0, prevIdx: new Map(), turns: [], pendingToStack: new Set(), sacrificed: new Set(), phase: null, prevStack: [], asked: new Set() };
     walks.set(key, w);
   }
   w.frames = log.frames;
   for (; w.done < log.frames.length; w.done++) {
     const f = log.frames[w.done]!;
+    // A question to this seat (an ask, or an input with something to pick) while an item is on top: it was asked about.
+    if (f.type === 'ask' || (f.type === 'input' && picksSomething(f.body as InputBody))) {
+      const top = w.prevStack[w.prevStack.length - 1];
+      if (top) w.asked.add(top.id);
+      continue;
+    }
     if (f.type !== 'state') continue;
     const s = f.body as GameStateBody;
     const postIdx = indexOf(s);
     foldFrame(w, log, w.done, s, frameResolver(w.prevIdx, postIdx));
     w.prevIdx = postIdx;
+    w.prevStack = s.stack ?? [];
   }
   const out: LogTurn[] = [];
   for (const t of w.turns) {
@@ -137,6 +159,42 @@ function castKind(e: { cardId: number; controller: number; stackId: number; text
   const real: StackItem = item ?? { id: e.stackId, sourceCardId: e.cardId, controller: e.controller, text: e.text, targetCardIds: [], targetPlayerIds: [], isAbility: true };
   const k = stackKind({ ...real, text: real.text || e.text }, s.stackCards?.find((c) => c.id === real.sourceCardId));
   return k === 'spell' ? 'cast' : k === 'triggered' ? 'trigger' : k === 'activated' ? 'activated' : 'ability';
+}
+
+/** An input that asks this seat to pick a card or a player (not a priority stop or a wait). */
+function picksSomething(input: InputBody): boolean {
+  const sel = input.selectable;
+  return !!sel && sel.mode !== 'none' && (sel.cardIds.length > 0 || sel.mode === 'players');
+}
+
+/** A stack text whose controller chooses something as it resolves. */
+const CHOOSES = /\b(?:you )?choose|\byou may\b|\bsearch\b|\breveals?\b|\blook at\b/i;
+/** Events that are not an effect of the resolution itself. */
+const NOT_EFFECTS = new Set(['resolved', 'unstacked', 'phase', 'stats', 'turn', 'cast']);
+
+/**
+ * A spell or ability of the viewing seat's that resolved with nothing for it
+ * to choose (common-sense pass item 12: Tidehollow Sculler against an empty
+ * hand resolved silently, and the player thought it had failed). Only the
+ * engine's own facts: the item resolved (not fizzled), its text says its
+ * controller chooses, the engine asked this seat nothing while it was on top,
+ * and the frame that resolved it reports no effect. The reason is said only
+ * when the state shows it: a hand the text names that holds no cards.
+ */
+function nothingToChoose(w: Walk, log: GameLog, s: GameStateBody, cardId: number): { item: StackItem; words: string } | null {
+  const item = [...w.prevStack].reverse().find((x) => x.sourceCardId === cardId);
+  if (!item || log.seat === null || item.controller !== log.seat || !item.text || w.asked.has(item.id)) return null;
+  if (!CHOOSES.test(item.text)) return null;
+  const effects = (s.events ?? []).filter((ev) => !NOT_EFFECTS.has(ev.kind) && !(ev.kind === 'zone' && ev.cardId === cardId));
+  if (effects.length) return null;
+  let why = '';
+  if (/\bhand\b/i.test(item.text)) {
+    const others = item.targetPlayerIds.length ? item.targetPlayerIds : s.players.filter((p) => p.id !== log.seat).map((p) => p.id);
+    const empty = s.players.find((p) => others.includes(p.id) && p.zones.hand.count === 0);
+    if (empty) why = ` — ${empty.id === log.seat ? 'your' : `${playerLabel(log, empty.id)}’s`} hand was empty`;
+  }
+  const what = item.isAbility === false ? '' : '’s ability';
+  return { item, words: `${what} resolved with nothing for you to choose${why}` };
 }
 
 function foldFrame(w: Walk, log: GameLog, fi: number, s: GameStateBody, r: FrameResolver): void {
@@ -202,9 +260,15 @@ function foldFrame(w: Walk, log: GameLog, fi: number, s: GameStateBody, r: Frame
         }
         break;
       }
-      case 'resolved':
-        if (e.fizzled) add('info', controllerOf(e.cardId), card(e.cardId, 'a spell'), ' fizzled');
+      case 'resolved': {
+        if (e.fizzled) {
+          add('info', controllerOf(e.cardId), card(e.cardId, 'a spell'), ' fizzled');
+          break;
+        }
+        const quiet = nothingToChoose(w, log, s, e.cardId);
+        if (quiet) add('nochoice', quiet.item.controller, card(e.cardId, 'a hidden source'), quiet.words);
         break;
+      }
       case 'attackers': {
         for (const b of e.bands) {
           if (b.attackerIds.length === 0) continue;

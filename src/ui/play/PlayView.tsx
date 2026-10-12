@@ -15,6 +15,7 @@
  * buttonOk / buttonCancel with the engine's labels, passPriority, yieldTo,
  * useMana, undo, alphaStrike, concede, newGame).
  */
+import { lastNoChoice, lineText } from '../../eventLog.ts';
 import { CardRefContext } from '../CoachText.tsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActBody, AnswerValue, AnyCard, Card, GameStateBody } from '../../protocol.ts';
@@ -46,7 +47,7 @@ import { HandDock } from './HandDock.tsx';
 import { LogDrawer, LogTab } from './LogDrawer.tsx';
 import { PhaseStrip } from './PhaseStrip.tsx';
 import { PlayBoardContext, usePlayBoardValue } from './playBoard.ts';
-import { cardRole, describeInput, handNeeded, noticeLine, playerClickable, type ClickContext } from './inputView.ts';
+import { cardRole, describeInput, handNeeded, noticeLine, pickRefusal, playerClickable, type ClickContext } from './inputView.ts';
 import { lastStateFrame } from './liveDecision.ts';
 import { playableHints } from './handAffordance.ts';
 import { PlayCoach } from './PlayCoach.tsx';
@@ -168,9 +169,27 @@ export function PlayView({
   const [flash, setFlash] = useState<string | null>(null);
   useEffect(() => {
     if (!flash) return;
-    const t = setTimeout(() => setFlash(null), 2600);
+    // a longer line (a resolution with nothing to choose) stays long enough to read
+    const t = setTimeout(() => setFlash(null), flash.length > 60 ? 4500 : 2600);
     return () => clearTimeout(t);
   }, [flash]);
+  // A spell or ability of yours that resolved with nothing for you to choose (eventLog.ts): said in the bar, and in the log.
+  const quietSeen = useRef<number | null>(null);
+  const frameCount = log?.frames.length ?? 0;
+  useEffect(() => {
+    if (!log) return;
+    const line = lastNoChoice(log);
+    const at = line?.frameIndex ?? -1;
+    // the first look (a reload, a rejoin) only notes where the game is
+    if (quietSeen.current === null) {
+      quietSeen.current = at;
+      return;
+    }
+    if (!line || at <= quietSeen.current) return;
+    quietSeen.current = at;
+    setFlash(`${lineText(line)}.`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameCount]);
   // The engine's (and the session's) notices surface briefly in the bar.
   const lastNotice = snap.notices[snap.notices.length - 1];
   const seenNotice = useRef<number | null>(lastNotice ? lastNotice.seq * 1e13 + lastNotice.t : null);
@@ -180,13 +199,13 @@ export function PlayView({
     if (seenNotice.current === id) return;
     seenNotice.current = id;
     if (lastNotice.level === 'info' && lastNotice.source === 'engine') return;
-    // A block the engine refused: say why in the game's terms, never "cannot be selected now".
+    // A click the engine refused: say why in the game's terms, never "cannot be selected now".
     const refused =
       view.mode === 'block'
         ? blockRefusal(lastNotice.title, lastNotice.text, snap.state, blockTry.current, view.blockingAttackerId, seat)
         : view.mode === 'attack'
           ? attackRefusal(lastNotice.title, lastNotice.text, snap.state, seat)
-          : null;
+          : pickRefusal(lastNotice.title, lastNotice.text, snap.state, input);
     setFlash(refused ?? noticeLine(lastNotice.title, lastNotice.text, snap.state));
     // Only a new notice flashes; the state it names cards from is read as of then.
     // eslint-disable-next-line react-hooks/exhaustive-deps
