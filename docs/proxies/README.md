@@ -33,59 +33,66 @@ This replaces order 1 below. Instead of three small cubes picked in advance, pri
 - the back halves of the two meld cards (see below);
 - a few cards you expect to swap in.
 
-**Two-sided cards (12):** Ajani, Nacatl Pariah; Witch Enchanter; Tamiyo, Inquisitive Student; Jace, Vryn's Prodigy; Sink into Stupor; Concealing Curtains; Etali, Primal Conqueror; Fable of the Mirror-Breaker; Aang, Swift Savior; Jennifer Walters; and the meld pair Phyrexian Dragon Engine and The Mightstone and Weakstone.
+**Two-sided cards:** ten cards have a second face. Ajani, Nacatl Pariah; Witch Enchanter; Tamiyo, Inquisitive Student; Jace, Vryn's Prodigy; Sink into Stupor; Concealing Curtains; Etali, Primal Conqueror; Fable of the Mirror-Breaker; and Aang, Swift Savior *transform* or are *modal* (Jennifer Walters too).
 
-MPC Autofill adds the back faces itself. The meld pair's combined card (Urza, Planeswalker) is printed on the back halves. Check those two in the Autofill editor before you export.
+With clear sleeves, a card whose back shows its other face stands out in a shuffled deck or a hand. So **every card gets the cube back, these ten included**. Each second face is printed as its own **helper card**, kept beside the deck and swapped in when the card flips. Players have always done this with checklist cards. The ten helpers are in the spare-slot list below.
+
+The meld pair (Phyrexian Dragon Engine, The Mightstone and Weakstone) needs nothing: their partners (Mishra, Claimed by Gix; Urza, Lord Protector) aren't in the cube, so they never meld. Print them as ordinary one-sided cards.
 
 **Card back:** [`cardback/vintage-cube-back.png`](cardback/vintage-cube-back.png) is our own design: a gold cube on dark ink, reading *Vintage Cube · Playtest card · Proxy · Not for sale*. It is not Magic's back on purpose, so every card says "proxy" at a glance through a clear sleeve.
 
 - **Size:** 1632×2220 px, which is 600 dpi at 2.72×3.70 in. That's a poker card plus MPC's 1/8 in bleed on each side.
 - **Safe area:** everything that matters sits well inside the cut line.
 - **Source:** the design is [`cardback/vintage-cube-back.html`](cardback/vintage-cube-back.html), and [`cardback/render.sh`](cardback/render.sh) redraws the PNG.
-- **Using it in MPC Autofill:** upload it as a custom card back in the editor's card back panel. If that panel takes only its own library, upload the image as the back on MPC's own site after the tool fills the fronts.
+- **Where to set it:** MPC Autofill can't take a custom back, since only its contributors add images to its library. Let the tool fill the fronts, then on MakePlayingCards' own project page set the back to *same image for all cards* and upload this file. That also replaces the second faces Autofill would put behind the ten two-sided cards, which is what we want (see above).
 
 The words *Not for sale* also help with MPC's checks, which sometimes ask that proxies be marked.
 
-**The 42 spare slots:** [`order-2-tokens-42.txt`](order-2-tokens-42.txt) fills them with the tokens the cube's own cards make. It's weighted toward the ones that come up most, with extra copies where one card makes several.
+**The 42 spare slots:** [`order-2-tokens-42.txt`](order-2-tokens-42.txt) fills them with the ten helper cards for the two-sided cards' second faces, plus 32 tokens the cube's own cards make. The tokens are weighted toward the ones that come up most.
+
+The helpers are Ajani, Nacatl Avenger; Witch-Blessed Meadow; Tamiyo, Seasoned Scholar; Jace, Telepath Unbound; Soporific Springs; Revealing Eye; Etali, Primal Sickness; Reflection of Kiki-Jiki; Aang and La, Ocean's Fury; and The Sensational She-Hulk.
+
+The tokens:
 
 | Token | Copies | Made by, among others |
 |---|---|---|
-| Treasure | 3 | Ragavan, Fable, Hullbreacher |
-| Clue | 3 | Thraben Inspector, Tireless Tracker, Tamiyo |
+| Treasure | 2 | Ragavan, Fable, Hullbreacher |
+| Clue | 2 | Thraben Inspector, Tireless Tracker, Tamiyo |
 | Food | 2 | Oko, Generous Ent |
 | Blood | 1 | Bloodtithe Harvester, Voldaren Epicure |
 | Map | 1 | Get Lost |
-| Construct | 2 | Urza's Saga, Karn, Urza |
+| Construct | 1 | Urza's Saga, Karn, Urza |
 | Wurm | 2 | Wurmcoil Engine (one deathtouch, one lifelink) |
 | Phyrexian Germ | 1 | Batterskull, Kaldra Compleat |
-| Thopter | 2 | Thopter Foundry, Retrofitter Foundry |
+| Thopter | 1 | Thopter Foundry, Retrofitter Foundry |
 | Servo | 1 | Retrofitter Foundry |
-| Spirit | 4 | Lingering Souls |
+| Spirit | 3 | Lingering Souls |
 | Elemental | 2 | Young Pyromancer, Seasoned Pyromancer |
-| Goblin | 2 | Goblin Rabblemaster |
+| Goblin | 1 | Goblin Rabblemaster |
 | Goblin Shaman | 1 | Fable of the Mirror-Breaker |
-| Soldier | 3 | Elspeth, Sun's Champion |
-| Human | 2 | Adeline |
-| Beast | 2 | Beast Within, Garruk, Thragtusk |
+| Soldier | 2 | Elspeth, Sun's Champion |
+| Human | 1 | Adeline |
+| Beast | 1 | Beast Within, Garruk, Thragtusk |
 | Insect | 1 | Grist |
 | Cat | 1 | Ocelot Pride |
 | Snake | 1 | Ophiomancer |
-| Plant | 2 | Avenger of Zendikar |
+| Plant | 1 | Avenger of Zendikar |
 | Orc Army | 1 | Orcish Bowmasters |
 | Marit Lage | 1 | Dark Depths |
 | The Monarch | 1 | Palace Jailer |
 
-That's 42, so the order comes to 570 + 42 = **612**, the bracket exactly.
+That's 10 helpers + 32 tokens = 42, so the order comes to 570 + 42 = **612**, the bracket exactly.
 
 - **Tokens in Autofill:** paste the list into the same project. If a name brings up a real card instead of the token, open that slot and pick the token version.
-- **What these don't cover:** tokens that copy a card (Fable's back face, Phantasmal Image) and counters. Use dice or a spare card for those.
+- **What these don't cover:** tokens that copy a card (Reflection of Kiki-Jiki's copies, for one) and counters. Use dice or a spare card for those.
 
 **Two names to know:** the MTGO list uses the Omenpaths names *Makdee and Itla, Skysnarers* and *Kavaero, Mind-Bitten*. Their paper printings are Spider-Woman, Stunning Savior and Superior Spider-Man. If Autofill can't find one, search the other name.
 
 **How to order:**
 
 1. Make one MPC Autofill project and paste both [`order-2-vintage-570.txt`](order-2-vintage-570.txt) and [`order-2-tokens-42.txt`](order-2-tokens-42.txt) into it.
-2. Set the card back, and set the stock to S33.
+2. Set the stock to S33, export, and run the desktop tool.
+3. On MakePlayingCards, set the back to the card back image for all cards, then check out.
 3. Export, then follow the Step by step section below.
 
 ## Order 1 (superseded): three cubes, 540 cards (612 bracket)
