@@ -378,7 +378,10 @@ const laneClipping = (page) => clipped(page, LANE_ITEMS);
 
 /**
  * Eight attackers and eight blockers (scene `swarm`) at `viewport`: every attacker takes a block (but the
- * flyer), and at each step nothing in either lane is clipped; the columns of the two lanes stay in line.
+ * flyer), blocker first as the combat study's board does it — your creature, then the attacker in the
+ * lane, scrolled to as a player would — and at each step nothing in the attack lane is clipped; every
+ * pair has its line and its badge, blockers stay in their rows, and a line follows its attacker as the
+ * lane scrolls (met at the lane's edge while the attacker is out of view).
  */
 function wideCombat(viewport, shot) {
   return async ({ page, engine, app }) => {
@@ -386,6 +389,7 @@ function wideCombat(viewport, shot) {
     await page.locator('.game.play.mode-block').waitFor({ timeout: STEP_MS });
     const cols = page.locator('.player-top [data-combat-lane="attack"] [data-lane-col]');
     await cols.nth(7).waitFor({ timeout: STEP_MS });
+    check(!(await page.locator('[data-combat-lane="block"]').count()), 'no block lane: blockers stay in their rows');
     // Collected, not thrown at once: the screenshot of the whole combat comes first.
     const problems = (await laneClipping(page)).map((p) => `eight attackers at ${viewport}: ${p}`);
     const attackers = engine.game.attackers.slice();
@@ -396,26 +400,28 @@ function wideCombat(viewport, shot) {
       await el.click({ timeout: STEP_MS });
       await page.mouse.move(2, 2).catch(() => {});
     };
+    const line = (a, b) => page.locator(`.combat-line.is-block[data-line-from="${a}"][data-line-to="${b}"]`);
+    /** Your creature (it lifts, nothing is sent), then the attacker: the engine's clicks do the rest. */
+    const pair = async (b, a) => {
+      await tap(b);
+      await page.locator(`.battlefield .tile.is-armed[data-card-id="${b}"]`).waitFor({ timeout: STEP_MS });
+      await tap(a);
+      await engine.waitFor(() => (engine.game.blocks.get(a) ?? []).includes(b), `${b} blocking ${a}`);
+      await line(a, b).waitFor({ state: 'attached', timeout: STEP_MS });
+    };
     let k = 0;
+    const pairs = [];
     for (const a of attackers) {
       const att = engine.game.players[1].battlefield.find((c) => c.id === a);
       if (att?.name === 'Storm Crow') continue;
       const b = mineFree[k++];
-      if (engine.game.currentAttacker !== a) {
-        await tap(a);
-        await engine.waitFor(() => engine.game.currentAttacker === a, `attacker ${a} named`);
-      }
-      await tap(b);
-      await engine.waitFor(() => (engine.game.blocks.get(a) ?? []).includes(b), `${b} blocking ${a}`);
-      await page.locator(`.player-me [data-combat-lane="block"] [data-blocks="${a}"] .tile[data-card-id="${b}"]`).waitFor({ timeout: STEP_MS });
+      await pair(b, a);
+      pairs.push([a, b]);
     }
-    // A second blocker on the last attacker: a fan in a lane already full.
+    // A second blocker on the last attacker: a double block, two lines into one badge.
     const last = attackers.at(-1);
-    await tap(last);
-    await engine.waitFor(() => engine.game.currentAttacker === last, 'the last attacker named again');
-    await tap(mineFree[k]);
-    await engine.waitFor(() => (engine.game.blocks.get(last) ?? []).length === 2, 'two blockers on the last attacker');
-    await page.locator(`.player-me [data-combat-lane="block"] [data-blocks="${last}"] .tile[data-card-id="${mineFree[k]}"]`).waitFor({ timeout: STEP_MS });
+    await pair(mineFree[k], last);
+    pairs.push([last, mineFree[k]]);
     await page.evaluate(() => document.querySelectorAll('[data-combat-lane] .lane-cols').forEach((l) => (l.scrollLeft = 0)));
     if (shot) {
       mkdirSync(path.dirname(shot), { recursive: true });
@@ -423,28 +429,49 @@ function wideCombat(viewport, shot) {
       await page.screenshot({ path: shot });
     }
     problems.push(...(await laneClipping(page)).map((p) => `eight attackers blocked at ${viewport}: ${p}`));
-    // The columns line up across the centre line: each blocker's column starts where its attacker's does.
-    const drift = await page.evaluate(() => {
-      const top = document.querySelector('.player-top [data-combat-lane="attack"] .lane-cols');
-      const me = document.querySelector('.player-me [data-combat-lane="block"] .lane-cols');
+    // Every pair: a line, the same badge number on both cards, the blocker in its row (never a lane).
+    const marks = await page.evaluate((pairs) => {
       const out = [];
-      for (const s of [0, 1e6]) {
-        top.scrollLeft = s;
-        me.scrollLeft = s;
-        // a lane follows the other's scroll (one gesture moves both)
-        top.dispatchEvent(new Event('scroll'));
-        for (const col of me.querySelectorAll('[data-lane-col]')) {
-          const a = top.querySelector(`[data-lane-col="${col.getAttribute('data-lane-col')}"]`);
-          if (!a) continue;
-          const d = Math.abs(a.getBoundingClientRect().left - col.getBoundingClientRect().left);
-          if (d > 2) out.push(`column ${col.getAttribute('data-lane-col')} is ${Math.round(d)} px off its attacker`);
-        }
+      const tile = (id) => document.querySelector(`.battlefield .tile[data-card-id="${id}"]`);
+      const n = (id) => tile(id)?.querySelector('.tile-pair')?.textContent?.trim() ?? null;
+      for (const [a, b] of pairs) {
+        if (!document.querySelector(`.combat-line.is-block[data-line-from="${a}"][data-line-to="${b}"]`)) out.push(`no line from ${a} to ${b}`);
+        if (n(a) === null || n(a) !== n(b)) out.push(`blocker ${b} wears ${n(b)}, its attacker ${a} wears ${n(a)}`);
+        if (tile(b)?.closest('[data-combat-lane]')) out.push(`blocker ${b} left its row for a lane`);
       }
       return out;
-    });
-    problems.push(...drift);
+    }, pairs);
+    problems.push(...marks);
+    // A line follows its attacker as the lane scrolls, and never leaves the lane's visible width.
+    const follow = await page.evaluate(async ([a, b]) => {
+      const lane = document.querySelector('.player-top [data-combat-lane="attack"] .lane-cols');
+      if (!lane || lane.scrollWidth <= lane.clientWidth + 1) return [];
+      const frames = () => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const path = () => document.querySelector(`.combat-line.is-block[data-line-from="${a}"][data-line-to="${b}"]`);
+      const start = () => {
+        const d = path()?.getAttribute('d') ?? '';
+        const m = /^M\s*(-?[\d.]+)[ ,]+(-?[\d.]+)/.exec(d);
+        return m ? Number(m[1]) : NaN;
+      };
+      const out = [];
+      const host = document.querySelector('.board').getBoundingClientRect();
+      const r = lane.getBoundingClientRect();
+      const xs = [];
+      for (const s of [0, 1e6]) {
+        lane.scrollLeft = s;
+        lane.dispatchEvent(new Event('scroll'));
+        await frames();
+        const x = start() + host.left;
+        xs.push(x);
+        if (!(x >= r.left - 2 && x <= r.right + 2)) out.push(`the line to ${b} starts at ${Math.round(x)}, outside the lane (${Math.round(r.left)}–${Math.round(r.right)}) at scroll ${s ? 'end' : 'start'}`);
+      }
+      if (Math.abs(xs[0] - xs[1]) < 1) out.push(`the line from attacker ${a} did not move with the lane`);
+      lane.scrollLeft = 0;
+      return out;
+    }, pairs.at(-1));
+    problems.push(...follow);
     check(!problems.length, [...new Set(problems)].slice(0, 12).join('\n'));
-    // The engine still decides: Confirm blocks goes as the engine's OK.
+    // The engine still decides: Done blocking goes as the engine's OK.
     await page.locator('[data-engine-button="ok"]').first().click({ timeout: STEP_MS });
     await engine.waitFor(() => engine.acts().some((a) => a.action === 'buttonOk'), 'the blocks confirmed');
   };
@@ -782,14 +809,14 @@ const scenarios = [
   },
 
   {
-    name: 'a phone (390×844): eight attackers and their blockers, nothing in the combat lanes cut off',
+    name: 'a phone (390×844): eight attackers and their blockers, blocker first — nothing in the attack lane cut off, a line per pair',
     engine: { scene: 'swarm', selection: true },
     context: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     run: wideCombat('390×844', env.LANE_SHOT ? path.join(ROOT, env.LANE_SHOT) : null),
   },
 
   {
-    name: 'a desktop (1440×900): eight attackers and their blockers, nothing in the combat lanes cut off',
+    name: 'a desktop (1440×900): eight attackers and their blockers, blocker first — nothing in the attack lane cut off, a line per pair',
     engine: { scene: 'swarm' },
     run: wideCombat('1440×900', env.LANE_SHOT_DESKTOP ? path.join(ROOT, env.LANE_SHOT_DESKTOP) : null),
   },

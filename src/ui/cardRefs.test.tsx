@@ -4,7 +4,7 @@
  *
  * The coach's engine ids read as the board shows the card (common-sense pass
  * item 11, observed turn 22: "block Construct Token #297 with Phyrexian Myr
- * Token"): in combat the lane badge's number, else what tells two
+ * Token"): in combat a block pair's badge number, else what tells two
  * same-named cards apart (P/T, tapped, place in the row); never the id. The
  * plan's steps, the check's reasons and Markdown answers all go through it,
  * and hovering a step lights the cards it names (boardFocus.ts).
@@ -49,14 +49,33 @@ const c297 = card(297, 'Construct Token', { attacking: true });
 const combat = { bands: [{ attackerIds: [296, 297], defender: { kind: 'player', id: 0 }, blockerIds: [], damageOrder: [] }] } as unknown as GameStateBody['combat'];
 const inCombat: CardRefLook = { state: state([myr], [c296, c297], combat) };
 const STEP = 'block Construct Token #297 with Phyrexian Myr Token';
+// Both attackers blocked: each wears its pair's number, in the engine's attack order (an unblocked one wears none).
+const inBlocks: CardRefLook = {
+  state: state(
+    [{ ...myr, blocking: true } as Card, card(311, 'Phyrexian Myr Token', { controller: 0, owner: 0, power: '1', toughness: '1', blocking: true })],
+    [c296, c297],
+    {
+      bands: [
+        { attackerIds: [296], defender: { kind: 'player', id: 0 }, blockerIds: [311], damageOrder: [] },
+        { attackerIds: [297], defender: { kind: 'player', id: 0 }, blockerIds: [310], damageOrder: [] },
+      ],
+    } as unknown as GameStateBody['combat'],
+  ),
+};
 
 afterEach(() => setBoardFocus(null));
 
 describe('engine ids in the coach\'s words', () => {
-  it('in combat: the lane badge number, the name kept, the id gone', () => {
-    const segs = splitCardRefs(STEP, inCombat);
+  it('in combat: the badge number of a blocked attacker, the name kept, the id gone', () => {
+    const segs = splitCardRefs(STEP, inBlocks);
     expect(segs).toEqual(['block ', { id: 297, text: 'Construct Token', tag: '2', combat: true }, ' with Phyrexian Myr Token']);
-    expect(cardRefText(STEP, inCombat)).toBe('block Construct Token 2 with Phyrexian Myr Token');
+    expect(cardRefText(STEP, inBlocks)).toBe('block Construct Token 2 with Phyrexian Myr Token');
+  });
+
+  it('in combat, an attacker nothing blocks wears no badge: told apart as outside combat', () => {
+    const segs = splitCardRefs(STEP, inCombat);
+    expect(segs).toEqual(['block ', { id: 297, text: 'Construct Token', tag: '4/4', combat: false }, ' with Phyrexian Myr Token']);
+    expect(cardRefText(STEP, inCombat)).toBe('block Construct Token 4/4 with Phyrexian Myr Token');
   });
 
   it('outside combat: the P/T when it tells them apart, else tapped / untapped, else the place in the row', () => {
@@ -92,7 +111,7 @@ describe('drawn', () => {
   const html = (node: React.ReactNode, look: CardRefLook | null = inCombat) => renderToStaticMarkup(<CardRefContext.Provider value={look}>{node}</CardRefContext.Provider>);
 
   it('CoachText: the badge number as a chip, never "#297"', () => {
-    const out = html(<CoachText text={STEP} />);
+    const out = html(<CoachText text={STEP} />, inBlocks);
     expect(out).toContain('class="coach-card"');
     expect(out).toContain('class="coach-card-n"');
     expect(out).not.toMatch(/#\d|297/);

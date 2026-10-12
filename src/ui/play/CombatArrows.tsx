@@ -31,6 +31,21 @@ function badgeOf(host: Element, id: number, hr: DOMRect): { at: Pt; r: number } 
   return { at: { x: r.left - hr.left + r.width / 2, y: r.top - hr.top + r.height / 2 }, r: r.width / 2 };
 }
 
+/**
+ * A point of a card that its row or lane has scrolled out of view (both scroll sideways once full,
+ * lane.css / cards.css) is met at that row's visible edge — where its "+N ›" chip or fade is — and
+ * not out in the hidden part. Null when the point is in view.
+ */
+function atRowEdge(host: Element, id: number, p: Pt, hr: DOMRect): Pt | null {
+  const row = host.querySelector(`.tile[data-card-id="${id}"]`)?.closest('.lane-cols, .bf-cards');
+  if (!row || row.scrollWidth <= row.clientWidth + 1) return null;
+  const r = row.getBoundingClientRect();
+  const lo = r.left - hr.left + 6;
+  const hi = r.right - hr.left - 6;
+  if (lo >= hi || (p.x >= lo && p.x <= hi)) return null;
+  return { x: Math.min(hi, Math.max(lo, p.x)), y: p.y };
+}
+
 function boxOf(el: Element | null, host: DOMRect): Box | null {
   if (!el) return null;
   const r = el.getBoundingClientRect();
@@ -64,10 +79,11 @@ export function CombatArrows({ lines, version }: { lines: readonly CombatLine[];
         if (line.kind === 'block' && 'card' in line.from) {
           // Badge to badge; a card whose badge is not drawn (yet) is met at its top-centre.
           const at = (id: number): { at: Pt; r: number } | null => {
-            const b = badgeOf(host, id, hr);
-            if (b) return b;
             const box = boxOf(tile(id), hr);
-            return box ? { at: { x: box.x + box.w / 2, y: box.y + 6 }, r: 0 } : null;
+            const b = badgeOf(host, id, hr) ?? (box ? { at: { x: box.x + box.w / 2, y: box.y + 6 }, r: 0 } : null);
+            if (!b) return null;
+            const edge = atRowEdge(host, id, b.at, hr);
+            return edge ? { at: edge, r: 0 } : b;
           };
           const a = at(line.from.card);
           const b = at(line.to.card);
