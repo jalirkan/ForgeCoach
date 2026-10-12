@@ -48,6 +48,8 @@ export const CUBES: CubeInfo[] = [
   // Evan's own list, as he titled it (public/cubes/evybaby-cube-360.md): no themes, archetypes or guide.
   // Its lab meta (J110) drafted around the 13 cards Forge lacks; those have no lab numbers (meta.ts).
   { id: 'evybaby', file: 'evybaby-cube-360', title: "Evybaby's New Cube", short: 'Evybaby', size: 360, blurb: 'Evan’s cube: 360 cards, Avatar to Middle-earth to pizza, with shocks, surveil lands and fetches.', accent: 'WUBRG', humanPicks: true },
+  // Evan's second list, as he gave it (public/cubes/twobert-cube-180.md): no themes, archetypes, guide or lab data yet.
+  { id: 'twobert', file: 'twobert-cube-180', title: "Evan's Twobert Cube", short: 'Twobert', size: 180, blurb: 'Evan’s second cube: 180 cards of blink, aristocrats, artifacts and tokens, with shocks and fetches.', accent: 'WB', labData: false },
 ];
 
 export function cubeInfo(id: string): CubeInfo | undefined {

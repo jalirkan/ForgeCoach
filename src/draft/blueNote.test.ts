@@ -8,9 +8,9 @@ import { blueCaveat, blueOverdraftLine, blueStatsFor, buildShowsPairRate, hasBlu
 import { CUBES } from '../cube/cubes.ts';
 
 describe('J111 data', () => {
-  it('covers every cube but Evan’s, and only real cubes', () => {
+  it('covers every cube but Evan’s two, and only real cubes', () => {
     const ids = CUBES.map((c) => c.id);
-    expect(Object.keys(BLUE_J111).sort()).toEqual(ids.filter((id) => id !== 'evybaby').sort());
+    expect(Object.keys(BLUE_J111).sort()).toEqual(ids.filter((id) => id !== 'evybaby' && id !== 'twobert').sort());
     expect(Object.keys(BLUE_J111)).toHaveLength(7);
   });
 
