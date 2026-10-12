@@ -2342,3 +2342,53 @@ button.seat-chip:hover {
   margin-top: 14px;
   text-align: left;
 }
+
+/* ------------------------------------------------------------------ */
+/* Draft with a friend, beside Begin (common-sense pass item 7) */
+
+.btn-friend {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 54px;
+  padding: 0 22px;
+  border-radius: 8px;
+  font: 600 14px/1.1 var(--font);
+  letter-spacing: 0.04em;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--gold);
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-friend small {
+  font: 400 11.5px/1 var(--font);
+  letter-spacing: 0;
+  color: var(--text-2);
+}
+.btn-friend:hover {
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+}
+.setup-friend {
+  margin: 12px 0 0;
+  text-align: right;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.setup-friend.is-on {
+  color: var(--text-2);
+}
+.setup-friend-cmd {
+  font: 12px/1.4 var(--mono);
+  color: var(--text-2);
+  user-select: all;
+}
+@media (max-width: 759px) {
+  .setup-foot .btn-friend {
+    width: 100%;
+  }
+  .setup-friend {
+    text-align: left;
+  }
+}

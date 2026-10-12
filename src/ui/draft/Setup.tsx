@@ -47,6 +47,7 @@ import { CubeGuideSheet } from '../guide/CubeGuide.tsx';
 import { guideFor } from '../../cube/guides/index.ts';
 import { Sheet } from '../Sheet.tsx';
 import { cx } from '../util.ts';
+import { roomSupport } from '../../draft/room.ts';
 import { DeckExport } from '../DeckExport.tsx';
 import type { StartOptions } from './useDraftGame.ts';
 
@@ -167,13 +168,7 @@ export function DraftSetup({
         <button className="link-back" onClick={onExit}>
           <IconChevronLeft size={14} /> Back to the start
         </button>
-        {onFriend ? (
-          <button className="link-back" onClick={onFriend}>
-            Draft with a friend
-          </button>
-        ) : (
-          <span />
-        )}
+        <span />
         <button className="link-back is-right" onClick={onPaper}>
           Draft &amp; build (paper)
         </button>
@@ -340,10 +335,17 @@ export function DraftSetup({
               Close table
               <small>nothing is lost</small>
             </button>
+            {onFriend && (
+              <button className="btn-friend" onClick={onFriend} data-friend-draft="">
+                Draft with a friend
+                <small>a person instead of the bot</small>
+              </button>
+            )}
             <button className="btn-begin" onClick={begin}>
               Begin the draft <kbd>⏎</kbd>
             </button>
           </footer>
+          {onFriend && <FriendNeeds />}
         </div>
       </div>
 
@@ -696,4 +698,34 @@ export function deckColoursOf(deck: DeckState | null, colorsOf: (n: string) => s
     .slice(0, 2)
     .map(([c]) => c)
     .join('');
+}
+
+/** The engine on your PC must run with the draft room on: started with this. */
+export const ROOM_CMD = './scripts/play.sh --engine-only --lan --draft-room';
+
+/**
+ * What Draft with a friend needs (common-sense pass item 7), under the button:
+ * the draft room on the engine on your PC, asked of its /health
+ * (draft/room.ts `roomSupport`). On: say so. Off or not running: the command
+ * that starts it with the room on.
+ */
+function FriendNeeds() {
+  const [room, setRoom] = useState<{ on: boolean; reason?: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    void roomSupport().then((r) => live && setRoom(r));
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!room) return <p className="setup-friend tiny">Draft with a friend: looking for the draft room on your PC…</p>;
+  if (room.on) return <p className="setup-friend tiny is-on">Draft with a friend: the draft room is on. You get a link to send; they draft from their own browser, then you play a best of three.</p>;
+  // roomSupport's reasons: "the engine on your PC isn’t running", "… runs without the draft room", "… answered HTTP n"
+  const running = !!room.reason && !/isn’t running/.test(room.reason);
+  return (
+    <p className="setup-friend tiny">
+      {running ? 'The engine on your PC is running without the draft room.' : 'Draft with a friend needs the engine on your PC, with the draft room on.'} Start it in your mtg-table
+      checkout with <code className="setup-friend-cmd">{ROOM_CMD}</code>
+    </p>
+  );
 }
