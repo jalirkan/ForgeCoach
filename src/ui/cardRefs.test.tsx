@@ -98,6 +98,12 @@ describe('drawn', () => {
     expect(out).not.toMatch(/#\d|297/);
   });
 
+  it('the engine labels a step quotes lose their bookkeeping (seen against real Forge: "choose Nyxborn Hydra - Creature 0 / 1 (X=0)")', () => {
+    const out = html(<CoachText text="choose Nyxborn Hydra - Creature 0 / 1 (X=0)" />);
+    expect(out).toBe('choose Nyxborn Hydra - Creature 0 / 1');
+    expect(html(<CoachText text={`${STEP} (Exiled=0)`} />)).not.toMatch(/Exiled|297/);
+  });
+
   it('Markdown answers (short and detailed styles) read ids the same way', () => {
     const out = html(<Markdown text={'**Block** Construct Token #297 with your Myr.\n\n- keep Phyrexian Myr Token #310 back'} />);
     expect(out).not.toMatch(/#\d|297|310/);

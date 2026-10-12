@@ -15,15 +15,18 @@
  * targeted)", "{18}", "3/3", "Discard 1 card(s)".
  */
 
-/** Engine ids and "(Key=value)" bookkeeping out of an engine string, whitespace tidied. */
-export function withoutEngineIds(text: string | null | undefined): string {
-  return String(text ?? '')
+/**
+ * Engine ids and "(Key=value)" bookkeeping out of an engine string, whitespace
+ * tidied. `piece`: a piece of a longer line (CoachText's text between two
+ * card references) — its leading and trailing spaces are kept.
+ */
+export function withoutEngineIds(text: string | null | undefined, opts: { piece?: boolean } = {}): string {
+  const t = String(text ?? '')
     .replace(/\[\[([^\]]*)\]\]/g, '$1')
     .replace(/\s*\([A-Za-z][\w ]*=[^()]*\)/g, '')
     .replace(/([^\s(])\s*\(\d+\)(?!\s*more\b)/g, '$1')
     .replace(/\s#\d+\b/g, '')
     .replace(/[ \t]{2,}/g, ' ')
-    .replace(/[ \t]+([.,;:])/g, '$1')
-    .replace(/[ \t]+$/gm, '')
-    .trim();
+    .replace(/[ \t]+([.,;:])/g, '$1');
+  return opts.piece ? t : t.replace(/[ \t]+$/gm, '').trim();
 }
