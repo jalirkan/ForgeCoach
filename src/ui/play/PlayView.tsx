@@ -15,6 +15,7 @@
  * buttonOk / buttonCancel with the engine's labels, passPriority, yieldTo,
  * useMana, undo, alphaStrike, concede, newGame).
  */
+import { CardRefContext } from '../CoachText.tsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActBody, AnswerValue, AnyCard, Card, GameStateBody } from '../../protocol.ts';
 import { chosenOf, isHidden, MANA_COLORS, opponentIsHuman, undoOf, yieldOf } from '../../protocol.ts';
@@ -323,6 +324,9 @@ export function PlayView({
       ),
     [state, view.mode, view.blockingAttackerId, blkNow, atkNow, wire],
   );
+
+  // The coach's words name cards as the board shows them: the lane badges, else P/T (CoachText).
+  const cardRefLook = useMemo(() => ({ state, combat: pairs }), [state, pairs]);
 
   // ---- interaction context for tiles and avatars
   // `oracle`: the cached card text, for an older engine's graveyard fallback (cardsVersion re-reads it).
@@ -759,6 +763,7 @@ export function PlayView({
   );
 
   return (
+    <CardRefContext.Provider value={cardRefLook}>
     <PlayBoardContext.Provider value={playBoard}>
     <CardActionsContext.Provider value={actions}>
       <BoardStateRef.Provider value={boardStateRef}>
@@ -953,6 +958,7 @@ export function PlayView({
       </BoardStateRef.Provider>
     </CardActionsContext.Provider>
     </PlayBoardContext.Provider>
+    </CardRefContext.Provider>
   );
 }
 

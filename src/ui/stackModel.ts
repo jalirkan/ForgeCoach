@@ -22,6 +22,7 @@
 import type { AnyCard, Card, GameStateBody, SetYieldAct, SetYieldMode, StackItem } from '../protocol.ts';
 import { isHidden, stackYield } from '../protocol.ts';
 import { setYield } from '../play/acts.ts';
+import { withoutEngineIds } from '../engineText.ts';
 import type { CardStackMarks } from './cardContext.ts';
 
 export type StackKind = 'spell' | 'activated' | 'triggered' | 'ability';
@@ -137,10 +138,7 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export function cleanStackText(text: string, sourceName?: string | null, opts: { keepTargeting?: boolean } = {}): string {
   let t = String(text ?? '');
   t = opts.keepTargeting ? t.replace(/\s*\(Targeting:\s*(?:\[\[\]\])?\s*\)\s*$/, '') : t.replace(/\s*\(Targeting:[\s\S]*\)\s*$/, '');
-  t = t.replace(/\[\[([^\]]*)\]\]/g, '$1');
-  t = t.replace(/\s*\([A-Za-z][\w ]*=[^()]*\)/g, '');
-  t = t.replace(/\s*\(\d+\)/g, '');
-  t = t.replace(/\s*#\d+\b/g, '');
+  t = withoutEngineIds(t.replace(/^\s*\(\d+\)/, ''));
   t = t.replace(/\s+/g, ' ').trim();
   if (sourceName) {
     const pre = new RegExp(`^${escapeRe(sourceName.trim())}\\s*(?:-|—|–|:)\\s*`, 'i');

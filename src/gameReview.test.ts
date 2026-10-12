@@ -279,8 +279,8 @@ describe('tokenLabel', () => {
     expect(tokenLabel('target:44', at(518), 0)).toBe('Target Peggy Carter, Secret Agent');
   });
 
-  it('tells apart same-named cards: whose, then which', () => {
-    expect(tokenLabel('block:94>91', at(1215), 0)).toBe('Your Soldier Token #94 blocks their Soldier Token');
+  it('tells apart same-named cards: whose, then which — as the board shows it, never by engine id', () => {
+    expect(tokenLabel('block:94>91', at(1215), 0)).toBe('Your Soldier Token (tapped) blocks their Soldier Token');
     expect(tokenLabel('target:65', at(1283), 0)).toBe('Target their Aerial Doombot');
     expect(tokenLabel('target:25', at(1283), 0)).toBe('Target your Aerial Doombot');
   });
@@ -290,8 +290,8 @@ describe('tokenLabel', () => {
     const opp = st.players.find((p) => p.id !== 0)!;
     const hiddenIds = opp.zones.hand.cards.filter(isHidden).map((c) => c.id);
     const id = hiddenIds[0] ?? 999999;
-    expect(tokenLabel(`cast:${id}`, st, 0)).toBe(`Cast card #${id}`);
-    expect(tokenLabel('cast:999999', st, 0)).toBe('Cast card #999999');
+    expect(tokenLabel(`cast:${id}`, st, 0)).toBe('Cast a card');
+    expect(tokenLabel('cast:999999', st, 0)).toBe('Cast a card');
   });
 
   it('falls back to the engine label for tokens it does not know', () => {
@@ -394,7 +394,7 @@ describe('reviewExplainPrompt', () => {
   it('labels leaf numbers as short-horizon scores, not win rates', () => {
     const block = p.user.slice(p.user.indexOf('## Moment 3'), p.user.indexOf('## Moment 4'));
     expect(block).toContain('short-horizon score (playouts to the end of this turn, scored by an evaluator; NOT a win rate)');
-    expect(block).toMatch(/- Your Soldier Token #94 blocks their Soldier Token: 0\.50 \(0\.44–0\.56\)/);
+    expect(block).toMatch(/- Your Soldier Token \(tapped\) blocks their Soldier Token: 0\.50 \(0\.44–0\.56\)/);
     expect(block.replace(/95% interval/g, '').match(/\d+%/g)).toBeNull();
     expect(block).toContain('Engine notes: Identical Soldier Tokens are one option.');
     expect(p.system).toMatch(/never call it a win rate/);

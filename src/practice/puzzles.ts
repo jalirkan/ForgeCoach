@@ -43,6 +43,15 @@ import type { GameLog } from '../log.ts';
 import { phaseLabel, type Decision, type DecisionKind } from '../decisions.ts';
 import { canPay, turnFacts, untappedManaSources, castIsAbility } from '../state.ts';
 import { visibleName } from '../review.ts';
+import { boardTag } from '../ui/cardRefs.ts';
+
+/** "Construct Token (4/4)"; two of a name: also what tells them apart on the board ("tapped", "2nd from left"), never the engine id. */
+function attackerLabel(c: Card, twin: boolean, state: GameStateBody): string {
+  const pt = c.power !== null && c.toughness !== null ? `${c.power}/${c.toughness}` : null;
+  const tag = twin ? boardTag(c, { state }).tag : null;
+  const extra = tag && tag !== pt ? [pt, tag].filter(Boolean).join(', ') : pt;
+  return `${c.name}${extra ? ` (${extra})` : ''}`;
+}
 import {
   decisionState,
   fmtInterval,
@@ -275,7 +284,7 @@ export function derivedOptions(log: GameLog, d: Decision, seat: number): Derived
     for (const c of creatures) count.set(c.name, (count.get(c.name) ?? 0) + 1);
     const options: PuzzleOption[] = creatures.map((c) => ({
       id: `atk:${c.id}`,
-      label: `${c.name}${(count.get(c.name) ?? 0) > 1 ? ` #${c.id}` : ''}${c.power !== null && c.toughness !== null ? ` (${c.power}/${c.toughness})` : ''}`,
+      label: attackerLabel(c, (count.get(c.name) ?? 0) > 1, d.state),
       cardIds: [c.id],
     }));
     options.push({ id: 'none', label: 'No attack', cardIds: [] });

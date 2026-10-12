@@ -13,6 +13,7 @@
  * when it plausibly means something (your own cards while you are prompted),
  * and Forge answers a click it will not take with a "Not selectable" notice.
  */
+import { withoutEngineIds } from '../../engineText.ts';
 import type { AnyCard, AskBody, Card, GameStateBody, InputBody, InputButton } from '../../protocol.ts';
 import { isHidden, keywordsOf, playableOf, selectablePlayersOf } from '../../protocol.ts';
 import { cardIndex, cardName } from '../../decisions.ts';
@@ -133,16 +134,17 @@ function firstLine(s: string): string {
 /**
  * A notice for the action bar, with the engine's internal card ids ("card 31
  * cannot be selected now") read as the card's name from the visible state.
- * An id the state doesn't show, or a hidden card, stays as it was: the notice
- * never names more than the board does.
+ * An id the state doesn't show, or a hidden card, is "a card": the notice
+ * never names more than the board does, and never shows an engine id.
  */
 export function noticeLine(title: string, text: string | null | undefined, state: GameStateBody | null): string {
   const cards = state ? cardIndex(state) : null;
-  const named = (text ?? '').replace(/\bcard (\d+)\b/g, (whole, id: string) => {
+  const named = (text ?? '').replace(/\bcard (\d+)\b/g, (_whole, id: string) => {
     const c = cards?.get(Number(id));
-    return c && !isHidden(c) && c.name ? cardName(c) : whole;
+    return c && !isHidden(c) && c.name ? cardName(c) : 'a card';
   });
-  return named ? `${title} — ${named}` : title;
+  const words = withoutEngineIds(named);
+  return words ? `${withoutEngineIds(title)} — ${words}` : withoutEngineIds(title);
 }
 
 export function oneLine(s: string): string {
@@ -153,7 +155,29 @@ export function oneLine(s: string): string {
     .join(' · ');
 }
 
+/**
+ * What the decision slot says about the engine's input. Every string a player
+ * reads (the title, the line under it, Forge's own prompt, what a payment is
+ * for) comes without the engine's card ids (engineText.ts); the ids it needs
+ * (the attacker a block goes to) are read from the raw prompt first.
+ */
 export function describeInput(
+  input: InputBody | null,
+  state: GameStateBody | null,
+  seat: number | null,
+  opts: { ask?: AskBody | null; over?: boolean } = {},
+): InputView {
+  const v = describeInputRaw(input, state, seat, opts);
+  return {
+    ...v,
+    title: withoutEngineIds(v.title),
+    detail: v.detail === null ? null : withoutEngineIds(v.detail),
+    engineText: withoutEngineIds(v.engineText),
+    payFor: v.payFor === null ? null : withoutEngineIds(v.payFor),
+  };
+}
+
+function describeInputRaw(
   input: InputBody | null,
   state: GameStateBody | null,
   seat: number | null,

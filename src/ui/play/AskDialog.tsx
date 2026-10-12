@@ -54,6 +54,7 @@ import {
   removeFromGroup,
   setAmount,
   skipAction,
+  displayAsk,
   tidy,
   toggleChoice,
   toggleGroup,
@@ -97,11 +98,13 @@ const PlacementContext = createContext<AskPlacement>('modal');
 const ConcedeContext = createContext<(() => void) | null>(null);
 
 export function AskDialog({ onConcede = null, placement = 'modal', ...props }: AskDialogProps) {
+  // Every prompt and label in the player's words: no engine card ids (askModel.ts `displayAsk`).
+  const ask = useMemo(() => displayAsk(props.ask), [props.ask]);
   // Remount per askId: a new question never inherits the last one's draft.
   return (
     <PlacementContext.Provider value={placement}>
       <ConcedeContext.Provider value={onConcede}>
-        <AskDialogInner key={props.ask.askId} {...props} />
+        <AskDialogInner key={props.ask.askId} {...props} ask={ask} />
       </ConcedeContext.Provider>
     </PlacementContext.Provider>
   );

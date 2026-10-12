@@ -16,6 +16,7 @@ import { isHidden } from '../protocol.ts';
 import { imageForCard, type CardInfo } from '../cards.ts';
 import { useCardInfo, useTileCardInfo } from './cardData.ts';
 import { createLongPress, pressBuzz, pressTimers } from './longPress.ts';
+import { useBoardFocus } from './boardFocus.ts';
 import { useBoardMarks, useBoardStateRef, useCardActions, usePlay, type CardStackMarks, type PlayInteraction, type PlayMark } from './cardContext.ts';
 import { PILE_SHOWN, pilePlan } from './landPiles.ts';
 import { ManaCost } from './Mana.tsx';
@@ -302,6 +303,7 @@ function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
   const boardMarks = useBoardMarks();
   const stackMarks = inHand ? undefined : boardMarks?.stack.get(card.id);
   const combatMark = inHand ? undefined : boardMarks?.combat?.get(card.id);
+  const coachFocus = useBoardFocus(card.id);
   const name = card.name || card.alt?.name || '';
   const info = useTileCardInfo(card, name || null);
   const { open, handlers, mark, hint, chosen, playing } = useOpen(card);
@@ -338,6 +340,7 @@ function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
         stackMarks && (stackMarks.targets.length > 0 ? 'is-stack-target' : stackMarks.sources.length > 0 && 'is-stack-source'),
         combatMark && `is-pair-${combatMark.role}`,
         combatMark?.current && 'is-pair-current',
+        coachFocus && 'is-coach-focus',
       )}
       role="button"
       tabIndex={0}
@@ -458,6 +461,7 @@ const AttachmentChip = memo(
     const { handlers, mark, playing } = useOpen(card);
     const colors = cardColors(card, info?.producedMana, info?.colors);
     const effect = hostEffect(info);
+    const coachFocus = useBoardFocus(card.id);
     // The host tile must not see the chip's click, press or context menu (its
     // own long-press would start). Keys: in replay none leaves the chip (as
     // before); in play Enter is stopped by the shared key handler and other
@@ -471,7 +475,7 @@ const AttachmentChip = memo(
     const what = mark === 'select' ? ', selectable' : '';
     return (
       <span
-        className={cx('attach-chip', colorClass(colors), card.tapped && 'is-tapped', mark === 'select' && 'is-select', mark === 'act' && 'is-act')}
+        className={cx('attach-chip', colorClass(colors), card.tapped && 'is-tapped', mark === 'select' && 'is-select', mark === 'act' && 'is-act', coachFocus && 'is-coach-focus')}
         role="button"
         tabIndex={0}
         aria-label={`Attached: ${displayName(card)}${card.tapped ? ', tapped' : ''}${what}${effect ? ` — ${effect}` : ''}`}
@@ -546,9 +550,10 @@ function PileStack({ cards, side }: { cards: Card[]; side?: TileSide }) {
   const shown = Math.min(cards.length, PILE_SHOWN);
   const tapped = top.tapped;
   const sent = plan.select ? ids.filter((id) => tried.current.ids.has(id)).length : 0;
+  const coachFocus = useBoardFocus(...ids);
   return (
     <div
-      className={cx('tile', 'land-pile', colorClass(colors), side && `own-${side}`, tapped && 'is-tapped', mark === 'select' && 'is-select', mark === 'act' && 'is-act')}
+      className={cx('tile', 'land-pile', colorClass(colors), side && `own-${side}`, tapped && 'is-tapped', mark === 'select' && 'is-select', mark === 'act' && 'is-act', coachFocus && 'is-coach-focus')}
       role="button"
       tabIndex={0}
       aria-label={`${cards.length} ${displayName(top)}${tapped ? ', tapped' : ', untapped'}${plan.select ? `, ${plan.selectable} selectable: tap to select one` : ''}`}

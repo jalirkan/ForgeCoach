@@ -471,15 +471,15 @@ describe('noticeLine', () => {
   it('names a card the engine refers to by id, when the board shows it', () => {
     expect(noticeLine('Not selectable', 'card 3 cannot be selected now', state())).toBe('Not selectable — Card 3 cannot be selected now');
   });
-  it('leaves an id the board does not show, and a title alone', () => {
-    expect(noticeLine('Not selectable', 'card 99 cannot be selected now', state())).toBe('Not selectable — card 99 cannot be selected now');
-    expect(noticeLine('Not selectable', 'card 3 cannot be selected now', null)).toBe('Not selectable — card 3 cannot be selected now');
+  it('says "a card" for an id the board does not show (never the id), and a title alone', () => {
+    expect(noticeLine('Not selectable', 'card 99 cannot be selected now', state())).toBe('Not selectable — a card cannot be selected now');
+    expect(noticeLine('Not selectable', 'card 3 cannot be selected now', null)).toBe('Not selectable — a card cannot be selected now');
     expect(noticeLine('Reconnected', '', state())).toBe('Reconnected');
   });
-  it('never names a hidden card', () => {
+  it('never names a hidden card, nor shows its id', () => {
     const s = state();
     s.players[1]!.zones.hand = { count: 1, cards: [{ id: 42, hidden: true } as never] };
-    expect(noticeLine('Not selectable', 'card 42 cannot be selected now', s)).toBe('Not selectable — card 42 cannot be selected now');
+    expect(noticeLine('Not selectable', 'card 42 cannot be selected now', s)).toBe('Not selectable — a card cannot be selected now');
   });
 });
 
