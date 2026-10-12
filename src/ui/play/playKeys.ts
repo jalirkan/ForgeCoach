@@ -35,6 +35,7 @@ export const PLAY_KEYS: KeyRow[] = [
   { chord: 'Ctrl+Z', what: 'undo the last mana tap' },
   { chord: 'W U B R G C', what: 'spend one floating mana of that colour (B spends black while black floats)' },
   { chord: 'L', what: 'open the game log' },
+  { chord: 'S', what: 'what would the search AI do? (when the engine on your PC offers it)' },
   { chord: 'Shift+B', what: 'report a bug (this screen, with your recent game log)' },
   { chord: '?', what: 'show this list' },
 ];

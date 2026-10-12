@@ -37,7 +37,7 @@ export const STAGE_WORDS: Record<ReviewStage, string> = {
 };
 
 /** After a Draft vs AI match: the cube list and the AI picks you saw; any other game: nothing. */
-async function opponentFields(log: GameLog): Promise<DraftReviewFields> {
+export async function opponentFields(log: GameLog): Promise<DraftReviewFields> {
   try {
     const saved = loadDraft();
     if (!saved || !isDraftMatch(log, saved)) return {};

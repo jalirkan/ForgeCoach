@@ -23,7 +23,8 @@
  * result and mid-game; live watch on /observe never opening /ws; combat damage
  * by the engine's rule (mtg-table M67: no defender row without trample, the
  * engine's refusal shown, a trampler's excess); the coach's "Copy prompt" with
- * no helper.
+ * no helper; the search hint ("What would the search AI do?", mtg-table D429)
+ * against a fake helper that offers it.
  *
  * Environment: BUILD=0 (reuse dist/), APP_URL (test a running ForgeCoach
  * instead; it must be on a Vite port), HEADLESS=0, ONLY=<substring of a
@@ -80,10 +81,12 @@ async function appUrl() {
 }
 
 /** Everything off the machine is answered here; WebSockets are not routed (they reach the fake engine). */
-async function isolate(context, appOrigin) {
+async function isolate(context, appOrigin, helper = null) {
   await context.route('**/*', (route) => {
     const u = new URL(route.request().url());
     if (u.origin === appOrigin) return route.continue();
+    // A scenario's fake coach helper (127.0.0.1:8643); without one it is refused, as when none runs.
+    if (helper && u.hostname === '127.0.0.1' && u.port === '8643') return helper(route, u);
     if (u.hostname === 'fonts.googleapis.com') return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
     if (u.hostname === 'api.scryfall.com') return route.fulfill({ status: 404, contentType: 'application/json', body: '{"object":"error","code":"not_found","status":404,"details":"e2e"}' });
     return route.abort('connectionrefused');
@@ -670,6 +673,85 @@ const scenarios = [
 ];
 
 // ---------------------------------------------------------------------------
+// The search hint (mtg-table D429): a fake coach helper that offers it
+
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
+
+/** /health says `hint: 1` (and that Claude Code is not ready: no coach questions); POST /hint answers after 600 ms. */
+function hintHelper(engine) {
+  const asked = [];
+  const handler = async (route, u) => {
+    const req = route.request();
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+    if (u.pathname === '/health') {
+      return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify({ ok: false, helper: 1, error: 'Claude Code is not logged in', hint: 1, hintEngine: 'idle', hintBudgetMs: { default: 3000, min: 1500, max: 6000 } }) });
+    }
+    if (u.pathname === '/hint' && req.method() === 'POST') {
+      const body = JSON.parse(req.postData() ?? '{}');
+      asked.push(body);
+      await new Promise((r) => setTimeout(r, 600));
+      const shock = mine(engine, 'Shock');
+      const mountain = engine.game.players[0].hand.find((x) => x.name === 'Mountain');
+      const answer = {
+        ok: true, v: 1, kind: 'search-hint', gameId: body.gameId, seat: body.seat, stateSeq: body.stateSeq, status: 'ok', type: 'spell', measure: 'leaf',
+        pick: `cast:${shock}`, strength: 'close', runnerUp: 'pass', ...(mountain ? { landFirst: mountain.id } : {}),
+        options: [{ token: `cast:${shock}`, label: 'cast Shock', verdict: 'best', winRate: 0.61 }, { token: 'pass', label: 'cast nothing now', verdict: 'close', winRate: 0.58 }],
+        knowledge: { opponent: 'unknown', opponentModel: 'basic-lands', ownDeck: null }, wallMs: 3100,
+      };
+      return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(answer) });
+    }
+    return route.fulfill({ status: 404, headers: CORS, contentType: 'application/json', body: '{"ok":false,"type":"error","message":"not found"}' });
+  };
+  handler.asked = asked;
+  return handler;
+}
+
+const hintScenario = {
+  name: 'the search hint: asked with a button or S, the pick in board words, how sure, the caveat',
+  engine: { scene: 'main3' },
+  helper: (engine) => {
+    hintScenario.fake = hintHelper(engine);
+    return hintScenario.fake;
+  },
+  async run({ page, engine, app }) {
+    const u = ui(page);
+    await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+    await u.mode('main');
+    const hint = page.locator('.actionbar .ds-hint');
+    const btn = hint.getByRole('button', { name: /What would the search AI do\?/ });
+    await btn.waitFor({ timeout: STEP_MS });
+    await btn.click();
+    await page.locator('[data-search-hint="thinking"]').getByText('Search AI thinking…').waitFor({ timeout: STEP_MS });
+    const done = page.locator('[data-search-hint="done"]');
+    await done.waitFor({ timeout: STEP_MS });
+    const line = await done.locator('.ds-hint-line').innerText();
+    check(/^Search AI\s+Play (your )?Mountain first, then: cast Shock, or cast nothing now — too close to call$/i.test(line.trim()), `the pick in board words (${line})`);
+    check(!/#\d/.test(line), `no engine id on screen (${line})`);
+    const caveat = await done.locator('.ds-hint-caveat').innerText();
+    check(caveat.startsWith('Knows only what you know'), `the caveat (${caveat})`);
+    const asked = hintScenario.fake.asked;
+    check(asked.length === 1, `one question per click (${asked.length})`);
+    const body = asked[0];
+    check(body.gameId === engine.gameId && body.seat === 0 && Number.isInteger(body.stateSeq) && body.stateSeq > 0, `the moment: game, seat, state seq (${JSON.stringify(body)})`);
+    check(Object.keys(body).every((k) => ['gameId', 'seat', 'stateSeq', 'inputSeq', 'oppPool', 'oppKnown', 'budgetMs'].includes(k)), `no other field, never a deck (${Object.keys(body)})`);
+    // The cards it names glow on the board.
+    const shock = mine(engine, 'Shock');
+    await page.locator(`.game [data-card-id="${shock}"][data-search-pick]`).first().waitFor({ state: 'attached', timeout: STEP_MS });
+    // Play the land: a new board, a new decision -- the answer goes, the button is back; S asks again.
+    await sent(engine, 'clickCard', () => u.click(mine(engine, 'Mountain')));
+    await engine.waitFor(() => engine.game.landPlayed, 'the land played');
+    await btn.waitFor({ timeout: STEP_MS });
+    check((await page.locator('[data-search-pick]').count()) === 0, 'the glow goes with the answer');
+    await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
+    await page.keyboard.press('s');
+    await done.waitFor({ timeout: STEP_MS });
+    check(asked.length === 2 && asked[1].stateSeq > body.stateSeq, `S asks for the new moment (${asked.map((a) => a.stateSeq)})`);
+    check(engine.acts().filter((a) => a.action !== 'clickCard').length === 0, `asking sent the engine nothing (${JSON.stringify(engine.acts())})`);
+  },
+};
+scenarios.push(hintScenario);
+
+// ---------------------------------------------------------------------------
 // Runner
 
 async function runOne(browser, app, s, round) {
@@ -677,7 +759,7 @@ async function runOne(browser, app, s, round) {
   const appOrigin = new URL(app).origin;
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: appOrigin });
-  await isolate(context, appOrigin);
+  await isolate(context, appOrigin, s.helper ? s.helper(engine) : null);
   const page = await context.newPage();
   const errors = [];
   const sockets = [];
