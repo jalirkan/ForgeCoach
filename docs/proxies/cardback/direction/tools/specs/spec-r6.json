@@ -1,0 +1,32 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r6",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "fix50-seat3-teal-s303",
+   "guide": "guides/fix-seat-teal.png",
+   "seed": 303,
+   "strength": 0.5,
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, monogram, inscription, card faces, pips, hearts, spades, wood panelling, wall, room, monk, priest, deformed hands, extra fingers, blurry, photo, 3d",
+   "prompt": "International Gothic tempera painting on flat gold leaf with punched tooling, half-length card player facing the viewer, teal hooded cloak with crimson lining, gentle face, both hands holding a fanned hand of cards seen from the back, dark blue backs with thin gold edges, glowing glass lamp on a table edge, decorative, crackled varnish"
+  },
+  {
+   "name": "fix50-seat3-garnet-s304",
+   "guide": "guides/fix-seat-garnet.png",
+   "seed": 304,
+   "strength": 0.5,
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, monogram, inscription, card faces, pips, hearts, spades, wood panelling, wall, room, monk, priest, deformed hands, extra fingers, blurry, photo, 3d",
+   "prompt": "International Gothic tempera painting on flat gold leaf with punched tooling, half-length card player facing the viewer, garnet red hooded cloak with teal lining, gentle face, both hands holding a fanned hand of cards seen from the back, dark blue backs with thin gold edges, glowing glass lamp on a table edge, decorative, crackled varnish"
+  },
+  {
+   "name": "fix50-seat3-indigo-s305",
+   "guide": "guides/fix-seat-indigo.png",
+   "seed": 305,
+   "strength": 0.5,
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, monogram, inscription, card faces, pips, hearts, spades, wood panelling, wall, room, monk, priest, deformed hands, extra fingers, blurry, photo, 3d",
+   "prompt": "International Gothic tempera painting on flat gold leaf with punched tooling, half-length card player facing the viewer, indigo hooded cloak with ochre lining, gentle face, both hands holding a fanned hand of cards seen from the back, dark blue backs with thin gold edges, glowing glass lamp on a table edge, decorative, crackled varnish"
+  }
+ ]
+}

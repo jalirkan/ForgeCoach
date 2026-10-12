@@ -1,0 +1,14 @@
+binders-gilt-1.png  1632x2220, 600 dpi, RGB
+model: Lykon/dreamshaper-xl-1-0 (fp16 unet, madebyollin/sdxl-vae-fp16-fix), img2img over a code-drawn guide
+guide: guides/fix-binder2-green.png  (drawn by tools/guides.py)
+prompt: 17th century a l'eventail bookbinding cover, deep bottle green morocco leather, fine pebbled grain, hand tooled gold leaf, gilt fan-shaped corner pieces, central gilt fan rosette, semé of small gilt stars, gilt roll border, worn gilding, museum archive photograph, flat lay, even diffuse light, highly detailed
+negative: text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, clock, dial, numerals, brown leather, oval, book edges, pages, spine, hands, table, room, perspective, shadow of book
+seed: 202  steps: 32 (img2img strength 0.3, so 9 denoising steps)  cfg: 6.0
+scheduler: DPM++ 2M Karras (DPMSolverMultistep, dpmsolver++, karras sigmas); attention: classic AttnProcessor
+generated size: 832x1152
+upscale: Lanczos to width 1632, centred cover-crop to 1632x2220, unsharp mask r2.2 45%; chroma above 140 compressed (x0.35) toward each pixel's grey, so nothing prints neon
+symmetry: mirror on both axes (top-left quadrant reflected); the centre emblem (r < 215 px) kept as painted and averaged with its own 180-degree rotation, since a Necker cube is rotation- but not mirror-symmetric
+darkest areas (luminance, 0.5 mm blur): 0.5th percentile 45.0 before, 45.0 after the shadow lift to a floor of 22; 5th percentile 50.0; darkest single pixel 0.0
+saturation x value, 99.5th percentile: 144/255
+raw job: fix-binder2-green-s202  (raw/r4/combo-green.png)
+history: round 2 painted the binding (seed 202, strength 0.62 over guides/binder2-*.png); round 3 redrew the Necker cube over the mirrored painting and repainted at strength 0.30 (guides/fix-binder2-*.png); round 4 replaced glyph-like corner arabesques with the guide's fan and repainted at 0.32; this file takes the round-3 leather and only the four round-4 corners (tools/combo.py).

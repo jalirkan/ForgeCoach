@@ -1,0 +1,14 @@
+tumbling-blocks-3.png  1632x2220, 600 dpi, RGB
+model: Lykon/dreamshaper-xl-1-0 (fp16 unet, madebyollin/sdxl-vae-fp16-fix), img2img over a code-drawn guide
+guide: guides/blocks2-garnet.png  (drawn by tools/guides.py)
+prompt: antique marquetry panel, tumbling blocks pattern of inlaid wood veneers, ebony, red dyed pearwood and pale holly, rich figured wood grain in every lozenge, a gilt brass inlay hexagon of cubes in the centre, thin brass stringing border, french polished, museum furniture detail photograph, flat lay, even diffuse light, highly detailed
+negative: text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, warped geometry, curved lines, perspective, room, furniture legs, shadow
+seed: 202  steps: 32 (img2img strength 0.46, so 14 denoising steps)  cfg: 6.0
+scheduler: DPM++ 2M Karras (DPMSolverMultistep, dpmsolver++, karras sigmas); attention: classic AttnProcessor
+generated size: 832x1152
+upscale: Lanczos to width 1632, centred cover-crop to 1632x2220, unsharp mask r2.2 45%; chroma above 140 compressed (x0.35) toward each pixel's grey, so nothing prints neon
+symmetry: 180-degree rotation: left half kept, right half its rotated twin, 80 px feather
+darkest areas (luminance, 0.5 mm blur): 0.5th percentile 30.0 before, 30.0 after the shadow lift to a floor of 22; 5th percentile 33.0; darkest single pixel 0.0
+saturation x value, 99.5th percentile: 100/255
+raw job: blocks2-garnet-s202  (raw/r2/blocks2-garnet-s202.png)
+history: round 2 (tools/guides3.py: the tiling drawn exactly in code with veneer grain per face, then painted at strength 0.46). Round 1's flat-paint version (no grain in the guide) was dropped.

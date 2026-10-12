@@ -1,0 +1,80 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r1",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "binder-green-s101",
+   "guide": "guides/binder-green.png",
+   "prompt": "antique renaissance bookbinding cover, deep bottle green morocco leather with fine pebbled grain, hand tooled gold leaf strapwork border, gilt double ruled lines, gilt lozenge in the centre, small gilt leaf fleuron stamps, gilt wireframe cube emblem with a small star, soft wear on the gilding, museum archive photograph, flat lay, even diffuse light, highly detailed leather texture",
+   "negative": "text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, brown leather, oval, book edges, pages, spine, hands, table, room, perspective, shadow of book",
+   "seed": 101,
+   "strength": 0.55
+  },
+  {
+   "name": "binder-blue-s101",
+   "guide": "guides/binder-blue.png",
+   "prompt": "antique renaissance bookbinding cover, deep midnight blue morocco leather with fine pebbled grain, hand tooled gold leaf strapwork border, gilt double ruled lines, gilt lozenge in the centre, small gilt leaf fleuron stamps, gilt wireframe cube emblem with a small star, soft wear on the gilding, museum archive photograph, flat lay, even diffuse light, highly detailed leather texture",
+   "negative": "text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, brown leather, oval, book edges, pages, spine, hands, table, room, perspective, shadow of book",
+   "seed": 101,
+   "strength": 0.55
+  },
+  {
+   "name": "binder-garnet-s101",
+   "guide": "guides/binder-garnet.png",
+   "prompt": "antique renaissance bookbinding cover, deep garnet red morocco leather with fine pebbled grain, hand tooled gold leaf strapwork border, gilt double ruled lines, gilt lozenge in the centre, small gilt leaf fleuron stamps, gilt wireframe cube emblem with a small star, soft wear on the gilding, museum archive photograph, flat lay, even diffuse light, highly detailed leather texture",
+   "negative": "text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, brown leather, oval, book edges, pages, spine, hands, table, room, perspective, shadow of book",
+   "seed": 101,
+   "strength": 0.55
+  },
+  {
+   "name": "blocks-holly-s101",
+   "guide": "guides/blocks-holly.png",
+   "prompt": "antique marquetry panel, tumbling blocks pattern of inlaid wood veneers, ebony, smoky green-grey sycamore and pale holly, visible fine wood grain in every lozenge, a gilt brass inlay hexagon of cubes in the centre, thin brass stringing border, french polished, museum furniture detail photograph, flat lay, even diffuse light, highly detailed",
+   "negative": "text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, warped geometry, curved lines, perspective, room, furniture legs, shadow",
+   "seed": 101,
+   "strength": 0.42
+  },
+  {
+   "name": "blocks-indigo-s101",
+   "guide": "guides/blocks-indigo.png",
+   "prompt": "antique marquetry panel, tumbling blocks pattern of inlaid wood veneers, ebony, indigo dyed sycamore and pale holly, visible fine wood grain in every lozenge, a gilt brass inlay hexagon of cubes in the centre, thin brass stringing border, french polished, museum furniture detail photograph, flat lay, even diffuse light, highly detailed",
+   "negative": "text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, warped geometry, curved lines, perspective, room, furniture legs, shadow",
+   "seed": 101,
+   "strength": 0.42
+  },
+  {
+   "name": "blocks-warm-s101",
+   "guide": "guides/blocks-warm.png",
+   "prompt": "antique marquetry panel, tumbling blocks pattern of inlaid wood veneers, ebony, walnut and pale holly, visible fine wood grain in every lozenge, a gilt brass inlay hexagon of cubes in the centre, thin brass stringing border, french polished, museum furniture detail photograph, flat lay, even diffuse light, highly detailed",
+   "negative": "text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, warped geometry, curved lines, perspective, room, furniture legs, shadow",
+   "seed": 101,
+   "strength": 0.42
+  },
+  {
+   "name": "seat-teal-s101",
+   "guide": "guides/seat-teal.png",
+   "prompt": "15th century italian painted playing card panel, half-length portrait of a hooded card player facing the viewer, calm gentle face, holding a fan of plain blank cards at the chest, teal hooded cloak with crimson lining, egg tempera on punched gold leaf ground, flat decorative early renaissance painting, a round glass lamp glowing on the edge of a wooden table in front, crackled varnish, museum piece",
+   "negative": "text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, card faces, symbols on cards, pips, tarot title, banner, scroll, deformed hands, extra fingers, distorted face, cross-eyed, halo text, modern, photo, 3d",
+   "seed": 101,
+   "strength": 0.7
+  },
+  {
+   "name": "seat-garnet-s101",
+   "guide": "guides/seat-garnet.png",
+   "prompt": "15th century italian painted playing card panel, half-length portrait of a hooded card player facing the viewer, calm gentle face, holding a fan of plain blank cards at the chest, garnet red hooded cloak with teal lining, egg tempera on punched gold leaf ground, flat decorative early renaissance painting, a round glass lamp glowing on the edge of a wooden table in front, crackled varnish, museum piece",
+   "negative": "text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, card faces, symbols on cards, pips, tarot title, banner, scroll, deformed hands, extra fingers, distorted face, cross-eyed, halo text, modern, photo, 3d",
+   "seed": 101,
+   "strength": 0.7
+  },
+  {
+   "name": "seat-indigo-s101",
+   "guide": "guides/seat-indigo.png",
+   "prompt": "15th century italian painted playing card panel, half-length portrait of a hooded card player facing the viewer, calm gentle face, holding a fan of plain blank cards at the chest, indigo hooded cloak with ochre lining, egg tempera on punched gold leaf ground, flat decorative early renaissance painting, a round glass lamp glowing on the edge of a wooden table in front, crackled varnish, museum piece",
+   "negative": "text, letters, words, writing, typography, title, caption, signature, artist signature, watermark, logo, numbers, monogram, initials, calligraphy, script, inscription, label, stamp mark, blurry, lowres, jpeg artifacts, neon, oversaturated, 3d render, plastic, cgi, card faces, symbols on cards, pips, tarot title, banner, scroll, deformed hands, extra fingers, distorted face, cross-eyed, halo text, modern, photo, 3d",
+   "seed": 101,
+   "strength": 0.7
+  }
+ ]
+}

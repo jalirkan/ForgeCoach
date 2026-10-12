@@ -1,0 +1,14 @@
+two-seats-3.png  1632x2220, 600 dpi, RGB
+model: Lykon/dreamshaper-xl-1-0 (fp16 unet, madebyollin/sdxl-vae-fp16-fix), img2img over a code-drawn guide
+guide: guides/fix-seat-indigo.png  (drawn by tools/guides.py)
+prompt: International Gothic tempera painting on flat gold leaf with punched tooling, half-length card player facing the viewer, indigo hooded cloak with ochre lining, gentle face, both hands holding a fanned hand of cards seen from the back, dark blue backs with thin gold edges, glowing glass lamp on a table edge, decorative, crackled varnish
+negative: text, letters, words, writing, signature, watermark, logo, numbers, monogram, inscription, card faces, pips, hearts, spades, wood panelling, wall, room, monk, priest, deformed hands, extra fingers, blurry, photo, 3d
+seed: 305  steps: 32 (img2img strength 0.5, so 16 denoising steps)  cfg: 6.0
+scheduler: DPM++ 2M Karras (DPMSolverMultistep, dpmsolver++, karras sigmas); attention: classic AttnProcessor
+generated size: 1216x832
+upscale: Lanczos to width 1632, centred cover-crop to 1632x2220, unsharp mask r2.2 45%; chroma above 140 compressed (x0.35) toward each pixel's grey, so nothing prints neon
+symmetry: double-ended: top half painted, bottom half its 180-degree twin, 12 px blend at the seam
+darkest areas (luminance, 0.5 mm blur): 0.5th percentile 26.0 before, 26.0 after the shadow lift to a floor of 22; 5th percentile 38.0; darkest single pixel 0.0
+saturation x value, 99.5th percentile: 157/255
+raw job: fix50-seat3-indigo-s305  (raw/r6/fix50-seat3-indigo-s305.png)
+history: round 3 painted the seated half (strength 0.72 over guides/seat2-<colour>.png, tools/guides4.py); the model turned the card fan into a candle, a folding fan or a lampshade, so tools/seatfix.py pasted the guide's card fan, hands and round lamp back over the painting (guides/fix-seat-<colour>.png), and round 6 repainted that at strength 0.50 (an intermediate pass at 0.38 stayed flat and was dropped).
