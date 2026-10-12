@@ -20,7 +20,7 @@ import { archetypeLab, guideLabFacts, LAB_MIN_GAMES, topArchetype } from './lab.
 const doc = (id: string) => readFileSync(new URL(`../../../public/cubes/${id}-cube-180.md`, import.meta.url), 'utf8');
 
 /** Cubes with no guide: Evan's list has no archetypes to write one from (its How to draft tab says so). */
-const NO_GUIDE = ['evybaby'];
+const NO_GUIDE = ['evybaby', 'twobert'];
 
 describe('every cube has a guide, and every card a guide names is in its cube', () => {
   it('one guide per listed cube, found by id and by the document title', () => {
