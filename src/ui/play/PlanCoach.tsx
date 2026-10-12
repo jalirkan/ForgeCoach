@@ -33,7 +33,7 @@ import { liveDecision } from './liveDecision.ts';
 import { buildPlanPrompt, momentOf, planPromptNames } from '../../livePlan/coach.ts';
 import { blocksDueEarly, dueMoment, type PlanSoFar } from '../../livePlan/moments.ts';
 import { oracleFromCards } from '../../livePlan/oracle.ts';
-import { parsePlan } from '../../livePlan/parse.ts';
+import { parsePlan, partialPlan } from '../../livePlan/parse.ts';
 import { planProgress } from '../../livePlan/progress.ts';
 import { visibleNames } from '../../livePlan/history.ts';
 import { cachedMap, cardsForPrompt, prefetchCards } from '../cardData.ts';
@@ -188,9 +188,12 @@ export const PlanCoach = memo(function PlanCoach({
 
   const plan = currentPlan(advice);
   const planAnswer = useAnswer(plan?.key ?? null);
-  const standIn = standInPlan(advice, !!planAnswer?.text);
-  // the newest plan is on its way (asked, queued, thinking) with no words yet: say so above everything kept from before
-  const planThinking = !!plan && !planAnswer?.text && (!planAnswer || planAnswer.status === 'preparing' || planAnswer.status === 'queued' || planAnswer.status === 'streaming');
+  // The newest plan stands on its own once its headline is there: before that (asked, queued, or only its
+  // reasoning streamed so far — PlanView shows "Planning…") the last plan stays in view (the playtest's coach-blank).
+  const planReady = !!planAnswer?.text && (planAnswer.status !== 'streaming' || !!partialPlan(planAnswer.text)?.plan);
+  const standIn = standInPlan(advice, planReady);
+  // the newest plan is on its way with no headline yet: say so above everything kept from before
+  const planThinking = !!plan && !planReady && (!planAnswer || planAnswer.status === 'preparing' || planAnswer.status === 'queued' || planAnswer.status === 'streaming');
   // your newest own question, shown above the plan while it is newer than it
   const ownAsk = advice.find((e) => e.kind === 'ask') ?? null;
   const showAsk = ownAsk && (!plan || ownAsk.seq > plan.seq) ? ownAsk : null;
