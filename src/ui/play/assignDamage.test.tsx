@@ -83,7 +83,7 @@ describe('assign_damage: the divide-damage bar follows the engine (M67)', () => 
     const html = render(ask, state);
     const sentence = /<p class="dmg-sentence">([\s\S]*?)<\/p>/.exec(html)?.[1] ?? '';
     expect(sentence).toContain('data-refused');
-    expect(sentence).toContain('Not allowed:');
+    expect(sentence).toContain('That split wasn’t allowed:');
     expect(sentence).toContain(reason!);
     const trample = damageAsk('human-ws-5#a7');
     expect(render(trample.ask, trample.state)).toContain('needs 1');

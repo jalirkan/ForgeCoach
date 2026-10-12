@@ -28,7 +28,7 @@ import { CardBack, CardFace } from '../CardTile.tsx';
 import { useCardInfo } from '../cardData.ts';
 import { IconCheck, IconLock, IconShield } from '../Icons.tsx';
 import { cx, typeKind } from '../util.ts';
-import { displayAsk, lookupName, skipAction } from './askModel.ts';
+import { displayAsk, lookupName, refusalLine, skipAction } from './askModel.ts';
 import { planAskKey } from './askKeys.ts';
 import {
   autoSplit,
@@ -83,6 +83,7 @@ function DamageBarInner({ ask, state, onAnswer, onPreviewCard }: DamageBarProps)
   const left = leftOf(model, amounts);
   const locked = defenderLocked(model, amounts);
   const skip = skipAction(ask);
+  const refused = refusalLine(ask);
 
   const send = (value: AnswerValue) => {
     if (sentRef.current) return;
@@ -137,11 +138,14 @@ function DamageBarInner({ ask, state, onAnswer, onPreviewCard }: DamageBarProps)
           <div className="dmg-eyebrow">Combat · Divide damage</div>
           <p className="dmg-sentence">
             {words.sentence}
-            {model.reason !== null && (
-              <span className="dmg-refused" role="alert" data-refused="">
+            {refused !== null && (
+              <>
                 {' '}
-                Not allowed: {model.reason}
-              </span>
+                {/* The engine refused the last split and asked again: the same one line every question shows (askModel `refusalLine`, M67/M68). */}
+                <span className="dmg-refused" role="alert" data-refused="">
+                  {refused}
+                </span>
+              </>
             )}
           </p>
           {words.rule && <p className="dmg-rule">{words.rule}</p>}
