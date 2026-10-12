@@ -13,6 +13,9 @@
  *   Esc          hide / show the question — it never declines. The one
  *                exception is "Choose how to play" (ability_menu), whose Esc
  *                is its safe "never mind" (nothing is played or paid).
+ *   One ability (mtg-table M69, D427): Space does NOT confirm — it is the
+ *   board's pass key by habit, and a click on a card is a look until the
+ *   player chooses; Enter, the 1 key or the button does.
  *
  * While a question is open the board's keys (playKeys.ts) are off — the act
  * guard sends nothing but concede behind an ask — so the two key sets never
@@ -50,9 +53,12 @@ export interface AskKeyContext {
   digits: number;
   /** Esc is the question's safe way out (ability_menu's "never mind"). */
   escSkips: boolean;
+  /** Space confirms too (default); false for the one-ability confirm (M69): only Enter does. */
+  spaceConfirms?: boolean;
 }
 
-export type AskKeyPlan = { kind: 'hide' } | { kind: 'skip' } | { kind: 'confirm' } | { kind: 'digit'; index: number };
+/** `none`: the question's key, swallowed and doing nothing (Space on the one-ability confirm). */
+export type AskKeyPlan = { kind: 'hide' } | { kind: 'skip' } | { kind: 'confirm' } | { kind: 'none' } | { kind: 'digit'; index: number };
 
 const TYPING = new Set(['input', 'textarea', 'select']);
 const NATIVE = new Set(['button', 'a', 'summary']);
@@ -79,6 +85,8 @@ export function planAskKey(e: AskKeyEvent, ctx: AskKeyContext): AskKeyPlan | nul
     if (e.repeat || tag === 'textarea') return null;
     // A text answer: Enter sends it, Space is a space.
     if (typing) return enter && ctx.canConfirm ? { kind: 'confirm' } : null;
+    // The one-ability confirm (M69): Space is swallowed, never a commitment — only on the box itself, so a focused button keeps its own key.
+    if (space && ctx.spaceConfirms === false && !NATIVE.has(tag)) return e.inAsk || ctx.placement === 'slot' || tag === 'body' ? { kind: 'none' } : null;
     if (NATIVE.has(tag)) {
       // A focused option confirms on Enter (Space toggles it natively); any other button keeps its own keys.
       if (!(e.inAsk && e.onOption && enter)) return null;

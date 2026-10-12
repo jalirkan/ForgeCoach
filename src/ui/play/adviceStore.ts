@@ -25,6 +25,7 @@
  * answers) and which attempt it is, so the plan's steps can be checked again
  * after a reload.
  */
+import { withoutEngineIds } from '../../engineText.ts';
 import type { AnswerStatus } from '../answers.ts';
 import type { PlanMoment } from './autoPlan.ts';
 import type { Choice, ChoiceQuestion } from '../../livePlan/prompt.ts';
@@ -131,7 +132,7 @@ function cleanMoment(m: unknown): PlanMoment | null {
     kind: o.kind as PlanMoment['kind'],
     id: o.id.slice(0, 300),
     question: o.question.slice(0, 4000),
-    label: o.label.slice(0, 200),
+    label: withoutEngineIds(o.label).slice(0, 200),
     ...(o.atAttack === true ? { atAttack: true } : {}),
     ...(ask ? { ask } : {}),
   };
@@ -144,7 +145,7 @@ function cleanEntry(e: unknown): StoredEntry | null {
   return {
     key: o.key,
     kind: o.kind,
-    label: o.label.slice(0, 200),
+    label: withoutEngineIds(o.label).slice(0, 200),
     forTurn: isNum(o.forTurn) ? o.forTurn : null,
     frameIndex: o.frameIndex,
     turn: isNum(o.turn) ? o.turn : null,

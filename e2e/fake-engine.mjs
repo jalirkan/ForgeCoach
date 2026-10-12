@@ -54,7 +54,8 @@
  * per blocker — and checked as it checks it: damage on the defender without
  * trample, or a total that does not add up, is refused and asked again under a
  * new askId with the reason; `null` is the engine's own split. Test hook:
- * `game.refuseNext = '<reason>'` refuses the next answer whatever it is.
+ * `game.refuseNext = '<reason>'` refuses the next answer whatever it is — the
+ * damage split or Shock's target (M68: any kind's answer may be refused).
  *
  * With `selection: true` it is an engine since mtg-table M64–M66 (D421–D423):
  * every `input` carries `selectable.playerIds` (the players a click is taken
@@ -922,7 +923,7 @@ class Game {
     this.payPrompt(card, null, back);
   }
 
-  targetAsk(card, back) {
+  targetAsk(card, back, reason = null) {
     const options = [];
     const opp = this.players[AI];
     options.push({ id: options.length, label: opp.name, kind: 'player', playerId: AI });
@@ -940,6 +941,7 @@ class Game {
       min: 1,
       max: 1,
       delayedReveal: null,
+      reason,
     };
     this.out('ask', this.askBody);
   }
@@ -958,6 +960,13 @@ class Game {
     this.askBody = null;
     if (p.damage) {
       this.onDamageAnswer(p.damage, value);
+      return true;
+    }
+    if (this.refuseNext) {
+      // M68: the answer refused, the same question asked again under a new askId with the reason.
+      const why = this.refuseNext;
+      this.refuseNext = null;
+      this.targetAsk(p.card, p.back, why);
       return true;
     }
     const pick = Array.isArray(value) ? value[0] : typeof value === 'number' ? value : null;

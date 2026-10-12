@@ -5,6 +5,7 @@
  * A loaded game: timeline · board · coach. Desktop is three columns; phones
  * get Board / Coach tabs and a bottom scrubber dock.
  */
+import { CardRefContext } from './CoachText.tsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GameLog } from '../log.ts';
 import type { AnyCard, GameStateBody } from '../protocol.ts';
@@ -189,6 +190,8 @@ export function GameView({
   const decision: Decision | null = mode === 'decisions' ? decisions[dIdx] ?? null : null;
   const frame = mode === 'frames' ? frames[fIdx] ?? null : null;
   const state = decision?.state ?? frame?.state ?? frames[frames.length - 1]?.state ?? null;
+  // The coach's words name cards as this board shows them (CoachText).
+  const cardRefLook = useMemo(() => ({ state }), [state]);
   const frameIndex = decision?.frameIndex ?? frame?.frameIndex ?? 0;
   // Report a bug (mtg-table D411): the replay at the moment shown, its log up to that frame.
   useBugContext(() => ({
@@ -310,6 +313,7 @@ export function GameView({
   );
 
   return (
+    <CardRefContext.Provider value={cardRefLook}>
     <CardActionsContext.Provider value={actions}>
       <BoardStateRef.Provider value={boardStateRef}>
         <div className={cx('game', wide ? 'is-wide' : 'is-narrow')}>
@@ -398,5 +402,6 @@ export function GameView({
         <GuideSheet open={guidesOpen} onClose={() => setGuidesOpen(false)} onChange={() => setGuideName(guideNameNow())} />
       </BoardStateRef.Provider>
     </CardActionsContext.Provider>
+    </CardRefContext.Provider>
   );
 }

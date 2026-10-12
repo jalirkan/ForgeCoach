@@ -215,3 +215,15 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* The newest plan is on its way: one line above the plan kept from before (PlanCoach). */
+.pc-thinking {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent, #6aa0ff) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #6aa0ff) 40%, transparent);
+}

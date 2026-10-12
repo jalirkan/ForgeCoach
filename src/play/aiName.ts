@@ -41,3 +41,26 @@ export function seatDisplayName(
   const policy = aiPolicyOf(hello);
   return policy ? aiPolicyName(policy) : own;
 }
+
+/**
+ * Every seat by the board's name for it: "You" for the viewing seat, the bot by
+ * the opponent picker's name (`seatDisplayName`), a person by their own name —
+ * never the engine's seat label ("Forge AI", "Human"). For the decision slot,
+ * the stack and the Game Log, so the board says one name per seat.
+ */
+export function seatNamer(
+  hello: HelloOkBody | null | undefined,
+  seat: number | null,
+  players: ReadonlyArray<{ id: number; name: string; isAi?: boolean }> = [],
+): (id: number) => string {
+  return (id) => {
+    if (id === seat) return 'You';
+    const p = hello?.players.find((x) => x.id === id) ?? players.find((x) => x.id === id) ?? null;
+    return seatDisplayName(hello, p, 'The bot');
+  };
+}
+
+/** Each seat's engine label beside the board's name for it, for engineText.ts `withBoardNames`. */
+export function seatLabels(players: ReadonlyArray<{ id: number; name: string }>, seat: number | null, nameOf: (id: number) => string): Array<{ engine: string; board: string; you: boolean }> {
+  return players.filter((p) => !!p.name).map((p) => ({ engine: p.name, board: p.id === seat ? 'You' : nameOf(p.id), you: p.id === seat }));
+}

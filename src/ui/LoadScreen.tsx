@@ -14,8 +14,9 @@ import './lobby.css';
 import { LobbyTiles, lobbyTiles } from './LobbyTiles.tsx';
 import { DEFAULT_LIVE_URL, FALLBACK_LIVE_URL } from '../live.ts';
 import { type SeatStatus } from '../play/session.ts';
-import { CONNECT_SLOW_MS, seatBusy, seatStatusText } from '../play/seatStatus.ts';
+import { CONNECT_SLOW_MS, seatBusy, seatStatusText as seatLine, type SeatStatusContext } from '../play/seatStatus.ts';
 import { PlayPolicyPicker, PlayProfilePicker, usePlayChoices } from './PlayProfile.tsx';
+import { TableDeckPicker } from './TableDecks.tsx';
 import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconPlay, IconUpload } from './Icons.tsx';
 import { copyText, cx } from './util.ts';
 import { Logo } from './Logo.tsx';
@@ -58,6 +59,8 @@ export interface PlayStatus {
   attempts: number;
   /** POST /engine/start is waking a sleeping engine (D308) before the seat connects. */
   waking?: boolean;
+  /** The table's chosen decks are being built and the engine started on them (POST /match). */
+  startingDecks?: boolean;
 }
 
 function portArg(url: string): string {
@@ -87,6 +90,12 @@ function CopyCmd({ cmd }: { cmd: string }) {
       </button>
     </div>
   );
+}
+
+/** What the seat status means, in words: play/seatStatus.ts's line, or the start on picked decks. */
+function seatStatusText(play: PlayStatus | null, url: string, ctx: SeatStatusContext = {}): string | null {
+  if (play?.startingDecks) return 'Starting the game on your decks…';
+  return seatLine(play, url, ctx);
 }
 
 /** The Play tile's line while a connection is under way. */
@@ -178,6 +187,7 @@ function EnginePanel({
         ) : null}
       </div>
       <SeatStatusBox play={play} url={url} engineServed={engineServed} />
+      {choices.match && <TableDeckPicker disabled={busy} />}
       {choices.policies.length > 0 && <PlayPolicyPicker policies={choices.policies} disabled={busy} />}
       {choices.profile && <PlayProfilePicker disabled={busy} />}
       {!engineServed && (
@@ -270,6 +280,7 @@ function EngineConnect({
               : 'The engine on your computer served this page. You play from here; the coach is one tap away.'}
           </p>
           <SeatStatusBox play={play} url={seatUrl} engineServed />
+          {choices.match && !busy && <TableDeckPicker />}
           {choices.policies.length > 0 && !busy && <PlayPolicyPicker policies={choices.policies} />}
           {choices.profile && !busy && <PlayProfilePicker />}
           {busy ? (

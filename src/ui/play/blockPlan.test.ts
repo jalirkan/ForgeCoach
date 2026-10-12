@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { Card, GameStateBody } from '../../protocol.ts';
-import { attackRefusal, blockRefusal, clickAttacker, clickBlocker, refusalLine, takeOff } from './blockPlan.ts';
+import { attackRefusal, blockRefusal, clickAttacker, clickBlocker, refusalLine, refusedCard, takeOff } from './blockPlan.ts';
 
 const m = (pairs: [number, number | null][]) => new Map(pairs);
 
@@ -95,5 +95,28 @@ describe('a refused attacker', () => {
   it('otherwise says it is not a legal attacker (haste: the flag is not the reason)', () => {
     expect(attackRefusal('Not selectable', 'card 6 cannot be selected now', s, 0)).toBe("Raging Goblin can't attack: not a legal attacker.");
     expect(attackRefusal('Not selectable', 'card 6 cannot be selected now', s, 1)).toBe(null);
+  });
+});
+
+describe('refusals when the bridge names the card by its label (real Forge: "Flayer Husk cannot be selected now")', () => {
+  const husk = card(63, 'Flayer Husk', 0, { types: 'Artifact - Equipment', power: null, toughness: null } as Partial<Card>);
+  const germ = card(64, 'Phyrexian Germ Token', 0, { token: true });
+  const goblin = card(9, 'Goblin Guide', 1, { attacking: true });
+  const s = state([husk, germ], [goblin]);
+
+  it('the card by "Name (id)", by its name alone, or by "card id"', () => {
+    expect(refusedCard('Flayer Husk (63) cannot be selected now', s, 0)?.id).toBe(63);
+    expect(refusedCard('Flayer Husk cannot be selected now', s, 0)?.id).toBe(63);
+    expect(refusedCard('card 64 cannot be selected now', s, 0)?.id).toBe(64);
+    expect(refusedCard('Nobody cannot be selected now', s, 0)).toBeNull();
+  });
+
+  it('a non-creature: only creatures block, only creatures attack', () => {
+    expect(blockRefusal('Not selectable', 'Flayer Husk cannot be selected now', s, null, 9, 0)).toBe("Flayer Husk can't block: only creatures block.");
+    expect(attackRefusal('Not selectable', 'Flayer Husk (63) cannot be selected now', s, 0)).toBe("Flayer Husk can't attack: only creatures attack.");
+  });
+
+  it('a creature named by its label gets the usual line', () => {
+    expect(blockRefusal('Not selectable', 'Phyrexian Germ Token cannot be selected now', s, { blocker: 64, attacker: 9 }, 9, 0)).toMatch(/^Phyrexian Germ Token can't block Goblin Guide/);
   });
 });

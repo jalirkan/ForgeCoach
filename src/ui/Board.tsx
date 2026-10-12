@@ -28,7 +28,7 @@ import { ZoneViewer, type ViewableZone } from './ZoneViewer.tsx';
 import { groupLands, pileWeight } from './landPiles.ts';
 import { edgeFade, phoneSideFit } from './boardFit.ts';
 import { cx, stateCardNames, typeKind } from './util.ts';
-import { seatDisplayName } from '../play/aiName.ts';
+import { seatDisplayName, seatNamer } from '../play/aiName.ts';
 
 interface BoardProps {
   log: GameLog;
@@ -46,7 +46,8 @@ interface BoardProps {
 }
 
 export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackElsewhere, combatMarks: combatOverride }: BoardProps) {
-  const stack = useMemo(() => stackEntries(state, seat), [state, seat]);
+  // Seats by the board's names (the bot as picked), never the engine's seat labels.
+  const stack = useMemo(() => stackEntries(state, seat, seatNamer(log.hello, seat, state.players)), [state, seat, log.hello]);
   const combat = useMemo(() => combatOverride ?? combatMarks(state), [combatOverride, state]);
   const marks = useMemo<BoardMarks>(() => ({ stack: stackMarks(stack), combat }), [stack, combat]);
   const me = state.players.find((p) => p.id === seat) ?? state.players[0];

@@ -13,7 +13,9 @@
  * Plan mode (the live coach's default, mtg-table D419): a question whose system
  * prompt is the plan format's is answered in that format — keep at the opening
  * hand, "choose play" at the coin toss, the first listed answer of an engine
- * question, else pass — so the steps check out and no correction is asked.
+ * question, at the blocks the first attacker blocked by the first untapped
+ * creature (the names as the prompt writes them, engine ids and all), else
+ * pass — so the steps check out and no correction is asked.
  * Its `type` is "moment <first line>", which the cadence check counts per game.
  */
 import http from 'node:http';
@@ -29,6 +31,13 @@ export function planAnswer(user) {
     const pick = choices.replace(/\s*\(choose .*\)$/, '').split('; ')[0]?.replace(/ \((yours|the opponent's)\)$/, '');
     if (pick) step = `${/^Legal targets/m.test(user) ? 'target' : 'choose'} ${pick}`;
   } else if (/^It is your turn/.test(q)) step = 'hold';
+  else if (/^The opponent attacks with:/.test(q)) {
+    // the blocks moment: block the first attacker with the first untapped creature, named as the prompt names them (ids and all)
+    const first = (line) => (/: (.*)\.$/.exec(line)?.[1] ?? '').split('; ')[0]?.replace(/ \(.*$/, '').replace(/ \d+\/\d+.*$/, '').replace(/ attached to .*$/, '').trim();
+    const atk = first(q);
+    const blk = first(String(user).split('\n').find((l) => /^Your untapped creatures:/.test(l)) ?? '');
+    if (atk && blk && blk !== 'none') step = `block ${atk} with ${blk}`;
+  }
   return `A fake coach: nothing to add.\nPLAN: Nothing new for now; keep your mana up.\nSTEPS:\n1. ${step}\nEND`;
 }
 

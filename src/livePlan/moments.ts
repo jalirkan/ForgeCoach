@@ -14,7 +14,9 @@
  *   response    the opponent's spell or ability on top of the stack, once per
  *               stack item, when the player could respond (something listed
  *               that the untapped mana can pay for)
- *   blocks      the block declaration, once a turn, when a block is possible
+ *   blocks      the block declaration, once a turn, when a block is possible —
+ *               asked as soon as the bot's attack is declared, so the plan
+ *               is there by the block input (`earlyBlocks`)
  *   end-step    the opponent's end step, once a turn, when the player could
  *               cast or activate something there
  *   question    an engine question with more than one answer (a target, a
@@ -27,6 +29,7 @@
  */
 import type { AskBody, GameStateBody, InputBody } from '../protocol.ts';
 import { selectablePlayersOf } from '../protocol.ts';
+import { withoutEngineIds } from '../engineText.ts';
 import type { LoggedFrame } from '../log.ts';
 import { isPlayDrawInput } from '../decisions.ts';
 import { cardsById, nameOf, playersOf, zoneCards } from './board.ts';
@@ -295,7 +298,8 @@ function questionMoment(i: MomentInput, state: GameStateBody, q: ChoiceQuestion,
     kind: 'question',
     id,
     question: questionText(q, state, i.me, { plan: i.plan ? planProgressText(i.plan.steps, i.plan.done) : null }),
-    label: `Question, turn ${state.turn || 0}: ${firstLine(q.prompt).replace(/\s*\[.*$/, '').slice(0, 60) || 'a choice'}`,
+    // the label is the player's (the panel's heading): the engine prompt's card ids out
+    label: `Question, turn ${state.turn || 0}: ${withoutEngineIds(firstLine(q.prompt).replace(/\s*\[.*$/, '')).slice(0, 60) || 'a choice'}`,
     ask: q,
   };
 }
@@ -315,6 +319,10 @@ export function momentAt(i: MomentInput, { force = false }: { force?: boolean } 
   const prompt = String(input?.prompt ?? '');
   const pregame = !state.phase || !state.turn;
 
+  // The bot has declared its attack at you: the blocks are asked now, so the plan is there
+  // by the time the engine asks for blockers (common-sense pass: auto-coach missed the blocks moment).
+  const early = !force && !i.ask ? earlyBlocks(state, me, prompt) : null;
+  if (early) return early;
   if (i.ask) {
     const q = askChoices(i.ask, state);
     if (q && (force || !planAnswers(i.plan, q, state, me))) return questionMoment(i, state, q, `q:${i.ask.askId}`);
@@ -367,6 +375,33 @@ export function momentAt(i: MomentInput, { force = false }: { force?: boolean } 
   if (own && main && (able || force)) return { kind: 'turn', id: `turn:${turn}`, question: turnQuestion(state), label: `Your turn ${turn}` };
   if (!own && state.phase === 'END_OF_TURN' && (able || force)) return { kind: 'end-step', id: `end:${turn}`, question: endStepQuestion(state, me, i.oracle), label: `Their end step, turn ${turn}` };
   return force ? { kind: 'now', id: `now:${turn}:${state.phase}`, question: nowQuestion(state, me), label: `Now, turn ${turn}` } : null;
+}
+
+/**
+ * The blocks moment as soon as the attack is declared (Justin, turn 24 of
+ * 2026-10-10: ten attackers at 5 life, the block declaration came and went
+ * with no plan — the plan was asked only when the engine's "Select creatures to
+ * block" input came, and arrived after it). From the attack declaration on —
+ * the bot's turn, its combat with attackers aimed at you in `state.combat`, no
+ * blocks declared yet, a creature of yours untapped — the same moment
+ * (`blocks:<turn>`, the same question) is due, whether you hold priority or
+ * the bot does. The block input itself still asks it if this did not.
+ */
+const BEFORE_BLOCKS = new Set(['COMBAT_DECLARE_ATTACKERS', 'COMBAT_DECLARE_BLOCKERS']);
+function earlyBlocks(state: GameStateBody, me: number, prompt: string): Moment | null {
+  if (state.activePlayer === me || !BEFORE_BLOCKS.has(state.phase ?? '')) return null;
+  if (prompt.startsWith('Select creatures to block')) return null; // the input's own moment below
+  const bands = state.combat?.bands ?? [];
+  if (bands.some((b) => (b.blockerIds ?? []).length > 0)) return null;
+  const { attackers, blockers } = blockPairs(state, me);
+  if (attackers.length === 0 || blockers.length === 0) return null;
+  const turn = state.turn || 0;
+  return { kind: 'blocks', id: `blocks:${turn}`, question: blocksQuestion(state, me), label: `Your blocks, turn ${turn}` };
+}
+
+/** Is the blocks moment due before the seat has a move (the bot holds priority after attacking)? */
+export function blocksDueEarly(state: GameStateBody | null, me: number, input: InputBody | null): boolean {
+  return !!state && earlyBlocks(state, me, String(input?.prompt ?? '')) !== null;
 }
 
 /** The moment auto-coach asks now, or null (nothing due, or already asked). */

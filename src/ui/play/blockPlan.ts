@@ -92,6 +92,28 @@ export function takeOff(blocker: number, current: number | null, blocks: BlockMa
 // ---------------------------------------------------------------------------
 // When the engine refuses a block
 
+/**
+ * The card a "Not selectable" notice names, from the visible state. The bridge
+ * names it by its label ("Flayer Husk (63) cannot be selected now", or "Flayer
+ * Husk" alone) or, for a card it may not name, "card 63": the id when the text
+ * carries one, else the one visible card of that name (yours first). Null when
+ * the board cannot tell which card it is.
+ */
+export function refusedCard(text: string | null | undefined, state: GameStateBody | null, seat: number | null): Card | null {
+  if (!state) return null;
+  const t = String(text ?? '');
+  const all: Card[] = [];
+  for (const p of state.players) for (const z of Object.values(p.zones)) for (const c of z.cards as AnyCard[]) if (!isHidden(c)) all.push(c as Card);
+  const m = /\bcard (\d+)\b/.exec(t) ?? /\((\d+)\)\s*cannot be selected/.exec(t);
+  if (m) return all.find((c) => c.id === Number(m[1])) ?? null;
+  const name = /^(.+?)\s+cannot be selected/.exec(t.trim())?.[1]?.trim();
+  if (!name) return null;
+  const named = all.filter((c) => c.name === name);
+  const mine = named.filter((c) => c.controller === seat || (c.zone === 'hand' && c.owner === seat));
+  const pick = mine.length ? mine : named;
+  return pick.length === 1 ? pick[0]! : pick.find((c) => c.zone === 'battlefield') ?? pick[0] ?? null;
+}
+
 export interface RefusalCards {
   blocker: { name: string; keywords: readonly string[] } | null;
   attacker: { name: string; keywords: readonly string[] } | null;
@@ -129,15 +151,15 @@ export function blockRefusal(
   seat: number | null,
 ): string | null {
   if (!state || !/^not selectable$/i.test(title.trim())) return null;
-  const m = /\bcard (\d+)\b/.exec(text ?? '');
-  if (!m) return null;
-  const id = Number(m[1]);
   const find = (cid: number): Card | null => {
     for (const p of state.players) for (const c of p.zones.battlefield.cards as AnyCard[]) if (c.id === cid && !isHidden(c)) return c as Card;
     return null;
   };
-  const blocker = find(id);
+  const named = refusedCard(text, state, seat);
+  const blocker = named && named.zone === 'battlefield' ? named : null;
   if (!blocker || blocker.controller !== seat) return null;
+  const id = blocker.id;
+  if (!/creature/i.test(blocker.types ?? '')) return `${blocker.name} can't block: only creatures block.`;
   const atkId = tried && tried.blocker === id ? tried.attacker : current;
   const attacker = atkId === null ? null : find(atkId);
   const view = (c: Card | null) => (c ? { name: c.name, keywords: keywordsOf(c) } : null);
@@ -152,12 +174,11 @@ export function blockRefusal(
  */
 export function attackRefusal(title: string, text: string | null | undefined, state: GameStateBody | null, seat: number | null): string | null {
   if (!state || !/^not selectable$/i.test(title.trim())) return null;
-  const m = /\bcard (\d+)\b/.exec(text ?? '');
-  if (!m) return null;
-  const id = Number(m[1]);
-  let card: Card | null = null;
-  for (const p of state.players) for (const c of p.zones.battlefield.cards as AnyCard[]) if (c.id === id && !isHidden(c)) card = c as Card;
+  const named = refusedCard(text, state, seat);
+  const card = named && named.zone === 'battlefield' ? named : null;
   if (!card || card.controller !== seat || !card.name) return null;
+  if (!/creature/i.test(card.types ?? '')) return `${card.name} can't attack: only creatures attack.`;
+  if (card.tapped) return `${card.name} can't attack: it is tapped.`;
   if (card.sick && !keywordsOf(card).includes('HASTE')) return `${card.name} can't attack: it entered this turn.`;
   return `${card.name} can't attack: not a legal attacker.`;
 }

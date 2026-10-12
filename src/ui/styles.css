@@ -2901,3 +2901,30 @@ textarea:focus {
   padding-top: 0;
   border-top: 0;
 }
+
+/* ---- Play vs Bot's table: your deck and the bot's (TableDecks.tsx) ---- */
+.table-deck-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 6px;
+}
+.table-deck-row .play-profile-k {
+  min-width: 7.5em;
+}
+.table-deck-select {
+  flex: 1 1 14em;
+  min-width: 0;
+  max-width: 100%;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface, var(--bg));
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.table-deck-select:disabled {
+  opacity: 0.65;
+}

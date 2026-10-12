@@ -128,6 +128,13 @@
  *       `targets[].lethal` is now the damage Forge's dialog counts as lethal
  *       (deathtouch, planeswalkers and damage already assigned included).
  *       Absent before M67. `assignDamageRuleOf` is their one reader.
+ *   M68 `reason` on every other ask kind (D426): every answer is checked by the
+ *       bridge against Forge's own rule for its kind (the desktop dialog's), and
+ *       a refused one comes back as the same question with `reason` — read it
+ *       with `askReasonOf`. And what each kind allows, where the wire did not
+ *       say: `text.min` / `text.max` (a numeric ask's bounds),
+ *       `sideboard.mainMin` / `sideboard.sideMax` (the deck-size rule), and an
+ *       `assign_amount` target's `min` / `max` (`max` never null since M68).
  *
  * **Every M6 field is declared optional here**, and that is not defensiveness
  * for its own sake: fifteen committed recordings predate them,
@@ -1617,6 +1624,23 @@ export interface AskBase<K extends AskKind> {
   kind: K;
   /** Advisory for the client; enforced by the server (§5.2). */
   timeoutMs: number;
+  /**
+   * Amendments M67 (`assign_damage`) and M68 (every other kind, D426): why the
+   * bridge refused the previous answer to this same question — a sentence to
+   * show the player — or `null` on a first asking. A refused answer is never
+   * applied; the question comes again under a new `askId`. Absent before
+   * M67/M68: read it with `askReasonOf`.
+   */
+  reason?: string | null;
+}
+
+/**
+ * The one reader of M67/M68's `reason`: the bridge's refusal of the previous
+ * answer to this question, or `null` (a first asking, or a bridge that does not
+ * check answers).
+ */
+export function askReasonOf(ask: { reason?: string | null }): string | null {
+  return typeof ask.reason === 'string' && ask.reason !== '' ? ask.reason : null;
 }
 
 /** `getAbilityToPlay` → the chosen option index, or `null`. */
@@ -1666,6 +1690,14 @@ export interface TextAsk extends AskBase<'text'> {
   initial: string;
   suggestions: string[];
   numeric: boolean;
+  /**
+   * Amendment M68 (D426): the bounds of the number a numeric ask takes —
+   * `AbstractGuiGame.getInteger`'s `min` / `max`, which the bridge checks the
+   * answer against. `null` when there is none, when the bridge does not know
+   * them, and on a free-text ask; absent before M68.
+   */
+  min?: number | null;
+  max?: number | null;
 }
 
 /**
@@ -1826,7 +1858,13 @@ export interface AssignAmountAsk extends AskBase<'assign_amount'> {
   atLeastOne: boolean;
   /** Forge's `amountLabel` — what the amount *is* ("damage", "counters"). */
   label: string;
-  targets: Array<AskOption & { max?: number }>;
+  /**
+   * Since amendment M68 (D426) each target carries the dialog's own bounds,
+   * which the bridge checks: `min` (1 with `atLeastOne`, else 0) and `max`
+   * (Forge's cap for that target, else the total — never `null` since M68).
+   * The answer must assign exactly `total`.
+   */
+  targets: Array<AskOption & { min?: number; max?: number | null }>;
 }
 
 /**
@@ -1852,6 +1890,14 @@ export interface SideboardAsk extends AskBase<'sideboard'> {
   prompt: string;
   main: AskOption[];
   side: AskOption[];
+  /**
+   * Amendment M68 (D426): Forge's deck-size rule between games, which the
+   * bridge checks — at least `mainMin` cards in the new main deck and at most
+   * `sideMax` left in the sideboard (`null`: not enforced). Each card may be
+   * answered once. Absent before M68.
+   */
+  mainMin?: number | null;
+  sideMax?: number | null;
 }
 
 export type AskBody =

@@ -8,8 +8,13 @@
  * (livePlan/check.ts) — and the coach's reasoning behind a Why toggle. While a
  * correction is asked, one line says so. A reply that never came in the steps
  * format is shown as it was written.
+ *
+ * Cards are named as the board shows them, never by engine id (CoachText):
+ * the coach writes "block Construct Token #297", the player reads the lane's
+ * badge number or the card's P/T, and hovering (or tapping) a step lights the
+ * cards it names on the board.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { GameLog } from '../../log.ts';
 import type { Answer } from '../answers.ts';
 import { parsePlan, partialPlan } from '../../livePlan/parse.ts';
@@ -19,11 +24,17 @@ import { cachedMap, useCardsVersion } from '../cardData.ts';
 import { Markdown } from '../Markdown.tsx';
 import { IconCheck, IconChevronDown } from '../Icons.tsx';
 import { cx } from '../util.ts';
+import { CoachText, useCardRefLook } from '../CoachText.tsx';
+import { namedCardIds } from '../cardRefs.ts';
+import { boardFocus, setBoardFocus } from '../boardFocus.ts';
 import type { AdviceEntry } from './autoPlan.ts';
 import { MAX_PLAN_CORRECTIONS, snapshotOf, type RunStatus } from './planRun.ts';
 
 export function PlanView({ entry, answer, log, seat, run }: { entry: AdviceEntry; answer: Answer | undefined; log: GameLog | null; seat: number | null; run?: RunStatus | undefined }) {
   const [why, setWhy] = useState(false);
+  const look = useCardRefLook();
+  // a step's light goes out with the plan
+  useEffect(() => () => setBoardFocus(null), []);
   const text = answer?.text ?? '';
   const streaming = answer?.status === 'streaming';
   const cardsV = useCardsVersion();
@@ -61,7 +72,7 @@ export function PlanView({ entry, answer, log, seat, run }: { entry: AdviceEntry
   const reasking = run && run.phase === 'reasking' && run.problem;
   const status = reasking ? (
     <p className="plan-status pulse" role="status">
-      Checked against the engine: {run.problem}. Asking the coach again (correction {run.attempt} of {MAX_PLAN_CORRECTIONS})…
+      Checked against the engine: <CoachText text={run.problem ?? ''} />. Asking the coach again (correction {run.attempt} of {MAX_PLAN_CORRECTIONS})…
     </p>
   ) : run?.phase === 'checking' ? (
     <p className="plan-status pulse" role="status">
@@ -77,7 +88,13 @@ export function PlanView({ entry, answer, log, seat, run }: { entry: AdviceEntry
     return (
       <div className="plan-view is-streaming">
         {status}
-        {partial.plan ? <p className="plan-headline">{partial.plan}</p> : <p className="muted small pulse">Planning…</p>}
+        {partial.plan ? (
+          <p className="plan-headline">
+            <CoachText text={partial.plan} />
+          </p>
+        ) : (
+          <p className="muted small pulse">Planning…</p>
+        )}
       </div>
     );
   }
@@ -95,19 +112,32 @@ export function PlanView({ entry, answer, log, seat, run }: { entry: AdviceEntry
   return (
     <div className={cx('plan-view', progress?.complete && 'is-complete')}>
       {status}
-      <p className="plan-headline">{parsed.plan}</p>
+      <p className="plan-headline">
+        <CoachText text={parsed.plan} />
+      </p>
       <ol className="plan-steps">
         {parsed.steps.map((s, i) => {
           const done = progress?.done[i] === true;
           const bad = checks[i] && !checks[i]!.ok ? checks[i]!.why : null;
           return (
-            <li key={i} className={cx('plan-step', done && 'is-done', bad && 'is-bad')} data-step-done={done ? '' : undefined}>
+            <li
+              key={i}
+              className={cx('plan-step', done && 'is-done', bad && 'is-bad')}
+              data-step-done={done ? '' : undefined}
+              onMouseEnter={() => setBoardFocus(namedCardIds(s.raw, look))}
+              onMouseLeave={() => setBoardFocus(null)}
+              onClick={() => setBoardFocus(boardFocus().size ? null : namedCardIds(s.raw, look))}
+            >
               <span className="plan-mark" {...(done ? { role: 'img', 'aria-label': `step ${s.n}, done`, title: 'Done' } : { 'aria-hidden': true })}>
                 {done ? <IconCheck size={12} /> : s.n}
               </span>
               <span className="plan-text">
-                {s.raw.replace(/\s*(?:->|=>)\s*/, ' → ')}
-                {bad && <span className="plan-bad">can’t be done: {bad}</span>}
+                <CoachText text={s.raw.replace(/\s*(?:->|=>)\s*/, ' → ')} />
+                {bad && (
+                  <span className="plan-bad">
+                    can’t be done: <CoachText text={bad} />
+                  </span>
+                )}
               </span>
             </li>
           );
@@ -118,7 +148,11 @@ export function PlanView({ entry, answer, log, seat, run }: { entry: AdviceEntry
           <button className="link-btn plan-why-toggle" onClick={() => setWhy((w) => !w)} aria-expanded={why}>
             Why <IconChevronDown size={12} className={why ? 'rot' : ''} />
           </button>
-          {why && <p className="plan-why">{parsed.preamble}</p>}
+          {why && (
+            <p className="plan-why">
+              <CoachText text={parsed.preamble} />
+            </p>
+          )}
         </>
       )}
     </div>

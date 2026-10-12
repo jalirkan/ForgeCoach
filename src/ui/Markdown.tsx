@@ -8,7 +8,7 @@
  * model text can never become markup.
  */
 import { memo, type ReactNode } from 'react';
-import { SymbolText } from './Mana.tsx';
+import { CoachText } from './CoachText.tsx';
 
 type Block =
   | { t: 'p'; text: string }
@@ -83,7 +83,7 @@ export function parseBlocks(src: string): Block[] {
   return out;
 }
 
-/** Inline: **bold**, *italic* / _italic_, `code`, {X} symbols. */
+/** Inline: **bold**, *italic* / _italic_, `code`, {X} symbols, and engine ids read as the board shows the card (CoachText). */
 export function Inline({ text }: { text: string }): ReactNode {
   const nodes: ReactNode[] = [];
   const re = /(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|\*[^*\s][^*]*\*|_[^_\s][^_]*_)/g;
@@ -91,12 +91,12 @@ export function Inline({ text }: { text: string }): ReactNode {
   let m: RegExpExecArray | null;
   let k = 0;
   while ((m = re.exec(text))) {
-    if (m.index > last) nodes.push(<SymbolText key={k++} text={text.slice(last, m.index)} />);
+    if (m.index > last) nodes.push(<CoachText key={k++} text={text.slice(last, m.index)} />);
     const tok = m[0];
     if (tok.startsWith('**') || tok.startsWith('__')) {
       nodes.push(
         <strong key={k++}>
-          <SymbolText text={tok.slice(2, -2)} />
+          <CoachText text={tok.slice(2, -2)} />
         </strong>,
       );
     } else if (tok.startsWith('`')) {
@@ -104,13 +104,13 @@ export function Inline({ text }: { text: string }): ReactNode {
     } else {
       nodes.push(
         <em key={k++}>
-          <SymbolText text={tok.slice(1, -1)} />
+          <CoachText text={tok.slice(1, -1)} />
         </em>,
       );
     }
     last = m.index + tok.length;
   }
-  if (last < text.length) nodes.push(<SymbolText key={k++} text={text.slice(last)} />);
+  if (last < text.length) nodes.push(<CoachText key={k++} text={text.slice(last)} />);
   return <>{nodes}</>;
 }
 

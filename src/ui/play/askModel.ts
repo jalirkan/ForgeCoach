@@ -25,11 +25,21 @@
  *   - `assign_damage` offers the defender (index 0) only when the engine says
  *     it may take damage (`defenderAllowed`, mtg-table M67/D424); an older
  *     engine says nothing, and then only an attacker whose own `keywords`
- *     carry TRAMPLE gets the row. The engine checks every split and asks again
- *     with a `reason` when it refuses one.
+ *     carry TRAMPLE gets the row;
+ *   - every kind's answer is checked by the engine, which asks the same
+ *     question again under a new askId with a `reason` when it refuses one
+ *     (M67 for assign_damage, M68/D426 for the rest): `refusalLine` is what
+ *     the dialog shows, one line for every kind. M68's bounds — a numeric
+ *     `text` ask's `min`/`max`, `sideboard.mainMin`/`sideMax`, an
+ *     `assign_amount` target's `min`/`max` — are checked here before sending;
+ *     an older engine sends none, and then only the engine checks;
+ *   - an `ability_menu` with ONE option (M69/D427: a click on your own
+ *     permanent asks first, even for its only ability) is a one-line confirm,
+ *     `loneAbility`.
  */
-import { assignDamageRuleOf } from '../../protocol.ts';
-import type { AnswerValue, AskBody, AskOption, AssignDamageAsk, InputBody } from '../../protocol.ts';
+import { withoutEngineIds } from '../../engineText.ts';
+import { askReasonOf, assignDamageRuleOf } from '../../protocol.ts';
+import type { AnswerValue, AskBody, AskOption, AssignDamageAsk, InputBody, TextAsk } from '../../protocol.ts';
 
 // ---------------------------------------------------------------------------
 // Drafts — what the player has built so far
@@ -51,7 +61,7 @@ export type AskDraft =
 
 export type AbilityOption = AskOption & { canPlay: boolean; isSpell: boolean };
 export type DamageTarget = AskOption & { lethal?: number | null; defender?: boolean };
-export type AmountTarget = AskOption & { max?: number | null };
+export type AmountTarget = AskOption & { min?: number; max?: number | null };
 
 /** Every option of an ask, flattened in the order the answer indexes them (§5.1). */
 export function askOptions(ask: AskBody): AskOption[] {
@@ -148,9 +158,42 @@ export function damageRows(ask: AssignDamageAsk, allowed: boolean): DamageTarget
   return allowed ? rows : rows.filter((t) => t.defender !== true);
 }
 
-/** Why the engine refused the last split of this same question, or null (M67). */
-export function damageRefusal(ask: AssignDamageAsk): string | null {
-  return assignDamageRuleOf(ask).reason;
+/**
+ * The line the dialog shows when the engine refused the previous answer to
+ * this same question and asked again (M67 for assign_damage, M68 for every
+ * other kind), or null on a first asking or from an engine that does not say.
+ */
+export function refusalLine(ask: AskBody): string | null {
+  const reason = askReasonOf(ask);
+  if (reason === null) return null;
+  const what = ask.kind === 'assign_damage' || ask.kind === 'assign_amount' ? 'That split' : ask.kind === 'ability_menu' ? 'That choice' : 'That answer';
+  return `${what} wasn’t allowed: ${reason}`;
+}
+
+/** The one ability of an `ability_menu` that offers only one (M69: a click on your own permanent asks first), else null. */
+export function loneAbility(ask: AskBody): AbilityOption | null {
+  return ask.kind === 'ability_menu' && ask.options.length === 1 ? (ask.options[0] as AbilityOption) : null;
+}
+
+/** A numeric `text` ask's bounds as the engine sent them (M68); null where it sent none. */
+export function textBounds(ask: TextAsk): { min: number | null; max: number | null } {
+  const n = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) ? v : null);
+  return ask.numeric ? { min: n(ask.min), max: n(ask.max) } : { min: null, max: null };
+}
+
+/** "from 0 to 99", "0 or more", "99 or less"; null with no bounds. */
+export function rangePhrase(min: number | null, max: number | null): string | null {
+  if (min !== null && max !== null) return `from ${min} to ${max}`;
+  if (min !== null) return `${min} or more`;
+  if (max !== null) return `${max} or less`;
+  return null;
+}
+
+/** The least an `assign_amount` target may get: its own `min` (M68), and 1 with `atLeastOne`. */
+export function amountFloor(ask: AskBody, id: number): number {
+  if (ask.kind !== 'assign_amount') return 0;
+  const m = (ask.targets as AmountTarget[]).find((t) => t.id === id)?.min;
+  return Math.max(typeof m === 'number' && m > 0 ? Math.floor(m) : 0, ask.atLeastOne ? 1 : 0);
 }
 
 function amountDefault(targets: AmountTarget[], total: number, atLeastOne: boolean): Record<string, number> {
@@ -160,11 +203,17 @@ function amountDefault(targets: AmountTarget[], total: number, atLeastOne: boole
     const m = targets[i]!.max;
     return typeof m === 'number' && m >= 0 ? m : Infinity;
   };
+  const floor = (i: number): number => {
+    const m = targets[i]!.min;
+    return Math.max(typeof m === 'number' && m > 0 ? Math.floor(m) : 0, atLeastOne ? 1 : 0);
+  };
   const out: Record<string, number> = {};
   let left = total;
-  if (atLeastOne && total >= n) {
-    for (let i = 0; i < n; i++) out[String(i)] = 1;
-    left -= n;
+  // Each target's least first (the dialog's start), when the total covers them all.
+  const least = targets.reduce((x, _t, i) => x + floor(i), 0);
+  if (least > 0 && least <= total) {
+    for (let i = 0; i < n; i++) if (floor(i) > 0) out[String(i)] = floor(i);
+    left -= least;
   }
   for (let i = 0; i < n && left > 0; i++) {
     const have = out[String(i)] ?? 0;
@@ -320,6 +369,12 @@ export function amountsTotal(amounts: Record<string, number>): number {
   return sum;
 }
 
+/** Forge's deck-size rule between games (M68); null where the engine sends none. */
+export function sideboardBounds(ask: { mainMin?: number | null; sideMax?: number | null }): { mainMin: number | null; sideMax: number | null } {
+  const n = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : null);
+  return { mainMin: n(ask.mainMin), sideMax: n(ask.sideMax) };
+}
+
 /** The per-target cap an amount row may reach (engine `max`, then the total). */
 export function amountCap(ask: AskBody, id: number): number {
   if (ask.kind === 'assign_amount') {
@@ -331,9 +386,9 @@ export function amountCap(ask: AskBody, id: number): number {
   return 0;
 }
 
-/** Set one row, clamped to [0, cap]. Never redistributes other rows. */
+/** Set one row, clamped to [floor, cap]. Never redistributes other rows. */
 export function setAmount(ask: AskBody, amounts: Record<string, number>, id: number, n: number): Record<string, number> {
-  const v = Math.max(0, Math.min(Number.isFinite(n) ? Math.floor(n) : 0, amountCap(ask, id)));
+  const v = Math.max(Math.min(amountFloor(ask, id), amountCap(ask, id)), Math.min(Number.isFinite(n) ? Math.floor(n) : 0, amountCap(ask, id)));
   return { ...amounts, [String(id)]: v };
 }
 
@@ -387,8 +442,12 @@ export function validateDraft(ask: AskBody, draft: AskDraft): Validation {
       const t = draft.text.trim();
       if (ask.numeric) {
         if (t === '') return no('Enter a number');
-        if (!/^-?\d+$/.test(t)) return no('Whole numbers only');
-        return ok('A number outside what the effect allows will be asked again');
+        const { min, max } = textBounds(ask);
+        const range = rangePhrase(min, max);
+        if (!/^\d+$/.test(t)) return no(range ? `Enter a whole number ${range}` : 'Whole numbers only');
+        const k = Number(t);
+        if ((min !== null && k < min) || (max !== null && k > max)) return no(`Enter a number ${range}`);
+        return ok(range ? `A number ${range}` : 'A number outside what the effect allows will be asked again');
       }
       if (t === '') return no('Type an answer');
       return ok();
@@ -427,6 +486,11 @@ export function validateDraft(ask: AskBody, draft: AskDraft): Validation {
       const n = ask.main.length + ask.side.length;
       if (!validIndices(draft.indices, n)) return no('Build the deck again');
       if (draft.indices.length === 0) return no('The deck is empty');
+      // Forge's deck-size rule between games, when the engine sends it (M68).
+      const { mainMin, sideMax } = sideboardBounds(ask);
+      const left = n - draft.indices.length;
+      if (mainMin !== null && draft.indices.length < mainMin) return no(`The deck needs at least ${mainMin} cards: add ${mainMin - draft.indices.length}`);
+      if (sideMax !== null && left > sideMax) return no(`At most ${sideMax} cards can stay in the sideboard: move ${left - sideMax} into the deck`);
       const delta = draft.indices.length - ask.main.length;
       const swapped = draft.indices.filter((i) => i >= ask.main.length).length;
       if (swapped === 0 && delta === 0) return ok(`${draft.indices.length} cards · no changes`);
@@ -447,9 +511,13 @@ export function validateDraft(ask: AskBody, draft: AskDraft): Validation {
       if (ask.kind === 'assign_damage' && ask.defenderAllowed === false && (draft.amounts['0'] ?? 0) > 0) {
         return no(`${targets[0]?.label ?? 'The defending player'} can't take this damage`);
       }
-      if (ask.kind === 'assign_amount' && ask.atLeastOne) {
-        const empty = targets.find((t) => (draft.amounts[String(t.id)] ?? 0) < 1);
-        if (empty) return no(`Each must get at least 1 — ${empty.label}`);
+      if (ask.kind === 'assign_amount') {
+        // The engine's least per target (M68's `min`, or 1 with atLeastOne).
+        for (const t of targets) {
+          const least = amountFloor(ask, t.id);
+          if ((draft.amounts[String(t.id)] ?? 0) >= least) continue;
+          return no(ask.atLeastOne && least === 1 ? `Each must get at least 1 — ${t.label}` : `${t.label}: at least ${least}`);
+        }
       }
       const sum = amountsTotal(draft.amounts);
       if (sum < ask.total) return no(`${ask.total - sum} left to assign`);
@@ -518,9 +586,32 @@ export function skipAction(ask: AskBody): SkipAction | null {
 // Presentation helpers (still pure)
 // ---------------------------------------------------------------------------
 
-/** Forge's prompts sometimes carry doubled spaces ("in  Forge AI's"). */
+/** An engine string as the player reads it: doubled spaces ("in  Forge AI's") and engine ids ("Opt (12)") out. */
 export function tidy(text: string): string {
-  return text.replace(/[ \t]+/g, ' ').trim();
+  return withoutEngineIds(text).replace(/[ \t]+/g, ' ').trim();
+}
+
+const SHOWN_KEYS = new Set(['prompt', 'title', 'label', 'destLabel', 'message', 'question']);
+
+/**
+ * The ask as the dialog draws it: every prompt, title and label without the
+ * engine's card ids ("Thriving Isle (9) - Thriving Isle enters tapped."),
+ * however deep it sits (options, targets, piles). Ids, values and card
+ * objects are left as they are, so an answer is the same as before.
+ */
+export function displayAsk<T>(ask: T): T {
+  const walk = (v: unknown, key: string | null): unknown => {
+    if (typeof v === 'string') return key && SHOWN_KEYS.has(key) ? withoutEngineIds(v) : v;
+    if (Array.isArray(v)) return v.map((x) => walk(x, key === 'options' || key === 'targets' ? null : key));
+    if (v && typeof v === 'object') {
+      if (key === 'card' || key === 'cards') return v;
+      const out: Record<string, unknown> = {};
+      for (const [k, x] of Object.entries(v as Record<string, unknown>)) out[k] = walk(x, k);
+      return out;
+    }
+    return v;
+  };
+  return walk(ask, null) as T;
 }
 
 const COLOR_SYMBOL: Record<string, string> = {

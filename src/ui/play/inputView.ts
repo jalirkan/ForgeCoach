@@ -13,6 +13,10 @@
  * when it plausibly means something (your own cards while you are prompted),
  * and Forge answers a click it will not take with a "Not selectable" notice.
  */
+import { refusedCard } from './blockPlan.ts';
+import { stackKind } from '../stackModel.ts';
+import { withBoardNames, withoutEngineIds } from '../../engineText.ts';
+import { seatLabels } from '../../play/aiName.ts';
 import type { AnyCard, AskBody, Card, GameStateBody, InputBody, InputButton } from '../../protocol.ts';
 import { isHidden, keywordsOf, playableOf, selectablePlayersOf } from '../../protocol.ts';
 import { cardIndex, cardName } from '../../decisions.ts';
@@ -94,9 +98,13 @@ export function stepWords(phase: string | null): string {
   return STEP_WORDS[phase] ?? phase.toLowerCase().replace(/_/g, ' ');
 }
 
+/** The board's name for a seat, when the caller has one (play/aiName.ts `seatNamer`); set per describeInput call. */
+let seatName: ((id: number) => string) | null = null;
+
 function playerName(state: GameStateBody | null, id: number | null, seat: number | null): string {
   if (id === null) return 'Someone';
   if (id === seat) return 'You';
+  if (seatName) return seatName(id);
   return state?.players.find((p) => p.id === id)?.name ?? 'Opponent';
 }
 
@@ -116,13 +124,15 @@ export function parsePay(prompt: string): { cost: string; forName: string | null
 }
 
 /** The stack's top item as words: "Forge AI cast Lightning Bolt". */
-export function topOfStack(state: GameStateBody, seat: number | null): { who: string; what: string; mine: boolean } | null {
+export function topOfStack(state: GameStateBody, seat: number | null): { who: string; what: string; mine: boolean; ability: boolean } | null {
   const top = state.stack[state.stack.length - 1];
   if (!top) return null;
   const idx = cardIndex(state);
   const src = top.sourceCardId !== null ? idx.get(top.sourceCardId) : undefined;
   const name = src ? cardName(src) : 'something';
-  return { who: playerName(state, top.controller, seat), what: name, mine: top.controller === seat };
+  // the stack panel's own reading of spell / ability (ui/stackModel.ts): a trigger was never "cast"
+  const ability = stackKind(top, src) !== 'spell';
+  return { who: playerName(state, top.controller, seat), what: name, mine: top.controller === seat, ability };
 }
 
 function firstLine(s: string): string {
@@ -133,16 +143,40 @@ function firstLine(s: string): string {
 /**
  * A notice for the action bar, with the engine's internal card ids ("card 31
  * cannot be selected now") read as the card's name from the visible state.
- * An id the state doesn't show, or a hidden card, stays as it was: the notice
- * never names more than the board does.
+ * An id the state doesn't show, or a hidden card, is "a card": the notice
+ * never names more than the board does, and never shows an engine id.
  */
 export function noticeLine(title: string, text: string | null | undefined, state: GameStateBody | null): string {
   const cards = state ? cardIndex(state) : null;
-  const named = (text ?? '').replace(/\bcard (\d+)\b/g, (whole, id: string) => {
+  const named = (text ?? '').replace(/\bcard (\d+)\b/g, (_whole, id: string) => {
     const c = cards?.get(Number(id));
-    return c && !isHidden(c) && c.name ? cardName(c) : whole;
+    return c && !isHidden(c) && c.name ? cardName(c) : 'a card';
   });
-  return named ? `${title} — ${named}` : title;
+  const words = withoutEngineIds(named);
+  return words ? `${withoutEngineIds(title)} — ${words}` : withoutEngineIds(title);
+}
+
+/**
+ * The flash line when the engine refuses a click on a card ("Not selectable"),
+ * where the combat refusals (blockPlan.ts) have nothing to say: a card in
+ * your hand during a block or attack declaration (Forge takes only the
+ * declaration's clicks until it is confirmed); otherwise, while the engine
+ * asks for a pick, a card that is not one it offers (`selectable.cardIds`,
+ * the highlighted ones). Null when the input lists nothing to pick, the card
+ * is one it lists, or the board does not show the card.
+ */
+export function pickRefusal(title: string, text: string | null | undefined, state: GameStateBody | null, input: InputBody | null, mode: InputMode | null = null, seat: number | null = null): string | null {
+  if (!state || !input || !/^not selectable$/i.test(title.trim())) return null;
+  const c = refusedCard(text, state, seat);
+  if (!c || !c.name) return null;
+  const id = c.id;
+  // a card outside the battlefield during a combat declaration: Forge takes only the declaration's clicks until it is confirmed
+  if ((mode === 'block' || mode === 'attack') && c.zone !== 'battlefield') {
+    return `${cardName(c)} can’t be played while you declare ${mode === 'block' ? 'blockers' : 'attackers'}: confirm the ${mode === 'block' ? 'blocks' : 'attack'} first, then you get priority.`;
+  }
+  const offered = input.selectable.cardIds;
+  if (offered.length === 0 || offered.includes(id)) return null;
+  return `${cardName(c)} isn’t one of the choices: the engine offers only the highlighted card${offered.length === 1 ? '' : 's'} here.`;
 }
 
 export function oneLine(s: string): string {
@@ -174,14 +208,45 @@ export function stripSeatVocative(prompt: string, seatName: string | null | unde
     .join('\n');
 }
 
+/**
+ * What the decision slot says about the engine's input. Every string a player
+ * reads (the title, the line under it, Forge's own prompt, what a payment is
+ * for) comes without the engine's card ids (engineText.ts); the ids it needs
+ * (the attacker a block goes to) are read from the raw prompt first.
+ */
 export function describeInput(
+  input: InputBody | null,
+  state: GameStateBody | null,
+  seat: number | null,
+  opts: { ask?: AskBody | null; over?: boolean; nameOf?: (id: number) => string } = {},
+): InputView {
+  seatName = opts.nameOf ?? null;
+  let v: InputView;
+  try {
+    v = describeInputRaw(input, state, seat, opts);
+  } finally {
+    seatName = null;
+  }
+  // the engine's sentences name seats by its labels ("Opt - Human scries 1."): the board's names instead
+  const seats = opts.nameOf && state ? seatLabels(state.players, seat, opts.nameOf) : [];
+  const words = (t: string) => withBoardNames(withoutEngineIds(t), seats);
+  return {
+    ...v,
+    title: words(v.title),
+    detail: v.detail === null ? null : words(v.detail),
+    engineText: words(v.engineText),
+    payFor: v.payFor === null ? null : words(v.payFor),
+  };
+}
+
+function describeInputRaw(
   input: InputBody | null,
   state: GameStateBody | null,
   seat: number | null,
   opts: { ask?: AskBody | null; over?: boolean } = {},
 ): InputView {
-  const seatName = state && seat !== null ? (state.players.find((pl) => pl.id === seat)?.name ?? null) : null;
-  const prompt = stripSeatVocative(input?.prompt ?? '', seatName);
+  const ownName = state && seat !== null ? (state.players.find((pl) => pl.id === seat)?.name ?? null) : null;
+  const prompt = stripSeatVocative(input?.prompt ?? '', ownName);
   const base = (mode: InputMode, title: string, detail: string | null = null): InputView => ({
     mode,
     title,
@@ -322,7 +387,15 @@ export function describeInput(
       return {
         ...v,
         mode: 'stack',
-        title: top.mine ? `Your ${top.what} is on the stack` : `${top.who} cast ${top.what}`,
+        title: top.mine
+          ? top.ability && /^(an? |something$)/i.test(top.what)
+            ? 'Your ability is on the stack'
+            : `Your ${top.what}${top.ability ? '’s ability' : ''} is on the stack`
+          : top.ability
+            ? /^(an? |something$)/i.test(top.what)
+              ? `${top.who} has an ability on the stack` // a face-down or hidden source: never "Search AI’s a hidden card ability"
+              : `${top.who}’s ${top.what} ability is on the stack`
+            : `${top.who} cast ${top.what}`,
         detail: top.mine ? 'Pass to let it resolve (the opponent may respond).' : 'Respond with an instant or ability — or pass and let it resolve.',
         ok: btn(ok, 'let it resolve'),
         cancel: btn(cancel, /end turn/i.test(cancel.label) ? 'skip to end of turn' : null),

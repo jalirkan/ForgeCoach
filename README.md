@@ -64,6 +64,15 @@ and your API key, logs and deck guides stay in your browser.
 3. Open ForgeCoach and click **Play vs Bot**. The engine address can be
    changed there if you use another port.
 
+Under the tiles, the table asks for **your deck**, **the bot's deck** and the
+opponent. *As the engine has them* plays the decks the engine last played.
+Your deck can also be your Draft vs Bot deck, the best build of a pool saved
+in Draft & build, or a fresh deck from any cube (a draft between two drafting
+bots, then the best build). The bot's deck can be a fresh cube deck, its deck
+from your Draft vs Bot, or one of your pools; its list is never shown. Play
+then builds both and starts the engine on them through the match launcher
+(10–20 seconds).
+
 Browser notes, because the page is `https://` and the engine is on your machine:
 
 - **Chrome / Edge** ask *"Allow jalirkan.github.io to access apps and services
@@ -1106,6 +1115,8 @@ A finding is one of these:
 - a Game Log that loses turns, or a seat that does not come back, after a
   mid-game reload;
 - a card the other seat holds hidden appearing in the page;
+- an engine id in what the player reads (`engine-id`: "Shock (4)" or
+  "Construct Token #297" naming a card the state shows, "[[…]]", "(Exiled=0)");
 - a game past the turn cap;
 - a best of three that does not complete with sideboarding.
 
@@ -1134,7 +1145,9 @@ seat (every decision and click) under `--out`, by default
 `e2e/out/playtest-<time>/`. It exits 1 when any game has a finding and 2
 when it cannot run. Environment: `MTG_TABLE` (default `../mtg-table`),
 `FORGE_JAR`, `FORGE_RES`, and `SITE_DIR` (a built site to serve instead of
-building one). `--port-base` moves the engine, the helper, the room and the
+building one). `--key-shots N` also saves the first N screenshots per game of each key
+moment (the stack, a block declaration, the combat damage dialog, the coach's
+steps). `--port-base` moves the engine, the helper, the room and the
 table off 8642–8646. `--viewport phone` plays on a 390×844 touch screen
 (the hand folds, Concede is in the More menu), and `mixed` puts the friend
 on a phone at a table and every other solo game on one. The overnight run on the PC is mtg-table's lab job J103.

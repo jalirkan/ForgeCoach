@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { Card, GameStateBody, InputBody } from '../../protocol.ts';
-import { cardRole, describeInput, handNeeded, noticeLine, parsePay, playerClickable, stripSeatVocative } from './inputView.ts';
+import { cardRole, describeInput, handNeeded, noticeLine, parsePay, pickRefusal, playerClickable, stripSeatVocative } from './inputView.ts';
 import { planPlayKey, type PlayKeyContext } from './playKeys.ts';
 import { liveDecision, liveKind, momentKey } from './liveDecision.ts';
 import { canPassAhead, PASS_EOT, passMenu, primaryView } from './actionWords.ts';
@@ -471,15 +471,15 @@ describe('noticeLine', () => {
   it('names a card the engine refers to by id, when the board shows it', () => {
     expect(noticeLine('Not selectable', 'card 3 cannot be selected now', state())).toBe('Not selectable — Card 3 cannot be selected now');
   });
-  it('leaves an id the board does not show, and a title alone', () => {
-    expect(noticeLine('Not selectable', 'card 99 cannot be selected now', state())).toBe('Not selectable — card 99 cannot be selected now');
-    expect(noticeLine('Not selectable', 'card 3 cannot be selected now', null)).toBe('Not selectable — card 3 cannot be selected now');
+  it('says "a card" for an id the board does not show (never the id), and a title alone', () => {
+    expect(noticeLine('Not selectable', 'card 99 cannot be selected now', state())).toBe('Not selectable — a card cannot be selected now');
+    expect(noticeLine('Not selectable', 'card 3 cannot be selected now', null)).toBe('Not selectable — a card cannot be selected now');
     expect(noticeLine('Reconnected', '', state())).toBe('Reconnected');
   });
-  it('never names a hidden card', () => {
+  it('never names a hidden card, nor shows its id', () => {
     const s = state();
     s.players[1]!.zones.hand = { count: 1, cards: [{ id: 42, hidden: true } as never] };
-    expect(noticeLine('Not selectable', 'card 42 cannot be selected now', s)).toBe('Not selectable — card 42 cannot be selected now');
+    expect(noticeLine('Not selectable', 'card 42 cannot be selected now', s)).toBe('Not selectable — a card cannot be selected now');
   });
 });
 
@@ -537,6 +537,52 @@ describe('J109: the board at the cleanup discard and at the friend’s priority'
     // Forge's End Turn (the input's Cancel) is the same pass as To EOT; a phone shows only To EOT.
     expect(v.cancel).toMatchObject({ label: 'End Turn', enabled: true });
     expect(canPassAhead(v)).toBe(true);
+  });
+});
+
+describe('pickRefusal (common-sense pass item 2: a refused click says why)', () => {
+  const pick = input('Lightning Bolt - Select target creature', { selectable: { cardIds: [4, 5], min: 1, max: 1, mode: 'cards' }, buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: true }, focus: 'cancel' } });
+  it('a card the engine does not offer: the engine offers only the highlighted cards', () => {
+    expect(pickRefusal('Not selectable', 'card 3 cannot be selected now', state(), pick)).toBe('Card 3 isn’t one of the choices: the engine offers only the highlighted cards here.');
+  });
+  it('a card in your hand while you declare blockers or attackers: confirm first', () => {
+    const blocks = input('Select creatures to block Card 5 (5) or select another attacker to declare blockers for.', { selectable: { cardIds: [4, 5], min: 0, max: 0, mode: 'none' } });
+    expect(pickRefusal('Not selectable', 'card 2 cannot be selected now', state(), blocks, 'block')).toBe('Card 2 can’t be played while you declare blockers: confirm the blocks first, then you get priority.');
+    expect(pickRefusal('Not selectable', 'card 1 cannot be selected now', state(), blocks, 'attack')).toBe('Card 1 can’t be played while you declare attackers: confirm the attack first, then you get priority.');
+  });
+  it('the bridge names the card by its label ("Name (63)" or "Name"), not only "card 63"', () => {
+    const blocks = input('Select creatures to block Card 5 (5) or select another attacker to declare blockers for.', { selectable: { cardIds: [4, 5], min: 0, max: 0, mode: 'none' } });
+    expect(pickRefusal('Not selectable', 'Card 2 (2) cannot be selected now', state(), blocks, 'block', ME)).toMatch(/^Card 2 can’t be played while you declare blockers/);
+    expect(pickRefusal('Not selectable', 'Card 3 cannot be selected now', state(), pick, null, ME)).toMatch(/^Card 3 isn’t one of the choices/);
+  });
+  it('nothing to add for an offered card, a hidden one, another notice, or an input that offers nothing', () => {
+    expect(pickRefusal('Not selectable', 'card 4 cannot be selected now', state(), pick)).toBeNull();
+    expect(pickRefusal('Not selectable', 'card 99 cannot be selected now', state(), pick)).toBeNull();
+    expect(pickRefusal('Reconnected', 'card 3', state(), pick)).toBeNull();
+    expect(pickRefusal('Not selectable', 'card 3 cannot be selected now', state(), input('Priority: your main phase'))).toBeNull();
+  });
+});
+
+describe('describeInput names seats as the board does', () => {
+  it('the bot’s spell on the stack and its step by the picked name, never "Forge AI"', () => {
+    const s = state({ stack: [{ id: 50, sourceCardId: 5, controller: OPP, text: 'Card 5', targetCardIds: [], targetPlayerIds: [], isAbility: false }] as never, activePlayer: OPP, priority: ME });
+    const v = describeInput(input('Priority: Human'), s, ME, { nameOf: (id) => (id === OPP ? 'Search AI' : 'You') });
+    expect(v.title).toBe('Search AI cast Card 5');
+    const step = describeInput(input('Priority: Human'), state({ activePlayer: OPP, priority: ME, phase: 'COMBAT_DECLARE_ATTACKERS' }), ME, { nameOf: () => 'Search AI' });
+    expect(step.title).toMatch(/^Search AI’s /);
+    // without a namer: the state's name, as before
+    expect(describeInput(input('Priority: Human'), s, ME).title).toBe('Forge AI cast Card 5');
+  });
+});
+
+describe('the stack decision title says spell or ability', () => {
+  it('a triggered ability of the bot’s is not "cast"', () => {
+    const s = state({ stack: [{ id: 51, sourceCardId: 5, controller: OPP, text: 'When Card 5 enters, draw a card.', targetCardIds: [], targetPlayerIds: [], isAbility: true }] as never, activePlayer: OPP, priority: ME });
+    expect(describeInput(input('Priority: Human'), s, ME, { nameOf: () => 'Search AI' }).title).toBe('Search AI’s Card 5 ability is on the stack');
+    const mine = state({ stack: [{ id: 52, sourceCardId: 4, controller: ME, text: 'When Card 4 enters, draw a card.', targetCardIds: [], targetPlayerIds: [], isAbility: true }] as never });
+    expect(describeInput(input('Priority: Human'), mine, ME).title).toBe('Your Card 4’s ability is on the stack');
+    const hidden = state({ stack: [{ id: 53, sourceCardId: 999, controller: OPP, text: '', targetCardIds: [], targetPlayerIds: [], isAbility: true }] as never, activePlayer: OPP, priority: ME });
+    expect(describeInput(input('Priority: Human'), hidden, ME, { nameOf: () => 'Search AI' }).title).toBe('Search AI has an ability on the stack');
   });
 });
 

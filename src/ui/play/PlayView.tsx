@@ -15,6 +15,8 @@
  * buttonOk / buttonCancel with the engine's labels, passPriority, yieldTo,
  * useMana, undo, alphaStrike, concede, newGame).
  */
+import { lastNoChoice, lineText } from '../../eventLog.ts';
+import { CardRefContext } from '../CoachText.tsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActBody, AnswerValue, AnyCard, Card, GameStateBody } from '../../protocol.ts';
 import { chosenOf, isHidden, MANA_COLORS, opponentIsHuman, undoOf, yieldOf } from '../../protocol.ts';
@@ -23,7 +25,7 @@ import type { PlaySession, PlaySnapshot } from '../../play/session.ts';
 import { activeGuideId, listGuides } from '../../guide.ts';
 import { turnFacts } from '../../state.ts';
 import { cardIndex } from '../../decisions.ts';
-import { seatDisplayName } from '../../play/aiName.ts';
+import { seatNamer, seatDisplayName } from '../../play/aiName.ts';
 import { tableLines } from '../../play/tableView.ts';
 import { Board } from '../Board.tsx';
 import { useHoverGuard } from '../hoverGuard.ts';
@@ -47,7 +49,7 @@ import { HandDock } from './HandDock.tsx';
 import { LogDrawer, LogTab } from './LogDrawer.tsx';
 import { PhaseStrip } from './PhaseStrip.tsx';
 import { PlayBoardContext, usePlayBoardValue } from './playBoard.ts';
-import { cardRole, describeInput, handNeeded, noticeLine, playerClickable, type ClickContext } from './inputView.ts';
+import { cardRole, describeInput, handNeeded, noticeLine, pickRefusal, playerClickable, type ClickContext } from './inputView.ts';
 import { lastStateFrame } from './liveDecision.ts';
 import { playableHints } from './handAffordance.ts';
 import { PlayCoach } from './PlayCoach.tsx';
@@ -141,7 +143,9 @@ export function PlayView({
   }, [coachUseGame, againstAi]);
 
   if (import.meta.env.DEV) (window as unknown as { __forgecoach?: unknown }).__forgecoach = snap;
-  const view = useMemo(() => describeInput(input, state, seat, { ask, over: !!over }), [input, state, seat, ask, over]);
+  // Seats by the board's names (the bot as picked, a friend by their name), never the engine's labels ("Forge AI", "Human").
+  const nameOf = useMemo(() => seatNamer(log?.hello, seat, state?.players ?? []), [log?.hello, seat, state?.players]);
+  const view = useMemo(() => describeInput(input, state, seat, { ask, over: !!over, nameOf }), [input, state, seat, ask, over, nameOf]);
   // Report a bug (mtg-table D411): this seat's game as it stands, read only when a report is made.
   useBugContext(() => ({
     surface: snap.table ? 'table' : 'play',
@@ -169,9 +173,27 @@ export function PlayView({
   const [flash, setFlash] = useState<string | null>(null);
   useEffect(() => {
     if (!flash) return;
-    const t = setTimeout(() => setFlash(null), 2600);
+    // a longer line (a resolution with nothing to choose) stays long enough to read
+    const t = setTimeout(() => setFlash(null), flash.length > 60 ? 4500 : 2600);
     return () => clearTimeout(t);
   }, [flash]);
+  // A spell or ability of yours that resolved with nothing for you to choose (eventLog.ts): said in the bar, and in the log.
+  const quietSeen = useRef<number | null>(null);
+  const frameCount = log?.frames.length ?? 0;
+  useEffect(() => {
+    if (!log) return;
+    const line = lastNoChoice(log);
+    const at = line?.frameIndex ?? -1;
+    // the first look (a reload, a rejoin) only notes where the game is
+    if (quietSeen.current === null) {
+      quietSeen.current = at;
+      return;
+    }
+    if (!line || at <= quietSeen.current) return;
+    quietSeen.current = at;
+    setFlash(`${lineText(line)}.`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameCount]);
   // The engine's (and the session's) notices surface briefly in the bar.
   const lastNotice = snap.notices[snap.notices.length - 1];
   const seenNotice = useRef<number | null>(lastNotice ? lastNotice.seq * 1e13 + lastNotice.t : null);
@@ -181,13 +203,13 @@ export function PlayView({
     if (seenNotice.current === id) return;
     seenNotice.current = id;
     if (lastNotice.level === 'info' && lastNotice.source === 'engine') return;
-    // A block the engine refused: say why in the game's terms, never "cannot be selected now".
+    // A click the engine refused: say why in the game's terms, never "cannot be selected now".
     const refused =
-      view.mode === 'block'
+      (view.mode === 'block'
         ? blockRefusal(lastNotice.title, lastNotice.text, snap.state, blockTry.current, view.blockingAttackerId, seat)
         : view.mode === 'attack'
           ? attackRefusal(lastNotice.title, lastNotice.text, snap.state, seat)
-          : null;
+          : null) ?? pickRefusal(lastNotice.title, lastNotice.text, snap.state, input, view.mode, seat);
     setFlash(refused ?? noticeLine(lastNotice.title, lastNotice.text, snap.state));
     // Only a new notice flashes; the state it names cards from is read as of then.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -325,6 +347,9 @@ export function PlayView({
       ),
     [state, view.mode, view.blockingAttackerId, blkNow, atkNow, wire],
   );
+
+  // The coach's words name cards as the board shows them: the lane badges, else P/T (CoachText).
+  const cardRefLook = useMemo(() => ({ state, combat: pairs }), [state, pairs]);
 
   // ---- interaction context for tiles and avatars
   // `oracle`: the cached card text, for an older engine's graveyard fallback (cardsVersion re-reads it).
@@ -587,7 +612,7 @@ export function PlayView({
   const counter = useMemo(() => inputCounter(input, view), [input, view]);
 
   // The stack: always in view while it is not empty, in one place over the board (endstep-style).
-  const stackNow = useMemo(() => stackEntries(state, seat), [state, seat]);
+  const stackNow = useMemo(() => stackEntries(state, seat, nameOf), [state, seat, nameOf]);
   const stackPanel =
     state && stackNow.length > 0 ? <StackPanel entries={stackNow} state={state} variant="float" folded={stackFolded} onFold={setStackFolded} /> : null;
   const zonePanel = offBoard ? <ZonePickPanel key={input?.prompt ?? ''} pick={offBoard} view={view} state={state} seat={seat} onOk={pressOk} onCancel={pressCancel} /> : null;
@@ -764,6 +789,7 @@ export function PlayView({
   );
 
   return (
+    <CardRefContext.Provider value={cardRefLook}>
     <PlayBoardContext.Provider value={playBoard}>
     <CardActionsContext.Provider value={actions}>
       <BoardStateRef.Provider value={boardStateRef}>
@@ -958,6 +984,7 @@ export function PlayView({
       </BoardStateRef.Provider>
     </CardActionsContext.Provider>
     </PlayBoardContext.Provider>
+    </CardRefContext.Provider>
   );
 }
 
