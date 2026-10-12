@@ -39,7 +39,7 @@ import {
   colorSymbol,
   countPhrase,
   answerFromDraft,
-  damageRefusal,
+  amountFloor,
   damageRows,
   defenderAllowed,
   groupOptions,
@@ -48,12 +48,17 @@ import {
   isColorList,
   isNumberList,
   lookupName,
+  loneAbility,
   moveItem,
   openingKind,
   orderBounds,
+  rangePhrase,
+  refusalLine,
   removeFromGroup,
   setAmount,
+  sideboardBounds,
   skipAction,
+  textBounds,
   displayAsk,
   tidy,
   toggleChoice,
@@ -149,9 +154,13 @@ interface ShellProps {
   onDigit?: (index: number) => void;
   /** Esc's safe way out instead of hiding (ability_menu's never mind). */
   onEsc?: (() => void) | null;
+  /** Why the engine refused the last answer to this question (askModel `refusalLine`), shown above the body. */
+  refused?: string | null;
+  /** False: Space does not confirm, only Enter (the one-ability confirm, M69). */
+  spaceConfirms?: boolean;
 }
 
-function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hintTone = 'warn', onEnter, timeoutMs = 0, wide, peek, digits = 0, onDigit, onEsc = null }: ShellProps) {
+function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hintTone = 'warn', onEnter, timeoutMs = 0, wide, peek, digits = 0, onDigit, onEsc = null, refused = null, spaceConfirms = true }: ShellProps) {
   const placement = useContext(PlacementContext);
   const slot = placement === 'slot';
   const [minimized, setMinimized] = useState(false);
@@ -159,8 +168,8 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
   const box = useRef<HTMLElement>(null);
   const concede = useContext(ConcedeContext);
   // The latest handlers, read by the one window listener.
-  const live = useRef({ onEnter, onDigit, onEsc, digits, minimized, slot });
-  live.current = { onEnter, onDigit, onEsc, digits, minimized, slot };
+  const live = useRef({ onEnter, onDigit, onEsc, digits, minimized, slot, spaceConfirms });
+  live.current = { onEnter, onDigit, onEsc, digits, minimized, slot, spaceConfirms };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -182,7 +191,7 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
           // Another sheet (the card detail) on top owns its own keys.
           inSheet: !!t?.closest?.('.sheet'),
         },
-        { placement: l.slot ? 'slot' : 'modal', minimized: l.minimized, canConfirm: !!l.onEnter, digits: l.onDigit ? l.digits : 0, escSkips: !!l.onEsc },
+        { placement: l.slot ? 'slot' : 'modal', minimized: l.minimized, canConfirm: !!l.onEnter, digits: l.onDigit ? l.digits : 0, escSkips: !!l.onEsc, spaceConfirms: l.spaceConfirms },
       );
       if (!plan) return;
       // The question's key, and only the question's: the board's keys (playKeys.ts) must not also see it.
@@ -191,6 +200,7 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
       if (plan.kind === 'hide') setMinimized((m) => !m);
       else if (plan.kind === 'skip') l.onEsc?.();
       else if (plan.kind === 'confirm') l.onEnter?.();
+      else if (plan.kind === 'none') return;
       else l.onDigit?.(plan.index);
     };
     window.addEventListener('keydown', onKey, true);
@@ -280,7 +290,17 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
             <IconChevronDown size={18} />
           </button>
         </header>
-        {children && <div className="ask-body">{children}</div>}
+        {(children || refused) && (
+          <div className="ask-body">
+            {refused && (
+              // The engine refused the last answer and asked again (mtg-table M67/M68): one line, every kind.
+              <p className="ask-refused" role="alert" data-refused="">
+                {refused}
+              </p>
+            )}
+            {children}
+          </div>
+        )}
         {(footer || hint) && (
           <footer className="ask-foot">
             {hint ? <div className={cx('ask-hint', hintTone === 'ok' ? 'is-ok' : 'is-warn')}>{hint}</div> : <div className="ask-hint" />}
@@ -724,13 +744,50 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
     const max = choiceBounds(ask).hi === 1 ? 1 : ask.max;
     setIndices(ids.length === 1 ? toggleChoice(indices, ids[0]!, max) : toggleGroup(indices, ids, max));
   };
-  const common = { shellKey: ask.askId, timeoutMs: ask.timeoutMs, digits: slots.length, onDigit: pickDigit, onEsc: escSkips ? () => send(skip!.value) : null };
+  const common = { shellKey: ask.askId, timeoutMs: ask.timeoutMs, digits: slots.length, onDigit: pickDigit, onEsc: escSkips ? () => send(skip!.value) : null, refused: refusalLine(ask) };
 
   switch (ask.kind) {
     case 'ability_menu': {
       const host = nameOf(ask.cardId);
       const hostCard = visibleCard(index.get(ask.cardId));
       const sel = draft.shape === 'index' ? draft.index : -1;
+      const lone = loneAbility(ask);
+      if (lone) {
+        // M69: a click on your own permanent asks first, even for its only ability — a one-line confirm.
+        const verb = lone.isSpell ? 'Cast' : 'Activate';
+        return (
+          <AskShell
+            {...common}
+            digits={0}
+            spaceConfirms={false}
+            eyebrow={`${verb}?`}
+            title={host ?? 'this card'}
+            peek={`${verb} ${host ?? 'this card'}?`}
+            onEnter={lone.canPlay ? confirm : null}
+            footer={
+              <>
+                {skipBtn}
+                {/* Enter, never Space: Space is the pass key by habit, and a look must not commit (D427). */}
+                <button type="button" className="btn btn-primary ask-btn" disabled={!v.ok || sent} onClick={confirm} data-answer="confirm" title={`${verb} (Enter)`}>
+                  {verb}
+                  <Kbd k="Enter" />
+                </button>
+              </>
+            }
+          >
+            <div className={cx('ask-row ask-ability ask-ability-one', !lone.canPlay && 'is-off')} data-lone-ability="">
+              <Thumb name={host} card={hostCard} />
+              <span className="ask-row-text">
+                <span className="ask-row-label">
+                  <Label text={lone.label} />
+                </span>
+                <span className="ask-row-meta">{lone.canPlay ? 'Nothing happens until you choose' : 'Can’t be played right now'}</span>
+              </span>
+              <span className={cx('tag', lone.isSpell ? 'tag-turn' : 'tag-prio')}>{lone.isSpell ? 'Spell' : 'Ability'}</span>
+            </div>
+          </AskShell>
+        );
+      }
       return (
         <AskShell
           {...common}
@@ -873,7 +930,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
             inputMode={ask.numeric ? 'numeric' : 'text'}
             autoComplete="off"
             spellCheck={false}
-            placeholder={ask.numeric ? '0' : 'Type here'}
+            placeholder={ask.numeric ? String(textBounds(ask).min ?? 0) : 'Type here'}
             value={text}
             data-autofocus=""
             onChange={(e) => setDraft({ shape: 'text', text: e.target.value })}
@@ -1110,7 +1167,6 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
       // an older engine says nothing, and then only for a trampler.
       const atk = ask.attackerId === null ? undefined : index.get(ask.attackerId);
       const rows = damageRows(ask, defenderAllowed(ask, keywordsOf(atk)));
-      const refused = damageRefusal(ask);
       return (
         <AskShell
           {...common}
@@ -1128,11 +1184,6 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
             </>
           }
         >
-          {refused !== null && (
-            <p className="ask-refused" role="alert" data-refused="">
-              That split wasn’t allowed: {refused}
-            </p>
-          )}
           <Meter value={sum} total={ask.total} />
           <ul className="ask-rows">
             {rows.map((t) => {
@@ -1182,6 +1233,17 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
       const amounts = draft.shape === 'amounts' ? draft.amounts : {};
       const sum = amountsTotal(amounts);
       const what = tidy(ask.label) || 'points';
+      // A target's own bounds (M68), when they say more than the total and "each gets at least 1" already do.
+      const amountRange = (t: AmountTarget): string | null => {
+        const least = amountFloor(ask, t.id);
+        const most = amountCap(ask, t.id);
+        const lo = least > (ask.atLeastOne ? 1 : 0) ? least : null;
+        const hi = most < ask.total ? most : null;
+        if (lo !== null && hi !== null) return lo === hi ? `exactly ${lo}` : rangePhrase(lo, hi);
+        if (lo !== null) return `at least ${lo}`;
+        if (hi !== null) return `up to ${hi}`;
+        return null;
+      };
       return (
         <AskShell
           {...common}
@@ -1220,12 +1282,12 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
                     )}
                     <span className="ask-row-text">
                       <span className="ask-row-label">{t.label}</span>
-                      {typeof t.max === 'number' && t.max < ask.total && <span className="ask-row-meta">up to {t.max}</span>}
+                      {amountRange(t) && <span className="ask-row-meta">{amountRange(t)}</span>}
                     </span>
                     <PreviewBtn cardId={t.cardId} onPreview={onPreviewCard} label={t.label} />
                     <Stepper
                       value={n}
-                      min={0}
+                      min={amountFloor(ask, t.id)}
                       max={Math.min(amountCap(ask, t.id), n + Math.max(0, ask.total - sum))}
                       label={t.label}
                       onChange={(x) => setDraft({ shape: 'amounts', amounts: setAmount(ask, amounts, t.id, x) })}
@@ -1448,6 +1510,8 @@ function SideboardBody({ ask, chosen, onChange }: { ask: Extract<AskBody, { kind
   const groups = useMemo(() => groupOptions(all), [all]);
   const mainCount = ask.main.length;
   const inDeck = chosen.length;
+  const { mainMin, sideMax } = sideboardBounds(ask);
+  const inSide = all.length - inDeck;
   const rows = groups.map((g) => {
     const deck = g.ids.filter((id) => chosen.includes(id)).length;
     const orig = g.ids.filter((id) => id < mainCount).length;
@@ -1493,13 +1557,13 @@ function SideboardBody({ ask, chosen, onChange }: { ask: Extract<AskBody, { kind
   return (
     <>
       <div className="ask-section-label">
-        Deck <span className="muted">· {inDeck} cards</span>
+        Deck <span className="muted">· {inDeck} cards{mainMin !== null && ` · at least ${mainMin}`}</span>
       </div>
       <ul className="ask-rows ask-rows-dense">{deckRows.map(row)}</ul>
       {sideRows.length > 0 && (
         <>
           <div className="ask-section-label">
-            Sideboard <span className="muted">· {ask.side.length} cards</span>
+            Sideboard <span className="muted">· {inSide} cards{sideMax !== null && ` · at most ${sideMax}`}</span>
           </div>
           <ul className="ask-rows ask-rows-dense">{sideRows.map(row)}</ul>
         </>

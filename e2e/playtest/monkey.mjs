@@ -435,6 +435,17 @@ export class Monkey {
         }
         const o = this.pick(playable);
         const i = ask.options.indexOf(o);
+        if (ask.options.length === 1) {
+          // M69: one ability is a one-line confirm, answered by its own button.
+          this.count('rare', 'ability-menu-one');
+          const go = dlg.locator('[data-answer="confirm"]');
+          if (!(await go.isEnabled().catch(() => false))) {
+            await this.unreachable(`ability_menu: the lone ability "${o.label}" (canPlay) has no enabled button`, { ask });
+            break;
+          }
+          await clickLoc(go, `ability "${o.label}"`);
+          break;
+        }
         const row = dlg.locator('.ask-ability').nth(i);
         if (!(await row.isEnabled().catch(() => false))) {
           await this.unreachable(`ability_menu option "${o.label}" (canPlay) is disabled`, { ask });

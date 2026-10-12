@@ -418,6 +418,33 @@ const scenarios = [
   },
 
   {
+    name: 'the engine refuses a target answer (M68): the same question again, with its reason on screen',
+    engine: { scene: 'main3' },
+    async run({ page, engine, app }) {
+      const u = ui(page);
+      await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+      await u.mode('main');
+      await sent(engine, 'clickCard', () => u.click(mine(engine, 'Shock')));
+      await u.dialog.waitFor({ timeout: STEP_MS });
+      check(!(await u.dialog.locator('[data-refused]').count()), 'no refusal on a first asking');
+      engine.game.refuseNext = 'Choose exactly 1 option (this answer chose 0).';
+      const asked = engine.game.askBody.askId;
+      await u.answer('Forge AI');
+      await engine.waitFor(() => engine.game.askBody && engine.game.askBody.askId !== asked, 'the question asked again', STEP_MS);
+      await u.dialog.locator('[data-refused]', { hasText: 'That answer wasn’t allowed: Choose exactly 1 option' }).waitFor({ timeout: STEP_MS });
+      await u.answer('Forge AI');
+      await u.mode('pay');
+      check(!(await page.locator('[data-refused]').count()), 'the refusal leaves with its question');
+      const answers = engine.frames('/ws', 'answer').map((a) => a.body.askId);
+      check(answers.length === 2 && answers[0] === asked && answers[1] !== asked, `one answer to each asking (${answers.join(', ')})`);
+      await sent(engine, 'buttonOk', () => u.ok());
+      await u.mode('stack');
+      await sent(engine, 'buttonOk', () => u.ok());
+      await page.locator('.over-wrap .over-title', { hasText: 'You won' }).waitFor({ timeout: STEP_MS });
+    },
+  },
+
+  {
     name: 'after the result, the engine restarts under the same game id: a new game, acts accepted',
     engine: { scene: 'main3' },
     async run({ page, engine, app }) {
