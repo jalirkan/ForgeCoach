@@ -37,7 +37,56 @@ This replaces order 1 below. Instead of three small cubes picked in advance, pri
 
 MPC Autofill adds the back faces itself. The meld pair's combined card (Urza, Planeswalker) is printed on the back halves. Check those two in the Autofill editor before you export.
 
-**How to order:** the same steps as below (Step by step). Paste [`order-2-vintage-570.txt`](order-2-vintage-570.txt) into one MPC Autofill project with one card back, set the stock to S33, and export.
+**Card back:** [`cardback/vintage-cube-back.png`](cardback/vintage-cube-back.png) is our own design: a gold cube on dark ink, reading *Vintage Cube · Playtest card · Proxy · Not for sale*. It is not Magic's back on purpose, so every card says "proxy" at a glance through a clear sleeve.
+
+- **Size:** 1632×2220 px, which is 600 dpi at 2.72×3.70 in. That's a poker card plus MPC's 1/8 in bleed on each side.
+- **Safe area:** everything that matters sits well inside the cut line.
+- **Source:** the design is [`cardback/vintage-cube-back.html`](cardback/vintage-cube-back.html), and [`cardback/render.sh`](cardback/render.sh) redraws the PNG.
+- **Using it in MPC Autofill:** upload it as a custom card back in the editor's card back panel. If that panel takes only its own library, upload the image as the back on MPC's own site after the tool fills the fronts.
+
+The words *Not for sale* also help with MPC's checks, which sometimes ask that proxies be marked.
+
+**The 42 spare slots:** [`order-2-tokens-42.txt`](order-2-tokens-42.txt) fills them with the tokens the cube's own cards make. It's weighted toward the ones that come up most, with extra copies where one card makes several.
+
+| Token | Copies | Made by, among others |
+|---|---|---|
+| Treasure | 3 | Ragavan, Fable, Hullbreacher |
+| Clue | 3 | Thraben Inspector, Tireless Tracker, Tamiyo |
+| Food | 2 | Oko, Generous Ent |
+| Blood | 1 | Bloodtithe Harvester, Voldaren Epicure |
+| Map | 1 | Get Lost |
+| Construct | 2 | Urza's Saga, Karn, Urza |
+| Wurm | 2 | Wurmcoil Engine (one deathtouch, one lifelink) |
+| Phyrexian Germ | 1 | Batterskull, Kaldra Compleat |
+| Thopter | 2 | Thopter Foundry, Retrofitter Foundry |
+| Servo | 1 | Retrofitter Foundry |
+| Spirit | 4 | Lingering Souls |
+| Elemental | 2 | Young Pyromancer, Seasoned Pyromancer |
+| Goblin | 2 | Goblin Rabblemaster |
+| Goblin Shaman | 1 | Fable of the Mirror-Breaker |
+| Soldier | 3 | Elspeth, Sun's Champion |
+| Human | 2 | Adeline |
+| Beast | 2 | Beast Within, Garruk, Thragtusk |
+| Insect | 1 | Grist |
+| Cat | 1 | Ocelot Pride |
+| Snake | 1 | Ophiomancer |
+| Plant | 2 | Avenger of Zendikar |
+| Orc Army | 1 | Orcish Bowmasters |
+| Marit Lage | 1 | Dark Depths |
+| The Monarch | 1 | Palace Jailer |
+
+That's 42, so the order comes to 570 + 42 = **612**, the bracket exactly.
+
+- **Tokens in Autofill:** paste the list into the same project. If a name brings up a real card instead of the token, open that slot and pick the token version.
+- **What these don't cover:** tokens that copy a card (Fable's back face, Phantasmal Image) and counters. Use dice or a spare card for those.
+
+**Two names to know:** the MTGO list uses the Omenpaths names *Makdee and Itla, Skysnarers* and *Kavaero, Mind-Bitten*. Their paper printings are Spider-Woman, Stunning Savior and Superior Spider-Man. If Autofill can't find one, search the other name.
+
+**How to order:**
+
+1. Make one MPC Autofill project and paste both [`order-2-vintage-570.txt`](order-2-vintage-570.txt) and [`order-2-tokens-42.txt`](order-2-tokens-42.txt) into it.
+2. Set the card back, and set the stock to S33.
+3. Export, then follow the Step by step section below.
 
 ## Order 1 (superseded): three cubes, 540 cards (612 bracket)
 
