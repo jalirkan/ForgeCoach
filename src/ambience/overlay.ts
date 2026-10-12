@@ -29,11 +29,19 @@
  * piece in the caps, shown only from its `minWidthPx` (default 600 px) and
  * still in the corners-only fit. {@link areaPlacement} works out how it is
  * cropped so its `safe` rect stays visible.
+ *
+ * Growth between stages (spec 1.6): between two thresholds each biome's
+ * accents thicken toward its next stage's. A piece that is new in the next
+ * stage is drawn already, still, at the eased progress (`fade`); a full-area
+ * piece whose picture changes is drawn twice, the next stage's over the
+ * current one at the fade. Fading pieces come after every full piece, so the
+ * caps cut them first, and they never move.
  */
 import { dominantBiome } from './effects.ts';
 import { slotLayout } from './layout.ts';
 import type { Biome, SlotState } from './model.ts';
-import { AREA_MIN_WIDTH_PX, isOverlayCorner, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, OVERLAY_DEFAULTS, overlayAt, type Anchor, type AreaRect, type BuiltinOverlay, type OverlayAnchor, type OverlayArea, type OverlayMotion, type OverlayPiece, type ScenePack } from './manifest.ts';
+import { nextStageFade } from './growth.ts';
+import { AREA_MIN_WIDTH_PX, growthOf, isOverlayCorner, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, OVERLAY_DEFAULTS, overlayAt, type Anchor, type AreaRect, type BuiltinOverlay, type OverlayAnchor, type OverlayArea, type OverlayMotion, type OverlayPiece, type PackGrowth, type ScenePack } from './manifest.ts';
 
 /** Below this player-area width, only corners show, smaller and still. */
 export const OVERLAY_CORNERS_ONLY_PX = 600;
@@ -135,6 +143,12 @@ export interface PlacedOverlay {
   maxPx: number;
   /** Moves (CSS), within the per-area budget and not with reduced motion. */
   animate: boolean;
+  /**
+   * Spec 1.6: a piece of the biome's next stage, drawn at this fraction of its
+   * opacity while the lands grow toward that stage (still). Absent: a piece of
+   * the current stage, at full.
+   */
+  fade?: number;
 }
 
 export interface OverlayOptions {
@@ -146,6 +160,8 @@ export interface OverlayOptions {
   stageOverride?: number | null;
   /** Spec 1.4 preview: give the dominant biome the built-in full-area placeholder when its own pieces have no area piece. */
   builtinArea?: boolean;
+  /** Spec 1.6: the growth between stages (default: the pack's, else the defaults). */
+  growth?: PackGrowth;
 }
 
 /**
@@ -160,6 +176,8 @@ export function overlayPieces(slots: SlotState[], pack: ScenePack | null, opts: 
   const layout = slotLayout(slots, pack, opts.stageOverride ?? null).filter((l) => l.stage > 0);
   if (!layout.length) return [];
   const stageOf = new Map(layout.map((l) => [l.slot.biome, l.stage]));
+  const progressOf = new Map(layout.map((l) => [l.slot.biome, l.progress]));
+  const growth = opts.growth ?? growthOf(pack);
   const owner: Record<'left' | 'right' | 'span', Biome> = {
     left: layout[0]!.slot.biome,
     right: layout[layout.length - 1]!.slot.biome,
@@ -167,30 +185,57 @@ export function overlayPieces(slots: SlotState[], pack: ScenePack | null, opts: 
   };
   // The dominant biome's pieces first, so the cap trims the minor biomes.
   const order = [...new Set([owner.span, owner.left, owner.right])];
-  const out: PlacedOverlay[] = [];
-  for (const biome of order) {
-    let own = biomeOverlay(pack, biome, stageOf.get(biome) ?? 1);
+  const piecesAt = (biome: Biome, stage: number) => {
+    let own = biomeOverlay(pack, biome, stage);
     if (opts.builtinArea && biome === owner.span && !own.some((p) => p.anchor === 'area')) {
-      const area = builtinAreaPiece(biome, stageOf.get(biome) ?? 1);
+      const area = builtinAreaPiece(biome, stage);
       if (area) own = [area, ...own];
     }
+    return own;
+  };
+  const shows = (p: OverlayPiece) => {
+    // Full-area (1.4): from its own minimum width; in the corners-only fit it may still show, still.
+    if (p.area) return !(opts.widthPx !== null && opts.widthPx < p.area.minWidthPx);
+    return !(fit.mode === 'corners' && !isOverlayCorner(p.anchor));
+  };
+  const out: PlacedOverlay[] = [];
+  const fading: PlacedOverlay[] = [];
+  for (const biome of order) {
+    const stage = stageOf.get(biome) ?? 1;
+    const own = piecesAt(biome, stage);
     for (const p of own) {
       const group = anchorGroup(p.anchor);
-      if (owner[group] !== biome) continue;
-      if (p.area) {
-        // Full-area (1.4): from its own minimum width; in the corners-only fit it may still show, still.
-        if (opts.widthPx !== null && opts.widthPx < p.area.minWidthPx) continue;
-      } else if (fit.mode === 'corners' && !isOverlayCorner(p.anchor)) continue;
+      if (owner[group] !== biome || !shows(p)) continue;
       const m = mirrorAnchor(p.anchor, opts.side, p.mirror);
       // One piece per anchor and id; a later biome does not stack on the same corner twice.
       if (out.some((o) => o.anchor === m.anchor && o.piece.id === p.id)) continue;
       out.push({ key: `${biome}:${p.id}:${p.anchor}`, biome, piece: p, anchor: m.anchor, flipY: m.flipY, maxPx: fit.maxPx === null ? p.maxPx : Math.min(p.maxPx, fit.maxPx), animate: false });
     }
+    // Spec 1.6: the next stage's new pieces thicken in with the progress.
+    const next = piecesAt(biome, stage + 1);
+    const fresh = next.filter((p) => {
+      if (p.anchor === 'area') {
+        const now = own.find((q) => q.anchor === 'area');
+        return !now || now.src !== p.src || now.builtinLevel !== p.builtinLevel;
+      }
+      return !own.some((q) => q.id === p.id && q.anchor === p.anchor);
+    });
+    const fade = nextStageFade(progressOf.get(biome), fresh.length > 0, growth);
+    if (!(fade > 0)) continue;
+    for (const p of fresh) {
+      const group = anchorGroup(p.anchor);
+      if (owner[group] !== biome || !shows(p)) continue;
+      const m = mirrorAnchor(p.anchor, opts.side, p.mirror);
+      if (p.anchor !== 'area' && [...out, ...fading].some((o) => o.anchor === m.anchor && o.piece.id === p.id)) continue;
+      const key = p.anchor === 'area' ? `${biome}:${p.id}:area:next` : `${biome}:${p.id}:${p.anchor}`;
+      fading.push({ key, biome, piece: p, anchor: m.anchor, flipY: m.flipY, maxPx: fit.maxPx === null ? p.maxPx : Math.min(p.maxPx, fit.maxPx), animate: false, fade });
+    }
   }
+  out.push(...fading);
   const capped = out.slice(0, MAX_OVERLAY_PIECES);
   let moving = 0;
   for (const o of capped) {
-    if (opts.reduced || fit.mode !== 'full' || o.piece.motion === 'none') continue;
+    if (opts.reduced || fit.mode !== 'full' || o.piece.motion === 'none' || o.fade !== undefined) continue;
     if (moving >= MAX_OVERLAY_ANIMATED) continue;
     moving++;
     o.animate = true;
