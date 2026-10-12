@@ -18,6 +18,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
 import type { AskBody, AssignAmountAsk, SideboardAsk, TextAsk } from '../../protocol.ts';
 import { AskDialog } from './AskDialog.tsx';
+import { planAskKey, type AskKeyContext } from './askKeys.ts';
 import {
   amountFloor,
   answerFromDraft,
@@ -204,6 +205,24 @@ describe('M69: one ability is a one-line confirm', () => {
     expect(html).toMatch(/data-answer="skip"[^>]*>Cancel/);
     expect(html).toMatch(/<button[^>]*class="btn btn-primary ask-btn"(?![^>]*disabled)[^>]*data-answer="confirm"[^>]*>Activate/);
     expect(html).toContain(ask.options[0]!.label.split(':')[0]);
+  });
+
+  test('Space never confirms it (the pass key by habit; a look must not commit), Enter does, Esc cancels', () => {
+    const ctx: AskKeyContext = { placement: 'slot', minimized: false, canConfirm: true, digits: 0, escSkips: true, spaceConfirms: false };
+    for (const targetTag of ['section', 'body', 'div']) {
+      expect(planAskKey({ key: ' ', code: 'Space', targetTag, inAsk: true }, ctx)).toEqual({ kind: 'none' });
+      expect(planAskKey({ key: 'Enter', targetTag, inAsk: true }, ctx)).toEqual({ kind: 'confirm' });
+    }
+    expect(planAskKey({ key: ' ', code: 'Space', targetTag: 'section', inAsk: true }, { ...ctx, placement: 'modal' })).toEqual({ kind: 'none' });
+    expect(planAskKey({ key: 'Escape' }, ctx)).toEqual({ kind: 'skip' });
+    // every other question keeps Space
+    expect(planAskKey({ key: ' ', code: 'Space', targetTag: 'section', inAsk: true }, { ...ctx, spaceConfirms: undefined })).toEqual({ kind: 'confirm' });
+    // the button says Enter, not Space; the menu with two abilities still says Space
+    const html = render(ask);
+    expect(html).toMatch(/data-answer="confirm"[^>]*title="Activate \(Enter\)"[^>]*>Activate<kbd[^>]*>Enter<\/kbd>/);
+    expect(html).not.toContain('>Space</kbd>');
+    const two: AskBody = { ...ask, options: [...ask.options, { ...ask.options[0]!, id: 1, label: 'Another' }] };
+    expect(render(two)).toContain('>Space</kbd>');
   });
 
   test('a lone ability that can’t be played: no way to send it, Cancel still there', () => {

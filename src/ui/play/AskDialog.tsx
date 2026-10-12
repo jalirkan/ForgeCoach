@@ -156,9 +156,11 @@ interface ShellProps {
   onEsc?: (() => void) | null;
   /** Why the engine refused the last answer to this question (askModel `refusalLine`), shown above the body. */
   refused?: string | null;
+  /** False: Space does not confirm, only Enter (the one-ability confirm, M69). */
+  spaceConfirms?: boolean;
 }
 
-function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hintTone = 'warn', onEnter, timeoutMs = 0, wide, peek, digits = 0, onDigit, onEsc = null, refused = null }: ShellProps) {
+function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hintTone = 'warn', onEnter, timeoutMs = 0, wide, peek, digits = 0, onDigit, onEsc = null, refused = null, spaceConfirms = true }: ShellProps) {
   const placement = useContext(PlacementContext);
   const slot = placement === 'slot';
   const [minimized, setMinimized] = useState(false);
@@ -166,8 +168,8 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
   const box = useRef<HTMLElement>(null);
   const concede = useContext(ConcedeContext);
   // The latest handlers, read by the one window listener.
-  const live = useRef({ onEnter, onDigit, onEsc, digits, minimized, slot });
-  live.current = { onEnter, onDigit, onEsc, digits, minimized, slot };
+  const live = useRef({ onEnter, onDigit, onEsc, digits, minimized, slot, spaceConfirms });
+  live.current = { onEnter, onDigit, onEsc, digits, minimized, slot, spaceConfirms };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -189,7 +191,7 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
           // Another sheet (the card detail) on top owns its own keys.
           inSheet: !!t?.closest?.('.sheet'),
         },
-        { placement: l.slot ? 'slot' : 'modal', minimized: l.minimized, canConfirm: !!l.onEnter, digits: l.onDigit ? l.digits : 0, escSkips: !!l.onEsc },
+        { placement: l.slot ? 'slot' : 'modal', minimized: l.minimized, canConfirm: !!l.onEnter, digits: l.onDigit ? l.digits : 0, escSkips: !!l.onEsc, spaceConfirms: l.spaceConfirms },
       );
       if (!plan) return;
       // The question's key, and only the question's: the board's keys (playKeys.ts) must not also see it.
@@ -198,6 +200,7 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
       if (plan.kind === 'hide') setMinimized((m) => !m);
       else if (plan.kind === 'skip') l.onEsc?.();
       else if (plan.kind === 'confirm') l.onEnter?.();
+      else if (plan.kind === 'none') return;
       else l.onDigit?.(plan.index);
     };
     window.addEventListener('keydown', onKey, true);
@@ -756,6 +759,7 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
           <AskShell
             {...common}
             digits={0}
+            spaceConfirms={false}
             eyebrow={`${verb}?`}
             title={host ?? 'this card'}
             peek={`${verb} ${host ?? 'this card'}?`}
@@ -763,7 +767,11 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
             footer={
               <>
                 {skipBtn}
-                {primary(verb)}
+                {/* Enter, never Space: Space is the pass key by habit, and a look must not commit (D427). */}
+                <button type="button" className="btn btn-primary ask-btn" disabled={!v.ok || sent} onClick={confirm} data-answer="confirm" title={`${verb} (Enter)`}>
+                  {verb}
+                  <Kbd k="Enter" />
+                </button>
               </>
             }
           >
