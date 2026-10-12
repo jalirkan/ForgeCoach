@@ -2,10 +2,14 @@
  * ForgeCoach — ui/play/blockPlan.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Declaring blockers, as the engine's own clicks. Forge's block input
- * (`InputBlock.onCardSelected`, read with javap on the pinned 2.0.14 jar) has
- * a "current attacker" — the one its prompt names, "Select creatures to block
- * <attacker> (<id>) or select another attacker…" — and takes three clicks:
+ * Declaring attackers and blockers, as the engine's own clicks.
+ *
+ * BLOCKS. The board presents a block blocker first (the combat study,
+ * 2026-10-12, §4): click your creature (it lifts), then the attacker it
+ * blocks. Forge's block input is attacker first (`InputBlock.onCardSelected`,
+ * read with javap on the pinned 2.0.14 jar): it has a "current attacker" — the
+ * one its prompt names, "Select creatures to block <attacker> (<id>) or select
+ * another attacker…" — and takes three clicks:
  *
  *   - a click on an attacker makes it the current attacker;
  *   - a click on your creature that is blocking the current attacker takes
@@ -15,28 +19,34 @@
  *     creature already blocking another attacker may not, unless it can block
  *     more than one, so the engine refuses that click ("Not selectable").
  *
- * The engine's Cancel is off in this input (`updateButtons(…, ok, cancel=false, …)`),
- * so there is no reset: a block comes off one creature at a time.
+ * So the pair the player picks (`blockGesture`) becomes the engine's clicks
+ * (`assignBlock`), the attacker's first:
  *
- * This module turns what the player means into those clicks, in order:
- * clicking an attacker, clicking a creature to block the current attacker or
- * to take its block off are one click each, as before. Two things the engine
- * would refuse in one click become a short sequence of its own clicks:
+ *   - ASSIGN: creature, attacker → click the attacker (unless it is already
+ *     the current one), then the creature;
+ *   - REMOVE: a creature, then the attacker it already blocks → the same two
+ *     clicks; the engine takes the block off;
+ *   - MOVE: a creature blocking attacker X, then another attacker → click X,
+ *     the creature (off X), the attacker, the creature (onto it). A creature
+ *     that may block two attackers is moved too, not doubled.
  *
- *   - MOVE: your creature blocks attacker X and another attacker is current —
- *     click X, the creature (off X), the current attacker, the creature (onto
- *     it). A creature that may block two attackers is moved too, not doubled.
- *   - TAKE OFF (the × on a blocker): when its attacker is not current — click
- *     its attacker, the creature (off), and the current attacker again, so the
- *     prompt keeps naming the attacker you were working on.
+ * The other order works as well (an attacker, then your creature), so a click
+ * on an attacker is never lost. The engine's Cancel is off in this input, so
+ * NO BLOCKS (`noBlocksClicks`) takes each block off by the same clicks, then
+ * the slot presses OK.
  *
- * Nothing here decides what may block what: every click is the engine's, and
- * the engine refuses what it will not take. `blocks` is what is chosen so far
- * (the engine's M65 `selectable.chosen.blocks` when the frame carries it, else
- * this browser's own clicks); `next` is this browser's picture after the
- * clicks, used only on an engine before M65.
+ * ATTACKS. A click on your creature is the engine's own `clickCard` (Forge
+ * toggles it); SKIP COMBAT (`skipCombatActs`) is the engine's Cancel while it
+ * reads "Call Back" (Forge clears the attackers), then OK — OK with nobody
+ * attacking is Forge's "no attack".
+ *
+ * Nothing here decides what may block or attack what: every click is the
+ * engine's, and the engine refuses what it will not take. `blocks` is what is
+ * chosen so far (the engine's M65 `selectable.chosen.blocks` when the frame
+ * carries it, else this browser's own clicks); `next` is this browser's
+ * picture after the clicks, used only on an engine before M65.
  */
-import type { AnyCard, Card, GameStateBody } from '../../protocol.ts';
+import type { ActBody, AnyCard, Card, GameStateBody } from '../../protocol.ts';
 import { isHidden, keywordsOf } from '../../protocol.ts';
 
 /** Blocker → the attacker it blocks (null: the wire did not say which). */
@@ -51,42 +61,76 @@ export interface BlockPlan {
   tries: { blocker: number; attacker: number } | null;
 }
 
-/** A click on an attacker: it becomes the one blocks go to. */
-export function clickAttacker(attacker: number, blocks: BlockMap): BlockPlan {
-  return { clicks: [attacker], next: new Map(blocks), tries: null };
-}
-
-/** A click on one of your creatures, with `current` the attacker the prompt names (null: none named). */
-export function clickBlocker(blocker: number, current: number | null, blocks: BlockMap): BlockPlan {
+/**
+ * Put `blocker` on `attacker` — or take it off, when it already blocks that
+ * attacker; `current` is the attacker the engine's prompt names (null: none).
+ */
+export function assignBlock(blocker: number, attacker: number, current: number | null, blocks: BlockMap): BlockPlan {
   const next = new Map(blocks);
   const on = blocks.has(blocker) ? blocks.get(blocker)! : undefined;
-  if (current === null) {
-    // No attacker named: the engine takes no block. A click on a blocking creature still
-    // reaches the engine, as before; nothing changes here.
-    return { clicks: [blocker], next, tries: null };
-  }
-  if (on === undefined) {
-    next.set(blocker, current);
-    return { clicks: [blocker], next, tries: { blocker, attacker: current } };
-  }
-  if (on === current || on === null) {
-    // Blocking the named attacker (or the wire did not say which): the engine takes it off.
+  const name = (a: number) => (a === current ? [] : [a]);
+  if (on === attacker) {
     next.delete(blocker);
-    return { clicks: [blocker], next, tries: null };
+    return { clicks: [...name(attacker), blocker], next, tries: null };
   }
-  // Blocking another attacker: take it off that one, then put it on the named one.
-  next.set(blocker, current);
-  return { clicks: [on, blocker, current, blocker], next, tries: { blocker, attacker: current } };
+  next.set(blocker, attacker);
+  if (on === undefined || on === null) return { clicks: [...name(attacker), blocker], next, tries: { blocker, attacker } };
+  // Blocking another attacker: off that one, then onto this one.
+  return { clicks: [...name(on), blocker, attacker, blocker], next, tries: { blocker, attacker } };
 }
 
-/** The × on a declared blocker: take its block off, leaving the named attacker named. */
-export function takeOff(blocker: number, current: number | null, blocks: BlockMap): BlockPlan {
-  const next = new Map(blocks);
-  const on = blocks.has(blocker) ? blocks.get(blocker)! : undefined;
-  if (on === undefined) return { clicks: [], next, tries: null };
-  next.delete(blocker);
-  if (on === null || on === current) return { clicks: [blocker], next, tries: null };
-  return { clicks: current === null ? [on, blocker] : [on, blocker, current], next, tries: null };
+/** The first click of a block gesture, waiting for its pair. */
+export type BlockPick = { kind: 'blocker' | 'attacker'; id: number } | null;
+
+export interface BlockStep {
+  /** What waits for its pair after this click. */
+  pick: BlockPick;
+  /** The engine's clicks, when this click completed a pair. */
+  plan: BlockPlan | null;
+}
+
+/**
+ * One click in a block declaration: your creature (`blocker`) or an attacker.
+ * The first click of a pair is picked (a second click on it puts it down);
+ * the second completes the pair: `assignBlock`. Two clicks of one kind: the
+ * later one is picked instead.
+ */
+export function blockGesture(pick: BlockPick, click: { kind: 'blocker' | 'attacker'; id: number }, current: number | null, blocks: BlockMap): BlockStep {
+  if (pick && pick.kind !== click.kind) {
+    const blocker = click.kind === 'blocker' ? click.id : pick.id;
+    const attacker = click.kind === 'attacker' ? click.id : pick.id;
+    return { pick: null, plan: assignBlock(blocker, attacker, current, blocks) };
+  }
+  if (pick && pick.id === click.id) return { pick: null, plan: null };
+  return { pick: { kind: click.kind, id: click.id }, plan: null };
+}
+
+/**
+ * NO BLOCKS: the clicks that take every block off, attacker by attacker (name
+ * it unless it is current, then click each of its blockers). A blocker whose
+ * attacker the wire did not say is left alone: a click on it could be taken
+ * as a new block instead. The slot sends the engine's OK after these.
+ */
+export function noBlocksClicks(current: number | null, blocks: BlockMap): number[] {
+  const byAttacker = new Map<number, number[]>();
+  for (const [b, a] of blocks) if (a !== null) byAttacker.set(a, [...(byAttacker.get(a) ?? []), b]);
+  const out: number[] = [];
+  let named = current;
+  for (const [a, bs] of byAttacker) {
+    if (a !== named) out.push(a);
+    named = a;
+    out.push(...bs);
+  }
+  return out;
+}
+
+/**
+ * SKIP COMBAT: no attackers. While the engine's Cancel reads "Call Back"
+ * (something is attacking) it clears them first; then OK. The engine's label
+ * is the truth about whether anything is declared, not this browser's clicks.
+ */
+export function skipCombatActs(cancel: { label: string; enabled: boolean }): ActBody[] {
+  return cancel.enabled && /call back/i.test(cancel.label) ? [{ action: 'buttonCancel' }, { action: 'buttonOk' }] : [{ action: 'buttonOk' }];
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +177,7 @@ export function refusalLine(cards: RefusalCards): string | null {
   const who = a && a.name ? a.name : 'that attacker';
   const has = (k: readonly string[], w: string) => k.includes(w);
   if (a && has(a.keywords, 'FLYING') && !has(b.keywords, 'FLYING') && !has(b.keywords, 'REACH')) return `${b.name} can't block ${who}: it can't block a flyer.`;
-  return `${b.name} can't block ${who}: not a legal block for this attacker. Click another attacker first.`;
+  return `${b.name} can't block ${who}: not a legal block for this attacker.`;
 }
 
 /**
@@ -181,4 +225,25 @@ export function attackRefusal(title: string, text: string | null | undefined, st
   if (card.tapped) return `${card.name} can't attack: it is tapped.`;
   if (card.sick && !keywordsOf(card).includes('HASTE')) return `${card.name} can't attack: it entered this turn.`;
   return `${card.name} can't attack: not a legal attacker.`;
+}
+
+// ---------------------------------------------------------------------------
+// Skip combat / No blocks wait for the engine's answer to the last click
+
+/**
+ * How long Skip combat / No blocks waits for the engine's answer to the last
+ * click before going ahead anyway (a refused click is answered with a notice,
+ * not a new input).
+ */
+export const SKIP_WAIT_MS = 1500;
+
+/**
+ * Whether Skip combat / No blocks must wait: an act went out (`sentAtInput`,
+ * the input seq it was sent under) and no newer input has arrived. Both read
+ * the engine's latest word — its Cancel's label, its M65 `chosen` — so pressed
+ * right after a click (A, then Esc) they would otherwise act on the input
+ * before it, and OK would confirm the attack the click just made.
+ */
+export function skipMustWait(sentAtInput: number | null, inputSeq: number): boolean {
+  return sentAtInput !== null && sentAtInput >= inputSeq;
 }
