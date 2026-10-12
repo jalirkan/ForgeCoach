@@ -1,0 +1,20 @@
+relic-2.png: Vintage Cube card back candidate, direction 'relic'. Generated 2026-10-12 on Justin's PC (GTX 1080 8 GB), locally.
+
+Model: Lykon/dreamshaper-xl-1-0 (snapshot 41e6644752a8c9aa63930e6043c4fd83c7708420), fp16 UNet; VAE madebyollin/sdxl-vae-fp16-fix.
+Licence: CreativeML Open RAIL++-M (outputs may be used, subject to the licence's use restrictions); VAE MIT.
+Pipeline: diffusers StableDiffusionXLImg2ImgPipeline, DPM++ 2M Karras (DPMSolverMultistepScheduler, use_karras_sigmas), classic attention processor.
+
+Prompt: 1990s fantasy oil painting, painterly, warm umber and antique gold, symmetrical, centered, rich even texture, carved stone cube glowing from within, floating above a still lake at dusk, distant mountains and towers, mirror reflection in the water, muted amber sky, moonlit silver and bronze night
+Negative prompt: text, letters, words, writing, inscription, runes, glyphs, calligraphy, numbers, logo, watermark, signature, oval, ellipse, five orbs, pentagon, vortex, playing card, modern, flat vector, neon, oversaturated, pure black, photograph, blurry, people, face, purple, magenta, sun, people, boat
+
+Native size: 832 x 1216 (2:3-ish SDXL frame).
+Pass 1: img2img from a layout guide painted in code (~/scenery-packs/tools/cb_guide.py on Justin's PC, not in this repo; 'relic': dusk sky over a still lake with the horizon at the card's centre, mirrored mountain silhouettes and two towers, a glowing isometric stone cube and its reflection),
+  strength 0.64, seed 3202, 28 steps (about 17 run), cfg 6.5.
+Pass 2: the guide's isometric cube (a hexagon of radius 92+8 px at 416,513, feathered 5 px, 90%) pasted back over pass 1 so the model keeps a cube rather than the round boss it drifted to, then img2img strength 0.3, seed 3203, 28 steps, cfg 6.5, same prompts (not mirrored: a landscape mirrored left-right looks artificial).
+Scripts: ~/scenery-packs/tools/cb_gen.py (generation), cb_prompts.py (job lists), cb_post.py (upscale and crop).
+Upscale: Lanczos x1.9615 to 1632 x 2385, cover-crop centred (82 px off top and bottom) to 1632 x 2220,
+  unsharp mask (radius 1.6, 45%, threshold 2), toe lift (values under 64 eased up toward a floor of 22, never darkened) so the darkest areas print as ~RGB 20-30, not black. Saved at 600 dpi.
+No tile ControlNet pass (kept within the GPU budget; one can be run on the chosen back).
+Layout: the guide keeps the emblem inside y 600-1250 and calm darker bands at y 300-400 and 1480-1980 of the final image.
+Inputs: text prompts and the code-painted guide only; no image from the web, no card art, no artist names.
+Check: the native frame had a painted signature-like scribble in a bottom corner, inside the 82 px cropped off; the final image was checked at full size and carries no lettering.
