@@ -13,6 +13,7 @@
  * when it plausibly means something (your own cards while you are prompted),
  * and Forge answers a click it will not take with a "Not selectable" notice.
  */
+import { refusedCard } from './blockPlan.ts';
 import { stackKind } from '../stackModel.ts';
 import { withBoardNames, withoutEngineIds } from '../../engineText.ts';
 import { seatLabels } from '../../play/aiName.ts';
@@ -164,13 +165,11 @@ export function noticeLine(title: string, text: string | null | undefined, state
  * the highlighted ones). Null when the input lists nothing to pick, the card
  * is one it lists, or the board does not show the card.
  */
-export function pickRefusal(title: string, text: string | null | undefined, state: GameStateBody | null, input: InputBody | null, mode: InputMode | null = null): string | null {
+export function pickRefusal(title: string, text: string | null | undefined, state: GameStateBody | null, input: InputBody | null, mode: InputMode | null = null, seat: number | null = null): string | null {
   if (!state || !input || !/^not selectable$/i.test(title.trim())) return null;
-  const m = /\bcard (\d+)\b/.exec(text ?? '');
-  if (!m) return null;
-  const id = Number(m[1]);
-  const c = cardIndex(state).get(id);
-  if (!c || isHidden(c) || !c.name) return null;
+  const c = refusedCard(text, state, seat);
+  if (!c || !c.name) return null;
+  const id = c.id;
   // a card outside the battlefield during a combat declaration: Forge takes only the declaration's clicks until it is confirmed
   if ((mode === 'block' || mode === 'attack') && c.zone !== 'battlefield') {
     return `${cardName(c)} can’t be played while you declare ${mode === 'block' ? 'blockers' : 'attackers'}: confirm the ${mode === 'block' ? 'blocks' : 'attack'} first, then you get priority.`;

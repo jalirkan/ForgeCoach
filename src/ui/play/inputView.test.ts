@@ -550,6 +550,11 @@ describe('pickRefusal (common-sense pass item 2: a refused click says why)', () 
     expect(pickRefusal('Not selectable', 'card 2 cannot be selected now', state(), blocks, 'block')).toBe('Card 2 can’t be played while you declare blockers: confirm the blocks first, then you get priority.');
     expect(pickRefusal('Not selectable', 'card 1 cannot be selected now', state(), blocks, 'attack')).toBe('Card 1 can’t be played while you declare attackers: confirm the attack first, then you get priority.');
   });
+  it('the bridge names the card by its label ("Name (63)" or "Name"), not only "card 63"', () => {
+    const blocks = input('Select creatures to block Card 5 (5) or select another attacker to declare blockers for.', { selectable: { cardIds: [4, 5], min: 0, max: 0, mode: 'none' } });
+    expect(pickRefusal('Not selectable', 'Card 2 (2) cannot be selected now', state(), blocks, 'block', ME)).toMatch(/^Card 2 can’t be played while you declare blockers/);
+    expect(pickRefusal('Not selectable', 'Card 3 cannot be selected now', state(), pick, null, ME)).toMatch(/^Card 3 isn’t one of the choices/);
+  });
   it('nothing to add for an offered card, a hidden one, another notice, or an input that offers nothing', () => {
     expect(pickRefusal('Not selectable', 'card 4 cannot be selected now', state(), pick)).toBeNull();
     expect(pickRefusal('Not selectable', 'card 99 cannot be selected now', state(), pick)).toBeNull();

@@ -207,7 +207,7 @@ export function PlayView({
         ? blockRefusal(lastNotice.title, lastNotice.text, snap.state, blockTry.current, view.blockingAttackerId, seat)
         : view.mode === 'attack'
           ? attackRefusal(lastNotice.title, lastNotice.text, snap.state, seat)
-          : null) ?? pickRefusal(lastNotice.title, lastNotice.text, snap.state, input, view.mode);
+          : null) ?? pickRefusal(lastNotice.title, lastNotice.text, snap.state, input, view.mode, seat);
     setFlash(refused ?? noticeLine(lastNotice.title, lastNotice.text, snap.state));
     // Only a new notice flashes; the state it names cards from is read as of then.
     // eslint-disable-next-line react-hooks/exhaustive-deps
