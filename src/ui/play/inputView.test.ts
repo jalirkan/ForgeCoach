@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { Card, GameStateBody, InputBody } from '../../protocol.ts';
-import { cardRole, describeInput, handNeeded, noticeLine, parsePay, playerClickable } from './inputView.ts';
+import { cardRole, describeInput, handNeeded, noticeLine, parsePay, playerClickable, stripSeatVocative } from './inputView.ts';
 import { planPlayKey, type PlayKeyContext } from './playKeys.ts';
 import { liveDecision, liveKind, momentKey } from './liveDecision.ts';
 import { canPassAhead, PASS_EOT, passMenu, primaryView } from './actionWords.ts';
@@ -537,5 +537,32 @@ describe('J109: the board at the cleanup discard and at the friend’s priority'
     // Forge's End Turn (the input's Cancel) is the same pass as To EOT; a phone shows only To EOT.
     expect(v.cancel).toMatchObject({ label: 'End Turn', enabled: true });
     expect(canPassAhead(v)).toBe(true);
+  });
+});
+
+describe('the seat name in the engine\'s prompts', () => {
+  it('drops the vocative from the coin-toss prompt and keeps the rest', () => {
+    const p = 'Human, you have won the coin toss.\n\nWould you like to play or draw?';
+    expect(stripSeatVocative(p, 'Human')).toBe('You have won the coin toss.\n\nWould you like to play or draw?');
+    const v = describeInput(input(p), state(), ME);
+    expect(v.engineText).toBe('You have won the coin toss.\n\nWould you like to play or draw?');
+    expect(v.title).toBe('You won the coin toss');
+  });
+
+  it('drops it from the keep-hand prompt, and the going-first line still reads', () => {
+    const p = 'Human, you are going first!\n\nDo you want to keep your hand?';
+    expect(stripSeatVocative(p, 'Human')).toBe('You are going first!\n\nDo you want to keep your hand?');
+    const v = describeInput(input(p), state(), ME);
+    expect(v.engineText).toBe('You are going first!\n\nDo you want to keep your hand?');
+    expect(v.detail).toBe('You are going first!');
+  });
+
+  it('leaves a prompt that does not start with the name, a seat with no name, and the opponent\'s name alone', () => {
+    expect(stripSeatVocative('Do you want to keep your hand?', 'Human')).toBe('Do you want to keep your hand?');
+    expect(stripSeatVocative('Priority: Human', 'Human')).toBe('Priority: Human');
+    expect(stripSeatVocative('Humans, you win', 'Human')).toBe('Humans, you win');
+    expect(stripSeatVocative('Human, you win', null)).toBe('Human, you win');
+    expect(stripSeatVocative('Forge AI, you win', 'Human')).toBe('Forge AI, you win');
+    expect(describeInput(input('Human, you win'), null, ME).engineText).toBe('Human, you win');
   });
 });
