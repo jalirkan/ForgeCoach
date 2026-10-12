@@ -1,0 +1,61 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r3",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "facex-green-34",
+   "src": "comp/face-x-green.png",
+   "strength": 0.34,
+   "seeds": [
+    2401,
+    2402
+   ],
+   "prompt": "tempera painting, 15th century Italian panel portrait of a noblewoman, auburn hair, pearl earrings, composed face with a faint contented closed-lip smile, quietly pleased, relaxed eyelids, warm light from below, delicate brushwork",
+   "negative": "teeth, open mouth, grin, laughing, sad, frown, staring, text, letters, blurry, photo, 3d render, cartoon"
+  },
+  {
+   "name": "facex-blue-34",
+   "src": "comp/face-x-blue.png",
+   "strength": 0.34,
+   "seeds": [
+    2401,
+    2402
+   ],
+   "prompt": "tempera painting, 15th century Italian panel portrait of a young man, dark hair, guarded intent face, narrowed eyes glancing sideways, sidelong look, faint held-back half smile, warm light from below, delicate brushwork",
+   "negative": "looking at viewer, staring, wide eyes, grin, teeth, text, letters, blurry, photo, 3d render, cartoon"
+  },
+  {
+   "name": "hands-blue-62",
+   "src": "comp/hands-in-blue.png",
+   "strength": 0.62,
+   "seeds": [
+    2302,
+    2303
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, a young man's hands holding a small hand of cards seen from the back, plain dark blue card backs, ochre wool doublet with full gathered sleeves and deep folds, fur collar, blue cloak, warm lamplight, delicate brushwork",
+   "negative": "card faces, pips, symbols, letters, numbers, text, book, extra fingers, fused fingers, deformed hands, flat colour, blurry, photo, 3d render"
+  },
+  {
+   "name": "hand-green-34",
+   "src": "comp/hand-in-green.png",
+   "strength": 0.34,
+   "seeds": [
+    2501
+   ],
+   "prompt": "tempera painting, 15th century, detailed elegant woman's hands holding a small hand of cards, fingers with fine knuckles and fingernails, plain dark blue card backs with thin gold edges, rose velvet sleeves, warm light from below, crisp delicate brushwork",
+   "negative": "card faces, pips, symbols, letters, numbers, text, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, soft focus, photo, 3d render"
+  },
+  {
+   "name": "hand-garnet-36",
+   "src": "comp/hand-in-garnet.png",
+   "strength": 0.36,
+   "seeds": [
+    2501
+   ],
+   "prompt": "tempera painting, 15th century, detailed an older man's veined hands holding a small hand of cards, fingers with fine knuckles and fingernails, plain dark blue card backs with thin gold edges, dark brown sleeves with white shirt cuffs, warm light from below, crisp delicate brushwork",
+   "negative": "card faces, pips, symbols, letters, numbers, text, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, soft focus, photo, 3d render"
+  }
+ ]
+}

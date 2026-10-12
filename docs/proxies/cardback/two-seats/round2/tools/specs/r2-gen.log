@@ -1,0 +1,26 @@
+18:08:19 loaded Lykon/dreamshaper-xl-1-0 in 3s; 24 images
+18:09:13 face-green-45 (1024, 1024) seed=2201 strength=0.45 cn=0 54s
+18:10:07 face-green-45 (1024, 1024) seed=2202 strength=0.45 cn=0 54s
+18:11:02 face-green-45 (1024, 1024) seed=2203 strength=0.45 cn=0 54s
+18:12:06 face-green-55 (1024, 1024) seed=2201 strength=0.55 cn=0 65s
+18:13:11 face-green-55 (1024, 1024) seed=2202 strength=0.55 cn=0 65s
+18:14:16 face-green-55 (1024, 1024) seed=2203 strength=0.55 cn=0 65s
+18:15:11 face-garnet-45 (1024, 1024) seed=2201 strength=0.45 cn=0 55s
+18:16:05 face-garnet-45 (1024, 1024) seed=2202 strength=0.45 cn=0 55s
+18:17:00 face-garnet-45 (1024, 1024) seed=2203 strength=0.45 cn=0 54s
+18:18:05 face-garnet-55 (1024, 1024) seed=2201 strength=0.55 cn=0 65s
+18:19:10 face-garnet-55 (1024, 1024) seed=2202 strength=0.55 cn=0 66s
+18:20:17 face-garnet-55 (1024, 1024) seed=2203 strength=0.55 cn=0 66s
+18:21:13 face-blue-45 (1024, 1024) seed=2201 strength=0.45 cn=0 56s
+18:22:08 face-blue-45 (1024, 1024) seed=2202 strength=0.45 cn=0 55s
+18:23:03 face-blue-45 (1024, 1024) seed=2203 strength=0.45 cn=0 55s
+18:24:09 face-blue-55 (1024, 1024) seed=2201 strength=0.55 cn=0 66s
+18:25:14 face-blue-55 (1024, 1024) seed=2202 strength=0.55 cn=0 65s
+18:26:19 face-blue-55 (1024, 1024) seed=2203 strength=0.55 cn=0 65s
+18:27:15 hands-green-40 (1216, 832) seed=2301 strength=0.4 cn=0 56s
+18:28:22 hands-green-48 (1216, 832) seed=2301 strength=0.48 cn=0 68s
+18:29:18 hands-garnet-40 (1216, 832) seed=2301 strength=0.4 cn=0 56s
+18:30:25 hands-garnet-48 (1216, 832) seed=2301 strength=0.48 cn=0 67s
+18:31:20 hands-blue-40 (1216, 832) seed=2301 strength=0.4 cn=0 55s
+18:32:28 hands-blue-48 (1216, 832) seed=2301 strength=0.48 cn=0 67s
+18:32:28 total 1452s

@@ -1,0 +1,28 @@
+two-seats-blue-figure.png  The blue figure: a young man, guarded and intent, a sidelong look across the table.
+model: Lykon/dreamshaper-xl-1-0 (SDXL, fp16 UNet, madebyollin/sdxl-vae-fp16-fix), local, GTX 1080
+sampler: DPM++ 2M Karras, 32 steps scaled by strength, cfg 6.0 (5.5 on the unifying pass); every pass img2img
+size: 1500x2100 px at 600 dpi = 63.5 x 88.9 mm, 5:7 (Dragon Shield Sleeve Crafter, Standard); RGB
+also: two-seats-blue-figure.jpg (the same pixels, JPEG quality 95, 4:4:4, 600 dpi)
+base: round 1's pre-light half (c1-h) for the figure; round 1's finished half (c1-24-ut) for the ground, the floral band, the table and the lamp
+gold: punched diamond gold: round 1's painted lozenge diaper with punched rosettes, untouched
+passes, in order (negatives: tools/specs/spec-rN.json, by job name):
+- body over guides/g-blue.png (tools/prep.py): round r1, job body-blue-60, seed 2101, strength 0.6
+    prompt: tempera painting on gold leaf, 15th century Italian panel portrait, Renaissance, half-length card player seated behind a table, a young person with dark hair cut at the jaw and a straight fringe, guarded watchful face, sidelong glance, lips pressed together, indigo blue cloak with fur-trimmed hood, ochre saffron doublet, warm lamplight from below, tooled gold background, delicate brushwork
+- fan: tools/fan.py blue, six cards, held tight and narrow
+- face at 3.2x: round r2, job face-blue-55, seed 2202, strength 0.55
+    prompt: tempera painting, 15th century Italian panel portrait of a young man in a blue hood, dark hair, guarded intent face, narrowed eyes, sidelong glance to the side, faint wry half smile, warm light from below, delicate brushwork
+- expression: tools/expr.py blue (irises slid 13 px toward the viewer's right, upper lids down 4, one mouth corner up 5)
+- face, the nudged expression repainted: round r3, job facex-blue-34, seed 2401, strength 0.34
+    prompt: tempera painting, 15th century Italian panel portrait of a young man, dark hair, guarded intent face, narrowed eyes glancing sideways, sidelong look, faint held-back half smile, warm light from below, delicate brushwork
+- hands, fan and doublet at 2.17x (0.48 had left the sleeves flat; 0.62 painted them): round r3, job hands-blue-62, seed 2302, strength 0.62
+    prompt: tempera painting on gold leaf, 15th century, a young man's hands holding a small hand of cards seen from the back, plain dark blue card backs, ochre wool doublet with full gathered sleeves and deep folds, fur collar, blue cloak, warm lamplight, delicate brushwork
+- a stray painted stroke between a card and a finger removed by tools/patch.py
+- hands at 3x: round r4, job hand-blue-34, seed 2501, strength 0.34
+    prompt: tempera painting, 15th century, detailed young man's hands holding a small hand of cards, fingers with fine knuckles and fingernails, plain dark blue card backs with thin gold edges, ochre sleeves with fur cuffs, warm light from below, crisp delicate brushwork
+- unifying pass, two tiles: round r5, job u-blue-24-L, seed 2601, strength 0.24
+    prompt: tempera painting on gold leaf, 15th century Italian painted playing card, a young man in an indigo blue hooded cloak and an ochre doublet holding a hand of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure
+- after: tools/figmerge.py (the figure into round 1's finished half), tools/edgefix.py (green and blue only: round 1's red rim on the cloak's outline turned to the cloak's colour), tools/moulding.py (round 1's card tips on the table's moulding under the hands redrawn away)
+- compose: round 1's tools/compose.py --gold 0 --keep (face and hands from the lit, pre-unify half); bottom half = top turned 180 degrees; unsharp r2.0 40%; chroma above 140 compressed; dark floor 22
+darkest areas (luminance blurred ~0.5 mm): 0.5th percentile 31.3, 5th percentile 44.0 (floor 22); darkest single pixel 18
+saturation x value, 99.5th percentile: 149/255
+180-degree symmetry: exact, pixel for pixel

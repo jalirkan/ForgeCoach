@@ -1,0 +1,62 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r4",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "hand-blue-34",
+   "src": "comp/hand-in-blue.png",
+   "strength": 0.34,
+   "seeds": [
+    2501
+   ],
+   "prompt": "tempera painting, 15th century, detailed young man's hands holding a small hand of cards, fingers with fine knuckles and fingernails, plain dark blue card backs with thin gold edges, ochre sleeves with fur cuffs, warm light from below, crisp delicate brushwork",
+   "negative": "card faces, pips, symbols, letters, numbers, text, needle, stick, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, soft focus, photo, 3d render"
+  },
+  {
+   "name": "u-green-24-L",
+   "src": "comp/green-tile-L.png",
+   "strength": 0.24,
+   "seeds": [
+    2601
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, a noblewoman in a green velvet hooded cloak and a rose gown holding a hand of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure",
+   "negative": "text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon",
+   "cfg": 5.5
+  },
+  {
+   "name": "u-green-24-R",
+   "src": "comp/green-tile-R.png",
+   "strength": 0.24,
+   "seeds": [
+    2601
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, a noblewoman in a green velvet hooded cloak and a rose gown holding a hand of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure",
+   "negative": "text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon",
+   "cfg": 5.5
+  },
+  {
+   "name": "u-garnet-24-L",
+   "src": "comp/garnet-tile-L.png",
+   "strength": 0.24,
+   "seeds": [
+    2601
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, an older man in a garnet red hooded cloak with fur trim and a dark brown doublet holding a hand of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure",
+   "negative": "text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon",
+   "cfg": 5.5
+  },
+  {
+   "name": "u-garnet-24-R",
+   "src": "comp/garnet-tile-R.png",
+   "strength": 0.24,
+   "seeds": [
+    2601
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, an older man in a garnet red hooded cloak with fur trim and a dark brown doublet holding a hand of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure",
+   "negative": "text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon",
+   "cfg": 5.5
+  }
+ ]
+}

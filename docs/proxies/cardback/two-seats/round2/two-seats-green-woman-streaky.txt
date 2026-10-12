@@ -1,0 +1,27 @@
+two-seats-green-woman-streaky.png  The green woman: composed, faintly pleased, the better-off player.
+model: Lykon/dreamshaper-xl-1-0 (SDXL, fp16 UNet, madebyollin/sdxl-vae-fp16-fix), local, GTX 1080
+sampler: DPM++ 2M Karras, 32 steps scaled by strength, cfg 6.0 (5.5 on the unifying pass); every pass img2img
+size: 1500x2100 px at 600 dpi = 63.5 x 88.9 mm, 5:7 (Dragon Shield Sleeve Crafter, Standard); RGB
+also: two-seats-green-woman-streaky.jpg (the same pixels, JPEG quality 95, 4:4:4, 600 dpi)
+base: round 1's pre-light half (c1-h) for the figure; round 1's finished half (c1-24-ut) for the ground, the floral band, the table and the lamp
+gold: streaky worked leaf (comparison only): tools/streaky.py lays the first draft's gold (direction/two-seats-3.png) over the painting's own light, outside the character's outline (tools/figmask.py), the table, the lamp and the floral band
+passes, in order (negatives: tools/specs/spec-rN.json, by job name):
+- body: cloak, gown, the first draft's face painted at panel fidelity, over guides/g-green.png (tools/prep.py): round r1, job body-green-60, seed 2101, strength 0.6
+    prompt: tempera painting on gold leaf, 15th century Italian panel portrait, Renaissance, half-length card player seated behind a table, a noblewoman, auburn wavy hair parted in the middle, composed serene face with a faint knowing smile, deep green velvet cloak with fur-trimmed hood, rose velvet gown with a white linen chemise, pearl necklace, elegant hands, warm lamplight from below, tooled gold background, delicate brushwork
+- fan: tools/fan.py green, five cards, tidy and evenly closed, behind the body pass's own hands
+- face at 3.2x (crop 590,302-910,622): round r2, job face-green-45, seed 2201, strength 0.45
+    prompt: tempera painting, 15th century Italian panel portrait of a noblewoman in a green hood, auburn hair, pearl earrings, composed face, faint contented smile, quietly pleased, relaxed eyes, warm light from below, delicate brushwork
+- expression: tools/expr.py green (mouth corners up 9 px, cheeks up 3, upper lids down 3, on the 1024 tile)
+- face, the nudged expression repainted: round r3, job facex-green-34, seed 2401, strength 0.34
+    prompt: tempera painting, 15th century Italian panel portrait of a noblewoman, auburn hair, pearl earrings, composed face with a faint contented closed-lip smile, quietly pleased, relaxed eyelids, warm light from below, delicate brushwork
+- hands and fan at 2.17x (crop 470,580-1030,963): round r2, job hands-green-48, seed 2301, strength 0.48
+    prompt: tempera painting on gold leaf, 15th century, two hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, rose velvet gown with red sleeves, warm lamplight from below, delicate brushwork
+- hands at 3x (crop 590,730-930,962): round r3, job hand-green-34, seed 2501, strength 0.34
+    prompt: tempera painting, 15th century, detailed elegant woman's hands holding a small hand of cards, fingers with fine knuckles and fingernails, plain dark blue card backs with thin gold edges, rose velvet sleeves, warm light from below, crisp delicate brushwork
+- unifying pass, two tiles (L and R alike), after round 1's finish.py light: round r4, job u-green-24-L, seed 2601, strength 0.24
+    prompt: tempera painting on gold leaf, 15th century Italian painted playing card, a noblewoman in a green velvet hooded cloak and a rose gown holding a hand of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure
+- after: tools/figmerge.py (the figure into round 1's finished half), tools/edgefix.py (green and blue only: round 1's red rim on the cloak's outline turned to the cloak's colour), tools/moulding.py (round 1's card tips on the table's moulding under the hands redrawn away)
+- compose: round 1's tools/compose.py --gold 0 --keep (face and hands from the lit, pre-unify half); bottom half = top turned 180 degrees; unsharp r2.0 40%; chroma above 140 compressed; dark floor 22
+darkest areas (luminance blurred ~0.5 mm): 0.5th percentile 41.5, 5th percentile 55.3 (floor 22); darkest single pixel 18
+saturation x value, 99.5th percentile: 152/255
+180-degree symmetry: exact, pixel for pixel

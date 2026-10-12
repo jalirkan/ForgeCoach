@@ -1,0 +1,68 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r1",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "body-green-52",
+   "src": "guides/body-in-green.png",
+   "strength": 0.52,
+   "seeds": [
+    2101
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian panel portrait, Renaissance, half-length card player seated behind a table, a noblewoman, auburn wavy hair parted in the middle, composed serene face with a faint knowing smile, deep green velvet cloak with fur-trimmed hood, rose velvet gown with a white linen chemise, pearl necklace, elegant hands, warm lamplight from below, tooled gold background, delicate brushwork",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, card faces, pips, book, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, anime, cartoon, neon"
+  },
+  {
+   "name": "body-green-60",
+   "src": "guides/body-in-green.png",
+   "strength": 0.6,
+   "seeds": [
+    2101
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian panel portrait, Renaissance, half-length card player seated behind a table, a noblewoman, auburn wavy hair parted in the middle, composed serene face with a faint knowing smile, deep green velvet cloak with fur-trimmed hood, rose velvet gown with a white linen chemise, pearl necklace, elegant hands, warm lamplight from below, tooled gold background, delicate brushwork",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, card faces, pips, book, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, anime, cartoon, neon"
+  },
+  {
+   "name": "body-garnet-52",
+   "src": "guides/body-in-garnet.png",
+   "strength": 0.52,
+   "seeds": [
+    2101
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian panel portrait, Renaissance, half-length card player seated behind a table, an older man, weathered careworn face, worried anxious expression, furrowed brow, short grey-brown hair, garnet red cloak with fur-trimmed hood, dark brown wool doublet, white shirt collar, warm lamplight from below, tooled gold background, delicate brushwork",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, card faces, pips, book, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, anime, cartoon, neon"
+  },
+  {
+   "name": "body-garnet-60",
+   "src": "guides/body-in-garnet.png",
+   "strength": 0.6,
+   "seeds": [
+    2101
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian panel portrait, Renaissance, half-length card player seated behind a table, an older man, weathered careworn face, worried anxious expression, furrowed brow, short grey-brown hair, garnet red cloak with fur-trimmed hood, dark brown wool doublet, white shirt collar, warm lamplight from below, tooled gold background, delicate brushwork",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, card faces, pips, book, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, anime, cartoon, neon"
+  },
+  {
+   "name": "body-blue-52",
+   "src": "guides/body-in-blue.png",
+   "strength": 0.52,
+   "seeds": [
+    2101
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian panel portrait, Renaissance, half-length card player seated behind a table, a young person with dark hair cut at the jaw and a straight fringe, guarded watchful face, sidelong glance, lips pressed together, indigo blue cloak with fur-trimmed hood, ochre saffron doublet, warm lamplight from below, tooled gold background, delicate brushwork",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, card faces, pips, book, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, anime, cartoon, neon"
+  },
+  {
+   "name": "body-blue-60",
+   "src": "guides/body-in-blue.png",
+   "strength": 0.6,
+   "seeds": [
+    2101
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian panel portrait, Renaissance, half-length card player seated behind a table, a young person with dark hair cut at the jaw and a straight fringe, guarded watchful face, sidelong glance, lips pressed together, indigo blue cloak with fur-trimmed hood, ochre saffron doublet, warm lamplight from below, tooled gold background, delicate brushwork",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, card faces, pips, book, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, anime, cartoon, neon"
+  }
+ ]
+}

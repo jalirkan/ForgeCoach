@@ -1,0 +1,140 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r2",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "face-green-45",
+   "src": "comp/face-in-green.png",
+   "strength": 0.45,
+   "seeds": [
+    2201,
+    2202,
+    2203
+   ],
+   "prompt": "tempera painting, 15th century Italian panel portrait of a noblewoman in a green hood, auburn hair, pearl earrings, composed face, faint contented smile, quietly pleased, relaxed eyes, warm light from below, delicate brushwork",
+   "negative": "teeth, open mouth, grin, laughing, sad, frown, staring, text, letters, blurry, photo, 3d render, cartoon"
+  },
+  {
+   "name": "face-green-55",
+   "src": "comp/face-in-green.png",
+   "strength": 0.55,
+   "seeds": [
+    2201,
+    2202,
+    2203
+   ],
+   "prompt": "tempera painting, 15th century Italian panel portrait of a noblewoman in a green hood, auburn hair, pearl earrings, composed face, faint contented smile, quietly pleased, relaxed eyes, warm light from below, delicate brushwork",
+   "negative": "teeth, open mouth, grin, laughing, sad, frown, staring, text, letters, blurry, photo, 3d render, cartoon"
+  },
+  {
+   "name": "face-garnet-45",
+   "src": "comp/face-in-garnet.png",
+   "strength": 0.45,
+   "seeds": [
+    2201,
+    2202,
+    2203
+   ],
+   "prompt": "tempera painting, 15th century Flemish panel portrait of an older man in a red hood, anxious worried face, brows raised and drawn together, creased forehead, eyes glancing down, tight lips, warm light from below, delicate brushwork",
+   "negative": "smile, calm, serene, staring at viewer, text, letters, blurry, photo, 3d render, cartoon"
+  },
+  {
+   "name": "face-garnet-55",
+   "src": "comp/face-in-garnet.png",
+   "strength": 0.55,
+   "seeds": [
+    2201,
+    2202,
+    2203
+   ],
+   "prompt": "tempera painting, 15th century Flemish panel portrait of an older man in a red hood, anxious worried face, brows raised and drawn together, creased forehead, eyes glancing down, tight lips, warm light from below, delicate brushwork",
+   "negative": "smile, calm, serene, staring at viewer, text, letters, blurry, photo, 3d render, cartoon"
+  },
+  {
+   "name": "face-blue-45",
+   "src": "comp/face-in-blue.png",
+   "strength": 0.45,
+   "seeds": [
+    2201,
+    2202,
+    2203
+   ],
+   "prompt": "tempera painting, 15th century Italian panel portrait of a young man in a blue hood, dark hair, guarded intent face, narrowed eyes, sidelong glance to the side, faint wry half smile, warm light from below, delicate brushwork",
+   "negative": "looking at viewer, staring, frontal gaze, wide eyes, grin, teeth, text, letters, blurry, photo, 3d render, cartoon"
+  },
+  {
+   "name": "face-blue-55",
+   "src": "comp/face-in-blue.png",
+   "strength": 0.55,
+   "seeds": [
+    2201,
+    2202,
+    2203
+   ],
+   "prompt": "tempera painting, 15th century Italian panel portrait of a young man in a blue hood, dark hair, guarded intent face, narrowed eyes, sidelong glance to the side, faint wry half smile, warm light from below, delicate brushwork",
+   "negative": "looking at viewer, staring, frontal gaze, wide eyes, grin, teeth, text, letters, blurry, photo, 3d render, cartoon"
+  },
+  {
+   "name": "hands-green-40",
+   "src": "comp/hands-in-green.png",
+   "strength": 0.4,
+   "seeds": [
+    2301
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, rose velvet gown with red sleeves, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-green-48",
+   "src": "comp/hands-in-green.png",
+   "strength": 0.48,
+   "seeds": [
+    2301
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, rose velvet gown with red sleeves, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-garnet-40",
+   "src": "comp/hands-in-garnet.png",
+   "strength": 0.4,
+   "seeds": [
+    2301
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, dark brown wool doublet with white cuffs, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-garnet-48",
+   "src": "comp/hands-in-garnet.png",
+   "strength": 0.48,
+   "seeds": [
+    2301
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, dark brown wool doublet with white cuffs, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-blue-40",
+   "src": "comp/hands-in-blue.png",
+   "strength": 0.4,
+   "seeds": [
+    2301
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, ochre wool doublet, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-blue-48",
+   "src": "comp/hands-in-blue.png",
+   "strength": 0.48,
+   "seeds": [
+    2301
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, ochre wool doublet, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  }
+ ]
+}
