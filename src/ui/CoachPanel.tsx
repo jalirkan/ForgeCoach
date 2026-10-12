@@ -24,6 +24,8 @@ import { isHelperThinking, thinkingLine } from './coachWait.ts';
 import { startAnswer, stopAnswer, useAnswer, type Answer } from './answers.ts';
 import { cardsForPrompt } from './cardData.ts';
 import { Markdown } from './Markdown.tsx';
+import { withoutEngineIds } from '../engineText.ts';
+import { CoachText } from './CoachText.tsx';
 import { AdviceFeedback } from './AdviceFeedback.tsx';
 import { feedbackTarget, type FeedbackTarget } from '../feedback.ts';
 import { ManaCost } from './Mana.tsx';
@@ -179,11 +181,12 @@ export function CoachPanel({
   );
 }
 
+/** What the engine was asking, in the player's words (no engine card ids). */
 function engineText(d: Decision): string | null {
-  if (d.input?.prompt) return d.input.prompt;
+  if (d.input?.prompt) return withoutEngineIds(d.input.prompt) || null;
   const a = d.ask as unknown as Record<string, unknown> | null;
   if (a) {
-    for (const k of ['prompt', 'title', 'message', 'question']) if (typeof a[k] === 'string' && a[k]) return a[k] as string;
+    for (const k of ['prompt', 'title', 'message', 'question']) if (typeof a[k] === 'string' && a[k]) return withoutEngineIds(a[k] as string) || null;
   }
   return null;
 }
@@ -480,14 +483,18 @@ export function TerseView({ parts, streaming }: { parts: TerseAnswerParts; strea
           {parts.commands.map((c, i) => (
             <li key={i} className={cx('terse-line', `t-${c.label.toLowerCase().replace(/[^a-z]+/g, '-')}`)}>
               <span className="terse-label">{c.label}</span>
-              {c.text && <span className="terse-text">{c.text}</span>}
+              {c.text && (
+                <span className="terse-text">
+                  <CoachText text={c.text} />
+                </span>
+              )}
             </li>
           ))}
         </ul>
       )}
       {parts.why && (
         <p className="terse-why">
-          <span className="terse-label">Why</span> {parts.why}
+          <span className="terse-label">Why</span> <CoachText text={parts.why} />
         </p>
       )}
       {hasMore ? (
@@ -521,7 +528,11 @@ const CONFIDENCE_WORDS: Record<StatedConfidence, string> = {
 export function AnswerHead({ answer, rule, confidence, why }: { answer: string | null; rule: string | null; confidence: StatedConfidence | null; why: string | null }) {
   return (
     <div className={cx('answer-head', confidence === 'low' && 'is-close')}>
-      {answer && <p className="answer-line">{answer}</p>}
+      {answer && (
+        <p className="answer-line">
+          <CoachText text={answer} />
+        </p>
+      )}
       {(rule || confidence) && (
         <div className="answer-chips">
           {confidence && (

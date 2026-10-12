@@ -14,7 +14,10 @@
  *   - hidden information: no card name the other seat holds hidden (its hand
  *     and library: the other seat's own frames at a table, the AI's deck list
  *     against Forge) is anywhere in this page's DOM, unless this seat was
- *     shown that card.
+ *     shown that card;
+ *   - no engine id in what the player reads: no "Opt (12)", "[[Island (38)]]",
+ *     "Construct Token #297" or "(Exiled=0)" in the board's visible text
+ *     (common-sense pass: the board never names a card by an id).
  *
  * Each returns a list of problems ([] when it holds). A board a frame behind
  * the wire is not a problem: the caller checks when the stream is quiet, and
@@ -95,7 +98,9 @@ export async function combatPlaced(page, tap) {
   const seq = tap.stateSeq;
   // A creature blocking two attackers sits in front of one of them (the other gets a line).
   const of = new Map();
-  for (const b of bands) for (const blk of b.blockerIds) of.set(blk, [...(of.get(blk) ?? []), ...b.attackerIds]);
+  // A band whose attacker has left combat (removed, sacrificed) keeps its blockers with no attacker
+  // to stand in front of: nothing to place them by (seen against real Forge, 2026-10-12).
+  for (const b of bands) if (b.attackerIds.length) for (const blk of b.blockerIds) of.set(blk, [...(of.get(blk) ?? []), ...b.attackerIds]);
   const want = { atk: bands.flatMap((b) => b.attackerIds), blk: [...of] };
   const read = () =>
     page.evaluate(({ atk, blk }) => {
@@ -188,5 +193,39 @@ export function hiddenFromOther(otherTap) {
   if (!s || !me) return out;
   for (const c of me.zones.hand.cards) if (!c.hidden && c.name) out.add(c.name);
   for (const c of me.zones.library.cards ?? []) if (!c.hidden && c.name) out.add(c.name);
+  return out;
+}
+
+/**
+ * Engine ids in the page's visible text: "Shock (4)" or "Construct Token #297"
+ * where that number is a card the state shows under that name, "[[…]]", or a
+ * "(Key=value)" tail. A count ("Earlier advice (2)") is not an id.
+ */
+export async function engineIds(page, tap) {
+  const names = new Map();
+  const s = tap.state;
+  if (s) {
+    for (const p of s.players ?? []) for (const z of Object.values(p.zones ?? {})) for (const c of z.cards ?? []) if (c && !c.hidden && c.name) names.set(c.id, c.name);
+    for (const c of s.stackCards ?? []) if (c && !c.hidden && c.name) names.set(c.id, c.name);
+  }
+  const text = await page.evaluate(() => {
+    const root = document.querySelector('.game.play') ?? document.body;
+    const parts = [root.innerText];
+    // titles a hover shows count too
+    for (const el of root.querySelectorAll('[title]')) parts.push(el.getAttribute('title'));
+    return parts.join('\n');
+  });
+  const out = [];
+  const idRe = /(?:\((\d+)\)|#(\d+)\b)/g;
+  for (const line of text.split('\n')) {
+    let bad = /\[\[|\([A-Z][A-Za-z ]*=\w+\)/.test(line);
+    for (const m of line.matchAll(idRe)) {
+      const name = names.get(Number(m[1] ?? m[2]));
+      const before = line.slice(0, m.index).trimEnd().toLowerCase();
+      if (name && (before.endsWith(name.toLowerCase()) || before.endsWith(name.toLowerCase().replace(/ token$/, '')))) bad = true;
+    }
+    if (bad) out.push(`an engine id in "${line.trim().slice(0, 140)}"`);
+    if (out.length >= 3) break;
+  }
   return out;
 }

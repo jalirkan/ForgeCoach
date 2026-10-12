@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { parseLog, type GameLog } from './log.ts';
-import { abilityText, foldSummary, foldTriggers, gameEventLog, lineText, phaseSection, sectionsOf, type LogKind, type LogTurn } from './eventLog.ts';
+import { abilityText, foldSummary, foldTriggers, gameEventLog, lastNoChoice, lineText, phaseSection, sectionsOf, type LogKind, type LogTurn } from './eventLog.ts';
 import type { GameEvent, GameStateBody, StackItem } from './protocol.ts';
 
 function load(name: string): GameLog {
@@ -361,5 +361,39 @@ describe('trigger folds', () => {
     gameEventLog(growing);
     const warm = gameEventLog({ ...growing, frames: auto.frames.slice() });
     expect(warm.map((t) => t.lines.map((l) => [l.kind, lineText(l)]))).toEqual(turns.map((t) => t.lines.map((l) => [l.kind, lineText(l)])));
+  });
+});
+
+describe('a spell or ability of yours that resolves with nothing to choose (common-sense pass item 12)', () => {
+  const SCULLER = 'When Tidehollow Sculler enters, target opponent reveals their hand and you choose a nonland card from it. Exile that card.';
+  const sculler = { id: 7, name: 'Tidehollow Sculler', types: 'Artifact Creature — Zombie' };
+  /** Frame 2: the trigger on the stack; then (an ask, maybe) and the frame that resolves it. */
+  function resolving(opts: { text?: string; asked?: boolean; effects?: GameEvent[]; controller?: number; fizzled?: boolean }): GameLog {
+    const log = mini({ cards: [sculler], stack: [item(40, { text: opts.text ?? SCULLER, targetPlayerIds: [1], isAbility: true, controller: opts.controller ?? 0 })], events: [cast(40, 7, opts.text ?? SCULLER)] });
+    const s2 = log.frames[1]!.body as GameStateBody;
+    const s3 = { ...s2, stack: [], events: [{ kind: 'resolved', cardId: 7, fizzled: !!opts.fizzled }, { kind: 'unstacked', cardId: 7 }, ...(opts.effects ?? [])] } as unknown as GameStateBody;
+    const frames = [...log.frames];
+    if (opts.asked) frames.push({ v: 1, seq: 3, t: 0, type: 'ask', body: { askId: 1, kind: 'choose_card', prompt: 'Choose a card', options: [] } } as unknown as GameLog['frames'][number]);
+    frames.push({ v: 1, seq: 4, t: 0, type: 'state', body: s3 } as GameLog['frames'][number]);
+    return { ...log, frames };
+  }
+
+  // the lines after the trigger's own
+  const after = (log: GameLog) => last(log).filter(([k]) => k !== 'trigger');
+
+  it('says so, with the reason the state shows: an empty hand the text names', () => {
+    expect(after(resolving({}))).toEqual([['nochoice', 'Tidehollow Sculler’s ability resolved with nothing for you to choose — Player 1’s hand was empty']]);
+    expect(lastNoChoice(resolving({}))?.kind).toBe('nochoice');
+  });
+
+  it('nothing when the engine asked you, when the frame reports an effect, when it is not yours, or when it fizzled', () => {
+    expect(after(resolving({ asked: true }))).toEqual([]);
+    expect(after(resolving({ effects: [{ kind: 'zone', cardId: 99, from: { zone: 'hand', player: 1 }, to: { zone: 'exile', player: 1 } } as GameEvent] }))).toEqual([]);
+    expect(after(resolving({ controller: 1 }))).toEqual([]);
+    expect(after(resolving({ fizzled: true }))).toEqual([['info', 'Tidehollow Sculler fizzled']]);
+  });
+
+  it('nothing for a text where its controller chooses nothing', () => {
+    expect(after(resolving({ text: 'When this creature enters, you gain 2 life.' }))).toEqual([]);
   });
 });

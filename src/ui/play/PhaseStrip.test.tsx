@@ -82,16 +82,18 @@ describe('PhaseStrip, vertical', () => {
     expect(blk).not.toContain('pcell-line">Cast or pass.');
   });
 
-  it('heads the column with whose turn, the turn, the active player, priority and who was on the play', () => {
+  it('heads the column with whose turn, the turn, the active player (the board’s names, never the engine’s seat names), priority and who was on the play', () => {
     const mine = render(true);
     expect(mine).toContain('Your turn');
     expect(mine).toContain('T5');
-    expect(mine).toContain('Pacho');
+    expect(mine).toContain('pv-name">You<');
+    expect(mine).not.toContain('Pacho');
     expect(mine).toContain('data-who="you"');
     expect(mine).toMatch(/pv-play" data-who="opp"[^>]*>On the play/); // human-comfort-13: Forge went first
     const theirs = render(true, board({ activePlayer: 1, priority: 1 }));
     expect(theirs).toContain('Opp turn');
-    expect(theirs).toContain('Forge AI');
+    expect(theirs).toContain('pv-name">The bot<');
+    expect(theirs).not.toContain('Forge AI');
     expect(theirs).toMatch(/pv-prio is-opp" data-who="opp"/);
     expect(mine).toContain('combat');
     expect(mine).toContain('ending');

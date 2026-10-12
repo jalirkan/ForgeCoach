@@ -31,9 +31,9 @@ import { detectHelper } from '../../coachHelper.ts';
 import { activeGuideText } from '../../guide.ts';
 import { liveDecision } from './liveDecision.ts';
 import { buildPlanPrompt, momentOf, planPromptNames } from '../../livePlan/coach.ts';
-import { dueMoment, type PlanSoFar } from '../../livePlan/moments.ts';
+import { blocksDueEarly, dueMoment, type PlanSoFar } from '../../livePlan/moments.ts';
 import { oracleFromCards } from '../../livePlan/oracle.ts';
-import { parsePlan } from '../../livePlan/parse.ts';
+import { parsePlan, partialPlan } from '../../livePlan/parse.ts';
 import { planProgress } from '../../livePlan/progress.ts';
 import { visibleNames } from '../../livePlan/history.ts';
 import { cachedMap, cardsForPrompt, prefetchCards } from '../cardData.ts';
@@ -159,7 +159,8 @@ export const PlanCoach = memo(function PlanCoach({
 
   // Auto-coach: the seat's moments, each asked once.
   useEffect(() => {
-    if (!auto || !log || !game || !state || !myMove || me === null) return;
+    // the bot's attack is declared at you: the blocks are asked before your block input comes (moments.ts earlyBlocks)
+    if (!auto || !log || !game || !state || me === null || !(myMove || blocksDueEarly(state, me, input))) return;
     const d = liveDecision({ log, state, input, ask, seat });
     if (!d) return;
     const oracle = oracleFromCards(cachedMap(visibleNames(state)));
@@ -187,7 +188,12 @@ export const PlanCoach = memo(function PlanCoach({
 
   const plan = currentPlan(advice);
   const planAnswer = useAnswer(plan?.key ?? null);
-  const standIn = standInPlan(advice, !!planAnswer?.text);
+  // The newest plan stands on its own once its headline is there: before that (asked, queued, or only its
+  // reasoning streamed so far — PlanView shows "Planning…") the last plan stays in view (the playtest's coach-blank).
+  const planReady = !!planAnswer?.text && (planAnswer.status !== 'streaming' || !!partialPlan(planAnswer.text)?.plan);
+  const standIn = standInPlan(advice, planReady);
+  // the newest plan is on its way with no headline yet: say so above everything kept from before
+  const planThinking = !!plan && !planReady && (!planAnswer || planAnswer.status === 'preparing' || planAnswer.status === 'queued' || planAnswer.status === 'streaming');
   // your newest own question, shown above the plan while it is newer than it
   const ownAsk = advice.find((e) => e.kind === 'ask') ?? null;
   const showAsk = ownAsk && (!plan || ownAsk.seq > plan.seq) ? ownAsk : null;
@@ -244,6 +250,12 @@ export const PlanCoach = memo(function PlanCoach({
         </div>
       )}
       {showAsk && <PlanBox entry={showAsk} log={log} seat={me} title={`Your question · ${showAsk.label}`} onOpenSettings={onOpenSettings} slot={game ? askSlot(game) : null} supersedes={ASK_SUPERSEDE} />}
+      {plan && planThinking && (
+        <p className="pc-thinking pulse" role="status" data-plan-thinking="">
+          Coach is thinking: {plan.label.charAt(0).toLowerCase()}
+          {plan.label.slice(1)}…
+        </p>
+      )}
       {plan && <PlanBox entry={plan} log={log} seat={me} title={plan.label} onOpenSettings={onOpenSettings} slot={game ? planSlot(game) : null} supersedes={PLAN_SUPERSEDE} />}
       {standIn && (
         <div className="card-box answer pc-prev pc-standin" data-standin-plan="">

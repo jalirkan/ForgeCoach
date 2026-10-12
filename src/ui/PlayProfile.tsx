@@ -28,12 +28,24 @@ export function readPlayPolicy(): AiPolicy {
   return isAiPolicy(v) ? v : DEFAULT_POLICY;
 }
 
-/** What the helper on this machine lets plain Play pick: the profile (D381) and the opponent AIs (D414; [] = no choice). */
-export function usePlayChoices(again: unknown = null): { profile: boolean; policies: AiPolicy[] } {
-  const [c, setC] = useState<{ profile: boolean; policies: AiPolicy[] }>({ profile: false, policies: [] });
+/**
+ * What the helper on this machine lets plain Play pick: the profile (D381), the
+ * opponent AIs (D414; [] = no choice), and whether it starts a match on two
+ * decks (`match`: POST /match, for the table's deck choice).
+ */
+export function usePlayChoices(again: unknown = null): { profile: boolean; policies: AiPolicy[]; match: boolean } {
+  const [c, setC] = useState<{ profile: boolean; policies: AiPolicy[]; match: boolean }>({ profile: false, policies: [], match: false });
   useEffect(() => {
     let live = true;
-    void engineHealth().then((h) => live && setC({ profile: h.canPickProfile === true, policies: h.canPickPolicy ? h.aiPolicies : [] }));
+    void engineHealth().then(
+      (h) =>
+        live &&
+        setC({
+          profile: h.canPickProfile === true,
+          policies: h.canPickPolicy ? h.aiPolicies : [],
+          match: h.status === 'ready' || h.status === 'asleep',
+        }),
+    );
     return () => {
       live = false;
     };

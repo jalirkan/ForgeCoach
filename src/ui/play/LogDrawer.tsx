@@ -54,6 +54,7 @@ const GLYPH: Record<LogKind, string> = {
   counter: '+',
   attach: '↳',
   info: '·',
+  nochoice: '∅',
   outcome: '★',
 };
 

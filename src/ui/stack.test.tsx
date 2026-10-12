@@ -22,7 +22,7 @@ import { BoardMarksContext } from './cardContext.ts';
 import { CardTile } from './CardTile.tsx';
 import { PlayBoardContext, type PlayBoard } from './play/playBoard.ts';
 import { StackPanel, YieldControls } from './StackPanel.tsx';
-import { fanPlace, stackEntries, stackKind, stackMarks, stackPlayerMarks, stackText, yieldActOf, yieldControlOf } from './stackModel.ts';
+import { cleanStackText, fanPlace, oracleForFace, stackEntries, stackKind, stackMarks, stackPlayerMarks, stackText, yieldActOf, yieldControlOf } from './stackModel.ts';
 
 function card(id: number, name: string, zone: string, extra: Partial<Card> = {}): Card {
   return {
@@ -163,6 +163,55 @@ describe('stack model', () => {
     expect(html).toContain('Face-down card');
     expect(html).toContain('Hidden');
     expect(html).not.toContain('<img');
+  });
+});
+
+describe('the stack in the card\'s words (common-sense pass item 1)', () => {
+  test('cleanStackText: no engine ids, no (Key=value) tail, no Targeting tail, no "Name - " lead', () => {
+    expect(cleanStackText('March of Otherworldly Light (92) - Exile Cat Soldier Token (299). (Exiled=0)', 'March of Otherworldly Light')).toBe('Exile Cat Soldier Token.');
+    expect(cleanStackText('Aerial Doombot (65) - Forge AI puts three +1/+1 counters on Aerial Doombot (65).', 'Aerial Doombot')).toBe('Forge AI puts three +1/+1 counters on Aerial Doombot.');
+    expect(cleanStackText('Pym Particles (6) - Peggy Carter, Secret Agent (44) gains vigilance until end of turn.  Human draws a card.', 'Pym Particles')).toBe(
+      'Peggy Carter, Secret Agent gains vigilance until end of turn. Human draws a card.',
+    );
+    expect(cleanStackText('Quantum Reduction (5) -  Attach to Peggy Carter, Secret Agent (44)', 'Quantum Reduction')).toBe('Attach to Peggy Carter, Secret Agent');
+    expect(cleanStackText('When this creature enters, untap target nonland permanent. (Targeting: Giant-Sized Flying Ant (64))', 'Quake')).toBe('When this creature enters, untap target nonland permanent.');
+    expect(cleanStackText('Seismic Takedown — tap target land. (Targeting: [[Island (38)]])', 'Quake')).toBe('Seismic Takedown — tap target land.');
+    expect(cleanStackText('Fireball (12) - deals X damage to Construct Token #297 (X=3, Divided=false)', 'Fireball')).toBe('deals X damage to Construct Token');
+    // reminder text is the card's own words and stays
+    expect(cleanStackText('When this creature enters, it connives. (Draw a card, then discard a card.)', null)).toBe('When this creature enters, it connives. (Draw a card, then discard a card.)');
+    // the game log keeps a Targeting tail it cannot list otherwise, cleaned
+    expect(cleanStackText('Ant-Man - untap target creature. (Targeting: [[Ant (64)]])', 'Ant-Man', { keepTargeting: true })).toBe('untap target creature. (Targeting: Ant)');
+  });
+
+  const march = card(92, 'March of Otherworldly Light', 'stack', { types: 'Instant' } as Partial<Card>);
+  const cat = card(299, 'Cat Soldier Token', 'battlefield', { controller: 1, owner: 1 } as Partial<Card>);
+  const st = state([item(7, 92, { text: 'March of Otherworldly Light (92) - Exile Cat Soldier Token (299). (Exiled=0)', isAbility: false, targetCardIds: [299] })], [], [march], [cat]);
+  const oracle = 'As an additional cost to cast this spell, you may exile any number of white cards from your hand. This spell costs {2} less to cast for each card exiled this way.\nExile target artifact, creature, or enchantment with mana value X or less.';
+
+  test('a spell shows its oracle text from the card cache; unknown, the cleaned engine text', () => {
+    const [e] = stackEntries(st, 0);
+    expect(stackText(e!, { oracleText: oracle })).toBe(oracle);
+    expect(stackText(e!, undefined)).toBe('Exile Cat Soldier Token.');
+    expect(stackText(e!, undefined)).not.toMatch(/\(\d+\)|=/);
+  });
+
+  test('a double-faced card: the face on the stack, never both faces', () => {
+    const info = { oracleText: 'Front words.\n//\nBack words.', faces: [{ name: 'Lunarch Veteran', oracleText: 'Front words.' }, { name: 'Luminous Phantom', oracleText: 'Back words.' }] };
+    expect(oracleForFace(info, 'Luminous Phantom')).toBe('Back words.');
+    expect(oracleForFace({ oracleText: 'A.\n//\nB.' }, 'Somebody')).toBe('');
+  });
+
+  test('a permanent spell whose engine text is only its name adds nothing; a blanked text is "Hidden"', () => {
+    const heliOnly = stackEntries(recorded, 0)[1]!;
+    expect(stackText(heliOnly, undefined)).toBe('');
+    const html = renderToStaticMarkup(<StackPanel entries={stackEntries(recorded, 0)} state={recorded} variant="inline" />);
+    expect(html).not.toContain('is-hidden');
+  });
+
+  test('the panel never shows an engine id', () => {
+    const html = renderToStaticMarkup(<StackPanel entries={stackEntries(st, 0)} state={st} variant="float" />);
+    expect(html).toContain('stackp-chip">Cat Soldier Token<');
+    expect(html).not.toMatch(/\(\d+\)|Exiled=|#\d/);
   });
 });
 
@@ -482,5 +531,27 @@ describe('the lines anchor on every badge', () => {
     const list = { x: 1000, y: 220, width: 280, height: 200 };
     expect(centreWithin({ x: 1010, y: 237, width: 24, height: 24 }, list)).toBe(true);
     expect(centreWithin({ x: 1010, y: 190, width: 24, height: 24 }, list)).toBe(false);
+  });
+});
+
+describe('the stack names seats as the board does', () => {
+  test('the controller and a player target by the board’s name (the bot as picked), never the engine’s seat label', () => {
+    const st = state([item(9, 29, { controller: 1, text: 'Shock deals 2 damage', targetPlayerIds: [0], isAbility: false })], [], [heli]);
+    const [e] = stackEntries(st, 0, (id) => (id === 1 ? 'Search AI' : 'You'));
+    expect(e!.controller).toBe('Search AI');
+    expect(e!.targets[0]!.label).toBe('You');
+  });
+
+  test('the engine’s sentences too: "Human puts…" is "You put…", "Forge AI searches…" the bot’s name', () => {
+    const st = state(
+      [
+        item(10, 31, { controller: 0, text: 'Quake, Agent of S.H.I.E.L.D. (31) - Human puts a +1/+1 counter on Carrion Feeder (77).', isAbility: true }),
+        item(11, 29, { controller: 1, text: 'S.H.I.E.L.D. Helicarrier (29) - Forge AI searches their library for a basic Mountain.', isAbility: true }),
+      ],
+      [quake],
+      [heli],
+    );
+    const named = stackEntries(st, 0, (id) => (id === 1 ? 'Search AI' : 'You'));
+    expect(named.map((e) => stackText(e))).toEqual(['Search AI searches their library for a basic Mountain.', 'You put a +1/+1 counter on Carrion Feeder.']);
   });
 });

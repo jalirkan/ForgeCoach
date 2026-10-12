@@ -913,3 +913,46 @@
 .tile .tile-card.is-ph .tile-type svg {
   display: none;
 }
+
+/* ------------------------------------------------------------------ */
+/* The card a coach step names, lit while the step is hovered (boardFocus.ts) */
+
+.tile.is-coach-focus .tile-card,
+.attach-chip.is-coach-focus {
+  outline: 3px solid var(--gold, #e0b04a);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--gold, #e0b04a) 30%, transparent), 0 0 18px color-mix(in srgb, var(--gold, #e0b04a) 55%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tile.is-coach-focus .tile-card {
+    transition: outline-color 0.12s ease, box-shadow 0.12s ease;
+  }
+}
+
+/* A card named in the coach's words: the name, then what tells it apart on the board. */
+.coach-card {
+  border-bottom: 1px dotted color-mix(in srgb, currentColor 45%, transparent);
+  cursor: default;
+}
+.coach-card-tag {
+  margin-left: 0.3em;
+  padding: 0 0.35em;
+  border-radius: 4px;
+  font-size: 0.85em;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--text, #ddd) 12%, transparent);
+}
+.coach-card-n {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.45em;
+  height: 1.45em;
+  margin-left: 0.3em;
+  padding: 0 0.3em;
+  border-radius: 999px;
+  font-size: 0.82em;
+  font-weight: 800;
+  vertical-align: 0.05em;
+  border: 2px solid var(--bad);
+  line-height: 1;
+}

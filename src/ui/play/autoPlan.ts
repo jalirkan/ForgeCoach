@@ -34,6 +34,7 @@
  * correction replaces the entry's key with the next attempt's (`replaceAdviceKey`),
  * so what is shown and kept across a reload is always the newest attempt.
  */
+import { withoutEngineIds } from '../../engineText.ts';
 import type { GameStateBody } from '../../protocol.ts';
 import type { MomentKind } from '../../livePlan/moments.ts';
 import type { ChoiceQuestion } from '../../livePlan/prompt.ts';
@@ -181,7 +182,8 @@ export function adviceFor(game: string | null): readonly AdviceEntry[] {
 /** Record advice that was just asked; the same key asked again moves to the front. */
 export function recordAdvice(game: string, e: Omit<AdviceEntry, 'seq' | 'frameIndex'> & { frameIndex?: number }): AdviceEntry {
   const g = gameOf(game);
-  const entry: AdviceEntry = { ...e, frameIndex: e.frameIndex ?? e.decision?.frameIndex ?? -1, seq: ++seq };
+  // the label is a heading the player reads: never an engine card id
+  const entry: AdviceEntry = { ...e, label: withoutEngineIds(e.label), frameIndex: e.frameIndex ?? e.decision?.frameIndex ?? -1, seq: ++seq };
   g.entries = [entry, ...g.entries.filter((x) => x.key !== e.key)].slice(0, MAX_ADVICE);
   notify();
   return entry;

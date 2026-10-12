@@ -29,6 +29,7 @@ import type { GameLog } from './log.ts';
 import type { CardInfo } from './cards.ts';
 import type { Prompt } from './prompt.ts';
 import { cardIndex, phaseLabel } from './decisions.ts';
+import { boardTag } from './ui/cardRefs.ts';
 import { formatCardTexts, isBasicLandName, visibleName } from './review.ts';
 import { cleanText, int, num, parseTime } from './lab/status.ts';
 
@@ -477,8 +478,9 @@ type Ids = Map<number, AnyCard>;
 
 /**
  * Names for card ids in one state, told apart only where needed: "your" /
- * "their" when both sides have a card of that name, "#id" when one side has
- * two (identical tokens).
+ * "their" when both sides have a card of that name, and when one side has two
+ * (identical tokens) what the board shows of each — "(4/4)", "(tapped)",
+ * "(2nd from left)" — never the engine id.
  */
 function namer(state: GameStateBody | null, seat: number | null): (id: number) => string {
   const ids: Ids = state ? cardIndex(state) : new Map();
@@ -496,11 +498,15 @@ function namer(state: GameStateBody | null, seat: number | null): (id: number) =
   return (id) => {
     const c = ids.get(id);
     const n = visibleName(c);
-    if (!c || !n) return `card #${id}`;
+    if (!c || !n) return 'a card';
     const o = owner(c);
     let s = n;
     if ((sides.get(n)?.size ?? 0) > 1 && seat !== null && o !== null) s = `${o === seat ? 'your' : 'their'} ${n}`;
-    if ((perSide.get(`${o}|${n}`) ?? 0) > 1) s = `${s} #${id}`;
+    // two of a name on one side: what tells them apart on the board (P/T, tapped, place in the row), never the engine id
+    if ((perSide.get(`${o}|${n}`) ?? 0) > 1) {
+      const tag = boardTag(c as Card, { state });
+      if (tag.tag) s = `${s} (${tag.combat ? `number ${tag.tag} in combat` : tag.tag})`;
+    }
     return s;
   };
 }

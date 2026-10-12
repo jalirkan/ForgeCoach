@@ -28,6 +28,7 @@
  *     carry TRAMPLE gets the row. The engine checks every split and asks again
  *     with a `reason` when it refuses one.
  */
+import { withoutEngineIds } from '../../engineText.ts';
 import { assignDamageRuleOf } from '../../protocol.ts';
 import type { AnswerValue, AskBody, AskOption, AssignDamageAsk, InputBody } from '../../protocol.ts';
 
@@ -518,9 +519,32 @@ export function skipAction(ask: AskBody): SkipAction | null {
 // Presentation helpers (still pure)
 // ---------------------------------------------------------------------------
 
-/** Forge's prompts sometimes carry doubled spaces ("in  Forge AI's"). */
+/** An engine string as the player reads it: doubled spaces ("in  Forge AI's") and engine ids ("Opt (12)") out. */
 export function tidy(text: string): string {
-  return text.replace(/[ \t]+/g, ' ').trim();
+  return withoutEngineIds(text).replace(/[ \t]+/g, ' ').trim();
+}
+
+const SHOWN_KEYS = new Set(['prompt', 'title', 'label', 'destLabel', 'message', 'question']);
+
+/**
+ * The ask as the dialog draws it: every prompt, title and label without the
+ * engine's card ids ("Thriving Isle (9) - Thriving Isle enters tapped."),
+ * however deep it sits (options, targets, piles). Ids, values and card
+ * objects are left as they are, so an answer is the same as before.
+ */
+export function displayAsk<T>(ask: T): T {
+  const walk = (v: unknown, key: string | null): unknown => {
+    if (typeof v === 'string') return key && SHOWN_KEYS.has(key) ? withoutEngineIds(v) : v;
+    if (Array.isArray(v)) return v.map((x) => walk(x, key === 'options' || key === 'targets' ? null : key));
+    if (v && typeof v === 'object') {
+      if (key === 'card' || key === 'cards') return v;
+      const out: Record<string, unknown> = {};
+      for (const [k, x] of Object.entries(v as Record<string, unknown>)) out[k] = walk(x, k);
+      return out;
+    }
+    return v;
+  };
+  return walk(ask, null) as T;
 }
 
 const COLOR_SYMBOL: Record<string, string> = {

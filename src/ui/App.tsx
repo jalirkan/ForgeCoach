@@ -22,7 +22,8 @@ import { redactSeatUrl, SEAT_TOKEN_KEY } from '../play/seatUrl.ts';
 import { FRIEND_TABLE_HASH, loadFriendTable, saveFriendTable, savedRoomBases, type FriendTable } from '../play/friendTable.ts';
 import { usePlaySession } from './play/usePlaySession.ts';
 import type { PlaySnapshot } from '../play/session.ts';
-import { ensureEngineAwake } from '../draft/launch.ts';
+import { engineHealth, ensureEngineAwake, launchMatch, policyFields } from '../draft/launch.ts';
+import { currentTableChoice } from './TableDecks.tsx';
 import { readPlayPolicy, readPlayProfile } from './PlayProfile.tsx';
 import { PlayView } from './play/PlayView.tsx';
 import { useFriendReview } from './play/useFriendReview.ts';
@@ -265,7 +266,8 @@ function MainApp({ hash }: { hash: string }) {
   // D308: the engine may be asleep behind a running play.sh; wake it (POST
   // /engine/start) before taking the seat. Only for the engine the helper
   // belongs to: this page's own seat, or one named with ?coach=.
-  const [waking, setWaking] = useState<{ url: string; error: string | null } | null>(null);
+  // `what: 'decks'`: starting the engine on the table's chosen decks (POST /match), not waking the last setup.
+  const [waking, setWaking] = useState<{ url: string; error: string | null; what?: 'decks' } | null>(null);
   const wakeRef = useRef<AbortController | null>(null);
   // D381 / D414: what the helper said about the AI profile or opponent picked for this Play (e.g. "the running match keeps Default").
   const [playNote, setPlayNote] = useState<string | null>(null);
@@ -281,6 +283,39 @@ function MainApp({ hash }: { hash: string }) {
       }
       const c = new AbortController();
       wakeRef.current = c;
+      // The table's decks (common-sense pass item 8): chosen ones are built here and started through the match launcher.
+      const table = currentTableChoice();
+      if (table.mine.kind !== 'engine') {
+        setWaking({ url, error: null, what: 'decks' });
+        void (async () => {
+          const decks = await Promise.all([import('../play/tableBuild.ts'), import('./tableDeckLoad.ts')])
+            .then(([{ resolveTable }, { tableDeckDeps }]) => resolveTable(table, tableDeckDeps()))
+            .catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) }));
+          if (c.signal.aborted) return;
+          if ('error' in decks) {
+            wakeRef.current = null;
+            setSeatUrl(url);
+            setWaking({ url, error: decks.error, what: 'decks' });
+            return;
+          }
+          const health = await engineHealth();
+          const r = await launchMatch(
+            { deck: decks.deck, aiDeck: decks.aiDeck, games: table.games, ...(readPlayProfile() ? { aiProfile: readPlayProfile()! } : {}), ...policyFields(readPlayPolicy(), health) },
+            { signal: c.signal },
+          );
+          if (c.signal.aborted) return;
+          wakeRef.current = null;
+          if (r.ok) {
+            setWaking(null);
+            if (r.warnings.length) setPlayNote(r.warnings.join(' '));
+            connect(url);
+          } else {
+            setSeatUrl(url);
+            setWaking({ url, error: r.problems?.length ? `${r.message} ${r.problems.join('; ')}` : r.message, what: 'decks' });
+          }
+        })();
+        return;
+      }
       void ensureEngineAwake({ signal: c.signal, aiProfile: readPlayProfile(), aiPolicy: readPlayPolicy(), onWaking: () => !c.signal.aborted && setWaking({ url, error: null }) }).then((r) => {
         if (c.signal.aborted) return;
         wakeRef.current = null;
@@ -620,8 +655,10 @@ function MainApp({ hash }: { hash: string }) {
         play={
           waking
             ? waking.error
-              ? { status: 'error', detail: `Couldn’t wake the engine: ${waking.error}`, attempts: 0 }
-              : { status: 'connecting', detail: 'The engine was asleep; it takes 10–20 seconds to start, longer on a busy machine.', attempts: 0, waking: true }
+              ? { status: 'error', detail: waking.what === 'decks' ? `Couldn’t start the game on those decks: ${waking.error}` : `Couldn’t wake the engine: ${waking.error}`, attempts: 0 }
+              : waking.what === 'decks'
+                ? { status: 'connecting', detail: 'Building both decks and starting the engine on them: 10–20 seconds, longer on a busy machine.', attempts: 0, waking: true, startingDecks: true }
+                : { status: 'connecting', detail: 'The engine was asleep; it takes 10–20 seconds to start, longer on a busy machine.', attempts: 0, waking: true }
             : playUrl && snap
               ? { status: snap.status, detail: snap.detail, attempts: snap.attempts }
               : playUrl
