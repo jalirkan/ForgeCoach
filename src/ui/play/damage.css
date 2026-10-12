@@ -33,6 +33,21 @@
     grid-area: hand;
   }
 }
+/* A short desktop: the hand is not what this moment needs — it tucks down to its tops so the board keeps
+   its height (the cards stay where they are, the rest of them under the screen's edge). */
+@media (min-width: 1024px) and (max-height: 860px) {
+  .game.play.is-wide .play-dock.has-damage-bar {
+    grid-template-rows: auto calc(var(--hand-h) * 0.45);
+  }
+  .game.play.is-wide .play-dock.has-damage-bar > .hand-dock {
+    height: calc(var(--hand-h) * 0.45);
+    overflow: hidden;
+  }
+  .game.play.is-wide .play-dock.has-damage-bar > .hand-dock .hand-dock-row {
+    height: var(--hand-h);
+    align-items: flex-start;
+  }
+}
 /* The slot only points at the bar: its buttons live in the bar. */
 .play-dock.has-damage-bar .decision-slot .ab-go,
 .play-dock.has-damage-bar .decision-slot .ab-tools {
@@ -41,7 +56,8 @@
 
 /* ---- the bar */
 .damage-bar {
-  --dmg-cw: 76px;
+  /* the cards: 76 px on a tall screen, smaller on a short one */
+  --dmg-cw: clamp(52px, calc(9vh - 6px), 76px);
   --dmg-warn: #e0884a;
   min-width: 0;
   padding: 10px 16px 12px;
@@ -57,11 +73,12 @@
 }
 .dmg-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  gap: 12px;
+  gap: 6px 12px;
 }
 .dmg-words {
-  flex: 1;
+  flex: 1 1 280px;
   min-width: 0;
 }
 .dmg-eyebrow {
@@ -87,6 +104,7 @@
 }
 .dmg-actions {
   flex: none;
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -146,7 +164,9 @@
   display: flex;
   align-items: stretch;
   gap: 10px;
-  margin-top: 10px;
+  /* room for a blocker's check badge, which the sideways scroll would otherwise clip */
+  margin-top: 2px;
+  padding: 8px 8px 2px 0;
   overflow-x: auto;
   scrollbar-width: thin;
 }
