@@ -4,9 +4,11 @@
 
 ## Source and credit
 
-This is **Evan's cube**, his own list exactly as he gave it (a "mainboard" export, file `evanstwobert.txt`), 180 cards. Nothing was added, cut or swapped. His list has no themes, archetypes or prices, and this document adds none. The headings below are colour groups by colour identity, in his order within each; the lands are grouped by cycle.
+This is **Evan's cube**, his own list exactly as he gave it (a "mainboard" export), 180 cards. Nothing was added, cut or swapped by us. His list has no themes, archetypes or prices, and this document adds none. The headings below are colour groups by colour identity, in his order within each; the lands are grouped by cycle.
 
-Every name was checked against Scryfall on 2026-10-12. All 180 are exact Scryfall names, so none needed a correction. Double-faced and adventure cards are listed by their front face, the name Forge uses.
+Updated 2026-10-12 from his revised list (file `evanstwobert1.txt`; the first was `evanstwobert.txt`), ten cards swapped. Out: Palace Jailer; Champion of Wits; Unsummon; Pelt Collector; Rishkar, Peema Renegade; Scute Swarm; Anthem of Champions; Shelinda, Yevon Acolyte; Carmen, Cruel Skymarcher; Grist, the Hunger Tide. In: Flickering Hound; Mystic Confluence; Bespoke Bō; Bristly Bill, Spine Sower; Endurance; Ramunap Excavator; Renegade Rallier; Yasharn, Implacable Earth; Syr Vondam, Sunstar Exemplar; Cauldron of Essence. Flickering Hound is from Reality Fracture, so it joins the cards Forge 2.0.14 lacks (below).
+
+Every name was checked against Scryfall on 2026-10-12 (the revised list again on the same day). All 180 are exact Scryfall names, so none needed a correction. Double-faced and adventure cards are listed by their front face, the name Forge uses.
 
 ## The list (name)
 
@@ -23,7 +25,7 @@ Blade Splicer
 Enduring Innocence
 Flickerwisp
 Skyclave Apparition
-Palace Jailer
+Flickering Hound
 Restoration Angel
 Reveillark
 Eagles of the North
@@ -39,7 +41,6 @@ Exhibition Tidecaller
 Hedron Crab
 Jace, Vryn's Prodigy
 Snapcaster Mage
-Champion of Wits
 Emry, Lurker of the Loch
 Sai, Master Thopterist
 Talrand, Sky Summoner
@@ -48,15 +49,16 @@ Torrential Gearhulk
 Brainstorm
 Consider
 Thought Scour
-Unsummon
 Counterspell
 Essence Scatter
 Mana Leak
 Remand
+Mystic Confluence
 Ponder
 Deep Analysis
 Lórien Revealed
 Sewer-veillance Cam
+Bespoke Bō
 Shark Typhoon
 
 ### Black (23)
@@ -109,15 +111,15 @@ Spicy Oatmeal Pizza
 Goblin Bombardment
 
 ### Green (21)
-Pelt Collector
+Bristly Bill, Spine Sower
 Courier of Comestibles
 Sakura-Tribe Elder
 Satyr Wayfinder
 Scavenging Ooze
 Courser of Kruphix
+Endurance
 Llanowar Visionary
-Rishkar, Peema Renegade
-Scute Swarm
+Ramunap Excavator
 Springbloom Druid
 Stickytongue Sentinel
 Tireless Tracker
@@ -159,18 +161,18 @@ BR: Murderous Redcap
 RG: Biotech Specialist
 RG: Stampede Surfer
 RG: Omnath, Locus of Rage
-WG: Anthem of Champions
-WG: Shelinda, Yevon Acolyte
 WG: Kitchen Finks
+WG: Renegade Rallier
+WG: Yasharn, Implacable Earth
 WB: Hidden Stockpile
+WB: Syr Vondam, Sunstar Exemplar
 WB: Lingering Souls
-WB: Carmen, Cruel Skymarcher
 WB: Unburial Rites
 UR: Third Path Iconoclast
 UR: Twinned Vision
 UR: Pink Horror
 BG: Ice Cream Kitty
-BG: Grist, the Hunger Tide
+BG: Cauldron of Essence
 BG: Primal Witchstalker
 BG: Spider Spawning
 WR: Mechanized Ninja Cavalry
@@ -189,8 +191,9 @@ Utility lands: Hanweir Battlements, Urza's Saga
 
 ## Not in Forge 2.0.14
 
-Forge 2.0.14 (built 2026-08-08) has no card script yet for these 3 cards, all from Reality Fracture (released 2026-10-02). They draft as normal and a deck exported to another game keeps them. The engine refuses a deck that holds one, so ForgeCoach leaves them out of the AI's deck and off any sideboard it hands the engine, and asks you to take them out of your main deck before a game against Forge. A later Forge release will have them.
+Forge 2.0.14 (built 2026-08-08) has no card script yet for these 4 cards, all from Reality Fracture (released 2026-10-02). They draft as normal and a deck exported to another game keeps them. The engine refuses a deck that holds one, so ForgeCoach leaves them out of the AI's deck and off any sideboard it hands the engine, and asks you to take them out of your main deck before a game against Forge. A later Forge release will have them.
 
+- Flickering Hound
 - Null Summoner
 - Twinned Vision
 - Primal Witchstalker

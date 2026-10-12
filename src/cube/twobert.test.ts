@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * Evan's Twobert Cube: his second list, 180 cards as he gave them
- * (public/cubes/twobert-cube-180.md), with no themes, archetypes, guide or lab
- * meta. The document, the registry, drafts on it, and the three Reality
- * Fracture cards Forge 2.0.14 lacks kept out of what the engine is handed.
+ * (public/cubes/twobert-cube-180.md; revised 2026-10-12, ten swaps), with no
+ * themes, archetypes, guide or lab meta. The document, the registry, drafts on
+ * it, and the four Reality Fracture cards Forge 2.0.14 lacks kept out of what
+ * the engine is handed.
  */
 import { describe, expect, it } from 'vitest';
 import { labCards } from '../draft/cards.ts';
@@ -20,7 +21,17 @@ import { context, loadCube, loadInfos } from './testdata/load.ts';
 const cube = loadCube('twobert');
 const names = cube.cards.map((c) => c.name);
 
-const NOT_IN_FORGE = ['Null Summoner', 'Twinned Vision', 'Primal Witchstalker'];
+const NOT_IN_FORGE = ['Flickering Hound', 'Null Summoner', 'Twinned Vision', 'Primal Witchstalker'];
+
+/** Evan's revised list (evanstwobert1.txt): ten out, ten in. */
+const SWAPPED_OUT = [
+  'Palace Jailer', 'Champion of Wits', 'Unsummon', 'Pelt Collector', 'Rishkar, Peema Renegade',
+  'Scute Swarm', 'Anthem of Champions', 'Shelinda, Yevon Acolyte', 'Carmen, Cruel Skymarcher', 'Grist, the Hunger Tide',
+];
+const SWAPPED_IN = [
+  'Flickering Hound', 'Mystic Confluence', 'Bespoke Bō', 'Bristly Bill, Spine Sower', 'Endurance',
+  'Ramunap Excavator', 'Renegade Rallier', 'Yasharn, Implacable Earth', 'Syr Vondam, Sunstar Exemplar', 'Cauldron of Essence',
+];
 
 describe('the Twobert document', () => {
   it("Evan's 180 names, one of each, every one in the Scryfall snapshot", () => {
@@ -37,7 +48,14 @@ describe('the Twobert document', () => {
     expect(names).toContain('Lórien Revealed');
   });
 
-  it('names the three cards Forge 2.0.14 lacks', () => {
+  it('is the revised list: ten cards out, ten in, each in its colour group', () => {
+    for (const n of SWAPPED_OUT) expect(names, n).not.toContain(n);
+    for (const n of SWAPPED_IN) expect(names, n).toContain(n);
+    const group = (n: string) => cube.cards.find((c) => c.name === n)?.section;
+    expect(SWAPPED_IN.map(group)).toEqual(['White', 'Blue', 'Blue', 'Green', 'Green', 'Green', 'Multicolor', 'Multicolor', 'Multicolor', 'Multicolor']);
+  });
+
+  it('names the four cards Forge 2.0.14 lacks', () => {
     expect([...(cube.forgeMissing ?? [])].sort()).toEqual([...NOT_IN_FORGE].sort());
   });
 
