@@ -56,7 +56,7 @@
   "edge_line_dark": 0.7,
   "shadow": 0.16,
   "shadow_px": 18.0,
-  "halo": true
+  "halo": false
  },
  "faces_L": {
   "light": 0.77,

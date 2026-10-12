@@ -43,7 +43,7 @@ PARAMS = {
               "grain_amp": 0.04, "grain_seed": 11, "grain_cells": [52, 70],
               "edge_line_half_px": 2.0, "edge_line_dark": 0.7,
               "shadow": 0.16, "shadow_px": 18.0,
-              "halo": True},       # the brass-strung star of 30 rhombi around it, as on the sheets the owner chose from
+              "halo": False},      # the brass-strung star of 30 rhombi around it: OFF, the owner chose the plate alone (2026-10-12)
     # OKLCh (L, C, h). L is shared by all colourways; only the mid face's C and h change.
     "faces_L": {"light": 0.770, "mid": 0.440, "dark": 0.255},
     "light": [0.770, 0.047, 83.0],      # holly / bone

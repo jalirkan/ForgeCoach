@@ -91,7 +91,7 @@
    ]
   ],
   "darkest_0_5pct_blurred": 26.4,
-  "darkest_5pct_blurred": 33.3,
+  "darkest_5pct_blurred": 33.2,
   "darkest_pixel": 4,
   "sat_x_val_p99_5": 101
  },
@@ -144,7 +144,7 @@
    ]
   ],
   "darkest_0_5pct_blurred": 26.4,
-  "darkest_5pct_blurred": 33.3,
+  "darkest_5pct_blurred": 33.2,
   "darkest_pixel": 4,
   "sat_x_val_p99_5": 101
  },
@@ -197,51 +197,51 @@
    ]
   ],
   "darkest_0_5pct_blurred": 26.4,
-  "darkest_5pct_blurred": 33.2,
+  "darkest_5pct_blurred": 33.1,
   "darkest_pixel": 4,
   "sat_x_val_p99_5": 101
  },
  "congruence": {
   "structural_edges_on_lattice_pct": {
-   "green": 82.21,
-   "blue": 82.17,
-   "garnet": 82.07
+   "green": 81.99,
+   "blue": 81.93,
+   "garnet": 81.85
   },
   "green-blue": {
    "lightness_abs_diff_max": 0.0037,
    "lightness_abs_diff_mean": 0.00026,
    "structural": {
     "edge_px": [
-     147622,
-     147617
+     145288,
+     145337
     ],
-    "mismatched_px": 3521,
-    "mismatch_pct_of_union": 2.357,
-    "without_partner_within_1px": 205,
+    "mismatched_px": 3365,
+    "mismatch_pct_of_union": 2.289,
+    "without_partner_within_1px": 158,
     "on_lattice_band": {
      "edge_px": [
-      121355,
-      121294
+      119116,
+      119072
      ],
-     "mismatched_px": 3065,
-     "without_partner_within_1px": 36
+     "mismatched_px": 2964,
+     "without_partner_within_1px": 31
     }
    },
    "all": {
     "edge_px": [
-     330779,
-     330292
+     330156,
+     329625
     ],
-    "mismatched_px": 18825,
-    "mismatch_pct_of_union": 5.538,
-    "without_partner_within_1px": 11253,
+    "mismatched_px": 18931,
+    "mismatch_pct_of_union": 5.579,
+    "without_partner_within_1px": 11487,
     "on_lattice_band": {
      "edge_px": [
-      156343,
-      156381
+      155334,
+      155380
      ],
-     "mismatched_px": 1262,
-     "without_partner_within_1px": 384
+     "mismatched_px": 1268,
+     "without_partner_within_1px": 396
     }
    }
   },
@@ -250,36 +250,36 @@
    "lightness_abs_diff_mean": 0.00026,
    "structural": {
     "edge_px": [
-     147622,
-     147800
+     145288,
+     145467
     ],
-    "mismatched_px": 3332,
-    "mismatch_pct_of_union": 2.231,
-    "without_partner_within_1px": 259,
+    "mismatched_px": 3241,
+    "mismatch_pct_of_union": 2.205,
+    "without_partner_within_1px": 254,
     "on_lattice_band": {
      "edge_px": [
-      121355,
-      121293
+      119116,
+      119065
      ],
-     "mismatched_px": 2772,
-     "without_partner_within_1px": 32
+     "mismatched_px": 2715,
+     "without_partner_within_1px": 27
     }
    },
    "all": {
     "edge_px": [
-     330779,
-     329604
+     330156,
+     329158
     ],
-    "mismatched_px": 17395,
-    "mismatch_pct_of_union": 5.133,
-    "without_partner_within_1px": 10142,
+    "mismatched_px": 17530,
+    "mismatch_pct_of_union": 5.18,
+    "without_partner_within_1px": 10442,
     "on_lattice_band": {
      "edge_px": [
-      156343,
-      156414
+      155334,
+      155411
      ],
-     "mismatched_px": 1213,
-     "without_partner_within_1px": 317
+     "mismatched_px": 1195,
+     "without_partner_within_1px": 322
     }
    }
   },
@@ -288,36 +288,36 @@
    "lightness_abs_diff_mean": 0.00024,
    "structural": {
     "edge_px": [
-     147617,
-     147800
+     145337,
+     145467
     ],
-    "mismatched_px": 2999,
-    "mismatch_pct_of_union": 2.01,
-    "without_partner_within_1px": 295,
+    "mismatched_px": 2862,
+    "mismatch_pct_of_union": 1.949,
+    "without_partner_within_1px": 245,
     "on_lattice_band": {
      "edge_px": [
-      121294,
-      121293
+      119072,
+      119065
      ],
-     "mismatched_px": 2491,
-     "without_partner_within_1px": 10
+     "mismatched_px": 2425,
+     "without_partner_within_1px": 7
     }
    },
    "all": {
     "edge_px": [
-     330292,
-     329604
+     329625,
+     329158
     ],
-    "mismatched_px": 15320,
-    "mismatch_pct_of_union": 4.538,
-    "without_partner_within_1px": 9033,
+    "mismatched_px": 15287,
+    "mismatch_pct_of_union": 4.536,
+    "without_partner_within_1px": 9113,
     "on_lattice_band": {
      "edge_px": [
-      156381,
-      156414
+      155380,
+      155411
      ],
-     "mismatched_px": 1035,
-     "without_partner_within_1px": 297
+     "mismatched_px": 1031,
+     "without_partner_within_1px": 301
     }
    }
   }
