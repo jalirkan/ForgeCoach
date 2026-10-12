@@ -27,8 +27,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
 import type { AnyCard, AskBody, AskOption, Card, GameStateBody, InputBody, PlayerState } from '../../protocol.ts';
-import { ASK_KINDS, keywordsOf } from '../../protocol.ts';
-import { cardIndex } from '../../decisions.ts';
+import { ASK_KINDS } from '../../protocol.ts';
 import { PlayContext, type PlayInteraction } from '../cardContext.ts';
 import { AskDialog } from './AskDialog.tsx';
 import { FIXTURE_ASKS } from './askFixtures.ts';
@@ -240,11 +239,9 @@ describe('ask coverage: every ask kind and variant renders a way to answer', () 
     expect(a.ok, a.why).toBe(true);
     expect(reachable(f.ask)).toBe(true);
     // Every engine label reaches the screen (a concealed card's "???" included)
-    // -- except a defender the engine says may take no damage (M67), or, on an
-    // older engine, one a non-trampler's dialog does not offer.
-    const shown = f.ask.kind === 'assign_damage'
-      ? damageRows(f.ask, defenderAllowed(f.ask, keywordsOf(f.ask.attackerId === null || !f.state ? undefined : cardIndex(f.state).get(f.ask.attackerId))))
-      : askOptions(f.ask);
+    // -- except a defender the engine does not say may take damage (M67; an
+    // older engine says nothing, which is no).
+    const shown = f.ask.kind === 'assign_damage' ? damageRows(f.ask, defenderAllowed(f.ask)) : askOptions(f.ask);
     for (const o of shown) if (f.ask.kind !== 'sideboard') expect(html).toContain(o.label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').slice(0, 12));
   });
 });

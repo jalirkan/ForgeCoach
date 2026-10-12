@@ -105,7 +105,7 @@ describe('the planners agree with the table', () => {
     }
     for (const b of KEY_BINDINGS.filter((x) => x.scope === 'ask')) {
       for (const k of b.keys) {
-        const plan = planAskKey({ ...ev(k), key: ev(k).key }, { placement: 'slot', minimized: false, canConfirm: true, digits: 9, escSkips: false });
+        const plan = planAskKey({ ...ev(k), key: ev(k).key }, { placement: 'slot', minimized: false, canConfirm: true, digits: 9, escSkips: false, resets: true });
         expect(plan, `${k} in a question`).not.toBeNull();
       }
     }

@@ -22,10 +22,10 @@
  *   - a numeric `text` ask's one-click way out is `null` (§5.4, M25/M29);
  *   - the client checks only the numbers the engine sent (min/max, totals,
  *     per-target max, atLeastOne) — it never invents a rules bound;
- *   - `assign_damage` offers the defender (index 0) only when the engine says
- *     it may take damage (`defenderAllowed`, mtg-table M67/D424); an older
- *     engine says nothing, and then only an attacker whose own `keywords`
- *     carry TRAMPLE gets the row;
+ *   - `assign_damage` is the damage bar's arithmetic (damageBar.ts): the
+ *     defender (index 0) only when the engine says it may take damage
+ *     (`defenderAllowed`, mtg-table M67/D424 — absent is read as no), and only
+ *     once every blocker has the engine's `lethal`;
  *   - every kind's answer is checked by the engine, which asks the same
  *     question again under a new askId with a `reason` when it refuses one
  *     (M67 for assign_damage, M68/D426 for the rest): `refusalLine` is what
@@ -38,8 +38,9 @@
  *     `loneAbility`.
  */
 import { withoutEngineIds } from '../../engineText.ts';
-import { askReasonOf, assignDamageRuleOf } from '../../protocol.ts';
+import { askReasonOf } from '../../protocol.ts';
 import type { AnswerValue, AskBody, AskOption, AssignDamageAsk, InputBody, TextAsk } from '../../protocol.ts';
+import { autoSplit, checkSplit, damageBarOf, defenderAllowedOf } from './damageBar.ts';
 
 // ---------------------------------------------------------------------------
 // Drafts — what the player has built so far
@@ -117,43 +118,17 @@ export function choiceBounds(ask: { min: number; max: number; options: unknown[]
   return { lo, hi };
 }
 
-function damageDefault(targets: DamageTarget[], total: number, toDefender: boolean): Record<string, number> {
-  const n = targets.length;
-  if (n === 0) return {};
-  if (n === 1) return { '0': total };
-  // Blockers in the engine's order, each up to its `lethal`; whatever is left
-  // goes to the defender (index 0) only when the engine said it may take
-  // damage, else it stays on the last blocker.
-  const out: Record<string, number> = {};
-  let left = total;
-  for (let i = 1; i < n && left > 0; i++) {
-    const lethal = targets[i]!.lethal;
-    if (typeof lethal !== 'number' || lethal <= 0) continue;
-    const give = Math.min(lethal, left);
-    out[String(i)] = give;
-    left -= give;
-  }
-  if (left > 0) {
-    const last = toDefender ? '0' : String(n - 1);
-    out[last] = (out[last] ?? 0) + left;
-  }
-  return out;
-}
-
 /**
- * May the defender (target 0) take damage? The engine's own word when it
- * sends one (`defenderAllowed`, M67); an older engine sends none, and then only
- * an attacker whose wire `keywords` carry TRAMPLE (engine state, not a rules
- * computation). `attackerKeywords` is that attacker's `keywords`, if known.
+ * May the defender (target 0) take damage? The engine's own word
+ * (`defenderAllowed`, M67); an engine that sends none does not say, and that
+ * is read as no — never as yes (damageBar.ts `defenderAllowedOf`).
  */
-export function defenderAllowed(ask: AssignDamageAsk, attackerKeywords: readonly string[] | null | undefined): boolean {
-  const said = assignDamageRuleOf(ask).defenderAllowed;
-  if (said !== null) return said;
-  return Array.isArray(attackerKeywords) && attackerKeywords.includes('TRAMPLE');
+export function defenderAllowed(ask: AssignDamageAsk): boolean {
+  return defenderAllowedOf(ask);
 }
 
-/** The rows the damage dialog shows: every target, less the defender when it may take none. */
-export function damageRows(ask: AssignDamageAsk, allowed: boolean): DamageTarget[] {
+/** The rows the damage bar shows: every target, less the defender when it may take none. */
+export function damageRows(ask: AssignDamageAsk, allowed: boolean = defenderAllowed(ask)): DamageTarget[] {
   const rows = ask.targets as DamageTarget[];
   return allowed ? rows : rows.filter((t) => t.defender !== true);
 }
@@ -265,7 +240,7 @@ export function defaultDraft(ask: AskBody): AskDraft {
     case 'sideboard':
       return { shape: 'indices', indices: range(ask.main.length) };
     case 'assign_damage':
-      return { shape: 'amounts', amounts: damageDefault(ask.targets, ask.total, ask.defenderAllowed === true) };
+      return { shape: 'amounts', amounts: autoSplit(damageBarOf(ask)) };
     case 'assign_amount':
       return { shape: 'amounts', amounts: amountDefault(ask.targets, ask.total, ask.atLeastOne) };
   }
@@ -496,7 +471,12 @@ export function validateDraft(ask: AskBody, draft: AskDraft): Validation {
       if (swapped === 0 && delta === 0) return ok(`${draft.indices.length} cards · no changes`);
       return ok(`${draft.indices.length} cards${delta === 0 ? '' : ` (${delta > 0 ? '+' : ''}${delta})`} · ${plural(swapped, 'card')} in from the sideboard`);
     }
-    case 'assign_damage':
+    case 'assign_damage': {
+      if (draft.shape !== 'amounts') return no('Assign the amounts');
+      // The damage bar's own check: exactly `total`, the defender only when allowed and every blocker lethal.
+      const c = checkSplit(damageBarOf(ask), draft.amounts);
+      return c.ok ? ok(`All ${ask.total} assigned`) : no(c.why ?? 'Assign again');
+    }
     case 'assign_amount': {
       if (draft.shape !== 'amounts') return no('Assign the amounts');
       const targets = ask.targets as AmountTarget[];
@@ -507,17 +487,11 @@ export function validateDraft(ask: AskBody, draft: AskDraft): Validation {
         if (!Number.isInteger(v) || v < 0) return no('Whole numbers only');
         if (v > amountCap(ask, i)) return no(`${targets[i]!.label}: at most ${amountCap(ask, i)}`);
       }
-      // The engine's own word (M67): a defender it says may take no damage gets none.
-      if (ask.kind === 'assign_damage' && ask.defenderAllowed === false && (draft.amounts['0'] ?? 0) > 0) {
-        return no(`${targets[0]?.label ?? 'The defending player'} can't take this damage`);
-      }
-      if (ask.kind === 'assign_amount') {
-        // The engine's least per target (M68's `min`, or 1 with atLeastOne).
-        for (const t of targets) {
-          const least = amountFloor(ask, t.id);
-          if ((draft.amounts[String(t.id)] ?? 0) >= least) continue;
-          return no(ask.atLeastOne && least === 1 ? `Each must get at least 1 — ${t.label}` : `${t.label}: at least ${least}`);
-        }
+      // The engine's least per target (M68's `min`, or 1 with atLeastOne).
+      for (const t of targets) {
+        const least = amountFloor(ask, t.id);
+        if ((draft.amounts[String(t.id)] ?? 0) >= least) continue;
+        return no(ask.atLeastOne && least === 1 ? `Each must get at least 1 — ${t.label}` : `${t.label}: at least ${least}`);
       }
       const sum = amountsTotal(draft.amounts);
       if (sum < ask.total) return no(`${ask.total - sum} left to assign`);
