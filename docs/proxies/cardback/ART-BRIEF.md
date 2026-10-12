@@ -17,7 +17,7 @@ Justin wants it to feel like the back of a **vintage Magic card**: the 1993–19
    - no swirling blue-brown vortex frame like the original.
 
    Take the feeling: warm brown, gold, old paper, painted fantasy. Leave the layout behind.
-2. **No text from the model.** Image models garble letters. The words are added afterwards, crisp, by `vintage-cube-back.html`: *Vintage Cube*, *Playtest card*, *Proxy · Not for sale*. Leave calm space for them (see Layout).
+2. **No text from the model.** Image models garble letters. The words are added afterwards, crisp, by `vintage-cube-back.html`: *Vintage Cube* and a small *Not for sale*. Leave calm space for them (see Layout).
 3. **Symmetric enough to hide orientation.** A back that is clearly "up" tells a sharp opponent which way a card was put in a hand or deck. The art should read about the same rotated 180°, or be truly 180° symmetric. Mirror-symmetric left to right is a bonus.
 4. **Nothing that identifies a card.** No art from a real Magic card, no card names, no mana symbols used as information.
 5. **Original output only.** Generate locally; don't paste in someone else's artwork, and don't prompt "in the style of <living artist>". Period words like "1990s fantasy oil painting" or "illuminated manuscript" are fine.
@@ -34,8 +34,7 @@ All numbers are for the final PNG, which `render.sh` makes at 600 dpi.
 
 - **Bleed:** the art must run all the way to the image edge, bleed included. No border that stops at the cut line, because the cut wanders about 1 mm.
 - **Text bands:** keep these areas calm, mid-to-dark and low in detail so the HTML text reads cleanly over them:
-  - a band about **y = 1480–1980** (lower third) for "VINTAGE / CUBE / Proxy · Not for sale";
-  - a thin band about **y = 300–400** for "PLAYTEST CARD".
+  - a band about **y = 1480–1980** (lower third) for "VINTAGE / CUBE / Not for sale".
 
   If the art has a central emblem, put it around **y = 600–1250**.
 - **Generate bigger, then fit.** Generate at whatever size the model likes in a 2:3 or 3:4 frame, upscale, and cover-crop to 1632 × 2220. Check the crop keeps the emblem centred.

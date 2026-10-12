@@ -51,7 +51,7 @@ With clear sleeves, a card whose back shows its other face stands out in a shuff
 
 The meld pair (Phyrexian Dragon Engine, The Mightstone and Weakstone) needs nothing: their partners (Mishra, Claimed by Gix; Urza, Lord Protector) aren't in the cube, so they never meld. Print them as ordinary one-sided cards.
 
-**Card back:** [`cardback/vintage-cube-back.png`](cardback/vintage-cube-back.png) is our own design: a gold cube on dark ink, reading *Vintage Cube · Playtest card · Proxy · Not for sale*. It is not Magic's back on purpose, so every card says "proxy" at a glance through a clear sleeve.
+**Card back:** [`cardback/vintage-cube-back.png`](cardback/vintage-cube-back.png) is our own design: a gold cube on dark ink, reading *Vintage Cube* and a small *Not for sale*. It is not Magic's back on purpose, so every card says "proxy" at a glance through a clear sleeve.
 
 - **Size:** 1632×2220 px, which is 600 dpi at 2.72×3.70 in. That's a poker card plus MPC's 1/8 in bleed on each side.
 - **Safe area:** everything that matters sits well inside the cut line.
