@@ -29,6 +29,7 @@
  */
 import type { AskBody, GameStateBody, InputBody } from '../protocol.ts';
 import { selectablePlayersOf } from '../protocol.ts';
+import { withoutEngineIds } from '../engineText.ts';
 import type { LoggedFrame } from '../log.ts';
 import { isPlayDrawInput } from '../decisions.ts';
 import { cardsById, nameOf, playersOf, zoneCards } from './board.ts';
@@ -297,7 +298,8 @@ function questionMoment(i: MomentInput, state: GameStateBody, q: ChoiceQuestion,
     kind: 'question',
     id,
     question: questionText(q, state, i.me, { plan: i.plan ? planProgressText(i.plan.steps, i.plan.done) : null }),
-    label: `Question, turn ${state.turn || 0}: ${firstLine(q.prompt).replace(/\s*\[.*$/, '').slice(0, 60) || 'a choice'}`,
+    // the label is the player's (the panel's heading): the engine prompt's card ids out
+    label: `Question, turn ${state.turn || 0}: ${withoutEngineIds(firstLine(q.prompt).replace(/\s*\[.*$/, '')).slice(0, 60) || 'a choice'}`,
     ask: q,
   };
 }

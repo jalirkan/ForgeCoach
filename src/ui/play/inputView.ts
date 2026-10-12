@@ -148,22 +148,27 @@ export function noticeLine(title: string, text: string | null | undefined, state
 }
 
 /**
- * The flash line when the engine refuses a click on a card ("Not selectable")
- * while it asks for a pick — a target, cards to choose — outside combat
- * (combat has its own, blockPlan.ts): in the engine's terms, the card is not
- * one of the cards it offers (`selectable.cardIds`, the highlighted ones).
- * Null when the input lists nothing to pick, the card is one it lists, or the
- * board does not show the card.
+ * The flash line when the engine refuses a click on a card ("Not selectable"),
+ * where the combat refusals (blockPlan.ts) have nothing to say: a card in
+ * your hand during a block or attack declaration (Forge takes only the
+ * declaration's clicks until it is confirmed); otherwise, while the engine
+ * asks for a pick, a card that is not one it offers (`selectable.cardIds`,
+ * the highlighted ones). Null when the input lists nothing to pick, the card
+ * is one it lists, or the board does not show the card.
  */
-export function pickRefusal(title: string, text: string | null | undefined, state: GameStateBody | null, input: InputBody | null): string | null {
+export function pickRefusal(title: string, text: string | null | undefined, state: GameStateBody | null, input: InputBody | null, mode: InputMode | null = null): string | null {
   if (!state || !input || !/^not selectable$/i.test(title.trim())) return null;
   const m = /\bcard (\d+)\b/.exec(text ?? '');
   if (!m) return null;
   const id = Number(m[1]);
-  const offered = input.selectable.cardIds;
-  if (offered.length === 0 || offered.includes(id)) return null;
   const c = cardIndex(state).get(id);
   if (!c || isHidden(c) || !c.name) return null;
+  // a card outside the battlefield during a combat declaration: Forge takes only the declaration's clicks until it is confirmed
+  if ((mode === 'block' || mode === 'attack') && c.zone !== 'battlefield') {
+    return `${cardName(c)} can’t be played while you declare ${mode === 'block' ? 'blockers' : 'attackers'}: confirm the ${mode === 'block' ? 'blocks' : 'attack'} first, then you get priority.`;
+  }
+  const offered = input.selectable.cardIds;
+  if (offered.length === 0 || offered.includes(id)) return null;
   return `${cardName(c)} isn’t one of the choices: the engine offers only the highlighted card${offered.length === 1 ? '' : 's'} here.`;
 }
 

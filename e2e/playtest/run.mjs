@@ -30,6 +30,8 @@
  *   --viewport desktop|phone|mixed   the board's size: a desktop window, a phone (390×844, touch),
  *                            or mixed (solo: every other game on a phone; table: the friend on a phone)
  *   --max-shots N            screenshots in all (default 300; each finding's first ones)
+ *   --key-shots N            also N screenshots per game of each key moment: the stack, a block
+ *                            declaration, the combat damage dialog, the coach's steps (default 0)
  *   --port-base N            the engine on N, its helper on N+1, the draft room on N+2, the
  *                            table on N+4 (default 8642, play.sh's own; the PC job uses another
  *                            so it never meets a game Justin is playing)
@@ -57,7 +59,7 @@ import { SeatTap } from './tap.mjs';
 import { Monkey } from './monkey.mjs';
 import { loadScripts } from './scripts.mjs';
 import { deckNames, deckPlan, CUBES } from './decks.mjs';
-import { combatAgrees, combatPlaced, hiddenFromOther, hiddenLeaks, logCovers, logTurns, stackAgrees, streamTurns } from './checks.mjs';
+import { combatAgrees, combatPlaced, engineIds, hiddenFromOther, hiddenLeaks, logCovers, logTurns, stackAgrees, streamTurns } from './checks.mjs';
 import { startFakeHelper } from './fakehelper.mjs';
 import { writeReport } from './report.mjs';
 
@@ -69,7 +71,7 @@ const FAKE_COACH_MS = Number(process.env.PLAYTEST_COACH_MS) || 50;
 // Options
 
 function parseArgs(argv) {
-  const o = { mode: 'fake', games: 3, seed: 1, decks: null, turnCap: 40, coach: 'off', reload: 1, out: null, headless: true, stallS: 150, gameMinutes: 75, aiProfile: null, portBase: 8642, maxShots: 300, viewport: 'desktop' };
+  const o = { mode: 'fake', games: 3, seed: 1, decks: null, turnCap: 40, coach: 'off', reload: 1, out: null, headless: true, stallS: 150, gameMinutes: 75, aiProfile: null, portBase: 8642, maxShots: 300, viewport: 'desktop', keyShots: 0 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = () => argv[++i];
@@ -88,6 +90,7 @@ function parseArgs(argv) {
     else if (a === '--port-base') o.portBase = Number(v());
     else if (a === '--max-shots') o.maxShots = Number(v());
     else if (a === '--viewport') o.viewport = v();
+    else if (a === '--key-shots') o.keyShots = Number(v());
     else if (a === '--help' || a === '-h') {
       console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('*/')[0]);
       process.exit(0);
@@ -203,6 +206,34 @@ function makeFinding(game, seat) {
     game.findings.push(f);
     log(`  FINDING ${seat.label}: ${f.kind} — ${f.what}${f.why ? ` (${f.why})` : ''}`);
   };
+}
+
+/**
+ * --key-shots: the first N of each key moment a game reaches, for a person to
+ * look at — the stack panel, a block declaration, the combat damage dialog, the
+ * coach's steps — saved beside the findings' shots.
+ */
+const KEY_MOMENTS = [
+  ['stack', '[data-stack-panel]'],
+  ['blocks', '.game.play.mode-block'],
+  ['assign-damage', '.ask-dialog .ask-assign, .ask-dialog [data-assign-damage], .ask-dialog .assign-rows'],
+  ['coach-steps', '.plan-steps'],
+];
+async function keyShots(game, seat) {
+  game.keyShots ??= {};
+  for (const [kind, sel] of KEY_MOMENTS) {
+    const k = `${seat.label}:${kind}`;
+    const n = game.keyShots[k] ?? 0;
+    if (n >= opts.keyShots || shotN >= opts.maxShots) continue;
+    const askAssign = kind === 'assign-damage' && seat.tap.ask?.kind === 'assign_damage';
+    const visible = askAssign || (await seat.page.locator(sel).first().isVisible().catch(() => false));
+    if (!visible) continue;
+    game.keyShots[k] = n + 1;
+    const file = `g${game.id}-${seat.label}-key-${kind}-${n + 1}.png`;
+    await seat.page.screenshot({ path: path.join(SHOTS, file) }).catch(() => {});
+    shotN++;
+    log(`  key shot ${file}`);
+  }
 }
 
 function watchPage(game, seat) {
@@ -372,7 +403,9 @@ async function playGame(game, seats, { scripts, askModel, rand, hiddenFor, allow
         for (const p of await stackAgrees(s.page, s.tap)) await s.finding({ kind: 'stack-mismatch', what: p });
         for (const p of await combatAgrees(s.page, s.tap)) await s.finding({ kind: 'combat-badge-mismatch', what: p });
         for (const p of await combatPlaced(s.page, s.tap)) await s.finding({ kind: 'combat-placement', what: p });
+        for (const p of await engineIds(s.page, s.tap)) await s.finding({ kind: 'engine-id', what: p });
       }
+      if (opts.keyShots > 0) await keyShots(game, s);
       if (s.monkey.decisions - lastLeak >= 12) {
         lastLeak = s.monkey.decisions;
         for (const p of await hiddenLeaks(s.page, hiddenFor(s), allowedFor(s))) await s.finding({ kind: 'hidden-info', what: p });

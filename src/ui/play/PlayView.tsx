@@ -201,11 +201,11 @@ export function PlayView({
     if (lastNotice.level === 'info' && lastNotice.source === 'engine') return;
     // A click the engine refused: say why in the game's terms, never "cannot be selected now".
     const refused =
-      view.mode === 'block'
+      (view.mode === 'block'
         ? blockRefusal(lastNotice.title, lastNotice.text, snap.state, blockTry.current, view.blockingAttackerId, seat)
         : view.mode === 'attack'
           ? attackRefusal(lastNotice.title, lastNotice.text, snap.state, seat)
-          : pickRefusal(lastNotice.title, lastNotice.text, snap.state, input);
+          : null) ?? pickRefusal(lastNotice.title, lastNotice.text, snap.state, input, view.mode);
     setFlash(refused ?? noticeLine(lastNotice.title, lastNotice.text, snap.state));
     // Only a new notice flashes; the state it names cards from is read as of then.
     // eslint-disable-next-line react-hooks/exhaustive-deps
