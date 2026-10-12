@@ -19,7 +19,8 @@ import { describe, expect, test } from 'vitest';
 import type { AskBody, AssignDamageAsk, Card, GameStateBody } from '../../protocol.ts';
 import { AskDialog } from './AskDialog.tsx';
 import { fixtureAsk } from './askFixtures.ts';
-import { damageRefusal, damageRows, defaultAnswer, defenderAllowed, validateDraft } from './askModel.ts';
+import { askReasonOf } from '../../protocol.ts';
+import { damageRows, defaultAnswer, defenderAllowed, validateDraft } from './askModel.ts';
 
 const damageAsk = (id: string): { ask: AssignDamageAsk; state: GameStateBody | null } => {
   const f = fixtureAsk(id);
@@ -69,7 +70,7 @@ describe('assign_damage follows the engine (M67)', () => {
 
   test('asked again after a refused split: the engine’s reason is on screen', () => {
     const { ask, state } = damageAsk('human-ws-5#a5');
-    const reason = damageRefusal(ask);
+    const reason = askReasonOf(ask);
     expect(reason).toMatch(/exactly 2/);
     const html = render(ask, state);
     expect(html).toContain('data-refused');
