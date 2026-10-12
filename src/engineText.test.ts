@@ -11,7 +11,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { withoutEngineIds } from './engineText.ts';
+import { withBoardNames, withoutEngineIds } from './engineText.ts';
 import { parseLog, type GameLog } from './log.ts';
 import { gameEventLog, lineText } from './eventLog.ts';
 import type { AskBody, GameStateBody, InputBody } from './protocol.ts';
@@ -20,6 +20,24 @@ import { displayAsk } from './ui/play/askModel.ts';
 import { stackEntries, stackText } from './ui/stackModel.ts';
 
 const ID = /\(\d+\)|#\d|\[\d+\]|\[\[|\w=\d/;
+
+describe('withBoardNames: the engine’s sentences name the seats as the board does', () => {
+  const seats = [
+    { engine: 'Human', board: 'You', you: true },
+    { engine: 'Forge AI', board: 'Search AI', you: false },
+  ];
+  it('you, with the verb agreeing; the bot by its picked name', () => {
+    expect(withBoardNames('Human puts a +1/+1 counter on Carrion Feeder.', seats)).toBe('You put a +1/+1 counter on Carrion Feeder.');
+    expect(withBoardNames('Forge AI searches their library for a basic Mountain.', seats)).toBe('Search AI searches their library for a basic Mountain.');
+    expect(withBoardNames('Pym Particles - Peggy Carter gains vigilance until end of turn.  Human draws a card.', seats)).toBe('Pym Particles - Peggy Carter gains vigilance until end of turn.  You draw a card.');
+    expect(withBoardNames('Opt - Human scries 1. Human draws a card.', seats)).toBe('Opt - You scry 1. You draw a card.');
+    // the label is also a creature type: left alone outside the subject of a sentence
+    expect(withBoardNames('Create a 1/1 white Human Soldier creature token. Target Human creature gets +1/+1.', seats)).toBe('Create a 1/1 white Human Soldier creature token. Target Human creature gets +1/+1.');
+    expect(withBoardNames('Human creatures you control get +1/+1.', seats)).toBe('Human creatures you control get +1/+1.');
+    expect(withBoardNames('Exile the top card of Human’s library.', seats)).toBe('Exile the top card of your library.');
+    expect(withBoardNames('Target creature Forge AI controls', seats)).toBe('Target creature Search AI controls');
+  });
+});
 
 describe('withoutEngineIds', () => {
   it('takes the ids out and leaves the numbers that mean something', () => {

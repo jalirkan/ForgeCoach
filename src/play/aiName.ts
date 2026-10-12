@@ -59,3 +59,8 @@ export function seatNamer(
     return seatDisplayName(hello, p, 'The bot');
   };
 }
+
+/** Each seat's engine label beside the board's name for it, for engineText.ts `withBoardNames`. */
+export function seatLabels(players: ReadonlyArray<{ id: number; name: string }>, seat: number | null, nameOf: (id: number) => string): Array<{ engine: string; board: string; you: boolean }> {
+  return players.filter((p) => !!p.name).map((p) => ({ engine: p.name, board: p.id === seat ? 'You' : nameOf(p.id), you: p.id === seat }));
+}

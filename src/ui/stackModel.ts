@@ -22,7 +22,8 @@
 import type { AnyCard, Card, GameStateBody, SetYieldAct, SetYieldMode, StackItem } from '../protocol.ts';
 import { isHidden, stackYield } from '../protocol.ts';
 import { setYield } from '../play/acts.ts';
-import { withoutEngineIds } from '../engineText.ts';
+import { withBoardNames, withoutEngineIds } from '../engineText.ts';
+import { seatLabels } from '../play/aiName.ts';
 import type { CardStackMarks } from './cardContext.ts';
 
 export type StackKind = 'spell' | 'activated' | 'triggered' | 'ability';
@@ -101,6 +102,7 @@ function cardWord(c: AnyCard | undefined): string {
 export function stackEntries(state: GameStateBody | null, seat: number | null, nameOf?: (id: number) => string): StackEntry[] {
   if (!state || state.stack.length === 0) return [];
   const onBoard = battlefieldIds(state);
+  const seats = nameOf ? seatLabels(state.players, seat, nameOf) : null;
   return [...state.stack].reverse().map((item, i) => {
     const raw = item.sourceCardId === null ? undefined : findCard(state, item.sourceCardId);
     const visible = raw && !isHidden(raw) ? (raw as Card) : null;
@@ -115,7 +117,8 @@ export function stackEntries(state: GameStateBody | null, seat: number | null, n
       kind: stackKind(item, raw),
       controller: playerWord(state, item.controller, seat, nameOf),
       mine: seat !== null && item.controller === seat,
-      text: item.text,
+      // the engine's sentences name seats by its labels ("Human puts…"): the board's names instead
+      text: seats ? withBoardNames(item.text, seats) : item.text,
       targets: [
         ...item.targetCardIds.map((id) => ({ kind: 'card' as const, id, label: cardWord(findCard(state, id)) })),
         ...item.targetPlayerIds.map((id) => ({ kind: 'player' as const, id, label: playerWord(state, id, seat, nameOf) ?? 'a player' })),

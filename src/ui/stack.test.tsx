@@ -541,4 +541,17 @@ describe('the stack names seats as the board does', () => {
     expect(e!.controller).toBe('Search AI');
     expect(e!.targets[0]!.label).toBe('You');
   });
+
+  test('the engine’s sentences too: "Human puts…" is "You put…", "Forge AI searches…" the bot’s name', () => {
+    const st = state(
+      [
+        item(10, 31, { controller: 0, text: 'Quake, Agent of S.H.I.E.L.D. (31) - Human puts a +1/+1 counter on Carrion Feeder (77).', isAbility: true }),
+        item(11, 29, { controller: 1, text: 'S.H.I.E.L.D. Helicarrier (29) - Forge AI searches their library for a basic Mountain.', isAbility: true }),
+      ],
+      [quake],
+      [heli],
+    );
+    const named = stackEntries(st, 0, (id) => (id === 1 ? 'Search AI' : 'You'));
+    expect(named.map((e) => stackText(e))).toEqual(['Search AI searches their library for a basic Mountain.', 'You put a +1/+1 counter on Carrion Feeder.']);
+  });
 });

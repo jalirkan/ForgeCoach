@@ -14,7 +14,8 @@
  * and Forge answers a click it will not take with a "Not selectable" notice.
  */
 import { stackKind } from '../stackModel.ts';
-import { withoutEngineIds } from '../../engineText.ts';
+import { withBoardNames, withoutEngineIds } from '../../engineText.ts';
+import { seatLabels } from '../../play/aiName.ts';
 import type { AnyCard, AskBody, Card, GameStateBody, InputBody, InputButton } from '../../protocol.ts';
 import { isHidden, keywordsOf, playableOf, selectablePlayersOf } from '../../protocol.ts';
 import { cardIndex, cardName } from '../../decisions.ts';
@@ -206,12 +207,15 @@ export function describeInput(
   } finally {
     seatName = null;
   }
+  // the engine's sentences name seats by its labels ("Opt - Human scries 1."): the board's names instead
+  const seats = opts.nameOf && state ? seatLabels(state.players, seat, opts.nameOf) : [];
+  const words = (t: string) => withBoardNames(withoutEngineIds(t), seats);
   return {
     ...v,
-    title: withoutEngineIds(v.title),
-    detail: v.detail === null ? null : withoutEngineIds(v.detail),
-    engineText: withoutEngineIds(v.engineText),
-    payFor: v.payFor === null ? null : withoutEngineIds(v.payFor),
+    title: words(v.title),
+    detail: v.detail === null ? null : words(v.detail),
+    engineText: words(v.engineText),
+    payFor: v.payFor === null ? null : words(v.payFor),
   };
 }
 

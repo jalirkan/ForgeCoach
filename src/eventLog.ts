@@ -22,6 +22,7 @@
 import type { Card, EntityRef, GameStateBody, InputBody, StackItem } from './protocol.ts';
 import type { GameLog } from './log.ts';
 import { cleanStackText, stackKind } from './ui/stackModel.ts';
+import { withBoardNames } from './engineText.ts';
 import { frameResolver, indexOf, playerLabel, type CardIndex, type FrameResolver } from './review.ts';
 
 /** One piece of a line: text, a card (tappable to read it), or a player. */
@@ -68,6 +69,11 @@ export interface LogTurn {
 /** The plain text of a line, for tests and copy. */
 export function lineText(line: LogLine): string {
   return line.segs.map((s) => (typeof s === 'string' ? s : s.name)).join('');
+}
+
+/** Each seat's engine label and the Game Log's name for it (review.ts playerLabel), for the engine's own sentences. */
+function logSeats(log: GameLog): Array<{ engine: string; board: string; you: boolean }> {
+  return (log.hello?.players ?? []).map((p) => ({ engine: p.name, board: playerLabel(log, p.id), you: p.id === log.seat }));
 }
 
 /** The newest "resolved with nothing for you to choose" line of the game, for the board's notice. */
@@ -254,7 +260,7 @@ function foldFrame(w: Walk, log: GameLog, fi: number, s: GameStateBody, r: Frame
           // The stack text usually starts "Name - "; the name is already a segment.
           // With the targets listed, the engine's "(Targeting: …)" tail would say them twice.
           const raw = targets.length ? e.text.replace(/\s*\(Targeting:.*\)\s*$/s, '') : e.text;
-          const text = raw === '' ? '' : shorten(abilityText(raw, name), ABILITY_TEXT_MAX);
+          const text = raw === '' ? '' : shorten(withBoardNames(abilityText(raw, name), logSeats(log)), ABILITY_TEXT_MAX);
           const verb = kind === 'trigger' ? ' triggered' : kind === 'activated' ? ' activated' : ' ability';
           add(kind, e.controller, card(e.cardId, 'a hidden source'), text ? `${verb}: ${text}` : verb, ...arrow);
         }

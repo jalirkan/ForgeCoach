@@ -30,3 +30,46 @@ export function withoutEngineIds(text: string | null | undefined, opts: { piece?
     .replace(/[ \t]+([.,;:])/g, '$1');
   return opts.piece ? t : t.replace(/[ \t]+$/gm, '').trim();
 }
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The verbs Forge's stack sentences put after a player ("Human draws a card"): a creature type never takes one. */
+const SUBJECT_VERBS = [
+  'adds', 'attaches', 'chooses', 'creates', 'deals', 'discards', 'draws', 'exiles', 'gains', 'gets', 'investigates', 'looks',
+  'loses', 'may', 'mills', 'pays', 'proliferates', 'puts', 'returns', 'reveals', 'sacrifices', 'scries', 'searches',
+  'shuffles', 'surveils', 'taps', 'untaps', 'connives', 'explores', 'learns', 'venture', 'ventures',
+].join('|');
+
+/** "puts" → "put", "draws" → "draw", "scries" → "scry", "searches" → "search": the verb after "You". */
+function baseVerb(v: string): string {
+  if (/ies$/.test(v)) return v.slice(0, -3) + 'y';
+  if (/(ch|sh|ss|x|z)es$/.test(v)) return v.slice(0, -2);
+  if (/s$/.test(v) && !/ss$/.test(v)) return v.slice(0, -1);
+  return v;
+}
+
+/**
+ * Forge's sentences name the seats by their engine labels ("Human puts a +1/+1
+ * counter on Carrion Feeder.", "Forge AI searches their library…"). The board
+ * says "you" and the bot's picked name (play/aiName.ts `seatNamer`): the
+ * viewing seat's label as the subject of a sentence becomes "You" with the
+ * verb agreeing ("You put…", "You draw a card") and "Human's" → "your";
+ * another seat's label becomes its board name. `seats`: each seat's engine
+ * label and board name.
+ */
+export function withBoardNames(text: string, seats: ReadonlyArray<{ engine: string; board: string; you: boolean }>): string {
+  let t = String(text ?? '');
+  for (const s of seats) {
+    if (!s.engine || s.engine === s.board) continue;
+    const name = escapeRe(s.engine);
+    if (s.you) {
+      // Only where the label is the subject of a sentence (or a possessive): "Human" is also a
+      // creature type ("a 1/1 Human Soldier", "a Human creature"), which stays as it is.
+      t = t.replace(new RegExp(`\\b${name}[’']s\\b`, 'g'), 'your');
+      t = t.replace(new RegExp(`(^|[.!?]\\s+|\\n|[-—–]\\s+)${name}\\s+(${SUBJECT_VERBS})\\b`, 'g'), (_m, lead: string, verb: string) => `${lead}You ${baseVerb(verb)}`);
+    } else {
+      t = t.replace(new RegExp(`\\b${name}\\b`, 'g'), s.board);
+    }
+  }
+  return t;
+}
