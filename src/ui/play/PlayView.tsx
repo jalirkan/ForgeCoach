@@ -40,6 +40,7 @@ import { Sheet } from '../Sheet.tsx';
 import { allCardNames, cx, readLS, writeLS } from '../util.ts';
 import { AskDialog, OpeningDialog, openingKind } from './AskDialog.tsx';
 import { DecisionSlot, OppWaitingLine } from './DecisionSlot.tsx';
+import { SearchHint } from './SearchHint.tsx';
 import { attentionOf, inputCounter, markedTitle, nudgeDelay, offersTheyAct, passToggles, theyActWhyNot, yieldLit } from './decisionModel.ts';
 import { GameOverCard } from './GameOverCard.tsx';
 import type { FriendReviewView } from './useFriendReview.ts';
@@ -705,6 +706,7 @@ export function PlayView({
         counter={counter}
         toggles={toggles}
         ask={wide ? askNode : null}
+        hint={<SearchHint log={log} state={state} input={input} seat={seat} askOpen={!!ask} enabled={againstAi && !over} />}
       />
       <HandDock player={me} landOpen={landOpen} collapsed={handHidden} onToggle={toggleHand} />
     </div>
