@@ -88,8 +88,9 @@ which is the default in `params.json`.
   corners look swallowed.
 - A soft shadow on the wood outside: 0.16 · exp(−d/18).
 
-**What stays as it was:** the brass-strung star of 30 rhombi around it, on the
-sheets the owner chose from (`plate.halo`), and the brass frame.
+**What stays as it was:** the brass frame. The brass-strung star of 30 rhombi
+around the plate (`plate.halo`) is OFF: shown side by side with and without on
+2026-10-12, the owner chose the plate alone on plain cubes.
 
 **Same on all three backs:** the plate's golds are identical on all three; only
 the wood's hue changes.
