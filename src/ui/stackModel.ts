@@ -123,10 +123,64 @@ export function stackEntries(state: GameStateBody | null, seat: number | null): 
   });
 }
 
-/** The engine's text without its "(Targeting: …)" tail when the targets are listed beside it. */
-export function stackText(e: StackEntry): string {
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The engine's stack text in the card's words: every engine id ("(92)",
+ * "[[Island (38)]]", "#297") and every bookkeeping tail ("(Exiled=0)",
+ * "(X=2)") out, the "(Targeting: …)" tail out (targets are the chip row, never
+ * repeated in the text), and a leading "<source name> - " out (the name sits
+ * above the text). Reminder text in parentheses without an "=" stays.
+ * `keepTargeting`: the game log, whose ability lines keep the tail (cleaned)
+ * when the item's targets are no longer on the stack to list.
+ */
+export function cleanStackText(text: string, sourceName?: string | null, opts: { keepTargeting?: boolean } = {}): string {
+  let t = String(text ?? '');
+  t = opts.keepTargeting ? t.replace(/\s*\(Targeting:\s*(?:\[\[\]\])?\s*\)\s*$/, '') : t.replace(/\s*\(Targeting:[\s\S]*\)\s*$/, '');
+  t = t.replace(/\[\[([^\]]*)\]\]/g, '$1');
+  t = t.replace(/\s*\([A-Za-z][\w ]*=[^()]*\)/g, '');
+  t = t.replace(/\s*\(\d+\)/g, '');
+  t = t.replace(/\s*#\d+\b/g, '');
+  t = t.replace(/\s+/g, ' ').trim();
+  if (sourceName) {
+    const pre = new RegExp(`^${escapeRe(sourceName.trim())}\\s*(?:-|—|–|:)\\s*`, 'i');
+    const rest = t.replace(pre, '');
+    if (rest !== t && rest.trim()) t = rest.trim();
+  }
+  return t
+    .replace(/\s+([.,;:])/g, '$1')
+    .replace(/\.{2,}/g, '.')
+    .replace(/^[-—–:]\s*/, '')
+    .trim();
+}
+
+/** The oracle text of the face a stack item names, from the card cache (cards.ts), or ''. */
+export function oracleForFace(info: { oracleText?: string; faces?: { name: string; oracleText: string }[] } | null | undefined, name: string | null): string {
+  if (!info || !name) return '';
+  const norm = (s: string) => s.trim().toLowerCase();
+  const face = info.faces?.find((f) => norm(f.name) === norm(name));
+  if (face) return face.oracleText.trim();
+  const text = (info.oracleText ?? '').trim();
+  // a multi-face card whose face is not named: never show both faces' text
+  return text.includes('\n//\n') ? '' : text;
+}
+
+/**
+ * What the stack panel shows as an item's text: a spell's oracle text (the
+ * card cache, `info`) when known, else — and for every ability — the engine's
+ * text cleaned of ids and bookkeeping (`cleanStackText`). '' when there is
+ * nothing to add to the name; the panel says "Hidden" only for a text the
+ * bridge blanked (`e.text === ''`).
+ */
+export function stackText(e: StackEntry, info?: { oracleText?: string; faces?: { name: string; oracleText: string }[] } | null): string {
   if (e.text === '') return '';
-  return e.targets.length ? e.text.replace(/\s*\(Targeting:.*\)\s*$/s, '').trim() : e.text;
+  if (e.kind === 'spell') {
+    const oracle = oracleForFace(info, e.name);
+    if (oracle) return oracle;
+  }
+  const t = cleanStackText(e.text, e.name);
+  // the engine's text was only the name (a permanent spell): the name is already above it
+  return e.name && t.toLowerCase() === e.name.toLowerCase() ? '' : t;
 }
 
 export type { CardStackMarks };

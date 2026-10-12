@@ -4,7 +4,8 @@
  *
  * "The Stack" (endstep-style): numbered items, 1 on top — it resolves next —
  * each with the source's art, its kind (spell / activated / triggered
- * ability), who controls it, the engine's text and its targets. The same
+ * ability), who controls it, its words (a spell's oracle text, an ability's
+ * engine text without ids, stackModel.ts `stackText`) and its targets. The same
  * numbers sit on the board (a badge on each source and target, CardTile) and
  * lines join them (BoardArrows). Two looks: `float` — the play screen's
  * panel, in one fixed place over the board while the stack is not empty,
@@ -102,7 +103,7 @@ function StackRow({ entry: e, state }: { entry: StackEntry; state: GameStateBody
   const actions = useCardActions();
   const [wide, setWide] = useState(false);
   const art = e.name ? imageForFace(info, e.name)?.artCrop : undefined;
-  const text = stackText(e);
+  const text = stackText(e, info);
   const kind = typeKind(e.source?.types || info?.typeLine);
   return (
     <li
@@ -138,9 +139,9 @@ function StackRow({ entry: e, state }: { entry: StackEntry; state: GameStateBody
           <button type="button" className={cx('stackp-text', wide && 'is-wide')} onClick={() => setWide((w) => !w)} title={text}>
             {text}
           </button>
-        ) : (
+        ) : e.text === '' ? (
           <div className="stackp-text is-hidden">Hidden</div>
-        )}
+        ) : null}
         {e.targets.length > 0 && (
           <div className="stackp-targets">
             <span className="stackp-arrow" aria-hidden="true">
@@ -181,7 +182,8 @@ function SourceArt({ entry: e, state, className }: { entry: StackEntry; state: G
 /** One item of the float's fan: 1 whole, the others a step back with number, kind and name. */
 function FanItem({ entry: e, state, count }: { entry: StackEntry; state: GameStateBody; count: number }) {
   const [wide, setWide] = useState(false);
-  const text = stackText(e);
+  const info = useCardInfo(e.name);
+  const text = stackText(e, info);
   const top = e.n === 1;
   const place = fanPlace(e.n, count);
   const style = { '--fan-i': place.depth, zIndex: place.z } as CSSProperties;
@@ -214,9 +216,9 @@ function FanItem({ entry: e, state, count }: { entry: StackEntry; state: GameSta
             <button type="button" className={cx('stackp-text', wide && 'is-wide')} onClick={() => setWide((w) => !w)} title={text}>
               {text}
             </button>
-          ) : (
+          ) : e.text === '' ? (
             <div className="stackp-text is-hidden">Hidden</div>
-          )}
+          ) : null}
           {e.targets.length > 0 && (
             <div className="stackp-targets">
               <span className="stackp-arrow" aria-hidden="true">

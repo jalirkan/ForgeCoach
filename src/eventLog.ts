@@ -21,7 +21,7 @@
  */
 import type { Card, EntityRef, GameStateBody, StackItem } from './protocol.ts';
 import type { GameLog } from './log.ts';
-import { stackKind } from './ui/stackModel.ts';
+import { cleanStackText, stackKind } from './ui/stackModel.ts';
 import { frameResolver, indexOf, playerLabel, type CardIndex, type FrameResolver } from './review.ts';
 
 /** One piece of a line: text, a card (tappable to read it), or a player. */
@@ -87,10 +87,8 @@ const ABILITY_TEXT_MAX = 110;
 
 /** Forge's stack text without the ids it embeds ("(47) - Attach to Soldier Token (91)"). */
 export function abilityText(text: string, name: string | null): string {
-  let t = text.replace(/\[\[|\]\]/g, '').replace(/\s*\(\d+\)/g, '');
-  if (name && t.startsWith(name)) t = t.slice(name.length);
-  t = t.replace(/^\s*[-—:]\s*/, '').replace(/\s*\(Targeting:\s*\)/, '');
-  return t;
+  // the stack panel's cleaning: no engine ids, no "(Key=value)" bookkeeping, no "Name - " lead
+  return cleanStackText(text, name, { keepTargeting: true });
 }
 
 function shorten(s: string, max: number): string {
