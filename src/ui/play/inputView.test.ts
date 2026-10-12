@@ -144,7 +144,7 @@ describe('describeInput', () => {
     const b = describeInput(input('Select creatures to block Aerial Doombot (56) or select another attacker to declare blockers for.'), state({ activePlayer: OPP }), ME);
     expect(b.mode).toBe('block');
     expect(b.title).toBe('Declare blockers');
-    expect(b.detail).toContain('Now blocking Aerial Doombot');
+    expect(b.detail).toBe('Click a creature, then click the attacker it blocks. Then confirm.');
     expect(b.blockingAttackerId).toBe(56);
   });
 

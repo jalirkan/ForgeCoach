@@ -28,21 +28,23 @@ describe('selectionSummary', () => {
     expect(selectionSummary(v, none)).toEqual({ active: false, count: null, line: null, confirm: null });
   });
 
-  it('words a block: the engine’s flow (attacker first, then the creature; switch; take off), No blocks until one is assigned, then a live count', () => {
+  it('words a block as the combat study quotes it: blocker first, the picked card, then the live count; Done blocking → One blocking → 2 blocking', () => {
     const v = describeInput(input('Select creatures to block Soldier Token (91) or select another attacker to declare blockers for.'), null, 0);
     expect(v.mode).toBe('block');
-    const how = 'Click an attacker, then your creature that blocks it. Click another attacker to switch. Click a blocker again, or its ×, to take it off.';
-    const zero = selectionSummary(v, none);
-    expect(zero).toMatchObject({ active: true, count: 0, confirm: 'No blocks', line: how });
-    const two = selectionSummary(v, { attackers: 0, blockers: 2 });
-    expect(two).toMatchObject({ count: 2, confirm: 'Confirm blocks', line: how });
-    expect(two.line).not.toMatch(/same number/);
+    expect(selectionSummary(v, none)).toMatchObject({ active: true, count: 0, confirm: 'Done blocking', line: 'Click a creature, then click the attacker it blocks' });
+    expect(selectionSummary(v, none, 'blocker').line).toBe('Selected blocker — now click an attacker to assign');
+    expect(selectionSummary(v, none, 'attacker').line).toBe('Selected attacker — now click the creature that blocks it');
+    expect(selectionSummary(v, { attackers: 0, blockers: 1 })).toMatchObject({ count: 1, confirm: 'One blocking', line: '1 blocker(s) assigned — click more or confirm' });
+    expect(selectionSummary(v, { attackers: 0, blockers: 2 })).toMatchObject({ count: 2, confirm: '2 blocking', line: '2 blocker(s) assigned — click more or confirm' });
+    // A pick under way says so even with blocks assigned.
+    expect(selectionSummary(v, { attackers: 0, blockers: 2 }, 'blocker').line).toBe('Selected blocker — now click an attacker to assign');
   });
 
-  it('counts attackers', () => {
+  it('counts attackers on the primary: Done selecting → One selected → 2 attackers', () => {
     const v = describeInput(input('Select creatures to attack Forge AI or select player/card you wish to attack.', false, true), null, 0);
-    expect(selectionSummary(v, none)).toMatchObject({ active: true, count: 0, confirm: null });
-    expect(selectionSummary(v, { attackers: 3, blockers: 0 })).toMatchObject({ count: 3, confirm: 'Attack with 3' });
+    expect(selectionSummary(v, none)).toMatchObject({ active: true, count: 0, confirm: 'Done selecting', line: 'Click your creatures to attack' });
+    expect(selectionSummary(v, { attackers: 1, blockers: 0 })).toMatchObject({ count: 1, confirm: 'One selected' });
+    expect(selectionSummary(v, { attackers: 3, blockers: 0 })).toMatchObject({ count: 3, confirm: '3 attackers' });
   });
 
   it('dims during a target choice without claiming a count', () => {

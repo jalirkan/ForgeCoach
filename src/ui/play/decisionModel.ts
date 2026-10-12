@@ -167,8 +167,9 @@ export function inputCounter(input: InputBody | null, view: InputView): string |
 // The slot's buttons, with the keys printed on them
 
 export interface SlotButton {
-  id: 'primary' | 'other' | 'undo';
-  /** The engine button it presses, or null (Undo, a disabled placeholder). */
+  /** `skip`: Skip combat / No blocks — the engine's own clicks to clear the declaration, then its OK (blockPlan.ts). */
+  id: 'primary' | 'other' | 'undo' | 'skip';
+  /** The engine button it presses, or null (Undo, Skip, a disabled placeholder). */
   which: 'ok' | 'cancel' | null;
   words: string;
   /** The engine's own label when it differs from the words. */
@@ -184,26 +185,55 @@ const ALPHA = /alpha/i;
  * Primary (the engine's focused button, in the moment's words), the engine's
  * other button, and Undo — each with the key that presses it:
  *   Space for the primary ("Pass priority [Space]"), A for Auto pay while
- *   paying, Esc for the engine's Cancel, A for Alpha Strike while declaring
- *   attackers, Ctrl+Z for Undo.
+ *   paying, Esc for the engine's Cancel, Ctrl+Z for Undo.
+ *
+ * Combat (the combat study, 2026-10-12, §1 and §4) has a layout of its own:
+ *   declaring attackers — ALPHA STRIKE [A] (the engine's Cancel while it reads
+ *   "Alpha Strike"; CALL BACK once something is chosen, the same button),
+ *   SKIP COMBAT [Esc], and the primary [Space] counting the attackers
+ *   ("Done selecting" → "One selected" → "2 attackers");
+ *   declaring blockers — NO BLOCKS [Esc] and DONE BLOCKING [Space] ("One
+ *   blocking", "2 blocking"). The engine's Cancel is off in a block
+ *   declaration; were it on, it is shown, without a key.
+ * Skip and No blocks are enabled exactly when the engine's OK is: they end in it.
  */
 export function slotButtons(
   view: InputView,
   selection: SelectionSummary | undefined,
   opts: { canUndo: boolean; undoDepth: number; wide: boolean; passAhead?: boolean },
 ): SlotButton[] {
+  const undo = (): SlotButton[] =>
+    opts.canUndo ? [{ id: 'undo', which: null, words: opts.undoDepth > 1 ? `Undo (${opts.undoDepth})` : 'Undo', engine: null, kbd: 'Ctrl+Z', enabled: true }] : [];
+  if ((view.mode === 'attack' || view.mode === 'block') && selection?.active) {
+    const attack = view.mode === 'attack';
+    const out: SlotButton[] = [
+      {
+        id: 'primary',
+        which: 'ok',
+        words: selection.confirm ?? (attack ? 'Done selecting' : 'Done blocking'),
+        engine: view.ok.label || null,
+        kbd: 'Space',
+        enabled: view.ok.enabled,
+      },
+    ];
+    const c = view.cancel;
+    if (c.label && c.enabled) {
+      const alpha = attack && ALPHA.test(c.label);
+      const words = alpha ? 'Alpha strike' : attack && /call back/i.test(c.label) ? 'Call back' : buttonWords(view, c);
+      out.push({ id: 'other', which: 'cancel', words, engine: words.toLowerCase() !== c.label.toLowerCase() ? c.label : null, kbd: alpha ? 'A' : null, enabled: true });
+    }
+    out.push({ id: 'skip', which: null, words: attack ? 'Skip combat' : 'No blocks', engine: null, kbd: 'Esc', enabled: view.ok.enabled });
+    return [...out, ...undo()];
+  }
   const base = primaryView(view);
   const primary =
     selection?.confirm && base.which === 'ok'
       ? { ...base, words: selection.confirm, engine: base.engine ?? view.ok.label }
-      : selection?.active && base.which === null && view.ok.label && (view.mode === 'attack' || view.mode === 'block')
-        ? { which: 'ok' as const, words: view.mode === 'attack' ? 'Attack' : 'Confirm blocks', engine: view.ok.label, enabled: false }
-        : base;
+      : base;
   const out: SlotButton[] = [];
-  const keyOf = (which: 'ok' | 'cancel' | null, b: ButtonView | null): string | null => {
+  const keyOf = (which: 'ok' | 'cancel' | null): string | null => {
     if (!which) return null;
     if (view.mode === 'pay' && which === 'ok') return 'A';
-    if (view.mode === 'attack' && which === 'cancel' && b && ALPHA.test(b.label)) return 'A';
     return which === 'cancel' ? 'Esc' : null;
   };
   out.push({
@@ -225,18 +255,17 @@ export function slotButtons(
   // Forge's "End Turn" says what the END OF TURN toggle already says: phones keep the one button.
   const duplicateEot = !opts.wide && (opts.passAhead ?? canPassAhead(view)) && !!other && /end turn/i.test(other.b.label);
   if (other && other.b.label && (other.b.enabled || other.which === 'ok') && !duplicateEot) {
-    const words = view.mode === 'attack' && other.which === 'cancel' && ALPHA.test(other.b.label) ? 'Alpha strike' : buttonWords(view, other.b);
+    const words = buttonWords(view, other.b);
     out.push({
       id: 'other',
       which: other.which,
       words,
       engine: words.toLowerCase() !== other.b.label.toLowerCase() ? other.b.label : null,
-      kbd: keyOf(other.which, other.b),
+      kbd: keyOf(other.which),
       enabled: other.b.enabled,
     });
   }
-  if (opts.canUndo) out.push({ id: 'undo', which: null, words: opts.undoDepth > 1 ? `Undo (${opts.undoDepth})` : 'Undo', engine: null, kbd: 'Ctrl+Z', enabled: true });
-  return out;
+  return [...out, ...undo()];
 }
 
 // ---------------------------------------------------------------------------

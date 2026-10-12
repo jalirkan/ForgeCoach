@@ -84,6 +84,13 @@ describe('the planners agree with the table', () => {
     expect(planPlayKey(ev('a'), ctx('pay', { view: { ...view('pay'), ok: { label: 'Auto', enabled: false, meaning: null } } }))?.kind).toBe('inert');
     expect(planPlayKey(ev('a'), ctx('main'))?.kind).toBe('inert');
   });
+  it('Esc: Skip combat while declaring attackers, No blocks while declaring blockers; the engine’s Cancel elsewhere', () => {
+    expect(planPlayKey(ev('escape'), ctx('attack'))).toEqual({ kind: 'skip' });
+    expect(planPlayKey(ev('escape'), ctx('block'))).toEqual({ kind: 'skip' });
+    expect(planPlayKey(ev('escape'), ctx('block', { view: { ...view('block'), ok: { label: 'OK', enabled: false, meaning: null } } }))?.kind).toBe('inert');
+    expect(planPlayKey(ev('escape'), ctx('main'))).toEqual({ kind: 'cancel' });
+    expect(planPlayKey(ev(' '), ctx('block'))).toEqual({ kind: 'ok' });
+  });
   it('a lit auto-pass key stops its yield with the engine’s Cancel', () => {
     const lit = { eot: true, before: false, myturn: false, theyAct: false, stack: false };
     expect(planPlayKey(ev('e'), ctx('yield', { yieldLit: lit }))).toEqual({ kind: 'cancel' });

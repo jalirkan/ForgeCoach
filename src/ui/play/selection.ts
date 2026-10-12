@@ -5,9 +5,10 @@
  * The selection model of the decision panel (endstep-style): while the engine
  * wants cards clicked (attackers, blockers, targets, a discard, mana to pay),
  * the board dims what a click cannot drive and the panel keeps a live count —
- * "● 1 SELECTED · 1 blocker assigned — click more or confirm" — beside the
- * two buttons, worded for the moment ("No blocks" until you assign one, then
- * "Confirm blocks").
+ * "● 1 SELECTED — 1 blocker(s) assigned — click more or confirm" — beside the
+ * buttons, worded for the moment (the combat study, 2026-10-12, §1 and §4:
+ * "Done selecting" → "One selected" → "2 attackers"; "Done blocking" → "One
+ * blocking" → "2 blocking").
  *
  * Pure. The counts are the engine's own when the frame says (M65
  * `selectable.chosen`: the targets, list entries, blockers and attackers chosen
@@ -69,17 +70,35 @@ export interface SelectionSummary {
 const SELECTING = new Set<InputView['mode']>(['attack', 'block', 'target', 'discard', 'pay']);
 
 /**
- * How a block declaration works, as the engine takes clicks (InputBlock, read
- * from the pinned jar): a click on an attacker names it, a click on your
- * creature blocks the named attacker, and a click on a creature already
- * blocking the named attacker takes that block off. The × on a blocker takes
- * it off whatever is named (blockPlan.ts `takeOff`).
+ * How a block is declared on this board (blocker first, the combat study §4;
+ * blockPlan.ts turns it into the engine's attacker-first clicks): your
+ * creature, then the attacker it blocks. The same two clicks on a block that
+ * is already there take it off; your creature then another attacker moves it.
  */
-export const BLOCK_HOW = 'Click an attacker, then your creature that blocks it. Click another attacker to switch. Click a blocker again, or its ×, to take it off.';
+export const BLOCK_HOW = 'Click a creature, then click the attacker it blocks';
+/** Your creature is picked: the attacker is the second click. */
+export const BLOCK_ARMED = 'Selected blocker — now click an attacker to assign';
+/** An attacker is picked first (the other order works too): your creature is the second click. */
+export const BLOCK_ARMED_ATTACKER = 'Selected attacker — now click the creature that blocks it';
+/** Declaring attackers (the combat study §1). */
+export const ATTACK_HOW = 'Click your creatures to attack';
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+/** The primary button of a block declaration: "Done blocking", "One blocking", "2 blocking". */
+export function blockConfirmWords(n: number): string {
+  return n <= 0 ? 'Done blocking' : n === 1 ? 'One blocking' : `${n} blocking`;
+}
 
-export function selectionSummary(view: InputView, picked: { attackers: number; blockers: number }): SelectionSummary {
+/** The primary button of an attack declaration: "Done selecting", "One selected", "2 attackers". */
+export function attackConfirmWords(n: number): string {
+  return n <= 0 ? 'Done selecting' : n === 1 ? 'One selected' : `${n} attackers`;
+}
+
+export function selectionSummary(
+  view: InputView,
+  picked: { attackers: number; blockers: number },
+  /** The first click of a block gesture is down (blockPlan.ts `BlockPick`). */
+  armed: 'blocker' | 'attacker' | null = null,
+): SelectionSummary {
   if (!SELECTING.has(view.mode)) return { active: false, count: null, line: null, confirm: null };
   switch (view.mode) {
     case 'block': {
@@ -87,19 +106,20 @@ export function selectionSummary(view: InputView, picked: { attackers: number; b
       return {
         active: true,
         count: n,
-        // Forge's own flow (InputBlock, play/blockPlan.ts): attacker first, then the creature; the count is beside it.
-        line: BLOCK_HOW,
-        confirm: n > 0 ? 'Confirm blocks' : 'No blocks',
+        line:
+          armed === 'blocker'
+            ? BLOCK_ARMED
+            : armed === 'attacker'
+              ? BLOCK_ARMED_ATTACKER
+              : n > 0
+                ? `${n} blocker(s) assigned — click more or confirm`
+                : BLOCK_HOW,
+        confirm: blockConfirmWords(n),
       };
     }
     case 'attack': {
       const n = picked.attackers;
-      return {
-        active: true,
-        count: n,
-        line: n > 0 ? `${plural(n, 'attacker')} declared — click more or confirm` : 'Click creatures to attack with',
-        confirm: n > 0 ? `Attack with ${n}` : null,
-      };
+      return { active: true, count: n, line: ATTACK_HOW, confirm: attackConfirmWords(n) };
     }
     case 'pay':
       return { active: true, count: null, line: 'Tap lands to pay', confirm: null };
