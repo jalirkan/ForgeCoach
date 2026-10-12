@@ -1,0 +1,30 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r7",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "hand-c1-34",
+   "src": "comp/hand-in-c1.png",
+   "strength": 0.34,
+   "seeds": [
+    1701,
+    1702
+   ],
+   "prompt": "tempera painting, 15th century, detailed elegant hands holding a fan of cards, slender fingers with fine knuckles and fingernails, plain dark blue card backs with thin gold edges, red velvet sleeves, warm light from below, crisp delicate brushwork",
+   "negative": "card faces, pips, symbols, letters, numbers, text, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, soft focus, photo, 3d render"
+  },
+  {
+   "name": "hand-c2-34",
+   "src": "comp/hand-in-c2.png",
+   "strength": 0.34,
+   "seeds": [
+    1701,
+    1702
+   ],
+   "prompt": "tempera painting, 15th century, detailed elegant hands holding a fan of cards, slender fingers with fine knuckles and fingernails, plain dark blue card backs with thin gold edges, red velvet sleeves, warm light from below, crisp delicate brushwork",
+   "negative": "card faces, pips, symbols, letters, numbers, text, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, soft focus, photo, 3d render"
+  }
+ ]
+}

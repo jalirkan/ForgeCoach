@@ -1,0 +1,30 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r6",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "lamp-b50",
+   "src": "comp/lamp-in-b.png",
+   "strength": 0.5,
+   "seeds": [
+    1601,
+    1602
+   ],
+   "prompt": "tempera painting, 15th century, a glowing round glass lantern on a dark wooden table, warm candlelight shining inside a clear amber glass globe, gilded band, soft light on the table, delicate brushwork",
+   "negative": "text, letters, numbers, electric bulb, modern, metal ball, brass ball, planet, blurry, photo, 3d render, neon"
+  },
+  {
+   "name": "lamp-b62",
+   "src": "comp/lamp-in-b.png",
+   "strength": 0.62,
+   "seeds": [
+    1601,
+    1602
+   ],
+   "prompt": "tempera painting, 15th century, a glowing round glass lantern on a dark wooden table, warm candlelight shining inside a clear amber glass globe, gilded band, soft light on the table, delicate brushwork",
+   "negative": "text, letters, numbers, electric bulb, modern, metal ball, brass ball, planet, blurry, photo, 3d render, neon"
+  }
+ ]
+}

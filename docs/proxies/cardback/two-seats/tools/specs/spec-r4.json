@@ -1,0 +1,78 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r4",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "hand-a72",
+   "src": "comp/hand-in-a.png",
+   "strength": 0.72,
+   "seeds": [
+    1401,
+    1402,
+    1403,
+    1404
+   ],
+   "prompt": "tempera painting, 15th century, close-up of a person's hands holding a fan of cards, plain dark blue backs of the cards with thin gold edges, slender fingers wrapped around the cards, red velvet sleeves with fur cuffs, warm light from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, extra fingers, fused fingers, missing fingers, six fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hand-a80",
+   "src": "comp/hand-in-a.png",
+   "strength": 0.8,
+   "seeds": [
+    1401,
+    1402
+   ],
+   "prompt": "tempera painting, 15th century, close-up of a person's hands holding a fan of cards, plain dark blue backs of the cards with thin gold edges, slender fingers wrapped around the cards, red velvet sleeves with fur cuffs, warm light from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, extra fingers, fused fingers, missing fingers, six fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "face-b42",
+   "src": "comp/face-in-b.png",
+   "strength": 0.42,
+   "seeds": [
+    1411,
+    1412,
+    1413
+   ],
+   "prompt": "tempera painting, 15th century Italian panel portrait, calm young person in a red hood, eyelids lowered, looking down at the cards in their hands, serene gentle face, warm light from below, auburn hair, delicate brushwork",
+   "negative": "looking at viewer, staring, wide open eyes, closed eyes, sleeping, sallow skin, green skin, grey skin, wrinkles, beard, text, letters, blurry, photo, 3d render"
+  },
+  {
+   "name": "face-b50",
+   "src": "comp/face-in-b.png",
+   "strength": 0.5,
+   "seeds": [
+    1411,
+    1412,
+    1413
+   ],
+   "prompt": "tempera painting, 15th century Italian panel portrait, calm young person in a red hood, eyelids lowered, looking down at the cards in their hands, serene gentle face, warm light from below, auburn hair, delicate brushwork",
+   "negative": "looking at viewer, staring, wide open eyes, closed eyes, sleeping, sallow skin, green skin, grey skin, wrinkles, beard, text, letters, blurry, photo, 3d render"
+  },
+  {
+   "name": "lamp-a45",
+   "src": "comp/lamp-in-a.png",
+   "strength": 0.45,
+   "seeds": [
+    1421,
+    1422
+   ],
+   "prompt": "tempera painting, 15th century, a round glass globe lamp glowing with a warm golden flame inside, gilded band around the globe, on a dark wooden table, soft warm light, delicate brushwork",
+   "negative": "text, letters, numbers, electric bulb, modern, metal ball, brass ball, blurry, photo, 3d render, neon"
+  },
+  {
+   "name": "lamp-a55",
+   "src": "comp/lamp-in-a.png",
+   "strength": 0.55,
+   "seeds": [
+    1421,
+    1422
+   ],
+   "prompt": "tempera painting, 15th century, a round glass globe lamp glowing with a warm golden flame inside, gilded band around the globe, on a dark wooden table, soft warm light, delicate brushwork",
+   "negative": "text, letters, numbers, electric bulb, modern, metal ball, brass ball, blurry, photo, 3d render, neon"
+  }
+ ]
+}

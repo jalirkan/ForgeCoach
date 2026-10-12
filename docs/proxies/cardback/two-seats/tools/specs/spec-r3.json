@@ -1,0 +1,78 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r3",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "face-a50",
+   "src": "comp/face-in-a.png",
+   "strength": 0.5,
+   "seeds": [
+    1301,
+    1302,
+    1303
+   ],
+   "prompt": "tempera painting, 15th century Italian panel portrait, calm young person in a red hood, eyes lowered looking down, downcast eyes, serene gentle face, warm light from below, auburn hair, delicate brushwork",
+   "negative": "looking at viewer, staring, wide eyes, sallow skin, green skin, grey skin, wrinkles, beard, text, letters, blurry, photo, 3d render"
+  },
+  {
+   "name": "face-a60",
+   "src": "comp/face-in-a.png",
+   "strength": 0.6,
+   "seeds": [
+    1301,
+    1302,
+    1303
+   ],
+   "prompt": "tempera painting, 15th century Italian panel portrait, calm young person in a red hood, eyes lowered looking down, downcast eyes, serene gentle face, warm light from below, auburn hair, delicate brushwork",
+   "negative": "looking at viewer, staring, wide eyes, sallow skin, green skin, grey skin, wrinkles, beard, text, letters, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-a45",
+   "src": "comp/hands-in-a.png",
+   "strength": 0.45,
+   "seeds": [
+    1311,
+    1312
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two elegant hands holding a fanned hand of cards seen from the back, plain dark blue card backs with thin gold edges, slender fingers, red velvet sleeves with fur cuffs, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, symbols, letters, numbers, text, writing, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-a55",
+   "src": "comp/hands-in-a.png",
+   "strength": 0.55,
+   "seeds": [
+    1311,
+    1312
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two elegant hands holding a fanned hand of cards seen from the back, plain dark blue card backs with thin gold edges, slender fingers, red velvet sleeves with fur cuffs, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, symbols, letters, numbers, text, writing, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-cn65",
+   "src": "comp/hands-in-a.png",
+   "strength": 0.65,
+   "cn": 0.5,
+   "seeds": [
+    1311,
+    1312
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two elegant hands holding a fanned hand of cards seen from the back, plain dark blue card backs with thin gold edges, slender fingers, red velvet sleeves with fur cuffs, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, symbols, letters, numbers, text, writing, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-cn75",
+   "src": "comp/hands-in-a.png",
+   "strength": 0.75,
+   "cn": 0.6,
+   "seeds": [
+    1311,
+    1312
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two elegant hands holding a fanned hand of cards seen from the back, plain dark blue card backs with thin gold edges, slender fingers, red velvet sleeves with fur cuffs, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, symbols, letters, numbers, text, writing, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  }
+ ]
+}

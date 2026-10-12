@@ -1,0 +1,16 @@
+16:23:24 loaded Lykon/dreamshaper-xl-1-0 in 4s; 14 images
+16:24:25 face-a50 (1024, 1024) seed=1301 strength=0.5 cn=0 61s
+16:25:27 face-a50 (1024, 1024) seed=1302 strength=0.5 cn=0 62s
+16:26:29 face-a50 (1024, 1024) seed=1303 strength=0.5 cn=0 62s
+16:27:40 face-a60 (1024, 1024) seed=1301 strength=0.6 cn=0 72s
+16:28:52 face-a60 (1024, 1024) seed=1302 strength=0.6 cn=0 72s
+16:30:04 face-a60 (1024, 1024) seed=1303 strength=0.6 cn=0 72s
+16:31:07 hands-a45 (1216, 832) seed=1311 strength=0.45 cn=0 63s
+16:32:11 hands-a45 (1216, 832) seed=1312 strength=0.45 cn=0 63s
+16:33:26 hands-a55 (1216, 832) seed=1311 strength=0.55 cn=0 76s
+16:34:42 hands-a55 (1216, 832) seed=1312 strength=0.55 cn=0 75s
+16:36:57 hands-cn65 (1216, 832) seed=1311 strength=0.65 cn=0.5 135s
+16:39:09 hands-cn65 (1216, 832) seed=1312 strength=0.65 cn=0.5 132s
+16:41:45 hands-cn75 (1216, 832) seed=1311 strength=0.75 cn=0.6 157s
+16:44:23 hands-cn75 (1216, 832) seed=1312 strength=0.75 cn=0.6 158s
+16:44:23 total 1263s

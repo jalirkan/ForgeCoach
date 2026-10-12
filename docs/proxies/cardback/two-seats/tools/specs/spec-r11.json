@@ -1,0 +1,28 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r11",
+ "steps": 32,
+ "cfg": 5.5,
+ "jobs": [
+  {
+   "name": "u-c1blue2-24-L",
+   "src": "comp/c1-blue2-tile-L.png",
+   "strength": 0.24,
+   "seeds": [
+    1801
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player in a deep lapis blue wool cloak with fur trim, holding a fan of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure",
+   "negative": "text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon"
+  },
+  {
+   "name": "u-c1blue2-24-R",
+   "src": "comp/c1-blue2-tile-R.png",
+   "strength": 0.24,
+   "seeds": [
+    1801
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player in a deep lapis blue wool cloak with fur trim, holding a fan of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure",
+   "negative": "text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon"
+  }
+ ]
+}

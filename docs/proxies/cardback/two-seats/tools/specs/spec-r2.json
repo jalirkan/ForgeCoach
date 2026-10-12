@@ -1,0 +1,54 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r2",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "h68",
+   "strength": 0.68,
+   "seeds": [
+    1201,
+    1202
+   ],
+   "src": "guides/half-garnet.png",
+   "size": [
+    1216,
+    856
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player behind a table, garnet red cloak with fur-trimmed hood, calm young face looking down, hands holding a fan of cards seen from the back, plain dark blue card backs with gold edges, warm lamplight from below, tooled gold background",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, card faces, pips, hearts, spades, symbols on cards, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, anime, neon"
+  },
+  {
+   "name": "h78",
+   "strength": 0.78,
+   "seeds": [
+    1201,
+    1202
+   ],
+   "src": "guides/half-garnet.png",
+   "size": [
+    1216,
+    856
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player behind a table, garnet red cloak with fur-trimmed hood, calm young face looking down, hands holding a fan of cards seen from the back, plain dark blue card backs with gold edges, warm lamplight from below, tooled gold background",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, card faces, pips, hearts, spades, symbols on cards, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, anime, neon"
+  },
+  {
+   "name": "hcn85",
+   "strength": 0.85,
+   "cn": 0.5,
+   "seeds": [
+    1201,
+    1202
+   ],
+   "src": "guides/half-garnet.png",
+   "size": [
+    1216,
+    856
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player behind a table, garnet red cloak with fur-trimmed hood, calm young face looking down, hands holding a fan of cards seen from the back, plain dark blue card backs with gold edges, warm lamplight from below, tooled gold background",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, card faces, pips, hearts, spades, symbols on cards, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, anime, neon"
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r5",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "hands-b38",
+   "src": "comp/hands-in-b.png",
+   "strength": 0.38,
+   "seeds": [
+    1501,
+    1502,
+    1503
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two hands holding a fanned hand of cards seen from the back, plain dark blue card backs with thin gold edges, fingers curled around the edges of the cards, red velvet sleeves with fur cuffs, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-b46",
+   "src": "comp/hands-in-b.png",
+   "strength": 0.46,
+   "seeds": [
+    1501,
+    1502,
+    1503
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, two hands holding a fanned hand of cards seen from the back, plain dark blue card backs with thin gold edges, fingers curled around the edges of the cards, red velvet sleeves with fur cuffs, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  }
+ ]
+}

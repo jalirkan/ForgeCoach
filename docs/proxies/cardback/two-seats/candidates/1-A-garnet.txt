@@ -1,0 +1,40 @@
+1-A-garnet.jpg  Candidate 1 (A): the garnet final, as a JPEG.
+model: Lykon/dreamshaper-xl-1-0 (SDXL, fp16 UNet, madebyollin/sdxl-vae-fp16-fix), local, GTX 1080
+sampler: DPM++ 2M Karras (DPMSolverMultistep, dpmsolver++, karras sigmas), 32 steps scaled by strength;
+         head-sliced classic attention; every pass is img2img (no txt2img anywhere)
+size: 1500x2100 px at 600 dpi = 63.5 x 88.9 mm, 5:7 (Dragon Shield Sleeve Crafter, Standard); RGB
+geometry: the top half (1500x1052, seam at y = 1050) is painted; the bottom half is it turned 180 degrees
+passes, in order:
+- guide: tools/guide.py (tooled gold, the hooded figure with draped folds, a drawn face, hands, a seven-card fan, table, lamp)
+- the body (cloak, fur-trimmed hood, face, the painted hands, the gold ground and its floral border), over the guide: round r2, job h68, seed 1202, img2img strength 0.68 (21 of 32 steps), cfg 6.0, 1216x856
+    prompt: tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player behind a table, garnet red cloak with fur-trimmed hood, calm young face looking down, hands holding a fan of cards seen from the back, plain dark blue card backs with gold edges, warm lamplight from below, tooled gold background
+    negative: text, letters, words, writing, signature, watermark, logo, numbers, card faces, pips, hearts, spades, symbols on cards, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, anime, neon
+- the fan: tools/fan.py drew seven plain dark card backs with a thin gilt edge BEHIND the painting's own hands (the model had painted them holding a book), pivot (757, 880), card length 262 px, angles -36..36 by 12; the hands laid back on top by a skin mask
+- face, first repaint (crop 590,302-910,622 at 3.2x, 1024x1024): round r3, job face-a50, seed 1302, img2img strength 0.5 (16 of 32 steps), cfg 6.0, 1024x1024
+    prompt: tempera painting, 15th century Italian panel portrait, calm young person in a red hood, eyes lowered looking down, downcast eyes, serene gentle face, warm light from below, auburn hair, delicate brushwork
+    negative: looking at viewer, staring, wide eyes, sallow skin, green skin, grey skin, wrinkles, beard, text, letters, blurry, photo, 3d render
+- eyelids: lowered by a code paintover on that face (lids drawn down to a sliver of iris), so the eyes look at the cards
+- face, final repaint (same crop): round r4, job face-b50, seed 1412, img2img strength 0.5 (16 of 32 steps), cfg 6.0, 1024x1024
+    prompt: tempera painting, 15th century Italian panel portrait, calm young person in a red hood, eyelids lowered, looking down at the cards in their hands, serene gentle face, warm light from below, auburn hair, delicate brushwork
+    negative: looking at viewer, staring, wide open eyes, closed eyes, sleeping, sallow skin, green skin, grey skin, wrinkles, beard, text, letters, blurry, photo, 3d render
+- hands and fan repaint (crop 470,580-1030,963 at 2.17x): round r5, job hands-b46, seed 1501, img2img strength 0.46 (14 of 32 steps), cfg 6.0, 1216x832
+    prompt: tempera painting on gold leaf, 15th century, two hands holding a fanned hand of cards seen from the back, plain dark blue card backs with thin gold edges, fingers curled around the edges of the cards, red velvet sleeves with fur cuffs, warm lamplight from below, delicate brushwork
+    negative: card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render
+- hands detail (crop 590,730-930,962 at 3x): round r7, job hand-c1-34, seed 1701, img2img strength 0.34 (10 of 32 steps), cfg 6.0, 1024x696
+    prompt: tempera painting, 15th century, detailed elegant hands holding a fan of cards, slender fingers with fine knuckles and fingernails, plain dark blue card backs with thin gold edges, red velvet sleeves, warm light from below, crisp delicate brushwork
+    negative: card faces, pips, symbols, letters, numbers, text, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, soft focus, photo, 3d render
+- table: tools/finish.py table (the board below the moulding redrawn as even walnut with the lamp's pool)
+- the lamp (tools/lamp.py: the whole card's centre, 360x360 px at 2.84x, over a drawn glowing globe); its top half pasted, so the lamp is symmetric by construction: round r6, job lamp-b62, seed 1601, img2img strength 0.62 (19 of 32 steps), cfg 6.0, 1024x1024
+    prompt: tempera painting, 15th century, a glowing round glass lantern on a dark wooden table, warm candlelight shining inside a clear amber glass globe, gilded band, soft light on the table, delicate brushwork
+    negative: text, letters, numbers, electric bulb, modern, metal ball, brass ball, planet, blurry, photo, 3d render, neon
+- light: tools/finish.py light (a warm light from the lamp, strongest on undersides: hands, the fan's foot, cuffs)
+- unifying pass, two overlapping 1024x1056 tiles at the sleeve's own resolution (L and R alike): round r8, job u-c1-24-L, seed 1801, img2img strength 0.24 (7 of 32 steps), cfg 5.5, 1024x1056
+    prompt: tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player in a garnet red cloak with fur trim, holding a fan of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure
+    negative: text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon
+- table repaint (the whole card's table band, 1408x384); only the board above the seam kept, not the lamp: round r10, job table-40, seed 1901, img2img strength 0.4 (12 of 32 steps), cfg 5.5, 1408x384
+    prompt: tempera painting, 15th century, a long polished walnut table top seen from above, rich wood grain, warm golden lamplight pooling in the middle, gilded edge moulding, delicate brushwork
+    negative: text, letters, numbers, cards, hands, people, objects, blurry, photo, 3d render, neon
+- compose: tools/compose.py: face and hands taken back from the lit half (the unifying pass softens them); the frame's right side zone mirrored from the left below y 200 so each side band meets its own turned twin; the bottom rows above the seam eased; the bottom half the top turned; unsharp mask r2.0 40%; chroma above 140 compressed; dark floor 22 (not needed)
+darkest areas (luminance blurred ~0.5 mm): 0.5th percentile 37.5, 5th percentile 42.9 (floor asked for: 22); darkest single pixel 15
+saturation x value, 99.5th percentile: 150/255 (chroma above 140 compressed x0.35)
+180-degree symmetry: NOT exact

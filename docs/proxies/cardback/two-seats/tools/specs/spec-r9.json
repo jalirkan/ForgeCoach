@@ -1,0 +1,48 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r9",
+ "steps": 32,
+ "cfg": 5.5,
+ "jobs": [
+  {
+   "name": "u-c1green-24-L",
+   "src": "comp/c1-green-tile-L.png",
+   "strength": 0.24,
+   "seeds": [
+    1801
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player in a deep bottle green wool cloak with fur trim, holding a fan of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure",
+   "negative": "text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon"
+  },
+  {
+   "name": "u-c1green-24-R",
+   "src": "comp/c1-green-tile-R.png",
+   "strength": 0.24,
+   "seeds": [
+    1801
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player in a deep bottle green wool cloak with fur trim, holding a fan of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure",
+   "negative": "text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon"
+  },
+  {
+   "name": "u-c1blue-24-L",
+   "src": "comp/c1-blue-tile-L.png",
+   "strength": 0.24,
+   "seeds": [
+    1801
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player in a deep lapis blue wool cloak with fur trim, holding a fan of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure",
+   "negative": "text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon"
+  },
+  {
+   "name": "u-c1blue-24-R",
+   "src": "comp/c1-blue-tile-R.png",
+   "strength": 0.24,
+   "seeds": [
+    1801
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century Italian painted playing card, hooded card player in a deep lapis blue wool cloak with fur trim, holding a fan of plain dark blue cards, glowing glass lamp on a dark wooden table, warm lamplight, tooled gold ground, painted border, delicate brushwork, fine craquelure",
+   "negative": "text, letters, words, writing, signature, watermark, numbers, card faces, pips, symbols, deformed hands, extra fingers, blurry, photo, 3d render, neon"
+  }
+ ]
+}

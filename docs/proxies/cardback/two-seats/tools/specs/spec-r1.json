@@ -1,0 +1,9 @@
+{"model": "dreamshaper", "out": "raw/r1", "steps": 32, "cfg": 6.0,
+ "jobs": [
+  {"name": "half-garnet-55", "src": "guides/half-garnet.png", "size": [1216, 856], "strength": 0.55, "seeds": [1101, 1102, 1103, 1104],
+   "prompt": "egg tempera painting on a gold leaf panel, 15th century Italian painted playing card, a hooded card player seen half-length behind a table, deep garnet red wool cloak with dark fur-trimmed hood, calm young face looking down at the cards, both hands holding a fanned hand of cards seen from the back, plain dark blue card backs with thin gold edges, a round glowing glass lamp on the table lights the hands and face from below, tooled gold background, delicate brushwork, muted colours",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, inscription, card faces, pips, hearts, spades, symbols on cards, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, cgi, anime, neon"},
+  {"name": "half-garnet-65", "src": "guides/half-garnet.png", "size": [1216, 856], "strength": 0.65, "seeds": [1101, 1102, 1103, 1104],
+   "prompt": "egg tempera painting on a gold leaf panel, 15th century Italian painted playing card, a hooded card player seen half-length behind a table, deep garnet red wool cloak with dark fur-trimmed hood, calm young face looking down at the cards, both hands holding a fanned hand of cards seen from the back, plain dark blue card backs with thin gold edges, a round glowing glass lamp on the table lights the hands and face from below, tooled gold background, delicate brushwork, muted colours",
+   "negative": "text, letters, words, writing, signature, watermark, logo, numbers, inscription, card faces, pips, hearts, spades, symbols on cards, monk, priest, nun, halo, deformed hands, extra fingers, fused fingers, blurry, photo, 3d render, cgi, anime, neon"}
+ ]}
