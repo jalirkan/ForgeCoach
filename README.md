@@ -64,6 +64,15 @@ and your API key, logs and deck guides stay in your browser.
 3. Open ForgeCoach and click **Play vs Bot**. The engine address can be
    changed there if you use another port.
 
+Under the tiles, the table asks for **your deck**, **the bot's deck** and the
+opponent. *As the engine has them* plays the decks the engine last played.
+Your deck can also be your Draft vs Bot deck, the best build of a pool saved
+in Draft & build, or a fresh deck from any cube (a draft between two drafting
+bots, then the best build). The bot's deck can be a fresh cube deck, its deck
+from your Draft vs Bot, or one of your pools; its list is never shown. Play
+then builds both and starts the engine on them through the match launcher
+(10–20 seconds).
+
 Browser notes, because the page is `https://` and the engine is on your machine:
 
 - **Chrome / Edge** ask *"Allow jalirkan.github.io to access apps and services

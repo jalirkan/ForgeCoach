@@ -15,6 +15,7 @@ import { LobbyTiles, lobbyTiles } from './LobbyTiles.tsx';
 import { DEFAULT_LIVE_URL, FALLBACK_LIVE_URL } from '../live.ts';
 import { redactSeatUrl, type SeatStatus } from '../play/session.ts';
 import { PlayPolicyPicker, PlayProfilePicker, usePlayChoices } from './PlayProfile.tsx';
+import { TableDeckPicker } from './TableDecks.tsx';
 import { IconArrowRight, IconBroadcast, IconCheck, IconChevronDown, IconChevronLeft, IconCopy, IconFile, IconGear, IconPlay, IconUpload } from './Icons.tsx';
 import { copyText, cx } from './util.ts';
 import { Logo } from './Logo.tsx';
@@ -57,6 +58,8 @@ export interface PlayStatus {
   attempts: number;
   /** POST /engine/start is waking a sleeping engine (D308) before the seat connects. */
   waking?: boolean;
+  /** The table's chosen decks are being built and the engine started on them (POST /match). */
+  startingDecks?: boolean;
 }
 
 function portArg(url: string): string {
@@ -91,6 +94,7 @@ function CopyCmd({ cmd }: { cmd: string }) {
 /** What the seat status means, in words (never showing the pairing token). */
 function seatStatusText(play: PlayStatus | null, url: string): string | null {
   if (!play) return null;
+  if (play.startingDecks) return 'Starting the game on your decks…';
   if (play.waking) return 'Waking the engine…';
   if (play.status === 'open') return 'Connected — waiting for the engine to deal…';
   if (play.status === 'connecting' || play.status === 'idle') {
@@ -174,6 +178,7 @@ function EnginePanel({
         ) : null}
       </div>
       <SeatStatusBox play={play} url={url} />
+      {choices.match && <TableDeckPicker disabled={busy} />}
       {choices.policies.length > 0 && <PlayPolicyPicker policies={choices.policies} disabled={busy} />}
       {choices.profile && <PlayProfilePicker disabled={busy} />}
       {!engineServed && (
@@ -266,6 +271,7 @@ function EngineConnect({
               : 'The engine on your computer served this page. You play from here; the coach is one tap away.'}
           </p>
           <SeatStatusBox play={play} url={seatUrl} />
+          {choices.match && !busy && <TableDeckPicker />}
           {choices.policies.length > 0 && !busy && <PlayPolicyPicker policies={choices.policies} />}
           {choices.profile && !busy && <PlayProfilePicker />}
           {busy ? (
