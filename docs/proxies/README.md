@@ -12,6 +12,30 @@ These are playtest copies for playing at home with friends. Never sell them or t
 
 The Vintage Cube's 180 cards on S33 stock should cost about **$45–60 plus about $15 US shipping**. That works out to about **$0.35 a card**, well under the $1 budget. Delivery takes about two to three weeks.
 
+## Test print first: 18 cards
+
+Before the 612, print [`test-order-18.txt`](test-order-18.txt). That's MPC's smallest bracket, so 18 cards cost the same as 10. Run it through the same steps as the full order (Autofill → XML → desktop tool → MPC), with the shared proxy back.
+
+Each card is there to check one thing:
+
+| What to check | Cards |
+|---|---|
+| Dense rules text you need to read across a table | Jace, the Mind Sculptor; Emrakul; Urza's Saga; Oko |
+| Dark art (printers lose shadow detail) | Griselbrand; Sheoldred |
+| Light art | Swords to Plowshares; Moat |
+| Two-sided printing lines up, front to back | Fable of the Mirror-Breaker; Delver of Secrets |
+| Old frames (the Old School cards) | Juzám Djinn; Bazaar of Baghdad |
+| Lands, and the art style you picked in Autofill | Underground Sea; Scalding Tarn |
+| The iconic cards, for fun | Black Lotus; Ancestral Recall; Lightning Bolt; Mana Drain |
+
+When they arrive, check them in your sleeves next to a real Magic card:
+
+- **Feel:** shuffle them together. Is the stiffness close?
+- **Sizing:** is the cut centred? Uneven borders mean the art's safe area needs more room.
+- **Two-sided cards:** do the front and back line up?
+
+To compare stocks, order the same 18 a second time on M31 (linen).
+
 ## Order 2 (chosen 2026-10-12): the MTGO Vintage Cube, 570 cards (612 bracket)
 
 This replaces order 1 below. Instead of three small cubes picked in advance, print one big, well-known cube and build your 180-card cubes out of it later.
