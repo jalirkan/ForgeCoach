@@ -14,16 +14,16 @@
 
 ## What to do with Justin
 
-1. **Set up the tool.**
-   - Unzip it: `unzip ~/Downloads/autofill-linux.zip -d ~/mpc-autofill`, then `chmod +x` the program inside.
+1. **Set up the tool, without new folders.** Justin keeps his home directory organised, so don't create folders or move things without asking him.
+   - The zip is `/home/justin-a/Downloads/autofill-linux.zip`. Unzip it where it is, inside `~/Downloads`, and `chmod +x` the program.
    - Make sure Google Chrome is installed (`which google-chrome`). The tool drives Chrome, Edge or Brave through Selenium, and snap Chromium may not work with it.
    - Notes on the tool: https://github.com/chilli-axe/mpc-autofill/wiki/Desktop-Tool
 2. **Build the test order in Autofill.**
    - Open mpcfill.com (the same tool as mpcautofill.github.io), open the editor, and add cards as text: paste `test-order-18.txt`.
    - Set the stock to S33 and leave foil off.
-   - Check that it shows 18 cards, then Download → XML into `~/mpc-autofill`.
+   - Check that it shows 18 cards, then Download → XML. Save it next to the program in `~/Downloads`; the tool reads XML files from its own folder.
    - Autofill can't use a custom back, so skip the back here.
-3. **Run the tool.** From `~/mpc-autofill`, run the program and answer its prompts:
+3. **Run the tool.** From `~/Downloads`, run the program and answer its prompts:
    - browser: Chrome;
    - Create a new project;
    - sign in to MPC with Justin's email login. Google sign-in doesn't work in the automated browser.
