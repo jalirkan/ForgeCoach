@@ -76,7 +76,7 @@
  * the record of every frame a client sent (`received`) and every connection.
  *
  * Run it on its own to point a browser (or e2e/play.e2e.mjs) at it:
- *   node e2e/fake-engine.mjs [--port 8642] [--scene pregame|main3|graveyard|combat|blocks] [--drop-mode default|reask] [--playable] [--death-trigger] [--selection]
+ *   node e2e/fake-engine.mjs [--port 8642] [--scene pregame|main3|graveyard|combat|blocks|swarm|crowd] [--drop-mode default|reask] [--playable] [--death-trigger] [--selection]
  * with POST /control/drop, /control/restart[?scene=…], /control/reset[?scene=…]
  * and GET /control/log.
  */
@@ -228,6 +228,8 @@ class Game {
     if (scene === 'main3') this.sceneMain3();
     else if (scene === 'pregame') this.scenePregame();
     else if (scene === 'blocks') this.sceneBlocks();
+    else if (scene === 'swarm') this.sceneSwarm();
+    else if (scene === 'crowd') this.sceneCrowd();
   }
 
   make(name, owner, zone) {
@@ -372,7 +374,7 @@ class Game {
     let chosen = null;
     switch (pending?.kind) {
       case 'bottom':
-        chosen = { ...none, cardIds: pending.chosen === null ? [] : [pending.chosen] };
+        chosen = { ...none, cardIds: pending.chosen.slice() };
         break;
       case 'trigger':
         playerIds = [HUMAN, AI];
@@ -507,6 +509,51 @@ class Game {
     this.aiCombat();
   }
 
+  /**
+   * A wide combat (scene `swarm`): the AI attacks with eight (Goblin Guides, Hill Giants, a Storm Crow,
+   * Memnites) and you have eight untapped creatures to block with. On a phone the lanes hold more cards
+   * than the width: what the board does with a row too long to fit.
+   */
+  sceneSwarm() {
+    const me = this.players[HUMAN];
+    const ai = this.players[AI];
+    const put = (p, name) => p.battlefield.push(this.make(name, p.id, 'battlefield'));
+    for (let i = 0; i < 4; i++) put(me, 'Mountain');
+    for (const n of ['Memnite', 'Memnite', 'Raging Goblin', 'Raging Goblin', 'Hill Giant', 'Hill Giant', 'Goblin Guide', 'Memnite']) put(me, n);
+    for (let i = 0; i < 3; i++) put(ai, 'Mountain');
+    for (const n of ['Goblin Guide', 'Hill Giant', 'Storm Crow', 'Memnite', 'Goblin Guide', 'Hill Giant', 'Memnite', 'Goblin Guide']) put(ai, n);
+    this.draw(HUMAN, 3);
+    this.draw(AI, 4);
+    me.life = 20;
+    ai.life = 20;
+    this.turn = 2;
+    this.active = AI;
+    this.events = [{ kind: 'turn', player: AI, turn: 2 }];
+    this.aiCombat();
+  }
+
+  /**
+   * A crowded table (scene `crowd`): your first main with ten creatures ready to attack, six lands and a
+   * hand of twelve; the AI has ten creatures and three lands. Every row, the hand and (after Alpha Strike)
+   * the attack lane hold more cards than a phone's width.
+   */
+  sceneCrowd() {
+    const me = this.players[HUMAN];
+    const ai = this.players[AI];
+    const put = (p, name) => p.battlefield.push(this.make(name, p.id, 'battlefield'));
+    for (let i = 0; i < 6; i++) put(me, 'Mountain');
+    for (const n of ['Raging Goblin', 'Memnite', 'Hill Giant', 'Goblin Guide', 'Colossal Dreadmaw', 'Memnite', 'Raging Goblin', 'Hill Giant', 'Goblin Guide', 'Memnite']) put(me, n);
+    for (let i = 0; i < 3; i++) put(ai, 'Mountain');
+    for (const n of ['Memnite', 'Hill Giant', 'Storm Crow', 'Goblin Guide', 'Memnite', 'Hill Giant', 'Storm Crow', 'Goblin Guide', 'Memnite', 'Hill Giant']) put(ai, n);
+    for (const n of ['Shock', 'Mountain', 'Hill Giant', 'Memnite', 'Shock', 'Raging Goblin', 'Mountain', 'Hill Giant', 'Storm Crow', 'Colossal Dreadmaw', 'Shock', 'Memnite']) me.hand.push(this.make(n, HUMAN, 'hand'));
+    this.draw(AI, 5);
+    me.life = 20;
+    ai.life = 20;
+    this.turn = 3;
+    this.events = [];
+    this.startTurn(HUMAN, { draw: false, keepTurn: true });
+  }
+
   /** `main3`, with Cauldron Familiar in your graveyard. */
   sceneGraveyard() {
     const f = this.make('Cauldron Familiar', HUMAN, 'graveyard');
@@ -523,15 +570,27 @@ class Game {
     this.input(inputBody(text, button('Keep', true), button('Mulligan', true)), { kind: 'keep' });
   }
 
-  bottomPrompt(chosen = null) {
-    const me = this.players[HUMAN];
+  /**
+   * The London bottom as Forge 2.0.14 sends it through mtg-table (recorded at a real table, J109,
+   * 2026-10-08, and a real phone game, 2026-10-12): no card listed (`selectable.mode` "none"), OK off,
+   * Cancel "Auto" (Forge picks); a click on a hand card picks it (`highlighted`), again takes it back,
+   * and the prompt counts down what is left: at "Return 0 card(s)…" OK is on and Auto off, and OK ends it.
+   */
+  bottomPrompt(chosen = []) {
+    const left = Math.max(0, this.mulligans - chosen.length);
     this.input(
-      inputBody(`Return ${this.mulligans} card(s) to the bottom of your library`, button('OK', chosen !== null), button('Cancel', false), {
-        selectable: { cardIds: me.hand.map((c) => c.id), min: 1, max: 1, mode: 'cards' },
-        highlighted: chosen === null ? [] : [chosen],
+      inputBody(`Return ${left} card(s) to the bottom of your library`, button('OK', left === 0), button('Auto', left > 0), {
+        selectable: { cardIds: [], min: 0, max: 0, mode: 'none' },
+        highlighted: chosen.slice(),
       }),
       { kind: 'bottom', chosen },
     );
+  }
+
+  /** The bottom pick done: those cards go under the library, and the game starts. */
+  finishBottom(ids) {
+    for (const id of ids) this.move(this.find(id), 'library');
+    return this.startTurn(HUMAN, { draw: false });
   }
 
   // ---- turns
@@ -1057,12 +1116,14 @@ class Game {
         }
         break;
       case 'bottom':
-        if (a === 'clickCard' && this.players[HUMAN].hand.some((c) => c.id === body.cardId)) return this.bottomPrompt(p.chosen === body.cardId ? null : body.cardId);
-        if (a === 'buttonOk' && p.chosen !== null) {
-          const c = this.find(p.chosen);
-          this.move(c, 'library');
-          return this.startTurn(HUMAN, { draw: false });
+        if (a === 'clickCard' && this.players[HUMAN].hand.some((c) => c.id === body.cardId)) {
+          const chosen = p.chosen.includes(body.cardId) ? p.chosen.filter((id) => id !== body.cardId) : [...p.chosen, body.cardId];
+          if (chosen.length > this.mulligans) break; // Forge takes no more than it asks for
+          return this.bottomPrompt(chosen);
         }
+        if (a === 'buttonOk' && p.chosen.length === this.mulligans) return this.finishBottom(p.chosen);
+        // Auto: Forge picks (here the last cards of the hand).
+        if (a === 'buttonCancel' && p.chosen.length < this.mulligans) return this.finishBottom(this.players[HUMAN].hand.slice(-this.mulligans).map((c) => c.id));
         break;
       case 'priority':
         if (a === 'buttonCancel' && !this.stack.length && p.onEndTurn) return p.onEndTurn();
@@ -1245,6 +1306,8 @@ export class FakeEngine {
     else if (scene === 'graveyard') game.sceneGraveyard();
     else if (scene === 'combat') game.sceneCombat();
     else if (scene === 'blocks') game.sceneBlocks();
+    else if (scene === 'swarm') game.sceneSwarm();
+    else if (scene === 'crowd') game.sceneCrowd();
     else game.scenePregame();
   }
 

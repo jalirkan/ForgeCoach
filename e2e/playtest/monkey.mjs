@@ -34,6 +34,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const HAND_ZONES = new Set(['hand']);
 
+/** A prompt whose pick is a card in your own hand (as ForgeCoach's inputView HAND_PROMPT, less the discard it words itself). */
+export const HAND_PICK = /\b(bottom of your library|from your hand|in your hand)\b/i;
+
 function isCreature(c) {
   return !!c && !c.hidden && /creature/i.test(c.types ?? '');
 }
@@ -686,7 +689,8 @@ export class Monkey {
     if (!btns.length) return 'stuck';
     const i = this.tap.input;
     const mull = /^mulligan$/i.test(i.buttons.cancel.label.trim());
-    let pickCancel = this.rand() < 0.2;
+    // `mulliganFirst` (the fake playtest's pre-game games): always one mulligan, so the London bottom is played every run.
+    let pickCancel = this.rand() < 0.2 || (!!this.mulliganFirst && this.mulligans === 0);
     if (mull && this.mulligans >= 1) pickCancel = false;
     if (pickCancel && mull) this.mulligans++;
     const b = btns.find((x) => x.which === (pickCancel ? 'cancel' : 'ok')) ?? btns[0];
@@ -1041,8 +1045,15 @@ export class Monkey {
   /** A target the engine did not list: the board outlines players and cards a click may choose (§4.2). */
   async openTarget(dom) {
     const i = this.tap.input;
-    const players = dom.players.filter((p) => p.vis && p.select);
-    const cards = dom.cards.filter((c) => c.vis && !c.disabled && (c.mark === 'act' || c.mark === 'select') && c.where !== 'hand');
+    // A pick from your hand the engine does not list (Forge's London bottom, "…from your hand"): your hand cards
+    // are the answer and nothing else is (J109: the monkey looked only off the hand and clicked portraits, or,
+    // with M66's playerIds [], found nothing and called the bottom unreachable). Prefer a card not yet picked.
+    const handPick = HAND_PICK.test(i.prompt ?? '');
+    const players = handPick ? [] : dom.players.filter((p) => p.vis && p.select);
+    const marked = dom.cards.filter((c) => c.vis && !c.disabled && (c.mark === 'act' || c.mark === 'select') && (handPick ? c.where === 'hand' : c.where !== 'hand'));
+    const fresh = marked.filter((c) => !(i.highlighted ?? []).includes(c.id));
+    const cards = fresh.length ? fresh : marked;
+    if (handPick) this.count('rare', /bottom of your library/i.test(i.prompt) ? 'london-bottom' : 'hand-pick');
     if (!players.length && !cards.length) {
       // Forge ends a selection with one last update of the same prompt (the list emptied, every button off)
       // just before it moves on. J109 2.1: the cleanup discard, taken; the frames that moved the game on sat
@@ -1050,7 +1061,7 @@ export class Monkey {
       const open = () => this.tap.input === i && this.tap.deciding() && !this.tap.ask;
       await this.tap.until(() => !open(), 2000);
       if (!open()) return 'moved-on';
-      await this.unreachable(`a target with nothing named: no player or card offered to click — "${firstLine(i.prompt)}"`, { input: i });
+      await this.unreachable(handPick ? `a pick from your hand: no card in your hand offered to click — "${firstLine(i.prompt)}"` : `a target with nothing named: no player or card offered to click — "${firstLine(i.prompt)}"`, { input: i });
       return this.buttons(dom, 'open');
     }
     const wantPlayer = /player|opponent|any target/i.test(i.prompt) ? 0.7 : 0.2;

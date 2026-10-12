@@ -40,7 +40,12 @@
   box-shadow: -4px 4px 14px rgba(0, 0, 0, 0.4);
   -webkit-tap-highlight-color: transparent;
 }
-/* Touch: the tab is 30px wide; its target reaches 44px into the board. */
+/* Touch: the tab is 30px wide; its target reaches 44px into the board. A row that scrolls sideways under it
+   ends with that much room, so its last card can be scrolled clear of the tab (ui/cards.css). */
+.game.play.is-narrow .bf-cards[data-fade] {
+  padding-right: 52px;
+  scroll-padding-inline-end: 44px;
+}
 @media (pointer: coarse) {
   .log-tab-edge::after {
     inset: -6px 0 -6px -14px;

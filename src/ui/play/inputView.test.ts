@@ -497,6 +497,50 @@ describe('handNeeded', () => {
     // As Forge 2.0.14 sends it: no selection set, only the prompt (mtg-table, a real draft match).
     expect(handNeeded(ctxFor(pick('Return 1 card(s) to the bottom of your library', []), st))).toBe(true);
   });
+  it('the London bottom as Forge 2.0.14 sends it: the hand is the control, never a portrait or the battlefield', () => {
+    // Copied from a real match's frames (J109, 2026-10-08): no card listed, OK off, Cancel "Auto", M66 playerIds [].
+    const st = state({ turn: 0, round: 0, phase: null, activePlayer: null, priority: null });
+    for (const playerIds of [undefined, []]) {
+      const i = input('Return 1 card(s) to the bottom of your library', {
+        buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Auto', enabled: true }, focus: 'ok' },
+        selectable: { cardIds: [], min: 0, max: 0, mode: 'none', ...(playerIds ? { playerIds } : {}) } as InputBody['selectable'],
+      });
+      const c = ctxFor(i, st);
+      expect(c.view.mode).toBe('target');
+      expect(c.view.title).toBe('Put a card on the bottom');
+      expect(c.view.detail).toContain('in your hand');
+      expect(c.view.cancel.meaning).toBe('engine picks');
+      expect(c.view.clickWhat).toBe('card');
+      expect(c.view.fromHand).toBe(true);
+      expect(playerClickable(c)).toBe(false);
+      expect(playerClickable(c, ME)).toBe(false);
+      const me = st.players[0]!;
+      for (const h of me.zones.hand.cards) expect(cardRole(h, c)).toBe('act');
+      for (const b of me.zones.battlefield.cards) expect(cardRole(b, c)).toBeNull();
+      expect(handNeeded(c)).toBe(true);
+    }
+    const two = describeInput(input('Return 2 card(s) to the bottom of your library', { buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Auto', enabled: true } } }), st, ME);
+    expect(two.title).toBe('Put 2 cards on the bottom');
+    // Then Forge counts down to "Return 0" with OK on (a real game, 2026-10-12): confirm, or tap to take it back.
+    const done = input('Return 0 card(s) to the bottom of your library', { buttons: { ok: { label: 'OK', enabled: true }, cancel: { label: 'Auto', enabled: false }, focus: 'ok' }, highlighted: [1] });
+    const d = ctxFor(done, st);
+    expect(d.view.title).toBe('Put it on the bottom');
+    expect(d.view.primary).toBe('ok');
+    expect(d.view.ok.meaning).toBe('confirm');
+    expect(d.view.fromHand).toBe(true);
+    expect(cardRole(st.players[0]!.zones.hand.cards[0]!, d)).toBe('act');
+    expect(cardRole(st.players[0]!.zones.battlefield.cards[0]!, d)).toBeNull();
+    expect(playerClickable(d)).toBe(false);
+  });
+  it('any unlisted pick "from your hand" outlines only your hand', () => {
+    const i = input('Brainstorm - Select a card from your hand to put on top of your library', { buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: false } } });
+    const c = ctxFor(i);
+    expect(c.view.fromHand).toBe(true);
+    expect(c.view.clickWhat).toBe('card');
+    expect(playerClickable(c)).toBe(false);
+    expect(cardRole(c.state.players[0]!.zones.hand.cards[0]!, c)).toBe('act');
+    expect(cardRole(c.state.players[0]!.zones.battlefield.cards[0]!, c)).toBeNull();
+  });
   it('keeps it folded for an unscoped board target', () => {
     expect(handNeeded(ctxFor(pick('Select any target', [])))).toBe(false);
   });

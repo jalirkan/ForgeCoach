@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import { describe, expect, it } from 'vitest';
-import { CARD_RATIO, edgeFade, PHONE_FIT, phoneCardWidth, phoneSideFit } from './boardFit.ts';
+import { CARD_RATIO, edgeCounts, edgeFade, PHONE_FIT, phoneCardWidth, phoneSideFit } from './boardFit.ts';
 
 describe('phoneSideFit', () => {
   it('counts a lands row as landK of a creature row', () => {
@@ -63,5 +63,18 @@ describe('edgeFade', () => {
   });
   it('ignores sub-pixel rounding', () => {
     expect(edgeFade(0.5, 300, 301)).toBe('');
+  });
+});
+
+describe('edgeCounts', () => {
+  const cols = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({ left: i * 60, right: i * 60 + 50 }));
+  it('counts the columns past each edge, a partly hidden one included', () => {
+    expect(edgeCounts(0, 480, cols)).toEqual({ before: 0, after: 0 });
+    expect(edgeCounts(0, 300, cols)).toEqual({ before: 0, after: 3 });
+    expect(edgeCounts(0, 280, cols)).toEqual({ before: 0, after: 4 });
+    expect(edgeCounts(130, 430, cols)).toEqual({ before: 3, after: 1 });
+  });
+  it('a column cut by a pixel or two is in view', () => {
+    expect(edgeCounts(1, 302, cols)).toEqual({ before: 0, after: 3 });
   });
 });

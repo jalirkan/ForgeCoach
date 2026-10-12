@@ -268,6 +268,179 @@ async function blockDeclaration({ page, engine, app }) {
   await engine.waitFor(() => engine.game.players[0].graveyard.some((c) => c.name === 'Memnite'), 'Memnite died blocking');
 }
 
+/** The combat lanes' cards, chips and ×s. */
+const LANE_ITEMS = '[data-combat-lane] .tile, [data-combat-lane] .lane-chip, [data-combat-lane] .lane-unblock';
+/** Every card on the table and in the hand, and the stack's items. */
+const BOARD_ITEMS = '.battlefield .tile, .hand-dock .tile, [data-stack-item]';
+
+/**
+ * Whatever of `sel` would be cut off: each item is brought into view as a player would (scrolling its row,
+ * then the board) and must then lie wholly inside the window and inside every box that clips it, and a
+ * card must be what a tap at its centre reaches (itself, or a card it is fanned or piled with — never a
+ * chip, the dock or the panel). A row that scrolls sideways must say so: a lane by `data-lane-more`, a row
+ * by its edge fade (`data-fade`). Returns the problems, [] when none.
+ */
+async function clipped(page, sel = LANE_ITEMS) {
+  return page.evaluate(async (sel) => {
+    // Cards still sliding into a lane (laneMotion) are judged where they land.
+    await Promise.all(document.getAnimations().filter((a) => Number.isFinite(a.effect?.getComputedTiming().endTime)).map((a) => a.finished.catch(() => {})));
+    const out = [];
+    const clippers = (el) => {
+      const r = [];
+      for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+        const st = getComputedStyle(a);
+        if (st.overflowX !== 'visible' || st.overflowY !== 'visible') r.push(a);
+      }
+      return r;
+    };
+    const tol = 1.5;
+    const inside = (r, b) => r.left >= b.left - tol && r.right <= b.right + tol && r.top >= b.top - tol && r.bottom <= b.bottom + tol;
+    const win = () => ({ left: 0, top: 0, right: innerWidth, bottom: innerHeight });
+    const box = (r) => `${Math.round(r.left)},${Math.round(r.top)} → ${Math.round(r.right)},${Math.round(r.bottom)}`;
+    const name = (el) => el.closest('[data-card-id]')?.getAttribute('data-card-id') ?? el.getAttribute('data-stack-item') ?? el.className;
+    const settle = () => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+    for (const el of document.querySelectorAll(sel)) {
+      // A card face drawn under another one in a pile, or a folded hand: not a place a player taps.
+      if (el.closest('[aria-hidden="true"]') || el.closest('.hand-dock.is-collapsed')) continue;
+      const what = `${el.classList.contains('tile') ? 'card' : String(el.className).split(' ')[0]} ${name(el)}`;
+      // Scrolled to as a player would: the nearest way first; a row that snaps may need its start or end.
+      let problem = null;
+      for (const inline of ['nearest', 'start', 'end', 'center']) {
+        el.scrollIntoView({ block: 'nearest', inline });
+        await settle();
+        const r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) {
+          problem = `${what} has no size`;
+          break;
+        }
+        const cut = clippers(el).find((c) => !inside(r, c.getBoundingClientRect()));
+        if (!inside(r, win())) problem = `${what} is outside the window (${box(r)})`;
+        else if (cut) problem = `${what} is cut off by .${String(cut.className).split(' ')[0]} (${box(r)} in ${box(cut.getBoundingClientRect())})`;
+        // A held hand overlaps by design (a hover lifts the card): only the table's cards are tapped where they lie.
+        else if (el.classList.contains('tile') && !el.closest('.hand-dock')) {
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          const row = el.closest('[data-combat-lane], .bf-cards, .battlefield');
+          problem = !hit || !(el.contains(hit) || (hit.closest('.tile') && row && row.contains(hit))) ? `${what}: a tap at its centre reaches ${hit ? `.${String(hit.className).split(' ')[0]}` : 'nothing'}` : null;
+        } else problem = null;
+        if (!problem) break;
+      }
+      if (problem) out.push(problem);
+    }
+    for (const row of document.querySelectorAll('[data-combat-lane] .lane-cols, .bf-cards')) {
+      if (row.scrollWidth <= row.clientWidth + 1 || getComputedStyle(row).overflowX === 'visible') continue;
+      const lane = row.closest('[data-combat-lane]');
+      const said = lane ? lane.hasAttribute('data-lane-more') : row.hasAttribute('data-fade');
+      if (!said) out.push(`${lane ? `the ${lane.getAttribute('data-combat-lane')} lane` : 'a row'} scrolls sideways with nothing saying so`);
+    }
+    if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`the page scrolls sideways (${document.documentElement.scrollWidth} > ${innerWidth})`);
+    return out;
+  }, sel);
+}
+const laneClipping = (page) => clipped(page, LANE_ITEMS);
+
+/**
+ * Eight attackers and eight blockers (scene `swarm`) at `viewport`: every attacker takes a block (but the
+ * flyer), and at each step nothing in either lane is clipped; the columns of the two lanes stay in line.
+ */
+function wideCombat(viewport, shot) {
+  return async ({ page, engine, app }) => {
+    await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+    await page.locator('.game.play.mode-block').waitFor({ timeout: STEP_MS });
+    const cols = page.locator('.player-top [data-combat-lane="attack"] [data-lane-col]');
+    await cols.nth(7).waitFor({ timeout: STEP_MS });
+    // Collected, not thrown at once: the screenshot of the whole combat comes first.
+    const problems = (await laneClipping(page)).map((p) => `eight attackers at ${viewport}: ${p}`);
+    const attackers = engine.game.attackers.slice();
+    const mineFree = engine.game.players[0].battlefield.filter((c) => c.name !== 'Mountain').map((c) => c.id);
+    const tap = async (id) => {
+      const el = page.locator(`.battlefield .tile[data-card-id="${id}"]`).first();
+      await el.scrollIntoViewIfNeeded({ timeout: STEP_MS });
+      await el.click({ timeout: STEP_MS });
+      await page.mouse.move(2, 2).catch(() => {});
+    };
+    let k = 0;
+    for (const a of attackers) {
+      const att = engine.game.players[1].battlefield.find((c) => c.id === a);
+      if (att?.name === 'Storm Crow') continue;
+      const b = mineFree[k++];
+      if (engine.game.currentAttacker !== a) {
+        await tap(a);
+        await engine.waitFor(() => engine.game.currentAttacker === a, `attacker ${a} named`);
+      }
+      await tap(b);
+      await engine.waitFor(() => (engine.game.blocks.get(a) ?? []).includes(b), `${b} blocking ${a}`);
+      await page.locator(`.player-me [data-combat-lane="block"] [data-blocks="${a}"] .tile[data-card-id="${b}"]`).waitFor({ timeout: STEP_MS });
+    }
+    // A second blocker on the last attacker: a fan in a lane already full.
+    const last = attackers.at(-1);
+    await tap(last);
+    await engine.waitFor(() => engine.game.currentAttacker === last, 'the last attacker named again');
+    await tap(mineFree[k]);
+    await engine.waitFor(() => (engine.game.blocks.get(last) ?? []).length === 2, 'two blockers on the last attacker');
+    await page.locator(`.player-me [data-combat-lane="block"] [data-blocks="${last}"] .tile[data-card-id="${mineFree[k]}"]`).waitFor({ timeout: STEP_MS });
+    await page.evaluate(() => document.querySelectorAll('[data-combat-lane] .lane-cols').forEach((l) => (l.scrollLeft = 0)));
+    if (shot) {
+      mkdirSync(path.dirname(shot), { recursive: true });
+      await page.evaluate(() => document.querySelector('.player-top [data-combat-lane]')?.scrollIntoView({ block: 'center' }));
+      await page.screenshot({ path: shot });
+    }
+    problems.push(...(await laneClipping(page)).map((p) => `eight attackers blocked at ${viewport}: ${p}`));
+    // The columns line up across the centre line: each blocker's column starts where its attacker's does.
+    const drift = await page.evaluate(() => {
+      const top = document.querySelector('.player-top [data-combat-lane="attack"] .lane-cols');
+      const me = document.querySelector('.player-me [data-combat-lane="block"] .lane-cols');
+      const out = [];
+      for (const s of [0, 1e6]) {
+        top.scrollLeft = s;
+        me.scrollLeft = s;
+        // a lane follows the other's scroll (one gesture moves both)
+        top.dispatchEvent(new Event('scroll'));
+        for (const col of me.querySelectorAll('[data-lane-col]')) {
+          const a = top.querySelector(`[data-lane-col="${col.getAttribute('data-lane-col')}"]`);
+          if (!a) continue;
+          const d = Math.abs(a.getBoundingClientRect().left - col.getBoundingClientRect().left);
+          if (d > 2) out.push(`column ${col.getAttribute('data-lane-col')} is ${Math.round(d)} px off its attacker`);
+        }
+      }
+      return out;
+    });
+    problems.push(...drift);
+    check(!problems.length, [...new Set(problems)].slice(0, 12).join('\n'));
+    // The engine still decides: Confirm blocks goes as the engine's OK.
+    await page.locator('[data-engine-button="ok"]').first().click({ timeout: STEP_MS });
+    await engine.waitFor(() => engine.acts().some((a) => a.action === 'buttonOk'), 'the blocks confirmed');
+  };
+}
+
+/**
+ * A crowded table (scene `crowd`) at `viewport`: ten creatures a side, six lands, a hand of twelve. Every
+ * card on the table and in the hand can be brought into view whole; then Alpha Strike sends all ten into
+ * your attack lane, and nothing there is cut off either.
+ */
+function crowdedTable(viewport, shot) {
+  return async ({ page, engine, app }) => {
+    await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+    await page.locator('.game.play.mode-main').waitFor({ timeout: STEP_MS });
+    await page.waitForTimeout(300);
+    if (await page.locator('.hand-dock.is-collapsed').count()) await page.locator('.hand-dock-head').click();
+    const problems = (await clipped(page, BOARD_ITEMS)).map((p) => `the table at ${viewport}: ${p}`);
+    // To combat, then Alpha Strike: all ten attack.
+    await page.locator('[data-engine-button="ok"]').first().click({ timeout: STEP_MS });
+    await page.locator('.game.play.mode-attack').waitFor({ timeout: STEP_MS });
+    await page.locator('[data-engine-button="cancel"]', { hasText: /alpha/i }).first().click({ timeout: STEP_MS });
+    await engine.waitFor(() => engine.game.attackers.length === 10, 'ten attackers');
+    await page.locator('.player-me [data-combat-lane="attack"] [data-lane-col]').nth(9).waitFor({ timeout: STEP_MS });
+    await page.evaluate(() => document.querySelectorAll('[data-combat-lane] .lane-cols').forEach((l) => (l.scrollLeft = 0)));
+    if (shot) {
+      mkdirSync(path.dirname(shot), { recursive: true });
+      await page.evaluate(() => document.querySelector('.player-me [data-combat-lane]')?.scrollIntoView({ block: 'center' }));
+      await page.screenshot({ path: shot });
+    }
+    problems.push(...(await clipped(page, LANE_ITEMS)).map((p) => `ten attackers at ${viewport}: ${p}`));
+    check(!problems.length, [...new Set(problems)].slice(0, 12).join('\n'));
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Scenarios
 
@@ -284,9 +457,14 @@ const scenarios = [
       await sent(engine, 'buttonCancel', () => u.opening('Mulligan'));
       await engine.waitFor(() => engine.game.mulligans === 1, 'the mulligan');
       await sent(engine, 'buttonOk', () => u.opening('Keep'));
+      // As Forge sends it: no card listed, OK off, Cancel "Auto"; the hand is the control, and once the card is
+      // picked Forge counts down to "Return 0" with OK on. The portraits must not glow (a player is no answer here).
       await u.mode('target');
+      check((await page.locator('.ab-title-text').innerText()).includes('Put a card on the bottom'), 'the bottom pick is worded');
+      check((await page.locator('[data-player-id].is-select').count()) === 0, 'no portrait is offered for the bottom pick');
       await sent(engine, 'clickCard', () => u.click(mine(engine, 'Hill Giant')));
       await page.locator('.actionbar [data-engine-button="ok"]:not([disabled])').waitFor({ timeout: STEP_MS });
+      check((await page.locator('.ab-title-text').innerText()).includes('Put it on the bottom'), 'the pick waits for a confirm');
       await sent(engine, 'buttonOk', () => u.ok());
 
       // Round 1: Mountain, Raging Goblin (pay Auto), pass to resolve it, Memnite, attack with the Goblin.
@@ -565,6 +743,39 @@ const scenarios = [
   },
 
   {
+    name: 'a phone (390×844): eight attackers and their blockers, nothing in the combat lanes cut off',
+    engine: { scene: 'swarm', selection: true },
+    context: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    run: wideCombat('390×844', env.LANE_SHOT ? path.join(ROOT, env.LANE_SHOT) : null),
+  },
+
+  {
+    name: 'a desktop (1440×900): eight attackers and their blockers, nothing in the combat lanes cut off',
+    engine: { scene: 'swarm' },
+    run: wideCombat('1440×900', env.LANE_SHOT_DESKTOP ? path.join(ROOT, env.LANE_SHOT_DESKTOP) : null),
+  },
+
+  {
+    name: 'a phone (390×844): a crowded table — every card in reach, ten attackers in the lane',
+    engine: { scene: 'crowd' },
+    context: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+    run: crowdedTable('390×844', env.CROWD_SHOT ? path.join(ROOT, env.CROWD_SHOT) : null),
+  },
+
+  {
+    name: 'a tablet (820×1180): a crowded table — every card in reach, ten attackers in the lane',
+    engine: { scene: 'crowd' },
+    context: { viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true },
+    run: crowdedTable('820×1180', null),
+  },
+
+  {
+    name: 'a desktop (1440×900): a crowded table — every card in reach, ten attackers in the lane',
+    engine: { scene: 'crowd' },
+    run: crowdedTable('1440×900', null),
+  },
+
+  {
     name: 'an engine since M64–M66: Until they act [Y] lights and stops; the defender glows; the engine’s own count of attackers',
     engine: { scene: 'main3', selection: true },
     async run({ page, engine, app }) {
@@ -784,7 +995,7 @@ scenarios.push(hintScenario);
 async function runOne(browser, app, s, round) {
   const engine = await startFakeEngine({ ...(s.engine ?? {}), verbose: VERBOSE });
   const appOrigin = new URL(app).origin;
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const context = await browser.newContext(s.context ?? { viewport: { width: 1440, height: 900 } });
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: appOrigin });
   await isolate(context, appOrigin, s.helper ? s.helper(engine) : null);
   const page = await context.newPage();

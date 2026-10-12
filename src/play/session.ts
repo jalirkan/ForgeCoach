@@ -111,6 +111,12 @@ export interface PlaySnapshot {
   input: InputBody | null;
   /** The seq of the frame that brought `input` (0: none, or a seq-0 re-emit): the board shows it as `data-input-seq` for the playtest. */
   inputSeq: number;
+  /**
+   * The highest seq of any frame this game that the board has taken (0: none). The board shows it as
+   * `data-frame-seq`, so the playtest's hidden-information check can judge the page by the frames it
+   * had drawn, not by a set of public names read a frame earlier or later.
+   */
+  frameSeq: number;
   /** The open blocking question, if any. Exactly one answer per ask. */
   ask: AskBody | null;
   over: OverBody | null;
@@ -286,6 +292,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
   // an older state or input must not replace a newer one on screen.
   let stateSeq = 0;
   let inputSeq = 0;
+  let frameSeq = 0;
   let ask: AskBody | null = null;
   let over: OverBody | null = null;
   let inputSeen = false;
@@ -343,6 +350,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     state,
     input,
     inputSeq,
+    frameSeq,
     ask,
     over,
     seat: hello?.you ?? null,
@@ -398,6 +406,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
     input = null;
     stateSeq = 0;
     inputSeq = 0;
+    frameSeq = 0;
     ask = null;
     over = null;
     inputSeen = false;
@@ -476,6 +485,7 @@ export function connectSeat(url: string = DEFAULT_SEAT_URL, opts: SeatOptions = 
       default:
         break;
     }
+    if (f.seq > frameSeq) frameSeq = f.seq;
     // seq 0 (pong, refusal, dropped-frame notices) and verbatim re-deliveries
     // are skipped by the builder, exactly as live.ts follows a game.
     logFrame({ ...f, dir: 's2c' });
