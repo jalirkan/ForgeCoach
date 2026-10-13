@@ -1,0 +1,26 @@
+{
+ "faces": 100.0,
+ "hoods and shoulder capes": 100.0,
+ "hands and fan (round 7's masks)": 100.0,
+ "gold field outside the figure": 100.0,
+ "border and frame": 100.0,
+ "lamp and glow (outside the cloak and props)": 100.0,
+ "pixels changed from round 9 (%)": 7.82,
+ "changed box, top half (x0,y0,x1,y1)": [
+  449,
+  545,
+  1063,
+  956
+ ],
+ "darkest 0.5 mm area (mean, min)": 10.4,
+ "darkest 0.5 mm area, 0.5th percentile": 20.7,
+ "darkest single pixel, changed region": 23.3,
+ "darkest single pixel, whole card": 0.0,
+ "saturation x value, 99.5th pct": 148.0,
+ "saturation x value, max in changed region": 143.3,
+ "saturation x value, 99.5th pct, round 9": 148.0,
+ "symmetry 180": "exact",
+ "fan identical to round 9 (%)": 100.0,
+ "jpeg bytes": 1122619,
+ "png bytes": 4030888
+}
