@@ -1,0 +1,33 @@
+<order>
+    <details>
+        <quantity>18</quantity>
+        <bracket>18</bracket>
+        <stock>(S33) Superior Smooth</stock>
+        <foil>false</foil>
+    </details>
+    <fronts>
+        <card><id>10fyJenvRPDXg1ZZBCplVcE7TQkVPR6qR</id><slots>0</slots><name>[B-C] Black Lotus (BorderlessM).png</name><query>black lotus</query></card>
+        <card><id>1QSPz_do69fcpUTgstfsfT5G2JovXeg-s</id><slots>1</slots><name>Ancestral Recall (Modern, Alt) [PRM] {46954}.jpg</name><query>ancestral recall</query></card>
+        <card><id>1OByBFfJwiguW_69uaR_0kVAzIbud8SGV</id><slots>2</slots><name>Jace, the Mind Sculptor (Tapioca).jpg</name><query>jace mind sculptor</query></card>
+        <card><id>1HVxl_NKQt4xPEGiUwPQjGAa0TSr3rf2C</id><slots>3</slots><name>Emrakul, the Aeons Torn (Modern, Alt) [UMA] {4}.jpg</name><query>emrakul aeons torn</query></card>
+        <card><id>1VfAusisn7sbWiFKg1ePoVQATpamsE2N8</id><slots>4</slots><name>Griselbrand (Modern, Alt) [INR] {115}.jpg</name><query>griselbrand</query></card>
+        <card><id>18mAtLnFsL8sa98bvbojmUB3je6p0cvy5</id><slots>5</slots><name>Sheoldred the Apocalypse (ZeL) [DMU].png</name><query>sheoldred apocalypse</query></card>
+        <card><id>1vXKIlHXN2KGWUWkrWm2Pyfrr45lphcH4</id><slots>6</slots><name>Oko, Thief of Crowns [ELD] {197}.jpg</name><query>oko thief of crowns</query></card>
+        <card><id>1pX989zpSkbPJuufj3v7jyXozTJc2cwOm</id><slots>7</slots><name>Fable of the Mirror-Breaker [NEO] {141}.jpg</name><query>fable of mirror breaker</query></card>
+        <card><id>1SoEWh6KtMTVW6NNDdwV8nebIB0k9WEzP</id><slots>8</slots><name>Delver of Secrets (a).png</name><query>delver of secrets</query></card>
+        <card><id>1z23kB6DRtSY31P4nuw7znq6Sb5tbosAq</id><slots>9</slots><name>Swords to Plowshares (BorderlessM).png</name><query>swords to plowshares</query></card>
+        <card><id>1EaLY3URxaL0OcZJoOcbz5UUtQ8qHOZ7G</id><slots>10</slots><name>Lightning Bolt (Borderless M (No Border)).jpg</name><query>lightning bolt</query></card>
+        <card><id>1IMIq0joo5bYQhZTDIiN5rQ8FzYSIHesa</id><slots>11</slots><name>Mana Drain.png</name><query>mana drain</query></card>
+        <card><id>1kCM5aSQkvzmv13ezcoutzRTnAnRCj_yh</id><slots>12</slots><name>Urza's Saga.jpg</name><query>urzas saga</query></card>
+        <card><id>1loZyN7ny5SCy7anOxqSi6vOQsKIgIDm_</id><slots>13</slots><name>Underground Sea (Champs promo).png</name><query>underground sea</query></card>
+        <card><id>1yCWYsDkBo4xz8PqOOMHWpgslF9HcpCjq</id><slots>14</slots><name>Scalding Tarn (Scroll Test Colored).jpg</name><query>scalding tarn</query></card>
+        <card><id>10dDqDih9270W8ysz-kZFYyE-Yu6fcFKj</id><slots>15</slots><name>Juzám Djinn (Extended Mark Tedin).jpg</name><query>juzám djinn</query></card>
+        <card><id>1pXTjm4KKWuYP5WYitlhYmbTSyytirWkE</id><slots>16</slots><name>Bazaar of Baghdad (Modern, Alt) [VMA] {294}.jpg</name><query>bazaar of baghdad</query></card>
+        <card><id>13DnpdKW8wVWepQSZlQIifo7e0TrvQpBO</id><slots>17</slots><name>Moat (Borderless Jeff A. Menges).jpg</name><query>moat</query></card>
+    </fronts>
+    <backs>
+        <card><id>12AkfxNd_GF-tfiekAZje1qwXL5EPyS1Z</id><slots>7</slots><name>Reflection of Kiki-Jiki [NEO] {141}.jpg</name><query>reflection of kiki jiki</query></card>
+        <card><id>1e2EtlI0NP1OghxuCTBQu0H7W5qI_fWLf</id><slots>8</slots><name>Insectile Aberration (a).png</name><query>insectile aberration</query></card>
+    </backs>
+    <cardback>1LrVX0pUcye9n_0RtaDNVl2xPrQgn7CYf</cardback>
+</order>
