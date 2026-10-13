@@ -280,7 +280,12 @@ describe('assign_damage — the defender is index 0 (§5.3)', () => {
     expect(skipAction(ask)).toMatchObject({ label: 'Auto-assign', value: null });
   });
   test('trample: assigning to the defender is index 0, and the total must be exact', () => {
-    const ask = fixtureAsk('human-trample-7#a1').ask;
+    const recorded = fixtureAsk('human-trample-7#a1').ask;
+    if (recorded.kind !== 'assign_damage') throw new Error();
+    // Recorded before M67: the bridge did not say the defender may take damage, which is no.
+    expect(validateDraft(recorded, { shape: 'amounts', amounts: { '0': 1, '1': 2 } }).ok).toBe(false);
+    // As an engine since M67 sends it for a trampler.
+    const ask: AskBody = { ...recorded, defenderAllowed: true, reason: null };
     const d: AskDraft = { shape: 'amounts', amounts: { '0': 1, '1': 2 } };
     expect(validateDraft(ask, d).ok).toBe(true);
     expect(answerFromDraft(ask, d)).toEqual({ '0': 1, '1': 2 });

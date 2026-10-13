@@ -271,6 +271,8 @@ function describeInputRaw(
   });
   const quiet = (v: InputView): InputView => ({ ...v, ok: btn(undefined), cancel: btn(undefined) });
   if (opts.over) return quiet(base('over', 'Game over'));
+  // Combat damage is divided in the bar above the hand (DamageBar.tsx), not in a dialog.
+  if (opts.ask?.kind === 'assign_damage') return quiet(base('ask', 'Combat damage', 'Divide the damage in the bar above your hand.'));
   if (opts.ask) return quiet(base('ask', 'The engine has a question for you', 'Answer it in the dialog.'));
   if (!input) {
     const who = state ? playerName(state, state.priority ?? state.activePlayer, seat) : 'The engine';

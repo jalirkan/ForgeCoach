@@ -54,6 +54,13 @@ describe('planAskKey', () => {
     expect(planAskKey({ key: '0' }, ctx())).toBeNull();
     expect(digitOf('x', 'Numpad7')).toBe(7);
   });
+  it('R resets where the question has a reset (the damage bar), and nowhere else', () => {
+    expect(planAskKey({ key: 'r' }, ctx({ resets: true }))).toEqual({ kind: 'reset' });
+    expect(planAskKey({ key: 'R' }, ctx({ resets: true }))).toEqual({ kind: 'reset' });
+    expect(planAskKey({ key: 'r' }, ctx())).toBeNull();
+    expect(planAskKey({ key: 'r', ctrlKey: true }, ctx({ resets: true }))).toBeNull();
+    expect(planAskKey({ key: 'r', targetTag: 'INPUT' }, ctx({ resets: true }))).toBeNull();
+  });
   it('folded, with a modifier, or in another sheet: nothing but Esc (and not even Esc in a sheet)', () => {
     expect(planAskKey({ key: '1' }, ctx({ minimized: true }))).toBeNull();
     expect(planAskKey({ key: 'Enter', targetTag: 'BODY' }, ctx({ minimized: true }))).toBeNull();

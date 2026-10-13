@@ -39,6 +39,7 @@ import { Logo } from '../Logo.tsx';
 import { Sheet } from '../Sheet.tsx';
 import { allCardNames, cx, readLS, writeLS } from '../util.ts';
 import { AskDialog, OpeningDialog, openingKind } from './AskDialog.tsx';
+import { DamageBar } from './DamageBar.tsx';
 import { DecisionSlot, OppWaitingLine } from './DecisionSlot.tsx';
 import { SearchHint } from './SearchHint.tsx';
 import { attentionOf, inputCounter, markedTitle, nudgeDelay, offersTheyAct, passToggles, theyActWhyNot, yieldLit } from './decisionModel.ts';
@@ -743,7 +744,9 @@ export function PlayView({
 
   // The engine's questions: inside the decision slot on a desktop (one place for every decision), a modal / bottom sheet on a phone.
   const answer = useCallback((value: AnswerValue) => ask && void session.answer(ask.askId, value), [ask, session]);
-  const askNode = ask ? (
+  // Combat damage: the divide-damage bar above the hand (DamageBar.tsx) — on a desktop and a phone alike.
+  const damageBar = ask?.kind === 'assign_damage' ? <DamageBar ask={ask} state={state} onAnswer={answer} onPreviewCard={previewId} /> : null;
+  const askNode = damageBar ? null : ask ? (
     <AskDialog ask={ask} state={state} onAnswer={answer} onPreviewCard={previewId} onConcede={canConcede ? () => setConcede(true) : null} placement={wide ? 'slot' : 'modal'} />
   ) : !over && input && openingKind(input, state) ? (
     <OpeningDialog
@@ -759,7 +762,7 @@ export function PlayView({
   ) : null;
 
   const dock = (
-    <div className="play-dock" ref={dockRef}>
+    <div className={cx('play-dock', damageBar && 'has-damage-bar')} ref={dockRef}>
       <DecisionSlot
         view={view}
         busy={busy}
@@ -781,6 +784,7 @@ export function PlayView({
         ask={wide ? askNode : null}
         hint={<SearchHint log={log} state={state} input={input} seat={seat} askOpen={!!ask} enabled={againstAi && !over} />}
       />
+      {damageBar}
       <HandDock player={me} landOpen={landOpen} collapsed={handHidden} onToggle={toggleHand} />
     </div>
   );

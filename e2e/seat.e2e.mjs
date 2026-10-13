@@ -20,6 +20,13 @@
  * stack, attack, the AI's spell, a block, Shock's target ask, game over, the
  * next game); a seat dropped with a question open (engine took the default /
  * engine asked again); an engine restarted under the same game id after the
+ * result and mid-game; live watch on /observe never opening /ws; dividing
+ * combat damage in the bar above the hand by the engine's rule (mtg-table
+ * M67: a double block with no player row, steppers, Reset [R], Space only on
+ * a legal split, the engine's refusal in the sentence line; a trampler's
+ * player row locked until every blocker has lethal); the coach's "Copy
+ * prompt" with no helper; the search hint ("What would the search AI do?",
+ * mtg-table D429) against a fake helper that offers it.
  * result and mid-game; live watch on /observe never opening /ws; declaring
  * attackers and blockers as the combat study has them (blocker first, badges
  * and lines, No blocks / Done blocking, Alpha strike / Call back / Skip
@@ -179,6 +186,23 @@ async function shockForTheWin(engine, u, { land = true } = {}) {
   await u.mode('stack');
   await sent(engine, 'buttonOk', () => u.ok());
   await engine.waitFor(() => engine.over, 'game over');
+}
+
+/** The divide-damage bar (DamageBar.tsx): its rows by option index, in the order drawn. */
+function damageBar(page) {
+  const bar = page.locator('.damage-bar');
+  const self = {
+    bar,
+    target: (i) => bar.locator(`[data-dmg-target="${i}"]`),
+    less: (i) => self.target(i).locator('.dmg-step button').first(),
+    more: (i) => self.target(i).locator('.dmg-step button').last(),
+    /** The amounts on the steppers, in the bar's order (blockers, then the player). */
+    amounts: async () => (await bar.locator('.dmg-n').allInnerTexts()).map((t) => Number(t.trim())),
+    left: async () => Number(await bar.locator('[data-dmg-left]').getAttribute('data-dmg-left')),
+    confirmEnabled: () => bar.locator('[data-answer="confirm"]').isEnabled(),
+    sentence: () => bar.locator('.dmg-sentence').innerText(),
+  };
+  return self;
 }
 
 /** Theirs, by name, on the battlefield. */
@@ -936,7 +960,7 @@ const scenarios = [
   },
 
   {
-    name: 'combat damage follows the engine (M67): no defender row without trample, and the engine’s refusal shown',
+    name: 'divide damage (M67): a double block without trample — no player row, steppers, Reset [R], Space only when legal, the refusal shown',
     engine: { scene: 'combat' },
     async run({ page, engine, app }) {
       const u = ui(page);
@@ -945,34 +969,59 @@ const scenarios = [
       await u.mode('main');
       await sent(engine, 'buttonOk', () => u.ok()); // to combat
       await u.mode('attack');
-      // Hill Giant (no trample) into two Memnites: the engine's question has no row for the bot.
+      // Hill Giant (3, no trample) into two Memnites (lethal 1 each).
       const giant = mine(engine, 'Hill Giant', 'battlefield');
       await sent(engine, 'clickCard', () => u.click(giant));
       await sent(engine, 'buttonOk', () => u.ok());
-      if (await page.locator('.ask-peek').isVisible().catch(() => false)) await page.locator('.ask-peek').click();
-      await u.dialog.waitFor({ timeout: STEP_MS });
+      const d = damageBar(page);
+      await d.bar.waitFor({ timeout: STEP_MS });
       check(engine.game.askBody?.kind === 'assign_damage' && engine.game.askBody.defenderAllowed === false, 'the engine asks assign_damage, defenderAllowed false');
-      const labels = await u.dialog.locator('.ask-row-label').allInnerTexts();
-      check(labels.length === 2 && !labels.includes('Forge AI'), `two blocker rows and no Forge AI row (${labels.join(', ')})`);
-      check(!(await u.dialog.locator('[data-refused]').count()), 'no refusal on a first asking');
-      // The engine refuses the split (a rule the dialog does not know): the same question, with its reason.
+      check(!(await page.locator('.ask-dialog').count()), 'no dialog: the bar is the question');
+      check(/Combat damage/.test(await page.locator('.decision-slot .ab-title-text').innerText()), 'the slot points at the bar');
+      check(!(await d.bar.locator('[data-defender]').count()), 'no defending-player row without trample');
+      check((await d.bar.locator('[data-dmg-target]').count()) === 2, 'one card per blocker');
+      check(/Hill Giant deals 3 damage — divide it among the blockers\./.test(await d.sentence()), `the sentence (${await d.sentence()})`);
+      check(!(await d.bar.locator('[data-refused]').count()), 'no refusal on a first asking');
+      // The engine's own split to start with: lethal to the first, the rest on the last.
+      check((await d.amounts()).join() === '1,2' && (await d.left()) === 0 && (await d.confirmEnabled()), 'opens on 1 / 2, 0 left, Confirm on');
+      check(await d.target(1).locator('.dmg-check').count(), 'the first Memnite has its lethal (check mark)');
+      check(!(await d.more(1).isEnabled()), '+ off with nothing left');
+      // Take one off the second: 1 left, Confirm off, and Space sends nothing.
+      await d.less(2).click();
+      check((await d.left()) === 1 && !(await d.confirmEnabled()), '1 left, Confirm disabled');
+      check(/1 left/.test(await d.bar.locator('.dmg-attacker').innerText()), 'the attacker tile says 1 left');
+      const before = answers().length;
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(400);
+      check(answers().length === before, 'Space sends nothing while the split is illegal');
+      // R: back to the engine's split.
+      await page.keyboard.press('r');
+      check((await d.amounts()).join() === '1,2' && (await d.confirmEnabled()), 'R resets to 1 / 2');
+      // The engine refuses the split (a rule the bar does not know): the same question, its reason in the sentence line.
       engine.game.refuseNext = 'Blockers take damage in order: Memnite needs lethal damage (1) before Memnite gets any.';
       const asked = engine.game.askBody.askId;
-      await u.dialog.locator('.ask-actions .btn-primary:not([disabled])').click({ timeout: STEP_MS });
+      await page.keyboard.press('Space');
       await engine.waitFor(() => engine.game.askBody && engine.game.askBody.askId !== asked, 'the question asked again', STEP_MS);
-      await u.dialog.locator('[data-refused]', { hasText: 'Memnite needs lethal damage' }).waitFor({ timeout: STEP_MS });
-      check((await u.dialog.locator('.ask-row-label').allInnerTexts()).length === 2, 'still no Forge AI row');
-      await u.dialog.locator('.ask-actions .btn-primary:not([disabled])').click({ timeout: STEP_MS });
+      await d.bar.locator('.dmg-sentence [data-refused]', { hasText: 'Memnite needs lethal damage' }).waitFor({ timeout: STEP_MS });
+      check(!(await d.bar.locator('[data-defender]').count()), 'still no player row');
+      // Move a point: − the second, + the first (3 can be split 2 / 1), then Space.
+      await d.less(2).click();
+      await d.more(1).click();
+      check((await d.amounts()).join() === '2,1' && (await d.confirmEnabled()), '2 / 1 is legal');
+      check(/\+1/.test(await d.target(1).locator('.dmg-pips').innerText()), 'the first Memnite shows +1 over lethal');
+      await page.keyboard.press('Space');
       await engine.waitFor(() => engine.game.phase === 'MAIN2', 'combat over', STEP_MS);
+      await d.bar.waitFor({ state: 'detached', timeout: STEP_MS }); // the bar is gone
       const sentSplits = answers().map((a) => a.value);
       check(sentSplits.length === 2 && sentSplits.every((v) => v && !('0' in v)), `no split put damage on the bot (${JSON.stringify(sentSplits)})`);
+      check(JSON.stringify(sentSplits[1]) === JSON.stringify({ 1: 2, 2: 1 }), `the moved point was sent (${JSON.stringify(sentSplits[1])})`);
       check(engine.game.players[1].life === 3 && engine.game.players[1].battlefield.length === 0, 'the bot on 3 life, both Memnites dead');
       await u.mode('main');
     },
   },
 
   {
-    name: 'combat damage follows the engine (M67): a trampler’s excess goes to the player',
+    name: 'divide damage (M67): a trampler — the player row only with defenderAllowed, locked until every blocker has lethal',
     engine: { scene: 'combat' },
     async run({ page, engine, app }) {
       const u = ui(page);
@@ -980,14 +1029,33 @@ const scenarios = [
       await u.mode('main');
       await sent(engine, 'buttonOk', () => u.ok());
       await u.mode('attack');
+      // Colossal Dreadmaw (6, trample) into two Memnites.
       await sent(engine, 'clickCard', () => u.click(mine(engine, 'Colossal Dreadmaw', 'battlefield')));
       await sent(engine, 'buttonOk', () => u.ok());
-      if (await page.locator('.ask-peek').isVisible().catch(() => false)) await page.locator('.ask-peek').click();
-      await u.dialog.waitFor({ timeout: STEP_MS });
+      const d = damageBar(page);
+      await d.bar.waitFor({ timeout: STEP_MS });
       check(engine.game.askBody?.defenderAllowed === true, 'defenderAllowed true for a trampler');
-      const labels = await u.dialog.locator('.ask-row-label').allInnerTexts();
-      check(labels.includes('Forge AI') && labels.length === 3, `the Forge AI row beside two blockers (${labels.join(', ')})`);
-      await u.dialog.locator('.ask-actions .btn-primary:not([disabled])').click({ timeout: STEP_MS });
+      const player = d.bar.locator('[data-defender]');
+      check((await player.count()) === 1 && /Forge AI/.test(await player.innerText()) && /spillover/.test(await player.innerText()), 'the Forge AI row, spillover');
+      check(/assign lethal to each before it tramples over\./.test(await d.sentence()), `the trample sentence (${await d.sentence()})`);
+      check(/Trample · every blocker must be lethal to spill over/.test(await d.bar.locator('.dmg-rule').innerText()), 'the rule line');
+      check((await d.amounts()).join() === '1,1,4' && (await d.left()) === 0 && (await d.confirmEnabled()), 'opens on 1 / 1 / 4');
+      // A Memnite below lethal: the player row locks at 0, its damage comes back as left, Confirm off.
+      await d.less(1).click();
+      check((await player.getAttribute('data-locked')) !== null, 'the player row locks');
+      check((await d.amounts()).join() === '0,1,0' && (await d.left()) === 5, `locked at 0, 5 left (${(await d.amounts()).join()})`);
+      check(!(await d.more(0).isEnabled()) && !(await d.less(0).isEnabled()), 'the locked row’s stepper is off');
+      check(!(await d.confirmEnabled()), 'Confirm disabled');
+      const before = engine.frames('/ws', 'answer').length;
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(400);
+      check(engine.frames('/ws', 'answer').length === before, 'Space sends nothing');
+      // Lethal back: the row unlocks; spill the rest over.
+      await d.more(1).click();
+      check((await player.getAttribute('data-locked')) === null && (await d.more(0).isEnabled()), 'unlocked once every blocker has lethal');
+      for (let i = 0; i < 4; i++) await d.more(0).click();
+      check((await d.amounts()).join() === '1,1,4' && (await d.confirmEnabled()), 'back to 1 / 1 / 4');
+      await d.bar.locator('[data-answer="confirm"]').click();
       await engine.waitFor(() => engine.over, 'game over', STEP_MS);
       const v = engine.frames('/ws', 'answer').at(-1).body.value;
       check(v['0'] === 4 && v['1'] === 1 && v['2'] === 1, `lethal to each Memnite, 4 to the bot (${JSON.stringify(v)})`);

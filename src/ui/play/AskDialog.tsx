@@ -23,7 +23,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { AnswerValue, AnyCard, AskBody, AskOption, Card, GameStateBody, InputBody } from '../../protocol.ts';
-import { isHidden, keywordsOf } from '../../protocol.ts';
+import { isHidden } from '../../protocol.ts';
 import { cardIndex } from '../../decisions.ts';
 import { imageForFace } from '../../cards.ts';
 import { prefetchCards, useCardInfo } from '../cardData.ts';
@@ -40,8 +40,6 @@ import {
   countPhrase,
   answerFromDraft,
   amountFloor,
-  damageRows,
-  defenderAllowed,
   groupOptions,
   initialDraft,
   isCardList,
@@ -70,6 +68,7 @@ import {
 } from './askModel.ts';
 import { digitMode, digitSlots, planAskKey } from './askKeys.ts';
 import { choiceCounter } from './decisionModel.ts';
+import { DamageBar } from './DamageBar.tsx';
 import './ask.css';
 
 // ---------------------------------------------------------------------------
@@ -201,7 +200,7 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
       else if (plan.kind === 'skip') l.onEsc?.();
       else if (plan.kind === 'confirm') l.onEnter?.();
       else if (plan.kind === 'none') return;
-      else l.onDigit?.(plan.index);
+      else if (plan.kind === 'digit') l.onDigit?.(plan.index);
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
@@ -1159,74 +1158,9 @@ function AskDialogInner({ ask, state, onAnswer, onPreviewCard }: AskDialogProps)
         </AskShell>
       );
 
-    case 'assign_damage': {
-      const attacker = nameOf(ask.attackerId);
-      const amounts = draft.shape === 'amounts' ? draft.amounts : {};
-      const sum = amountsTotal(amounts);
-      // The defender's row only when the engine says it may take damage (M67);
-      // an older engine says nothing, and then only for a trampler.
-      const atk = ask.attackerId === null ? undefined : index.get(ask.attackerId);
-      const rows = damageRows(ask, defenderAllowed(ask, keywordsOf(atk)));
-      return (
-        <AskShell
-          {...common}
-          eyebrow="Combat damage"
-          title={`Assign ${ask.total} damage${attacker ? ` from ${attacker}` : ''}`}
-          detail={rows.filter((t) => t.defender !== true).length > 1 ? 'Split it between the blockers' : undefined}
-          peek={`Assign ${ask.total} combat damage`}
-          hint={v.hint}
-          hintTone={v.ok ? 'ok' : 'warn'}
-          onEnter={confirm}
-          footer={
-            <>
-              {skipBtn}
-              {primary('Assign')}
-            </>
-          }
-        >
-          <Meter value={sum} total={ask.total} />
-          <ul className="ask-rows">
-            {rows.map((t) => {
-              const n = amounts[String(t.id)] ?? 0;
-              const lethal = typeof t.lethal === 'number' ? t.lethal : null;
-              const room = Math.min(ask.total, n + (ask.total - sum));
-              return (
-                <li key={t.id}>
-                  <div className={cx('ask-row ask-amount-row', n > 0 && 'is-on')}>
-                    {t.defender && t.kind === 'player' ? (
-                      <span className="ask-thumb ask-thumb-player" aria-hidden="true">
-                        {(playerName(t.playerId) ?? t.label).slice(0, 1)}
-                      </span>
-                    ) : (
-                      <Thumb name={lookupName(t)} card={visibleCard(t.card)} hidden={optionIsHidden(t)} />
-                    )}
-                    <span className="ask-row-text">
-                      <span className="ask-row-label">{t.label}</span>
-                      <span className="ask-row-meta">
-                        {t.defender ? 'Defending' : 'Blocker'}
-                        {lethal !== null && (
-                          <>
-                            {' · '}
-                            <span className={cx(n >= lethal && 'ask-lethal-ok')}>lethal {lethal}</span>
-                          </>
-                        )}
-                      </span>
-                    </span>
-                    <PreviewBtn cardId={t.cardId} onPreview={onPreviewCard} label={t.label} />
-                    {lethal !== null && n < lethal && room >= lethal && (
-                      <button type="button" className="btn btn-quiet btn-sm" onClick={() => setDraft({ shape: 'amounts', amounts: setAmount(ask, amounts, t.id, lethal) })}>
-                        Lethal
-                      </button>
-                    )}
-                    <Stepper value={n} max={Math.min(amountCap(ask, t.id), n + Math.max(0, ask.total - sum))} label={t.label} onChange={(x) => setDraft({ shape: 'amounts', amounts: setAmount(ask, amounts, t.id, x) })} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </AskShell>
-      );
-    }
+    case 'assign_damage':
+      // The divide-damage bar (DamageBar.tsx): the same everywhere a question is drawn.
+      return <DamageBar ask={ask} state={state} onAnswer={onAnswer} onPreviewCard={onPreviewCard} />;
 
     case 'assign_amount': {
       const source = nameOf(ask.sourceCardId);
