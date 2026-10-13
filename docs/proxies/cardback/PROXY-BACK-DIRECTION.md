@@ -360,3 +360,6 @@ a detail in an old painting is.
 
 **Words are optional, and set later in SVG.** If the back carries words, they
 are set as type over the finished art, never painted into it.
+
+**Correction, 2026-10-13 (round 9): the flat drawing of rounds 7 and 8 was the FORM only, never the finish.** Justin: "I thought the simple drawing you sent me was about FORM. I didn't think it was the style we were going with." The form it fixed is locked: both hands holding a modest fan together at the centre of the chest, the arms part of the cloak from shoulder to wrist, folds on the chest, small props on the table's near edge.
+**The finish is the faces' own painted manner:** soft modelling, matte, a muted old-master palette, visible paint, a period portrait, nothing crisper than the faces and never photoreal; the props are painted the same way or left out ("Either no items, or the same style"). This replaces *Everything but the faces is drawn flat* above.

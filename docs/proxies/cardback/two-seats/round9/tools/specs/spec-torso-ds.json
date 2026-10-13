@@ -1,0 +1,107 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/torso-ds",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "torso-green-45",
+   "src": "comp/torso-in-green.png",
+   "strength": 0.45,
+   "seeds": [
+    9101,
+    9102
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, a seated woman in a dark green woollen cloak, the cloak's sleeves and chest with deep soft folds, two hands holding a small fan of plain dark cards with gilt edges together at the centre of the chest, period portrait, tooled gold ground, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "torso-green-55",
+   "src": "comp/torso-in-green.png",
+   "strength": 0.55,
+   "seeds": [
+    9101,
+    9102
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, a seated woman in a dark green woollen cloak, the cloak's sleeves and chest with deep soft folds, two hands holding a small fan of plain dark cards with gilt edges together at the centre of the chest, period portrait, tooled gold ground, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "torso-green-62",
+   "src": "comp/torso-in-green.png",
+   "strength": 0.62,
+   "seeds": [
+    9101,
+    9102
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, a seated woman in a dark green woollen cloak, the cloak's sleeves and chest with deep soft folds, two hands holding a small fan of plain dark cards with gilt edges together at the centre of the chest, period portrait, tooled gold ground, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "torso-garnet-45",
+   "src": "comp/torso-in-garnet.png",
+   "strength": 0.45,
+   "seeds": [
+    9101,
+    9102
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, a seated anxious older man in a garnet red woollen cloak, the cloak's sleeves and chest with deep soft folds, two hands holding a small fan of plain dark cards with gilt edges together at the centre of the chest, period portrait, tooled gold ground, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "torso-garnet-55",
+   "src": "comp/torso-in-garnet.png",
+   "strength": 0.55,
+   "seeds": [
+    9101,
+    9102
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, a seated anxious older man in a garnet red woollen cloak, the cloak's sleeves and chest with deep soft folds, two hands holding a small fan of plain dark cards with gilt edges together at the centre of the chest, period portrait, tooled gold ground, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "torso-garnet-62",
+   "src": "comp/torso-in-garnet.png",
+   "strength": 0.62,
+   "seeds": [
+    9101,
+    9102
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, a seated anxious older man in a garnet red woollen cloak, the cloak's sleeves and chest with deep soft folds, two hands holding a small fan of plain dark cards with gilt edges together at the centre of the chest, period portrait, tooled gold ground, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "torso-blue-45",
+   "src": "comp/torso-in-blue.png",
+   "strength": 0.45,
+   "seeds": [
+    9101,
+    9102
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, a seated guarded man in a dark blue woollen cloak, the cloak's sleeves and chest with deep soft folds, two hands holding a small fan of plain dark cards with gilt edges together at the centre of the chest, period portrait, tooled gold ground, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "torso-blue-55",
+   "src": "comp/torso-in-blue.png",
+   "strength": 0.55,
+   "seeds": [
+    9101,
+    9102
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, a seated guarded man in a dark blue woollen cloak, the cloak's sleeves and chest with deep soft folds, two hands holding a small fan of plain dark cards with gilt edges together at the centre of the chest, period portrait, tooled gold ground, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "torso-blue-62",
+   "src": "comp/torso-in-blue.png",
+   "strength": 0.62,
+   "seeds": [
+    9101,
+    9102
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, a seated guarded man in a dark blue woollen cloak, the cloak's sleeves and chest with deep soft folds, two hands holding a small fan of plain dark cards with gilt edges together at the centre of the chest, period portrait, tooled gold ground, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  }
+ ]
+}

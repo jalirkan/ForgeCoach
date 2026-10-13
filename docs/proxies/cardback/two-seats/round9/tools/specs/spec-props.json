@@ -1,0 +1,140 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/props",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "prop-green-L-55",
+   "src": "comp/prop-in-green-L.png",
+   "strength": 0.55,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: two small neat stacks of gold coins, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-green-L-62",
+   "src": "comp/prop-in-green-L.png",
+   "strength": 0.62,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: two small neat stacks of gold coins, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-green-R-55",
+   "src": "comp/prop-in-green-R.png",
+   "strength": 0.55,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: a small cream glazed cup full of dark wine on its saucer, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-green-R-62",
+   "src": "comp/prop-in-green-R.png",
+   "strength": 0.62,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: a small cream glazed cup full of dark wine on its saucer, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-garnet-L-55",
+   "src": "comp/prop-in-garnet-L.png",
+   "strength": 0.55,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: a pewter tankard, its cold drink with a pale skin on it, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-garnet-L-62",
+   "src": "comp/prop-in-garnet-L.png",
+   "strength": 0.62,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: a pewter tankard, its cold drink with a pale skin on it, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-garnet-R-55",
+   "src": "comp/prop-in-garnet-R.png",
+   "strength": 0.55,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: a crumpled white linen napkin and one gold coin lying flat, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-garnet-R-62",
+   "src": "comp/prop-in-garnet-R.png",
+   "strength": 0.62,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: a crumpled white linen napkin and one gold coin lying flat, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-blue-L-55",
+   "src": "comp/prop-in-blue-L.png",
+   "strength": 0.55,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: a small cream earthenware cup knocked over on its side, a little spill of wine from its mouth, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-blue-L-62",
+   "src": "comp/prop-in-blue-L.png",
+   "strength": 0.62,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: a small cream earthenware cup knocked over on its side, a little spill of wine from its mouth, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-blue-R-55",
+   "src": "comp/prop-in-blue-R.png",
+   "strength": 0.55,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: a half-eaten bun on a small pewter plate, two crumbs, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  },
+  {
+   "name": "prop-blue-R-62",
+   "src": "comp/prop-in-blue-R.png",
+   "strength": 0.62,
+   "seeds": [
+    9201,
+    9202
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork and craquelure, still-life detail on the edge of a dark walnut table: a half-eaten bun on a small pewter plate, two crumbs, small, with soft painted shadows on the wood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, comic, line art, outline, cel shading, photograph, photo, 3D render, glossy, plastic, text, letters, numbers, pips, symbols, card faces, extra fingers, fused fingers, deformed hands, neon, blurry"
+  }
+ ]
+}

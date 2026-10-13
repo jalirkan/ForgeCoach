@@ -1,0 +1,11 @@
+11:02:22 loaded stabilityai/stable-diffusion-xl-base-1.0 in 15s; 9 images
+11:03:11 torso-green-45 (1216, 784) seed=9101 strength=0.45 cn=0 49s
+11:04:09 torso-green-55 (1216, 784) seed=9101 strength=0.55 cn=0 58s
+11:05:13 torso-green-62 (1216, 784) seed=9101 strength=0.62 cn=0 65s
+11:06:02 torso-garnet-45 (1216, 784) seed=9101 strength=0.45 cn=0 49s
+11:07:01 torso-garnet-55 (1216, 784) seed=9101 strength=0.55 cn=0 58s
+11:08:05 torso-garnet-62 (1216, 784) seed=9101 strength=0.62 cn=0 65s
+11:08:54 torso-blue-45 (1216, 784) seed=9101 strength=0.45 cn=0 49s
+11:09:53 torso-blue-55 (1216, 784) seed=9101 strength=0.55 cn=0 58s
+11:10:57 torso-blue-62 (1216, 784) seed=9101 strength=0.62 cn=0 64s
+11:10:57 total 531s
