@@ -310,3 +310,53 @@ None needed its blacks lifted: every darkest area already sits at 22 or above.
   court card. Its execution is the weakest: model faces, a flat lamp and one
   bad hand. If it is the one Justin loves, it deserves a careful repaint, not
   this direction pass.
+
+## The Two Seats — the direction (2026-10-13)
+
+Justin, on round 7 of the sleeve art (`two-seats/round7/`), in his own words:
+
+> "This looks better. Let's build in this direction. The idea might be a bit of
+> implied humor in these oil-painting-esque style images on less than impressive
+> characters in a card game, and there's irony of them being on playing cards as
+> well, while echoing European fine art."
+
+That is now the art direction for The Two Seats. These are the rules that got
+us here, and every later round keeps them.
+
+**Three different, unremarkable people.** The green woman, the garnet man and
+the blue man are ordinary faces with real human expressions: calm, worried,
+guarded. They are the faces from the first drafts, and they are never
+regenerated. A new round may touch everything around a face, but never the face.
+
+**The gravity of a European portrait, spent on an evening of cards.** The joke
+is in the mismatch. The sitters are posed and lit as if for a court painter,
+with a gold ground and a gilt frame, and what they are doing is holding a hand
+of cards across a table. The picture never winks at that. It takes them as
+seriously as they take the game.
+
+**Everything but the faces is drawn flat.** The hands, arms, chests, the fan
+of cards and anything set on the table are drawn in the court-card line style:
+flat fills, a second flat tone for shade, and a bold dark outline. Photoreal
+hands and painterly passes over the drawing were both tried and both rejected.
+The faces and hoods stay painted, and the drawn parts share one printed surface
+with them through a faint, even paper grain, so that the card reads as one print
+and not as two techniques.
+
+**Round 2's setting.** The gold ground, the floral border, the walnut table
+band and the round lamp at its centre are round 2's pixels, and they stay.
+
+**The fan is held with both hands at the centre.** It is a modest spread of
+plain cards, round 2's dark backs with gilt edges, held together at the chest.
+The cards carry no pips, letters or marks.
+
+**Exact 180° symmetry.** The bottom seat is the top half turned 180°, pixel for
+pixel. Anything added is added to the top half and turns with it.
+
+**Humour by small, deadpan detail, never caricature.** The faces are not pulled
+into jokes, and nothing is exaggerated. What is funny is quiet: a neat stack of
+coins in front of one sitter, a cold cup and one lone coin in front of another.
+Nothing should read as a gag from across the room. It is found up close, the way
+a detail in an old painting is.
+
+**Words are optional, and set later in SVG.** If the back carries words, they
+are set as type over the finished art, never painted into it.
