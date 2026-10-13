@@ -1,0 +1,40 @@
+{
+ "line px": 755,
+ "src line depth": 18.9,
+ "rev/raw/robe-30-s9402.png": {
+  "line depth kept (%)": 76.9,
+  "fill band-pass std (1-3px)": 1.97,
+  "fill mean |change| vs drawn": 3.06
+ },
+ "rev/raw/robe-30-s9401.png": {
+  "line depth kept (%)": 83.8,
+  "fill band-pass std (1-3px)": 2.03,
+  "fill mean |change| vs drawn": 3.0
+ },
+ "rev/raw/robe-30-s9405.png": {
+  "line depth kept (%)": 79.3,
+  "fill band-pass std (1-3px)": 2.0,
+  "fill mean |change| vs drawn": 2.91
+ },
+ "rev/raw/robe-38-s9402.png": {
+  "line depth kept (%)": 71.5,
+  "fill band-pass std (1-3px)": 1.93,
+  "fill mean |change| vs drawn": 3.71
+ },
+ "rev/raw/robe-38-s9401.png": {
+  "line depth kept (%)": 81.1,
+  "fill band-pass std (1-3px)": 2.06,
+  "fill mean |change| vs drawn": 3.65
+ },
+ "rev/raw/robe-38-s9405.png": {
+  "line depth kept (%)": 73.2,
+  "fill band-pass std (1-3px)": 1.93,
+  "fill mean |change| vs drawn": 3.43
+ },
+ "raw/torso-garnet-55-s9402.png": {
+  "line depth kept (%)": 2.7,
+  "fill band-pass std (1-3px)": 1.62,
+  "fill mean |change| vs drawn": 6.37
+ },
+ "src fill band-pass": 2.29
+}

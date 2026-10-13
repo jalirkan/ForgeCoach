@@ -1,0 +1,20 @@
+{
+ "model": "dreamshaper",
+ "out": "rev/raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {"name": "robe-30", "src": "comp/torso-in-garnet.png", "strength": 0.30, "seeds": [9402, 9401, 9405],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, a seated figure's cloak, sleeves and hands holding a hand of plain dark cards, vertical pleated folds, tailored robe, crisp fold lines, period portrait, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, photograph, 3D, glossy, text, letters, pips"},
+  {"name": "robe-38", "src": "comp/torso-in-garnet.png", "strength": 0.38, "seeds": [9402, 9401, 9405],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, a seated figure's cloak, sleeves and hands holding a hand of plain dark cards, vertical pleated folds, tailored robe, crisp fold lines, period portrait, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, photograph, 3D, glossy, text, letters, pips"},
+  {"name": "hands-56", "src": "rev/comp/hands-in-garnet.png", "strength": 0.56, "seeds": [9501, 9502, 9503, 9504, 9505, 9506],
+   "prompt": "an old man's hands, bony, weathered, knuckles and tendons, aged skin, hard-edged, strong contrast, warm shadows, cool highlights, the same harsh light as a 15th-century Netherlandish panel portrait, holding a hand of plain dark cards; no photo, no softness, no youthful skin",
+   "negative": "photograph, soft skin, smooth skin, young, youthful, plump, blurry, extra fingers, fused fingers, missing fingers, cartoon, vector, flat illustration, clip art, 3D, glossy, text, letters, pips, numbers"},
+  {"name": "hands-62", "src": "rev/comp/hands-in-garnet.png", "strength": 0.62, "seeds": [9501, 9502, 9503, 9504, 9505, 9506],
+   "prompt": "an old man's hands, bony, weathered, knuckles and tendons, aged skin, hard-edged, strong contrast, warm shadows, cool highlights, the same harsh light as a 15th-century Netherlandish panel portrait, holding a hand of plain dark cards; no photo, no softness, no youthful skin",
+   "negative": "photograph, soft skin, smooth skin, young, youthful, plump, blurry, extra fingers, fused fingers, missing fingers, cartoon, vector, flat illustration, clip art, 3D, glossy, text, letters, pips, numbers"}
+ ]
+}

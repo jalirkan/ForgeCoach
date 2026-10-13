@@ -1,0 +1,113 @@
+{
+ "face": {
+  "px": 11132,
+  "contrast": 15.66,
+  "edge": 36.43,
+  "hue": 35.3,
+  "sat": 0.592
+ },
+ "rev/raw/robe-38-s9401.png": {
+  "px": 10249,
+  "contrast": 15.63,
+  "edge": 50.08,
+  "hue": 31.1,
+  "sat": 0.408,
+  "distance": 0.827
+ },
+ "rev/cand/t-56-s9501.png": {
+  "px": 10386,
+  "contrast": 14.55,
+  "edge": 46.49,
+  "hue": 31.1,
+  "sat": 0.392,
+  "distance": 0.825
+ },
+ "rev/cand/t-56-s9502.png": {
+  "px": 10392,
+  "contrast": 15.98,
+  "edge": 45.1,
+  "hue": 31.1,
+  "sat": 0.384,
+  "distance": 0.75
+ },
+ "rev/cand/t-56-s9503.png": {
+  "px": 10141,
+  "contrast": 14.26,
+  "edge": 38.18,
+  "hue": 31.1,
+  "sat": 0.404,
+  "distance": 0.595
+ },
+ "rev/cand/t-56-s9504.png": {
+  "px": 10016,
+  "contrast": 15.37,
+  "edge": 45.37,
+  "hue": 31.1,
+  "sat": 0.404,
+  "distance": 0.721
+ },
+ "rev/cand/t-56-s9505.png": {
+  "px": 10005,
+  "contrast": 15.94,
+  "edge": 40.61,
+  "hue": 28.2,
+  "sat": 0.392,
+  "distance": 0.707
+ },
+ "rev/cand/t-56-s9506.png": {
+  "px": 10661,
+  "contrast": 16.22,
+  "edge": 38.25,
+  "hue": 29.6,
+  "sat": 0.388,
+  "distance": 0.62
+ },
+ "rev/cand/t-62-s9501.png": {
+  "px": 9335,
+  "contrast": 13.46,
+  "edge": 48.68,
+  "hue": 32.5,
+  "sat": 0.396,
+  "distance": 0.901
+ },
+ "rev/cand/t-62-s9502.png": {
+  "px": 9467,
+  "contrast": 15.75,
+  "edge": 49.28,
+  "hue": 32.5,
+  "sat": 0.388,
+  "distance": 0.796
+ },
+ "rev/cand/t-62-s9503.png": {
+  "px": 9730,
+  "contrast": 13.67,
+  "edge": 33.07,
+  "hue": 31.1,
+  "sat": 0.412,
+  "distance": 0.663
+ },
+ "rev/cand/t-62-s9504.png": {
+  "px": 9691,
+  "contrast": 17.27,
+  "edge": 45.38,
+  "hue": 32.5,
+  "sat": 0.412,
+  "distance": 0.746
+ },
+ "rev/cand/t-62-s9505.png": {
+  "px": 9987,
+  "contrast": 17.89,
+  "edge": 36.96,
+  "hue": 29.6,
+  "sat": 0.4,
+  "distance": 0.671
+ },
+ "rev/cand/t-62-s9506.png": {
+  "px": 10162,
+  "contrast": 16.13,
+  "edge": 31.46,
+  "hue": 31.1,
+  "sat": 0.388,
+  "distance": 0.651
+ }
+}
