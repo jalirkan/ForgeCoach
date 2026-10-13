@@ -1,0 +1,74 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/t",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "t-green-22",
+   "src": "comp/t-in-green.png",
+   "strength": 0.22,
+   "seeds": [
+    7101,
+    7102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold black outlines, flat colour, limited palette, matte, no shading, no realism, no photo, a woman in a green hooded cloak holding a small fan of plain dark playing cards with both hands at the centre of the chest, simple drawn hands, cloak folds drawn as bold lines, tooled gold ground",
+   "negative": "photo, realism, realistic hands, skin texture, knuckles, veins, wrinkles, fingernails, 3d render, soft shading, gradient, glossy, text, letters, numbers, card faces, pips, symbols, pattern on cards, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "t-green-30",
+   "src": "comp/t-in-green.png",
+   "strength": 0.3,
+   "seeds": [
+    7101,
+    7102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold black outlines, flat colour, limited palette, matte, no shading, no realism, no photo, a woman in a green hooded cloak holding a small fan of plain dark playing cards with both hands at the centre of the chest, simple drawn hands, cloak folds drawn as bold lines, tooled gold ground",
+   "negative": "photo, realism, realistic hands, skin texture, knuckles, veins, wrinkles, fingernails, 3d render, soft shading, gradient, glossy, text, letters, numbers, card faces, pips, symbols, pattern on cards, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "t-garnet-22",
+   "src": "comp/t-in-garnet.png",
+   "strength": 0.22,
+   "seeds": [
+    7101,
+    7102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold black outlines, flat colour, limited palette, matte, no shading, no realism, no photo, an anxious older man in a garnet red hooded cloak holding a small fan of plain dark playing cards with both hands at the centre of the chest, simple drawn hands, cloak folds drawn as bold lines, tooled gold ground",
+   "negative": "photo, realism, realistic hands, skin texture, knuckles, veins, wrinkles, fingernails, 3d render, soft shading, gradient, glossy, text, letters, numbers, card faces, pips, symbols, pattern on cards, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "t-garnet-30",
+   "src": "comp/t-in-garnet.png",
+   "strength": 0.3,
+   "seeds": [
+    7101,
+    7102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold black outlines, flat colour, limited palette, matte, no shading, no realism, no photo, an anxious older man in a garnet red hooded cloak holding a small fan of plain dark playing cards with both hands at the centre of the chest, simple drawn hands, cloak folds drawn as bold lines, tooled gold ground",
+   "negative": "photo, realism, realistic hands, skin texture, knuckles, veins, wrinkles, fingernails, 3d render, soft shading, gradient, glossy, text, letters, numbers, card faces, pips, symbols, pattern on cards, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "t-blue-22",
+   "src": "comp/t-in-blue.png",
+   "strength": 0.22,
+   "seeds": [
+    7101,
+    7102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold black outlines, flat colour, limited palette, matte, no shading, no realism, no photo, a guarded man in a dark blue hooded cloak holding a small fan of plain dark playing cards with both hands at the centre of the chest, simple drawn hands, cloak folds drawn as bold lines, tooled gold ground",
+   "negative": "photo, realism, realistic hands, skin texture, knuckles, veins, wrinkles, fingernails, 3d render, soft shading, gradient, glossy, text, letters, numbers, card faces, pips, symbols, pattern on cards, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "t-blue-30",
+   "src": "comp/t-in-blue.png",
+   "strength": 0.3,
+   "seeds": [
+    7101,
+    7102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold black outlines, flat colour, limited palette, matte, no shading, no realism, no photo, a guarded man in a dark blue hooded cloak holding a small fan of plain dark playing cards with both hands at the centre of the chest, simple drawn hands, cloak folds drawn as bold lines, tooled gold ground",
+   "negative": "photo, realism, realistic hands, skin texture, knuckles, veins, wrinkles, fingernails, 3d render, soft shading, gradient, glossy, text, letters, numbers, card faces, pips, symbols, pattern on cards, extra fingers, deformed hands, blurry, neon"
+  }
+ ]
+}
