@@ -1,0 +1,405 @@
+/*
+ * ForgeCoach — ui/play/damage.css
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *
+ * The divide-damage bar (DamageBar.tsx): a band above the hand while an
+ * `assign_damage` ask is open — the endstep study of 2026-10-12, §3. On a
+ * desktop the dock grows by the bar (the board gives the height up): the
+ * decision slot keeps the left column, the bar sits over the hand to its
+ * right. On a phone it sits between the slot and the hand.
+ *
+ *   .dmg-target.is-met      a blocker with its lethal (green pips, check)
+ *   .dmg-target.is-short    a blocker short of lethal (red pips)
+ *   .dmg-defender.is-locked the defending player's row while a blocker is short
+ *   .dmg-attacker.is-left   damage still to assign ("3 left", red)
+ */
+
+/* ---- where it sits */
+@media (min-width: 1024px) {
+  .game.play.is-wide .play-dock.has-damage-bar {
+    height: auto;
+    grid-template-rows: auto var(--hand-h);
+    grid-template-areas:
+      'slot bar'
+      'slot hand';
+  }
+  .game.play.is-wide .play-dock.has-damage-bar > .decision-slot {
+    grid-area: slot;
+  }
+  .game.play.is-wide .play-dock.has-damage-bar > .damage-bar {
+    grid-area: bar;
+  }
+  .game.play.is-wide .play-dock.has-damage-bar > .hand-dock {
+    grid-area: hand;
+  }
+}
+/* A short desktop: the hand is not what this moment needs — it tucks down to its tops so the board keeps
+   its height (the cards stay where they are, the rest of them under the screen's edge). */
+@media (min-width: 1024px) and (max-height: 860px) {
+  .game.play.is-wide .play-dock.has-damage-bar {
+    grid-template-rows: auto calc(var(--hand-h) * 0.45);
+  }
+  .game.play.is-wide .play-dock.has-damage-bar > .hand-dock {
+    height: calc(var(--hand-h) * 0.45);
+    overflow: hidden;
+  }
+  .game.play.is-wide .play-dock.has-damage-bar > .hand-dock .hand-dock-row {
+    height: var(--hand-h);
+    align-items: flex-start;
+  }
+}
+/* The slot only points at the bar: its buttons live in the bar. */
+.play-dock.has-damage-bar .decision-slot .ab-go,
+.play-dock.has-damage-bar .decision-slot .ab-tools {
+  display: none;
+}
+
+/* ---- the bar */
+.damage-bar {
+  /* the cards: 76 px on a tall screen, smaller on a short one */
+  --dmg-cw: clamp(52px, calc(9vh - 6px), 76px);
+  --dmg-warn: #e0884a;
+  min-width: 0;
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--line-2);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 88%, #000), var(--surface));
+  animation: dmg-rise 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes dmg-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.dmg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px 12px;
+}
+.dmg-words {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.dmg-eyebrow {
+  font: 700 11px/1.2 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dmg-warn);
+}
+.dmg-sentence {
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: var(--text-2);
+}
+.dmg-refused {
+  color: var(--bad);
+  font-weight: 600;
+}
+.dmg-rule {
+  margin: 3px 0 0;
+  font: 500 11.5px/1.3 var(--mono);
+  color: var(--dmg-warn);
+}
+.dmg-actions {
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dmg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dmg-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--muted);
+}
+.dmg-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.dmg-confirm {
+  min-width: 128px;
+  justify-content: center;
+  border-color: transparent;
+  background: var(--you, var(--accent));
+  color: #17130d;
+}
+.dmg-confirm:hover:not(:disabled) {
+  color: #17130d;
+  filter: brightness(1.08);
+}
+.dmg-confirm:disabled {
+  opacity: 1;
+  background: color-mix(in srgb, var(--you, var(--accent)) 30%, var(--surface));
+  color: color-mix(in srgb, var(--text) 45%, transparent);
+}
+.dmg-kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  font: 600 10.5px/1 var(--mono);
+  opacity: 0.8;
+}
+
+/* ---- the row: attacker, blockers, the defending player */
+.dmg-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  /* room for a blocker's check badge, which the sideways scroll would otherwise clip */
+  margin-top: 2px;
+  padding: 8px 8px 2px 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.dmg-attacker,
+.dmg-target {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background: color-mix(in srgb, var(--surface) 70%, #000);
+}
+.dmg-attacker {
+  width: 124px;
+  justify-content: center;
+  text-align: center;
+}
+.dmg-attacker-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 11.5px/1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.dmg-left {
+  font-size: 12px;
+  color: var(--muted);
+}
+.dmg-left b {
+  margin-right: 3px;
+  font-size: 24px;
+  font-weight: 700;
+  vertical-align: -3px;
+}
+.dmg-attacker.is-done .dmg-left b {
+  color: var(--ok);
+}
+.dmg-attacker.is-left .dmg-left,
+.dmg-attacker.is-left .dmg-left b {
+  color: var(--bad);
+}
+.dmg-of {
+  margin-top: -4px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.dmg-target {
+  width: calc(var(--dmg-cw) + 30px);
+}
+.dmg-target.is-met {
+  border-color: color-mix(in srgb, var(--ok) 70%, transparent);
+}
+.dmg-check {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ok);
+  color: #10140e;
+}
+.dmg-face {
+  --cw: var(--dmg-cw);
+  --ch: calc(var(--cw) * 88 / 63);
+  --cr: calc(var(--cw) * 0.055);
+  position: relative;
+  display: block;
+  width: var(--cw);
+  height: var(--ch);
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: var(--cr);
+}
+.dmg-face.is-previewable {
+  cursor: zoom-in;
+}
+.dmg-face .card-back {
+  --cw: var(--dmg-cw);
+}
+.dmg-face-text {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  border-radius: inherit;
+  border: 1px solid var(--line-2);
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-2);
+}
+.dmg-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.dmg-sub {
+  margin-top: -4px;
+  font: 500 11px/1.2 var(--mono);
+  color: var(--muted);
+}
+
+/* lethal pips: green when lethal is reached, red while short; "+1" above lethal */
+.dmg-pips {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 9px;
+}
+.dmg-pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
+}
+.dmg-pip.is-met {
+  background: var(--ok);
+}
+.dmg-pip.is-short {
+  background: var(--bad);
+}
+.dmg-over {
+  font: 600 10.5px/1 var(--mono);
+  color: var(--ok);
+}
+
+/* − N + */
+.dmg-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.dmg-step button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.dmg-step button:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+.dmg-step button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+.dmg-n {
+  min-width: 30px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the defending player: a shield where a card would be */
+.dmg-shield {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--dmg-cw);
+  height: calc(var(--dmg-cw) * 88 / 63);
+  border-radius: calc(var(--dmg-cw) * 0.055);
+  border: 1px solid var(--line-2);
+  background: color-mix(in srgb, var(--surface) 80%, #000);
+  color: var(--dmg-warn);
+}
+.dmg-lock {
+  position: absolute;
+  color: var(--text-2);
+}
+.dmg-defender.is-locked .dmg-shield {
+  color: color-mix(in srgb, var(--dmg-warn) 45%, transparent);
+}
+.dmg-defender.is-locked .dmg-name,
+.dmg-defender.is-locked .dmg-sub,
+.dmg-defender.is-locked .dmg-step {
+  opacity: 0.5;
+}
+
+.dmg-why {
+  align-self: center;
+  margin: 0;
+  max-width: 220px;
+  font-size: 12px;
+  color: var(--bad);
+}
+
+/* ---- phones: smaller cards, the row scrolls */
+@media (max-width: 1023px) {
+  .damage-bar {
+    --dmg-cw: 54px;
+    padding: 8px 12px 10px;
+  }
+  .dmg-head {
+    flex-wrap: wrap;
+  }
+  .dmg-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .dmg-kbd {
+    display: none;
+  }
+  .dmg-attacker {
+    width: 92px;
+  }
+  .dmg-sentence {
+    font-size: 12.5px;
+  }
+}

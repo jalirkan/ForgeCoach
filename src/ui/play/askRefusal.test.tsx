@@ -38,10 +38,10 @@ const asksOf = (kind: string): AskBody[] => CHAINS[kind]!.frames.filter((f) => f
 const first = <K extends AskBody['kind']>(kind: K): Extract<AskBody, { kind: K }> => asksOf(kind)[0] as Extract<AskBody, { kind: K }>;
 const render = (ask: AskBody): string =>
   renderToStaticMarkup(<AskDialog ask={ask} state={null} onAnswer={() => undefined} onPreviewCard={() => undefined} onConcede={() => undefined} />);
-/** The text of the dialog's refusal line, or null. */
+/** The text of the dialog's refusal line — or, for assign_damage, the damage bar's (DamageBar.tsx) — or null. */
 const refusedText = (html: string): string | null => {
-  const m = /<p class="ask-refused"[^>]*data-refused=""[^>]*>([^<]*)<\/p>/.exec(html);
-  return m ? m[1]!.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, '&') : null;
+  const m = /<(p|span) class="(?:ask|dmg)-refused"[^>]*data-refused=""[^>]*>([^<]*)<\/\1>/.exec(html);
+  return m ? m[2]!.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, '&') : null;
 };
 
 describe('M68: the engine’s reason, on every kind', () => {

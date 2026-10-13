@@ -194,7 +194,8 @@ export class Monkey {
         cards,
         buttons,
         players,
-        dialog: !!document.querySelector('.ask-dialog') && vis(document.querySelector('.ask-dialog')),
+        // An engine question: the dialog, or (assign_damage) the divide-damage bar above the hand.
+        dialog: [...document.querySelectorAll('.ask-dialog, .damage-bar')].some(vis),
         layer: !!layer,
         opening,
         peek: peek && vis(peek) ? tag(peek) : null,
@@ -405,7 +406,7 @@ export class Monkey {
       }
     }
     const sentMark = this.tap.sent.length;
-    const dlg = this.page.locator('.ask-dialog');
+    const dlg = this.page.locator('.ask-dialog, .damage-bar');
     const answered = () => this.sentSince(sentMark, (f) => f.type === 'answer' && f.body?.askId === ask.askId, 4000);
     const opts = dlg.locator('.ask-body .ask-opt');
     const confirm = dlg.locator('[data-answer="confirm"]').last();
@@ -543,8 +544,8 @@ export class Monkey {
       case 'assign_amount': {
         this.count('rare', ask.kind);
         if (!(await confirm.isEnabled().catch(() => false))) {
-          // Spread the amount with the steppers' + until the meter is full.
-          const plus = dlg.locator('.ask-step button:last-child:not([disabled])');
+          // Spread the amount with the steppers' + until the meter is full (the damage bar's .dmg-step too).
+          const plus = dlg.locator('.ask-step button:last-child:not([disabled]), .dmg-step button:last-child:not([disabled])');
           for (let k = 0; k < 40 && !(await confirm.isEnabled().catch(() => false)); k++) {
             const c = await plus.count();
             if (!c) break;

@@ -55,10 +55,12 @@ export interface AskKeyContext {
   escSkips: boolean;
   /** Space confirms too (default); false for the one-ability confirm (M69): only Enter does. */
   spaceConfirms?: boolean;
+  /** R resets the answer (the combat-damage bar). */
+  resets?: boolean;
 }
 
 /** `none`: the question's key, swallowed and doing nothing (Space on the one-ability confirm). */
-export type AskKeyPlan = { kind: 'hide' } | { kind: 'skip' } | { kind: 'confirm' } | { kind: 'none' } | { kind: 'digit'; index: number };
+export type AskKeyPlan = { kind: 'hide' } | { kind: 'skip' } | { kind: 'confirm' } | { kind: 'none' } | { kind: 'reset' } | { kind: 'digit'; index: number };
 
 const TYPING = new Set(['input', 'textarea', 'select']);
 const NATIVE = new Set(['button', 'a', 'summary']);
@@ -96,6 +98,7 @@ export function planAskKey(e: AskKeyEvent, ctx: AskKeyContext): AskKeyPlan | nul
     return ctx.canConfirm ? { kind: 'confirm' } : null;
   }
   if (typing || e.repeat) return null;
+  if (ctx.resets && (key === 'r' || key === 'R' || e.code === 'KeyR')) return { kind: 'reset' };
   const d = digitOf(key, e.code);
   if (d > 0 && d <= ctx.digits) return { kind: 'digit', index: d - 1 };
   return null;

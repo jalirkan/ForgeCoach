@@ -26,6 +26,7 @@ export const PLAY_KEYS: KeyRow[] = [
   { chord: 'Space / Enter', what: 'the highlighted (primary) button — usually OK / pass; in a question, Confirm' },
   { chord: 'Esc', what: 'the engine’s Cancel button (End Turn, Cancel…); in a question, hide or show it (never declines — “Choose how to play”: never mind)' },
   { chord: '1 – 9', what: 'in a question, the option with that number (one pick answers at once; several pick toggles)' },
+  { chord: 'R', what: 'dividing combat damage: reset the split to the engine’s own' },
   { chord: 'P', what: 'pass priority once' },
   { chord: 'E', what: 'auto-pass: until end of turn (again, while it runs, to stop it)' },
   { chord: 'B', what: 'auto-pass: until just before my turn (their end step)' },
@@ -72,6 +73,7 @@ export const KEY_BINDINGS: readonly KeyBinding[] = [
   { keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9'], scope: 'ask', modes: null, what: 'pick option n' },
   { keys: [' ', 'enter'], scope: 'ask', modes: null, what: 'confirm' },
   { keys: ['escape'], scope: 'ask', modes: null, what: 'hide / show (ability_menu: never mind)' },
+  { keys: ['r'], scope: 'ask', modes: null, what: 'reset the combat-damage split' },
 ];
 
 export interface KeyLike {
