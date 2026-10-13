@@ -1,0 +1,115 @@
+{
+ "size": [
+  1500,
+  2100
+ ],
+ "dpi": [
+  599.9988,
+  599.9988
+ ],
+ "symmetry_180_exact": true,
+ "face ellipse, figure pixels (alpha 1), identical to the final (%)": 100.0,
+ "face ellipse, figure pixels (alpha 1) px": 50552,
+ "hood and cape (alpha 1) identical to the final (%)": 100.0,
+ "hood and cape incl. matted edge identical to the grounds mock A (%)": 96.6494,
+ "props above the moulding (alpha 1) identical to the final (%)": 100.0,
+ "band rows 944-1049 between x 230-1270 identical to the final (%)": 100.0,
+ "torso region (dm) changed from the final (%)": 99.22,
+ "whole card identical to the grounds mock A (%)": 84.42,
+ "darkest 0.5 mm area, whole card": 26.6,
+ "darkest 0.5 mm area, 0.5th pct": 30.9,
+ "darkest 0.5 mm area, painted torso": 30.7,
+ "darkest single pixel (luma)": 23.1,
+ "0.5 mm blur (gaussian sigma 5.9 px), min": 27.3,
+ "saturation x value, 99.5th pct (whole card)": 148.0,
+ "saturation x value, 99.5th pct (painted torso)": 91.6,
+ "saturation x value, max (painted torso)": 148.4,
+ "field: brightest-channel mean": 160.0,
+ "field: brightest channel max / 99.5th pct": [
+  219,
+  197.0
+ ],
+ "ground incl. frame: channel max": 223,
+ "faces luma 99th pct": 181.8,
+ "texture: hood (unchanged)": {
+  "fine": 0.55,
+  "mid": 1.19,
+  "coarse": 2.56
+ },
+ "texture: painted torso cloth, this file": {
+  "fine": 0.67,
+  "mid": 0.82,
+  "coarse": 1.47
+ },
+ "texture: torso cloth, the previous final": {
+  "fine": 0.62,
+  "mid": 1.08,
+  "coarse": 1.66
+ },
+ "gradient p50/p90/p99: hood": [
+  0.69,
+  4.32,
+  54.08
+ ],
+ "gradient p50/p90/p99: torso cloth, this file / before": [
+  [
+   0.91,
+   2.19,
+   23.4
+  ],
+  [
+   1.06,
+   2.34,
+   19.42
+  ]
+ ],
+ "gradient p50/p90/p99: hands, this file / before": [
+  [
+   3.02,
+   16.97,
+   40.93
+  ],
+  [
+   4.34,
+   17.29,
+   32.44
+  ]
+ ],
+ "cards: dark card-face px checked": 27496,
+ "cards: bright specks on the faces (clusters, px)": [
+  4,
+  2626
+ ],
+ "png bytes": 3549654,
+ "jpg bytes": 1103551,
+ "jpg dpi": [
+  600,
+  600
+ ],
+ "jpg size": [
+  1500,
+  2100
+ ],
+ "margins px": {
+  "figure: hood top": 245,
+  "figure: left / right side": [
+   413,
+   406
+  ],
+  "hands (left, top, right)": [
+   636,
+   806,
+   637
+  ],
+  "fan of cards (left, top, right)": [
+   623,
+   676,
+   623
+  ],
+  "tankard and its ring (left prop), from the left edge": 443,
+  "napkin and coin (right prop), from the right edge": 399,
+  "lamp and glow (160 px disc on the centre line)": 590,
+  "band wood (runs under the rule)": 124,
+  "moulding bevel / dark rule / fillet": "0-112 / 112-124 / 124-127"
+ }
+}

@@ -1,0 +1,45 @@
+{
+ "model": "dreamshaper",
+ "out": "raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "torso-garnet-55",
+   "src": "comp/torso-in-garnet.png",
+   "strength": 0.55,
+   "seeds": [
+    9102,
+    9401,
+    9402,
+    9403,
+    9404,
+    9405
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, a seated figure's cloak, sleeves and hands holding a hand of plain dark cards, period portrait, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, photograph, 3D, glossy, text, letters, pips"
+  },
+  {
+   "name": "prop-garnet-L-55",
+   "src": "comp/prop-in-garnet-L.png",
+   "strength": 0.55,
+   "seeds": [
+    9201,
+    9411
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, still-life detail on the edge of a dark walnut table: a cold pewter tankard, a dull skin on the drink, a faint ring on the wood where it stood, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, photograph, 3D, glossy, text, letters, pips"
+  },
+  {
+   "name": "prop-garnet-R-55",
+   "src": "comp/prop-in-garnet-R.png",
+   "strength": 0.55,
+   "seeds": [
+    9201,
+    9411
+   ],
+   "prompt": "15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, still-life detail on the edge of a dark walnut table: a crumpled white linen napkin and one gold coin lying flat, period, no photo, no modern illustration",
+   "negative": "vector, flat illustration, clip art, cartoon, photograph, 3D, glossy, text, letters, pips"
+  }
+ ]
+}

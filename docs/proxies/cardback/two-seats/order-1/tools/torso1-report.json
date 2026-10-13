@@ -1,0 +1,11 @@
+{
+ "torso": "raw/torso-garnet-55-s9402.png",
+ "edge_gold_left_out_px": 2835,
+ "hem_step_median": 6.83,
+ "hem_step_p10_p90": [
+  1.52,
+  15.97
+ ],
+ "hem_blend": "applied, 24 px cosine",
+ "written_px": 207904
+}

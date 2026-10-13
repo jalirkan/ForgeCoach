@@ -1,0 +1,5 @@
+garnet gold blots taken back to ground: 1899 px
+garnet core pieces kept: 1, core px 281045
+garnet band wood columns 194..1305; edge px 11906, alpha in (0,1): 5160
+garnet bare ground vs final outside the figure: mean |d| 0.24, p99.9 7.0
+garnet edge re-lay error: median 3.9, p90 18.1
