@@ -1,0 +1,59 @@
+{
+ "model": "dreamshaper",
+ "out": "/home/justin-a/scenery-packs/two-seats-work/round3/comp08",
+ "steps": 18,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "comp-green",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/prior/green.png",
+   "size": [
+    1216,
+    848
+   ],
+   "strength": 0.8,
+   "seeds": [
+    301,
+    302,
+    303,
+    304
+   ],
+   "prompt": "half-length portrait of a calm young woman with auburn hair, gold hair net, green velvet cloak, rose gown, faint pleased knowing smile, seated at a card table, holding a large fan of playing cards with plain dark backs, lit from below by a glowing oil lamp on the table, Hans Memling oil painting, gold leaf background",
+   "negative": "text, letters, pips, card faces, symbols, watermark, deformed hands, extra fingers, cartoon, anime, photo, neon, blurry, cropped head, tiny figure, full body, hood, frame"
+  },
+  {
+   "name": "comp-garnet",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/prior/garnet.png",
+   "size": [
+    1216,
+    848
+   ],
+   "strength": 0.8,
+   "seeds": [
+    311,
+    312,
+    313,
+    314
+   ],
+   "prompt": "half-length portrait of a careworn old man, grey hair, lined face, deep red fur-collared robe, worried anxious frown, looking at the viewer, seated at a card table, holding a large fan of playing cards with plain dark backs, lit from below by a glowing oil lamp on the table, Hans Memling oil painting, gold leaf background",
+   "negative": "text, letters, pips, card faces, symbols, watermark, deformed hands, extra fingers, cartoon, anime, photo, neon, blurry, cropped head, tiny figure, full body, hood, frame"
+  },
+  {
+   "name": "comp-blue",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/prior/blue.png",
+   "size": [
+    1216,
+    848
+   ],
+   "strength": 0.8,
+   "seeds": [
+    321,
+    322,
+    323,
+    324
+   ],
+   "prompt": "half-length portrait of a wary young man with dark hair and fringe, dark charcoal doublet, deep blue cloak, narrowed eyes, sidelong glance, seated at a card table, holding a large fan of playing cards with plain dark backs, lit from below by a glowing oil lamp on the table, Hans Memling oil painting, gold leaf background",
+   "negative": "text, letters, pips, card faces, symbols, watermark, deformed hands, extra fingers, cartoon, anime, photo, neon, blurry, cropped head, tiny figure, full body, hood, frame"
+  }
+ ]
+}

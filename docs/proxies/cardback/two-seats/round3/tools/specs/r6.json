@@ -1,0 +1,50 @@
+{
+ "model": "dreamshaper",
+ "out": "/home/justin-a/scenery-packs/two-seats-work/round3/unify",
+ "steps": 26,
+ "cfg": 5.5,
+ "jobs": [
+  {
+   "name": "unify-green",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/half/green-clean.png",
+   "size": [
+    1216,
+    848
+   ],
+   "strength": 0.22,
+   "seeds": [
+    701
+   ],
+   "prompt": "half-length portrait, holding a big fan of playing cards with plain dark backs in both hands, a calm young woman with auburn hair, gold hair net, green velvet cloak, rose gown, faint pleased knowing smile, seated at a table, lit from below by a glowing oil lamp on the table, Hans Memling oil painting, gold leaf background",
+   "negative": "text, letters, pips, card faces, symbols, watermark, deformed hands, extra fingers, cartoon, anime, photo, neon, blurry, cropped head, tiny figure, full body, hood, frame"
+  },
+  {
+   "name": "unify-garnet",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/half/garnet-clean.png",
+   "size": [
+    1216,
+    848
+   ],
+   "strength": 0.22,
+   "seeds": [
+    701
+   ],
+   "prompt": "half-length portrait, holding a big fan of playing cards with plain dark backs in both hands, a careworn old man, grey hair, lined face, deep red fur-collared robe, worried anxious frown, looking at the viewer, seated at a table, lit from below by a glowing oil lamp on the table, Hans Memling oil painting, gold leaf background",
+   "negative": "text, letters, pips, card faces, symbols, watermark, deformed hands, extra fingers, cartoon, anime, photo, neon, blurry, cropped head, tiny figure, full body, hood, frame"
+  },
+  {
+   "name": "unify-blue",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/half/blue-clean.png",
+   "size": [
+    1216,
+    848
+   ],
+   "strength": 0.22,
+   "seeds": [
+    701
+   ],
+   "prompt": "half-length portrait, holding a big fan of playing cards with plain dark backs in both hands, a wary young man with dark hair and fringe, dark charcoal doublet, deep blue cloak, narrowed eyes, sidelong glance, seated at a table, lit from below by a glowing oil lamp on the table, Hans Memling oil painting, gold leaf background",
+   "negative": "text, letters, pips, card faces, symbols, watermark, deformed hands, extra fingers, cartoon, anime, photo, neon, blurry, cropped head, tiny figure, full body, hood, frame"
+  }
+ ]
+}

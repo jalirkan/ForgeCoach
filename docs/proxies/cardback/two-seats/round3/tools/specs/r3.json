@@ -1,0 +1,71 @@
+{
+ "model": "dreamshaper",
+ "out": "/home/justin-a/scenery-packs/two-seats-work/round3/repaint",
+ "steps": 26,
+ "cfg": 5.5,
+ "jobs": [
+  {
+   "name": "green-face",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/crops/green-face.png",
+   "strength": 0.48,
+   "seeds": [
+    501,
+    502
+   ],
+   "prompt": "close-up of a calm young woman's face, auburn hair, a faint pleased knowing smile, eyes soft, the face of someone winning at cards, lit warmly from below by lamplight, Hans Memling oil painting, fine glazes",
+   "negative": "text, letters, numbers, pips, card faces, symbols, pattern on cards, extra fingers, fused fingers, deformed, cartoon, photo, neon, blurry"
+  },
+  {
+   "name": "green-hands",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/crops/green-hands.png",
+   "strength": 0.5,
+   "seeds": [
+    601
+   ],
+   "prompt": "two hands holding a fanned hand of playing cards, the plain dark backs of the cards toward the viewer, each card back plain dark with a thin gold edge, natural fingers, lit warmly from below by an oil lamp, Hans Memling oil painting",
+   "negative": "text, letters, numbers, pips, card faces, symbols, pattern on cards, extra fingers, fused fingers, deformed, cartoon, photo, neon, blurry"
+  },
+  {
+   "name": "garnet-face",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/crops/garnet-face.png",
+   "strength": 0.48,
+   "seeds": [
+    511,
+    512
+   ],
+   "prompt": "close-up of a careworn old man's face, grey hair, lined forehead, brows knit and raised at the inner ends, worried anxious mouth, looking across the table, lit warmly from below by lamplight, Hans Memling oil painting",
+   "negative": "text, letters, numbers, pips, card faces, symbols, pattern on cards, extra fingers, fused fingers, deformed, cartoon, photo, neon, blurry"
+  },
+  {
+   "name": "garnet-hands",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/crops/garnet-hands.png",
+   "strength": 0.5,
+   "seeds": [
+    611
+   ],
+   "prompt": "two hands holding a fanned hand of playing cards, the plain dark backs of the cards toward the viewer, each card back plain dark with a thin gold edge, natural fingers, lit warmly from below by an oil lamp, Hans Memling oil painting",
+   "negative": "text, letters, numbers, pips, card faces, symbols, pattern on cards, extra fingers, fused fingers, deformed, cartoon, photo, neon, blurry"
+  },
+  {
+   "name": "blue-face",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/crops/blue-face.png",
+   "strength": 0.48,
+   "seeds": [
+    521,
+    522
+   ],
+   "prompt": "close-up of a wary young man's face, dark hair with a fringe, narrowed eyes glancing sideways, guarded, intent, unreadable, lit warmly from below by lamplight, Hans Memling oil painting, fine glazes",
+   "negative": "text, letters, numbers, pips, card faces, symbols, pattern on cards, extra fingers, fused fingers, deformed, cartoon, photo, neon, blurry"
+  },
+  {
+   "name": "blue-hands",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/crops/blue-hands.png",
+   "strength": 0.5,
+   "seeds": [
+    621
+   ],
+   "prompt": "two hands holding a fanned hand of playing cards, the plain dark backs of the cards toward the viewer, each card back plain dark with a thin gold edge, natural fingers, lit warmly from below by an oil lamp, Hans Memling oil painting",
+   "negative": "text, letters, numbers, pips, card faces, symbols, pattern on cards, extra fingers, fused fingers, deformed, cartoon, photo, neon, blurry"
+  }
+ ]
+}

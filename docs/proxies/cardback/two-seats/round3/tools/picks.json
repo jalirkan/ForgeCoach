@@ -1,0 +1,81 @@
+{
+ "green": {
+  "src": "/home/justin-a/scenery-packs/two-seats-work/round3/half/green-cards.png",
+  "face": [
+   600,
+   110,
+   910,
+   420
+  ],
+  "hands": [
+   640,
+   330,
+   1110,
+   800
+  ],
+  "face_seeds": [
+   501,
+   502
+  ],
+  "hand_seeds": [
+   601
+  ],
+  "face_strength": 0.48,
+  "hand_strength": 0.5,
+  "face_pick": 502,
+  "hands_pick": 601
+ },
+ "garnet": {
+  "src": "/home/justin-a/scenery-packs/two-seats-work/round3/half/garnet-cards.png",
+  "face": [
+   590,
+   140,
+   910,
+   460
+  ],
+  "hands": [
+   560,
+   420,
+   1100,
+   880
+  ],
+  "face_seeds": [
+   511,
+   512
+  ],
+  "hand_seeds": [
+   611
+  ],
+  "face_strength": 0.48,
+  "hand_strength": 0.5,
+  "face_pick": 511,
+  "hands_pick": 612
+ },
+ "blue": {
+  "src": "/home/justin-a/scenery-packs/two-seats-work/round3/half/blue-cards.png",
+  "face": [
+   610,
+   110,
+   920,
+   420
+  ],
+  "hands": [
+   530,
+   440,
+   1010,
+   880
+  ],
+  "face_seeds": [
+   521,
+   522
+  ],
+  "hand_seeds": [
+   621
+  ],
+  "face_strength": 0.48,
+  "hand_strength": 0.5,
+  "face_pick": 531,
+  "hands_pick": 621,
+  "face_note": "531: 522 nudged by expr.py (irises to the viewer's right, lids down), repainted at 0.34 (specs/r7.json)"
+ }
+}

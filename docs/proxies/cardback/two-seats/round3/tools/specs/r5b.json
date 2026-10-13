@@ -1,0 +1,18 @@
+{
+ "model": "dreamshaper",
+ "out": "/home/justin-a/scenery-packs/two-seats-work/round3/repaint",
+ "steps": 26,
+ "cfg": 5.5,
+ "jobs": [
+  {
+   "name": "garnet-hands2",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/crops/garnet-hands.png",
+   "strength": 0.5,
+   "seeds": [
+    612
+   ],
+   "prompt": "two hands holding a fanned hand of playing cards, the plain dark backs of the cards toward the viewer, each card back plain dark with a thin gold edge, natural fingers, lit warmly from below by an oil lamp, Hans Memling oil painting",
+   "negative": "text, letters, numbers, pips, card faces, symbols, pattern on cards, extra fingers, fused fingers, deformed, cartoon, photo, neon, blurry"
+  }
+ ]
+}

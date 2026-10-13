@@ -1,0 +1,22 @@
+{
+ "model": "base",
+ "out": "/home/justin-a/scenery-packs/two-seats-work/round3/comp-base",
+ "steps": 24,
+ "cfg": 6.5,
+ "jobs": [
+  {
+   "name": "comp-green",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/prior/green.png",
+   "size": [
+    1216,
+    848
+   ],
+   "strength": 0.9,
+   "seeds": [
+    301
+   ],
+   "prompt": "a composed young woman with auburn hair parted in the middle, gold hair net, pearl earrings, green velvet cloak over a rose gown, a faint knowing pleased smile, calm, she is winning, Northern Renaissance oil painting on oak panel, by Hans Memling and Jan van Eyck, half-length portrait, the figure fills the picture, seated at a wooden card table, seen from across the table, holding a hand of six playing cards in both hands at chest height, the backs of the cards toward the viewer, plain dark card backs with a thin gold edge, lit warmly from below by a glowing brass oil lamp standing on the table in front, candlelight on the face and hands, punched gold leaf background, warm, rich glazes, fine detail, masterpiece",
+   "negative": "text, letters, numbers, pips, card faces, hearts, spades, symbols on cards, watermark, signature, deformed hands, extra fingers, fused fingers, extra arms, cartoon, anime, 3d render, photo, neon, oversaturated, blurry, cropped head, tiny figure, full body, standing, hood, symmetrical, frame"
+  }
+ ]
+}

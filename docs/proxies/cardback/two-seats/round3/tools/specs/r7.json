@@ -1,0 +1,19 @@
+{
+ "model": "dreamshaper",
+ "out": "/home/justin-a/scenery-packs/two-seats-work/round3/repaint",
+ "steps": 26,
+ "cfg": 5.5,
+ "jobs": [
+  {
+   "name": "blue-face",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round3/crops/blue-face-nudged.png",
+   "strength": 0.34,
+   "seeds": [
+    531,
+    532
+   ],
+   "prompt": "close-up of a wary young man's face, dark hair with a fringe, narrowed eyes glancing sideways to one side, eyes not on the viewer, guarded, intent, unreadable, lit warmly from below by lamplight, Hans Memling oil painting, fine glazes",
+   "negative": "text, letters, numbers, pips, card faces, symbols, pattern on cards, extra fingers, fused fingers, deformed, cartoon, photo, neon, blurry"
+  }
+ ]
+}
