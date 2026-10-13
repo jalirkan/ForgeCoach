@@ -1,0 +1,74 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/a",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "t-green-35",
+   "src": "comp/t-in-green.png",
+   "strength": 0.35,
+   "seeds": [
+    6101,
+    6102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, a woman in a green hooded cloak, her forearms in green cloth sleeves with darker cuffs, the cloak hanging in straight vertical folds, holding a small hand of plain dark playing cards",
+   "negative": "photo, realism, painterly, oil painting sheen, glossy, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra arms, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "t-green-40",
+   "src": "comp/t-in-green.png",
+   "strength": 0.4,
+   "seeds": [
+    6101,
+    6102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, a woman in a green hooded cloak, her forearms in green cloth sleeves with darker cuffs, the cloak hanging in straight vertical folds, holding a small hand of plain dark playing cards",
+   "negative": "photo, realism, painterly, oil painting sheen, glossy, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra arms, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "t-garnet-35",
+   "src": "comp/t-in-garnet.png",
+   "strength": 0.35,
+   "seeds": [
+    6101,
+    6102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, an older man in a red hooded cloak, his forearms in red cloth sleeves with darker cuffs, the cloak hanging in straight vertical folds, holding a small hand of plain dark playing cards",
+   "negative": "photo, realism, painterly, oil painting sheen, glossy, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra arms, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "t-garnet-40",
+   "src": "comp/t-in-garnet.png",
+   "strength": 0.4,
+   "seeds": [
+    6101,
+    6102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, an older man in a red hooded cloak, his forearms in red cloth sleeves with darker cuffs, the cloak hanging in straight vertical folds, holding a small hand of plain dark playing cards",
+   "negative": "photo, realism, painterly, oil painting sheen, glossy, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra arms, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "t-blue-35",
+   "src": "comp/t-in-blue.png",
+   "strength": 0.35,
+   "seeds": [
+    6101,
+    6102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, a young man in a dark blue hooded cloak, his forearms in dark blue cloth sleeves with darker cuffs, the cloak hanging in straight vertical folds, holding a small hand of plain dark playing cards",
+   "negative": "photo, realism, painterly, oil painting sheen, glossy, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra arms, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "t-blue-40",
+   "src": "comp/t-in-blue.png",
+   "strength": 0.4,
+   "seeds": [
+    6101,
+    6102
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, a young man in a dark blue hooded cloak, his forearms in dark blue cloth sleeves with darker cuffs, the cloak hanging in straight vertical folds, holding a small hand of plain dark playing cards",
+   "negative": "photo, realism, painterly, oil painting sheen, glossy, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra arms, extra fingers, deformed hands, blurry, neon"
+  }
+ ]
+}

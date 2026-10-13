@@ -1,0 +1,104 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/b",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "h-green-36",
+   "src": "comp/h-in-green.png",
+   "strength": 0.36,
+   "seeds": [
+    6301,
+    6302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, an elegant woman's hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, green cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "h-green-44",
+   "src": "comp/h-in-green.png",
+   "strength": 0.44,
+   "seeds": [
+    6301,
+    6302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, an elegant woman's hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, green cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "u-green-18",
+   "src": "comp/u-in-green.png",
+   "strength": 0.18,
+   "seeds": [
+    6401
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, a woman in a green hooded cloak holding a small hand of dark playing cards, tooled gold ground",
+   "negative": "photo, realism, oil painting sheen, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "h-garnet-36",
+   "src": "comp/h-in-garnet.png",
+   "strength": 0.36,
+   "seeds": [
+    6301,
+    6302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, an older man's veined hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, garnet red cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "h-garnet-44",
+   "src": "comp/h-in-garnet.png",
+   "strength": 0.44,
+   "seeds": [
+    6301,
+    6302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, an older man's veined hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, garnet red cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "u-garnet-18",
+   "src": "comp/u-in-garnet.png",
+   "strength": 0.18,
+   "seeds": [
+    6401
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, an older man in a red hooded cloak holding a small hand of dark playing cards, tooled gold ground",
+   "negative": "photo, realism, oil painting sheen, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "h-blue-36",
+   "src": "comp/h-in-blue.png",
+   "strength": 0.36,
+   "seeds": [
+    6301,
+    6302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, a young man's hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, indigo blue cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "h-blue-44",
+   "src": "comp/h-in-blue.png",
+   "strength": 0.44,
+   "seeds": [
+    6301,
+    6302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, a young man's hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, indigo blue cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "u-blue-18",
+   "src": "comp/u-in-blue.png",
+   "strength": 0.18,
+   "seeds": [
+    6401
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, a young man in a dark blue hooded cloak holding a small hand of dark playing cards, tooled gold ground",
+   "negative": "photo, realism, oil painting sheen, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra fingers, deformed hands, blurry, neon"
+  }
+ ]
+}

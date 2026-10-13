@@ -1,0 +1,17 @@
+00:21:35 loaded Lykon/dreamshaper-xl-1-0 in 2s; 15 images
+00:22:07 h-green-36 (1104, 584) seed=6301 strength=0.36 cn=0 31s
+00:22:38 h-green-36 (1104, 584) seed=6302 strength=0.36 cn=0 31s
+00:23:17 h-green-44 (1104, 584) seed=6301 strength=0.44 cn=0 39s
+00:23:56 h-green-44 (1104, 584) seed=6302 strength=0.44 cn=0 39s
+00:24:15 u-green-18 (1024, 824) seed=6401 strength=0.18 cn=0 19s
+00:24:46 h-garnet-36 (1104, 584) seed=6301 strength=0.36 cn=0 31s
+00:25:18 h-garnet-36 (1104, 584) seed=6302 strength=0.36 cn=0 31s
+00:25:57 h-garnet-44 (1104, 584) seed=6301 strength=0.44 cn=0 39s
+00:26:36 h-garnet-44 (1104, 584) seed=6302 strength=0.44 cn=0 39s
+00:26:55 u-garnet-18 (1024, 824) seed=6401 strength=0.18 cn=0 19s
+00:27:26 h-blue-36 (1104, 584) seed=6301 strength=0.36 cn=0 31s
+00:27:58 h-blue-36 (1104, 584) seed=6302 strength=0.36 cn=0 32s
+00:28:37 h-blue-44 (1104, 584) seed=6301 strength=0.44 cn=0 39s
+00:29:16 h-blue-44 (1104, 584) seed=6302 strength=0.44 cn=0 39s
+00:29:34 u-blue-18 (1024, 824) seed=6401 strength=0.18 cn=0 19s
+00:29:34 total 481s
