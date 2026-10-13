@@ -23,8 +23,8 @@ export interface KeyRow {
 }
 
 export const PLAY_KEYS: KeyRow[] = [
-  { chord: 'Space / Enter', what: 'the highlighted (primary) button — usually OK / pass; in a question, Confirm' },
-  { chord: 'Esc', what: 'the engine’s Cancel button (End Turn, Cancel…); in a question, hide or show it (never declines — “Choose how to play”: never mind)' },
+  { chord: 'Space / Enter', what: 'the highlighted (primary) button — usually OK / pass; confirms your attackers or blockers; in a question, Confirm' },
+  { chord: 'Esc', what: 'the engine’s Cancel button (End Turn, Cancel…); Skip combat while declaring attackers, No blocks while declaring blockers; in a question, hide or show it (never declines — “Choose how to play”: never mind)' },
   { chord: '1 – 9', what: 'in a question, the option with that number (one pick answers at once; several pick toggles)' },
   { chord: 'R', what: 'dividing combat damage: reset the split to the engine’s own' },
   { chord: 'P', what: 'pass priority once' },
@@ -56,9 +56,13 @@ export interface KeyBinding {
 }
 
 /** Every binding, by scope and mode: the table playKeys.test.ts checks for overlaps and against the planners. */
+/** Every mode but the two declarations, where Esc skips instead of pressing the engine's Cancel. */
+const NOT_DECLARING: readonly InputMode[] = ['waiting', 'mulligan', 'main', 'stack', 'priority', 'pay', 'discard', 'target', 'yield', 'over', 'ask', 'other'];
+
 export const KEY_BINDINGS: readonly KeyBinding[] = [
   { keys: [' ', 'enter'], scope: 'board', modes: null, what: 'primary button' },
-  { keys: ['escape'], scope: 'board', modes: null, what: 'engine Cancel' },
+  { keys: ['escape'], scope: 'board', modes: NOT_DECLARING, what: 'engine Cancel' },
+  { keys: ['escape'], scope: 'board', modes: ['attack', 'block'], what: 'skip combat / no blocks' },
   { keys: ['p'], scope: 'board', modes: null, what: 'pass priority once' },
   { keys: ['e'], scope: 'board', modes: null, what: 'auto-pass: end of turn' },
   { keys: ['b'], scope: 'board', modes: null, what: 'auto-pass: before my turn' },
@@ -107,6 +111,8 @@ export interface PlayKeyContext {
 export type PlayKeyPlan =
   | { kind: 'ok' }
   | { kind: 'cancel' }
+  /** Skip combat (declaring attackers) / No blocks (declaring blockers): the slot's `skip` button. */
+  | { kind: 'skip' }
   | { kind: 'act'; body: ActBody; label: string }
   | { kind: 'help' }
   | { kind: 'log' }
@@ -130,6 +136,10 @@ export function planPlayKey(e: KeyLike, ctx: PlayKeyContext): PlayKeyPlan | null
   if (key === 'escape') {
     if (ctx.overlay) return { kind: 'closeOverlay' };
     if (ctx.askOpen || ctx.over) return null; // the dialog owns Esc
+    // The combat study: Esc is SKIP COMBAT / NO BLOCKS, which end in the engine's OK.
+    if (ctx.view.mode === 'attack' || ctx.view.mode === 'block') {
+      return ctx.view.ok.enabled ? { kind: 'skip' } : { kind: 'inert', why: ctx.view.mode === 'attack' ? 'Skip combat is not available right now' : 'No blocks is not available right now' };
+    }
     return ctx.view.cancel.enabled ? { kind: 'cancel' } : { kind: 'inert', why: 'Cancel is not available right now' };
   }
   if (ctx.overlay || ctx.askOpen) return null;

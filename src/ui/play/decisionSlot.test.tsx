@@ -13,6 +13,7 @@ import { DecisionSlot, OppWaitingLine } from './DecisionSlot.tsx';
 import { AskDialog } from './AskDialog.tsx';
 import { describeInput } from './inputView.ts';
 import { attentionOf, passToggles, type AttentionView } from './decisionModel.ts';
+import { selectionSummary } from './selection.ts';
 
 // J109 3.1 (friend, a phone, seq 1791): priority in the other player's beginning of combat.
 const PRIORITY: InputBody = {
@@ -43,7 +44,7 @@ const PAY: InputBody = {
   buttons: { ok: { label: 'Auto', enabled: true }, cancel: { label: 'Cancel', enabled: true }, focus: 'ok' },
 };
 
-function slot(input: InputBody | null, opts: { wide: boolean; attention?: AttentionView; ask?: AskBody; nudged?: boolean }): string {
+function slot(input: InputBody | null, opts: { wide: boolean; attention?: AttentionView; ask?: AskBody; nudged?: boolean; picked?: { attackers: number; blockers: number } }): string {
   const view = describeInput(input, STATE, 1, { ask: opts.ask ?? null });
   const attention = opts.attention ?? attentionOf({ connected: true, over: false, ask: opts.ask ?? null, input, view, state: STATE, seat: 1, oppName: 'Sam', inputSeq: 7 });
   const toggles = passToggles({ yielding: null, seat: 1, view, canAct: !opts.ask });
@@ -57,9 +58,11 @@ function slot(input: InputBody | null, opts: { wide: boolean; attention?: Attent
       undoDepth={0}
       onOk={() => undefined}
       onCancel={() => undefined}
+      onSkip={() => undefined}
       onAct={() => undefined}
       onHelp={() => undefined}
       flash={null}
+      {...(opts.picked ? { selection: selectionSummary(view, opts.picked) } : {})}
       wide={opts.wide}
       attention={attention}
       nudged={opts.nudged}
@@ -161,5 +164,34 @@ describe('a question inside the slot', () => {
     const html = renderToStaticMarkup(<AskDialog ask={ask} state={STATE} onAnswer={() => undefined} />);
     expect(html).toContain('aria-modal="true"');
     expect(html).not.toContain('is-slot');
+  });
+});
+
+describe('the slot in combat (the combat study §1 and §4)', () => {
+  const ATTACK: InputBody = {
+    ...PRIORITY,
+    prompt: 'Select creatures to attack Sam or select player/card you wish to attack.',
+    buttons: { ok: { label: 'OK', enabled: true }, cancel: { label: 'Call Back', enabled: true } },
+  };
+  const BLOCK: InputBody = {
+    ...PRIORITY,
+    prompt: 'Select creatures to block Goblin Guide (31) or select another attacker to declare blockers for.',
+    buttons: { ok: { label: 'OK', enabled: true }, cancel: { label: 'Cancel', enabled: false }, focus: 'ok' },
+  };
+  it('attackers: CALL BACK, SKIP COMBAT [Esc] (no engine button of its own) and the counting primary [Space]', () => {
+    const html = slot(ATTACK, { wide: true, picked: { attackers: 1, blockers: 0 } });
+    expect(html).toMatch(/data-engine-button="cancel"[^>]*>[\s\S]*?Call back/);
+    expect(html).toMatch(/data-slot-action="skip"[^>]*>[\s\S]*?Skip combat[\s\S]*?Esc</);
+    expect(html).toMatch(/data-engine-button="ok" data-primary="1"[^>]*>[\s\S]*?One selected[\s\S]*?Space</);
+    expect(enabled(html, /data-engine-button="ok"/)).toHaveLength(1);
+    expect(html).toContain('1 selected');
+    expect(html).toContain('Click your creatures to attack');
+  });
+  it('blockers: NO BLOCKS [Esc] and DONE BLOCKING [Space], with the instruction', () => {
+    const html = slot(BLOCK, { wide: true, picked: { attackers: 0, blockers: 0 } });
+    expect(html).toMatch(/data-slot-action="skip"[^>]*>[\s\S]*?No blocks[\s\S]*?Esc</);
+    expect(html).toMatch(/data-primary="1"[^>]*>[\s\S]*?Done blocking[\s\S]*?Space</);
+    expect(html).toContain('Click a creature, then click the attacker it blocks');
+    expect(enabled(html, /data-engine-button="cancel"/)).toHaveLength(0);
   });
 });

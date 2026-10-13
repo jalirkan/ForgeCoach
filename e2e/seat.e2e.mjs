@@ -27,6 +27,14 @@
  * player row locked until every blocker has lethal); the coach's "Copy
  * prompt" with no helper; the search hint ("What would the search AI do?",
  * mtg-table D429) against a fake helper that offers it.
+ * result and mid-game; live watch on /observe never opening /ws; declaring
+ * attackers and blockers as the combat study has them (blocker first, badges
+ * and lines, No blocks / Done blocking, Alpha strike / Call back / Skip
+ * combat); combat damage
+ * by the engine's rule (mtg-table M67: no defender row without trample, the
+ * engine's refusal shown, a trampler's excess); the coach's "Copy prompt" with
+ * no helper; the search hint ("What would the search AI do?", mtg-table D429)
+ * against a fake helper that offers it.
  *
  * Environment: BUILD=0 (reuse dist/), APP_URL (test a running ForgeCoach
  * instead; it must be on a Vite port), HEADLESS=0, ONLY=<substring of a
@@ -205,11 +213,14 @@ function theirs(engine, name) {
 }
 
 /**
- * Declaring blocks (scene `blocks`): the AI attacks with Goblin Guide, Hill Giant and Storm Crow (a flyer);
- * you have Memnite, Raging Goblin and a summoning-sick Hill Giant. The attack lane, the block lane, and
- * the engine's own clicks for assign, move, take off (a click, and the ×), and a refused flyer block.
+ * Declaring blocks (scene `blocks`), blocker first as the combat study §4 has it: the AI attacks with
+ * Goblin Guide, Hill Giant and Storm Crow (a flyer); you have Memnite, Raging Goblin and a summoning-sick
+ * Hill Giant. The attack lane; your creature, then its attacker — assign, a double block, remove by the
+ * same two clicks again, move to another attacker, a refused flyer block in the game's terms — each as
+ * the engine's own attacker-first clicks, the badges and lines on the board; then `end`: NO BLOCKS [Esc]
+ * (every block off by the engine's clicks, then OK) or DONE BLOCKING (the engine's OK).
  */
-async function blockDeclaration({ page, engine, app }) {
+async function blockDeclaration({ page, engine, app }, end) {
   const u = ui(page);
   await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
   await u.mode('block');
@@ -224,67 +235,99 @@ async function blockDeclaration({ page, engine, app }) {
   const lastClicks = async (n, want, what) => {
     await engine.waitFor(() => JSON.stringify(clicks().slice(-n)) === JSON.stringify(want), what, STEP_MS);
   };
-  const inFront = (blocker, attacker) => page.locator(`.player-me [data-combat-lane="block"] [data-blocks="${attacker}"] .tile[data-card-id="${blocker}"]`);
+  const bar = page.locator('.actionbar');
+  const badge = (id) => page.locator(`.battlefield .tile[data-card-id="${id}"] .tile-pair`);
+  const line = (a, b) => page.locator(`.combat-line.is-block[data-line-from="${a}"][data-line-to="${b}"]`);
+  const armed = (id) => page.locator(`.battlefield .tile.is-armed[data-card-id="${id}"]`);
+  /** Your creature, then the attacker: the first click sends nothing and lifts the creature. */
+  const pair = async (blocker, attacker) => {
+    const before = clicks().length;
+    await u.click(blocker);
+    await armed(blocker).waitFor({ timeout: STEP_MS });
+    await bar.getByText('Selected blocker — now click an attacker to assign').waitFor({ timeout: STEP_MS });
+    check(clicks().length === before, 'picking your creature sends nothing to the engine');
+    await u.click(attacker);
+    await armed(blocker).waitFor({ state: 'detached', timeout: STEP_MS });
+  };
 
   // The attack lane: the attackers in the engine's order, on their side; no combat list anywhere.
   const cols = page.locator('.player-top [data-combat-lane="attack"] [data-lane-col]');
   await cols.first().waitFor({ timeout: STEP_MS });
   const order = await cols.evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-lane-col'))));
   check(JSON.stringify(order) === JSON.stringify(engine.game.attackers), `the attack lane holds ${engine.game.attackers} in order (${order})`);
-  check(!(await page.locator('.combat-panel, .combat-list').count()), 'no combat list on the board');
+  check(!(await page.locator('.combat-panel, .combat-list, [data-combat-lane="block"]').count()), 'no combat list and no block lane on the board');
   check(!/unblocked/i.test(await page.locator('.board').innerText()), 'no "unblocked" anywhere');
   check(/→\s*You/.test(await page.locator('.player-top [data-lane-label]').innerText()), 'one target label for the lane: → You');
-  // The instruction is the engine's flow; the summoning-sick mark is gone in their combat.
-  check((await page.locator('.actionbar').innerText()).includes('Click an attacker, then your creature that blocks it'), 'the panel says how blocks are declared');
+  // The slot as the study quotes it; the summoning-sick mark is gone in their combat; no badge before a block.
+  await bar.getByText('Click a creature, then click the attacker it blocks').waitFor({ timeout: STEP_MS });
+  await bar.locator('[data-slot-action="skip"]', { hasText: 'No blocks' }).waitFor({ timeout: STEP_MS });
+  await bar.locator('[data-primary]', { hasText: 'Done blocking' }).waitFor({ timeout: STEP_MS });
   check(!(await page.locator(`.tile[data-card-id="${myGiant}"] .tile-zz`).isVisible()), 'no Zz on a creature that may block');
-  // Every attacker takes a click (the engine's outline).
-  for (const a of [guide, giant, crow]) check((await u.card(a).getAttribute('data-mark')) === 'act', `attacker ${a} is clickable`);
+  check(!(await page.locator('.battlefield .tile-pair').count()), 'no badge before a block');
+  // Every attacker and every creature of yours that may block takes a click.
+  for (const a of [guide, giant, crow, memnite, goblin, myGiant]) check((await u.card(a).getAttribute('data-mark')) === 'act', `card ${a} is clickable`);
 
-  // Assign: the named attacker is Goblin Guide; Memnite blocks it and sits in front of it.
-  await page.locator(`.player-top .tile.is-pair-current[data-card-id="${guide}"]`).waitFor({ timeout: STEP_MS });
-  await u.click(memnite);
-  await lastClicks(1, [memnite], 'the click on Memnite');
-  await engine.waitFor(() => blocksOf(guide).includes(memnite), 'Memnite blocking Goblin Guide');
-  await inFront(memnite, guide).waitFor({ timeout: STEP_MS });
+  // Assign: Memnite, then Hill Giant — the engine's clicks name the Giant first (Goblin Guide was named).
+  await pair(memnite, giant);
+  await lastClicks(2, [giant, memnite], 'the assign: Giant, Memnite');
+  await engine.waitFor(() => blocksOf(giant).includes(memnite), 'Memnite blocking Hill Giant');
+  await line(giant, memnite).waitFor({ state: 'attached', timeout: STEP_MS });
+  await badge(giant).filter({ hasText: /^1$/ }).waitFor({ timeout: STEP_MS });
+  await badge(memnite).filter({ hasText: /^1$/ }).waitFor({ timeout: STEP_MS });
+  await bar.locator('[data-primary]', { hasText: 'One blocking' }).waitFor({ timeout: STEP_MS });
+  await bar.getByText('1 blocker(s) assigned — click more or confirm').waitFor({ timeout: STEP_MS });
 
-  // Switch to Hill Giant, then click Memnite: it moves (off Guide, onto Giant) through the engine's clicks.
-  await u.click(giant);
-  await lastClicks(1, [giant], 'the click on Hill Giant');
-  await page.locator(`.player-top .tile.is-pair-current[data-card-id="${giant}"]`).waitFor({ timeout: STEP_MS });
-  await u.click(memnite);
-  await lastClicks(4, [guide, memnite, giant, memnite], 'the move: Guide, Memnite, Giant, Memnite');
-  await engine.waitFor(() => blocksOf(giant).includes(memnite) && !blocksOf(guide).includes(memnite), 'Memnite moved to Hill Giant');
-  await inFront(memnite, giant).waitFor({ timeout: STEP_MS });
+  // A double block: Raging Goblin onto the same attacker — the Giant is named, so one engine click.
+  await pair(goblin, giant);
+  await lastClicks(1, [goblin], 'the double block: Goblin');
+  await engine.waitFor(() => blocksOf(giant).includes(goblin) && blocksOf(giant).includes(memnite), 'two blockers on Hill Giant');
+  await line(giant, goblin).waitFor({ state: 'attached', timeout: STEP_MS });
+  await badge(goblin).filter({ hasText: /^1$/ }).waitFor({ timeout: STEP_MS });
+  await bar.locator('[data-primary]', { hasText: '2 blocking' }).waitFor({ timeout: STEP_MS });
 
-  // Take off by a click: Memnite blocks the named attacker, one click takes it off.
-  await u.click(memnite);
-  await lastClicks(1, [memnite], 'the second click on Memnite');
-  await engine.waitFor(() => !blocksOf(giant).includes(memnite), 'Memnite off Hill Giant');
-  await inFront(memnite, giant).waitFor({ state: 'detached', timeout: STEP_MS });
+  // Remove: the Goblin, then the attacker it already blocks — off.
+  await pair(goblin, giant);
+  await lastClicks(1, [goblin], 'the removal: Goblin again');
+  await engine.waitFor(() => !blocksOf(giant).includes(goblin), 'Goblin off Hill Giant');
+  await line(giant, goblin).waitFor({ state: 'detached', timeout: STEP_MS });
+  await badge(goblin).waitFor({ state: 'detached', timeout: STEP_MS });
+  await bar.locator('[data-primary]', { hasText: 'One blocking' }).waitFor({ timeout: STEP_MS });
 
-  // Take off by the ×, with another attacker named: off it, and the named one named again.
-  await u.click(goblin);
-  await engine.waitFor(() => blocksOf(giant).includes(goblin), 'Raging Goblin blocking Hill Giant');
-  await u.click(crow);
-  await lastClicks(1, [crow], 'the click on Storm Crow');
-  await page.locator(`.player-top .tile.is-pair-current[data-card-id="${crow}"]`).waitFor({ timeout: STEP_MS });
-  await page.locator(`.player-me [data-blocks="${giant}"] .lane-unblock`).click({ timeout: STEP_MS });
-  await lastClicks(3, [giant, goblin, crow], 'the ×: Giant, Goblin, Crow');
-  await engine.waitFor(() => !blocksOf(giant).includes(goblin) && engine.game.currentAttacker === crow, 'Goblin off, Storm Crow named again');
+  // Move: Memnite, then Goblin Guide — off the Giant, onto the Guide.
+  await pair(memnite, guide);
+  await lastClicks(3, [memnite, guide, memnite], 'the move: Memnite, Guide, Memnite');
+  await engine.waitFor(() => blocksOf(guide).includes(memnite) && !blocksOf(giant).includes(memnite), 'Memnite moved to Goblin Guide');
+  await line(guide, memnite).waitFor({ state: 'attached', timeout: STEP_MS });
+  await line(giant, memnite).waitFor({ state: 'detached', timeout: STEP_MS });
+  await badge(guide).filter({ hasText: /^1$/ }).waitFor({ timeout: STEP_MS });
+  await badge(giant).waitFor({ state: 'detached', timeout: STEP_MS });
 
-  // A block the engine refuses: a non-flyer under a flyer, said in the game's terms.
-  await u.click(myGiant);
-  await lastClicks(1, [myGiant], 'the click on your Hill Giant');
+  // A block the engine refuses: a non-flyer under a flyer, said in the game's terms, and not drawn.
+  await pair(myGiant, crow);
+  await lastClicks(2, [crow, myGiant], 'the refused try: Crow, your Giant');
   await page.locator('.actionbar .ab-flash', { hasText: "Hill Giant can't block Storm Crow: it can't block a flyer." }).waitFor({ timeout: STEP_MS });
-  check(!/selected now/i.test(await page.locator('.actionbar').innerText()), 'never "cannot be selected now"');
+  check(!/selected now/i.test(await bar.innerText()), 'never "cannot be selected now"');
+  await line(crow, myGiant).waitFor({ state: 'detached', timeout: STEP_MS });
+  check(!blocksOf(crow).length, 'nothing blocks Storm Crow');
 
-  // Block Goblin Guide with Memnite and confirm: Confirm follows the engine's OK.
-  await u.click(guide);
-  await u.click(memnite);
-  await engine.waitFor(() => blocksOf(guide).includes(memnite), 'Memnite blocking Goblin Guide again');
-  await page.locator('.actionbar [data-engine-button="ok"]', { hasText: 'Confirm blocks' }).waitFor({ timeout: STEP_MS });
+  if (end === 'noBlocks') {
+    // Goblin onto the Giant, then NO BLOCKS [Esc]: every block off by the engine's clicks, then its OK.
+    await pair(goblin, giant);
+    await lastClicks(2, [giant, goblin], 'Goblin onto the Giant');
+    await engine.waitFor(() => blocksOf(giant).includes(goblin), 'Goblin blocking Hill Giant');
+    await page.mouse.move(5, 5);
+    await sent(engine, 'buttonOk', () => page.keyboard.press('Escape'));
+    const tail = engine.acts().slice(-5).map((a) => (a.action === 'clickCard' ? a.cardId : a.action));
+    check(JSON.stringify(tail) === JSON.stringify([guide, memnite, giant, goblin, 'buttonOk']), `No blocks: Guide, Memnite, Giant, Goblin, OK (${JSON.stringify(tail)})`);
+    await engine.waitFor(() => engine.game.players[0].life === 14, 'six unblocked damage (Goblin Guide, Hill Giant, Storm Crow)');
+    check(!engine.game.players[0].graveyard.some((c) => c.name === 'Memnite'), 'Memnite did not block');
+    return;
+  }
+  // DONE BLOCKING: the engine's OK confirms what is drawn — Memnite on Goblin Guide.
+  await bar.locator('[data-engine-button="ok"][data-primary]', { hasText: 'One blocking' }).waitFor({ timeout: STEP_MS });
   await sent(engine, 'buttonOk', () => u.ok());
   await engine.waitFor(() => engine.game.players[0].graveyard.some((c) => c.name === 'Memnite'), 'Memnite died blocking');
+  check(engine.game.players[0].life === 16, `Hill Giant and Storm Crow got through (${engine.game.players[0].life})`);
 }
 
 /** The combat lanes' cards, chips and ×s. */
@@ -359,7 +402,10 @@ const laneClipping = (page) => clipped(page, LANE_ITEMS);
 
 /**
  * Eight attackers and eight blockers (scene `swarm`) at `viewport`: every attacker takes a block (but the
- * flyer), and at each step nothing in either lane is clipped; the columns of the two lanes stay in line.
+ * flyer), blocker first as the combat study's board does it — your creature, then the attacker in the
+ * lane, scrolled to as a player would — and at each step nothing in the attack lane is clipped; every
+ * pair has its line and its badge, blockers stay in their rows, and a line follows its attacker as the
+ * lane scrolls (met at the lane's edge while the attacker is out of view).
  */
 function wideCombat(viewport, shot) {
   return async ({ page, engine, app }) => {
@@ -367,6 +413,7 @@ function wideCombat(viewport, shot) {
     await page.locator('.game.play.mode-block').waitFor({ timeout: STEP_MS });
     const cols = page.locator('.player-top [data-combat-lane="attack"] [data-lane-col]');
     await cols.nth(7).waitFor({ timeout: STEP_MS });
+    check(!(await page.locator('[data-combat-lane="block"]').count()), 'no block lane: blockers stay in their rows');
     // Collected, not thrown at once: the screenshot of the whole combat comes first.
     const problems = (await laneClipping(page)).map((p) => `eight attackers at ${viewport}: ${p}`);
     const attackers = engine.game.attackers.slice();
@@ -377,26 +424,28 @@ function wideCombat(viewport, shot) {
       await el.click({ timeout: STEP_MS });
       await page.mouse.move(2, 2).catch(() => {});
     };
+    const line = (a, b) => page.locator(`.combat-line.is-block[data-line-from="${a}"][data-line-to="${b}"]`);
+    /** Your creature (it lifts, nothing is sent), then the attacker: the engine's clicks do the rest. */
+    const pair = async (b, a) => {
+      await tap(b);
+      await page.locator(`.battlefield .tile.is-armed[data-card-id="${b}"]`).waitFor({ timeout: STEP_MS });
+      await tap(a);
+      await engine.waitFor(() => (engine.game.blocks.get(a) ?? []).includes(b), `${b} blocking ${a}`);
+      await line(a, b).waitFor({ state: 'attached', timeout: STEP_MS });
+    };
     let k = 0;
+    const pairs = [];
     for (const a of attackers) {
       const att = engine.game.players[1].battlefield.find((c) => c.id === a);
       if (att?.name === 'Storm Crow') continue;
       const b = mineFree[k++];
-      if (engine.game.currentAttacker !== a) {
-        await tap(a);
-        await engine.waitFor(() => engine.game.currentAttacker === a, `attacker ${a} named`);
-      }
-      await tap(b);
-      await engine.waitFor(() => (engine.game.blocks.get(a) ?? []).includes(b), `${b} blocking ${a}`);
-      await page.locator(`.player-me [data-combat-lane="block"] [data-blocks="${a}"] .tile[data-card-id="${b}"]`).waitFor({ timeout: STEP_MS });
+      await pair(b, a);
+      pairs.push([a, b]);
     }
-    // A second blocker on the last attacker: a fan in a lane already full.
+    // A second blocker on the last attacker: a double block, two lines into one badge.
     const last = attackers.at(-1);
-    await tap(last);
-    await engine.waitFor(() => engine.game.currentAttacker === last, 'the last attacker named again');
-    await tap(mineFree[k]);
-    await engine.waitFor(() => (engine.game.blocks.get(last) ?? []).length === 2, 'two blockers on the last attacker');
-    await page.locator(`.player-me [data-combat-lane="block"] [data-blocks="${last}"] .tile[data-card-id="${mineFree[k]}"]`).waitFor({ timeout: STEP_MS });
+    await pair(mineFree[k], last);
+    pairs.push([last, mineFree[k]]);
     await page.evaluate(() => document.querySelectorAll('[data-combat-lane] .lane-cols').forEach((l) => (l.scrollLeft = 0)));
     if (shot) {
       mkdirSync(path.dirname(shot), { recursive: true });
@@ -404,28 +453,49 @@ function wideCombat(viewport, shot) {
       await page.screenshot({ path: shot });
     }
     problems.push(...(await laneClipping(page)).map((p) => `eight attackers blocked at ${viewport}: ${p}`));
-    // The columns line up across the centre line: each blocker's column starts where its attacker's does.
-    const drift = await page.evaluate(() => {
-      const top = document.querySelector('.player-top [data-combat-lane="attack"] .lane-cols');
-      const me = document.querySelector('.player-me [data-combat-lane="block"] .lane-cols');
+    // Every pair: a line, the same badge number on both cards, the blocker in its row (never a lane).
+    const marks = await page.evaluate((pairs) => {
       const out = [];
-      for (const s of [0, 1e6]) {
-        top.scrollLeft = s;
-        me.scrollLeft = s;
-        // a lane follows the other's scroll (one gesture moves both)
-        top.dispatchEvent(new Event('scroll'));
-        for (const col of me.querySelectorAll('[data-lane-col]')) {
-          const a = top.querySelector(`[data-lane-col="${col.getAttribute('data-lane-col')}"]`);
-          if (!a) continue;
-          const d = Math.abs(a.getBoundingClientRect().left - col.getBoundingClientRect().left);
-          if (d > 2) out.push(`column ${col.getAttribute('data-lane-col')} is ${Math.round(d)} px off its attacker`);
-        }
+      const tile = (id) => document.querySelector(`.battlefield .tile[data-card-id="${id}"]`);
+      const n = (id) => tile(id)?.querySelector('.tile-pair')?.textContent?.trim() ?? null;
+      for (const [a, b] of pairs) {
+        if (!document.querySelector(`.combat-line.is-block[data-line-from="${a}"][data-line-to="${b}"]`)) out.push(`no line from ${a} to ${b}`);
+        if (n(a) === null || n(a) !== n(b)) out.push(`blocker ${b} wears ${n(b)}, its attacker ${a} wears ${n(a)}`);
+        if (tile(b)?.closest('[data-combat-lane]')) out.push(`blocker ${b} left its row for a lane`);
       }
       return out;
-    });
-    problems.push(...drift);
+    }, pairs);
+    problems.push(...marks);
+    // A line follows its attacker as the lane scrolls, and never leaves the lane's visible width.
+    const follow = await page.evaluate(async ([a, b]) => {
+      const lane = document.querySelector('.player-top [data-combat-lane="attack"] .lane-cols');
+      if (!lane || lane.scrollWidth <= lane.clientWidth + 1) return [];
+      const frames = () => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+      const path = () => document.querySelector(`.combat-line.is-block[data-line-from="${a}"][data-line-to="${b}"]`);
+      const start = () => {
+        const d = path()?.getAttribute('d') ?? '';
+        const m = /^M\s*(-?[\d.]+)[ ,]+(-?[\d.]+)/.exec(d);
+        return m ? Number(m[1]) : NaN;
+      };
+      const out = [];
+      const host = document.querySelector('.board').getBoundingClientRect();
+      const r = lane.getBoundingClientRect();
+      const xs = [];
+      for (const s of [0, 1e6]) {
+        lane.scrollLeft = s;
+        lane.dispatchEvent(new Event('scroll'));
+        await frames();
+        const x = start() + host.left;
+        xs.push(x);
+        if (!(x >= r.left - 2 && x <= r.right + 2)) out.push(`the line to ${b} starts at ${Math.round(x)}, outside the lane (${Math.round(r.left)}–${Math.round(r.right)}) at scroll ${s ? 'end' : 'start'}`);
+      }
+      if (Math.abs(xs[0] - xs[1]) < 1) out.push(`the line from attacker ${a} did not move with the lane`);
+      lane.scrollLeft = 0;
+      return out;
+    }, pairs.at(-1));
+    problems.push(...follow);
     check(!problems.length, [...new Set(problems)].slice(0, 12).join('\n'));
-    // The engine still decides: Confirm blocks goes as the engine's OK.
+    // The engine still decides: Done blocking goes as the engine's OK.
     await page.locator('[data-engine-button="ok"]').first().click({ timeout: STEP_MS });
     await engine.waitFor(() => engine.acts().some((a) => a.action === 'buttonOk'), 'the blocks confirmed');
   };
@@ -531,16 +601,17 @@ const scenarios = [
       await sent(engine, 'buttonOk', () => u.ok());
       await u.mode('block');
       const memnite = mine(engine, 'Memnite', 'battlefield');
-      // Who blocks whom: the attacker your block goes to is marked, and the blocker takes its number.
-      const current = page.locator('.player-top .tile.is-pair-current .tile-pair');
-      await current.waitFor({ timeout: STEP_MS });
-      const pairN = (await current.innerText()).trim();
-      await sent(engine, 'clickCard', () => u.click(memnite));
+      // Who blocks whom: Memnite, then the attacker; both wear the pair's number and a line joins them.
+      const guide = theirs(engine, 'Goblin Guide');
+      await u.click(memnite);
+      await sent(engine, 'clickCard', () => u.click(guide));
       await engine.waitFor(() => [...engine.game.blocks.values()].flat().includes(memnite), 'Memnite blocking');
       const blockerBadge = page.locator(`.player-me .tile[data-card-id="${memnite}"] .tile-pair.pair-blocker`);
       await blockerBadge.waitFor({ timeout: STEP_MS });
+      const pairN = (await page.locator(`.player-top .tile[data-card-id="${guide}"] .tile-pair`).innerText()).trim();
       check((await blockerBadge.innerText()).trim() === pairN, `Memnite wears its attacker's number ${pairN}`);
-      check((await page.locator('.actionbar [data-engine-button="ok"]').innerText()).includes('Confirm blocks'), 'the panel says Confirm blocks');
+      await page.locator(`.combat-line.is-block[data-line-from="${guide}"][data-line-to="${memnite}"]`).waitFor({ state: 'attached', timeout: STEP_MS });
+      check((await page.locator('.actionbar [data-engine-button="ok"]').innerText()).includes('One blocking'), 'the panel says One blocking');
       await sent(engine, 'buttonOk', () => u.ok());
 
       // Round 2: Mountain, Shock (a choose_entities ask) at the AI for the win.
@@ -564,7 +635,7 @@ const scenarios = [
         'buttonCancel buttonOk clickCard buttonOk', // mulligan, keep, a card to the bottom, OK
         'clickCard clickCard buttonOk buttonOk clickCard buttonOk', // Mountain, Goblin, pay, pass, Memnite, pass
         'buttonOk clickCard buttonOk buttonOk', // to combat, the Goblin attacks, confirm, end the turn
-        'buttonOk clickCard buttonOk', // pass on Goblin Guide, Memnite blocks, confirm
+        'buttonOk clickCard buttonOk', // pass on Goblin Guide, Memnite then the Guide (one engine click: it is named), confirm
         'clickCard clickCard buttonOk buttonOk', // Mountain, Shock (+ the ask), pay, pass
         'newGame buttonOk', // the next game, keep
       ].join(' ');
@@ -750,26 +821,26 @@ const scenarios = [
   },
 
   {
-    name: 'declaring blocks (M65 chosen): the lanes; assign, move, take off by a click and by the ×; a flyer refused in the game’s terms',
+    name: 'declaring blocks (M65 chosen), blocker first: assign, double block, remove by re-click, move, a flyer refused; No blocks [Esc]',
     engine: { scene: 'blocks', selection: true },
-    run: blockDeclaration,
+    run: (t) => blockDeclaration(t, 'noBlocks'),
   },
 
   {
-    name: 'declaring blocks on an engine before M65: the same clicks, the browser’s own picture of the blocks',
+    name: 'declaring blocks on an engine before M65: the same clicks, the browser’s own picture of the blocks; Done blocking',
     engine: { scene: 'blocks' },
-    run: blockDeclaration,
+    run: (t) => blockDeclaration(t, 'done'),
   },
 
   {
-    name: 'a phone (390×844): eight attackers and their blockers, nothing in the combat lanes cut off',
+    name: 'a phone (390×844): eight attackers and their blockers, blocker first — nothing in the attack lane cut off, a line per pair',
     engine: { scene: 'swarm', selection: true },
     context: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     run: wideCombat('390×844', env.LANE_SHOT ? path.join(ROOT, env.LANE_SHOT) : null),
   },
 
   {
-    name: 'a desktop (1440×900): eight attackers and their blockers, nothing in the combat lanes cut off',
+    name: 'a desktop (1440×900): eight attackers and their blockers, blocker first — nothing in the attack lane cut off, a line per pair',
     engine: { scene: 'swarm' },
     run: wideCombat('1440×900', env.LANE_SHOT_DESKTOP ? path.join(ROOT, env.LANE_SHOT_DESKTOP) : null),
   },
@@ -822,7 +893,44 @@ const scenarios = [
       // M65: an attacker the engine reports (declared from its own board, not clicked here) is counted on the button.
       const goblin = mine(engine, 'Raging Goblin', 'battlefield');
       engine.seatAct({ action: 'clickCard', cardId: goblin });
-      await page.locator('.actionbar [data-primary]', { hasText: 'Attack with 1' }).waitFor({ timeout: STEP_MS });
+      await page.locator('.actionbar [data-primary]', { hasText: 'One selected' }).waitFor({ timeout: STEP_MS });
+    },
+  },
+
+  {
+    name: 'declaring attackers (the combat study §1): Alpha strike [A], Call back, the counting primary, Skip combat [Esc]',
+    engine: { scene: 'combat' },
+    async run({ page, engine, app }) {
+      const u = ui(page);
+      const bar = page.locator('.actionbar');
+      await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+      await u.mode('main');
+      await sent(engine, 'buttonOk', () => u.ok()); // to combat
+      await u.mode('attack');
+      await bar.getByText('Click your creatures to attack').waitFor({ timeout: STEP_MS });
+      await bar.locator('[data-engine-button="cancel"]', { hasText: 'Alpha strike' }).waitFor({ timeout: STEP_MS });
+      await bar.locator('[data-slot-action="skip"]', { hasText: 'Skip combat' }).waitFor({ timeout: STEP_MS });
+      await bar.locator('[data-primary]', { hasText: 'Done selecting' }).waitFor({ timeout: STEP_MS });
+      const giant = mine(engine, 'Hill Giant', 'battlefield');
+      // A click is the engine's own toggle; the primary counts and the engine's Cancel becomes Call back.
+      await sent(engine, 'clickCard', () => u.click(giant));
+      await engine.waitFor(() => engine.game.attackers.includes(giant), 'Hill Giant attacking');
+      await bar.locator('[data-primary]', { hasText: 'One selected' }).waitFor({ timeout: STEP_MS });
+      await sent(engine, 'buttonCancel', () => bar.locator('[data-engine-button="cancel"]', { hasText: 'Call back' }).click({ timeout: STEP_MS }));
+      await engine.waitFor(() => engine.game.attackers.length === 0, 'called back');
+      await bar.locator('[data-engine-button="cancel"]', { hasText: 'Alpha strike' }).waitFor({ timeout: STEP_MS });
+      await bar.locator('[data-primary]', { hasText: 'Done selecting' }).waitFor({ timeout: STEP_MS });
+      // A: everything that can attack.
+      await page.mouse.move(5, 5);
+      await sent(engine, 'alphaStrike', () => page.keyboard.press('a'));
+      await engine.waitFor(() => engine.game.attackers.length === 2, 'both attacking');
+      await bar.locator('[data-primary]', { hasText: '2 attackers' }).waitFor({ timeout: STEP_MS });
+      // Esc: Skip combat — the engine's Call Back, then its OK: no attack.
+      await sent(engine, 'buttonOk', () => page.keyboard.press('Escape'));
+      const tail = engine.acts().slice(-2).map((a) => a.action);
+      check(JSON.stringify(tail) === JSON.stringify(['buttonCancel', 'buttonOk']), `Skip combat sent Call Back, then OK (${tail})`);
+      await u.mode('main');
+      check(engine.game.phase === 'MAIN2' && engine.game.players[1].life === 3, `no attack: main 2, the AI still on 3 (${engine.game.phase}, ${engine.game.players[1].life})`);
     },
   },
 

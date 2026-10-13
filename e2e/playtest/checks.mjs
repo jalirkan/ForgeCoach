@@ -6,9 +6,9 @@
  * the seat received (tap.mjs):
  *
  *   - the stack panel shows as many items as the state's stack;
- *   - every blocker wears its attacker's number (who blocks whom), and sits
- *     in front of it: in the block lane, in that attacker's column, whose
- *     attacker is in the attack lane (combat is drawn by placement);
+ *   - every blocker wears its attacker's number (who blocks whom); every
+ *     attacker is in an attack lane, every blocker stays in its own row, and
+ *     a block line joins the two (the combat study, §2 and §4);
  *   - the Game Log has a header for every turn the stream went through,
  *     and keeps them through a reload;
  *   - hidden information: no card name the other seat holds hidden (its hand
@@ -89,32 +89,32 @@ export async function combatAgrees(page, tap) {
 }
 
 /**
- * Who blocks whom, by placement: every attacker the state's combat lists is in an attack lane, and
- * every confirmed blocker sits in a block lane under that attacker's column (`[data-blocks]`).
+ * Who blocks whom, on the board: every attacker the state's combat lists is in an attack lane, and
+ * every confirmed blocker is in its own row (never a lane) with a block line from each attacker it
+ * blocks (`.combat-line.is-block[data-line-from][data-line-to]`, CombatArrows.tsx).
  */
 export async function combatPlaced(page, tap) {
   const bands = tap.state?.combat?.bands ?? [];
   if (!bands.length) return [];
   const seq = tap.stateSeq;
-  // A creature blocking two attackers sits in front of one of them (the other gets a line).
-  const of = new Map();
+  const pairs = [];
   // A band whose attacker has left combat (removed, sacrificed) keeps its blockers with no attacker
-  // to stand in front of: nothing to place them by (seen against real Forge, 2026-10-12).
-  for (const b of bands) if (b.attackerIds.length) for (const blk of b.blockerIds) of.set(blk, [...(of.get(blk) ?? []), ...b.attackerIds]);
-  const want = { atk: bands.flatMap((b) => b.attackerIds), blk: [...of] };
+  // to draw a line from: nothing to check them by (seen against real Forge, 2026-10-12).
+  for (const b of bands) if (b.attackerIds.length) for (const blk of b.blockerIds) if (!b.attackerIds.includes(blk)) pairs.push({ atk: b.attackerIds[0], blk });
+  const want = { atk: bands.flatMap((b) => b.attackerIds), pairs };
   const read = () =>
-    page.evaluate(({ atk, blk }) => {
+    page.evaluate(({ atk, pairs }) => {
       const out = [];
       const on = (id) => document.querySelector(`.battlefield .tile[data-card-id="${id}"]`);
       for (const a of atk) {
         const el = on(a);
         if (el && !el.closest('[data-combat-lane="attack"]')) out.push(`attacker ${a} is not in an attack lane`);
       }
-      for (const [b, atks] of blk) {
+      for (const { atk: a, blk: b } of pairs) {
         const el = on(b);
-        if (!el) continue;
-        const at = el.closest('[data-blocks]')?.getAttribute('data-blocks');
-        if (!at || !atks.includes(Number(at))) out.push(`blocker ${b} sits ${at ? `in front of ${at}` : 'outside the block lane'}, not in front of ${atks.join('/')}`);
+        if (!el || !on(a)) continue;
+        if (el.closest('[data-combat-lane]')) out.push(`blocker ${b} left its row for a lane`);
+        if (!document.querySelector(`.combat-line.is-block[data-line-from="${a}"][data-line-to="${b}"]`)) out.push(`no block line from attacker ${a} to blocker ${b}`);
       }
       return out;
     }, want);

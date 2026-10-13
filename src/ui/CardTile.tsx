@@ -90,6 +90,7 @@ function useOpen(card: AnyCard, onClicked?: (card: AnyCard) => void) {
   const open = useCallback(() => actions.open(cardRef.current, stateRef.current), [actions, stateRef]);
   const mark: PlayMark = play ? play.mark(card) : null;
   const chosen = play ? play.chosen(card) : null;
+  const armed = play?.armed ? play.armed(card) : false;
   const hint = play && !mark ? false : play ? play.hint(card) : false;
   // Long-press (touch) opens details without acting; the click that follows is
   // swallowed. A finger that moves (scrolling the hand) is not a long-press (ui/longPress.ts).
@@ -169,7 +170,7 @@ function useOpen(card: AnyCard, onClicked?: (card: AnyCard) => void) {
     onPointerCancel: clearPress,
     onContextMenu: onContext,
   };
-  return { open, activate, onKey, onEnter, onLeave, handlers, mark, hint, chosen, playing: !!play };
+  return { open, activate, onKey, onEnter, onLeave, handlers, mark, hint, chosen, armed, playing: !!play };
 }
 
 /** "up" / "down" against the printed value; '' when equal or not numeric. */
@@ -316,11 +317,13 @@ function mergeMarks(all: (CardStackMarks | undefined)[]): CardStackMarks | undef
 function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
   const boardMarks = useBoardMarks();
   const stackMarks = inHand ? undefined : boardMarks?.stack.get(card.id);
-  const combatMark = inHand ? undefined : boardMarks?.combat?.get(card.id);
+  const combat = inHand ? undefined : boardMarks?.combat?.get(card.id);
+  // An attacker nothing blocks has no pair, so no badge (the lane already says "attacking").
+  const combatMark = combat && combat.n !== null ? combat : undefined;
   const coachFocus = useBoardFocus(card.id);
   const name = card.name || card.alt?.name || '';
   const info = useTileCardInfo(card, name || null);
-  const { open, handlers, mark, hint, chosen, playing } = useOpen(card);
+  const { open, handlers, mark, hint, chosen, armed, playing } = useOpen(card);
   const attacking = card.attacking || chosen === 'attack';
   const blocking = card.blocking || chosen === 'block';
   const kind = typeKind(card.types || info?.typeLine);
@@ -353,7 +356,7 @@ function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
         attachments && attachments.length > 0 && 'has-attach',
         stackMarks && (stackMarks.targets.length > 0 ? 'is-stack-target' : stackMarks.sources.length > 0 && 'is-stack-source'),
         combatMark && `is-pair-${combatMark.role}`,
-        combatMark?.current && 'is-pair-current',
+        armed && 'is-armed',
         coachFocus && 'is-coach-focus',
       )}
       role="button"
@@ -384,8 +387,8 @@ function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
           <StackBadges marks={stackMarks} />
           {combatMark && (
             <span
-              className={cx('tile-pair', `pair-${combatMark.role}`, combatMark.pending && 'is-pending', combatMark.current && 'is-current')}
-              title={combatMark.role === 'attacker' ? `Attacker ${combatMark.n}${combatMark.current ? ' — the one your blocks go to now' : ''}` : `Blocks attacker ${combatMark.n}`}
+              className={cx('tile-pair', `pair-${combatMark.role}`, combatMark.pending && 'is-pending')}
+              title={combatMark.role === 'attacker' ? `Attacker ${combatMark.n}` : `Blocks attacker ${combatMark.n}`}
               aria-label={combatMark.role === 'attacker' ? `Attacker ${combatMark.n}` : `Blocks attacker ${combatMark.n}`}
             >
               {combatMark.n}

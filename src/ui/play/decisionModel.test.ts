@@ -179,12 +179,28 @@ describe('the slot’s buttons and their keys', () => {
     expect(p).toMatchObject({ words: 'Auto pay', kbd: 'A' });
     expect(o).toMatchObject({ words: 'Cancel', kbd: 'Esc' });
   });
-  it('attacking: the engine’s Alpha Strike is ALPHA STRIKE [A]; Undo is [Ctrl+Z] while state.undo.can', () => {
+  it('attacking: ALPHA STRIKE [A], SKIP COMBAT [Esc], the counting primary [Space]; Undo is [Ctrl+Z] while state.undo.can', () => {
     const v = view({ ...input('Select creatures to attack', true, true), buttons: { ok: { label: 'OK', enabled: true }, cancel: { label: 'Alpha Strike', enabled: true } } });
-    const sel = selectionSummary(v, { attackers: 0, blockers: 0 });
-    const b = slotButtons(v, sel, { canUndo: true, undoDepth: 2, wide: true });
-    expect(b.find((x) => x.id === 'other')).toMatchObject({ words: 'Alpha strike', kbd: 'A', which: 'cancel' });
-    expect(b.find((x) => x.id === 'undo')).toMatchObject({ words: 'Undo (2)', kbd: 'Ctrl+Z' });
+    const b = slotButtons(v, selectionSummary(v, { attackers: 0, blockers: 0 }), { canUndo: true, undoDepth: 2, wide: true });
+    expect(b.map((x) => [x.id, x.words, x.kbd])).toEqual([
+      ['primary', 'Done selecting', 'Space'],
+      ['other', 'Alpha strike', 'A'],
+      ['skip', 'Skip combat', 'Esc'],
+      ['undo', 'Undo (2)', 'Ctrl+Z'],
+    ]);
+    expect(b[0]).toMatchObject({ which: 'ok', enabled: true });
+    expect(b[1]).toMatchObject({ which: 'cancel', enabled: true });
+    expect(b[2]).toMatchObject({ which: null, enabled: true });
+  });
+  it('attacking, after a pick: the engine’s Call Back is CALL BACK (no key), and the primary counts', () => {
+    const v = view({ ...input('Select creatures to attack', true, true), buttons: { ok: { label: 'OK', enabled: true }, cancel: { label: 'Call Back', enabled: true } } });
+    const one = slotButtons(v, selectionSummary(v, { attackers: 1, blockers: 0 }), { canUndo: false, undoDepth: 0, wide: true });
+    expect(one.map((x) => [x.id, x.words, x.kbd])).toEqual([
+      ['primary', 'One selected', 'Space'],
+      ['other', 'Call back', null],
+      ['skip', 'Skip combat', 'Esc'],
+    ]);
+    expect(slotButtons(v, selectionSummary(v, { attackers: 2, blockers: 0 }), { canUndo: false, undoDepth: 0, wide: true })[0]!.words).toBe('2 attackers');
   });
 });
 
@@ -192,23 +208,32 @@ describe('declaring blockers', () => {
   const BLOCK = 'Select creatures to block Bird Token (91) or select another attacker to declare blockers for.';
   const view = (inp: InputBody) => describeInput(inp, state({ activePlayer: OPP }), ME);
   const blockView = (ok: boolean) => view({ ...input(BLOCK, ok, false), buttons: { ok: { label: 'OK', enabled: ok }, cancel: { label: 'Cancel', enabled: false } } });
-  it('the instruction is the engine’s flow, beside the count', () => {
+  it('the instruction is the board’s flow (blocker first), beside the count', () => {
     const v = blockView(true);
     const sel = selectionSummary(v, { attackers: 0, blockers: 2 });
     expect(sel.count).toBe(2);
-    expect(sel.line).toBe('Click an attacker, then your creature that blocks it. Click another attacker to switch. Click a blocker again, or its ×, to take it off.');
+    expect(sel.line).toBe('2 blocker(s) assigned — click more or confirm');
+    expect(selectionSummary(v, { attackers: 0, blockers: 0 }).line).toBe('Click a creature, then click the attacker it blocks');
     expect(v.blockingAttackerId).toBe(91);
   });
-  it('Confirm follows the engine’s ok.enabled exactly; the engine’s Cancel is off here, so there is no second button', () => {
-    const on = slotButtons(blockView(true), selectionSummary(blockView(true), { attackers: 0, blockers: 1 }), { canUndo: false, undoDepth: 0, wide: true });
-    expect(on).toEqual([expect.objectContaining({ id: 'primary', which: 'ok', words: 'Confirm blocks', kbd: 'Space', enabled: true })]);
+  it('NO BLOCKS [Esc] and DONE BLOCKING [Space], both following the engine’s ok.enabled; the engine’s Cancel is off here', () => {
+    const on = slotButtons(blockView(true), selectionSummary(blockView(true), { attackers: 0, blockers: 0 }), { canUndo: false, undoDepth: 0, wide: true });
+    expect(on.map((x) => [x.id, x.which, x.words, x.kbd, x.enabled])).toEqual([
+      ['primary', 'ok', 'Done blocking', 'Space', true],
+      ['skip', null, 'No blocks', 'Esc', true],
+    ]);
+    const one = slotButtons(blockView(true), selectionSummary(blockView(true), { attackers: 0, blockers: 1 }), { canUndo: false, undoDepth: 0, wide: true });
+    expect(one[0]).toMatchObject({ words: 'One blocking' });
     const off = slotButtons(blockView(false), selectionSummary(blockView(false), { attackers: 0, blockers: 0 }), { canUndo: false, undoDepth: 0, wide: true });
-    expect(off[0]).toMatchObject({ which: 'ok', enabled: false });
+    expect(off.map((x) => [x.id, x.enabled])).toEqual([
+      ['primary', false],
+      ['skip', false],
+    ]);
   });
-  it('an enabled Cancel in a block declaration is shown, not hidden ([Esc])', () => {
+  it('an enabled Cancel in a block declaration is shown, not hidden (without a key: Esc is No blocks)', () => {
     const v = view({ ...input(BLOCK, true, true), buttons: { ok: { label: 'OK', enabled: true }, cancel: { label: 'Reset', enabled: true } } });
     const b = slotButtons(v, selectionSummary(v, { attackers: 0, blockers: 1 }), { canUndo: false, undoDepth: 0, wide: true });
-    expect(b.find((x) => x.id === 'other')).toMatchObject({ which: 'cancel', kbd: 'Esc', enabled: true });
+    expect(b.find((x) => x.id === 'other')).toMatchObject({ which: 'cancel', kbd: null, enabled: true });
   });
 });
 

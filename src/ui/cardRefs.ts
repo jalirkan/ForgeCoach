@@ -6,8 +6,9 @@
  * (common-sense pass items 3/11). The coach's prompts give the model every
  * card's engine id ("Construct Token #297", the game log's "[297]") so its
  * steps can say which of two same-named cards it means; the board never shows
- * that number. Here an id becomes what the player can see: in combat the lane
- * badge's number, else — only when another visible card has the same name —
+ * that number. Here an id becomes what the player can see: in combat the
+ * badge's number (a blocked attacker and its blockers; an attacker nothing
+ * blocks wears none), else — only when another visible card has the same name —
  * its power/toughness, "tapped" / "untapped", or its place in the row
  * ("2nd from left"). The id itself is never shown; it stays in the data so
  * the named card can be lit on the board while its step is hovered.
@@ -61,7 +62,8 @@ export function boardTag(card: Card, look: CardRefLook): { tag: string | null; c
   if (!state) return { tag: null, combat: false };
   const marks = look.combat ?? combatMarks(state);
   const m = marks.get(card.id);
-  if (m && card.zone === 'battlefield') return { tag: String(m.n), combat: true };
+  // Only a block pair wears a number (combatLines.ts): an attacker nothing blocks is told apart as outside combat.
+  if (m && m.n !== null && card.zone === 'battlefield') return { tag: String(m.n), combat: true };
   if (card.zone !== 'battlefield' || !card.name) return { tag: null, combat: false };
   const row = state.players.flatMap((p) => p.zones.battlefield.cards as AnyCard[]).filter((c): c is Card => !isHidden(c) && norm((c as Card).name) === norm(card.name));
   if (row.length < 2) return { tag: null, combat: false };

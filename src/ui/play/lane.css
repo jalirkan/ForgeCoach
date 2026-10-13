@@ -128,14 +128,6 @@
   justify-content: center;
   align-items: center;
 }
-/* Blockers hug the centre line: yours at the top of your half, theirs at the bottom of theirs. */
-.player-me .combat-lane.is-block .lane-col {
-  align-items: flex-start;
-}
-.player-top .combat-lane.is-block .lane-col {
-  align-items: flex-end;
-}
-
 /* A lying card in the lane is as tall as a card is wide (the rows keep a square slot). */
 .combat-lane .tile.is-tapped .tile-slot {
   height: var(--cw);
@@ -147,19 +139,27 @@
 .combat-lane .tile.is-tapped .tile-attach {
   margin-top: -3px;
 }
-/* The lane says "attacking" and the place says "blocking": no flag on the card. */
+/* The lane says "attacking": no flag on the card. */
 .combat-lane .tile-flag {
   display: none;
 }
 .combat-lane .tile-pair,
 .combat-lane .tile.is-tapped .tile-pair {
   top: -6px;
+  bottom: auto;
   left: -6px;
   min-width: 20px;
   height: 20px;
   padding: 0 4px;
   font-size: 11px;
   border-width: 2px;
+}
+
+/* Their lane: the badge on the bottom edge, facing your blockers. */
+.board .player-top .combat-lane .tile-pair,
+.board .player-top .combat-lane .tile.is-tapped .tile-pair {
+  top: auto;
+  bottom: -6px;
 }
 
 /* The target: one label at the lane's edge, or a chip on each card's corner. */
@@ -208,57 +208,25 @@
   border-radius: 5px;
 }
 
-/* Several blockers fan in front of one attacker. */
-.lane-fan {
-  display: flex;
-}
-.lane-blocker {
-  position: relative;
-  z-index: calc(1 + var(--i, 0));
-}
-.lane-blocker + .lane-blocker {
-  margin-left: calc(var(--cw) * -0.45);
-}
-.lane-unblock {
-  position: absolute;
-  bottom: -8px;
-  right: -8px;
-  z-index: 9;
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border-radius: 999px;
-  border: 1.5px solid var(--info);
-  background: #14171d;
-  color: var(--text);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-}
-.lane-unblock:hover,
-.lane-unblock:focus-visible {
-  background: var(--info);
-  color: #fff;
-}
-/* The attacker your next block goes to: the place in front of it, empty. */
-.lane-ghost {
-  width: var(--cw);
-  height: calc(var(--ch) * 0.55);
-  border: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: calc(var(--cw) * 0.055);
-}
-
-/* An attacker being declared tilts toward the opponent (about 10°). */
+/* An attacker being declared tilts toward the opponent (about 10°) and brightens. */
 .player-me .bf-row .tile.is-attacking:not(.is-tapped) .tile-card {
   transform: translate(-50%, -54%) rotate(10deg);
+  filter: brightness(1.12);
+}
+/* The creature (or attacker) picked first in a block: lifted and brightened until its pair is clicked. */
+.board .tile.is-armed .tile-card {
+  transform: translate(-50%, -50%) translateY(-10px) scale(1.04);
+  filter: brightness(1.18) !important;
+  box-shadow: 0 0 0 3px #9cc6f7, 0 0 24px rgba(110, 169, 238, 0.7), 0 8px 18px rgba(0, 0, 0, 0.55) !important;
+}
+.board .tile.is-armed.is-attacking .tile-card {
+  box-shadow: 0 0 0 3px #ef6f6c, 0 0 24px rgba(239, 111, 108, 0.7), 0 8px 18px rgba(0, 0, 0, 0.55) !important;
 }
 .board.hide-sick .tile-zz {
   display: none;
 }
 
-/* The few lines position cannot say: thin, gold, no heads. */
+/* An attack on a planeswalker: thin, gold, no heads. */
 .combat-line {
   fill: none;
   stroke: var(--accent);
@@ -266,8 +234,15 @@
   stroke-linecap: round;
   opacity: 0.8;
 }
+/* Who blocks whom: a curved blue line, attacker's badge to blocker's badge. */
+.combat-line.is-block {
+  stroke: #7fb4f2;
+  stroke-width: 3;
+  opacity: 0.9;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
 .combat-line.is-pending {
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 /* The narrow board (phones and tablets upright) reserves the lane's height from its widest card
@@ -279,7 +254,7 @@
 }
 
 @media (max-width: 560px) {
-  /* Phones: a thin band; blocks still read by position; past five or so cards it scrolls. */
+  /* Phones: a thin band; past five or so cards it scrolls. */
   .combat-lane {
     --lane-room-x: 12px;
     --lane-more-w: 42px;
@@ -308,7 +283,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .player-me .bf-row .tile.is-attacking .tile-card {
+  .player-me .bf-row .tile.is-attacking .tile-card,
+  .board .tile.is-armed .tile-card {
     transition: none;
   }
 }

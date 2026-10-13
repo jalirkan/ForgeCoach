@@ -355,7 +355,7 @@ function describeInputRaw(
       ...v,
       mode: 'attack',
       title: 'Declare attackers',
-      detail: 'Tap creatures to send them in (tap again to hold one back), then confirm.',
+      detail: 'Click your creatures to attack (click again to hold one back), then confirm.',
       ok: btn(ok, 'confirm attacks'),
       cancel: btn(cancel, callBack ? 'clear attackers' : /alpha/i.test(cancel.label) ? 'attack with everything' : null),
       primary: ok.enabled ? 'ok' : null,
@@ -368,9 +368,8 @@ function describeInputRaw(
       ...v,
       mode: 'block',
       title: 'Declare blockers',
-      detail: m
-        ? `Now blocking ${m[1]} (outlined). Click your creature to block it — or click another attacker first to block that one. Then confirm.`
-        : 'Click an attacker, then click your creature that blocks it. Then confirm.',
+      // The board's flow is blocker first (blockPlan.ts); the engine's named attacker is a wire detail.
+      detail: 'Click a creature, then click the attacker it blocks. Then confirm.',
       ok: btn(ok, 'confirm blocks'),
       cancel: btn(cancel, null),
       primary: ok.enabled ? 'ok' : null,

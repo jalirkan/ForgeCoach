@@ -6,8 +6,10 @@
  * question, at the same place every time — beside the hand on a desktop,
  * directly above it on a phone. A DECISION eyebrow, the moment in plain words,
  * one line of instruction, and the answers as buttons with their keys printed
- * on them (PASS PRIORITY [Space], AUTO PAY [A], CANCEL [Esc], ALPHA STRIKE
- * [A], UNDO [Ctrl+Z]); on a desktop an open `ask` renders inside it
+ * on them (PASS PRIORITY [Space], AUTO PAY [A], CANCEL [Esc], UNDO [Ctrl+Z];
+ * in combat ALPHA STRIKE [A] / CALL BACK, SKIP COMBAT [Esc], NO BLOCKS [Esc]
+ * and a primary that counts: "One selected [Space]", "Done blocking
+ * [Space]" — decisionModel.ts `slotButtons`); on a desktop an open `ask` renders inside it
  * (AskDialog placement="slot") and grows upward over the board.
  *
  * "It's you": while the engine waits on this seat the slot lights up (glow,
@@ -23,7 +25,7 @@
  *
  * Kept class names (e2e and the playtest monkey read them): .actionbar,
  * .ab-<mode>, .ab-eyebrow, .ab-title-text, .ab-flash, .ab-pool-pip, .ab-eot,
- * [data-engine-button], [data-primary].
+ * [data-engine-button], [data-primary], [data-slot-action="skip"].
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { ActBody, ManaColor, ManaPool } from '../../protocol.ts';
@@ -46,6 +48,7 @@ export function DecisionSlot({
   undoDepth,
   onOk,
   onCancel,
+  onSkip,
   onAct,
   onHelp,
   flash,
@@ -65,6 +68,8 @@ export function DecisionSlot({
   undoDepth: number;
   onOk: () => void;
   onCancel: () => void;
+  /** Skip combat / No blocks (decisionModel.ts `slotButtons`' `skip`). */
+  onSkip?: () => void;
   onAct: (body: ActBody) => void;
   onHelp: () => void;
   flash: string | null;
@@ -193,7 +198,7 @@ export function DecisionSlot({
           )}
           <span className="grow" />
           {rest.map((b) => (
-            <ToolButton key={b.id} b={b} busy={busy} onOk={onOk} onCancel={onCancel} onUndo={() => onAct({ action: 'undo' })} />
+            <ToolButton key={b.id} b={b} busy={busy} onOk={onOk} onCancel={onCancel} onSkip={onSkip} onUndo={() => onAct({ action: 'undo' })} />
           ))}
         </div>
       )}
@@ -273,7 +278,33 @@ export function DecisionSlot({
   );
 }
 
-function ToolButton({ b, busy, onOk, onCancel, onUndo }: { b: SlotButton; busy: 'ok' | 'cancel' | null; onOk: () => void; onCancel: () => void; onUndo: () => void }) {
+function ToolButton({
+  b,
+  busy,
+  onOk,
+  onCancel,
+  onSkip,
+  onUndo,
+}: {
+  b: SlotButton;
+  busy: 'ok' | 'cancel' | null;
+  onOk: () => void;
+  onCancel: () => void;
+  onSkip?: () => void;
+  onUndo: () => void;
+}) {
+  if (b.id === 'skip') {
+    return (
+      <button className="ab-tool ab-alt ds-skip" disabled={!b.enabled || !onSkip} onClick={onSkip} title={`${b.words} (${b.kbd})`} data-slot-action="skip">
+        <span className="ab-tool-main">{b.words}</span>
+        {b.kbd && b.enabled && (
+          <kbd className="ds-kbd" aria-hidden="true">
+            {b.kbd}
+          </kbd>
+        )}
+      </button>
+    );
+  }
   if (b.id === 'undo') {
     return (
       <button className="ab-tool ds-undo" onClick={onUndo} title="Take back the last mana tap (Ctrl+Z)">

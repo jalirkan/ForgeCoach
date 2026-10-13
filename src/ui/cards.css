@@ -801,7 +801,9 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Combat pairs (endstep-style): an attacker and its blockers share a number */
+/* Combat pairs (endstep-style, the combat study §2 and §4): an attacker with
+   blockers wears a gold numbered badge, each blocker the same number, and a
+   curved blue line joins the two badges (play/CombatArrows.tsx). */
 
 .tile-pair {
   position: absolute;
@@ -810,59 +812,41 @@
   z-index: 7;
   display: grid;
   place-items: center;
-  min-width: 26px;
-  height: 26px;
+  min-width: 24px;
+  height: 24px;
   padding: 0 5px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
-  color: #fff;
-  background: var(--bg);
-  border: 2.5px solid var(--bad);
+  color: #1b1408;
+  background: var(--accent-2);
+  border: 2px solid #fff3d6;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
   pointer-events: none;
 }
 .tile-pair.pair-blocker {
-  border-color: var(--info);
+  color: #fff;
+  background: #2b4f7e;
+  border-color: #9cc6f7;
 }
 .tile-pair.is-pending {
   border-style: dashed;
-}
-.tile-pair.is-current {
-  background: var(--bad);
-  color: #fff;
 }
 .tile.is-tapped .tile-pair {
   top: calc(50% - var(--cw) / 2 - 10px);
   left: calc(50% - var(--ch) / 2 - 8px);
 }
-.board .tile.is-pair-attacker .tile-card {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bad) 85%, transparent), 0 0 14px color-mix(in srgb, var(--bad) 35%, transparent);
+/* The top side's badges sit on the edge that faces the centre line, where the block lines arrive. */
+.board .player-top .tile-pair {
+  top: auto;
+  bottom: -10px;
+}
+.board .player-top .tile.is-tapped .tile-pair {
+  top: auto;
+  bottom: calc(50% - var(--cw) / 2 - 10px);
 }
 .board .tile.is-pair-blocker .tile-card {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--info) 85%, transparent), 0 0 14px color-mix(in srgb, var(--info) 35%, transparent);
-}
-/* The attacker a block click goes to right now: unmistakable. */
-.board .tile.is-pair-current .tile-card {
-  box-shadow: 0 0 0 3px var(--bad), 0 0 24px color-mix(in srgb, var(--bad) 60%, transparent) !important;
-}
-.board .tile.is-pair-current .tile-slot::after {
-  content: 'Blocking this';
-  position: absolute;
-  left: 50%;
-  bottom: -9px;
-  transform: translateX(-50%);
-  z-index: 7;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--bad);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  pointer-events: none;
 }
 
 /* ------------------------------------------------------------------ */

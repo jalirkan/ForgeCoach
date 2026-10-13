@@ -2,19 +2,19 @@
  * ForgeCoach — ui/play/combatLayout.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Where combat is drawn (the Endstep study, items 11–14, 18, 20): the board
- * has no combat list. Each attacking creature lifts out of its row into the
- * ATTACK LANE — a lighter band on its controller's side, nearest the centre
- * line — in the order the engine lists the attackers. A creature blocking it
- * sits in the BLOCK LANE on the defender's side, in the same column, so a
- * block is read by position; several blockers fan in front of one attacker.
- * Both lanes are built from one column list, so their columns line up.
+ * Where combat is drawn (the combat study, 2026-10-12, §1, §2, §4 and §6.1):
+ * the board has no combat list and never rearranges itself around a block.
+ * Each attacking creature lifts out of its row into the ATTACK LANE — a
+ * lighter band on its controller's side, nearest the centre line — in the
+ * order the engine lists the attackers. A creature blocking it stays in its
+ * own row, and a curved line joins the attacker to it (one line per blocker,
+ * so a double block is two lines into one attacker); the pair's numbered
+ * badge is `combatLines.ts`'s.
  *
  * What an attacker attacks is a small chip on the card, or — when every
  * attacker has the same target, the common case — one label at the lane's
- * edge ("→ You", "→ Karn"). A thin line is kept only where position cannot
- * say it: a blocker that also blocks a second attacker (it sits in front of
- * the first), and an attack on a planeswalker (which sits in its own row).
+ * edge ("→ You", "→ Karn"); an attack on a planeswalker also gets a thin line
+ * to it (it sits in its own row).
  *
  * Pure: the redacted state, the board's combat marks (which fold in blocks
  * and attackers chosen but not yet confirmed — the engine's M65 `chosen`, or
@@ -38,15 +38,6 @@ export interface LaneTarget {
   initial: string;
 }
 
-export interface LaneBlocker {
-  id: number;
-  /** Chosen in the open declaration, not yet confirmed (the engine shows blocks in `combat` only after). */
-  pending: boolean;
-  /** Drawn lying down (a tapped blocker is wider). */
-  tapped: boolean;
-  controller: number;
-}
-
 export interface LaneColumn {
   attackerId: number;
   /** The attacker's controller: whose attack lane holds it. */
@@ -55,18 +46,16 @@ export interface LaneColumn {
   target: LaneTarget | null;
   /** Show `target` as a chip on the card (targets differ between attackers). */
   chip: boolean;
-  blockers: LaneBlocker[];
-  /** The attacker the next block click goes to (Forge's current attacker), in a block declaration. */
-  current: boolean;
-  /** Column width in card widths: the wider of the attacker and its fan of blockers. */
+  /** Column width in card widths (a lying card is wider). */
   weight: number;
 }
 
 export type CombatLineEnd = { card: number } | { lane: number };
 
-/** A thin line where position cannot say it. */
+/** A line on the board: an attacker to each of its blockers, or an attack to a planeswalker. */
 export interface CombatLine {
   kind: 'block' | 'target';
+  /** A block line leaves its attacker; a target line its attacker or the lane's label. */
   from: CombatLineEnd;
   to: { card: number };
   pending: boolean;
@@ -76,7 +65,7 @@ export interface CombatLayout {
   columns: LaneColumn[];
   /** One target for the whole lane (every attacker attacks it): the label at the lane's edge. */
   laneTarget: LaneTarget | null;
-  /** Every id drawn in a lane (they leave their rows). */
+  /** Every id drawn in the attack lane (they leave their rows). */
   placed: ReadonlySet<number>;
   lines: CombatLine[];
   /** A chip for an attacker being declared (still in its row, tilted) that attacks a planeswalker. */
@@ -97,8 +86,6 @@ export const EMPTY_LAYOUT: CombatLayout = {
   upright: false,
 };
 
-/** How much of a card each further blocker in a fan adds (they overlap). */
-export const FAN_STEP = 0.55;
 /** A tapped card lies in a slot as wide as the card is tall. */
 const TAPPED_W = 88 / 63;
 
@@ -177,8 +164,6 @@ export function combatLayout(
         tapped: c.tapped,
         target: targetOf(b.defender, state, seen, names),
         chip: false,
-        blockers: [],
-        current: marks.get(id)?.current === true,
         weight: 0,
       });
     }
@@ -186,22 +171,18 @@ export function combatLayout(
     const chips = pendingChips(state, seen, names, marks, lines);
     return chips.size ? { ...EMPTY_LAYOUT, pendingChips: chips, lines } : EMPTY_LAYOUT;
   }
-  const col = new Map(columns.map((c) => [c.attackerId, c]));
-  // Blockers: the engine's bands, then the declaration under way. A blocker in two bands sits in
-  // front of the first attacker it blocks and gets a line to the other.
-  const place = (blocker: number, attacker: number, pending: boolean) => {
-    const b = seen.get(blocker);
-    const target = col.get(attacker);
-    if (!b || !target || blocker === attacker || col.has(blocker)) return;
-    if (placed.has(blocker)) {
-      if (!target.blockers.some((x) => x.id === blocker)) lines.push({ kind: 'block', from: { card: blocker }, to: { card: attacker }, pending });
-      return;
-    }
-    placed.add(blocker);
-    target.blockers.push({ id: blocker, pending, tapped: b.tapped, controller: sideOf.get(blocker)! });
+  const inLane = new Set(columns.map((c) => c.attackerId));
+  // Blocks: a line from the attacker to each blocker — the engine's bands, then the declaration
+  // under way (a blocker of two attackers gets a line to each). The blocker stays in its row.
+  const drawn = new Set<string>();
+  const block = (blocker: number, attacker: number, pending: boolean) => {
+    const key = `${attacker}>${blocker}`;
+    if (!seen.has(blocker) || !inLane.has(attacker) || blocker === attacker || inLane.has(blocker) || drawn.has(key)) return;
+    drawn.add(key);
+    lines.push({ kind: 'block', from: { card: attacker }, to: { card: blocker }, pending });
   };
-  for (const c of columns) for (const blk of bandOf.get(c.attackerId)!.blockerIds) place(blk, c.attackerId, false);
-  for (const [id, m] of marks) if (m.role === 'blocker' && m.pending && m.attackerId !== undefined && m.attackerId !== null) place(id, m.attackerId, true);
+  for (const c of columns) for (const blk of bandOf.get(c.attackerId)!.blockerIds) block(blk, c.attackerId, false);
+  for (const [id, m] of marks) if (m.role === 'blocker' && m.pending && m.attackerId !== undefined && m.attackerId !== null) block(id, m.attackerId, true);
   // Targets: one label when all agree, else a chip per card.
   const first = columns[0]!.target;
   const laneTarget = first && columns.every((c) => sameTarget(c.target, first)) ? first : null;
@@ -211,9 +192,7 @@ export function combatLayout(
   // Widths.
   let weight = 0;
   for (const c of columns) {
-    const atk = c.tapped ? TAPPED_W : 1;
-    const fan = c.blockers.length === 0 ? 0 : (c.blockers.some((b) => b.tapped) ? TAPPED_W : 1) + (c.blockers.length - 1) * FAN_STEP;
-    c.weight = Math.round(Math.max(atk, fan) * 100) / 100;
+    c.weight = c.tapped ? Math.round(TAPPED_W * 100) / 100 : 1;
     weight += c.weight;
   }
   return {
@@ -241,17 +220,9 @@ function pendingChips(state: GameStateBody, seen: Map<number, Card>, names: Layo
   return out;
 }
 
-/**
- * Which lanes a player's side draws: the attack lane (its attackers) and the
- * block lane (the blockers it controls — or, while the viewing seat declares
- * blocks, the empty slot in front of the attacker its next block goes to).
- */
-export function laneRole(layout: CombatLayout, playerId: number, seat: number | null): { attack: boolean; block: boolean } {
-  const attack = layout.columns.some((c) => c.controller === playerId);
-  const block =
-    layout.columns.some((c) => c.blockers.some((b) => b.controller === playerId)) ||
-    (playerId === seat && !attack && layout.columns.some((c) => c.current));
-  return { attack, block };
+/** Whether a player's side draws the attack lane (it has attackers in it). */
+export function hasAttackLane(layout: CombatLayout, playerId: number): boolean {
+  return layout.columns.some((c) => c.controller === playerId);
 }
 
 /**

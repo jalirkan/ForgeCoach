@@ -2,10 +2,16 @@
  * ForgeCoach — ui/play/combatLines.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Combat's marks and the geometry of its few lines. The board draws combat
- * by placement (`combatLayout.ts`: the attack lane, blockers in front of
- * their attacker); here are the small numbered chips an attacker and its
- * blockers share, and the curve for a line where position cannot say it.
+ * Combat's marks and the geometry of its lines (endstep-style, the combat
+ * study §2 and §4): an attacker with blockers wears a numbered badge, every
+ * creature blocking it wears the same number, and a curved line joins the
+ * attacker to each of its blockers — on the board, between the real cards
+ * (`combatLayout.ts` lists the lines; the attackers sit in the attack lane,
+ * the blockers stay in their rows).
+ *
+ * Numbers go 1, 2, 3… over the attackers that have a blocker, in the engine's
+ * attack order: an unblocked attacker has no pair, so no badge (it is in the
+ * attack lane, which says "attacking" already), and the numbers never skip.
  *
  * Pure: the marks come from `state.combat` — protocol §3.1 — plus the blocks
  * and attacks declared but not yet confirmed (the engine's own M65
@@ -23,25 +29,12 @@ function visibleOnBattlefield(state: GameStateBody): Map<number, Card> {
   return m;
 }
 
-/**
- * One number per attacker (endstep-style), in the engine's band order, then
- * any attacker only this browser's clicks know of: the attacker and every
- * creature blocking it wear the same number.
- */
-function attackerNumbers(bands: readonly { attackerIds: number[] }[], extra: Iterable<number>, seen: Map<number, Card>): Map<number, number> {
-  const m = new Map<number, number>();
-  for (const id of [...bands.flatMap((b) => b.attackerIds), ...extra]) if (seen.has(id) && !m.has(id)) m.set(id, m.size + 1);
-  return m;
-}
-
 export interface CombatMark {
-  /** The pair's number: the attacker's, shared by its blockers. */
-  n: number;
+  /** The pair's number, shared by an attacker and its blockers; null for an attacker nothing blocks (no badge). */
+  n: number | null;
   role: 'attacker' | 'blocker';
-  /** Only this browser's clicks say so (the engine reports a declaration on confirm). */
+  /** Only the declaration under way says so (the engine reports a declaration in `combat` on confirm). */
   pending: boolean;
-  /** The attacker a block click goes to right now (Forge's "current attacker"). */
-  current: boolean;
   /** What an attacker attacks: a player id or a planeswalker / battle id, when the wire says. */
   defender: { kind: 'player' | 'card'; id: number } | null;
   /** A blocker's attacker (null for an attacker). */
@@ -49,17 +42,16 @@ export interface CombatMark {
 }
 
 /**
- * The numbered badges for combat: every attacker and its blockers share a
- * number. `pending` maps a blocker this browser clicked to its attacker;
- * `pendingAttackers` are attackers clicked but not confirmed; `current` is
- * the attacker the block prompt names; `pendingAttacks` (M65) says what a
- * not-yet-confirmed attacker attacks.
+ * The marks for combat. `pending` maps a blocker chosen in the open
+ * declaration to its attacker (null: the wire did not say which — such a
+ * blocker gets no mark); `pendingAttackers` are attackers chosen but not
+ * confirmed; `pendingAttacks` (M65) says what a not-yet-confirmed attacker
+ * attacks.
  */
 export function combatMarks(
   state: GameStateBody | null,
   pending: ReadonlyMap<number, number | null> = new Map(),
   pendingAttackers: ReadonlySet<number> = new Set(),
-  current: number | null = null,
   pendingAttacks: readonly ChosenAttack[] = [],
 ): Map<number, CombatMark> {
   const out = new Map<number, CombatMark>();
@@ -67,23 +59,29 @@ export function combatMarks(
   const seen = visibleOnBattlefield(state);
   const bands = state.combat?.bands ?? [];
   const confirmedAtk = new Set(bands.flatMap((b) => b.attackerIds));
-  const pendingBlk = [...pending].filter(([b, a]) => a !== null && seen.has(b) && seen.has(a)) as [number, number][];
-  const numbers = attackerNumbers(bands, [...pendingAttackers, ...pendingBlk.map(([, a]) => a)], seen);
+  // Every attacker, in the engine's order, then any only the open declaration knows of.
+  const order: number[] = [];
+  for (const id of [...bands.flatMap((b) => b.attackerIds), ...pendingAttackers]) if (seen.has(id) && !order.includes(id)) order.push(id);
+  // Blocker → attacker pairs: the engine's bands, then the declaration under way.
+  const pairs: { blk: number; atk: number; pending: boolean }[] = [];
+  for (const b of bands)
+    for (const blk of b.blockerIds) {
+      const a = b.attackerIds.find((x) => seen.has(x));
+      // The bridge before M52 listed an unblocked attacker as blocking itself.
+      if (a !== undefined && seen.has(blk) && blk !== a) pairs.push({ blk, atk: a, pending: false });
+    }
+  for (const [blk, a] of pending) if (a !== null && seen.has(blk) && seen.has(a) && order.includes(a)) pairs.push({ blk, atk: a, pending: true });
+  const blocked = new Set(pairs.map((p) => p.atk));
+  const numbers = new Map<number, number>();
+  for (const id of order) if (blocked.has(id)) numbers.set(id, numbers.size + 1);
   const defenderOf = new Map<number, CombatMark['defender']>();
   for (const a of pendingAttacks) defenderOf.set(a.attackerId, { kind: a.defender.kind, id: a.defender.id });
   for (const b of bands) for (const a of b.attackerIds) defenderOf.set(a, b.defender ? { kind: b.defender.kind, id: b.defender.id } : null);
-  for (const [id, n] of numbers) out.set(id, { n, role: 'attacker', pending: !confirmedAtk.has(id), current: id === current, defender: defenderOf.get(id) ?? null, attackerId: null });
-  for (const b of bands)
-    for (const blk of b.blockerIds) {
-      const a = b.attackerIds.find((x) => numbers.has(x));
-      if (a !== undefined && seen.has(blk) && !out.has(blk)) out.set(blk, { n: numbers.get(a)!, role: 'blocker', pending: false, current: false, defender: null, attackerId: a });
-    }
-  for (const [blk, a] of pendingBlk) if (!out.has(blk) && numbers.has(a)) out.set(blk, { n: numbers.get(a)!, role: 'blocker', pending: true, current: false, defender: null, attackerId: a });
-  // The current attacker of a block prompt, even before anything blocks it.
-  if (current !== null && seen.has(current) && !out.has(current)) out.set(current, { n: numbers.size + 1, role: 'attacker', pending: true, current: true, defender: null, attackerId: null });
+  for (const id of order) out.set(id, { n: numbers.get(id) ?? null, role: 'attacker', pending: !confirmedAtk.has(id), defender: defenderOf.get(id) ?? null, attackerId: null });
+  // A creature blocking two attackers wears the first one's number (a line goes to each).
+  for (const p of pairs) if (!out.has(p.blk)) out.set(p.blk, { n: numbers.get(p.atk)!, role: 'blocker', pending: p.pending, defender: null, attackerId: p.atk });
   return out;
 }
-
 
 // ---------------------------------------------------------------------------
 // Geometry
@@ -164,4 +162,34 @@ export function lanes(links: readonly { to: { card: number } }[]): number[] {
     count.set(l.to.card, n + 1);
     return n;
   });
+}
+
+/**
+ * A block line (the combat study's "curved blue line"): from the attacker's
+ * badge `p` to the blocker's badge `q`, bowed to one side, stopping `inset`
+ * short of each end so it meets each badge's rim, not its number. `lane`
+ * (0, 1, 2…) bends lines that share their two ends apart.
+ */
+export function arcBetween(p: Pt, q: Pt, lane = 0, inset = 0): Curve {
+  const dx = q.x - p.x;
+  const dy = q.y - p.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const cut = Math.min(inset, len / 3);
+  const start = { x: p.x + ux * cut, y: p.y + uy * cut };
+  const end = { x: q.x - ux * cut, y: q.y - uy * cut };
+  // The bow: a fifth of the length, at most 70 px, to the left of travel (a steady arc, not an S);
+  // further lanes bow further.
+  const bow = Math.min(70, len * 0.2) + lane * 16;
+  const nx = -uy;
+  const ny = ux;
+  const c1 = { x: start.x + (end.x - start.x) * 0.3 + nx * bow, y: start.y + (end.y - start.y) * 0.3 + ny * bow };
+  const c2 = { x: start.x + (end.x - start.x) * 0.7 + nx * bow, y: start.y + (end.y - start.y) * 0.7 + ny * bow };
+  const r = (n: number) => Math.round(n * 10) / 10;
+  return {
+    d: `M ${r(start.x)} ${r(start.y)} C ${r(c1.x)} ${r(c1.y)}, ${r(c2.x)} ${r(c2.y)}, ${r(end.x)} ${r(end.y)}`,
+    start: { x: r(start.x), y: r(start.y) },
+    end: { x: r(end.x), y: r(end.y) },
+  };
 }

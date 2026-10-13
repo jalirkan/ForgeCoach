@@ -19,7 +19,7 @@ import { lastNoChoice, lineText } from '../../eventLog.ts';
 import { CardRefContext } from '../CoachText.tsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ActBody, AnswerValue, AnyCard, Card, GameStateBody } from '../../protocol.ts';
-import { chosenOf, isHidden, MANA_COLORS, opponentIsHuman, undoOf, yieldOf } from '../../protocol.ts';
+import { chosenOf, isHidden, keywordsOf, MANA_COLORS, opponentIsHuman, undoOf, yieldOf } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import type { PlaySession, PlaySnapshot } from '../../play/session.ts';
 import { activeGuideId, listGuides } from '../../guide.ts';
@@ -59,7 +59,7 @@ import { StackPanel } from '../StackPanel.tsx';
 import { stackEntries } from '../stackModel.ts';
 import { zonePick } from './zonePick.ts';
 import { combatMarks } from './combatLines.ts';
-import { attackRefusal, blockRefusal, clickAttacker, clickBlocker, takeOff, type BlockPlan } from './blockPlan.ts';
+import { attackRefusal, blockGesture, blockRefusal, noBlocksClicks, SKIP_WAIT_MS, skipCombatActs, skipMustWait, type BlockPick, type BlockPlan } from './blockPlan.ts';
 import { selectionSummary, wireChoice } from './selection.ts';
 import { matchBox, tableMatchLine, type MatchBox } from '../../play/match.ts';
 import { PLAY_KEYS, planPlayKey } from './playKeys.ts';
@@ -212,14 +212,31 @@ export function PlayView({
           ? attackRefusal(lastNotice.title, lastNotice.text, snap.state, seat)
           : null) ?? pickRefusal(lastNotice.title, lastNotice.text, snap.state, input, view.mode, seat);
     setFlash(refused ?? noticeLine(lastNotice.title, lastNotice.text, snap.state));
+    // A refused block is not on the board: drop it from this browser's own picture (an engine
+    // before M65; with M65 the engine's own word is drawn and this picture is not read).
+    const tried = blockTry.current;
+    if (view.mode === 'block' && refused && tried) {
+      blockTry.current = null;
+      setChosenBlk((m) => {
+        if (m.get(tried.blocker) !== tried.attacker) return m;
+        const n = new Map(m);
+        n.delete(tried.blocker);
+        return n;
+      });
+    }
     // Only a new notice flashes; the state it names cards from is read as of then.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastNotice]);
   // The last act's time: the "Your move" nudge counts from a decision's arrival or the last click, whichever is later.
   const [lastAct, setLastAct] = useState<number | null>(null);
+  // The input seq the last act went out under (Skip combat / No blocks wait for the engine's answer to it).
+  const inputSeqRef = useRef(snap.inputSeq);
+  inputSeqRef.current = snap.inputSeq;
+  const sentAtInput = useRef<number | null>(null);
   const act = useCallback(
     (body: ActBody) => {
       setLastAct(Date.now());
+      sentAtInput.current = inputSeqRef.current;
       void session.act(body);
     },
     [session],
@@ -272,6 +289,11 @@ export function PlayView({
   const blocksRef = useRef<ReadonlyMap<number, number | null>>(new Map());
   /** The last block a click tried, to word the engine's refusal in the game's terms. */
   const blockTry = useRef<{ blocker: number; attacker: number } | null>(null);
+  /** The first click of a block pair (blocker first, blockPlan.ts `blockGesture`), lifted on the board. */
+  const [blockPick, setBlockPick] = useState<BlockPick>(null);
+  useEffect(() => {
+    if (view.mode !== 'block') setBlockPick(null);
+  }, [view.mode]);
   /** Send a block plan's clicks, in order: each one is the engine's own `clickCard`. */
   const sendBlockPlan = useCallback(
     (plan: BlockPlan) => {
@@ -280,6 +302,15 @@ export function PlayView({
       for (const id of plan.clicks) act({ action: 'clickCard', cardId: id });
     },
     [act],
+  );
+  /** A click in the block declaration: your creature or an attacker, half of a pair until the other half. */
+  const blockClick = useCallback(
+    (kind: 'blocker' | 'attacker', id: number) => {
+      const step = blockGesture(blockPick, { kind, id }, view.blockingAttackerId, blocksRef.current);
+      setBlockPick(step.pick);
+      if (step.plan) sendBlockPlan(step.plan);
+    },
+    [blockPick, view.blockingAttackerId, sendBlockPlan],
   );
   const clickCard = useCallback(
     (c: AnyCard) => {
@@ -291,24 +322,17 @@ export function PlayView({
           return n;
         });
       } else if (view.mode === 'block' && isMyCreature(c)) {
-        // Forge's InputBlock (blockPlan.ts): a click blocks the named attacker or takes that block off;
-        // a creature blocking another attacker is moved to the named one through the engine's clicks.
-        return sendBlockPlan(clickBlocker(c.id, view.blockingAttackerId, blocksRef.current));
+        return blockClick('blocker', c.id);
       } else if (view.mode === 'block' && !isHidden(c) && (c as Card).attacking) {
-        return sendBlockPlan(clickAttacker(c.id, blocksRef.current));
+        return blockClick('attacker', c.id);
       }
       act({ action: 'clickCard', cardId: c.id });
     },
-    [view.mode, view.blockingAttackerId, isMyCreature, act, sendBlockPlan],
-  );
-  /** The × on a declared blocker: its block comes off through the engine's clicks. */
-  const unblock = useCallback(
-    (blockerId: number) => sendBlockPlan(takeOff(blockerId, view.blockingAttackerId, blocksRef.current)),
-    [view.blockingAttackerId, sendBlockPlan],
+    [view.mode, isMyCreature, act, blockClick],
   );
   const alphaStrike = useCallback(() => {
     const me = state?.players.find((p) => p.id === seat);
-    const all = (me?.zones.battlefield.cards ?? []).filter((c) => isMyCreature(c) && !(c as Card).tapped && !(c as Card).sick).map((c) => c.id);
+    const all = (me?.zones.battlefield.cards ?? []).filter((c) => isMyCreature(c) && !(c as Card).tapped && (!(c as Card).sick || keywordsOf(c as Card).includes('HASTE'))).map((c) => c.id);
     setChosenAtk(new Set(all));
   }, [state, seat, isMyCreature]);
   /** Cancel, keeping the chosen-attackers picture in step with what the engine's Cancel means here. */
@@ -324,6 +348,49 @@ export function PlayView({
     },
     [act, alphaStrike],
   );
+  /**
+   * SKIP COMBAT [Esc] (declaring attackers: Call Back while the engine reads so, then OK) and NO
+   * BLOCKS [Esc] (declaring blockers: every block off by the engine's clicks, then OK) — blockPlan.ts.
+   * Both read the engine's latest word, so right after a click they wait for its answer
+   * (`skipMustWait`, at most SKIP_WAIT_MS).
+   */
+  const skipNow = useCallback(() => {
+    if (!view.ok.enabled) return;
+    if (view.mode === 'attack') {
+      setChosenAtk(new Set());
+      setBusy('ok');
+      for (const body of skipCombatActs(view.cancel)) act(body);
+    } else if (view.mode === 'block') {
+      setBlockPick(null);
+      blockTry.current = null;
+      const clicks = noBlocksClicks(view.blockingAttackerId, blocksRef.current);
+      setChosenBlk(new Map());
+      setBusy('ok');
+      for (const id of clicks) act({ action: 'clickCard', cardId: id });
+      act({ action: 'buttonOk' });
+    }
+  }, [view.ok.enabled, view.mode, view.cancel, view.blockingAttackerId, act]);
+  const [skipQueued, setSkipQueued] = useState(false);
+  const doSkip = useCallback(() => {
+    if (view.mode !== 'attack' && view.mode !== 'block') return;
+    if (skipMustWait(sentAtInput.current, snap.inputSeq)) {
+      setBusy('ok');
+      setSkipQueued(true);
+    } else skipNow();
+  }, [view.mode, snap.inputSeq, skipNow]);
+  useEffect(() => {
+    if (!skipQueued) return;
+    if (!skipMustWait(sentAtInput.current, snap.inputSeq)) {
+      setSkipQueued(false);
+      skipNow();
+      return;
+    }
+    const t = setTimeout(() => {
+      setSkipQueued(false);
+      skipNow();
+    }, SKIP_WAIT_MS);
+    return () => clearTimeout(t);
+  }, [skipQueued, snap.inputSeq, skipNow]);
 
   // ---- what is chosen so far: the engine's own word when the frame says (M65 `selectable.chosen`),
   // else this browser's clicks, exactly as before (absent / null is "unknown", never "nothing").
@@ -333,20 +400,22 @@ export function PlayView({
   blocksRef.current = blkNow;
 
   // ---- the selection under way (dims the rest of the board) and the combat lines
-  const selection = useMemo(() => selectionSummary(view, { attackers: atkNow.size, blockers: blkNow.size }), [view, atkNow, blkNow]);
+  const selection = useMemo(
+    () => selectionSummary(view, { attackers: atkNow.size, blockers: blkNow.size }, view.mode === 'block' ? blockPick?.kind ?? null : null),
+    [view, atkNow, blkNow, blockPick],
+  );
   // Cards the engine wants clicked that the board has no tile for (a graveyard target): their own panel.
   const offBoard = useMemo(() => (ask || over ? null : zonePick(input, state, seat, view.mode)), [ask, over, input, state, seat, view.mode]);
-  // Every attacker and its blockers share a number on the board (endstep-style), clicks not yet confirmed included.
+  // An attacker and its blockers share a number and a line on the board (endstep-style), clicks not yet confirmed included.
   const pairs = useMemo(
     () =>
       combatMarks(
         state,
         view.mode === 'block' ? blkNow : undefined,
         view.mode === 'attack' ? atkNow : undefined,
-        view.mode === 'block' ? view.blockingAttackerId : null,
         view.mode === 'attack' ? wire?.attacks : undefined,
       ),
-    [state, view.mode, view.blockingAttackerId, blkNow, atkNow, wire],
+    [state, view.mode, blkNow, atkNow, wire],
   );
 
   // The coach's words name cards as the board shows them: the lane badges, else P/T (CoachText).
@@ -366,15 +435,15 @@ export function PlayView({
       click: clickCard,
       chosen: (c: AnyCard) => (atkNow.has(c.id) ? 'attack' : blkNow.has(c.id) ? 'block' : wire?.cards.has(c.id) ? 'pick' : null),
       blockersFor: (attackerId: number) => [...blkNow].filter(([, a]) => a === attackerId).map(([b]) => b),
+      armed: (c: AnyCard) => blockPick !== null && blockPick.id === c.id,
       // M66: exactly the players the engine lists when the frame says; else today's heuristics.
       playerMark: (id: number) => playerClickable(ctx, id),
       playerChosen: (id: number) => !!wire?.players.has(id),
       clickPlayer: (id: number) => {
         if (playerClickable(ctx, id)) act({ action: 'clickPlayer', playerId: id });
       },
-      unblock: view.mode === 'block' && view.ok.enabled ? unblock : undefined,
     }),
-    [ctx, affordable, act, clickCard, atkNow, blkNow, wire, view.mode, view.ok.enabled, unblock],
+    [ctx, affordable, act, clickCard, atkNow, blkNow, wire, blockPick],
   );
 
   // ---- details / hover
@@ -544,6 +613,9 @@ export function PlayView({
         case 'cancel':
           doCancel();
           break;
+        case 'skip':
+          doSkip();
+          break;
         case 'act':
           doAct(plan.body);
           setFlash(plan.label);
@@ -561,7 +633,7 @@ export function PlayView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, logOpen, wide, pressOk, doCancel, doAct, lit, theyActBlocked]);
+  }, [view, ask, over, undo.can, pool, detail, help, concede, guidesOpen, logOpen, wide, pressOk, doCancel, doSkip, doAct, lit, theyActBlocked]);
 
   // ---- the board seam (playBoard.ts): the parts of the board read this instead of taking props
   const playBoard = usePlayBoardValue({ state, input, ask, seat, log, view, connected, over: !!over, act, inputSeen: snap.inputSeen });
@@ -699,6 +771,7 @@ export function PlayView({
         undoDepth={undo.depth}
         onOk={pressOk}
         onCancel={doCancel}
+        onSkip={doSkip}
         onAct={doAct}
         onHelp={() => setHelp(true)}
         selection={selection}

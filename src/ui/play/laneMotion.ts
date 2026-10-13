@@ -2,9 +2,9 @@
  * ForgeCoach — ui/play/laneMotion.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Cards slide into and out of the combat lanes instead of jumping: when a
- * card's place changes (row → attack lane, row → in front of an attacker,
- * one attacker → another, back to the row when combat ends), its tile is
+ * Attackers slide into and out of the attack lane instead of jumping: when a
+ * card's place changes (row → attack lane, back to the row when combat
+ * ends), its tile is
  * animated from where it was drawn to where it is now (a FLIP: the DOM has
  * already moved; a short transform plays the move back). Nothing else moves,
  * and nothing moves at all under `prefers-reduced-motion`.
@@ -14,17 +14,14 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import type { CombatLayout } from './combatLayout.ts';
 
-/** Where each placed card is drawn: `a:<attacker>` (attack lane) or `b:<attacker>` (in front of it). Absent: its row. */
+/** Where each placed card is drawn: `a:<attacker>` (the attack lane). Absent: its row (blockers stay there). */
 export function placementKeys(layout: CombatLayout): Map<number, string> {
   const m = new Map<number, string>();
-  for (const c of layout.columns) {
-    m.set(c.attackerId, `a:${c.attackerId}`);
-    for (const b of c.blockers) m.set(b.id, `b:${c.attackerId}`);
-  }
+  for (const c of layout.columns) m.set(c.attackerId, `a:${c.attackerId}`);
   return m;
 }
 
-/** The cards whose place changed between two layouts (entered a lane, left one, or changed columns). */
+/** The cards whose place changed between two layouts (entered the lane or left it). */
 export function movedIds(prev: ReadonlyMap<number, string>, next: ReadonlyMap<number, string>): number[] {
   const out = new Set<number>();
   for (const [id, k] of next) if (prev.get(id) !== k) out.add(id);

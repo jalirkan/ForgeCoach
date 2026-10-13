@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The pair badges on the board ("you can't tell who you're blocking"): the
- * attacker and its blocker carry the same number (the blocker also sits in
- * front of it, combatLayout.ts), and the attacker a block click goes to is
- * marked.
+ * attacker and its blocker carry the same number (a line joins them,
+ * combatLayout.ts), an attacker nothing blocks carries none, and the card
+ * picked first in a block gesture is drawn lifted (`is-armed`).
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
 import type { Card } from '../../protocol.ts';
-import { BoardMarksContext } from '../cardContext.ts';
+import { BoardMarksContext, PlayContext, type PlayInteraction } from '../cardContext.ts';
 import { CardTile } from '../CardTile.tsx';
 import { combatMarks } from './combatLines.ts';
 
@@ -47,14 +47,30 @@ describe('combat badges on tiles', () => {
     expect(html).toContain('aria-label="Blocks attacker 1"');
   });
 
-  test('the attacker a block click goes to now is marked "current"', () => {
+  test('an attacker nothing blocks wears no badge', () => {
+    const lone = { ...(st as object), combat: { bands: [{ attackerIds: [9], defender: { kind: 'player', id: 0 }, blockerIds: [], damageOrder: [] }] } } as never;
     const html = renderToStaticMarkup(
-      <BoardMarksContext.Provider value={{ stack: new Map(), combat: combatMarks(st, new Map(), new Set(), 9) }}>
+      <BoardMarksContext.Provider value={{ stack: new Map(), combat: combatMarks(lone) }}>
         <CardTile card={atk} side="opp" />
       </BoardMarksContext.Provider>,
     );
-    expect(html).toContain('is-pair-current');
-    expect(html).toMatch(/tile-pair pair-attacker is-current/);
+    expect(html).not.toContain('tile-pair');
+    expect(html).not.toContain('is-pair-attacker');
+  });
+
+  test('the card picked first in a block is drawn armed', () => {
+    const play: PlayInteraction = {
+      mark: () => 'act', hint: () => false, click: () => undefined, chosen: () => null, blockersFor: () => [],
+      playerMark: () => false, clickPlayer: () => undefined, armed: (c) => c.id === 1,
+    };
+    const html = renderToStaticMarkup(
+      <PlayContext.Provider value={play}>
+        <CardTile card={blk} side="me" />
+        <CardTile card={atk} side="opp" />
+      </PlayContext.Provider>,
+    );
+    expect(html.match(/is-armed/g)?.length).toBe(1);
+    expect(html).toMatch(/is-armed[^"]*" role="button" tabindex="0" aria-label="C1/);
   });
 
   test('no combat: no badges', () => {

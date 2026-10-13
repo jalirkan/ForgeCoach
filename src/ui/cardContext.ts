@@ -48,16 +48,17 @@ export interface PlayInteraction {
   chosen(card: AnyCard): 'attack' | 'block' | 'pick' | null;
   /** Blockers chosen so far for one attacker (same caveat as `chosen`). */
   blockersFor(attackerId: number): number[];
+  /**
+   * The card picked first in a two-click gesture of the block declaration —
+   * your creature, waiting for the attacker it blocks (or that attacker,
+   * waiting for your creature): drawn lifted and bright. Absent: never.
+   */
+  armed?(card: AnyCard): boolean;
   /** Whether this player's portrait takes a click now (M66 `selectable.playerIds` when the frame says). */
   playerMark(playerId: number): boolean;
   /** Whether this player is already chosen in the open input (M65); absent: never. */
   playerChosen?(playerId: number): boolean;
   clickPlayer(playerId: number): void;
-  /**
-   * Take a declared blocker off (the × on a blocker in the block lane), through
-   * the engine's own clicks; absent outside a block declaration.
-   */
-  unblock?(blockerId: number): void;
 }
 export const PlayContext = createContext<PlayInteraction | null>(null);
 export const usePlay = () => useContext(PlayContext);
@@ -73,11 +74,11 @@ export interface CardStackMarks {
 }
 /** Combat: an attacker and its blockers share a number (ui/play/combatLines.ts `combatMarks`). */
 export interface CardCombatMark {
-  n: number;
+  /** The pair's number; null for an attacker nothing blocks (no badge). */
+  n: number | null;
   role: 'attacker' | 'blocker';
   pending: boolean;
-  current: boolean;
-  /** A blocker's attacker (the combat lane places it in front of that card). */
+  /** A blocker's attacker (a line joins the two). */
   attackerId?: number | null;
   /** What an attacker attacks, when the wire says. */
   defender?: { kind: 'player' | 'card'; id: number } | null;

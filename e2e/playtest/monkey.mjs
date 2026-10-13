@@ -730,13 +730,19 @@ export class Monkey {
     return true;
   }
 
-  async clickCard(dom, id, what) {
+  /**
+   * Clicks a card's control and expects a `clickCard` for it (`expect: 'same'`), any `clickCard` (`'any'`:
+   * the second click of a block pair, which the board sends as the engine's attacker-first clicks), or
+   * none (`'none'`: the first click of a block pair only lifts the card).
+   */
+  async clickCard(dom, id, what, { expect = 'same' } = {}) {
     const ctl = this.cardControls(dom, id)[0];
     if (!ctl) return false;
     const mark = this.tap.sent.length;
     const input = this.tap.input;
     if (!(await this.click(ctl.t, what))) return false;
-    const ok = await this.sentSince(mark, (f) => f.type === 'act' && f.body?.action === 'clickCard' && f.body.cardId === ctl.id, 2500);
+    if (expect === 'none') return true;
+    const ok = await this.sentSince(mark, (f) => f.type === 'act' && f.body?.action === 'clickCard' && (expect === 'any' || f.body.cardId === ctl.id), 2500);
     // J107: a Counterspell clicked as "Waiting for Sam…" came in opened its details instead — the moment had moved on.
     if (!ok && this.same(input)) await this.finding({ kind: 'click-no-act', what: `${what}: a click on a marked card sent no clickCard`, cardId: id });
     return ok;
@@ -831,16 +837,15 @@ export class Monkey {
       }
       if (gang) this.count('rare', 'multi-block');
     }
+    // The board's flow is blocker first (the combat study §4): your creature (it lifts; nothing is sent),
+    // then the attacker it blocks (the board sends the engine's attacker-first clicks).
     for (const [bid, aid] of plan) {
-      const cur = /\((\d+)\)/.exec(this.tap.input?.prompt ?? '')?.[1];
       dom = await this.dom();
-      if (Number(cur) !== aid) {
-        await this.clickCard(dom, aid, `choose attacker ${aid} to block`);
-        await this.settle(1200);
-        dom = await this.dom();
-      }
       const b = this.tap.card(bid);
-      await this.clickCard(dom, bid, `block with ${b?.name ?? bid}`);
+      if (!(await this.clickCard(dom, bid, `pick ${b?.name ?? bid} to block`, { expect: 'none' }))) continue;
+      await this.settle(400);
+      dom = await this.dom();
+      await this.clickCard(dom, aid, `block attacker ${aid} with it`, { expect: 'any' });
       await this.settle(1200);
       if (!this.tap.input || !/^Select creatures to block/i.test(this.tap.input.prompt)) return 'block:moved-on';
     }
