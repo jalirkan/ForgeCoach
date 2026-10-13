@@ -1,0 +1,6 @@
+{
+  "_comment": "Round 4 picks: the repaint tiles fix.py puts back. name = <n>-<region>[-sh]-<strength x100>-s<seed>; -sh = the sharpened init (prep.py).",
+  "1": {"face": "1-face-sh-36-s433", "hands": "1-hands-sh-42-s432"},
+  "2": {"face": "2-face-40-s412",    "hands": "2-hands-sh-36-s432"},
+  "3": {"face": "3-face-sh-42-s431", "hands": "3-hands-sh-36-s431"}
+}

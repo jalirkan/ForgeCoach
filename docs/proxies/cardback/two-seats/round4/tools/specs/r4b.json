@@ -1,0 +1,128 @@
+{
+ "model": "dreamshaper",
+ "out": "/home/justin-a/scenery-packs/two-seats-work/round4/raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "1-face-sh-36",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round4/crops/1-face-sh.png",
+   "strength": 0.36,
+   "seeds": [
+    431,
+    432,
+    433
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, no oil-painting sheen, a woman's face framed by a teal hood, auburn hair, calm composed expression, clear well-formed eyes looking at the viewer, straight nose, small closed mouth, gold ground",
+   "negative": "photo, photograph, realistic, photorealistic, hyperreal, 3d render, oil painting, glossy, sheen, specular highlights, detailed skin texture, pores, wrinkles detail, deformed, malformed, asymmetric eyes, cross-eyed, lazy eye, extra eyes, blurry, text, letters, words, signature, watermark"
+  },
+  {
+   "name": "1-face-sh-42",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round4/crops/1-face-sh.png",
+   "strength": 0.42,
+   "seeds": [
+    431,
+    432,
+    433
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, no oil-painting sheen, a woman's face framed by a teal hood, auburn hair, calm composed expression, clear well-formed eyes looking at the viewer, straight nose, small closed mouth, gold ground",
+   "negative": "photo, photograph, realistic, photorealistic, hyperreal, 3d render, oil painting, glossy, sheen, specular highlights, detailed skin texture, pores, wrinkles detail, deformed, malformed, asymmetric eyes, cross-eyed, lazy eye, extra eyes, blurry, text, letters, words, signature, watermark"
+  },
+  {
+   "name": "3-face-sh-36",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round4/crops/3-face-sh.png",
+   "strength": 0.36,
+   "seeds": [
+    431,
+    432,
+    433
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, no oil-painting sheen, a guarded face framed by a dark blue hood, short brown hair, wary guarded expression, clear well-formed eyes looking at the viewer, straight well-formed nose, closed mouth, gold ground",
+   "negative": "photo, photograph, realistic, photorealistic, hyperreal, 3d render, oil painting, glossy, sheen, specular highlights, detailed skin texture, pores, wrinkles detail, deformed, malformed, asymmetric eyes, cross-eyed, lazy eye, extra eyes, blurry, text, letters, words, signature, watermark"
+  },
+  {
+   "name": "3-face-sh-42",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round4/crops/3-face-sh.png",
+   "strength": 0.42,
+   "seeds": [
+    431,
+    432,
+    433
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, no oil-painting sheen, a guarded face framed by a dark blue hood, short brown hair, wary guarded expression, clear well-formed eyes looking at the viewer, straight well-formed nose, closed mouth, gold ground",
+   "negative": "photo, photograph, realistic, photorealistic, hyperreal, 3d render, oil painting, glossy, sheen, specular highlights, detailed skin texture, pores, wrinkles detail, deformed, malformed, asymmetric eyes, cross-eyed, lazy eye, extra eyes, blurry, text, letters, words, signature, watermark"
+  },
+  {
+   "name": "1-hands-sh-36",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round4/crops/1-hands-sh.png",
+   "strength": 0.36,
+   "seeds": [
+    431,
+    432,
+    433
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, no oil-painting sheen, two hands with teal sleeves holding a fan of dark playing cards seen from the back, simple clear well-formed hands and fingers",
+   "negative": "photo, photograph, realistic, photorealistic, hyperreal, 3d render, oil painting, glossy, sheen, specular highlights, detailed skin texture, pores, wrinkles detail, deformed, malformed, asymmetric eyes, cross-eyed, lazy eye, extra eyes, blurry, text, letters, words, signature, watermark, extra fingers, missing fingers, fused fingers, claws, card faces, pips, hearts, spades, numbers"
+  },
+  {
+   "name": "1-hands-sh-42",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round4/crops/1-hands-sh.png",
+   "strength": 0.42,
+   "seeds": [
+    431,
+    432,
+    433
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, no oil-painting sheen, two hands with teal sleeves holding a fan of dark playing cards seen from the back, simple clear well-formed hands and fingers",
+   "negative": "photo, photograph, realistic, photorealistic, hyperreal, 3d render, oil painting, glossy, sheen, specular highlights, detailed skin texture, pores, wrinkles detail, deformed, malformed, asymmetric eyes, cross-eyed, lazy eye, extra eyes, blurry, text, letters, words, signature, watermark, extra fingers, missing fingers, fused fingers, claws, card faces, pips, hearts, spades, numbers"
+  },
+  {
+   "name": "2-hands-sh-36",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round4/crops/2-hands-sh.png",
+   "strength": 0.36,
+   "seeds": [
+    431,
+    432,
+    433
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, no oil-painting sheen, two hands with garnet red sleeves holding a fan of dark playing cards seen from the back, simple clear well-formed hands and fingers",
+   "negative": "photo, photograph, realistic, photorealistic, hyperreal, 3d render, oil painting, glossy, sheen, specular highlights, detailed skin texture, pores, wrinkles detail, deformed, malformed, asymmetric eyes, cross-eyed, lazy eye, extra eyes, blurry, text, letters, words, signature, watermark, extra fingers, missing fingers, fused fingers, claws, card faces, pips, hearts, spades, numbers"
+  },
+  {
+   "name": "2-hands-sh-42",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round4/crops/2-hands-sh.png",
+   "strength": 0.42,
+   "seeds": [
+    431,
+    432,
+    433
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, no oil-painting sheen, two hands with garnet red sleeves holding a fan of dark playing cards seen from the back, simple clear well-formed hands and fingers",
+   "negative": "photo, photograph, realistic, photorealistic, hyperreal, 3d render, oil painting, glossy, sheen, specular highlights, detailed skin texture, pores, wrinkles detail, deformed, malformed, asymmetric eyes, cross-eyed, lazy eye, extra eyes, blurry, text, letters, words, signature, watermark, extra fingers, missing fingers, fused fingers, claws, card faces, pips, hearts, spades, numbers"
+  },
+  {
+   "name": "3-hands-sh-36",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round4/crops/3-hands-sh.png",
+   "strength": 0.36,
+   "seeds": [
+    431,
+    432,
+    433
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, no oil-painting sheen, two hands with dark blue sleeves holding a fan of dark playing cards seen from the back, simple clear well-formed hands and fingers",
+   "negative": "photo, photograph, realistic, photorealistic, hyperreal, 3d render, oil painting, glossy, sheen, specular highlights, detailed skin texture, pores, wrinkles detail, deformed, malformed, asymmetric eyes, cross-eyed, lazy eye, extra eyes, blurry, text, letters, words, signature, watermark, extra fingers, missing fingers, fused fingers, claws, card faces, pips, hearts, spades, numbers"
+  },
+  {
+   "name": "3-hands-sh-42",
+   "src": "/home/justin-a/scenery-packs/two-seats-work/round4/crops/3-hands-sh.png",
+   "strength": 0.42,
+   "seeds": [
+    431,
+    432,
+    433
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, no realism, no photo, no oil-painting sheen, two hands with dark blue sleeves holding a fan of dark playing cards seen from the back, simple clear well-formed hands and fingers",
+   "negative": "photo, photograph, realistic, photorealistic, hyperreal, 3d render, oil painting, glossy, sheen, specular highlights, detailed skin texture, pores, wrinkles detail, deformed, malformed, asymmetric eyes, cross-eyed, lazy eye, extra eyes, blurry, text, letters, words, signature, watermark, extra fingers, missing fingers, fused fingers, claws, card faces, pips, hearts, spades, numbers"
+  }
+ ]
+}

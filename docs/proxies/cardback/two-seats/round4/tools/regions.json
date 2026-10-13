@@ -1,0 +1,6 @@
+{
+  "_comment": "Round 4: the repaint boxes, in the first drafts' own 1632x2220 pixels, top (painted) half only; the bottom half is its 180-degree twin. box = the crop that is upscaled and repainted; keep = the part pasted back (face: feathered ellipse; hands: skin mask inside the rect, so the fan and the lamp neck keep their own pixels).",
+  "1": {"face": {"box": [700, 270, 940, 510], "keep": [728, 290, 912, 500]}, "hands": {"box": [670, 800, 950, 980], "keep": [705, 835, 925, 950]}},
+  "2": {"face": {"box": [700, 240, 940, 480], "keep": [728, 258, 912, 478]}, "hands": {"box": [670, 800, 950, 980], "keep": [690, 840, 930, 975]}},
+  "3": {"face": {"box": [690, 260, 930, 500], "keep": [722, 282, 900, 476]}, "hands": {"box": [660, 790, 980, 970], "keep": [690, 840, 950, 930]}}
+}
