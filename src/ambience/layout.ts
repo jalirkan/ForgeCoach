@@ -8,7 +8,8 @@
  * asks for `strip.order: "preference"` — biomes that prefer the left first and
  * those that prefer the right last, arrival order within each group.
  * Width: a flex weight that grows a little with the stage (a richer scene
- * takes more room) times the pack's per-biome weight.
+ * takes more room) times the pack's per-biome weight; since spec 1.6 it grows
+ * with the progress between stages too, so every land widens it a little.
  *
  * Also the placement of a picture inside its layer box: the `anchor` as
  * fractions / CSS object-position, and a sprite frame's rectangle for each
@@ -22,13 +23,15 @@
  * ({@link halfFrame}, and {@link halfFrameCss}, its CSS twin in container
  * units, so the crop follows the slot's size with no script).
  */
-import type { SlotState } from './model.ts';
+import { growthLevel, type SlotState } from './model.ts';
 import { DEFAULT_HALF_LAYOUT, halfAt, type Anchor, type AreaRect, type Fit, type FocalPoint, type HalfPicture, type PackHalf, type ScenePack } from './manifest.ts';
 
 export interface SlotLayout {
   slot: SlotState;
   /** Stage to draw (the override from the preview page, else the slot's own). */
   stage: number;
+  /** Progress toward the next stage, 0..1 (model.ts `stageProgress`); 0 under the preview's stage override. */
+  progress: number;
   grow: number;
 }
 
@@ -40,11 +43,13 @@ export function slotLayout(slots: SlotState[], pack: ScenePack | null, stageOver
   };
   const ordered = [...slots].sort((a, b) => rank(a) - rank(b) || a.index - b.index);
   return ordered.map((slot) => {
-    const stage = stageOverride !== null && slot.stage > 0 ? stageOverride : slot.stage;
+    const override = stageOverride !== null && slot.stage > 0;
+    const stage = override ? stageOverride : slot.stage;
+    const progress = override || stage <= 0 ? 0 : Math.min(1, Math.max(0, slot.progress ?? 0));
     const weight = pack?.biomes[slot.biome]?.slot.weight ?? 1;
-    // A withered slot (its lands gone) keeps a sliver of room.
-    const grow = (stage > 0 ? 1 + 0.18 * (stage - 1) : 0.45) * weight;
-    return { slot, stage, grow: Math.round(grow * 100) / 100 };
+    // A withered slot (its lands gone) keeps a sliver of room; a live one widens with every land (stage plus progress, spec 1.6).
+    const grow = (stage > 0 ? 1 + 0.18 * (growthLevel({ stage, progress }) - 1) : 0.45) * weight;
+    return { slot, stage, progress, grow: Math.round(grow * 100) / 100 };
   });
 }
 

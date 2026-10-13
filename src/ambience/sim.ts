@@ -134,3 +134,31 @@ export function simLog(plays: SimPlay[]): GameLog {
     seat: SIM_PLAYERS[0],
   };
 }
+
+/** How many of a land a player has played (the preview's per-biome land count). */
+export function simLandCount(plays: readonly SimPlay[], player: number, name: SimLandName): number {
+  return plays.filter((p) => p.kind === 'land' && p.player === player && p.name === name).length;
+}
+
+/**
+ * The plays with exactly `count` of a land for a player (0–20): more are
+ * played after everything else, fewer drop that land's latest plays. Every
+ * other play stays where it was, so the rest of the made-up game is unchanged.
+ */
+export function simSetLandCount(plays: readonly SimPlay[], player: number, name: SimLandName, count: number): SimPlay[] {
+  const want = Math.max(0, Math.min(20, Math.round(count)));
+  const have = simLandCount(plays, player, name);
+  if (want === have) return [...plays];
+  if (want > have) return [...plays, ...Array.from({ length: want - have }, (): SimPlay => ({ kind: 'land', player, name }))];
+  let drop = have - want;
+  const out: SimPlay[] = [];
+  for (let i = plays.length - 1; i >= 0; i--) {
+    const p = plays[i]!;
+    if (drop > 0 && p.kind === 'land' && p.player === player && p.name === name) {
+      drop--;
+      continue;
+    }
+    out.unshift(p);
+  }
+  return out;
+}

@@ -19,13 +19,20 @@
  * and edge pieces. Their crop (cover / contain, the safe rect) is
  * ambience/overlay.ts `areaPlacement`, from the picture's natural size and the
  * area's measured size.
+ *
+ * Growth between stages (spec 1.6): a piece of the next stage is drawn at its
+ * `fade` (the eased progress), still; a change of fade runs over the pack's
+ * `growth.seconds`. The full-area piece cross-fades to the next stage's
+ * picture through the same fade stack as the strip's pictures.
  */
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { SlotState } from '../../ambience/model.ts';
-import { isOverlayCorner, type OverlayAnchor, type ScenePack } from '../../ambience/manifest.ts';
+import { growthOf, isOverlayCorner, type OverlayAnchor, type ScenePack } from '../../ambience/manifest.ts';
+import { growthMs } from '../../ambience/growth.ts';
 import { areaPlacement, DEFAULT_AREA, overlayPieces, POSITION_CSS, type PlacedOverlay } from '../../ambience/overlay.ts';
 import { builtinAreaSrc, builtinOverlaySrc } from './overlayArt.ts';
 import { usePageVisible } from './SceneryStrip.tsx';
+import { useFadeIn, useFadeStack } from './useFade.ts';
 import './scenery.css';
 
 export interface SceneryOverlayProps {
@@ -72,27 +79,45 @@ export const SceneryOverlay = memo(function SceneryOverlay({ slots, pack, edge, 
   const areas = pieces.filter((p) => p.anchor === 'area');
   const rest = areas.length ? pieces.filter((p) => p.anchor !== 'area') : pieces;
   const state = [reduced && 'is-reduced', !visible && 'is-paused'];
+  const ms = growthMs(growthOf(pack), reduced);
   return (
     <>
       {areas.length > 0 && (
         <div className={['scn-ovl', 'scn-ovl-area', `scn-ovl-${edge}`, ...state].filter(Boolean).join(' ')} aria-hidden="true" data-area-accents={areas.length}>
-          {areas.map((p) => (
-            <AreaPiece key={p.key} p={p} bloom={settled.current && !reduced} box={{ w: width ?? 0, h: heightPx }} />
-          ))}
+          <AreaFade areas={areas} ms={ms} bloom={settled.current && !reduced} box={{ w: width ?? 0, h: heightPx }} />
         </div>
       )}
       <div ref={root} className={['scn-ovl', `scn-ovl-${edge}`, ...state].filter(Boolean).join(' ')} aria-hidden="true" data-accents={pieces.length}>
         {rest.map((p) => (
-          <Piece key={p.key} p={p} bloom={settled.current && !reduced} />
+          <Piece key={p.key} p={p} bloom={settled.current && !reduced} ms={ms} />
         ))}
       </div>
     </>
   );
 });
 
+/** A full-area piece's picture, by file (a built-in placeholder by its level). */
+const areaKey = (p: PlacedOverlay) => `${p.biome}|${p.piece.src ?? `builtin:${p.piece.builtin}:${p.piece.builtinLevel ?? 2}`}`;
+
+/** Spec 1.6: the full-area piece and the next stage's over it at its fade, through a fade stack (the old picture stays beneath a stage-up). */
+function AreaFade({ areas, ms, bloom, box }: { areas: PlacedOverlay[]; ms: number; bloom: boolean; box: { w: number; h: number } }) {
+  const cur = areas.find((p) => p.fade === undefined) ?? null;
+  const next = areas.find((p) => p.fade !== undefined) ?? null;
+  const stack = useFadeStack(cur && { key: areaKey(cur), payload: cur }, next && { key: areaKey(next), payload: next }, next?.fade ?? 0, ms);
+  return (
+    <>
+      {stack.map((e) => (
+        <AreaPiece key={e.key} p={e.payload} bloom={bloom && e.role === 'cur'} box={box} fade={e.opacity} from={e.from} ms={ms} />
+      ))}
+    </>
+  );
+}
+
 /** A full-area piece (spec 1.4): one picture over the whole area, cropped to keep its safe rect, beneath the strip; upright on both sides (never flipped for the opponent). */
-function AreaPiece({ p, bloom, box }: { p: PlacedOverlay; bloom: boolean; box: { w: number; h: number } }) {
+function AreaPiece({ p, bloom, box, fade = 1, from = fade, ms = 0 }: { p: PlacedOverlay; bloom: boolean; box: { w: number; h: number }; fade?: number; from?: number; ms?: number }) {
   const [blooms] = useState(bloom);
+  const ref = useRef<HTMLDivElement>(null);
+  const shown = useFadeIn(ref, fade, from, ms);
   const [failed, setFailed] = useState(false);
   const [natural, setNatural] = useState({ w: 0, h: 0 });
   const piece = p.piece;
@@ -100,13 +125,15 @@ function AreaPiece({ p, bloom, box }: { p: PlacedOverlay; bloom: boolean; box: {
   const src = piece.src ?? (piece.builtin ? builtinAreaSrc(piece.builtin, piece.builtinLevel ?? 2) : null);
   const place = useMemo(() => areaPlacement(natural, box, area), [natural.w, natural.h, box.w, box.h, area]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!src || failed) return null;
+  const o = Math.round(piece.opacity * shown * 1000) / 1000;
   const style: CSSProperties = {
-    opacity: piece.opacity < 1 ? piece.opacity : undefined,
+    opacity: o < 1 ? o : undefined,
     mixBlendMode: piece.blend !== 'normal' ? piece.blend : undefined,
+    transition: ms > 0 ? `opacity ${ms}ms cubic-bezier(0.4, 0, 0.2, 1)` : undefined,
   };
   const inner = ['scn-ovl-inner', p.animate && `scn-ovl-${piece.motion}`].filter(Boolean).join(' ');
   return (
-    <div className={['scn-ovl-piece', 'scn-ovl-at-area', blooms && 'scn-ovl-in'].filter(Boolean).join(' ')} style={style} data-accent={p.key} data-fit={place.fit}>
+    <div ref={ref} className={['scn-ovl-piece', 'scn-ovl-at-area', blooms && 'scn-ovl-in'].filter(Boolean).join(' ')} style={style} data-accent={p.key} data-fit={place.fit} data-fade={fade < 1 ? fade : undefined}>
       <div className={inner} style={{ animationDuration: p.animate ? `${piece.periodMs}ms` : undefined, transformOrigin: POSITION_CSS.bottom }}>
         <img
           src={src}
@@ -143,7 +170,7 @@ const POS: Record<OverlayAnchor, string> = {
   area: 'center bottom',
 };
 
-function Piece({ p, bloom }: { p: PlacedOverlay; bloom: boolean }) {
+function Piece({ p, bloom, ms = 0 }: { p: PlacedOverlay; bloom: boolean; ms?: number }) {
   const [blooms] = useState(bloom);
   const [failed, setFailed] = useState(false);
   const corner = isOverlayCorner(p.anchor);
@@ -154,10 +181,13 @@ function Piece({ p, bloom }: { p: PlacedOverlay; bloom: boolean }) {
   if (!src || failed) return null;
   const size = `min(${+(piece.size * 100).toFixed(2)}cqw, ${p.maxPx}px)`;
   const transform = [flipX && 'scaleX(-1)', p.flipY && 'scaleY(-1)'].filter(Boolean).join(' ') || undefined;
+  // Spec 1.6: a piece of the next stage at its fade (it blooms in from nothing when it first appears); a change of fade transitions.
+  const o = Math.round(piece.opacity * (p.fade ?? 1) * 1000) / 1000;
   const style: CSSProperties = {
-    opacity: piece.opacity < 1 ? piece.opacity : undefined,
+    opacity: o < 1 ? o : undefined,
     mixBlendMode: piece.blend !== 'normal' ? piece.blend : undefined,
     transform,
+    transition: ms > 0 ? `opacity ${ms}ms cubic-bezier(0.4, 0, 0.2, 1)` : undefined,
   };
   if (corner) {
     style.width = size;
@@ -172,7 +202,7 @@ function Piece({ p, bloom }: { p: PlacedOverlay; bloom: boolean }) {
   const inner = ['scn-ovl-inner', p.animate && `scn-ovl-${piece.motion}`].filter(Boolean).join(' ');
   if (corner) {
     return (
-      <div className={cls} style={style} data-accent={p.key}>
+      <div className={cls} style={style} data-accent={p.key} data-fade={p.fade}>
         <div className={inner} style={innerStyle}>
           <img src={src} srcSet={piece.src && piece.src2x ? `${piece.src} 1x, ${piece.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} style={{ objectPosition: POS[local] }} onError={() => setFailed(true)} />
         </div>
@@ -191,7 +221,7 @@ function Piece({ p, bloom }: { p: PlacedOverlay; bloom: boolean }) {
     backgroundPosition: POS[local],
   };
   return (
-    <div className={cls} style={style} data-accent={p.key}>
+    <div className={cls} style={style} data-accent={p.key} data-fade={p.fade}>
       <div className={inner} style={innerBg} />
     </div>
   );

@@ -12,6 +12,15 @@
  * first painted bloom in; a land arriving flashes its slot. With reduced
  * motion everything is still; with the tab hidden everything pauses.
  *
+ * Growth between stages (spec 1.6): between two thresholds each slot draws
+ * its next stage's still pictures (the half picture, or the strip's image
+ * layers by id; the built-in scene's new layers) over its own at the eased
+ * progress (ambience/growth.ts), so every land grows the scene a little; a
+ * land's change fades over the pack's `growth.seconds` (CSS opacity
+ * transitions; at once with reduced motion), and a stage-up keeps the old
+ * picture beneath until the new one is whole. At most two pictures per slot
+ * once a fade settles; the next stage's moving layers wait for the stage.
+ *
  * `fill="half"` (spec 1.5, Settings → Fill each side): the same slots fill
  * the player's whole half of the board instead of a strip, split by land
  * count (layout.ts `halfLayout`), each slot's art in a frame of the art's
@@ -20,12 +29,14 @@
  * built-in scenery). Both halves upright; each fades into a mist band along
  * the centre line. The effects keep their strip-sized box at the outer edge.
  */
-import { createContext, memo, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Biome, SlotState } from '../../ambience/model.ts';
-import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, halfAt, layersAt, type PackBiome, type PackHalf, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
+import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, growthOf, halfAt, layersAt, type PackBiome, type PackGrowth, type PackHalf, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
+import { growthMs, nextStageFade, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
 import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt } from '../../ambience/layout.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
+import { useFadeIn, useFadeStack } from './useFade.ts';
 import './scenery.css';
 
 export type { StripEffect } from './SceneryEffects.tsx';
@@ -76,6 +87,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   if (layout.length === 0 && !fx?.length) return null;
   const rotated = edge === 'top' && orient === 'rotated';
   const halfCfg = pack?.half ?? DEFAULT_HALF_LAYOUT;
+  const growth = growthOf(pack);
   const vars = {
     '--scn-h': `clamp(${strip.minHeightPx}px, ${strip.heightRatio * 100}%, ${strip.maxHeightPx}px)`,
     '--scn-seam': `${strip.seamPx}px`,
@@ -97,8 +109,8 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
         >
           <Settled.Provider value={settled}>
             <div className="scn-row">
-              {layout.map(({ slot, stage, grow }, i) => (
-                <Slot key={slot.biome} slot={slot} stage={stage} grow={grow} first={i === 0} pack={pack?.biomes[slot.biome]} reduced={reduced} paused={!visible} pulse={pulses?.[slot.biome] ?? 0} half={half} />
+              {layout.map(({ slot, stage, progress, grow }, i) => (
+                <Slot key={slot.biome} slot={slot} stage={stage} progress={progress} grow={grow} first={i === 0} pack={pack?.biomes[slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[slot.biome] ?? 0} half={half} />
               ))}
             </div>
             {half && <div className="scn-mist" />}
@@ -138,69 +150,224 @@ function usePanelAspect(ref: React.RefObject<HTMLDivElement | null>, on: boolean
 }
 
 const PROCEDURAL_BLOOM = { kind: 'rise' as const, durationMs: 1400, staggerMs: 140 };
+const NO_BLOOM = { kind: 'none' as const, durationMs: 0, staggerMs: 0 };
+/** The built-in scenery's last stage (procedural.tsx draws 1–4). */
+const PROCEDURAL_STAGES = 4;
 
-function Slot({ slot, stage, grow, first, pack, reduced, paused, pulse, half = false }: { slot: SlotState; stage: number; grow: number; first: boolean; pack: PackBiome | undefined; reduced: boolean; paused: boolean; pulse: number; half?: boolean }) {
+/** A pack layer's identity across stages: the same id with the same file and box is the same picture. */
+const layerKey = (l: PackLayer) => `${l.id}|${l.src}|${l.x},${l.y},${l.w},${l.h}|${l.opacity}|${l.fit}|${l.anchor}`;
+
+/** Ids in first-seen order. */
+const uniqueIds = (lists: { id: string }[][]) => [...new Set(lists.flat().map((l) => l.id))];
+
+function Slot({
+  slot,
+  stage,
+  progress,
+  grow,
+  first,
+  pack,
+  growth,
+  reduced,
+  paused,
+  pulse,
+  half = false,
+}: {
+  slot: SlotState;
+  stage: number;
+  progress: number;
+  grow: number;
+  first: boolean;
+  pack: PackBiome | undefined;
+  growth: PackGrowth;
+  reduced: boolean;
+  paused: boolean;
+  pulse: number;
+  half?: boolean;
+}) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const settled = useContext(Settled);
   const withered = stage <= 0;
   const drawn = Math.max(1, stage);
+  // Spec 1.6: how long a land's fade takes (none with reduced motion).
+  const ms = growthMs(growth, reduced);
+  // Pictures that failed to load (a half picture falls back to the strip art; a next one is simply not drawn).
+  const [failed, setFailed] = useState<readonly string[]>([]);
+  const fail = useCallback((src: string) => setFailed((f) => (f.includes(src) ? f : [...f, src])), []);
+  const hasNextStage = !withered && (pack ? drawn < pack.stages.length : drawn < PROCEDURAL_STAGES);
   // The half (spec 1.5): the stage's half picture (the phone one in a portrait-ish panel), unless it failed to load (then the strip art, cropped).
-  const [failedHalf, setFailedHalf] = useState<string | null>(null);
   const picture: PackHalf | null = half ? halfAt(pack, drawn) : null;
+  const nextPicture: PackHalf | null = half && hasNextStage ? halfAt(pack, drawn + 1) : null;
   const ref = useRef<HTMLDivElement>(null);
-  const panelAspect = usePanelAspect(ref, !!picture?.phone);
+  const panelAspect = usePanelAspect(ref, !!(picture?.phone || nextPicture?.phone));
   const chosen = half ? halfArtOf(picture, panelAspect) : null;
-  const art: HalfArt | null = !chosen ? null : chosen.picture && failedHalf === chosen.picture.src ? STRIP_ART : chosen;
+  const art: HalfArt | null = !chosen ? null : chosen.picture && failed.includes(chosen.picture.src) ? STRIP_ART : chosen;
   const pic = art?.picture ?? null;
-  const layers: { id: string; z: number; depth: number; blend?: string; opacity?: number; node: ReactNode }[] = useMemo(() => {
-    if (pack) {
-      // With a half picture, the stage's still layers give way to it; its loops and sprites play over the desktop picture (none over the phone one: they are cut for the desktop's shape).
-      const own = layersAt(pack, drawn).filter((l) => !pic || (l.kind !== 'image' && art?.source !== 'phone'));
-      const list: { id: string; z: number; depth: number; blend?: string; opacity?: number; node: ReactNode }[] = own.map((l) => ({ id: l.id, z: l.z, depth: l.depth, blend: l.blend, opacity: l.opacity, node: <PackLayerView layer={l} idle={pack.idle} reduced={reduced} paused={paused} /> }));
-      if (pic) {
-        const src = pic.src;
-        list.unshift({ id: 'half', z: -100, depth: 0, blend: 'normal', opacity: 1, node: <img className="scn-half-img" src={src} srcSet={pic.src2x ? `${src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onError={() => setFailedHalf(src)} /> });
-      }
-      return list;
-    }
-    return proceduralLayers(slot.biome, drawn, uid).map((l: DrawLayer) => ({ ...l }));
-  }, [pack, drawn, slot.biome, uid, reduced, paused, pic, art?.source]);
+  // Spec 1.6: the next stage's half picture, cross-faded over this one by the progress.
+  const nextChosen = pic && nextPicture ? halfArtOf(nextPicture, panelAspect) : null;
+  const nextArt = nextChosen?.picture && nextChosen.picture.src !== pic!.src && !failed.includes(nextChosen.picture.src) ? nextChosen : null;
+
+  // A pack's layers: its still images cross-fade by id toward the next stage's; moving layers are the stage's own.
+  const curLayers = pack ? layersAt(pack, drawn) : [];
+  const nextLayers = pack && hasNextStage ? layersAt(pack, drawn + 1) : [];
+  const stills = pic ? [] : curLayers.filter((l) => l.kind === 'image');
+  const nextStills = pic ? [] : nextLayers.filter((l) => l.kind === 'image' && !stills.some((c) => layerKey(c) === layerKey(l)));
+  // With a half picture, the stage's still layers give way to it; its loops and sprites play over the desktop picture (none over the phone one: they are cut for the desktop's shape).
+  const moving = curLayers.filter((l) => l.kind !== 'image' && !(pic && art?.source === 'phone'));
+  // The built-in scene: the next stage's new layers.
+  const proc = useMemo(() => (pack ? [] : proceduralLayers(slot.biome, drawn, uid)), [pack, slot.biome, drawn, uid]);
+  const procNext = useMemo(() => (pack || !hasNextStage ? [] : proceduralLayers(slot.biome, drawn + 1, uid).filter((l) => !proc.some((c) => c.id === l.id))), [pack, hasNextStage, slot.biome, drawn, uid, proc]);
+  const hasNext = pack ? (pic ? !!nextArt : nextStills.length > 0) : procNext.length > 0;
+  const fade = nextStageFade(progress, hasNext, growth);
+
   const bloom = pack?.bloom ?? PROCEDURAL_BLOOM;
-  const sorted = [...layers].sort((a, b) => a.z - b.z);
-  const stack = sorted.map((l, i) => (
-    <Layer key={l.id} z={l.z} depth={l.depth} blend={l.blend} opacity={l.opacity} bloom={bloom} order={i} reduced={reduced}>
-      {l.node}
-    </Layer>
-  ));
+  let order = 0;
+  const groups: ReactNode[] = [];
+  if (pic) {
+    groups.push(
+      <FadeGroup
+        key="half"
+        cur={{ key: pic.src, payload: art! }}
+        next={nextArt && fade > 0 ? { key: nextArt.picture!.src, payload: nextArt } : null}
+        fade={fade}
+        ms={ms}
+        render={(e) => (
+          <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={e.role === 'cur' ? bloom : NO_BLOOM} order={0} reduced={reduced}>
+            <HalfPictureView art={e.payload} onFail={fail} />
+          </Layer>
+        )}
+      />,
+    );
+  } else if (pack) {
+    for (const id of uniqueIds([stills, fade > 0 ? nextStills : []])) {
+      const c = stills.find((l) => l.id === id) ?? null;
+      const n = fade > 0 ? (nextStills.find((l) => l.id === id) ?? null) : null;
+      const at = order++;
+      groups.push(
+        <FadeGroup
+          key={`still:${id}`}
+          cur={c ? { key: layerKey(c), payload: c } : null}
+          next={n ? { key: layerKey(n), payload: n } : null}
+          fade={fade}
+          ms={ms}
+          render={(e) => (
+            <Layer key={e.key} z={e.payload.z} depth={e.payload.depth} blend={e.payload.blend} opacity={e.payload.opacity} fade={e.opacity} from={e.from} ms={ms} bloom={e.role === 'cur' ? bloom : NO_BLOOM} order={at} reduced={reduced}>
+              <PackLayerView layer={e.payload} idle={pack.idle} reduced={reduced} paused={paused} />
+            </Layer>
+          )}
+        />,
+      );
+    }
+  }
+  const others: { id: string; z: number; depth: number; blend?: string; opacity?: number; fade: number; node: ReactNode }[] = pack
+    ? moving.map((l) => ({ id: l.id, z: l.z, depth: l.depth, blend: l.blend, opacity: l.opacity, fade: 1, node: <PackLayerView layer={l} idle={pack.idle} reduced={reduced} paused={paused} /> }))
+    : [...proc.map((l: DrawLayer) => ({ ...l, fade: 1 })), ...(fade > 0 ? procNext.map((l: DrawLayer) => ({ ...l, fade })) : [])];
+  const rest = [...others]
+    .sort((a, b) => a.z - b.z)
+    .map((l) => (
+      // A layer that appears after the first paint at a fade starts from nothing.
+      <Layer key={l.id} z={l.z} depth={l.depth} blend={l.blend} opacity={l.opacity} fade={l.fade} from={l.fade < 1 && settled.current ? 0 : l.fade} ms={ms} bloom={bloom} order={order++} reduced={reduced}>
+        {l.node}
+      </Layer>
+    ));
   return (
-    <div ref={ref} className={['scn-slot', first && 'is-first', withered && 'is-withered'].filter(Boolean).join(' ')} style={{ flexGrow: grow }} data-biome={slot.biome} data-stage={stage} data-art={art?.source}>
-      {art ? (
+    <div
+      ref={ref}
+      className={['scn-slot', first && 'is-first', withered && 'is-withered'].filter(Boolean).join(' ')}
+      style={{ flexGrow: grow }}
+      data-biome={slot.biome}
+      data-stage={stage}
+      data-progress={progress || undefined}
+      data-fade={fade || undefined}
+      data-art={art?.source}
+    >
+      {pic ? (
+        <>
+          {groups}
+          <div className="scn-frame" style={halfFrameCss(art!)}>
+            {rest}
+          </div>
+        </>
+      ) : art ? (
         <div className="scn-frame" style={halfFrameCss(art)}>
-          {stack}
+          {groups}
+          {rest}
         </div>
       ) : (
-        stack
+        <>
+          {groups}
+          {rest}
+        </>
       )}
       {pulse > 0 && settled.current && !reduced && <span key={pulse} className="scn-flash" />}
     </div>
   );
 }
 
-function Layer({ z, depth, blend, opacity, bloom, order, reduced, children }: { z: number; depth: number; blend?: string; opacity?: number; bloom: { kind: string; durationMs: number; staggerMs: number }; order: number; reduced: boolean; children: ReactNode }) {
+/** One picture slot's fade stack (spec 1.6), each entry drawn by `render`. */
+function FadeGroup<T>({ cur, next, fade, ms, render }: { cur: FadeWant<T> | null; next: FadeWant<T> | null; fade: number; ms: number; render: (e: FadeEntry<T>) => ReactNode }) {
+  const stack = useFadeStack(cur, next, fade, ms);
+  return <>{stack.map(render)}</>;
+}
+
+/** A half picture in its own frame (each stage's picture keeps its own crop). */
+function HalfPictureView({ art, onFail }: { art: HalfArt; onFail: (src: string) => void }) {
+  const pic = art.picture!;
+  return (
+    <div className="scn-frame" style={halfFrameCss(art)}>
+      <img className="scn-half-img" src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onError={() => onFail(pic.src)} />
+    </div>
+  );
+}
+
+function Layer({
+  z,
+  depth,
+  blend,
+  opacity,
+  fade = 1,
+  from,
+  ms = 0,
+  bloom,
+  order,
+  reduced,
+  children,
+}: {
+  z: number;
+  depth: number;
+  blend?: string;
+  opacity?: number;
+  /** Spec 1.6: drawn at this fraction of its opacity (the next stage's, fading in with the progress). */
+  fade?: number;
+  /** The fraction on its first paint (0: it fades in). */
+  from?: number;
+  /** How long a change of `fade` takes. */
+  ms?: number;
+  bloom: { kind: string; durationMs: number; staggerMs: number };
+  order: number;
+  reduced: boolean;
+  children: ReactNode;
+}) {
   const settled = useContext(Settled);
-  // Decided once, at mount: only layers that arrive after the first paint bloom.
-  const [blooms] = useState(() => settled.current && !reduced && bloom.kind !== 'none' && bloom.durationMs > 0);
+  const ref = useRef<HTMLDivElement>(null);
+  // Decided once, at mount: only layers that arrive after the first paint bloom (and a layer keeps its bloom as its role in a fade changes).
+  const [b] = useState(() => (settled.current && !reduced && bloom.kind !== 'none' && bloom.durationMs > 0 ? bloom : null));
+  const shown = useFadeIn(ref, fade, from ?? fade, ms);
+  const o = Math.round((opacity ?? 1) * shown * 1000) / 1000;
   const style = {
     zIndex: z + 100,
     mixBlendMode: blend && blend !== 'normal' ? blend : undefined,
-    opacity: opacity !== undefined && opacity < 1 ? opacity : undefined,
     '--scn-travel': `${Math.round(8 + 22 * depth)}%`,
-    '--scn-bloom-ms': `${bloom.durationMs}ms`,
-    '--scn-bloom-delay': `${Math.min(order, 8) * bloom.staggerMs}ms`,
+    '--scn-bloom-ms': b ? `${b.durationMs}ms` : undefined,
+    '--scn-bloom-delay': b ? `${Math.min(order, 8) * b.staggerMs}ms` : undefined,
   } as CSSProperties;
+  // The bloom animates the layer; its opacity (and the growth fade's transition) sit on the inner box, so neither cancels the other.
+  const inner: CSSProperties = { opacity: o < 1 ? o : undefined, transition: ms > 0 ? `opacity ${ms}ms cubic-bezier(0.4, 0, 0.2, 1)` : undefined };
   return (
-    <div className={['scn-layer', blooms && `scn-in-${bloom.kind}`].filter(Boolean).join(' ')} style={style}>
-      {children}
+    <div className={['scn-layer', b && `scn-in-${b.kind}`].filter(Boolean).join(' ')} style={style}>
+      <div ref={ref} className="scn-fade" style={inner}>
+        {children}
+      </div>
     </div>
   );
 }

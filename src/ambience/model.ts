@@ -18,6 +18,11 @@
  *      evenly.
  *   3. Else (colourless, unknown, or three or more colours) → wastes.
  *
+ * Growth: a biome's land weight sets its integer stage (1 / 2–3 / 4–5 / 6+
+ * lands by default) and, between two thresholds, its progress toward the
+ * next stage (0..1), so the renderer can grow the scene a little with every
+ * land instead of only at the thresholds.
+ *
  * Slots: a biome claims the next slot the first time its weight is above zero
  * and keeps it for the rest of the game, even if those lands later leave (the
  * slot then shows stage 0, a withered scene). Order needs history, so it is a
@@ -104,6 +109,42 @@ export function stageFor(weight: number, thresholds: readonly number[] = DEFAULT
   return Math.max(1, s);
 }
 
+/**
+ * How far a weight has grown from its stage toward the next, 0..1: the
+ * fraction of the way between the stage's threshold and the next one (3 lands
+ * between thresholds 2 and 4 is stage 2 at 0.5). 0 with no weight, or below
+ * the first threshold (a lone dual's half-land shows stage 1 at 0); 1 at or
+ * past the last threshold (fully grown: there is no next stage). The integer
+ * {@link stageFor} is unchanged; this only fills in the space between.
+ */
+export function stageProgress(weight: number, thresholds: readonly number[] = DEFAULT_STAGE_THRESHOLDS): number {
+  if (!(weight > 0) || !thresholds.length || weight + 1e-9 < thresholds[0]!) return 0;
+  const stage = stageFor(weight, thresholds);
+  if (stage >= thresholds.length) return 1;
+  const from = thresholds[stage - 1]!;
+  const to = thresholds[stage]!;
+  if (!(to > from)) return 0;
+  return round(Math.min(1, Math.max(0, (weight - from) / (to - from))));
+}
+
+/** A weight's stage and its progress toward the next ({@link stageFor}, {@link stageProgress}). */
+export function growthFor(weight: number, thresholds: readonly number[] = DEFAULT_STAGE_THRESHOLDS): { stage: number; progress: number } {
+  return { stage: stageFor(weight, thresholds), progress: stageProgress(weight, thresholds) };
+}
+
+/**
+ * The growth as one continuous number: the stage plus the progress toward a
+ * next stage (3 lands on the default thresholds → 2.5), equal to the stage at
+ * each threshold and at the last stage (6 lands → 4, not 5), so it never
+ * jumps as a land arrives. For smooth sizes (a slot's width).
+ */
+export function growthLevel(slot: Pick<SlotState, 'stage' | 'progress'>): number {
+  if (slot.stage <= 0) return 0;
+  // Progress is below 1 between thresholds; it is 1 only past the last one, where there is no next stage.
+  const p = slot.progress ?? 0;
+  return p < 1 ? slot.stage + Math.max(0, p) : slot.stage;
+}
+
 export interface SlotState {
   biome: Biome;
   /** 0-based, left to right, in order of first appearance. */
@@ -111,6 +152,12 @@ export interface SlotState {
   /** Land weight now (a dual counts ½ to each of its two biomes). */
   weight: number;
   stage: number;
+  /**
+   * The progress toward the next stage, 0..1 ({@link stageProgress}): between
+   * two thresholds the scene grows a little with every land. Absent is 0 (a
+   * slot made by hand, e.g. in a test, grows only in steps).
+   */
+  progress?: number;
   /** The highest stage this slot has reached (a destroyed land does not un-grow the memory). */
   peak: number;
 }
@@ -149,14 +196,14 @@ export function stepScenery(prev: Scenery | null, state: GameStateBody, opts: Sc
     const weights = biomeWeights(state, p.id, opts.cards);
     const slots: SlotState[] = (before?.slots ?? []).map((s) => {
       const weight = weights[s.biome] ?? 0;
-      const stage = stageFor(weight, thresholds);
-      return { ...s, weight, stage, peak: Math.max(s.peak, stage) };
+      const { stage, progress } = growthFor(weight, thresholds);
+      return { ...s, weight, stage, progress, peak: Math.max(s.peak, stage) };
     });
     const have = new Set(slots.map((s) => s.biome));
     for (const b of firstSeenOrder(state, p.id, opts.cards)) {
       if (have.has(b) || !((weights[b] ?? 0) > 0)) continue;
-      const stage = stageFor(weights[b]!, thresholds);
-      slots.push({ biome: b, index: slots.length, weight: weights[b]!, stage, peak: stage });
+      const { stage, progress } = growthFor(weights[b]!, thresholds);
+      slots.push({ biome: b, index: slots.length, weight: weights[b]!, stage, progress, peak: stage });
       have.add(b);
     }
     players.push({ playerId: p.id, slots });

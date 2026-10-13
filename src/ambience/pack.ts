@@ -4,7 +4,9 @@
  *
  * Loading a scenery pack: fetch its manifest from a URL (Settings, or the
  * page's `?scenery=`), validate it (manifest.ts), and preload its stage-1
- * assets. Any failure falls back to the built-in procedural scenery, with a
+ * assets; then, as slots grow, warm each slot's current and next stage's
+ * pictures ({@link growthPictures}, spec 1.6: the next stage fades in land by
+ * land, so it must be there before the first land toward it). Any failure falls back to the built-in procedural scenery, with a
  * short note saying why (shown on the preview page and as a dev note on the
  * board). `fetch` and the asset loader are injected for tests.
  *
@@ -13,7 +15,7 @@
  */
 import type { Biome } from './model.ts';
 import { BIOMES } from './model.ts';
-import { effectUrls, overlayUrls, MANIFEST_FILE, MAX_EFFECT_BYTES, MAX_MANIFEST_BYTES, packUrls, validateManifest, type EffectEvent, type LayerKind, type ScenePack } from './manifest.ts';
+import { effectUrls, halfAt, layersAt, overlayUrls, MANIFEST_FILE, MAX_EFFECT_BYTES, MAX_MANIFEST_BYTES, packUrls, validateManifest, type EffectEvent, type LayerKind, type ScenePack } from './manifest.ts';
 import type { SceneryPrefs } from './prefs.ts';
 
 export interface SceneryLoad {
@@ -210,6 +212,70 @@ export function browserLoader(): AssetLoader {
       img.onerror = () => reject(new Error('error'));
       img.src = url;
     });
+}
+
+/** A still picture to warm: its 1x file and its 2x (warmed through `srcset`, so the browser fetches the one it will draw). */
+export interface WarmPicture {
+  biome: Biome;
+  stage: number;
+  src: string;
+  src2x: string | null;
+}
+
+/**
+ * The still pictures each slot shows at its stage and fades toward at the
+ * next (spec 1.6: "current and next"), to warm when a slot enters a stage:
+ * the stage's `half` picture on the half board (the phone one on a phone),
+ * else its image layers. Moving layers are not warmed (the next stage's are
+ * not drawn until it is reached). Each file once; slots with no pack art, and
+ * withered ones, give none.
+ */
+export function growthPictures(pack: ScenePack, slots: readonly { biome: Biome; stage: number }[], opts: { half: boolean; phone: boolean }): WarmPicture[] {
+  const out: WarmPicture[] = [];
+  const seen = new Set<string>();
+  const add = (p: WarmPicture) => {
+    if (seen.has(p.src)) return;
+    seen.add(p.src);
+    out.push(p);
+  };
+  for (const slot of slots) {
+    const b = pack.biomes[slot.biome];
+    if (!b || slot.stage <= 0) continue;
+    for (const stage of [slot.stage, slot.stage + 1]) {
+      if (stage > b.stages.length && stage !== slot.stage) continue;
+      const h = opts.half ? halfAt(b, stage) : null;
+      if (h) {
+        const pic = opts.phone && h.phone ? h.phone : h;
+        add({ biome: slot.biome, stage, src: pic.src, src2x: pic.src2x });
+        continue;
+      }
+      for (const l of layersAt(b, stage)) if (l.kind === 'image') add({ biome: slot.biome, stage, src: l.src, src2x: l.src2x });
+    }
+  }
+  return out;
+}
+
+/** Pictures being warmed, held until they load (an unreferenced Image may be dropped mid-fetch). */
+const warming = new Set<HTMLImageElement>();
+/** Pictures warmed (or warming) this page load: each once. */
+const warmedSrcs = new Set<string>();
+
+/**
+ * Warm a still picture in the browser's cache, through the same `srcset` the
+ * renderer draws it with, so the file fetched is the one it will show. Each
+ * picture once per page load; never waits, never throws.
+ */
+export function warmPicture(p: { src: string; src2x: string | null }): void {
+  if (warmedSrcs.has(p.src) || typeof Image === 'undefined') return;
+  warmedSrcs.add(p.src);
+  const img = new Image();
+  img.decoding = 'async';
+  const done = () => warming.delete(img);
+  img.onload = done;
+  img.onerror = done;
+  warming.add(img);
+  if (p.src2x) img.srcset = `${p.src} 1x, ${p.src2x} 2x`;
+  img.src = p.src;
 }
 
 /** One effect file, fetched: did it load, and how big is it. */

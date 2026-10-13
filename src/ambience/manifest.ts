@@ -12,7 +12,9 @@
  * area, beneath the strip); spec 1.5 adds half-board pictures (`half` per
  * stage: one picture that fills the player's whole half of the board, with a
  * focal point and a safe rect for the crop) and the top-level `half` layout
- * (seam, smallest share, mist). A 1.1–1.4 pack reads as before.
+ * (seam, smallest share, mist); spec 1.6 adds the optional top-level
+ * `growth` (the per-land cross-fade toward the next stage: on or off, and how
+ * long a land's fade takes). A 1.1–1.5 pack reads as before.
  *
  * A pack is untrusted input, served from wherever the user pointed the page:
  * every string is cleaned and clipped, every number range-checked, every URL
@@ -27,7 +29,7 @@ import { BIOMES, MAX_STAGES, type Biome } from './model.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
-export const SPEC_VERSION = '1.5';
+export const SPEC_VERSION = '1.6';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */
@@ -150,6 +152,25 @@ export interface PackHalfLayout {
 
 /** The default half layout (§5: ~10% seams, no panel under ~15%). */
 export const DEFAULT_HALF_LAYOUT: PackHalfLayout = { seamRatio: 0.1, minShare: 0.15, mist: 0.16 };
+// ---------------------------------------------------------------------------
+// Growth between stages (spec 1.6)
+
+/**
+ * Spec 1.6 top-level `growth`: between two stage thresholds, each land grows
+ * the scene a little toward the next stage, the next stage's picture
+ * cross-faded over the current one (and the accents thickened) by the
+ * progress; a land's change animates over `seconds`. `crossfade: false`
+ * keeps the 1.5 behaviour (the pictures change only at a threshold).
+ */
+export interface PackGrowth {
+  crossfade: boolean;
+  /** How long one land's fade takes, 0–5 s (0: at once). */
+  seconds: number;
+}
+
+export const DEFAULT_GROWTH: PackGrowth = { crossfade: true, seconds: 1.2 };
+export const MAX_GROWTH_SECONDS = 5;
+
 /** §5's subject band: 35–60% down the picture. */
 export const DEFAULT_SUBJECT_BAND: [number, number] = [0.35, 0.6];
 /** The default sizes when the pack does not say (pack-v3: desktop 16:5, phone 4:5). */
@@ -808,6 +829,8 @@ export interface ScenePack {
   overlays?: PackOverlays | null;
   /** Spec 1.5: how each half is shared and meets the other (defaults when the pack does not say). */
   half?: PackHalfLayout;
+  /** Spec 1.6: the growth between stages (defaults when the pack does not say). */
+  growth?: PackGrowth;
 }
 
 export interface ManifestResult {
@@ -1056,6 +1079,26 @@ function parseHalfLayout(v: unknown, warn: string[]): PackHalfLayout {
   };
 }
 
+/** Spec 1.6: the top-level `growth`, or the defaults (a bad field falls back to its default, with a warning). */
+function parseGrowth(v: unknown, warn: string[]): PackGrowth {
+  if (v === undefined || v === null) return { ...DEFAULT_GROWTH };
+  if (!isObj(v)) {
+    warn.push('growth: not an object; defaults used');
+    return { ...DEFAULT_GROWTH };
+  }
+  let crossfade = DEFAULT_GROWTH.crossfade;
+  if (v.crossfade !== undefined && v.crossfade !== null) {
+    if (typeof v.crossfade === 'boolean') crossfade = v.crossfade;
+    else warn.push(`growth.crossfade: "${cleanText(v.crossfade, 20) ?? typeof v.crossfade}" is not true or false; using ${DEFAULT_GROWTH.crossfade}`);
+  }
+  return { crossfade, seconds: ranged(v.seconds, 0, MAX_GROWTH_SECONDS, DEFAULT_GROWTH.seconds, 'growth.seconds', warn) };
+}
+
+/** A pack's growth between stages, or the defaults (no pack, or a pack before 1.6). */
+export function growthOf(pack: ScenePack | null | undefined): PackGrowth {
+  return pack?.growth ?? DEFAULT_GROWTH;
+}
+
 /** The half picture a biome shows at a stage (the last defined stage past the end), or null. */
 export function halfAt(biome: PackBiome | undefined, stage: number): PackHalf | null {
   if (!biome || stage <= 0) return null;
@@ -1237,6 +1280,7 @@ export function validateManifest(raw: unknown, base: string): ManifestResult {
       effects,
       overlays,
       half: parseHalfLayout(raw.half, warnings),
+      growth: parseGrowth(raw.growth, warnings),
     },
     errors,
     warnings,
