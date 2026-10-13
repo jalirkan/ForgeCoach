@@ -1,0 +1,41 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r3",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "u-green-18",
+   "src": "comp/u-in-green.png",
+   "strength": 0.18,
+   "seeds": [
+    5401,
+    5402
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, a woman in a green hooded cloak holding a small hand of dark playing cards, tooled gold ground",
+   "negative": "photo, realism, oil painting sheen, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "u-garnet-18",
+   "src": "comp/u-in-garnet.png",
+   "strength": 0.18,
+   "seeds": [
+    5401,
+    5402
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, an older man in a red hooded cloak holding a small hand of dark playing cards, tooled gold ground",
+   "negative": "photo, realism, oil painting sheen, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra fingers, deformed hands, blurry, neon"
+  },
+  {
+   "name": "u-blue-18",
+   "src": "comp/u-in-blue.png",
+   "strength": 0.18,
+   "seeds": [
+    5401,
+    5402
+   ],
+   "prompt": "flat medieval court-card illustration, woodcut-like, bold outlines, limited palette, matte, a young man in a dark blue hooded cloak holding a small hand of dark playing cards, tooled gold ground",
+   "negative": "photo, realism, oil painting sheen, skin texture, 3d render, text, letters, numbers, card faces, pips, symbols, extra fingers, deformed hands, blurry, neon"
+  }
+ ]
+}

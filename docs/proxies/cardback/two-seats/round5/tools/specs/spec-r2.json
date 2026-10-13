@@ -1,0 +1,74 @@
+{
+ "model": "dreamshaper",
+ "out": "raw/r2",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "hands-green-36",
+   "src": "comp/hands-in-green.png",
+   "strength": 0.36,
+   "seeds": [
+    5301,
+    5302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, an elegant woman's hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, green cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-green-44",
+   "src": "comp/hands-in-green.png",
+   "strength": 0.44,
+   "seeds": [
+    5301,
+    5302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, an elegant woman's hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, green cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-garnet-36",
+   "src": "comp/hands-in-garnet.png",
+   "strength": 0.36,
+   "seeds": [
+    5301,
+    5302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, an older man's veined hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, garnet red cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-garnet-44",
+   "src": "comp/hands-in-garnet.png",
+   "strength": 0.44,
+   "seeds": [
+    5301,
+    5302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, an older man's veined hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, garnet red cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-blue-36",
+   "src": "comp/hands-in-blue.png",
+   "strength": 0.36,
+   "seeds": [
+    5301,
+    5302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, a young man's hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, indigo blue cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  },
+  {
+   "name": "hands-blue-44",
+   "src": "comp/hands-in-blue.png",
+   "strength": 0.44,
+   "seeds": [
+    5301,
+    5302
+   ],
+   "prompt": "tempera painting on gold leaf, 15th century, a young man's hands holding a small hand of playing cards seen from the back, plain dark blue card backs with thin gold edges, fingers around the cards, indigo blue cloak, warm lamplight from below, delicate brushwork",
+   "negative": "card faces, pips, hearts, spades, diamonds, clubs, symbols, letters, numbers, text, writing, book, extra fingers, fused fingers, missing fingers, deformed hands, claws, blurry, photo, 3d render"
+  }
+ ]
+}
