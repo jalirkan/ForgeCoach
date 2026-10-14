@@ -1,0 +1,40 @@
+{
+ "fleck_mean_positive_e": {
+  "mock A": 10.78,
+  "A2": 5.57
+ },
+ "streak_autocorr_half_lag": {
+  "mock A": {
+   "across (px)": 3.48,
+   "along (px)": 14.36
+  },
+  "A2": {
+   "across (px)": 2.55,
+   "along (px)": 13.93
+  }
+ },
+ "field_brightest_channel_mean": {
+  "mock A": 158.0,
+  "A2": 153.6,
+  "A2 whole field": 160.0
+ },
+ "field_channel_max": {
+  "mock A": 219,
+  "A2": 225
+ },
+ "highpass_luma_std": {
+  "mock A": 9.93,
+  "A2": 8.25
+ },
+ "mean_wavelength_px": {
+  "mock A": {
+   "across": 15.18,
+   "along": 17.53
+  },
+  "A2": {
+   "across": 11.1,
+   "along": 15.09
+  }
+ },
+ "fleck_ratio": 0.52
+}

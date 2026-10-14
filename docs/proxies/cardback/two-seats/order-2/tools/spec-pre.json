@@ -1,0 +1,8 @@
+{
+ "model": "dreamshaper", "out": "raw", "steps": 32, "cfg": 6.0,
+ "jobs": [
+  {"name": "pre-60", "src": "comp/pre-in.png", "strength": 0.60, "seeds": [9601, 9602],
+   "prompt": "oil painting, 15th-century Netherlandish panel, a composed young woman seated at a table in a green wool hooded cloak over a rose gown, the cloak falling naturally in soft folds over uneven shoulders, sleeves, both hands holding a hand of plain dark cards at the chest, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, photograph, 3D, glossy, text, letters, pips, extra fingers, deformed hands"}
+ ]
+}

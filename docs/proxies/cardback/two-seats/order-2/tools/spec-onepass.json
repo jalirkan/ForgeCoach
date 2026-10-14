@@ -1,0 +1,36 @@
+{
+ "model": "dreamshaper",
+ "out": "raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "ds-40",
+   "src": "comp/guide-in.png",
+   "mask": "comp/guide-mask.png",
+   "strength": 0.4,
+   "seeds": [
+    9701,
+    9702,
+    9703,
+    9704
+   ],
+   "prompt": "15th-century Netherlandish panel portrait, oil on panel, a composed young woman with auburn hair in a green hooded cloak over a rose gown, seated at a table, holding a hand of plain dark cards with both hands, faintly pleased, lamplight from below, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, photograph, 3D, glossy, text, letters, pips, extra fingers, deformed hands"
+  },
+  {
+   "name": "ds-45",
+   "src": "comp/guide-in.png",
+   "mask": "comp/guide-mask.png",
+   "strength": 0.45,
+   "seeds": [
+    9701,
+    9702,
+    9703,
+    9704
+   ],
+   "prompt": "15th-century Netherlandish panel portrait, oil on panel, a composed young woman with auburn hair in a green hooded cloak over a rose gown, seated at a table, holding a hand of plain dark cards with both hands, faintly pleased, lamplight from below, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, photograph, 3D, glossy, text, letters, pips, extra fingers, deformed hands"
+  }
+ ]
+}

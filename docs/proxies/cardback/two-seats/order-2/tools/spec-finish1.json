@@ -1,0 +1,147 @@
+{
+ "model": "dreamshaper",
+ "out": "raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "hands-50",
+   "src": "comp/hands-src.png",
+   "mask": "comp/hands-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9801,
+    9802,
+    9803,
+    9804,
+    9805
+   ],
+   "prompt": "a young woman's two slender hands holding a fan of plain dark cards, four fingers and a thumb on each hand, 15th-century Netherlandish panel painting, oil, matte, soft modelling, green wool sleeves, muted palette, visible brushwork",
+   "negative": "extra fingers, missing fingers, fused fingers, six fingers, three fingers, merged hands, deformed hands, mutated hands, claws, long spidery fingers, vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers"
+  },
+  {
+   "name": "hands-58",
+   "src": "comp/hands-src.png",
+   "mask": "comp/hands-mask.png",
+   "strength": 0.58,
+   "seeds": [
+    9801,
+    9802,
+    9803,
+    9804,
+    9805
+   ],
+   "prompt": "a young woman's two slender hands holding a fan of plain dark cards, four fingers and a thumb on each hand, 15th-century Netherlandish panel painting, oil, matte, soft modelling, green wool sleeves, muted palette, visible brushwork",
+   "negative": "extra fingers, missing fingers, fused fingers, six fingers, three fingers, merged hands, deformed hands, mutated hands, claws, long spidery fingers, vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers"
+  },
+  {
+   "name": "coins-50",
+   "src": "comp/coins-src.png",
+   "mask": "comp/coins-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9811,
+    9812
+   ],
+   "prompt": "two neat stacks of gold coins standing on the near edge of a polished walnut table, their soft shadow on the wood, lamplight, still-life detail, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, scattered coins, single coin"
+  },
+  {
+   "name": "cup-50",
+   "src": "comp/cup-src.png",
+   "mask": "comp/cup-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9821,
+    9822
+   ],
+   "prompt": "a small full cup of tea on its saucer, untouched, on the near edge of a polished walnut table, its soft shadow on the wood, lamplight, still-life detail, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, empty cup, steam, handle missing"
+  },
+  {
+   "name": "coins-57",
+   "src": "comp/coins-src.png",
+   "mask": "comp/coins-mask.png",
+   "strength": 0.58,
+   "seeds": [
+    9811,
+    9812
+   ],
+   "prompt": "two neat stacks of gold coins standing on the near edge of a polished walnut table, their soft shadow on the wood, lamplight, still-life detail, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, scattered coins, single coin"
+  },
+  {
+   "name": "cup-57",
+   "src": "comp/cup-src.png",
+   "mask": "comp/cup-mask.png",
+   "strength": 0.58,
+   "seeds": [
+    9821,
+    9822
+   ],
+   "prompt": "a small full cup of tea on its saucer, untouched, on the near edge of a polished walnut table, its soft shadow on the wood, lamplight, still-life detail, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, empty cup, steam, handle missing"
+  },
+  {
+   "name": "lamp2-50",
+   "src": "comp/lamp2-src.png",
+   "mask": "comp/lamp2-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9831,
+    9833,
+    9834
+   ],
+   "prompt": "a round glass oil lamp globe with a gold band around its middle, glowing warm from within, a warm glow on the polished walnut table, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, airbrush, neon, lens flare, plastic"
+  },
+  {
+   "name": "edgeL-50",
+   "src": "comp/edgeL-src.png",
+   "mask": "comp/edgeL-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9841,
+    9842
+   ],
+   "prompt": "the side of a green wool hooded cloak falling in soft heavy folds to the table at the seated woman's side, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, chair, furniture, wood, box, hard corner"
+  },
+  {
+   "name": "edgeR-50",
+   "src": "comp/edgeR-src.png",
+   "mask": "comp/edgeR-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9841,
+    9842
+   ],
+   "prompt": "the side of a green wool hooded cloak falling in soft heavy folds to the table at the seated woman's side, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, chair, furniture, wood, box, hard corner"
+  },
+  {
+   "name": "edgeL-56",
+   "src": "comp/edgeL-src.png",
+   "mask": "comp/edgeL-mask.png",
+   "strength": 0.56,
+   "seeds": [
+    9841,
+    9842
+   ],
+   "prompt": "the side of a green wool hooded cloak falling in soft heavy folds to the table at the seated woman's side, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, chair, furniture, wood, box, hard corner"
+  },
+  {
+   "name": "edgeR-56",
+   "src": "comp/edgeR-src.png",
+   "mask": "comp/edgeR-mask.png",
+   "strength": 0.56,
+   "seeds": [
+    9841,
+    9842
+   ],
+   "prompt": "the side of a green wool hooded cloak falling in soft heavy folds to the table at the seated woman's side, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, chair, furniture, wood, box, hard corner"
+  }
+ ]
+}

@@ -1,0 +1,155 @@
+{
+ "work/guide.png": {
+  "ssim": 0.921,
+  "ssim_2x": 0.936,
+  "ssim_eyes": 0.943,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-40-s9701.png": {
+  "ssim": 0.848,
+  "ssim_2x": 0.871,
+  "ssim_eyes": 0.83,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-40-s9701-unlifted-top.png": {
+  "ssim": 0.808,
+  "ssim_2x": 0.835,
+  "ssim_eyes": 0.79,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-40-s9702.png": {
+  "ssim": 0.849,
+  "ssim_2x": 0.874,
+  "ssim_eyes": 0.839,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-40-s9702-unlifted-top.png": {
+  "ssim": 0.818,
+  "ssim_2x": 0.847,
+  "ssim_eyes": 0.811,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-40-s9703.png": {
+  "ssim": 0.845,
+  "ssim_2x": 0.865,
+  "ssim_eyes": 0.84,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-40-s9703-unlifted-top.png": {
+  "ssim": 0.804,
+  "ssim_2x": 0.829,
+  "ssim_eyes": 0.804,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-40-s9704.png": {
+  "ssim": 0.843,
+  "ssim_2x": 0.863,
+  "ssim_eyes": 0.817,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-40-s9704-unlifted-top.png": {
+  "ssim": 0.814,
+  "ssim_2x": 0.841,
+  "ssim_eyes": 0.787,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-45-s9701.png": {
+  "ssim": 0.795,
+  "ssim_2x": 0.812,
+  "ssim_eyes": 0.751,
+  "shift": [
+   0.25,
+   0.0
+  ]
+ },
+ "cards/ds-45-s9701-unlifted-top.png": {
+  "ssim": 0.757,
+  "ssim_2x": 0.778,
+  "ssim_eyes": 0.714,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-45-s9702.png": {
+  "ssim": 0.799,
+  "ssim_2x": 0.817,
+  "ssim_eyes": 0.762,
+  "shift": [
+   0.25,
+   0.0
+  ]
+ },
+ "cards/ds-45-s9702-unlifted-top.png": {
+  "ssim": 0.769,
+  "ssim_2x": 0.791,
+  "ssim_eyes": 0.739,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-45-s9703.png": {
+  "ssim": 0.795,
+  "ssim_2x": 0.806,
+  "ssim_eyes": 0.759,
+  "shift": [
+   0.25,
+   0.0
+  ]
+ },
+ "cards/ds-45-s9703-unlifted-top.png": {
+  "ssim": 0.757,
+  "ssim_2x": 0.776,
+  "ssim_eyes": 0.733,
+  "shift": [
+   0.25,
+   0.0
+  ]
+ },
+ "cards/ds-45-s9704.png": {
+  "ssim": 0.782,
+  "ssim_2x": 0.791,
+  "ssim_eyes": 0.723,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-45-s9704-unlifted-top.png": {
+  "ssim": 0.76,
+  "ssim_2x": 0.775,
+  "ssim_eyes": 0.703,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ }
+}

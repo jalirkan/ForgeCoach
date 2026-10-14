@@ -1,0 +1,80 @@
+{
+ "model": "dreamshaper",
+ "out": "raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "spotL-40",
+   "src": "comp/spotL-src.png",
+   "mask": "comp/spotL-mask.png",
+   "strength": 0.4,
+   "seeds": [
+    9851,
+    9852
+   ],
+   "prompt": "soft folds of a green wool cloak, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, stain, spot, mark"
+  },
+  {
+   "name": "spotR-40",
+   "src": "comp/spotR-src.png",
+   "mask": "comp/spotR-mask.png",
+   "strength": 0.4,
+   "seeds": [
+    9851,
+    9852
+   ],
+   "prompt": "soft folds of a green wool cloak, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, stain, spot, mark"
+  },
+  {
+   "name": "spotL2-55",
+   "src": "comp/spotL-src.png",
+   "mask": "comp/spotL-mask.png",
+   "strength": 0.55,
+   "seeds": [
+    9851,
+    9852
+   ],
+   "prompt": "soft folds of a green wool cloak, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, stain, spot, mark"
+  },
+  {
+   "name": "spotL2-62",
+   "src": "comp/spotL-src.png",
+   "mask": "comp/spotL-mask.png",
+   "strength": 0.62,
+   "seeds": [
+    9851,
+    9852
+   ],
+   "prompt": "soft folds of a green wool cloak, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, stain, spot, mark"
+  },
+  {
+   "name": "spotR2-55",
+   "src": "comp/spotR-src.png",
+   "mask": "comp/spotR-mask.png",
+   "strength": 0.55,
+   "seeds": [
+    9851,
+    9852
+   ],
+   "prompt": "soft folds of a green wool cloak, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, stain, spot, mark"
+  },
+  {
+   "name": "spotR2-62",
+   "src": "comp/spotR-src.png",
+   "mask": "comp/spotR-mask.png",
+   "strength": 0.62,
+   "seeds": [
+    9851,
+    9852
+   ],
+   "prompt": "soft folds of a green wool cloak, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, stain, spot, mark"
+  }
+ ]
+}

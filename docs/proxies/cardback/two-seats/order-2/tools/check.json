@@ -1,0 +1,92 @@
+{
+ "../finish/work/final.png": {
+  "size": [
+   1500,
+   2100
+  ],
+  "dpi": [
+   599.9988,
+   599.9988
+  ],
+  "symmetry_180_exact": true,
+  "darkest 0.5 mm, whole card": 26.8,
+  "darkest 0.5 mm, figure": 26.8,
+  "darkest pixel luma": 24.9,
+  "sat x value max / p99.5, whole card": [
+   165.9,
+   147.4
+  ],
+  "sat x value max / p99.5, figure": [
+   134.6,
+   99.7
+  ],
+  "field brightest-channel mean / max": [
+   155.0,
+   221
+  ],
+  "margins px": {
+   "figure: top, left, right": [
+    266,
+    452,
+    435
+   ],
+   "props: left, right": [
+    453,
+    460
+   ],
+   "lamp (160 px disc on the centre line)": 590,
+   "rule": "the trim edge to the moulding is the frame, by design; the field's content starts at 127"
+  },
+  "margins >= 110": true,
+  "cards: dark face px / specks (clusters, px)": [
+   20515,
+   18,
+   119
+  ]
+ },
+ "cards/ds-40-s9702.png": {
+  "size": [
+   1500,
+   2100
+  ],
+  "dpi": [
+   599.9988,
+   599.9988
+  ],
+  "symmetry_180_exact": true,
+  "darkest 0.5 mm, whole card": 26.4,
+  "darkest 0.5 mm, figure": 26.4,
+  "darkest pixel luma": 24.2,
+  "sat x value max / p99.5, whole card": [
+   165.0,
+   148.0
+  ],
+  "sat x value max / p99.5, figure": [
+   134.6,
+   99.7
+  ],
+  "field brightest-channel mean / max": [
+   155.0,
+   221
+  ],
+  "margins px": {
+   "figure: top, left, right": [
+    266,
+    449,
+    435
+   ],
+   "props: left, right": [
+    453,
+    460
+   ],
+   "lamp (160 px disc on the centre line)": 590,
+   "rule": "the trim edge to the moulding is the frame, by design; the field's content starts at 127"
+  },
+  "margins >= 110": true,
+  "cards: dark face px / specks (clusters, px)": [
+   17180,
+   1,
+   1
+  ]
+ }
+}
