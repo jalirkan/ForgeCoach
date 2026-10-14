@@ -84,6 +84,8 @@ There was no blur, grain or texture matching.
 | 7. Cheek: the blue-green smear | painted at 3×, cheek and jaw only, eyes excluded. At 0.28 and 0.35 the smear stayed, so it was rerun at 0.40/0.46 × seeds 9851/9853 | **0.46 s9851**: a cool grey shadow. The rest of the face is the pick's own pixels |
 | 7. Collar: a saturated blue strap | taken from the shoulder pass, through the collar ellipse only | **0.42 s9861**: dissolved into the dark collar |
 | 6. Shoulders | 0.42 × 2 seeds: their outline did not move at that strength | **left as painted** |
+| 8. Hands' colour: paler and cooler than the face (finish 2) | `finish/tools/handskin.py`, a Lab mean match of the hands' lit skin to the face's lit skin (`skinlib.py`'s masks: hue 12–50°, sat ≥ 0.12, value ≥ 0.42, eyes, brows and mouth cut out). Applied to the hands' skin only, shadows between the fingers included; the cards, the gilt edges and the cuffs are untouched. The full std match (k = 1) was blotchy and k = 0.5 still patchy, so the means only (k = 0) | hue 29.5° → 32.2° (face 32.1°), sat 0.449 → 0.605 (face 0.599), value 0.653 → 0.636 (face 0.637), b* 25.2 → 35.0 (face 35.2). Every mean within 1% of the face's. No pixel moved and nothing was repainted, so the fingers are as before: four and a thumb each, both thumbs on the front card |
+| 9. Cheek: a faint cool grey left by the smear (finish 2) | `finish/tools/cheekskin.py`. Lightness is kept, and only the chroma moves toward the face's own skin at the same L*, fitted from the face. Drawn patch from the nose to the face's right edge, right eye excluded, feathered; the hood's black (L* < 22) is left | the patch's mean a*/b* 6.3/19.3 → 9.8/26.0 at the same L* 39.0. 3,010 px changed. At 2× and 4× it is the same man |
 
 Also checked at 2×: the figure's outline against the leaf (no halo, no gold intrusion) and
 the hood's thin gilt hem, which is trim and not a fault. GPU time was about 40 minutes,
@@ -103,13 +105,15 @@ the 180° turn, asserted (`finish/tools/build.py`).
 - **Field:** brightest-channel mean 154.9, maximum 213.
 - **Margins:** hood top 245, left 408, right 406 (rule ≥ 110). Props 443 and 399.
 - **Cards:** plain at 200% (`CHECK.jpg`). 23 bright-speck clusters (107 px), all wear on
-  the edges.
-- **File size:** the JPEG at q95 is 1,153,849 bytes.
+  the edges. There are 23,855 dark face px (24,039 before finish 2). The warmer hands now
+  claim a rim of shadow where they meet the fan.
+- **File size:** the JPEG at q95 is 1,154,029 bytes.
 
 **Sheets:**
 
 - `CHECK.jpg`: the finished card, the raw pick and the previous order-1 file side by side,
-  then every fix at 2×, before and after.
+  then every fix at 2×, before and after. Last come finish 2's two fixes at 2×, against the 6cf1ff1 file: the
+  hands with the face beside them, and the cheek.
 - `SLEEVE-SIZE.jpg`: all three at true size, with a 10 mm bar.
 
 **To rebuild**, run from `~/scenery-packs/two-seats-work/order1/finish`:
@@ -121,7 +125,10 @@ the 180° turn, asserted (`finish/tools/build.py`).
 3. `fix.py cut`, then `gpu3.sh spec-finish1.json` and `spec-finish3.json`, with
    `robeguide.py` before robeedge2.
 4. `fix.py paste` in this order: hands, robeedge2, tankard, napkin, lamp2, cheek2, collar.
-5. `build.py`, `check2.py`, `sheets3.py`.
+5. Finish 2: `cheekskin.py work/top-final.png work/top-f2-cheek.png`, then
+   `handskin.py work/top-f2-cheek.png work/top-final2.png 0`. The last argument is the std
+   weight: 0 matches the means only.
+6. `build.py`, `check2.py`, `sheets3.py`.
 
 ## History
 
@@ -137,3 +144,9 @@ the 180° turn, asserted (`finish/tools/build.py`).
   manner. The robe's chair-back edge now falls as cloth, and the cheek smear and collar
   strap were softened. The shoulders were left alone. All checks pass, except the one hot
   hood pixel that the pick already had (151.9).
+- 2026-10-13, finish 2, after the owner's "Fix the hands colour and the cheek, then I'll
+  order". The hands' skin was brought to the face's skin by a Lab mean match on the hands'
+  skin only, with no repaint and no change of shape. The cheek's cool grey was warmed toward
+  the cheek's own skin, with lightness kept. Both are colour moves on the unlifted top half;
+  the lift and the turn are the same as before. All checks pass, with the same one hot hood
+  pixel (151.9). No GPU was used.
