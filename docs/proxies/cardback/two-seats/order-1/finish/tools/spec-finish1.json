@@ -1,0 +1,159 @@
+{
+ "model": "dreamshaper",
+ "out": "raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "hands-50",
+   "src": "comp/hands-src.png",
+   "mask": "comp/hands-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9801,
+    9802,
+    9803,
+    9804,
+    9805
+   ],
+   "prompt": "an old man's two hands holding a fan of plain dark cards, four fingers and a thumb on each hand, bony, aged, 15th-century Netherlandish panel painting, oil, matte, soft modelling, red wool sleeves, muted palette, visible brushwork",
+   "negative": "extra fingers, missing fingers, fused fingers, six fingers, three fingers, merged hands, deformed hands, mutated hands, claws, vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers"
+  },
+  {
+   "name": "hands-58",
+   "src": "comp/hands-src.png",
+   "mask": "comp/hands-mask.png",
+   "strength": 0.58,
+   "seeds": [
+    9801,
+    9802,
+    9803,
+    9804,
+    9805
+   ],
+   "prompt": "an old man's two hands holding a fan of plain dark cards, four fingers and a thumb on each hand, bony, aged, 15th-century Netherlandish panel painting, oil, matte, soft modelling, red wool sleeves, muted palette, visible brushwork",
+   "negative": "extra fingers, missing fingers, fused fingers, six fingers, three fingers, merged hands, deformed hands, mutated hands, claws, vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers"
+  },
+  {
+   "name": "tankard-50",
+   "src": "comp/tankard-src.png",
+   "mask": "comp/tankard-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9811,
+    9812
+   ],
+   "prompt": "a pewter tankard gone cold, a dull skin on the ale, standing on the near edge of a walnut table, its soft shadow on the wood, lamplight, still-life detail, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, shiny chrome, lid"
+  },
+  {
+   "name": "tankard-58",
+   "src": "comp/tankard-src.png",
+   "mask": "comp/tankard-mask.png",
+   "strength": 0.58,
+   "seeds": [
+    9811,
+    9812
+   ],
+   "prompt": "a pewter tankard gone cold, a dull skin on the ale, standing on the near edge of a walnut table, its soft shadow on the wood, lamplight, still-life detail, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, shiny chrome, lid"
+  },
+  {
+   "name": "napkin-55",
+   "src": "comp/napkin-src.png",
+   "mask": "comp/napkin-mask.png",
+   "strength": 0.55,
+   "seeds": [
+    9821,
+    9822,
+    9823
+   ],
+   "prompt": "a crumpled linen napkin and one worn gold coin lying on a walnut table, soft shadows on the wood, lamplight, still-life detail, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers"
+  },
+  {
+   "name": "lamp-50",
+   "src": "comp/lamp-src.png",
+   "mask": "comp/lamp-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9831,
+    9832
+   ],
+   "prompt": "a round glass oil lamp globe with a gold band around its middle, glowing warm from within, a warm glow on the polished walnut table, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, airbrush, neon, lens flare, plastic"
+  },
+  {
+   "name": "lamp-58",
+   "src": "comp/lamp-src.png",
+   "mask": "comp/lamp-mask.png",
+   "strength": 0.58,
+   "seeds": [
+    9831,
+    9832
+   ],
+   "prompt": "a round glass oil lamp globe with a gold band around its middle, glowing warm from within, a warm glow on the polished walnut table, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, airbrush, neon, lens flare, plastic"
+  },
+  {
+   "name": "robeedge-45",
+   "src": "comp/robeedge-src.png",
+   "mask": "comp/robeedge-mask.png",
+   "strength": 0.45,
+   "seeds": [
+    9841,
+    9842
+   ],
+   "prompt": "the sleeve of a red wool robe falling in soft heavy folds at the seated man's side, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, chair, furniture, wood, box, hard corner"
+  },
+  {
+   "name": "robeedge-52",
+   "src": "comp/robeedge-src.png",
+   "mask": "comp/robeedge-mask.png",
+   "strength": 0.52,
+   "seeds": [
+    9841,
+    9842
+   ],
+   "prompt": "the sleeve of a red wool robe falling in soft heavy folds at the seated man's side, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, chair, furniture, wood, box, hard corner"
+  },
+  {
+   "name": "cheek-28",
+   "src": "comp/cheek-src.png",
+   "mask": "comp/cheek-mask.png",
+   "strength": 0.28,
+   "seeds": [
+    9851,
+    9852
+   ],
+   "prompt": "15th-century Netherlandish panel portrait, oil on panel, an older careworn man's face, warm flesh tones on the cheek, soft modelling, muted palette, matte, visible brushwork",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, blue skin, green skin, bruise, makeup"
+  },
+  {
+   "name": "cheek-35",
+   "src": "comp/cheek-src.png",
+   "mask": "comp/cheek-mask.png",
+   "strength": 0.35,
+   "seeds": [
+    9851,
+    9852
+   ],
+   "prompt": "15th-century Netherlandish panel portrait, oil on panel, an older careworn man's face, warm flesh tones on the cheek, soft modelling, muted palette, matte, visible brushwork",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, blue skin, green skin, bruise, makeup"
+  },
+  {
+   "name": "shoulders-42",
+   "src": "comp/shoulders-src.png",
+   "mask": "comp/shoulders-mask.png",
+   "strength": 0.42,
+   "seeds": [
+    9861,
+    9862
+   ],
+   "prompt": "an older man in a red hooded wool robe, his shoulders uneven, one a little lower than the other, a natural slouch, a dark collar, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, blue"
+  }
+ ]
+}

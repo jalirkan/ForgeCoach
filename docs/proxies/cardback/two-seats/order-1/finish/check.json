@@ -1,0 +1,47 @@
+{
+ "two-seats-garnet-man.png": {
+  "size": [
+   1500,
+   2100
+  ],
+  "dpi": [
+   599.9988,
+   599.9988
+  ],
+  "symmetry_180_exact": true,
+  "darkest 0.5 mm, whole card": 28.0,
+  "darkest 0.5 mm, figure": 28.0,
+  "darkest pixel luma": 25.3,
+  "sat x value max / p99.5, whole card": [
+   168.9,
+   147.0
+  ],
+  "sat x value max / p99.5, figure": [
+   151.9,
+   122.4
+  ],
+  "field brightest-channel mean / max": [
+   154.9,
+   213
+  ],
+  "margins px": {
+   "figure: top, left, right": [
+    245,
+    408,
+    406
+   ],
+   "props: left, right": [
+    443,
+    399
+   ],
+   "lamp (160 px disc on the centre line)": 590,
+   "rule": "the trim edge to the moulding is the frame, by design; the field's content starts at 127"
+  },
+  "margins >= 110": true,
+  "cards: dark face px / specks (clusters, px)": [
+   24039,
+   23,
+   107
+  ]
+ }
+}

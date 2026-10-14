@@ -1,0 +1,69 @@
+{
+ "model": "dreamshaper",
+ "out": "raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "lamp2-50",
+   "src": "comp/lamp2-src.png",
+   "mask": "comp/lamp2-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9831,
+    9833,
+    9834
+   ],
+   "prompt": "a round glass oil lamp globe with a gold band around its middle, glowing warm from within, a warm glow on the polished walnut table, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, airbrush, neon, lens flare, plastic"
+  },
+  {
+   "name": "robeedge2-50",
+   "src": "comp/robeedge2-src.png",
+   "mask": "comp/robeedge2-mask.png",
+   "strength": 0.5,
+   "seeds": [
+    9841,
+    9842
+   ],
+   "prompt": "the sleeve of a red wool robe falling in soft heavy folds at the seated man's side, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, chair, furniture, wood, box, hard corner"
+  },
+  {
+   "name": "robeedge2-56",
+   "src": "comp/robeedge2-src.png",
+   "mask": "comp/robeedge2-mask.png",
+   "strength": 0.56,
+   "seeds": [
+    9841,
+    9842
+   ],
+   "prompt": "the sleeve of a red wool robe falling in soft heavy folds at the seated man's side, cloth, 15th-century Netherlandish panel painting, oil on panel, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, chair, furniture, wood, box, hard corner"
+  },
+  {
+   "name": "cheek2-40",
+   "src": "comp/cheek2-src.png",
+   "mask": "comp/cheek2-mask.png",
+   "strength": 0.4,
+   "seeds": [
+    9851,
+    9853
+   ],
+   "prompt": "15th-century Netherlandish panel portrait, oil on panel, an older careworn man's face, warm flesh tones on the cheek, soft modelling, muted palette, matte, visible brushwork",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, blue skin, green skin, bruise, makeup, blue, green, teal"
+  },
+  {
+   "name": "cheek2-46",
+   "src": "comp/cheek2-src.png",
+   "mask": "comp/cheek2-mask.png",
+   "strength": 0.46,
+   "seeds": [
+    9851,
+    9853
+   ],
+   "prompt": "15th-century Netherlandish panel portrait, oil on panel, an older careworn man's face, warm flesh tones on the cheek, soft modelling, muted palette, matte, visible brushwork",
+   "negative": "vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, blue skin, green skin, bruise, makeup, blue, green, teal"
+  }
+ ]
+}

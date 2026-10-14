@@ -1,0 +1,32 @@
+{
+ "model": "dreamshaper",
+ "out": "raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "handswarm-30",
+   "src": "comp2/hands-src.png",
+   "mask": "comp2/hands-mask.png",
+   "strength": 0.3,
+   "seeds": [
+    9806,
+    9807
+   ],
+   "prompt": "an old man's two hands holding a fan of plain dark cards, four fingers and a thumb on each hand, bony, aged, 15th-century Netherlandish panel painting, oil, matte, soft modelling, red wool sleeves, muted palette, visible brushwork, warm ruddy flesh in warm lamplight, the same warm ochre skin as his face",
+   "negative": "extra fingers, missing fingers, fused fingers, six fingers, three fingers, merged hands, deformed hands, mutated hands, claws, vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, pale, grey skin, cold skin"
+  },
+  {
+   "name": "handswarm-36",
+   "src": "comp2/hands-src.png",
+   "mask": "comp2/hands-mask.png",
+   "strength": 0.36,
+   "seeds": [
+    9806,
+    9807
+   ],
+   "prompt": "an old man's two hands holding a fan of plain dark cards, four fingers and a thumb on each hand, bony, aged, 15th-century Netherlandish panel painting, oil, matte, soft modelling, red wool sleeves, muted palette, visible brushwork, warm ruddy flesh in warm lamplight, the same warm ochre skin as his face",
+   "negative": "extra fingers, missing fingers, fused fingers, six fingers, three fingers, merged hands, deformed hands, mutated hands, claws, vector, flat, clip art, cartoon, sticker, outline, photograph, 3D render, glossy, text, letters, pips, numbers, pale, grey skin, cold skin"
+  }
+ ]
+}

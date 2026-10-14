@@ -7,7 +7,7 @@ Dragon Shield brushed-matte standard sleeves.*
 ## The file to upload
 
 **`two-seats-garnet-man.jpg`**, in this folder. 1500 × 2100 px, 600 dpi, 5:7, JPEG
-quality 95 (4:4:4), 1.11 MB. The PNG beside it (3.6 MB) is the same picture, kept as the
+quality 95 (4:4:4), 1.15 MB. The PNG beside it (3.7 MB) is the same picture, kept as the
 master; upload the JPEG.
 
 ## In the Sleeve Crafter
@@ -40,16 +40,20 @@ master; upload the JPEG.
       if it has gone brown, green or flat yellow.
 - [ ] **The dark hood and shadows.** At arm's length, the deepest parts of the hood and
       the hair should still show some detail, not solid black.
-- [ ] **The torso.** The cloak, sleeves and hands are a new painting in this order.
-      Up close they may look a little crisper than the hood. That is expected. Check that
-      they do not look blurry, that the cloak's vertical fold lines print as crisp
-      tailoring lines, and that the cloak and the hood read as one painting.
-- [ ] **The hem.** Just below the chin, where the hood's short cape meets the cloak, you
-      should not see a hard line.
-- [ ] **The hands and cards.** Two old, bony hands holding a small fan of plain dark cards with
-      gold edges. The cards have no marks, numbers or letters.
-- [ ] **The props.** On the table's near edge: the cold tankard (a dull skin on top, a
-      faint ring on the wood beside it), the crumpled napkin and one coin.
+- [ ] **One painting.** The face, hood, robe, hands and cards are one painted pass (the
+      owner's pick, seed 9702), so nothing should look crisper or flatter than the face.
+      Note any part that reads as pasted on.
+- [ ] **The cheek.** His left cheek (your right) carries a cool grey shadow. It should
+      read as shadow, not as a blue or green smear.
+- [ ] **The hands and cards.** Two old, bony hands whose fingers interlace at the centre,
+      both thumbs up on the front card. The cards are near-black warm grey backs with dull
+      gilt edges, not blue, and carry no marks, numbers or letters.
+- [ ] **The robe's left edge.** The sleeve falls in a slope to the table, as cloth. It
+      should not read as the corner of a chair.
+- [ ] **The props.** On the table's near edge, painted like the man: a pewter tankard
+      with a soft shadow on the wood, a crumpled linen napkin and one coin.
+- [ ] **The lamp.** A painted glass globe with a gold band across the centre line. Its
+      glow on the wood should look the same above and below the band.
 - [ ] **One sleeve with a real card in it.** It slides in and shuffles like your other
       sleeves.
 
@@ -57,43 +61,67 @@ Write down anything that looks wrong before ordering more.
 
 ## How this file was made
 
-- **The robe** (cloak, sleeves, arms and fan) is **one** img2img pass from round 8's
-  drawn form, at a low strength so that its vertical fold lines stay as crisp tailoring
-  lines and only the fills turn to painted cloth: DreamShaper XL fp16, strength **0.38,
-  seed 9401**, 32 steps, CFG 6, DPM++ Karras, order 1's prompt plus "vertical pleated
-  folds, tailored robe, crisp fold lines" (`tools/spec-order1-rev.json`). Of the six
-  candidates (0.30 and 0.38, seeds 9401/9402/9405) it keeps 81% of the drawn lines'
-  depth while moving the fills furthest (`tools/robe1-lines.json`; the first order 1
-  torso, at 0.55, kept 3%).
-- **The hands** are a second img2img pass on round 8's drawn hands alone (a crop at x
-  392-808, y 464-720 of the torso, painted at 3×), with a prompt written from the face
-  (an old man's bony, weathered hands in a harsh, hard-edged light): strength **0.56,
-  seed 9503**, of twelve (0.56 and 0.62, seeds 9501-9506). They were picked as the seed
-  whose numbers come closest to the face's (local contrast, edge strength, skin hue and
-  saturation, `tools/hands1-match.json`), then looked at: two hands, four fingers and a
-  thumb each, thumbs on the cards. They go in through round 7's drawn hand mask
-  (`tools/hands1.py paste`).
-- There was **no** blur, grain, texture-matching or unifying pass after either pass.
-- **The post-work, and all of it:**
-  - The paste went through round 7's drawn mask. Painted gold that fell inside that mask
-    at the sleeves' outer edge (2,653 px) was left out, so the final's cloak pixels stay
-    there.
-  - The hem's lightness was blended over 24 px. It had a median step of 4.6 levels.
-  - The final's black-point lift was applied once, to the whole card: + 24·(1 − L/56)²
-    below L 56. This reproduces the final's lift with 0 pixels different.
-- **The face, the hood and its cape** are the final's pixels (100% of their figure pixels
-  identical).
-- **The props** are the final's painted props, kept.
-- **The ground** is the grounds mock A, rebuilt by its own tools (`lift.py`, `grounds.py`),
-  which reproduce `../grounds/A-garnet.png` byte for byte.
-- `CHECK.jpg` shows three columns, order 1 as it was (666a71f), this revision and round
-  8's form; then this revision's hands beside the face at 2×, with the old hands; then
-  the robe's fold lines at 2× in all three.
-  `SLEEVE-SIZE.jpg` is true size with a 10 mm bar. `tools/check1.json` holds every check.
-- **To rebuild**, run from `~/scenery-packs/two-seats-work/order1`:
-  `tools/hands1.py paste rev/raw/robe-38-s9401.png rev/raw/hands-56-s9503.png
-  rev/work/torso-rev.png`, then `tools/build1.sh rev/work/torso-rev.png <out>`, then
-  `check1.py` and `sheets1.py`.
+The figure is the owner's pick from the one pass (`one-pass/NOTES.md`): **DreamShaper XL
+fp16 at 0.40, seed 9702**, the whole figure painted in one pass on Ground A2. The owner
+said: "go with 9702 and just fix it up". The finish (`finish/tools/`) edits the one pass's
+**unlifted top half**, then lifts and turns it exactly as the one pass did.
+
+**Every repair is painted.** Each is an SDXL inpaint with the same model, the same pipeline
+(`one-pass/tools/paint2.py`: 32 steps, CFG 6, DPM++ Karras) and the one pass's prompt
+family. Each is run at the lowest strength that fixed the problem, and was looked at at 2×
+or more before it was accepted. `finish/tools/fix.py` only cuts out the source and the
+drawn mask (`finish/tools/regions.json`) and puts the painting back, with a 1 px soft joint.
+There was no blur, grain or texture matching.
+
+| Fix | How | Kept |
+|---|---|---|
+| 1. Hands: a finger missing, fingers fused | x 640–868, y 776–912, painted at 3×, 0.50 and 0.58 × seeds 9801–9805 (10), the brief's prompt and negatives | **0.58 s9803**: four fingers and a thumb on each hand, interlaced, thumbs on the front card. 0.50 s9805 grew a bulge between the hands; 0.58 s9802's right hand shows three fingers. A warmer second pass (0.30/0.36 × 2 seeds) did not change the skin, so it was not used |
+| 5. Cards: the front one slate blue | `finish/tools/cards.py`, a value and hue shift confined to the card mask (as the brief allowed): luma to 14 + 0.45 Y, warm grey; the light edges to a dull gilt. Done before the hands, so the hands pass repainted the fan's foot | plain at 200%, no marks |
+| 2. Tankard: a sticker | painted at 4×, 0.50/0.58 × 2 seeds | **0.50 s9811**: pewter, a soft painted shadow |
+| 2. Napkin and coin | painted at 4×, 0.55 × 3 seeds | **s9821**. s9822 showed the mask's edge |
+| 3. Lamp: an airbrushed ball | painted at 3× on the whole card. The first mask took in the glow on the wood, and the step at the seam showed. The second takes the globe only (0.50 × 3 seeds); its top half turns with the card | **0.50 s9831**: a glass globe with a gold band. The wood's glow is unchanged, so it stays symmetric |
+| 4. Robe's left edge: a chair back | 0.45/0.52 left the drawn square corner in place. A **layout guide** (`robeguide.py`) cut the corner back to Ground A2 along a slope, and the inpaint (3.5×, 0.50/0.56 × 2 seeds) painted the new edge, matted against Ground A2 as the one pass was | **0.56 s9841**: the sleeve falls as cloth with a clean edge |
+| 7. Cheek: the blue-green smear | painted at 3×, cheek and jaw only, eyes excluded. At 0.28 and 0.35 the smear stayed, so it was rerun at 0.40/0.46 × seeds 9851/9853 | **0.46 s9851**: a cool grey shadow. The rest of the face is the pick's own pixels |
+| 7. Collar: a saturated blue strap | taken from the shoulder pass, through the collar ellipse only | **0.42 s9861**: dissolved into the dark collar |
+| 6. Shoulders | 0.42 × 2 seeds: their outline did not move at that strength | **left as painted** |
+
+Also checked at 2×: the figure's outline against the leaf (no halo, no gold intrusion) and
+the hood's thin gilt hem, which is trim and not a fault. GPU time was about 40 minutes,
+under `flock …/gpu.lock nice -n 15`.
+
+**Post-work:** the one pass's black-point lift, once (+ 24·(1 − L/56)² below L 56), then
+the 180° turn, asserted (`finish/tools/build.py`).
+
+**Checks** (`one-pass/tools/check2.py`, `finish/check.json`):
+
+- **Symmetry:** exact under the 180° turn.
+- **Darks:** the darkest 0.5 mm reads **28.0** (rule ≥ 24). The darkest pixel is 25.3.
+- **Saturation × value in the figure:** p99.5 is 122.4. The maximum is 151.9, from **one**
+  hot red pixel at the hood's edge (720, 500). It was already there in the pick, and it is
+  the only pixel in the figure over 150.
+- **Saturation × value, whole card:** the maximum is 168.9, in the lamp's core, as before.
+- **Field:** brightest-channel mean 154.9, maximum 213.
+- **Margins:** hood top 245, left 408, right 406 (rule ≥ 110). Props 443 and 399.
+- **Cards:** plain at 200% (`CHECK.jpg`). 23 bright-speck clusters (107 px), all wear on
+  the edges.
+- **File size:** the JPEG at q95 is 1,153,849 bytes.
+
+**Sheets:**
+
+- `CHECK.jpg`: the finished card, the raw pick and the previous order-1 file side by side,
+  then every fix at 2×, before and after.
+- `SLEEVE-SIZE.jpg`: all three at true size, with a 10 mm bar.
+
+**To rebuild**, run from `~/scenery-packs/two-seats-work/order1/finish`:
+
+1. `finish/tools/onepass_top.py ../onepass/raw/ds-40-s9702.png work/s9702.png`, run from
+   `../onepass`. This is the one pass's composite, and it reproduces the one-pass card byte
+   for byte. It saves the unlifted top before the lift; copy that to `work/top0.png`.
+2. `cards.py work/top0.png work/top1-cards.png`.
+3. `fix.py cut`, then `gpu3.sh spec-finish1.json` and `spec-finish3.json`, with
+   `robeguide.py` before robeedge2.
+4. `fix.py paste` in this order: hands, robeedge2, tankard, napkin, lamp2, cheek2, collar.
+5. `build.py`, `check2.py`, `sheets3.py`.
 
 ## History
 
@@ -103,3 +131,9 @@ Write down anything that looks wrong before ordering more.
   apart, as an old man's hands matched to the face by the numbers; the face, hood,
   props, ground, hem rule and the one black-point lift unchanged. All checks pass as
   before.
+- 2026-10-13, finished from the owner's pick of the one pass ("go with 9702 and just fix it
+  up"). The hands were repainted to four fingers and a thumb each. The cards are now
+  near-black with gilt edges. The tankard, napkin, coin and lamp were painted in the same
+  manner. The robe's chair-back edge now falls as cloth, and the cheek smear and collar
+  strap were softened. The shoulders were left alone. All checks pass, except the one hot
+  hood pixel that the pick already had (151.9).
