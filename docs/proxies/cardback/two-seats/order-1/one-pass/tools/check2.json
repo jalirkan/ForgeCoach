@@ -1,0 +1,137 @@
+{
+ "cards/ds-40-s9702.png": {
+  "size": [
+   1500,
+   2100
+  ],
+  "dpi": [
+   599.9988,
+   599.9988
+  ],
+  "symmetry_180_exact": true,
+  "darkest 0.5 mm, whole card": 27.5,
+  "darkest 0.5 mm, figure": 27.5,
+  "darkest pixel luma": 24.9,
+  "sat x value max / p99.5, whole card": [
+   165.0,
+   148.0
+  ],
+  "sat x value max / p99.5, figure": [
+   151.9,
+   122.1
+  ],
+  "field brightest-channel mean / max": [
+   154.8,
+   213
+  ],
+  "margins px": {
+   "figure: top, left, right": [
+    245,
+    408,
+    406
+   ],
+   "props: left, right": [
+    443,
+    399
+   ],
+   "lamp (160 px disc on the centre line)": 590,
+   "rule": "the trim edge to the moulding is the frame, by design; the field's content starts at 127"
+  },
+  "margins >= 110": true,
+  "cards: dark face px / specks (clusters, px)": [
+   23611,
+   15,
+   402
+  ]
+ },
+ "cards/ds-45-s9701.png": {
+  "size": [
+   1500,
+   2100
+  ],
+  "dpi": [
+   599.9988,
+   599.9988
+  ],
+  "symmetry_180_exact": true,
+  "darkest 0.5 mm, whole card": 27.3,
+  "darkest 0.5 mm, figure": 27.3,
+  "darkest pixel luma": 24.6,
+  "sat x value max / p99.5, whole card": [
+   165.0,
+   148.0
+  ],
+  "sat x value max / p99.5, figure": [
+   154.5,
+   121.3
+  ],
+  "field brightest-channel mean / max": [
+   154.8,
+   213
+  ],
+  "margins px": {
+   "figure: top, left, right": [
+    243,
+    411,
+    405
+   ],
+   "props: left, right": [
+    443,
+    399
+   ],
+   "lamp (160 px disc on the centre line)": 590,
+   "rule": "the trim edge to the moulding is the frame, by design; the field's content starts at 127"
+  },
+  "margins >= 110": true,
+  "cards: dark face px / specks (clusters, px)": [
+   23318,
+   26,
+   177
+  ]
+ },
+ "cards/base-45-s9701.png": {
+  "size": [
+   1500,
+   2100
+  ],
+  "dpi": [
+   599.9988,
+   599.9988
+  ],
+  "symmetry_180_exact": true,
+  "darkest 0.5 mm, whole card": 27.0,
+  "darkest 0.5 mm, figure": 27.0,
+  "darkest pixel luma": 24.4,
+  "sat x value max / p99.5, whole card": [
+   165.0,
+   148.0
+  ],
+  "sat x value max / p99.5, figure": [
+   151.9,
+   126.4
+  ],
+  "field brightest-channel mean / max": [
+   154.8,
+   213
+  ],
+  "margins px": {
+   "figure: top, left, right": [
+    242,
+    411,
+    406
+   ],
+   "props: left, right": [
+    443,
+    399
+   ],
+   "lamp (160 px disc on the centre line)": 590,
+   "rule": "the trim edge to the moulding is the frame, by design; the field's content starts at 127"
+  },
+  "margins >= 110": true,
+  "cards: dark face px / specks (clusters, px)": [
+   23874,
+   28,
+   404
+  ]
+ }
+}

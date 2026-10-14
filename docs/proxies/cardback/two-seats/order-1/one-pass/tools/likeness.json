@@ -1,0 +1,92 @@
+{
+ "cards/base-45-s9701.png": {
+  "ssim": 0.782,
+  "ssim_2x": 0.785,
+  "ssim_eyes": 0.691,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-40-s9701.png": {
+  "ssim": 0.823,
+  "ssim_2x": 0.835,
+  "ssim_eyes": 0.757,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-40-s9702.png": {
+  "ssim": 0.835,
+  "ssim_2x": 0.852,
+  "ssim_eyes": 0.78,
+  "shift": [
+   0.0,
+   0.25
+  ]
+ },
+ "cards/ds-45-s9701.png": {
+  "ssim": 0.778,
+  "ssim_2x": 0.781,
+  "ssim_eyes": 0.679,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "cards/ds-45-s9702.png": {
+  "ssim": 0.786,
+  "ssim_2x": 0.793,
+  "ssim_eyes": 0.706,
+  "shift": [
+   0.0,
+   0.25
+  ]
+ },
+ "cards/ds-50-s9701.png": {
+  "ssim": 0.73,
+  "ssim_2x": 0.722,
+  "ssim_eyes": 0.604,
+  "shift": [
+   -0.25,
+   0.0
+  ]
+ },
+ "cards/ds-50-s9702.png": {
+  "ssim": 0.732,
+  "ssim_2x": 0.731,
+  "ssim_eyes": 0.633,
+  "shift": [
+   -0.25,
+   0.25
+  ]
+ },
+ "cards/ds-50-s9703.png": {
+  "ssim": 0.717,
+  "ssim_2x": 0.701,
+  "ssim_eyes": 0.607,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "/home/justin-a/code/fc-lanes/two-seats-order1/docs/proxies/cardback/two-seats/order-1/two-seats-garnet-man.png": {
+  "ssim": 0.968,
+  "ssim_2x": 0.974,
+  "ssim_eyes": 1.0,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ },
+ "work/guide.png": {
+  "ssim": 0.934,
+  "ssim_2x": 0.947,
+  "ssim_eyes": 0.964,
+  "shift": [
+   0.0,
+   0.0
+  ]
+ }
+}
