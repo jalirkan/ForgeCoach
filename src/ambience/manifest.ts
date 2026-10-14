@@ -216,7 +216,8 @@ export interface PackTransitions {
   steps: TransitionStep[];
 }
 
-export const DEFAULT_TRANSITION_HOLD_MS = 120;
+/** Long enough to register each frame as its own picture (pack v7's 120 ms read as a dissolve). */
+export const DEFAULT_TRANSITION_HOLD_MS = 200;
 export const DEFAULT_TRANSITION_FADE_MS = 180;
 /** In-betweens per step: more than this is no longer "a few frames" (the rest are dropped, with a warning). */
 export const MAX_TRANSITION_FRAMES = 4;

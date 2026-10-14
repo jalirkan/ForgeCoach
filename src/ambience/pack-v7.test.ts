@@ -5,7 +5,8 @@
  * pack-v7 (spec 1.7: pack-v6.1's six-picture ladder plus transition frames
  * between stages) validates on this client: a snapshot of its scenery.json,
  * taken when FORGECOACH_PACK_URL moved to it. Every biome has frames for all
- * five steps, at both shapes, within the 2 MB budget.
+ * five steps, at both shapes, within the 2 MB budget. (The default is
+ * pack-v7.1 now, its frames repainted and held 200 ms: pack-v7-1.test.ts.)
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -16,7 +17,6 @@ import { transitionFrames, tweenLength } from './transitions.ts';
 describe('pack-v7', () => {
   const manifest = JSON.parse(readFileSync(new URL('./testdata/pack-v7.scenery.json', import.meta.url), 'utf8'));
   const r = validateManifest(manifest, `${FORGECOACH_PACK_URL}scenery.json`);
-  it('is the default pack URL', () => expect(FORGECOACH_PACK_URL).toContain('@pack-v7/pack/'));
   it('validates with no errors, and is written for this spec', () => {
     expect(r.errors).toEqual([]);
     expect(r.pack!.spec).toBe('1.7');

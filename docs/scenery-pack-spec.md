@@ -22,7 +22,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.3 | Optional **board accents** (§2, *Board accents*): per biome and stage, an `overlay` list of corner and edge pieces drawn in the player's area outside the strip, with `overlayMode` (`replace` / `add`) across stages; their budgets (§3); the rendering rules (beneath the cards, small widths, reduced motion, Settings → Board accents). A pack may have accents and no stage art. |
 | 1.4 | One more accent piece, the **full-area** piece (§2, *Full-area accents*): `anchor: "area"`, one transparent picture across the whole player area, beneath the strip and the cards, with `fit`, an optional `safe` rect or `position`, `minWidthPx`; at most one per stage; its own budget (§3). Every other piece and every 1.0–1.3 pack is unchanged. |
 | 1.5 | The **half board** (§2, *The half board*): the scenery fills each player's whole half of the board (Settings → Fill each side, on by default), split side by side in proportion to their lands, each biome at its own stage, both halves upright with a mist band along the centre line, and a soft dark scrim under the card rows. Optional per-stage **`half`** pictures (an opaque desktop picture and an optional portrait `phone` one, with the scene's `subjectBand` — and optional `focal` / `safe` — for the crop) and a top-level **`half`** layout (`seamRatio`, `minShare`, `mist`); their budget (§3). A 1.0–1.4 pack fills the half with its strip art, cover-cropped. |
-| 1.7 | **Transition frames** (§2, *Transition frames*): an optional per-biome **`transitions`** with a few in-between pictures for each stage step (`from`, `frames` of a desktop `src` and a `phone`, a `holdMs` per frame and a `fadeMs`), played with hard cuts when a land steps the stage — limited animation, a drawing held ~120 ms, then one short fade into the new stage. A step without frames, and every 1.0–1.6 pack, cross-fades as in 1.6. |
+| 1.7 | **Transition frames** (§2, *Transition frames*): an optional per-biome **`transitions`** with a few in-between pictures for each stage step (`from`, `frames` of a desktop `src` and a `phone`, a `holdMs` per frame and a `fadeMs`), played with hard cuts when a land steps the stage — limited animation, a drawing held ~200 ms, then one short fade into the new stage. A step without frames, and every 1.0–1.6 pack, cross-fades as in 1.6. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -865,7 +865,7 @@ A step whose frames have not arrived when the land does cross-fades instead.
 
 | Field | Type / range | Default | Notes |
 | --- | --- | --- | --- |
-| `holdMs` | 40–1000 | 120 | How long each frame is held. ~120 ms is a drawing every third frame at 24 fps ("on threes"). |
+| `holdMs` | 40–1000 | 200 | How long each frame is held. Long enough for the eye to register each frame as its own picture: at ~120 ms (pack v7) two or three frames read as a quick dissolve; at 200 ms (pack v7.1, about a drawing every fifth frame at 24 fps) the growth steps. |
 | `fadeMs` | 0–1000 | 180 | The one fade from the last frame into the new stage's picture. 0: a hard cut there too. |
 | `steps` | list | — | **Required.** One entry per stage step that has frames. |
 | `steps[].from` | a stage with a next stage | — | **Required.** The step from stage `from` to `from + 1`. At most one entry per step. |
@@ -883,13 +883,19 @@ the whole `transitions` is ignored.
 **How to paint for it.** Each in-between should be the same place, the same
 composition, a little further grown: things that the next stage adds
 *arriving* (a little bigger, a little brighter, a little more of them), never
-something that appears in one frame and is gone in the next. Pack v7's were
-made by img2img at low strength (0.30) over the linear blend of the two stage
-pictures at ⅓ and ⅔ (¼, ½, ¾ for a step that changes a lot), with one seed
-per biome and the two stages' prompts interpolated, then colour-matched to
-the blend so no frame flashes. A frame is on screen for a fraction of a
-second, so it need not be as sharp as a stage: 1x only, at a slightly lower
-quality.
+something that appears in one frame and is gone in the next. And each frame
+should be **its own picture**, not a double exposure: a frame that is only a
+blend of its two stages reads as a dissolve however it is timed. Pack v7.1's
+two frames per step were made by img2img at strength 0.45 over the linear
+blend of the two stage pictures at ⅓ and ⅔, with one seed per biome and the
+two stages' prompts interpolated, then colour-matched to the blend so no
+frame flashes (pack v7's, at 0.30 with up to three frames, stayed too close
+to the blend). Where the next stage brings a new element that the first
+frame would otherwise erase (a faint ghost reads as noise to the model), the
+blend was biased toward the next stage in that element's region only, so
+the first frame carries an early, partial version of it. A frame is on
+screen for a fraction of a second, so it need not be as sharp as a stage:
+1x only.
 
 <!-- example-transitions -->
 ```json
@@ -905,15 +911,14 @@ quality.
         { "layers": [], "half": { "src": "island/s2-half.webp", "phone": { "src": "island/s2-phone.webp" } } }
       ],
       "transitions": {
-        "holdMs": 120,
+        "holdMs": 200,
         "fadeMs": 180,
         "steps": [
           {
             "from": 1,
             "frames": [
               { "src": "island/s1to2-f1-half.webp", "phone": "island/s1to2-f1-phone.webp" },
-              { "src": "island/s1to2-f2-half.webp", "phone": "island/s1to2-f2-phone.webp" },
-              { "src": "island/s1to2-f3-half.webp", "phone": "island/s1to2-f3-phone.webp" }
+              { "src": "island/s1to2-f2-half.webp", "phone": "island/s1to2-f2-phone.webp" }
             ]
           }
         ]
@@ -923,8 +928,8 @@ quality.
 }
 ```
 
-The second Island plays three frames, 120 ms each, then fades into stage 2
-over 180 ms: 540 ms in all. `src/ambience/transitions.test.ts` validates this
+The second Island plays two frames, 200 ms each, then fades into stage 2
+over 180 ms: 580 ms in all. `src/ambience/transitions.test.ts` validates this
 exact block. If you change it, it must stay error- and warning-free.
 
 ## 3. Files and budgets

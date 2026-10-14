@@ -53,7 +53,7 @@ describe('the manifest’s transitions (spec 1.7)', () => {
     expect(t.steps[2]!.frames.map((f) => f.holdMs)).toEqual([120, 160]);
     expect(t.steps[0]!.bytes).toBe(300000);
   });
-  it('defaults: a hold of 120 ms and a fade of 180 ms; a frame need not have a phone picture', () => {
+  it('defaults: a hold of 200 ms and a fade of 180 ms; a frame need not have a phone picture', () => {
     const { b, warnings } = island(pack({ steps: [{ from: 1, frames: [frame(1, 1, false)] }] }));
     expect(warnings).toEqual([]);
     expect(b.transitions).toMatchObject({ holdMs: DEFAULT_TRANSITION_HOLD_MS, fadeMs: DEFAULT_TRANSITION_FADE_MS });
@@ -91,9 +91,9 @@ describe('the manifest’s transitions (spec 1.7)', () => {
   it(`keeps at most ${MAX_TRANSITION_FRAMES} frames a step, and range-checks the holds`, () => {
     const { b, warnings } = island(pack({ holdMs: 5, fadeMs: 4000, steps: [{ from: 1, frames: [1, 2, 3, 4, 5].map((k) => frame(1, k)) }] }));
     expect(b.transitions!.steps[0]!.frames).toHaveLength(MAX_TRANSITION_FRAMES);
-    expect(b.transitions).toMatchObject({ holdMs: 120, fadeMs: 180 });
+    expect(b.transitions).toMatchObject({ holdMs: 200, fadeMs: 180 });
     expect(warnings).toEqual([
-      'biomes.island.transitions.holdMs: 5 is out of range 40–1000; using 120',
+      'biomes.island.transitions.holdMs: 5 is out of range 40–1000; using 200',
       'biomes.island.transitions.fadeMs: 4000 is out of range 0–1000; using 180',
       'biomes.island.transitions.steps[0].frames: more than 4; the rest ignored',
     ]);
@@ -186,7 +186,7 @@ describe('warming the next land’s frames', () => {
 });
 
 describe('the spec’s transitions example', () => {
-  it('validates with no errors or warnings, and plays three frames then the stage', () => {
+  it('validates with no errors or warnings, and plays two frames then the stage', () => {
     const md = readFileSync(new URL('../../docs/scenery-pack-spec.md', import.meta.url), 'utf8');
     const block = /<!-- example-transitions -->\s*```json\n([\s\S]*?)```/.exec(md);
     expect(block).not.toBeNull();
@@ -195,8 +195,8 @@ describe('the spec’s transitions example', () => {
     expect(r.warnings).toEqual([]);
     const b = r.pack!.biomes.island!;
     const fr = transitionFrames(b, 1, 2, 'desktop')!;
-    expect(fr).toHaveLength(3);
-    expect(tweenLength(fr, b.transitions!.fadeMs)).toBe(3 * 120 + 180);
-    expect(transitionFrames(b, 1, 2, 'phone')).toHaveLength(3);
+    expect(fr).toHaveLength(2);
+    expect(tweenLength(fr, b.transitions!.fadeMs)).toBe(2 * 200 + 180);
+    expect(transitionFrames(b, 1, 2, 'phone')).toHaveLength(2);
   });
 });

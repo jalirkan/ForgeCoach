@@ -4,8 +4,8 @@
  *
  * Transition frames between stages (spec 1.7): when a land steps a biome's
  * stage, a pack with `transitions` plays that step's few in-between pictures
- * with hard cuts, each held a moment (about 120 ms: limited animation, a
- * drawing every third frame), then fades into the new stage's own picture.
+ * with hard cuts, each held a moment (about 200 ms: limited animation, a
+ * drawing about every fifth frame at 24 fps), then fades into the new stage's own picture.
  * Losing a land plays the same frames backwards. A step without frames, a
  * shape a step has no frames for, a jump of more than two stages, the first
  * paint and reduced motion keep the 1.6 cross-fade (or the instant change).
