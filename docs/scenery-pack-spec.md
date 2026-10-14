@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.6)
+# Scenery pack spec (schema 1, version 1.7)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -22,6 +22,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.3 | Optional **board accents** (§2, *Board accents*): per biome and stage, an `overlay` list of corner and edge pieces drawn in the player's area outside the strip, with `overlayMode` (`replace` / `add`) across stages; their budgets (§3); the rendering rules (beneath the cards, small widths, reduced motion, Settings → Board accents). A pack may have accents and no stage art. |
 | 1.4 | One more accent piece, the **full-area** piece (§2, *Full-area accents*): `anchor: "area"`, one transparent picture across the whole player area, beneath the strip and the cards, with `fit`, an optional `safe` rect or `position`, `minWidthPx`; at most one per stage; its own budget (§3). Every other piece and every 1.0–1.3 pack is unchanged. |
 | 1.5 | The **half board** (§2, *The half board*): the scenery fills each player's whole half of the board (Settings → Fill each side, on by default), split side by side in proportion to their lands, each biome at its own stage, both halves upright with a mist band along the centre line, and a soft dark scrim under the card rows. Optional per-stage **`half`** pictures (an opaque desktop picture and an optional portrait `phone` one, with the scene's `subjectBand` — and optional `focal` / `safe` — for the crop) and a top-level **`half`** layout (`seamRatio`, `minShare`, `mist`); their budget (§3). A 1.0–1.4 pack fills the half with its strip art, cover-cropped. |
+| 1.7 | **Transition frames** (§2, *Transition frames*): an optional per-biome **`transitions`** with a few in-between pictures for each stage step (`from`, `frames` of a desktop `src` and a `phone`, a `holdMs` per frame and a `fadeMs`), played with hard cuts when a land steps the stage — limited animation, a drawing held ~120 ms, then one short fade into the new stage. A step without frames, and every 1.0–1.6 pack, cross-fades as in 1.6. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -105,6 +106,7 @@ and a key under `effects` that is not an effect event.
 | `idle.periodMs` | 1000–60000 | 9000 | One swing (the loop alternates). |
 | `idle.amplitude` | 0–1 | 0.3 | Scaled by each layer's `depth`. At 1, `sway` is ±2°, `drift` is ±3% and `breathe` is +4%. |
 | `effects` | object | — | 1.2. This biome's own effects; they win over the top-level ones. A biome may have `effects` and no `stages`: it then keeps the built-in scene and plays your effects. |
+| `transitions` | object | — | 1.7. In-between pictures per stage step, played when a land steps the stage. See *Transition frames*. |
 
 ### A stage
 
@@ -832,6 +834,99 @@ sky shows at about half over stage 1's. `src/ambience/growth.test.ts`
 validates this exact block. If you change it, it must stay error- and
 warning-free.
 
+### Transition frames (1.7)
+
+A stage step is a jump from one painting to the next. 1.6 cross-fades it;
+1.7 lets a pack **draw** it instead, the way limited animation does: two or
+three in-between pictures (keyframes, not video), each held a moment and cut
+to the next with no blending, then one short fade into the new stage's own
+picture. The growth reads as a few drawn frames of the place growing, not a
+dissolve.
+
+**When it plays.** On the half board (1.5), when a slot's stage changes by
+one or two and the pack has frames for every step crossed, at the shape the
+slot is showing (the desktop picture, or the phone one), and the frames are
+already loaded. Gaining a land plays a step forward; losing one plays it
+backwards; a two-stage jump chains both steps. While the frames play the
+picture beneath switches straight to the new stage, so when the last frame
+fades out the stage is there. Everything else — the first paint, a bigger
+jump, a step or shape with no frames, frames not loaded yet, the strip
+without the half filled — cross-fades as in 1.6. The flash, the `landfall`
+and `stageUp` effects and the accents' own fades are unchanged.
+
+**Reduced motion** (`prefers-reduced-motion`, or Settings → Motion → Stills
+only): no frames; the stage changes at once, as in 1.6.
+
+**Loading.** While a slot sits at a stage, ForgeCoach warms (and decodes)
+that slot's **next** step's frames at its shape, so the cuts are never loads.
+A step whose frames have not arrived when the land does cross-fades instead.
+
+**Per-biome `transitions`** (every field optional except `steps`):
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `holdMs` | 40–1000 | 120 | How long each frame is held. ~120 ms is a drawing every third frame at 24 fps ("on threes"). |
+| `fadeMs` | 0–1000 | 180 | The one fade from the last frame into the new stage's picture. 0: a hard cut there too. |
+| `steps` | list | — | **Required.** One entry per stage step that has frames. |
+| `steps[].from` | a stage with a next stage | — | **Required.** The step from stage `from` to `from + 1`. At most one entry per step. |
+| `steps[].frames` | 1–4 frame objects | — | **Required.** In playing order (forward). Two or three read best; more starts to look like a morph. |
+| `steps[].frames[].src` | `.webp` / `.avif` / `.png` / `.jpg` | — | **Required.** The in-between at the desktop `half` shape (16:5, 2048 × 640). |
+| `steps[].frames[].phone` | same | — | The in-between at the phone shape (4:5, 1024 × 1280). Without it a phone panel cross-fades that step. |
+| `steps[].frames[].holdMs` | 40–1000 | the biome's `holdMs` | This frame's own hold. |
+| `steps[].bytes` | whole number | — | The step's files, for the budget (§3). |
+
+A step with an unusable frame is dropped whole (it cross-fades), as is a
+step that repeats or whose `from` has no next stage, with a warning each;
+when a stage of the biome is dropped, the step numbers no longer line up and
+the whole `transitions` is ignored.
+
+**How to paint for it.** Each in-between should be the same place, the same
+composition, a little further grown: things that the next stage adds
+*arriving* (a little bigger, a little brighter, a little more of them), never
+something that appears in one frame and is gone in the next. Pack v7's were
+made by img2img at low strength (0.30) over the linear blend of the two stage
+pictures at ⅓ and ⅔ (¼, ½, ¾ for a step that changes a lot), with one seed
+per biome and the two stages' prompts interpolated, then colour-matched to
+the blend so no frame flashes. A frame is on screen for a fraction of a
+second, so it need not be as sharp as a stage: 1x only, at a slightly lower
+quality.
+
+<!-- example-transitions -->
+```json
+{
+  "schema": 1,
+  "spec": "1.7",
+  "name": "Justin's tidewater, drawn growth",
+  "stageThresholds": [1, 2],
+  "biomes": {
+    "island": {
+      "stages": [
+        { "layers": [], "half": { "src": "island/s1-half.webp", "phone": { "src": "island/s1-phone.webp" } } },
+        { "layers": [], "half": { "src": "island/s2-half.webp", "phone": { "src": "island/s2-phone.webp" } } }
+      ],
+      "transitions": {
+        "holdMs": 120,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              { "src": "island/s1to2-f1-half.webp", "phone": "island/s1to2-f1-phone.webp" },
+              { "src": "island/s1to2-f2-half.webp", "phone": "island/s1to2-f2-phone.webp" },
+              { "src": "island/s1to2-f3-half.webp", "phone": "island/s1to2-f3-phone.webp" }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+The second Island plays three frames, 120 ms each, then fades into stage 2
+over 180 ms: 540 ms in all. `src/ambience/transitions.test.ts` validates this
+exact block. If you change it, it must stay error- and warning-free.
+
 ## 3. Files and budgets
 
 | What | Format | Size |
@@ -875,6 +970,12 @@ Budgets for half pictures (1.5), counted apart from the strip's 6 MB, the effect
 - **Per stage**: a desktop picture, opaque WebP (quality 80–85) or AVIF, **2048 × 640** at 1x and **4096 × 1280** as `src2x` (16 : 5); and optionally a phone picture, **1024 × 1280** and **2048 × 2560** (4 : 5).
 - A device loads only the pictures its panels show, one per biome per half (stage 1's warm in the background, the phone ones on a phone-sized screen), and from 1.6 the next stage's too, which fades in between the thresholds; the browser picks 1x or 2x by the screen's density, never more.
 - No phone loops: moving layers play only over the desktop picture, and count against the 2 moving layers per stage as before.
+
+Budgets for transition frames (1.7), counted apart from everything above:
+- **≤ 2 MB per biome** of frames (declare `bytes` per step; the validator warns past it). Five steps of two or three frames, desktop and phone, at about 50–80 KB a picture fit.
+- **1x only** (no `src2x`): a frame is held about a tenth of a second. Opaque WebP (quality 70–80) or AVIF, at the `half` shapes: **2048 × 640** and **1024 × 1280**.
+- **1–4 frames per step**; two or three is the look.
+- A device warms only the next step's frames at the shape it shows, never the whole set.
 
 The whole pack should stay ≤ 30 MB, effects and accents included (half pictures count apart: up to 40 MB more for five biomes).
 
