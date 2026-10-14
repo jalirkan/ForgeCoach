@@ -1,0 +1,36 @@
+{
+ "model": "dreamshaper",
+ "out": "raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "pleats-38",
+   "src": "comp/pleats-src.png",
+   "mask": "comp/pleats-mask.png",
+   "strength": 0.38,
+   "seeds": [
+    9911,
+    9912,
+    9913,
+    9914,
+    9915
+   ],
+   "prompt": "15th-century Netherlandish panel portrait, oil on panel, vertical pleated folds of the robe, tailored, crisp fold lines, a composed young woman with auburn hair in a green hooded cloak over a rose gown, seated at a table, holding a hand of plain dark cards with both hands, faintly pleased, lamplight from below, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, photograph, 3D, glossy, text, letters, pips, extra fingers, deformed hands"
+  },
+  {
+   "name": "pleats-42",
+   "src": "comp/pleats-src.png",
+   "mask": "comp/pleats-mask.png",
+   "strength": 0.42,
+   "seeds": [
+    9911,
+    9912,
+    9913
+   ],
+   "prompt": "15th-century Netherlandish panel portrait, oil on panel, vertical pleated folds of the robe, tailored, crisp fold lines, a composed young woman with auburn hair in a green hooded cloak over a rose gown, seated at a table, holding a hand of plain dark cards with both hands, faintly pleased, lamplight from below, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, photograph, 3D, glossy, text, letters, pips, extra fingers, deformed hands"
+  }
+ ]
+}

@@ -7,7 +7,7 @@ Dragon Shield brushed-matte standard sleeves.*
 ## The file to upload
 
 **`two-seats-garnet-man.jpg`**, in this folder. 1500 × 2100 px, 600 dpi, 5:7, JPEG
-quality 95 (4:4:4), 1.15 MB. The PNG beside it (3.7 MB) is the same picture, kept as the
+quality 95 (4:4:4), 1.16 MB. The PNG beside it (3.7 MB) is the same picture, kept as the
 master; upload the JPEG.
 
 ## In the Sleeve Crafter
@@ -43,6 +43,9 @@ master; upload the JPEG.
 - [ ] **One painting.** The face, hood, robe, hands and cards are one painted pass (the
       owner's pick, seed 9702), so nothing should look crisper or flatter than the face.
       Note any part that reads as pasted on.
+- [ ] **The chest.** Vertical pleated folds run down the robe's chest, from under the yoke
+      seam to beside the cards, on both sides of the centre seam. They should read as
+      painted folds in the cloth, not as lines drawn on top, and not vanish into a flat red.
 - [ ] **The cheek.** His left cheek (your right) carries a cool grey shadow. It should
       read as shadow, not as a blue or green smear.
 - [ ] **The hands and cards.** Two old, bony hands whose fingers interlace at the centre,
@@ -86,10 +89,11 @@ There was no blur, grain or texture matching.
 | 6. Shoulders | 0.42 × 2 seeds: their outline did not move at that strength | **left as painted** |
 | 8. Hands' colour: paler and cooler than the face (finish 2) | `finish/tools/handskin.py`, a Lab mean match of the hands' lit skin to the face's lit skin (`skinlib.py`'s masks: hue 12–50°, sat ≥ 0.12, value ≥ 0.42, eyes, brows and mouth cut out). Applied to the hands' skin only, shadows between the fingers included; the cards, the gilt edges and the cuffs are untouched. The full std match (k = 1) was blotchy and k = 0.5 still patchy, so the means only (k = 0) | hue 29.5° → 32.2° (face 32.1°), sat 0.449 → 0.605 (face 0.599), value 0.653 → 0.636 (face 0.637), b* 25.2 → 35.0 (face 35.2). Every mean within 1% of the face's. No pixel moved and nothing was repainted, so the fingers are as before: four and a thumb each, both thumbs on the front card |
 | 9. Cheek: a faint cool grey left by the smear (finish 2) | `finish/tools/cheekskin.py`. Lightness is kept, and only the chroma moves toward the face's own skin at the same L*, fitted from the face. Drawn patch from the nose to the face's right edge, right eye excluded, feathered; the hood's black (L* < 22) is left | the patch's mean a*/b* 6.3/19.3 → 9.8/26.0 at the same L* 39.0. 3,010 px changed. At 2× and 4× it is the same man |
+| 10. Chest pleats: the one pass had painted round 8's drawn vertical fold lines away ("Didn't I ask you to protect the lines on the chest?") | `finish/tools/pleats.py` (`pleats.json`, `spec-pleats.json`, `spec-pleats2.json`). The region is the chest only: from under the yoke seam (y 563) to the forearms (y 818), x 540–962, following the shoulders' slope; the fan and the hands are cut out of it (every non-robe pixel in their box, holes filled, grown 3 px). The guide multiplies the current painting by round 8's lines (its luma, blurred along the vertical and divided by its local mean, from the one pass's own warped round-8 form) and by dark and light bands drawn from them. One SDXL inpaint over that region at 2× (x 480–1024, y 512–864), the one pass's prompt with "vertical pleated folds of the robe, tailored, crisp fold lines" put after "oil on panel" (CLIP's 77 tokens cut the last words otherwise) and the one pass's negatives. Pasted with a 14 px feather into the robe round it and 5 px against the fan and hands | **0.36 s9921**. A first guide at 0.45 opacity (0.38 × 5 seeds, 0.42 × 3) came back too faint on his dark red: the folds were there only at 2×. The second guide (0.50 opacity, bands at 0.2 of the cloth's value) at 0.36 and 0.40 × 3 seeds kept them as painted folds in the robe's own red. At these strengths the seed hardly matters (seeds differ by at most 1 level after the paste), so the lower strength was kept. The chest's vertical detail (std of the vertical-fold high-pass) went from 1.81 to 3.01 (the guide 3.11). 72,011 px of the top half changed, all inside the region; face, hood, hands, fan, props, lamp, ground and border are byte-identical to the 725678e file, and so is every check number |
 
 Also checked at 2×: the figure's outline against the leaf (no halo, no gold intrusion) and
 the hood's thin gilt hem, which is trim and not a fault. GPU time was about 40 minutes,
-under `flock …/gpu.lock nice -n 15`.
+under `flock …/gpu.lock nice -n 15`, and the chest pleats about 10 more.
 
 **Post-work:** the one pass's black-point lift, once (+ 24·(1 − L/56)² below L 56), then
 the 180° turn, asserted (`finish/tools/build.py`).
@@ -107,13 +111,14 @@ the 180° turn, asserted (`finish/tools/build.py`).
 - **Cards:** plain at 200% (`CHECK.jpg`). 23 bright-speck clusters (107 px), all wear on
   the edges. There are 23,855 dark face px (24,039 before finish 2). The warmer hands now
   claim a rim of shadow where they meet the fan.
-- **File size:** the JPEG at q95 is 1,154,029 bytes.
+- **File size:** the JPEG at q95 is 1,156,333 bytes.
 
 **Sheets:**
 
 - `CHECK.jpg`: the finished card, the raw pick and the previous order-1 file side by side,
   then every fix at 2×, before and after. Last come finish 2's two fixes at 2×, against the 6cf1ff1 file: the
-  hands with the face beside them, and the cheek.
+  hands with the face beside them, and the cheek. At the foot, the chest pleats at 2×: before (725678e), after,
+  and round 8 at the same box, the lines' source (`finish/tools/pleatsheet.py`).
 - `SLEEVE-SIZE.jpg`: all three at true size, with a 10 mm bar.
 
 **To rebuild**, run from `~/scenery-packs/two-seats-work/order1/finish`:
@@ -128,7 +133,10 @@ the 180° turn, asserted (`finish/tools/build.py`).
 5. Finish 2: `cheekskin.py work/top-final.png work/top-f2-cheek.png`, then
    `handskin.py work/top-f2-cheek.png work/top-final2.png 0`. The last argument is the std
    weight: 0 matches the means only.
-6. `build.py`, `check2.py`, `sheets3.py`.
+6. Chest pleats: `pleats.py guide garnet`, then `gpu3.sh spec-pleats2.json`, then
+   `pleats.py paste garnet raw/pleats2-36-s9921.png work/top-final3.png`.
+7. `build.py work/top-final3.png work/check-final3.png`, `check2.py`, `sheets3.py`, then
+   `pleatsheet.py` to add the pleats band to `CHECK.jpg`.
 
 ## History
 
@@ -150,3 +158,9 @@ the 180° turn, asserted (`finish/tools/build.py`).
   the cheek's own skin, with lightness kept. Both are colour moves on the unlifted top half;
   the lift and the turn are the same as before. All checks pass, with the same one hot hood
   pixel (151.9). No GPU was used.
+- 2026-10-13, chest pleats, after the owner's "Didn't I ask you to protect the lines on the
+  chest?": round 8's vertical fold lines put back into the chest only, by one inpaint over a
+  guide that carries them (DreamShaper 0.36, seed 9921), on the unlifted top half; then the
+  same lift and turn. Everything outside the chest, hands and fan included, is byte-identical
+  to the 725678e file, and every check number is unchanged. `SLEEVE-SIZE.jpg` was
+  regenerated with the new file.

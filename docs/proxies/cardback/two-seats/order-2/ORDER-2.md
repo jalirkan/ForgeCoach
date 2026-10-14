@@ -54,6 +54,9 @@ master; upload the JPEG.
       both thumbs up on the front card, the skin the same ivory as her face. The cards
       are near-black warm grey backs with dull gilt edges, not blue, and carry no marks,
       numbers or letters.
+- [ ] **The chest.** Below the drape of her hood, vertical pleated folds run down the
+      cloak's front to beside the cards, on both sides. They should read as painted folds in
+      the cloth, not as lines drawn on top, and not vanish into a plain green.
 - [ ] **The cloak's sides.** Both sides fall to the table as cloth. Neither should read as
       a box or a drawn outline.
 - [ ] **The props.** On the table's near edge, painted like her: two neat stacks of coins
@@ -70,7 +73,7 @@ Write down anything that looks wrong before ordering more.
 Order 1's method, reused tool for tool (`../order-1/one-pass/tools/`,
 `../order-1/finish/tools/`); the copies in `tools/` carry a header saying what changed for
 her. All GPU work ran under `flock …/gpu.lock nice -n 15`, about **37 minutes** in all
-(2 + 8 + 41 images).
+(2 + 8 + 41 images), and the chest pleats about 4 more (8 images).
 
 ### Sources
 
@@ -149,6 +152,7 @@ joint. The finish edits the pick's **unlifted** top half, then lifts and turns i
 | Cloak, right edge | as the left | **0.50 s9842**: clean to the table. 0.50 s9841 left a grey block at the hem |
 | Face | looked at at 3×: no smear. The pale cool notch at her left jaw (your right) reads as her ear under the hair | **left as painted** |
 | Two tiny cloak marks | a brown stroke at (587, 630) and a dark dash at (916, 743), each under 0.5 mm in print. Tried at 4× (0.40, 0.55, 0.62 × 2 seeds) | **left as painted**: every try showed its mask or painted a pattern, which was worse than the marks |
+| Chest pleats (after the owner's "Didn't I ask you to protect the lines on the chest?") | order 1's `finish/tools/pleats.py` with her entry in `pleats.json`; `tools/spec-pleats.json`. The region is the chest only: from under the hood's drape (y 633) to the forearms (y 818), x 540–962; the fan and the hands are cut out of it (every non-robe pixel in their box, holes filled, grown 3 px). The guide multiplies the current painting by round 8's lines (its luma, blurred along the vertical and divided by its local mean, from the one pass's own warped round-8 form) at 0.45, and by dark and light bands drawn from them at 0.45. One SDXL inpaint over that region at 2× (x 480–1024, y 576–864), her one-pass prompt with "vertical pleated folds of the robe, tailored, crisp fold lines" put after "oil on panel" (CLIP's 77 tokens cut the last words otherwise), her negatives. Pasted with a 14 px feather into the cloak round it and 5 px against the fan and hands | **0.38 s9912** of 0.38 × seeds 9911–9915 and 0.42 × 9911–9913: the pleats are painted folds, with lit ridges, in the cloak's own teal and texture. Every seed kept them (seeds differ by at most 1 level after the paste, and 0.38 and 0.42 came out alike), so the lowest strength was kept. The chest's vertical detail (std of the vertical-fold high-pass) went from 3.45 to 6.10 (the guide 6.32). 45,943 px of the top half changed, all inside the region; face, hood, hands, fan, props, lamp, ground and border are byte-identical to the 66fedbc file, and so is every check number |
 
 Files named `-57` in the work folder are the 0.58 runs (the spec truncated 0.58 × 100).
 
@@ -166,7 +170,7 @@ Files named `-57` in the work folder are the 0.58 runs (the spec truncated 0.58 
 - **Margins:** hood top 266, left 452, right 435; props 453 and 460; lamp 590 (rule ≥ 110).
 - **Cards:** plain at 200% (`CHECK.jpg`). 18 bright-speck clusters (119 px), all on the gilt
   edges between the cards; no pips, letters, numbers or marks.
-- **File size:** the JPEG at q95 is 1,288,454 bytes.
+- **File size:** the JPEG at q95 is 1,291,314 bytes.
 
 ### Sheets
 
@@ -174,7 +178,8 @@ Files named `-57` in the work folder are the 0.58 runs (the spec truncated 0.58 
   labelled with strength, seed, likeness and verdict.
 - `CHECK.jpg`: the finished card, the raw pick and the previous final (479e5f6) side by
   side; every fix at 2×, before (the raw pick) and after; and the finished hands beside
-  the face at 2×.
+  the face at 2×; at the foot, the chest pleats at 2×: before (66fedbc), after, and round 8 at the same box, the
+  lines' source (`../order-1/finish/tools/pleatsheet.py`).
 - `SLEEVE-SIZE.jpg`: her print file beside the garnet man's current print file at true size,
   with a 10 mm bar.
 
@@ -208,8 +213,12 @@ Run in `finish/`:
 7. `tools/fix.py cut` for each region, then `tools/gpu.sh <finish> tools/spec-finish1.json`.
 8. `fix.py paste` in this order: hands, edgeL, edgeR, coins, cup, lamp2, giving `work/top7.png`.
 9. `tools/skinmatch.py work/top7.png work/top8-skin.png`.
-10. `OUTLINE='["edgeL","edgeR"]' tools/build.py work/top8-skin.png work/final.png`, then
-    `tools/check2.py` (run from `onepass/`) and `tools/sheets.py check`.
+10. Chest pleats: `../order-1/finish/tools/pleats.py guide green`, then
+    `tools/gpu.sh <finish> tools/spec-pleats.json`, then
+    `pleats.py paste green raw/pleats-38-s9912.png work/top9-pleats.png`.
+11. `OUTLINE='["edgeL","edgeR"]' tools/build.py work/top9-pleats.png work/final2.png`, then
+    `tools/check2.py` (run from `onepass/`), `tools/sheets.py check`, and
+    `../order-1/finish/tools/pleatsheet.py` to add the pleats band to `CHECK.jpg`.
 
 ## History
 
@@ -219,3 +228,9 @@ Run in `finish/`:
   lamp globe repainted at 3×; and both cloak edges repainted as cloth. The face was left as
   painted, since it showed no smear. All checks pass. The previous green-woman file
   (`../final/`, 479e5f6) is untouched.
+- 2026-10-13, chest pleats, after the owner's "Didn't I ask you to protect the lines on the
+  chest?": round 8's vertical fold lines put back into the chest below the hood's drape only,
+  by one inpaint over a guide that carries them (DreamShaper 0.38, seed 9912), on the
+  unlifted top half; then the same lift and turn. Everything outside the chest, hands and fan
+  included, is byte-identical to the 66fedbc file, and every check number is unchanged.
+  `SLEEVE-SIZE.jpg` was regenerated with both current print files.

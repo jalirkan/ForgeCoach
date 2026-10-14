@@ -1,0 +1,34 @@
+{
+ "model": "dreamshaper",
+ "out": "raw",
+ "steps": 32,
+ "cfg": 6.0,
+ "jobs": [
+  {
+   "name": "pleats2-36",
+   "src": "comp/pleats-src.png",
+   "mask": "comp/pleats-mask.png",
+   "strength": 0.36,
+   "seeds": [
+    9921,
+    9922,
+    9923
+   ],
+   "prompt": "15th-century Netherlandish panel portrait, oil on panel, vertical pleated folds of the robe, tailored, crisp fold lines, an older careworn man in a red hooded robe seated at a table, holding a hand of plain dark cards with both hands, lamplight from below, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, photograph, 3D, glossy, text, letters, pips, extra fingers, deformed hands"
+  },
+  {
+   "name": "pleats2-40",
+   "src": "comp/pleats-src.png",
+   "mask": "comp/pleats-mask.png",
+   "strength": 0.4,
+   "seeds": [
+    9921,
+    9922,
+    9923
+   ],
+   "prompt": "15th-century Netherlandish panel portrait, oil on panel, vertical pleated folds of the robe, tailored, crisp fold lines, an older careworn man in a red hooded robe seated at a table, holding a hand of plain dark cards with both hands, lamplight from below, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+   "negative": "vector, flat, clip art, cartoon, photograph, 3D, glossy, text, letters, pips, extra fingers, deformed hands"
+  }
+ ]
+}

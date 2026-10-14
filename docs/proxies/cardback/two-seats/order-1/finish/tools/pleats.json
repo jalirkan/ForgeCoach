@@ -1,0 +1,122 @@
+{
+ "garnet": {
+  "dir": "/home/justin-a/scenery-packs/two-seats-work/order1/finish",
+  "top": "work/top-final2.png",
+  "r8": "../onepass/work/guide-pre.png",
+  "box": [
+   480,
+   512,
+   1024,
+   864
+  ],
+  "scale": 2,
+  "poly": [
+   [
+    615,
+    563
+   ],
+   [
+    918,
+    563
+   ],
+   [
+    962,
+    615
+   ],
+   [
+    962,
+    818
+   ],
+   [
+    540,
+    818
+   ],
+   [
+    540,
+    640
+   ],
+   [
+    548,
+    612
+   ]
+  ],
+  "robe_hue": [
+   [
+    0,
+    22
+   ],
+   [
+    330,
+    360
+   ]
+  ],
+  "robe_sat": 0.38,
+  "fan_box": [
+   600,
+   660,
+   900,
+   870
+  ],
+  "opacity": 0.5,
+  "prompt": "15th-century Netherlandish panel portrait, oil on panel, vertical pleated folds of the robe, tailored, crisp fold lines, an older careworn man in a red hooded robe seated at a table, holding a hand of plain dark cards with both hands, lamplight from below, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+  "negative": "vector, flat, clip art, cartoon, photograph, 3D, glossy, text, letters, pips, extra fingers, deformed hands",
+  "band_opacity": 0.5,
+  "band_dark": 0.2
+ },
+ "green": {
+  "dir": "/home/justin-a/scenery-packs/two-seats-work/order2/finish",
+  "top": "work/top8-skin.png",
+  "r8": "../onepass/work/guide-pre.png",
+  "box": [
+   480,
+   576,
+   1024,
+   864
+  ],
+  "scale": 2,
+  "poly": [
+   [
+    578,
+    633
+   ],
+   [
+    932,
+    633
+   ],
+   [
+    962,
+    655
+   ],
+   [
+    962,
+    818
+   ],
+   [
+    540,
+    818
+   ],
+   [
+    540,
+    655
+   ]
+  ],
+  "robe_hue": [
+   [
+    140,
+    215
+   ]
+  ],
+  "robe_sat": 0.3,
+  "fan_box": [
+   600,
+   660,
+   900,
+   870
+  ],
+  "opacity": 0.45,
+  "prompt": "15th-century Netherlandish panel portrait, oil on panel, vertical pleated folds of the robe, tailored, crisp fold lines, a composed young woman with auburn hair in a green hooded cloak over a rose gown, seated at a table, holding a hand of plain dark cards with both hands, faintly pleased, lamplight from below, soft modelling, muted palette, matte, visible brushwork, period, no photo, no modern illustration",
+  "negative": "vector, flat, clip art, cartoon, photograph, 3D, glossy, text, letters, pips, extra fingers, deformed hands",
+  "band_opacity": 0.45,
+  "band_dark": 0.35
+ }
+}
