@@ -259,6 +259,13 @@ export function growthPictures(pack: ScenePack, slots: readonly { biome: Biome; 
 const warming = new Set<HTMLImageElement>();
 /** Pictures warmed (or warming) this page load: each once. */
 const warmedSrcs = new Set<string>();
+/** Pictures warmed that have loaded and decoded: a transition (spec 1.7) only cuts to pictures that are here. */
+const readySrcs = new Set<string>();
+
+/** Has this picture been warmed, loaded and decoded this page load? */
+export function pictureReady(src: string): boolean {
+  return readySrcs.has(src);
+}
 
 /**
  * Warm a still picture in the browser's cache, through the same `srcset` the
@@ -271,7 +278,15 @@ export function warmPicture(p: { src: string; src2x: string | null }): void {
   const img = new Image();
   img.decoding = 'async';
   const done = () => warming.delete(img);
-  img.onload = done;
+  img.onload = () => {
+    // Decoded ahead too, so a hard cut to it (spec 1.7) never shows a blank frame.
+    const ok = () => {
+      readySrcs.add(p.src);
+      done();
+    };
+    if (typeof img.decode === 'function') img.decode().then(ok, ok);
+    else ok();
+  };
   img.onerror = done;
   warming.add(img);
   if (p.src2x) img.srcset = `${p.src} 1x, ${p.src2x} 2x`;

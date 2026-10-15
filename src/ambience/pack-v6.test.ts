@@ -4,7 +4,8 @@
  *
  * pack-v6.1 (spec 1.6: the six-picture ladder, forest's stages 3 and 5
  * re-painted) validates on this client: a snapshot of its scenery.json, taken
- * when FORGECOACH_PACK_URL moved to it.
+ * when FORGECOACH_PACK_URL moved to it. (The default is pack-v7 now:
+ * pack-v7.test.ts.)
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -14,7 +15,6 @@ import { FORGECOACH_PACK_URL } from './prefs.ts';
 describe('pack-v6.1', () => {
   const manifest = JSON.parse(readFileSync(new URL('./testdata/pack-v6.1.scenery.json', import.meta.url), 'utf8'));
   const r = validateManifest(manifest, `${FORGECOACH_PACK_URL}scenery.json`);
-  it('is the default pack URL', () => expect(FORGECOACH_PACK_URL).toContain('@pack-v6.1/pack/'));
   it('validates with no errors', () => {
     expect(r.errors).toEqual([]);
     expect(r.pack).toBeTruthy();

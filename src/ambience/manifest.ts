@@ -2,7 +2,7 @@
  * ForgeCoach — ambience/manifest.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The scenery asset pack's manifest (`scenery.json`, schema 1, spec 1.5; the
+ * The scenery asset pack's manifest (`scenery.json`, schema 1, spec 1.7; the
  * contract is docs/scenery-pack-spec.md) and its strict validator. DOM-free.
  * Spec 1.2 adds optional one-shot `effects` (creature enters, attack, damage,
  * landfall, stage up), globally and per biome; spec 1.3 adds optional board
@@ -14,7 +14,10 @@
  * focal point and a safe rect for the crop) and the top-level `half` layout
  * (seam, smallest share, mist); spec 1.6 adds the optional top-level
  * `growth` (the per-land cross-fade toward the next stage: on or off, and how
- * long a land's fade takes). A 1.1–1.5 pack reads as before.
+ * long a land's fade takes); spec 1.7 adds optional per-biome `transitions`
+ * (a few in-between pictures per stage step, played with hard cuts when a
+ * land steps the stage, like limited animation). A 1.1–1.6 pack reads as
+ * before.
  *
  * A pack is untrusted input, served from wherever the user pointed the page:
  * every string is cleaned and clipped, every number range-checked, every URL
@@ -29,7 +32,7 @@ import { BIOMES, MAX_STAGES, type Biome } from './model.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
-export const SPEC_VERSION = '1.6';
+export const SPEC_VERSION = '1.7';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */
@@ -180,6 +183,47 @@ export const DEFAULT_PHONE_SIZE = { width: 1024, height: 1280 } as const;
 export const MAX_HALF_BYTES = 8 * 1024 * 1024;
 const HALF_EXT = /\.(webp|avif|png|jpe?g)$/i;
 
+// ---------------------------------------------------------------------------
+// Transition frames between stages (spec 1.7)
+
+/** Spec 1.7: one in-between picture of a stage step, at the half picture's shapes. */
+export interface TransitionFrame {
+  /** The desktop-shaped picture (the stage's `half` shape, 16:5). */
+  src: string;
+  /** The phone-shaped one (4:5), or null: a phone panel then cross-fades that step. */
+  phone: string | null;
+  /** How long it is held, in ms. */
+  holdMs: number;
+}
+
+/** Spec 1.7: the in-betweens from stage `from` to stage `from + 1`, in order (played backwards when a land leaves). */
+export interface TransitionStep {
+  from: number;
+  frames: TransitionFrame[];
+  /** Declared size of the step's files, for the budget. */
+  bytes: number | null;
+}
+
+/**
+ * Spec 1.7 per-biome `transitions`: a stage step plays its in-between
+ * pictures with hard cuts, each held `holdMs`, then fades into the new
+ * stage's own picture over `fadeMs`. A step without frames cross-fades (1.6).
+ */
+export interface PackTransitions {
+  holdMs: number;
+  fadeMs: number;
+  /** Ordered by `from`, at most one per step. */
+  steps: TransitionStep[];
+}
+
+/** Long enough to register each frame as its own picture (pack v7's 120 ms read as a dissolve). */
+export const DEFAULT_TRANSITION_HOLD_MS = 200;
+export const DEFAULT_TRANSITION_FADE_MS = 180;
+/** In-betweens per step: more than this is no longer "a few frames" (the rest are dropped, with a warning). */
+export const MAX_TRANSITION_FRAMES = 4;
+/** Declared transition files per biome past this get a warning (they are on screen for a fraction of a second). */
+export const MAX_TRANSITION_BYTES = 2 * 1024 * 1024;
+
 export interface PackBiome {
   label: string | null;
   slot: { prefer: SlotPref; weight: number };
@@ -187,6 +231,8 @@ export interface PackBiome {
   stages: PackStage[];
   bloom: { kind: BloomKind; durationMs: number; staggerMs: number };
   idle: { kind: IdleKind; periodMs: number; amplitude: number };
+  /** Spec 1.7: in-between pictures per stage step, or undefined / null (the steps cross-fade). */
+  transitions?: PackTransitions | null;
 }
 
 export interface PackStrip {
@@ -1094,6 +1140,59 @@ function parseGrowth(v: unknown, warn: string[]): PackGrowth {
   return { crossfade, seconds: ranged(v.seconds, 0, MAX_GROWTH_SECONDS, DEFAULT_GROWTH.seconds, 'growth.seconds', warn) };
 }
 
+/**
+ * Spec 1.7: a biome's `transitions`, or null. Each step names `from` (a stage
+ * that has a next one) and 1–4 `frames`, each a desktop-shaped `src` and an
+ * optional `phone`, with an optional own `holdMs`. A step with a bad frame is
+ * dropped whole (the app then cross-fades it), as is a step repeated; when a
+ * stage was dropped the stage numbers no longer line up, so every step is.
+ */
+function parseTransitions(v: unknown, base: string, path: string, warn: string[], stageCount: number, stagesIntact: boolean): PackTransitions | null {
+  if (v === undefined || v === null) return null;
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object; ignored`);
+    return null;
+  }
+  if (!stagesIntact) {
+    warn.push(`${path}: a stage of this biome was dropped, so the steps no longer match their stages; ignored`);
+    return null;
+  }
+  const holdMs = ranged(v.holdMs, 40, 1000, DEFAULT_TRANSITION_HOLD_MS, `${path}.holdMs`, warn, true);
+  const fadeMs = ranged(v.fadeMs, 0, 1000, DEFAULT_TRANSITION_FADE_MS, `${path}.fadeMs`, warn, true);
+  const raw = Array.isArray(v.steps) ? v.steps : null;
+  if (!raw) {
+    warn.push(`${path}.steps: a list of { from, frames }; ignored`);
+    return null;
+  }
+  const steps: TransitionStep[] = [];
+  raw.slice(0, MAX_STAGES).forEach((st, i) => {
+    const sp = `${path}.steps[${i}]`;
+    if (!isObj(st)) return warn.push(`${sp}: not an object; step dropped`);
+    const from = int(st.from, 1, Math.max(1, stageCount - 1));
+    if (from === null || from >= stageCount) return warn.push(`${sp}.from: a stage 1–${stageCount - 1} that has a next stage; step dropped`);
+    if (steps.some((s) => s.from === from)) return warn.push(`${sp}: stage ${from}'s step repeats; step dropped`);
+    const rf = Array.isArray(st.frames) ? st.frames : [];
+    if (!rf.length) return warn.push(`${sp}.frames: 1–${MAX_TRANSITION_FRAMES} frames; step dropped`);
+    if (rf.length > MAX_TRANSITION_FRAMES) warn.push(`${sp}.frames: more than ${MAX_TRANSITION_FRAMES}; the rest ignored`);
+    const problems: string[] = [];
+    const frames: TransitionFrame[] = [];
+    rf.slice(0, MAX_TRANSITION_FRAMES).forEach((f, j) => {
+      const fp = `${sp}.frames[${j}]`;
+      if (!isObj(f)) return problems.push(`${fp}: not an object { src, phone }`);
+      const src = layerUrl(f.src, base, HALF_EXT, HALF_EXT_NAME, `${fp}.src`, problems, false);
+      const phone = layerUrl(f.phone, base, HALF_EXT, HALF_EXT_NAME, `${fp}.phone`, problems, true);
+      if (src) frames.push({ src, phone, holdMs: ranged(f.holdMs, 40, 1000, holdMs, `${fp}.holdMs`, warn, true) });
+    });
+    if (problems.length) return warn.push(...problems.map((p) => `${p}; step dropped`));
+    steps.push({ from, frames, bytes: parseBytes(st, sp, warn) });
+  });
+  if (!steps.length) return null;
+  steps.sort((a, b) => a.from - b.from);
+  const bytes = steps.reduce((n, s) => n + (s.bytes ?? 0), 0);
+  if (bytes > MAX_TRANSITION_BYTES) warn.push(`${path}: ${(bytes / 1048576).toFixed(1)} MB of transition frames declared; their budget is ${MAX_TRANSITION_BYTES / 1048576} MB per biome (frames kept)`);
+  return { holdMs, fadeMs, steps };
+}
+
 /** A pack's growth between stages, or the defaults (no pack, or a pack before 1.6). */
 export function growthOf(pack: ScenePack | null | undefined): PackGrowth {
   return pack?.growth ?? DEFAULT_GROWTH;
@@ -1174,6 +1273,8 @@ function parseBiome(v: unknown, base: string, path: string, warn: string[]): Pac
   }
   const slot = isObj(v.slot) ? v.slot : {};
   const bloom = isObj(v.bloom) ? v.bloom : {};
+  // Spec 1.7: in-between pictures per stage step.
+  const transitions = parseTransitions(v.transitions, base, `${path}.transitions`, warn, stages.length, stages.length === Math.min(rawStages.length, MAX_STAGES));
   const idle = isObj(v.idle) ? v.idle : {};
   return {
     label: cleanText(v.label, 60),
@@ -1192,6 +1293,7 @@ function parseBiome(v: unknown, base: string, path: string, warn: string[]): Pac
       periodMs: ranged(idle.periodMs, 1000, 60000, 9000, `${path}.idle.periodMs`, warn, true),
       amplitude: ranged(idle.amplitude, 0, 1, 0.3, `${path}.idle.amplitude`, warn),
     },
+    ...(transitions ? { transitions } : {}),
   };
 }
 

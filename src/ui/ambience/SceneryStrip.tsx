@@ -21,6 +21,14 @@
  * picture beneath until the new one is whole. At most two pictures per slot
  * once a fade settles; the next stage's moving layers wait for the stage.
  *
+ * Transition frames (spec 1.7): when a land steps a slot's half picture to
+ * the next stage and the pack has that step's in-betweens (warmed while the
+ * slot sat at its stage, and decoded), they play over the slot with hard cuts
+ * at their holds — limited animation, not a morph — while the picture beneath
+ * switches at once to the new stage; the last frame then fades into it. No
+ * frames (or not loaded yet), the strip art, or reduced motion: the 1.6
+ * cross-fade (or the instant change) as before.
+ *
  * `fill="half"` (spec 1.5, Settings → Fill each side): the same slots fill
  * the player's whole half of the board instead of a strip, split by land
  * count (layout.ts `halfLayout`), each slot's art in a frame of the art's
@@ -33,10 +41,13 @@ import { createContext, memo, useCallback, useContext, useEffect, useId, useLayo
 import type { Biome, SlotState } from '../../ambience/model.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, growthOf, halfAt, layersAt, type PackBiome, type PackGrowth, type PackHalf, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
 import { growthMs, nextStageFade, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
+import { nextStepFrames, transitionFrames, tweenAllowed, type TransitionShape } from '../../ambience/transitions.ts';
+import { pictureReady, warmPicture } from '../../ambience/pack.ts';
 import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt } from '../../ambience/layout.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import { useFadeIn, useFadeStack } from './useFade.ts';
+import { useTween } from './useTween.ts';
 import './scenery.css';
 
 export type { StripEffect } from './SceneryEffects.tsx';
@@ -207,6 +218,29 @@ function Slot({
   const nextChosen = pic && nextPicture ? halfArtOf(nextPicture, panelAspect) : null;
   const nextArt = nextChosen?.picture && nextChosen.picture.src !== pic!.src && !failed.includes(nextChosen.picture.src) ? nextChosen : null;
 
+  // Spec 1.7: the in-between frames of a stage step, played over the half picture when they are warmed and decoded.
+  const shape: TransitionShape = art?.source === 'phone' ? 'phone' : 'desktop';
+  const tweenable = !!pic && art?.source !== 'strip' && !withered;
+  const tweenCtx = useRef({ pack, shape, tweenable, reduced });
+  tweenCtx.current = { pack, shape, tweenable, reduced };
+  const tween = useTween(
+    drawn,
+    useCallback((from: number, to: number) => {
+      const c = tweenCtx.current;
+      if (!c.tweenable || !tweenAllowed(c.pack?.transitions, c.reduced, from)) return null;
+      const frames = transitionFrames(c.pack, from, to, c.shape);
+      return frames && frames.every((f) => pictureReady(f.src)) ? frames : null;
+    }, []),
+    pack?.transitions?.fadeMs ?? 0,
+  );
+  // The next step's frames warm while the slot sits at its stage, so the cuts are never loads.
+  useEffect(() => {
+    if (!tweenable || reduced || !pack?.transitions) return;
+    for (const src of nextStepFrames(pack, drawn, shape)) warmPicture({ src, src2x: null });
+  }, [pack, drawn, shape, tweenable, reduced]);
+  // While frames play they cover the change: the picture beneath switches at once.
+  const groupMs = tween.frames ? 0 : ms;
+
   // A pack's layers: its still images cross-fade by id toward the next stage's; moving layers are the stage's own.
   const curLayers = pack ? layersAt(pack, drawn) : [];
   const nextLayers = pack && hasNextStage ? layersAt(pack, drawn + 1) : [];
@@ -230,14 +264,24 @@ function Slot({
         cur={{ key: pic.src, payload: art! }}
         next={nextArt && fade > 0 ? { key: nextArt.picture!.src, payload: nextArt } : null}
         fade={fade}
-        ms={ms}
+        ms={groupMs}
         render={(e) => (
-          <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={e.role === 'cur' ? bloom : NO_BLOOM} order={0} reduced={reduced}>
+          <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={groupMs} bloom={e.role === 'cur' ? bloom : NO_BLOOM} order={0} reduced={reduced}>
             <HalfPictureView art={e.payload} onFail={fail} />
           </Layer>
         )}
       />,
     );
+    if (tween.frames) {
+      // Every frame is mounted for the sequence (they are decoded already); only the one on screen is drawn: hard cuts.
+      groups.push(
+        <Layer key="tween" z={-99} depth={0} fade={tween.fading ? 0 : 1} from={1} ms={tween.fading ? tween.fadeMs : 0} bloom={NO_BLOOM} order={0} reduced={reduced}>
+          {tween.frames.map((f, i) => (
+            <HalfPictureView key={f.src} art={{ ...art!, picture: { ...art!.picture!, src: f.src, src2x: null } }} onFail={() => {}} hidden={i !== tween.index} />
+          ))}
+        </Layer>,
+      );
+    }
   } else if (pack) {
     for (const id of uniqueIds([stills, fade > 0 ? nextStills : []])) {
       const c = stills.find((l) => l.id === id) ?? null;
@@ -280,6 +324,7 @@ function Slot({
       data-progress={progress || undefined}
       data-fade={fade || undefined}
       data-art={art?.source}
+      data-tween={tween.frames ? `${tween.index + 1}/${tween.frames.length}${tween.fading ? ' fading' : ''}` : undefined}
     >
       {pic ? (
         <>
@@ -311,10 +356,10 @@ function FadeGroup<T>({ cur, next, fade, ms, render }: { cur: FadeWant<T> | null
 }
 
 /** A half picture in its own frame (each stage's picture keeps its own crop). */
-function HalfPictureView({ art, onFail }: { art: HalfArt; onFail: (src: string) => void }) {
+function HalfPictureView({ art, onFail, hidden = false }: { art: HalfArt; onFail: (src: string) => void; hidden?: boolean }) {
   const pic = art.picture!;
   return (
-    <div className="scn-frame" style={halfFrameCss(art)}>
+    <div className="scn-frame" style={hidden ? { ...halfFrameCss(art), opacity: 0 } : halfFrameCss(art)}>
       <img className="scn-half-img" src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onError={() => onFail(pic.src)} />
     </div>
   );
