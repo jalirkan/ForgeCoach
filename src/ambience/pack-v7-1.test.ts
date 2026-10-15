@@ -6,7 +6,9 @@
  * step, held 200 ms) validates on this client: a snapshot of its
  * scenery.json, identical to what jsDelivr serves at the tag, taken when
  * FORGECOACH_PACK_URL moved to it. pack-v7 stays at its own tag
- * (pack-v7.test.ts), so the two can be compared by flipping the URL.
+ * (pack-v7.test.ts), so the two can be compared by flipping the URL. (The
+ * default is pack-v7.2 now, three frames on its seven biggest steps:
+ * pack-v7-2.test.ts.)
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -17,7 +19,6 @@ import { transitionFrames, tweenLength } from './transitions.ts';
 describe('pack-v7.1', () => {
   const manifest = JSON.parse(readFileSync(new URL('./testdata/pack-v7.1.scenery.json', import.meta.url), 'utf8'));
   const r = validateManifest(manifest, `${FORGECOACH_PACK_URL}scenery.json`);
-  it('is the default pack URL', () => expect(FORGECOACH_PACK_URL).toContain('@pack-v7.1/pack/'));
   it('validates with no errors, and is written for this spec', () => {
     expect(r.errors).toEqual([]);
     expect(r.pack!.spec).toBe('1.7');
