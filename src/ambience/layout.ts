@@ -271,15 +271,18 @@ export function halfFrameCss(art: Pick<HalfArt, 'aspect' | 'focal' | 'safe'>): {
   };
 }
 
-/** Each slot's pixel span across a half `width` px wide: shares of the width plus the seams they overlap (as the flex row lays them out). */
-export function halfSpans(layout: HalfSlotLayout[], width: number, seamRatio = DEFAULT_HALF_LAYOUT.seamRatio): { left: number; width: number }[] {
-  const seam = layout.length > 1 ? seamRatio * width : 0;
-  const total = width + seam * (layout.length - 1);
+/**
+ * Each slot's pixel span across a half `width` px wide: shares of the width plus the seams they overlap (as the flex row lays them out).
+ * `seamRatio` is one seam for every neighbour, or (spec 1.8, a pair's duals widen its own seam) a list: the seam left of each slot, the first unused.
+ */
+export function halfSpans(layout: HalfSlotLayout[], width: number, seamRatio: number | readonly number[] = DEFAULT_HALF_LAYOUT.seamRatio): { left: number; width: number }[] {
+  const seamAt = (i: number) => (i === 0 || layout.length < 2 ? 0 : (typeof seamRatio === 'number' ? seamRatio : (seamRatio[i] ?? DEFAULT_HALF_LAYOUT.seamRatio)) * width);
+  const total = width + layout.reduce((n, _, i) => n + seamAt(i), 0);
   const sum = layout.reduce((n, l) => n + l.share, 0) || 1;
   let x = 0;
   return layout.map((l, i) => {
     const w = (l.share / sum) * total;
-    const left = i === 0 ? 0 : x - seam;
+    const left = i === 0 ? 0 : x - seamAt(i);
     x = left + w;
     return { left: Math.round(left * 10) / 10, width: Math.round(w * 10) / 10 };
   });

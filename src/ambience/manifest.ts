@@ -16,8 +16,11 @@
  * `growth` (the per-land cross-fade toward the next stage: on or off, and how
  * long a land's fade takes); spec 1.7 adds optional per-biome `transitions`
  * (a few in-between pictures per stage step, played with hard cuts when a
- * land steps the stage, like limited animation). A 1.1–1.6 pack reads as
- * before.
+ * land steps the stage, like limited animation); spec 1.8 adds the optional
+ * top-level `bridges` (per biome pair, a transparent ground piece drawn
+ * across the seam where the two biomes meet on one side, placed by an anchor
+ * on the seam, and how much each of the pair's dual lands widens that seam).
+ * A 1.1–1.7 pack reads as before.
  *
  * A pack is untrusted input, served from wherever the user pointed the page:
  * every string is cleaned and clipped, every number range-checked, every URL
@@ -28,11 +31,11 @@
  * scene); only a manifest that is not a schema-1 pack at all is an error.
  */
 import { cleanText, int, num } from '../lab/status.ts';
-import { BIOMES, MAX_STAGES, type Biome } from './model.ts';
+import { BIOMES, MAX_STAGES, pairKey, type Biome } from './model.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
-export const SPEC_VERSION = '1.7';
+export const SPEC_VERSION = '1.8';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */
@@ -223,6 +226,54 @@ export const DEFAULT_TRANSITION_FADE_MS = 180;
 export const MAX_TRANSITION_FRAMES = 4;
 /** Declared transition files per biome past this get a warning (they are on screen for a fraction of a second). */
 export const MAX_TRANSITION_BYTES = 2 * 1024 * 1024;
+
+// ---------------------------------------------------------------------------
+// Bridges across the seam (spec 1.8)
+
+/** Where a bridge piece sits on its seam: its centre's height (0 top … 1 bottom of the half) and its width (a fraction of the half's width). */
+export interface BridgeAnchor {
+  y: number;
+  width: number;
+}
+
+/** One picture of a bridge: the desktop seam crop, or the phone one. */
+export interface BridgePicture {
+  src: string;
+  src2x: string | null;
+  anchor: BridgeAnchor;
+}
+
+/**
+ * Spec 1.8: a transparent ground piece for one biome pair, drawn across the
+ * seam where the two meet on one side of the board (a river from the lagoon
+ * into the forest floor), and how the pair's dual lands widen that seam.
+ * Painted with `left` on the left; drawn mirrored when the board's order is
+ * the reverse.
+ */
+export interface PackBridge {
+  /** {@link pairKey}: the two biomes in alphabetical order, `forest+island`. */
+  key: string;
+  /** The biome the art has on its left, and on its right (the manifest key's order). */
+  left: Biome;
+  right: Biome;
+  /** The desktop seam crop (with its anchor). */
+  desktop: BridgePicture;
+  /** The phone seam crop, or null (a phone-shaped half then draws the desktop piece). */
+  phone: BridgePicture | null;
+  /** How much each dual land of the pair widens the seam, as a fraction of the half's width. */
+  dualsWiden: number;
+  /** The widest the duals make the seam (a fraction of the half's width). */
+  maxSeamRatio: number;
+  /** Declared size of every file of the bridge, for the budget. */
+  bytes: number | null;
+}
+
+/** Spec 1.8 defaults: the anchor (a ground piece in the lower half), +0.02 of the width per dual up to 0.18 (the cross-biome study's §4). */
+export const DEFAULT_BRIDGE_ANCHOR: BridgeAnchor = { y: 0.72, width: 0.4 };
+export const DEFAULT_DUALS_WIDEN = 0.02;
+export const DEFAULT_MAX_SEAM_RATIO = 0.18;
+/** Declared bridge files for the whole pack past this get a warning. */
+export const MAX_BRIDGE_BYTES = 3 * 1024 * 1024;
 
 export interface PackBiome {
   label: string | null;
@@ -877,6 +928,8 @@ export interface ScenePack {
   half?: PackHalfLayout;
   /** Spec 1.6: the growth between stages (defaults when the pack does not say). */
   growth?: PackGrowth;
+  /** Spec 1.8: bridges across the seam, keyed by {@link pairKey} (both orders of a pair find the one entry), or undefined / null. */
+  bridges?: Partial<Record<string, PackBridge>> | null;
 }
 
 export interface ManifestResult {
@@ -1193,6 +1246,90 @@ function parseTransitions(v: unknown, base: string, path: string, warn: string[]
   return { holdMs, fadeMs, steps };
 }
 
+/** A bridge picture's anchor (`fallback` for what it leaves out), or the fallback when it is not an object. */
+function parseBridgeAnchor(v: unknown, path: string, warn: string[], fallback: BridgeAnchor): BridgeAnchor {
+  if (v === undefined || v === null) return { ...fallback };
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object { y, width }; using y ${fallback.y}, width ${fallback.width}`);
+    return { ...fallback };
+  }
+  return { y: ranged(v.y, 0, 1, fallback.y, `${path}.y`, warn), width: ranged(v.width, 0.05, 1, fallback.width, `${path}.width`, warn) };
+}
+
+/**
+ * Spec 1.8: the top-level `bridges`, or null. Keys are two different biomes
+ * joined by `+`, in either order (the order is the art's left and right); a
+ * pair given twice keeps its first entry. An entry without a usable `src` is
+ * dropped; a bad `phone` drops only the phone picture.
+ */
+function parseBridges(v: unknown, base: string, warn: string[]): Partial<Record<string, PackBridge>> | null {
+  if (v === undefined || v === null) return null;
+  if (!isObj(v)) {
+    warn.push('bridges: not an object keyed by biome pairs ("forest+island"); ignored');
+    return null;
+  }
+  const out: Partial<Record<string, PackBridge>> = {};
+  for (const rawKey of Object.keys(v)) {
+    const path = `bridges.${cleanText(rawKey, 40)}`;
+    const parts = rawKey.split('+');
+    const [a, b] = parts as [Biome, Biome];
+    if (parts.length !== 2 || !(BIOMES as readonly string[]).includes(a) || !(BIOMES as readonly string[]).includes(b) || a === b) {
+      warn.push(`${path}: not a pair of two different biomes joined by + ("forest+island"); ignored`);
+      continue;
+    }
+    const key = pairKey(a, b);
+    if (out[key]) {
+      warn.push(`${path}: the pair ${key} is given twice; the first is kept`);
+      continue;
+    }
+    const e = v[rawKey];
+    if (!isObj(e)) {
+      warn.push(`${path}: not an object { src, phone, anchor, dualsWiden }; ignored`);
+      continue;
+    }
+    const problems: string[] = [];
+    const src = layerUrl(e.src, base, HALF_EXT, HALF_EXT_NAME, `${path}.src`, problems, false);
+    if (problems.length) {
+      warn.push(...problems.map((p) => `${p}; bridge dropped`));
+      continue;
+    }
+    const opt: string[] = [];
+    const src2x = layerUrl(e.src2x, base, HALF_EXT, HALF_EXT_NAME, `${path}.src2x`, opt, true);
+    for (const o of opt) warn.push(`${o}; ignored`);
+    const anchor = parseBridgeAnchor(e.anchor, `${path}.anchor`, warn, DEFAULT_BRIDGE_ANCHOR);
+    let phone: BridgePicture | null = null;
+    if (e.phone !== undefined && e.phone !== null) {
+      if (!isObj(e.phone)) warn.push(`${path}.phone: not an object { src, src2x, anchor }; ignored`);
+      else {
+        const pp: string[] = [];
+        const psrc = layerUrl(e.phone.src, base, HALF_EXT, HALF_EXT_NAME, `${path}.phone.src`, pp, false);
+        if (pp.length) warn.push(...pp.map((p) => `${p}; phone picture dropped`));
+        else {
+          const po: string[] = [];
+          const p2x = layerUrl(e.phone.src2x, base, HALF_EXT, HALF_EXT_NAME, `${path}.phone.src2x`, po, true);
+          for (const o of po) warn.push(`${o}; ignored`);
+          phone = { src: psrc!, src2x: p2x, anchor: parseBridgeAnchor(e.phone.anchor, `${path}.phone.anchor`, warn, anchor) };
+        }
+      }
+    }
+    out[key] = {
+      key,
+      left: a,
+      right: b,
+      desktop: { src: src!, src2x, anchor },
+      phone,
+      dualsWiden: ranged(e.dualsWiden, 0, 0.1, DEFAULT_DUALS_WIDEN, `${path}.dualsWiden`, warn),
+      maxSeamRatio: ranged(e.maxSeamRatio, 0, 0.3, DEFAULT_MAX_SEAM_RATIO, `${path}.maxSeamRatio`, warn),
+      bytes: parseBytes(e, path, warn),
+    };
+  }
+  const list = Object.values(out) as PackBridge[];
+  if (!list.length) return null;
+  const bytes = list.reduce((n, x) => n + (x.bytes ?? 0), 0);
+  if (bytes > MAX_BRIDGE_BYTES) warn.push(`bridges: ${(bytes / 1048576).toFixed(1)} MB of bridge files declared; their budget is ${MAX_BRIDGE_BYTES / 1048576} MB for the pack (bridges kept)`);
+  return out;
+}
+
 /** A pack's growth between stages, or the defaults (no pack, or a pack before 1.6). */
 export function growthOf(pack: ScenePack | null | undefined): PackGrowth {
   return pack?.growth ?? DEFAULT_GROWTH;
@@ -1368,6 +1505,7 @@ export function validateManifest(raw: unknown, base: string): ManifestResult {
     if (!spec) warnings.push(`spec: "${cleanText(raw.spec, 20) ?? typeof raw.spec}" is not a 1.x version; ignored`);
     else if (Number(spec.split('.')[1]) > Number(SPEC_VERSION.split('.')[1])) warnings.push(`spec: the pack is written for ${spec}; this ForgeCoach reads ${SPEC_VERSION}, so newer fields are ignored`);
   }
+  const bridges = parseBridges(raw.bridges, b, warnings);
   return {
     pack: {
       schema: 1,
@@ -1383,6 +1521,7 @@ export function validateManifest(raw: unknown, base: string): ManifestResult {
       overlays,
       half: parseHalfLayout(raw.half, warnings),
       growth: parseGrowth(raw.growth, warnings),
+      ...(bridges ? { bridges } : {}),
     },
     errors,
     warnings,

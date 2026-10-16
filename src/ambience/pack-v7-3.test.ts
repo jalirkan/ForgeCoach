@@ -8,7 +8,9 @@
  * client: a snapshot of its scenery.json, identical to what jsDelivr serves
  * at the tag, taken when FORGECOACH_PACK_URL moved to it. pack-v7.2 stays at
  * its tag (pack-v7-2.test.ts), so the old and new stage 6 can be compared by
- * flipping the URL.
+ * flipping the URL. (The default is pack-v8 now, which adds a bridge across
+ * the seam for every biome pair, spec 1.8: pack-v8.test.ts. pack-v7.3 stays
+ * at its tag as the fallback, this snapshot with it.)
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -22,10 +24,10 @@ const THREE: Record<string, number[]> = { island: [1], mountain: [2], swamp: [2,
 describe('pack-v7.3', () => {
   const manifest = JSON.parse(readFileSync(new URL('./testdata/pack-v7.3.scenery.json', import.meta.url), 'utf8'));
   const r = validateManifest(manifest, `${FORGECOACH_PACK_URL}scenery.json`);
-  it('is the default pack URL', () => expect(FORGECOACH_PACK_URL).toContain('@pack-v7.3/pack/'));
   it('validates with no errors, and is written for this spec', () => {
     expect(r.errors).toEqual([]);
     expect(r.pack!.spec).toBe('1.7');
+    expect(r.pack!.bridges).toBeUndefined();
     expect(r.warnings.filter((w) => /spec|transitions/.test(w))).toEqual([]);
   });
   it('has six stages, one per land, and the front layer', () => {

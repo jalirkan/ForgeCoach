@@ -974,3 +974,21 @@
 .scn-ovl.is-reduced * {
   animation: none !important;
 }
+
+/* Spec 1.8: a bridge across the seam (SceneryStrip `BridgeView`): a transparent ground piece centred on the seam where two
+   biomes meet (left: the seam's middle, in the half's container units; top: the anchor's height), over both panels and
+   under the centre line's mist (it sits in the row, so the row's mist mask fades it as it fades the panels). */
+.scn-half .scn-bridge {
+  position: absolute;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.scn-bridge img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.scn-bridge.is-mirrored img {
+  transform: scaleX(-1);
+}
