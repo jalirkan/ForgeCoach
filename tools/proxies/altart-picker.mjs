@@ -8,6 +8,8 @@
 //   node tools/proxies/altart-picker.mjs <list.txt> [<list2.txt> ...]
 //        [--name <base>] [--out docs/proxies/altart] [--cache <dir>]
 //        [--delay <ms>] [--budget-min <minutes>] [--batch] [--no-sheet]
+//        [--prefer-old-frame]
+//   node tools/proxies/altart-picker.mjs --self-test     (offline; exits 1 on a failure)
 //
 // Pace: one request at a time, --delay apart (1500 ms by default: mpcfill.com
 // answered 429 with Retry-After: 10 after 15 requests in 5 s at 350 ms). A 429 is
@@ -27,6 +29,26 @@
 //
 // The owner's rule (2026-10-12): "alternate art and full-art versions; ... they're
 // proxies so I don't care about original printings; maximise fun."
+//
+// --prefer-old-frame turns that around, for an Old School cube (the owner,
+// 2026-10-15: "prefer the ORIGINAL 1993-94 printings ... old frame"). Every
+// eligible version competes, not only the alternates, ranked:
+//   1. old frame first: Autofill's Frame > "Retro" tag (its aliases are Retro
+//      Frame, Ancient, Original Frame, OG Frame, Alpha, Beta, Unlimited, ABU,
+//      Classic; GET /2/tags/) or the same words in the image name; never a
+//      version with a modern treatment (any TIERS rank: borderless, extended,
+//      full art, showcase, alt/custom art ...), one marked "(Normal)" or M15
+//      (a contributor's regular-frame redraw, e.g. "(Normal) [LEA] {38}"), or
+//      one from a digital set;
+//   2. then dpi >= 600, as in the default rule;
+//   3. then the printing's release date, ascending. The printing is read from
+//      the image name: a set code ("[LEA] {38}", "(A25 33)", "(A. Lundell, VMA 4)")
+//      or a set name ("(Arabian Nights)", "Beta"), checked against Scryfall's
+//      /sets (one request, cached beside the API cache), which also says which
+//      sets are digital-only. An old-frame version naming no printing ranks just
+//      after the dated 1993-94 ones, before a later retro-frame reprint;
+//   4. then (versions not in the old frame) untreated before treated, paper
+//      before digital, then dpi, date added, and the editor's order.
 //
 // API (read from github.com/chilli-axe/mpc-autofill, frontend/src/store/api.ts and
 // MPCAutofill/cardpicker/urls.py + views.py), at the backend https://mpcfill.com:
@@ -65,7 +87,7 @@ const MIN_GOOD_DPI = 600;
 
 // ---------- arguments ----------
 const args = process.argv.slice(2);
-const opt = { out: 'docs/proxies/altart', cache: join(tmpdir(), 'forgecoach-altart-cache'), delay: 1500, batch: false, budgetMin: 20, sheet: true, name: null };
+const opt = { out: 'docs/proxies/altart', cache: join(tmpdir(), 'forgecoach-altart-cache'), delay: 1500, batch: false, budgetMin: 20, sheet: true, name: null, preferOldFrame: false, selfTest: false };
 const lists = [];
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -76,14 +98,18 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--name') opt.name = args[++i];
   else if (a === '--no-sheet') opt.sheet = false;
   else if (a === '--batch') opt.batch = true;
+  else if (a === '--prefer-old-frame') opt.preferOldFrame = true;
+  else if (a === '--self-test') opt.selfTest = true;
   else if (a.startsWith('--')) die(`unknown flag ${a}`);
   else lists.push(a);
 }
-if (!lists.length) die('usage: altart-picker.mjs <list.txt> [...] [--name base] [--out dir] [--cache dir] [--delay ms] [--budget-min m] [--batch] [--no-sheet]');
-const base = opt.name ?? basename(lists[0]).replace(/\.txt$/, '');
-mkdirSync(opt.out, { recursive: true });
-mkdirSync(join(opt.cache, 'api'), { recursive: true });
-mkdirSync(join(opt.cache, 'thumbs'), { recursive: true });
+if (!lists.length && !opt.selfTest) die('usage: altart-picker.mjs <list.txt> [...] [--name base] [--out dir] [--cache dir] [--delay ms] [--budget-min m] [--batch] [--no-sheet] [--prefer-old-frame] | --self-test');
+const base = opt.name ?? basename(lists[0] ?? 'self-test').replace(/\.txt$/, '');
+if (!opt.selfTest) {
+  mkdirSync(opt.out, { recursive: true });
+  mkdirSync(join(opt.cache, 'api'), { recursive: true });
+  mkdirSync(join(opt.cache, 'thumbs'), { recursive: true });
+}
 
 function die(msg, code = 1) { console.error(msg); process.exit(code); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -149,23 +175,7 @@ async function api(method, path, body) {
 }
 
 // ---------- the database ----------
-const sources = (await api('GET', '/2/sources/')).results;
-// getDefaultSearchSettings (frontend/src/store/slices/searchSettingsSlice.ts):
-// every source on, in Object.values order; fuzzy off; DPI 0..1500; 30 MB; NSFW out.
-const searchSettings = {
-  searchTypeSettings: { fuzzySearch: false, filterCardbacks: false },
-  sourceSettings: { sources: Object.values(sources).map((s) => [s.pk, true]) },
-  filterSettings: { minimumDPI: 0, maximumDPI: 1500, maximumSize: 30, languages: [], includesTags: [], excludesTags: ['NSFW'] },
-};
-const dfcRaw = (await api('GET', '/2/DFCPairs/')).dfcPairs;
-const dfc = new Map();
-for (const [front, back] of Object.entries(dfcRaw)) {
-  // Meld halves ("... Top" / "... Bottom") are not second faces: the README
-  // prints the meld cards one-sided, their partners are not in the cube.
-  if (/\s(top|bottom)$/i.test(back)) continue;
-  dfc.set(processQuery(front), back);
-}
-
+// (the sources and DFC pairs are fetched below the pick rule, after --self-test)
 const prefetched = new Map(); // query -> ids (--batch)
 const cardCache = new Map(); // id -> card record (--batch)
 async function prefetch(queryNames) {
@@ -228,7 +238,60 @@ function demotedWhy(c, t) {
 const dateOf = (c) => Date.parse(String(c.dateCreated ?? '').replace(/(\d+)(st|nd|rd|th)/, '$1').replace(',', '')) || 0;
 const parenOf = (name) => (name.match(/\(([^)]*)\)/)?.[1] ?? '').toLowerCase();
 
+// ---------- --prefer-old-frame ----------
+// Scryfall /sets, reduced to code -> {date, digital} and lower-case name -> code.
+let setTable = null;
+const SET_WORDS = { alpha: 'lea', beta: 'leb', unlimited: '2ed', revised: '3ed', 'arabian nights': 'arn', antiquities: 'atq', legends: 'leg', 'the dark': 'drk', 'fallen empires': 'fem', 'summer magic': 'sum', 'collectors edition': 'ced', 'international edition': 'cei' };
+const OLD_FRAME_WORDS = /\b(retro|old[\s-]?frame|ancient|original frame|og frame|abu|alpha|beta|unlimited)\b/;
+function makeSetTable(sets) {
+  const byCode = new Map(), byName = new Map();
+  for (const x of sets) {
+    byCode.set(x.code.toLowerCase(), { code: x.code.toLowerCase(), date: Date.parse(x.released_at ?? '') || null, digital: !!x.digital });
+    byName.set(x.name.toLowerCase(), x.code.toLowerCase());
+  }
+  for (const [w, code] of Object.entries(SET_WORDS)) if (byCode.has(code)) byName.set(w, code);
+  return { byCode, byName };
+}
+// The printing an image's name says it is, or null. Bracketed codes any case;
+// a code inside parentheses only in capitals ("(A25 33)", "(VMA 4)"), so that
+// "(holo)" or "(Normal)" is never read as a set.
+function printingOf(name) {
+  if (!setTable) return null;
+  const found = [];
+  for (const m of name.matchAll(/\[([A-Za-z0-9]{3,6})\]/g)) found.push(m[1].toLowerCase());
+  for (const m of name.matchAll(/\(([^)]*)\)/g)) {
+    for (const part of m[1].split(',')) {
+      const pm = part.trim().match(/^([A-Z0-9]{3,6})(?:\s+[0-9]+[a-z]?)?$/);
+      if (pm) found.push(pm[1].toLowerCase());
+    }
+    const inner = m[1].toLowerCase();
+    for (const [w, code] of setTable.byName) if (w.length >= 4 && new RegExp(`(^|[^a-z])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z])`).test(inner)) found.push(code);
+  }
+  const known = found.map((c) => setTable.byCode.get(c)).filter((x) => x && x.date);
+  if (!known.length) return null;
+  const paper = known.filter((x) => !x.digital);
+  const pool = paper.length ? paper : known;
+  return pool.reduce((a, b) => (b.date < a.date ? b : a));
+}
+const UNDATED_OLD = Date.parse('1995-01-01'); // after the 1993-94 sets, before any later reprint
+function oldFrameRank(c, t) {
+  const n = c.name.toLowerCase();
+  const p = printingOf(c.name);
+  const treatedTier = TIERS.findIndex(([, test]) => test(n, t));
+  const treated = treatedTier >= 0;
+  const digital = !!p?.digital;
+  // Words are read from the image name's (...) and [...] parts only: the card's
+  // own name can hold them (Abu Ja'far, Alpha Myr).
+  const extras = (n.match(/\([^)]*\)|\[[^\]]*\]/g) ?? []).join(' ');
+  const regularFrame = /\bnormal\b|\bm15\b/.test(extras) || t.has('m15') || t.has('modern');
+  const old = !treated && !digital && !regularFrame && (t.has('retro') || OLD_FRAME_WORDS.test(extras));
+  const date = p && !p.digital ? p.date : (old ? UNDATED_OLD : Infinity);
+  return { old, treated, treatedTier, digital, date, code: p?.code ?? null };
+}
+const ymd = (ms) => new Date(ms).toISOString().slice(0, 10);
+
 function pick(versions, cardName, face, match = null) {
+  if (opt.preferOldFrame) return pickOldFrame(versions, cardName, face, match);
   const wantKey = sameCardKey(cardName);
   const eligible = [];
   let firstExcluded = null;
@@ -266,6 +329,137 @@ function pick(versions, cardName, face, match = null) {
   const w = pool[0];
   const lowDpi = w.c.dpi < MIN_GOOD_DPI ? ` (only alternates below ${MIN_GOOD_DPI} dpi)` : '';
   return { c: w.c, why: `${TIERS[w.tier][0]}${lowDpi}; best of ${pool.length} at that rank by dpi/date${pairNote}`, tierName: TIERS[w.tier][0], ...stats };
+}
+
+function pickOldFrame(versions, cardName, face, match) {
+  const wantKey = sameCardKey(cardName);
+  const eligible = [];
+  let firstExcluded = null;
+  versions.forEach((c, order) => {
+    const why = excludedWhy(c, wantKey, face);
+    if (why) { if (order === 0) firstExcluded = why; return; }
+    const t = tagSet(c);
+    eligible.push({ c, order, demoted: demotedWhy(c, t), r: oldFrameRank(c, t) });
+  });
+  const olds = eligible.filter((e) => e.r.old && !e.demoted);
+  const stats = { versions: versions.length, eligible: eligible.length, alternates: olds.length };
+  if (!eligible.length) {
+    return versions.length ? { c: versions[0], why: `default (no eligible version; #1 is ${firstExcluded})`, ...stats } : null;
+  }
+  let pool = eligible.filter((e) => !e.demoted);
+  if (!pool.length) pool = eligible;
+  let pairNote = '';
+  if (match) {
+    const same = pool.filter((e) => e.c.sourceName === match.sourceName);
+    if (same.length) { pool = same; pairNote = ', same source as the front'; }
+  }
+  pool.sort((a, b) =>
+    (a.r.old ? 0 : 1) - (b.r.old ? 0 : 1)
+    || (a.c.dpi >= MIN_GOOD_DPI ? 0 : 1) - (b.c.dpi >= MIN_GOOD_DPI ? 0 : 1)
+    || (a.r.treated ? 1 : 0) - (b.r.treated ? 1 : 0)
+    || (a.r.digital ? 1 : 0) - (b.r.digital ? 1 : 0)
+    || a.r.date - b.r.date
+    || b.c.dpi - a.c.dpi || dateOf(b.c) - dateOf(a.c) || a.order - b.order);
+  const w = pool[0];
+  const printing = w.r.code ? `${w.r.code.toUpperCase()} ${ymd(setTable.byCode.get(w.r.code).date)}` : 'printing not named';
+  const lowDpi = w.c.dpi < MIN_GOOD_DPI ? ` (below ${MIN_GOOD_DPI} dpi)` : '';
+  if (w.r.old) {
+    return { c: w.c, why: `old frame, ${printing}${lowDpi}; best of ${olds.length} old-frame versions${pairNote}`, tierName: 'old frame', ...stats };
+  }
+  const what = w.r.treated ? TIERS[w.r.treatedTier][0] : 'regular';
+  return { c: w.c, why: `default (no old-frame version; ${what}, ${printing}${lowDpi})${pairNote}`, ...stats };
+}
+
+// ---------- self-test (offline) ----------
+if (opt.selfTest) {
+  const fail = [];
+  const check = (label, got, want) => { if (got !== want) fail.push(`${label}: got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`); else console.log(`ok  ${label}`); };
+  setTable = makeSetTable([
+    { code: 'lea', name: 'Limited Edition Alpha', released_at: '1993-08-05' },
+    { code: 'leb', name: 'Limited Edition Beta', released_at: '1993-10-04' },
+    { code: '2ed', name: 'Unlimited Edition', released_at: '1993-12-01' },
+    { code: 'arn', name: 'Arabian Nights', released_at: '1993-12-17' },
+    { code: 'leg', name: 'Legends', released_at: '1994-06-01' },
+    { code: 'vma', name: 'Vintage Masters', released_at: '2014-06-16', digital: true },
+    { code: 'me4', name: 'Masters Edition IV', released_at: '2011-01-10', digital: true },
+    { code: 'a25', name: 'Masters 25', released_at: '2018-03-16' },
+    { code: 'dmr', name: 'Dominaria Remastered', released_at: '2023-01-13' },
+  ]);
+  const v = (name, dpi, tags = [], extra = {}) => ({ name, dpi, tags, extension: 'jpg', identifier: name, searchq: sameCardKey(name), sourceName: extra.src ?? 'S', dateCreated: '1st January, 2024', language: 'EN', ...extra });
+  check('printing [LEA] {38}', printingOf('Savannah Lions [LEA] {38}')?.code, 'lea');
+  check('printing (A25 33)', printingOf('Savannah Lions (A25 33)')?.code, 'a25');
+  check('printing (A. Lundell, VMA 4) is digital', printingOf('Black Lotus (A. Lundell, VMA 4)')?.digital, true);
+  check('printing (Arabian Nights)', printingOf('Juzám Djinn (Arabian Nights)')?.code, 'arn');
+  check('no printing in (holo)/(Normal)/(b)', printingOf('Juzám Djinn (holo) (Normal) (b)'), null);
+  // Savannah Lions, as Autofill answered on 2026-10-15 (abridged)
+  const lions = [
+    v('Savannah Lions', 1210, ['Frame', 'Retro'], { src: 'Chilli_Axe' }),
+    v('Savannah Lions (A25 33)', 800),
+    v('Savannah Lions (b)', 810, ['Extended-Art', 'Frame']),
+    v('Savannah Lions (Extended Daniel Gelon)', 1200),
+    v('Savannah Lions [LEA] {38}', 1200, ['Frame', 'Retro'], { identifier: 'lea-retro' }),
+    v('Savannah Lions (Normal) [LEA] {38}', 1200),
+    v('Savannah Lions [LEA] {38}', 1200, ['Extended-Art', 'Frame'], { identifier: 'lea-ext' }),
+  ];
+  opt.preferOldFrame = true;
+  let r = pick(lions, 'Savannah Lions', 'front');
+  check('old frame: the dated Alpha retro beats an undated retro at higher dpi', r.c.identifier, 'lea-retro');
+  check('old frame: tierName', r.tierName, 'old frame');
+  r = pick(lions.filter((c) => c.identifier !== 'lea-retro'), 'Savannah Lions', 'front');
+  check('old frame: then the undated retro', r.c.name, 'Savannah Lions');
+  r = pick(lions.filter((c) => !(c.tags.includes('Retro'))), 'Savannah Lions', 'front');
+  check('no retro left: "(Normal) [LEA]" is not old frame, but is the earliest regular printing', r.c.name, 'Savannah Lions (Normal) [LEA] {38}');
+  check('no retro left: counted as default', r.tierName, undefined);
+  const lotus = [v('Black Lotus (A. Lundell, VMA 4)', 1200), v('Black Lotus (Borderless)', 1200), v('Black Lotus [LEB] {233}', 800, ['Retro'])];
+  check('old frame: paper Beta over a digital VMA scan', pick(lotus, 'Black Lotus', 'front').c.name, 'Black Lotus [LEB] {233}');
+  const modern = [v('Wild Growth (Borderless Jane)', 1200, ['Borderless']), v('Wild Growth {77}', 800), v('Wild Growth (A25 33)', 800), v('Wild Growth (Extended X)', 1200)];
+  r = pick(modern, 'Wild Growth', 'front');
+  check('no old frame: the untreated dated printing, not the borderless', r.c.name, 'Wild Growth (A25 33)');
+  check('no old frame: counted as default', r.tierName, undefined);
+  const lowOld = [v('Ali from Cairo', 560, ['Retro']), v('Ali from Cairo (Borderless)', 1200, ['Borderless'])];
+  check('old frame below 600 dpi still beats a modern treatment', pick(lowOld, 'Ali from Cairo', 'front').c.name, 'Ali from Cairo');
+  const abu = [v("Abu Ja_far", 1200, [], { identifier: 'plain' }), v("Abu Ja'far (Normal) [ARN] {1}", 1200, [], { identifier: 'normal' }), v("Abu Ja'far [ARN] {1}", 1200, ['Frame', 'Retro'], { identifier: 'retro' })];
+  check("the card's own name is not an old-frame word (Abu Ja'far)", oldFrameRank(abu[0], tagSet(abu[0])).old, false);
+  check("Abu Ja'far: the ARN retro", pick(abu, "Abu Ja'far", 'front').c.identifier, 'retro');
+  check("Abu Ja'far, no retro: the dated ARN regular over the undated", pick(abu.slice(0, 2), "Abu Ja'far", 'front').c.identifier, 'normal');
+  opt.preferOldFrame = false;
+  check('default rule unchanged: borderless first', pick(modern, 'Wild Growth', 'front').c.name, 'Wild Growth (Borderless Jane)');
+  check('default rule unchanged: extended over a retro', pick(lions, 'Savannah Lions', 'front').tierName, 'extended');
+  if (fail.length) { for (const f of fail) console.error(`FAIL ${f}`); process.exit(1); }
+  console.log('self-test: all passed');
+  process.exit(0);
+}
+
+// ---------- the database ----------
+const sources = (await api('GET', '/2/sources/')).results;
+// getDefaultSearchSettings (frontend/src/store/slices/searchSettingsSlice.ts):
+// every source on, in Object.values order; fuzzy off; DPI 0..1500; 30 MB; NSFW out.
+const searchSettings = {
+  searchTypeSettings: { fuzzySearch: false, filterCardbacks: false },
+  sourceSettings: { sources: Object.values(sources).map((s) => [s.pk, true]) },
+  filterSettings: { minimumDPI: 0, maximumDPI: 1500, maximumSize: 30, languages: [], includesTags: [], excludesTags: ['NSFW'] },
+};
+const dfcRaw = (await api('GET', '/2/DFCPairs/')).dfcPairs;
+const dfc = new Map();
+for (const [front, back] of Object.entries(dfcRaw)) {
+  // Meld halves ("... Top" / "... Bottom") are not second faces: the README
+  // prints the meld cards one-sided, their partners are not in the cube.
+  if (/\s(top|bottom)$/i.test(back)) continue;
+  dfc.set(processQuery(front), back);
+}
+
+if (opt.preferOldFrame) {
+  const file = join(opt.cache, 'scryfall-sets.json');
+  let sets;
+  if (existsSync(file)) sets = JSON.parse(readFileSync(file, 'utf8'));
+  else {
+    const res = await fetch('https://api.scryfall.com/sets', { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(60_000) });
+    if (!res.ok) die(`Scryfall /sets answered ${res.status}`);
+    sets = (await res.json()).data;
+    writeFileSync(file, JSON.stringify(sets));
+  }
+  setTable = makeSetTable(sets);
+  console.log(`--prefer-old-frame: ${setTable.byCode.size} sets from Scryfall`);
 }
 
 // ---------- read the lists ----------
