@@ -560,6 +560,22 @@ export function skipAction(ask: AskBody): SkipAction | null {
 // Presentation helpers (still pure)
 // ---------------------------------------------------------------------------
 
+/**
+ * The DOM id of a question's title (the dialog's aria-labelledby): the key's
+ * leading word (the ask id, or an opening's kind) plus a short hash of the
+ * whole key. Letters, digits, `_` and `-` only: an opening's key holds the
+ * engine's prompt, newlines and punctuation included, which broke selectors.
+ */
+export function askTitleId(key: string): string {
+  const head = (/^[A-Za-z0-9_]+/.exec(key)?.[0] ?? 'ask').slice(0, 24);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return `ask-title-${head}-${(h >>> 0).toString(36)}`;
+}
+
 /** An engine string as the player reads it: doubled spaces ("in  Forge AI's") and engine ids ("Opt (12)") out. */
 export function tidy(text: string): string {
   return withoutEngineIds(text).replace(/[ \t]+/g, ' ').trim();

@@ -35,6 +35,7 @@ import {
   amountCap,
   amountsTotal,
   askOptions,
+  askTitleId,
   choiceBounds,
   colorSymbol,
   countPhrase,
@@ -218,6 +219,7 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
     };
   }, [minimized, shellKey]);
 
+  const titleId = askTitleId(shellKey);
   const elapsed = Date.now() - started;
   const timer =
     timeoutMs > 0 ? (
@@ -252,7 +254,7 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
         className={cx('ask-dialog', wide && 'ask-wide', slot && 'is-slot')}
         role="dialog"
         aria-modal={slot ? undefined : 'true'}
-        aria-labelledby={`ask-title-${shellKey}`}
+        aria-labelledby={titleId}
         tabIndex={-1}
         ref={box}
         onKeyDown={(e) => {
@@ -275,7 +277,7 @@ function AskShell({ shellKey, eyebrow, title, detail, children, footer, hint, hi
         <header className="ask-head">
           <div className="ask-titles">
             <div className="ask-eyebrow">{eyebrow}</div>
-            <h2 className="ask-title" id={`ask-title-${shellKey}`}>
+            <h2 className="ask-title" id={titleId}>
               {title}
             </h2>
             {detail && <div className="ask-detail">{detail}</div>}
