@@ -128,7 +128,7 @@ function useOpen(card: AnyCard, onClicked?: (card: AnyCard) => void) {
     (e: PointerEvent<HTMLElement>) => {
       if (e.pointerType === 'mouse' && name) {
         hoverRef.current!.enter();
-        actions.hover(name, e.currentTarget.getBoundingClientRect());
+        actions.hover(name, e.currentTarget.getBoundingClientRect(), { cardId: cardRef.current.id, el: e.currentTarget });
       }
     },
     [actions, name],
