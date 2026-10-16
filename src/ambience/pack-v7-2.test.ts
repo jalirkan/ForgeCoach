@@ -6,7 +6,9 @@
  * steps that change most, so every cut of a growth is about the same size)
  * validates on this client: a snapshot of its scenery.json, identical to
  * what jsDelivr serves at the tag, taken when FORGECOACH_PACK_URL moved to
- * it. pack-v7 and pack-v7.1 stay at their tags (their tests are kept).
+ * it. pack-v7 and pack-v7.1 stay at their tags (their tests are kept). (The
+ * default is pack-v7.3 now, forest stage 6 redrawn over stage 5's view:
+ * pack-v7-3.test.ts.)
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -20,7 +22,6 @@ const THREE: Record<string, number[]> = { island: [1], mountain: [2], swamp: [2,
 describe('pack-v7.2', () => {
   const manifest = JSON.parse(readFileSync(new URL('./testdata/pack-v7.2.scenery.json', import.meta.url), 'utf8'));
   const r = validateManifest(manifest, `${FORGECOACH_PACK_URL}scenery.json`);
-  it('is the default pack URL', () => expect(FORGECOACH_PACK_URL).toContain('@pack-v7.2/pack/'));
   it('validates with no errors, and is written for this spec', () => {
     expect(r.errors).toEqual([]);
     expect(r.pack!.spec).toBe('1.7');
