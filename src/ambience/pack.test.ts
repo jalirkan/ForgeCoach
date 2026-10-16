@@ -2,7 +2,7 @@
  * ForgeCoach — ambience/pack.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fetchManifest, isLocalNetworkHost, manifestUrlFor, resolveScenery, type FetchLike } from './pack.ts';
 import { DEFAULT_PREFS, FORGECOACH_PACK_URL, effectivePrefs, loadSceneryPrefs, reducedMotion, saveSceneryPrefs, sceneryParam } from './prefs.ts';
 
@@ -87,16 +87,26 @@ describe('resolveScenery', () => {
   });
 
   it('drops only the biomes whose assets fail to load', async () => {
-    const load = async (url: string) => {
-      if (url.includes('swamp')) throw new Error('error');
-    };
-    const r = (await resolveScenery(pack('http://127.0.0.1:8650/'), { fetch: serve(manifest), load }))!;
-    expect(r.source).toBe('pack');
-    expect(Object.keys(r.pack!.biomes)).toEqual(['island']);
-    expect(r.failed).toEqual(['swamp']);
-    expect(r.note).toMatch(/swamp/);
-    const all = (await resolveScenery(pack('http://127.0.0.1:8650/'), { fetch: serve(manifest), load: async () => Promise.reject(new Error('x')) }))!;
-    expect(all.source).toBe('procedural');
+    vi.useFakeTimers();
+    try {
+      // Each failure is tried again after a pause (pack-retry.test.ts): the fake clock runs it.
+      const settle = async <T,>(p: Promise<T>) => {
+        await vi.runAllTimersAsync();
+        return p;
+      };
+      const load = async (url: string) => {
+        if (url.includes('swamp')) throw new Error('error');
+      };
+      const r = (await settle(resolveScenery(pack('http://127.0.0.1:8650/'), { fetch: serve(manifest), load })))!;
+      expect(r.source).toBe('pack');
+      expect(Object.keys(r.pack!.biomes)).toEqual(['island']);
+      expect(r.failed).toEqual(['swamp']);
+      expect(r.note).toMatch(/swamp/);
+      const all = (await settle(resolveScenery(pack('http://127.0.0.1:8650/'), { fetch: serve(manifest), load: async () => Promise.reject(new Error('x')) })))!;
+      expect(all.source).toBe('procedural');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('refuses huge manifests', async () => {

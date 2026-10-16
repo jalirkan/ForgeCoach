@@ -39,7 +39,12 @@ export function useSceneryLoad(prefs: SceneryPrefs): SceneryLoad | null | undefi
     let live = true;
     setLoad(undefined);
     resolveSceneryCached(prefs, { fetch: (u, i) => fetch(u, i), load: browserLoader() }).then(
-      (l) => live && setLoad(l),
+      (l) => {
+        if (!live) return;
+        setLoad(l);
+        // A biome that fell back because its files were slow comes back when they arrive.
+        l?.later?.then((u) => live && u && setLoad(u), () => undefined);
+      },
       () => live && setLoad(null),
     );
     return () => {

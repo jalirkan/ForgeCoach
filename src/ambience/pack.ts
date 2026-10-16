@@ -10,6 +10,12 @@
  * short note saying why (shown on the preview page and as a dev note on the
  * board). `fetch` and the asset loader are injected for tests.
  *
+ * A stage-1 asset that fails or times out is tried once more before its biome
+ * counts as failed, and a biome that still failed is not lost for the
+ * session: when its missing files arrive after all, `SceneryLoad.later` is a
+ * load with that biome back (2026-10-15: on a new tag jsDelivr's cold cache
+ * took 3–67 s a file, and two biomes drew the built-in scenery all game).
+ *
  * Packs are served from the user's own machine (e.g. http://127.0.0.1:8650/,
  * see docs/scenery-pack-spec.md); nothing from a pack is ever stored here.
  */
@@ -29,6 +35,11 @@ export interface SceneryLoad {
   /** Biomes the pack covers that failed to load and use the procedural scene. */
   failed: Biome[];
   manifestUrl: string | null;
+  /**
+   * When biomes failed: the same load with every failed biome whose missing
+   * assets arrived later put back (null when none did). Absent: nothing to wait for.
+   */
+  later?: Promise<SceneryLoad | null>;
 }
 
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'text'>>;
@@ -103,29 +114,92 @@ export function withoutBiomes(pack: ScenePack, drop: Biome[]): ScenePack {
   return { ...pack, biomes };
 }
 
+/** How long a stage-1 asset may take, per attempt. */
+export const PRELOAD_TIMEOUT_MS = 15000;
+/** The pause before a failed or timed-out asset's second attempt. */
+export const PRELOAD_RETRY_DELAY_MS = 2000;
+/** How long a failed biome's missing assets are waited for after the retry, to put the biome back. */
+export const PRELOAD_LATE_MS = 120000;
+
+export interface PreloadResult {
+  /** Biomes with an asset still missing after its retry. */
+  failed: Biome[];
+  reasons: string[];
+  /** The failed biomes whose missing assets all arrived later (within `lateMs`); [] at once when none failed. */
+  recovered: Promise<Biome[]>;
+}
+
 /**
  * Preload a pack's assets up to `maxStage` (stage 1 by default: what a first
- * land shows), a few at a time. Returns the biomes with a failed asset.
+ * land shows), a few at a time. An asset that fails or times out is tried once
+ * more after `retryDelayMs`, the first attempt still counting if it lands
+ * meanwhile; only an asset still missing then fails its biome.
  */
-export async function preloadPack(pack: ScenePack, load: AssetLoader, opts: { maxStage?: number; concurrency?: number; timeoutMs?: number } = {}): Promise<{ failed: Biome[]; reasons: string[] }> {
+export async function preloadPack(
+  pack: ScenePack,
+  load: AssetLoader,
+  opts: { maxStage?: number; concurrency?: number; timeoutMs?: number; retryDelayMs?: number; lateMs?: number } = {},
+): Promise<PreloadResult> {
   const items = packUrls(pack).filter((x) => x.stage <= (opts.maxStage ?? 1));
   const failed = new Set<Biome>();
   const reasons: string[] = [];
+  /** Each failed asset's attempts, still running: whether one of them lands. */
+  const pending: { biome: Biome; landed: Promise<boolean> }[] = [];
   let next = 0;
-  const timeoutMs = opts.timeoutMs ?? 15000;
+  const timeoutMs = opts.timeoutMs ?? PRELOAD_TIMEOUT_MS;
+  const retryDelayMs = opts.retryDelayMs ?? PRELOAD_RETRY_DELAY_MS;
+  const attempt = (url: string, kind: LayerKind): Promise<void> => {
+    try {
+      return Promise.resolve(load(url, kind));
+    } catch (e) {
+      return Promise.reject(e);
+    }
+  };
   const worker = async () => {
     while (next < items.length) {
       const it = items[next++]!;
+      const first = attempt(it.url, it.kind);
       try {
-        await withTimeout(load(it.url, it.kind), timeoutMs);
+        await withTimeout(first, timeoutMs);
+        continue;
+      } catch {
+        // Tried again below.
+      }
+      await delay(retryDelayMs);
+      const either = firstToLand([first, attempt(it.url, it.kind)]);
+      try {
+        await withTimeout(either, timeoutMs);
       } catch (e) {
         failed.add(it.biome);
         reasons.push(`${it.biome}: ${shortUrl(it.url)} ${e instanceof Error && e.message === 'timeout' ? 'timed out' : 'did not load'}`);
+        pending.push({ biome: it.biome, landed: either.then(() => true, () => false) });
       }
     }
   };
   await Promise.all(Array.from({ length: Math.min(opts.concurrency ?? 4, items.length) }, worker));
-  return { failed: BIOMES.filter((b) => failed.has(b)), reasons };
+  const failedBiomes = BIOMES.filter((b) => failed.has(b));
+  const lateMs = opts.lateMs ?? PRELOAD_LATE_MS;
+  const recovered = pending.length
+    ? Promise.all(pending.map((p) => withTimeout(p.landed, lateMs).catch(() => false))).then((landed) =>
+        failedBiomes.filter((b) => pending.every((p, i) => p.biome !== b || landed[i])),
+      )
+    : Promise.resolve([] as Biome[]);
+  return { failed: failedBiomes, reasons, recovered };
+}
+
+/** Resolves when the first of `ps` resolves; rejects (with the last reason) when all of them reject. */
+function firstToLand(ps: Promise<void>[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let left = ps.length;
+    for (const p of ps)
+      p.then(resolve, (e) => {
+        if (--left === 0) reject(e);
+      });
+  });
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -164,18 +238,26 @@ export async function resolveScenery(prefs: SceneryPrefs, deps: { fetch: FetchLi
   }
   const pre = await preloadPack(m.pack, deps.load);
   const covered = BIOMES.filter((b) => m.pack!.biomes[b]);
-  if (pre.failed.length && pre.failed.length === covered.length) {
-    return { ...PROCEDURAL, note: `Scenery pack assets did not load (${pre.reasons[0]}). Showing the built-in scenery.`, warnings: [...m.warnings, ...pre.reasons], failed: pre.failed, manifestUrl: m.manifestUrl };
-  }
-  return {
-    source: 'pack',
-    pack: pre.failed.length ? withoutBiomes(m.pack, pre.failed) : m.pack,
-    note: pre.failed.length ? `Some scenery did not load (${pre.failed.join(', ')}); those biomes use the built-in scenery.` : null,
-    errors: [],
-    warnings: [...m.warnings, ...pre.reasons],
-    failed: pre.failed,
-    manifestUrl: m.manifestUrl,
+  const loadOf = (failed: Biome[]): SceneryLoad => {
+    const reasons = pre.reasons.filter((r) => failed.some((b) => r.startsWith(`${b}:`)));
+    if (failed.length && failed.length === covered.length) {
+      return { ...PROCEDURAL, note: `Scenery pack assets did not load (${reasons[0]}). Showing the built-in scenery.`, warnings: [...m.warnings, ...reasons], failed, manifestUrl: m.manifestUrl };
+    }
+    return {
+      source: 'pack',
+      pack: failed.length ? withoutBiomes(m.pack!, failed) : m.pack,
+      note: failed.length ? `Some scenery did not load (${failed.join(', ')}); those biomes use the built-in scenery.` : null,
+      errors: [],
+      warnings: [...m.warnings, ...reasons],
+      failed,
+      manifestUrl: m.manifestUrl,
+    };
   };
+  const first = loadOf(pre.failed);
+  if (!pre.failed.length) return first;
+  // A biome whose files arrive after all comes back for the rest of the session.
+  first.later = pre.recovered.then((back) => (back.length ? loadOf(pre.failed.filter((b) => !back.includes(b))) : null));
+  return first;
 }
 
 /** One load per prefs at a time, shared by every strip on the page. */
@@ -184,8 +266,17 @@ export function resolveSceneryCached(prefs: SceneryPrefs, deps: { fetch: FetchLi
   const key = `${prefs.mode}|${prefs.mode === 'pack' ? prefs.packUrl.trim() : ''}`;
   let p = cache.get(key);
   if (!p) {
-    p = resolveScenery(prefs, deps);
-    cache.set(key, p);
+    const made = resolveScenery(prefs, deps);
+    p = made;
+    cache.set(key, made);
+    // A later load (biomes back) replaces the cached one, so a strip mounted afterwards starts from it.
+    made.then(
+      (l) =>
+        l?.later?.then((u) => {
+          if (u && cache.get(key) === made) cache.set(key, Promise.resolve(u));
+        }),
+      () => undefined,
+    );
   }
   return p;
 }
