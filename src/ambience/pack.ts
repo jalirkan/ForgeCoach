@@ -16,6 +16,10 @@
  * load with that biome back (2026-10-15: on a new tag jsDelivr's cold cache
  * took 3–67 s a file, and two biomes drew the built-in scenery all game).
  *
+ * Spec 1.9: with ForgeCoach's own pack (or `?pairs=`), a second manifest,
+ * `pairs.json`, is fetched beside the first and carried as the pack's `pairs`
+ * ({@link loadPairs}); it never holds the pack back.
+ *
  * Packs are served from the user's own machine (e.g. http://127.0.0.1:8650/,
  * see docs/scenery-pack-spec.md); nothing from a pack is ever stored here.
  */
@@ -23,6 +27,8 @@ import type { Biome } from './model.ts';
 import { BIOMES } from './model.ts';
 import { effectUrls, halfAt, layersAt, overlayUrls, MANIFEST_FILE, MAX_EFFECT_BYTES, MAX_MANIFEST_BYTES, packUrls, validateManifest, type EffectEvent, type LayerKind, type ScenePack } from './manifest.ts';
 import type { SceneryPrefs } from './prefs.ts';
+import { pairsUrlOf } from './prefs.ts';
+import { fetchPairs, type PairsPack } from './pairs.ts';
 
 export interface SceneryLoad {
   /** `procedural`: no pack (chosen, or fallen back to); `pack`: every biome the pack covers loaded. */
@@ -232,11 +238,15 @@ const PROCEDURAL: SceneryLoad = { source: 'procedural', pack: null, note: null, 
 export async function resolveScenery(prefs: SceneryPrefs, deps: { fetch: FetchLike; load: AssetLoader; signal?: AbortSignal }): Promise<SceneryLoad | null> {
   if (prefs.mode === 'off') return null;
   if (prefs.mode === 'procedural' || !prefs.packUrl.trim()) return PROCEDURAL;
+  // Spec 1.9: the pair bands' manifest, fetched beside the pack's; it never holds the pack back, and a failure only means no bands.
+  const pairsUrl = pairsUrlOf(prefs);
+  const pairsP = pairsUrl ? loadPairs(pairsUrl, deps) : Promise.resolve(null);
   const m = await fetchManifest(prefs.packUrl, deps);
   if (!m.pack) {
     return { ...PROCEDURAL, note: `Scenery pack not loaded: ${m.errors[0] ?? 'unknown problem'} Showing the built-in scenery.`, errors: m.errors, warnings: m.warnings, manifestUrl: m.manifestUrl };
   }
-  const pre = await preloadPack(m.pack, deps.load);
+  const [pre, pairs] = await Promise.all([preloadPack(m.pack, deps.load), pairsP]);
+  if (pairs) m.pack = { ...m.pack, pairs };
   const covered = BIOMES.filter((b) => m.pack!.biomes[b]);
   const loadOf = (failed: Biome[]): SceneryLoad => {
     const reasons = pre.reasons.filter((r) => failed.some((b) => r.startsWith(`${b}:`)));
@@ -260,10 +270,22 @@ export async function resolveScenery(prefs: SceneryPrefs, deps: { fetch: FetchLi
   return first;
 }
 
+/**
+ * Spec 1.9: a pairs manifest, or null when it does not load or validate (the
+ * seams are then drawn as in 1.8; why goes to the console). Its pictures are
+ * not preloaded here: a side's band warms with its split's pictures, and is
+ * drawn once its picture has arrived.
+ */
+export async function loadPairs(url: string, deps: { fetch: FetchLike; signal?: AbortSignal }): Promise<PairsPack | null> {
+  const r = await fetchPairs(url, deps);
+  if (!r.pairs && typeof console !== 'undefined') console.info(`ForgeCoach scenery: pair bands not loaded (${r.errors[0] ?? 'unknown problem'}); the seams are drawn as before.`);
+  return r.pairs;
+}
+
 /** One load per prefs at a time, shared by every strip on the page. */
 const cache = new Map<string, Promise<SceneryLoad | null>>();
 export function resolveSceneryCached(prefs: SceneryPrefs, deps: { fetch: FetchLike; load: AssetLoader }): Promise<SceneryLoad | null> {
-  const key = `${prefs.mode}|${prefs.mode === 'pack' ? prefs.packUrl.trim() : ''}`;
+  const key = `${prefs.mode}|${prefs.mode === 'pack' ? prefs.packUrl.trim() : ''}|${pairsUrlOf(prefs) ?? ''}`;
   let p = cache.get(key);
   if (!p) {
     const made = resolveScenery(prefs, deps);

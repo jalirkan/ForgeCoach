@@ -992,3 +992,15 @@
 .scn-bridge.is-mirrored img {
   transform: scaleX(-1);
 }
+
+/* Spec 1.9: a pair band (SceneryStrip `Band`): the colour pair's own place as a panel of the half's row between its two
+   biomes, overlapping each in half their seam (the slot's gradient mask and its breath of mist), its picture
+   cover-cropped about its centre; mirrored when the board has the pair the other way round from the art. A bridge on
+   the same seam is drawn over it. */
+.scn-band-art {
+  position: absolute;
+  inset: 0;
+}
+.scn-band.is-mirrored .scn-band-art {
+  transform: scaleX(-1);
+}

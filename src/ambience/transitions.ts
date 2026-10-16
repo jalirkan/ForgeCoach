@@ -9,6 +9,7 @@
  * Losing a land plays the same frames backwards. A step without frames, a
  * shape a step has no frames for, a jump of more than two stages, the first
  * paint and reduced motion keep the 1.6 cross-fade (or the instant change).
+ * A pair band (spec 1.9) plays its pair's frames the same way.
  * Pure and DOM-free; the drawing is ui/ambience/SceneryStrip.tsx.
  */
 import type { PackBiome, PackTransitions } from './manifest.ts';
@@ -32,7 +33,7 @@ export const MAX_CHAINED_STEPS = 2;
  * or any crossed step missing (or without a picture at this shape). Growing
  * plays each step forward; shrinking plays them backwards.
  */
-export function transitionFrames(biome: PackBiome | undefined | null, from: number, to: number, shape: TransitionShape): TweenFrame[] | null {
+export function transitionFrames(biome: Pick<PackBiome, 'stages' | 'transitions'> | undefined | null, from: number, to: number, shape: TransitionShape): TweenFrame[] | null {
   const t = biome?.transitions;
   if (!t || !biome || from === to || from < 1 || to < 1 || Math.abs(to - from) > MAX_CHAINED_STEPS) return null;
   const last = biome.stages.length;
@@ -93,7 +94,7 @@ export function tweenAllowed(transitions: PackTransitions | null | undefined, re
  * the slot's stage to the next one (the likely change), at the slot's
  * shape. Empty when there is none.
  */
-export function nextStepFrames(biome: PackBiome | undefined | null, stage: number, shape: TransitionShape): string[] {
+export function nextStepFrames(biome: Pick<PackBiome, 'stages' | 'transitions'> | undefined | null, stage: number, shape: TransitionShape): string[] {
   if (!biome || stage < 1 || stage >= biome.stages.length) return [];
   return (transitionFrames(biome, stage, stage + 1, shape) ?? []).map((f) => f.src);
 }

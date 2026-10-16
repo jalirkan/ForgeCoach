@@ -34,7 +34,7 @@ export function useSceneryPrefs(): SceneryPrefs {
 /** The loaded scenery for these prefs: undefined while loading, null when off. */
 export function useSceneryLoad(prefs: SceneryPrefs): SceneryLoad | null | undefined {
   const [load, setLoad] = useState<SceneryLoad | null | undefined>(undefined);
-  const key = `${prefs.mode}|${prefs.packUrl}`;
+  const key = `${prefs.mode}|${prefs.packUrl}|${prefs.pairsUrl ?? ''}`;
   useEffect(() => {
     let live = true;
     setLoad(undefined);

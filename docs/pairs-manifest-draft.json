@@ -1,0 +1,1050 @@
+{
+  "schema": 1,
+  "spec": "1.9",
+  "name": "ForgeCoach pair scenery, pairs-v1",
+  "author": "jalirkan",
+  "license": "CC BY 4.0",
+  "note": "The shape pairs-v1 ships in (spec 1.9): three stages per pair, desktop and phone at 1x and 2x, two frames per step. The bytes are placeholders; the art lane writes the real ones.",
+  "pairs": {
+    "forest+island": {
+      "dual": "Tropical Island",
+      "shock": "Breeding Pool",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/forest-island/s1-half.webp",
+            "src2x": "pairs/forest-island/s1-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-island/s1-phone.webp",
+              "src2x": "pairs/forest-island/s1-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-island/s2-half.webp",
+            "src2x": "pairs/forest-island/s2-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-island/s2-phone.webp",
+              "src2x": "pairs/forest-island/s2-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-island/s3-half.webp",
+            "src2x": "pairs/forest-island/s3-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-island/s3-phone.webp",
+              "src2x": "pairs/forest-island/s3-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "pairs/forest-island/s1to2-f1-half.webp",
+                "phone": "pairs/forest-island/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "pairs/forest-island/s1to2-f2-half.webp",
+                "phone": "pairs/forest-island/s1to2-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "pairs/forest-island/s2to3-f1-half.webp",
+                "phone": "pairs/forest-island/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "pairs/forest-island/s2to3-f2-half.webp",
+                "phone": "pairs/forest-island/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          }
+        ]
+      }
+    },
+    "forest+mountain": {
+      "dual": "Taiga",
+      "shock": "Stomping Ground",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/forest-mountain/s1-half.webp",
+            "src2x": "pairs/forest-mountain/s1-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-mountain/s1-phone.webp",
+              "src2x": "pairs/forest-mountain/s1-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-mountain/s2-half.webp",
+            "src2x": "pairs/forest-mountain/s2-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-mountain/s2-phone.webp",
+              "src2x": "pairs/forest-mountain/s2-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-mountain/s3-half.webp",
+            "src2x": "pairs/forest-mountain/s3-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-mountain/s3-phone.webp",
+              "src2x": "pairs/forest-mountain/s3-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "pairs/forest-mountain/s1to2-f1-half.webp",
+                "phone": "pairs/forest-mountain/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "pairs/forest-mountain/s1to2-f2-half.webp",
+                "phone": "pairs/forest-mountain/s1to2-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "pairs/forest-mountain/s2to3-f1-half.webp",
+                "phone": "pairs/forest-mountain/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "pairs/forest-mountain/s2to3-f2-half.webp",
+                "phone": "pairs/forest-mountain/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          }
+        ]
+      }
+    },
+    "forest+plains": {
+      "dual": "Savannah",
+      "shock": "Temple Garden",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/forest-plains/s1-half.webp",
+            "src2x": "pairs/forest-plains/s1-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-plains/s1-phone.webp",
+              "src2x": "pairs/forest-plains/s1-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-plains/s2-half.webp",
+            "src2x": "pairs/forest-plains/s2-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-plains/s2-phone.webp",
+              "src2x": "pairs/forest-plains/s2-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-plains/s3-half.webp",
+            "src2x": "pairs/forest-plains/s3-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-plains/s3-phone.webp",
+              "src2x": "pairs/forest-plains/s3-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "pairs/forest-plains/s1to2-f1-half.webp",
+                "phone": "pairs/forest-plains/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "pairs/forest-plains/s1to2-f2-half.webp",
+                "phone": "pairs/forest-plains/s1to2-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "pairs/forest-plains/s2to3-f1-half.webp",
+                "phone": "pairs/forest-plains/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "pairs/forest-plains/s2to3-f2-half.webp",
+                "phone": "pairs/forest-plains/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          }
+        ]
+      }
+    },
+    "forest+swamp": {
+      "dual": "Bayou",
+      "shock": "Overgrown Tomb",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/forest-swamp/s1-half.webp",
+            "src2x": "pairs/forest-swamp/s1-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-swamp/s1-phone.webp",
+              "src2x": "pairs/forest-swamp/s1-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-swamp/s2-half.webp",
+            "src2x": "pairs/forest-swamp/s2-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-swamp/s2-phone.webp",
+              "src2x": "pairs/forest-swamp/s2-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-swamp/s3-half.webp",
+            "src2x": "pairs/forest-swamp/s3-half@2x.webp",
+            "phone": {
+              "src": "pairs/forest-swamp/s3-phone.webp",
+              "src2x": "pairs/forest-swamp/s3-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "pairs/forest-swamp/s1to2-f1-half.webp",
+                "phone": "pairs/forest-swamp/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "pairs/forest-swamp/s1to2-f2-half.webp",
+                "phone": "pairs/forest-swamp/s1to2-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "pairs/forest-swamp/s2to3-f1-half.webp",
+                "phone": "pairs/forest-swamp/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "pairs/forest-swamp/s2to3-f2-half.webp",
+                "phone": "pairs/forest-swamp/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          }
+        ]
+      }
+    },
+    "island+mountain": {
+      "dual": "Volcanic Island",
+      "shock": "Steam Vents",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/island-mountain/s1-half.webp",
+            "src2x": "pairs/island-mountain/s1-half@2x.webp",
+            "phone": {
+              "src": "pairs/island-mountain/s1-phone.webp",
+              "src2x": "pairs/island-mountain/s1-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-mountain/s2-half.webp",
+            "src2x": "pairs/island-mountain/s2-half@2x.webp",
+            "phone": {
+              "src": "pairs/island-mountain/s2-phone.webp",
+              "src2x": "pairs/island-mountain/s2-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-mountain/s3-half.webp",
+            "src2x": "pairs/island-mountain/s3-half@2x.webp",
+            "phone": {
+              "src": "pairs/island-mountain/s3-phone.webp",
+              "src2x": "pairs/island-mountain/s3-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "pairs/island-mountain/s1to2-f1-half.webp",
+                "phone": "pairs/island-mountain/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "pairs/island-mountain/s1to2-f2-half.webp",
+                "phone": "pairs/island-mountain/s1to2-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "pairs/island-mountain/s2to3-f1-half.webp",
+                "phone": "pairs/island-mountain/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "pairs/island-mountain/s2to3-f2-half.webp",
+                "phone": "pairs/island-mountain/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          }
+        ]
+      }
+    },
+    "island+plains": {
+      "dual": "Tundra",
+      "shock": "Hallowed Fountain",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/island-plains/s1-half.webp",
+            "src2x": "pairs/island-plains/s1-half@2x.webp",
+            "phone": {
+              "src": "pairs/island-plains/s1-phone.webp",
+              "src2x": "pairs/island-plains/s1-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-plains/s2-half.webp",
+            "src2x": "pairs/island-plains/s2-half@2x.webp",
+            "phone": {
+              "src": "pairs/island-plains/s2-phone.webp",
+              "src2x": "pairs/island-plains/s2-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-plains/s3-half.webp",
+            "src2x": "pairs/island-plains/s3-half@2x.webp",
+            "phone": {
+              "src": "pairs/island-plains/s3-phone.webp",
+              "src2x": "pairs/island-plains/s3-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "pairs/island-plains/s1to2-f1-half.webp",
+                "phone": "pairs/island-plains/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "pairs/island-plains/s1to2-f2-half.webp",
+                "phone": "pairs/island-plains/s1to2-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "pairs/island-plains/s2to3-f1-half.webp",
+                "phone": "pairs/island-plains/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "pairs/island-plains/s2to3-f2-half.webp",
+                "phone": "pairs/island-plains/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          }
+        ]
+      }
+    },
+    "island+swamp": {
+      "dual": "Underground Sea",
+      "shock": "Watery Grave",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/island-swamp/s1-half.webp",
+            "src2x": "pairs/island-swamp/s1-half@2x.webp",
+            "phone": {
+              "src": "pairs/island-swamp/s1-phone.webp",
+              "src2x": "pairs/island-swamp/s1-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-swamp/s2-half.webp",
+            "src2x": "pairs/island-swamp/s2-half@2x.webp",
+            "phone": {
+              "src": "pairs/island-swamp/s2-phone.webp",
+              "src2x": "pairs/island-swamp/s2-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-swamp/s3-half.webp",
+            "src2x": "pairs/island-swamp/s3-half@2x.webp",
+            "phone": {
+              "src": "pairs/island-swamp/s3-phone.webp",
+              "src2x": "pairs/island-swamp/s3-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "pairs/island-swamp/s1to2-f1-half.webp",
+                "phone": "pairs/island-swamp/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "pairs/island-swamp/s1to2-f2-half.webp",
+                "phone": "pairs/island-swamp/s1to2-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "pairs/island-swamp/s2to3-f1-half.webp",
+                "phone": "pairs/island-swamp/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "pairs/island-swamp/s2to3-f2-half.webp",
+                "phone": "pairs/island-swamp/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          }
+        ]
+      }
+    },
+    "mountain+plains": {
+      "dual": "Plateau",
+      "shock": "Sacred Foundry",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/mountain-plains/s1-half.webp",
+            "src2x": "pairs/mountain-plains/s1-half@2x.webp",
+            "phone": {
+              "src": "pairs/mountain-plains/s1-phone.webp",
+              "src2x": "pairs/mountain-plains/s1-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/mountain-plains/s2-half.webp",
+            "src2x": "pairs/mountain-plains/s2-half@2x.webp",
+            "phone": {
+              "src": "pairs/mountain-plains/s2-phone.webp",
+              "src2x": "pairs/mountain-plains/s2-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/mountain-plains/s3-half.webp",
+            "src2x": "pairs/mountain-plains/s3-half@2x.webp",
+            "phone": {
+              "src": "pairs/mountain-plains/s3-phone.webp",
+              "src2x": "pairs/mountain-plains/s3-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "pairs/mountain-plains/s1to2-f1-half.webp",
+                "phone": "pairs/mountain-plains/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "pairs/mountain-plains/s1to2-f2-half.webp",
+                "phone": "pairs/mountain-plains/s1to2-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "pairs/mountain-plains/s2to3-f1-half.webp",
+                "phone": "pairs/mountain-plains/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "pairs/mountain-plains/s2to3-f2-half.webp",
+                "phone": "pairs/mountain-plains/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          }
+        ]
+      }
+    },
+    "mountain+swamp": {
+      "dual": "Badlands",
+      "shock": "Blood Crypt",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/mountain-swamp/s1-half.webp",
+            "src2x": "pairs/mountain-swamp/s1-half@2x.webp",
+            "phone": {
+              "src": "pairs/mountain-swamp/s1-phone.webp",
+              "src2x": "pairs/mountain-swamp/s1-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/mountain-swamp/s2-half.webp",
+            "src2x": "pairs/mountain-swamp/s2-half@2x.webp",
+            "phone": {
+              "src": "pairs/mountain-swamp/s2-phone.webp",
+              "src2x": "pairs/mountain-swamp/s2-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/mountain-swamp/s3-half.webp",
+            "src2x": "pairs/mountain-swamp/s3-half@2x.webp",
+            "phone": {
+              "src": "pairs/mountain-swamp/s3-phone.webp",
+              "src2x": "pairs/mountain-swamp/s3-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "pairs/mountain-swamp/s1to2-f1-half.webp",
+                "phone": "pairs/mountain-swamp/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "pairs/mountain-swamp/s1to2-f2-half.webp",
+                "phone": "pairs/mountain-swamp/s1to2-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "pairs/mountain-swamp/s2to3-f1-half.webp",
+                "phone": "pairs/mountain-swamp/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "pairs/mountain-swamp/s2to3-f2-half.webp",
+                "phone": "pairs/mountain-swamp/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          }
+        ]
+      }
+    },
+    "plains+swamp": {
+      "dual": "Scrubland",
+      "shock": "Godless Shrine",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/plains-swamp/s1-half.webp",
+            "src2x": "pairs/plains-swamp/s1-half@2x.webp",
+            "phone": {
+              "src": "pairs/plains-swamp/s1-phone.webp",
+              "src2x": "pairs/plains-swamp/s1-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/plains-swamp/s2-half.webp",
+            "src2x": "pairs/plains-swamp/s2-half@2x.webp",
+            "phone": {
+              "src": "pairs/plains-swamp/s2-phone.webp",
+              "src2x": "pairs/plains-swamp/s2-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/plains-swamp/s3-half.webp",
+            "src2x": "pairs/plains-swamp/s3-half@2x.webp",
+            "phone": {
+              "src": "pairs/plains-swamp/s3-phone.webp",
+              "src2x": "pairs/plains-swamp/s3-phone@2x.webp"
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 380000
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "pairs/plains-swamp/s1to2-f1-half.webp",
+                "phone": "pairs/plains-swamp/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "pairs/plains-swamp/s1to2-f2-half.webp",
+                "phone": "pairs/plains-swamp/s1to2-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "pairs/plains-swamp/s2to3-f1-half.webp",
+                "phone": "pairs/plains-swamp/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "pairs/plains-swamp/s2to3-f2-half.webp",
+                "phone": "pairs/plains-swamp/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 190000
+          }
+        ]
+      }
+    }
+  }
+}

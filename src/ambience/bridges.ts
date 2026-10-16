@@ -38,11 +38,20 @@ export function bridgeFor(pack: ScenePack | null | undefined, left: Biome, right
   return bridge ? { bridge, mirror: bridge.left !== left } : null;
 }
 
+/**
+ * The one widening rule for what a pair's dual lands grow (spec 1.8's bridged
+ * seam, spec 1.9's pair band): `base`, plus `step` for each dual, at most
+ * `max`, never under `base`. Rounded to 4 places.
+ */
+export function widenedRatio(base: number, step: number, max: number, duals: number): number {
+  const r = duals > 0 ? Math.max(base, Math.min(max, base + step * duals)) : base;
+  return Math.round(r * 10000) / 10000;
+}
+
 /** A pair's seam (a fraction of the half's width): the base, widened by each dual, capped; the base when the pair has no bridge. */
 export function seamRatioFor(base: number, bridge: PackBridge | null | undefined, duals: number): number {
   if (!bridge || !(duals > 0)) return base;
-  const r = Math.max(base, Math.min(bridge.maxSeamRatio, base + bridge.dualsWiden * duals));
-  return Math.round(r * 10000) / 10000;
+  return widenedRatio(base, bridge.dualsWiden, bridge.maxSeamRatio, duals);
 }
 
 /**
@@ -131,7 +140,7 @@ export function phoneHalf(halfAspect: number | null): boolean {
  * left by its own seam, each seam capped at 14vw (scenery.css). The numeric
  * twin of {@link seamCentreCss}.
  */
-export function seamCentre(layout: readonly HalfSlotLayout[], seams: readonly number[], index: number, width: number, vw = Infinity): number {
+export function seamCentre(layout: readonly Pick<HalfSlotLayout, 'share'>[], seams: readonly number[], index: number, width: number, vw = Infinity): number {
   const px = (i: number) => (i === 0 ? 0 : Math.min((seams[i] ?? 0) * width, SEAM_CAP_VW * vw));
   const total = width + layout.reduce((n, _, i) => n + px(i), 0);
   const sum = layout.reduce((n, l) => n + l.share, 0) || 1;
@@ -146,7 +155,7 @@ export function seamCentre(layout: readonly HalfSlotLayout[], seams: readonly nu
  * container: `cqw` is the half's width), so the bridge follows the seam with
  * no script as the panels' widths change.
  */
-export function seamCentreCss(layout: readonly HalfSlotLayout[], seams: readonly number[], index: number): string {
+export function seamCentreCss(layout: readonly Pick<HalfSlotLayout, 'share'>[], seams: readonly number[], index: number): string {
   const f = (n: number) => String(Math.round(n * 10000) / 10000);
   const s = (i: number) => `min(${f((seams[i] ?? 0) * 100)}cqw, ${f(SEAM_CAP_VW * 100)}vw)`;
   const sum = layout.reduce((n, l) => n + l.share, 0) || 1;

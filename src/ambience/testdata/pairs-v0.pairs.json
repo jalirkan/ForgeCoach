@@ -1,0 +1,770 @@
+{
+  "schema": 1,
+  "spec": "1.9",
+  "name": "ForgeCoach pair scenery, draft (pairs-v0)",
+  "author": "jalirkan",
+  "license": "CC BY 4.0",
+  "note": "DRAFT for development: one picture per pair (the approved stage-3 concept of 2026-10-16), the same picture reused for all three stages, desktop and a centre-cropped phone slice, no src2x and no transitions. pairs-v1 replaces it with three stages and their transition frames.",
+  "pairs": {
+    "island+plains": {
+      "dual": "Tundra",
+      "shock": "Hallowed Fountain",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/island-plains/s2-half.webp",
+            "phone": {
+              "src": "pairs/island-plains/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 97906
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-plains/s2-half.webp",
+            "phone": {
+              "src": "pairs/island-plains/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 97906
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-plains/s2-half.webp",
+            "phone": {
+              "src": "pairs/island-plains/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 97906
+          }
+        }
+      ]
+    },
+    "island+swamp": {
+      "dual": "Underground Sea",
+      "shock": "Watery Grave",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/island-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/island-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 116794
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/island-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 116794
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/island-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 116794
+          }
+        }
+      ]
+    },
+    "mountain+swamp": {
+      "dual": "Badlands",
+      "shock": "Blood Crypt",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/mountain-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/mountain-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 133576
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/mountain-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/mountain-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 133576
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/mountain-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/mountain-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 133576
+          }
+        }
+      ]
+    },
+    "forest+mountain": {
+      "dual": "Taiga",
+      "shock": "Stomping Ground",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/forest-mountain/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-mountain/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 119406
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-mountain/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-mountain/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 119406
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-mountain/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-mountain/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 119406
+          }
+        }
+      ]
+    },
+    "forest+plains": {
+      "dual": "Savannah",
+      "shock": "Temple Garden",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/forest-plains/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-plains/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 119632
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-plains/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-plains/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 119632
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-plains/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-plains/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 119632
+          }
+        }
+      ]
+    },
+    "plains+swamp": {
+      "dual": "Scrubland",
+      "shock": "Godless Shrine",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/plains-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/plains-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 190544
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/plains-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/plains-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 190544
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/plains-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/plains-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 190544
+          }
+        }
+      ]
+    },
+    "island+mountain": {
+      "dual": "Volcanic Island",
+      "shock": "Steam Vents",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/island-mountain/s2-half.webp",
+            "phone": {
+              "src": "pairs/island-mountain/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 123870
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-mountain/s2-half.webp",
+            "phone": {
+              "src": "pairs/island-mountain/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 123870
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-mountain/s2-half.webp",
+            "phone": {
+              "src": "pairs/island-mountain/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 123870
+          }
+        }
+      ]
+    },
+    "forest+swamp": {
+      "dual": "Bayou",
+      "shock": "Overgrown Tomb",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/forest-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 115290
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 115290
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 115290
+          }
+        }
+      ]
+    },
+    "mountain+plains": {
+      "dual": "Plateau",
+      "shock": "Sacred Foundry",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/mountain-plains/s2-half.webp",
+            "phone": {
+              "src": "pairs/mountain-plains/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 115280
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/mountain-plains/s2-half.webp",
+            "phone": {
+              "src": "pairs/mountain-plains/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 115280
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/mountain-plains/s2-half.webp",
+            "phone": {
+              "src": "pairs/mountain-plains/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 115280
+          }
+        }
+      ]
+    },
+    "forest+island": {
+      "dual": "Tropical Island",
+      "shock": "Breeding Pool",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/forest-island/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-island/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 109624
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-island/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-island/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 109624
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-island/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-island/s2-phone.webp",
+              "subjectBand": [
+                0.35,
+                0.6
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 109624
+          }
+        }
+      ]
+    }
+  }
+}
