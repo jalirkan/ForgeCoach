@@ -97,14 +97,14 @@ Trap: milling yourself in a 40-card deck; count your library before using a thir
 export const ARTIFACTS_GUIDE_ID = 'builtin:artifacts-cube';
 export const ARTIFACTS_GUIDE_TEXT = `Artifact aggro (synergy cube).
 
-Plan: a cheap pile of artifacts that replace themselves, with Cranial Plating, Steel Overseer, Sai, Pia and Kiran Nalaar and Marionette Master making them dangerous, and Skullclamp / Deadly Dispute as the draw engines.
+Plan: a cheap pile of artifacts that replace themselves, with Cranial Plating, Steel Overseer, Sai, Pia and Kiran Nalaar and Marionette Master making them dangerous, and Deadly Dispute / Experimental Synthesizer as the draw engines.
 - Cranial Plating gives +1/+0 per artifact you control: equip {1}, and with black mana attach it at instant speed ({B}{B}) in response to a block or to removal. Put it on an evasive creature (a Thopter).
 - Steel Overseer taps to put a +1/+1 counter on each artifact creature you control (Thopters, Servos, Walking Ballista, Hangarback Walker): turn two Overseer, turn three go wide.
 - Sai makes a Thopter for each artifact spell, so cast Sai before the cheap artifacts. Pia and Kiran Nalaar give two Thopters and turn artifacts into 2 damage ({2}{R}, sacrifice an artifact).
 - Marionette Master drains for its power whenever an artifact goes to the graveyard: choose counters (bigger drain) when the opponent is low, Servos (more bodies, more artifacts to lose) when the board matters.
-- Skullclamp on a Thopter or Servo is two cards; Deadly Dispute sacrificing a spent artifact is two cards and a Treasure.
+- Deadly Dispute sacrificing a spent artifact (a Thopter, a Servo, a used Bauble) is two cards and a Treasure; Experimental Synthesizer is a card when it enters and another when it leaves, so sacrificing it feeds Marionette Master too.
 - Don't sacrifice a Clue or Treasure you still need for mana unless it wins the turn.
-Trap: don't overextend into a sweeper while the engines (Overseer, Master) are the only way to win; keep a Skullclamp for the rebuild. Win with Plating on a flier, or Marionette Master draining out the final points.`;
+Trap: don't overextend into a sweeper while the engines (Overseer, Master) are the only way to win; keep a Deadly Dispute or a Synthesizer for the rebuild. Win with Plating on a flier, or Marionette Master draining out the final points.`;
 
 export const LANDFALL_GUIDE_ID = 'builtin:landfall-cube';
 export const LANDFALL_GUIDE_TEXT = `Landfall ramp (synergy cube).

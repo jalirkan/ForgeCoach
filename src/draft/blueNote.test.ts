@@ -4,7 +4,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BLUE_J111 } from './blueJ111.ts';
-import { blueCaveat, blueOverdraftLine, blueStatsFor, buildShowsPairRate, hasBlue } from './blueNote.ts';
+import { SYNERGY_BLUE_CAVEAT, blueCaveat, blueOverdraftLine, blueStatsFor, buildShowsPairRate, hasBlue } from './blueNote.ts';
 import { CUBES } from '../cube/cubes.ts';
 
 describe('J111 data', () => {
@@ -53,9 +53,8 @@ describe('the blue caveat', () => {
     expect(hasBlue('WBRG')).toBe(false);
     expect(hasBlue('')).toBe(false);
     expect(blueCaveat('synergy', 'BR')).toBeNull();
-    expect(blueCaveat('synergy', 'UB')).toBe(
-      'Blue’s lab win rate is held down by Forge’s play with blue, not by the cards: at equal deck quality its blue decks won 32% (95% 30–35%) in this cube’s lab. Human players don’t see this.',
-    );
+    expect(blueCaveat('synergy', 'UB')).toBe(SYNERGY_BLUE_CAVEAT);
+    expect(blueCaveat('vintage', 'UB')).toMatch(/^Blue’s lab win rate is held down by Forge’s play with blue, not by the cards/);
     expect(blueCaveat('evybaby', 'U')).toBeNull();
   });
 
