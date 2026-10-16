@@ -34,7 +34,11 @@
  * by the engine's rule (mtg-table M67: no defender row without trample, the
  * engine's refusal shown, a trampler's excess); the coach's "Copy prompt" with
  * no helper; the search hint ("What would the search AI do?", mtg-table D429)
- * against a fake helper that offers it.
+ * against a fake helper that offers it; watching two bots (mtg-table D440)
+ * against the fake /watch routes (e2e/fakewatch.mjs): the lobby tile, the
+ * form, the draft replay advancing, the decks, the board following game 1
+ * over HTTP (no socket at all) and moving on to game 2, on a desktop and a
+ * phone (SHOTS=<dir> saves their screenshots).
  *
  * Environment: BUILD=0 (reuse dist/), APP_URL (test a running ForgeCoach
  * instead; it must be on a Vite port), HEADLESS=0, ONLY=<substring of a
@@ -49,6 +53,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchBrowser, loadPlaywright, waitHttp } from './harness.mjs';
 import { startFakeEngine } from './fake-engine.mjs';
+import { createFakeWatch, WATCH_CORS_HEADERS } from './fakewatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'e2e', 'out');
@@ -1159,6 +1164,106 @@ const hintScenario = {
   },
 };
 scenarios.push(hintScenario);
+
+// ---------------------------------------------------------------------------
+// Watch two bots (mtg-table D440): a fake helper with the /watch routes
+
+/** /health says `watch: 1` (Claude Code not ready: no coach questions); the /watch routes run on a clock. */
+function watchHelper(timing) {
+  const fake = createFakeWatch(timing);
+  const cors = { 'Access-Control-Allow-Origin': '*', ...WATCH_CORS_HEADERS };
+  const handler = async (route, u) => {
+    const req = route.request();
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    if (u.pathname === '/health') {
+      return route.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify({ ok: false, helper: 1, error: 'Claude Code is not logged in', ...fake.health() }) });
+    }
+    const r = fake.handle(req.method(), u.pathname, u.search, req.headers(), req.postData() ?? '');
+    if (r) return route.fulfill({ status: r.status, headers: { ...cors, ...r.headers }, body: r.body });
+    return route.fulfill({ status: 404, headers: cors, contentType: 'application/json', body: '{"ok":false,"type":"error","message":"not found"}' });
+  };
+  handler.fake = fake;
+  return handler;
+}
+
+const SHOTS = env.SHOTS ? path.resolve(ROOT, env.SHOTS) : null;
+async function shot(page, name) {
+  if (!SHOTS) return;
+  mkdirSync(SHOTS, { recursive: true });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
+}
+
+function watchScenario({ name, viewport, tag }) {
+  const sc = {
+    name,
+    context: { viewport, ...(tag === 'phone' ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}) },
+    helper: () => {
+      sc.fake = watchHelper({ draftMs: 1200, gameStartMs: 2500, bootMs: 700, gameMs: 7000 });
+      return sc.fake;
+    },
+    async run({ page, app, sockets }) {
+      await page.goto(app);
+      const tile = page.locator('.lobby-tile', { hasText: 'Watch two bots' });
+      await tile.waitFor({ timeout: STEP_MS });
+      await shot(page, `${tag}-0-lobby`);
+      await tile.click();
+      await page.getByRole('heading', { name: 'Two bots draft a cube, then play a best of three' }).waitFor({ timeout: STEP_MS });
+      // The defaults: the search AI plays both sides (D414); no Claude anywhere, so no cost box.
+      check((await page.locator('[data-side="A"] [role="radio"][aria-checked="true"]').innerText()).includes('Search AI'), 'side A starts on the search AI');
+      check((await page.locator('[data-side="B"] [role="radio"][aria-checked="true"]').innerText()).includes('Search AI'), 'side B starts on the search AI');
+      check((await page.locator('.wb-costbox').count()) === 0, 'no cost note without a Claude seat');
+      await page.locator('[data-side="B"]').getByRole('radio', { name: 'Reckless' }).click();
+      await shot(page, `${tag}-1-form`);
+      await page.getByRole('button', { name: 'Watch', exact: true }).click();
+      await page.waitForURL(/#watch\/watch-fair-fight-cube-180-4242$/, { timeout: STEP_MS });
+      const posted = sc.fake.fake.posts[0];
+      check(JSON.stringify(Object.keys(posted).sort()) === JSON.stringify(['cube', 'games', 'pace', 'playerA', 'playerB']), `POST /watch sent only the route's fields (${JSON.stringify(posted)})`);
+      check(posted.cube === 'fair-fight-cube-180' && posted.playerA === 'search' && posted.playerB === 'Reckless' && posted.games === 3 && posted.pace === 600, `the body says what was picked (${JSON.stringify(posted)})`);
+      // The draft replay: pick 1, then it moves on by itself.
+      const step = page.locator('.wb-step');
+      await step.filter({ hasText: /pick 1 of 36/ }).waitFor({ timeout: STEP_MS });
+      await shot(page, `${tag}-2-replay`);
+      await page.getByRole('radio', { name: '4×' }).click();
+      await step.filter({ hasText: /pick ([3-9]|[12]\d|3[0-6]) of 36/ }).waitFor({ timeout: STEP_MS });
+      const poolA = Number(await page.locator('[data-pool="A"] .mono-n').first().innerText());
+      const poolB = Number(await page.locator('[data-pool="B"] .mono-n').first().innerText());
+      check(poolA >= 3 && poolB >= 3, `both pools grow (${poolA}, ${poolB})`);
+      // Game 1 starts while the replay runs: it waits for the viewer.
+      await page.getByText('Game 1 has started. It keeps until you get there.').waitFor({ timeout: STEP_MS });
+      check((await page.locator('.game').count()) === 0, 'the replay is not interrupted by game 1');
+      await page.getByRole('button', { name: 'Pause' }).click();
+      const paused = await step.innerText();
+      await page.waitForTimeout(900);
+      check((await step.innerText()) === paused, 'Pause holds the pick');
+      await page.getByRole('button', { name: 'Next pick' }).click();
+      check((await step.innerText()) !== paused, 'Next pick steps');
+      await page.getByRole('button', { name: 'Skip to the decks' }).click();
+      await page.locator('[data-deck="A"]').waitFor({ timeout: STEP_MS });
+      check((await page.locator('[data-deck="B"] .wb-deck-sub').innerText()).startsWith('40 cards'), 'deck B is 40 cards');
+      check((await page.locator('[data-deck="A"] .wb-list li').count()) > 5, 'deck A’s main list is shown');
+      await shot(page, `${tag}-3-decks`);
+      // The board follows game 1, drafter A's eyes, the score from match.json.
+      await page.getByRole('button', { name: 'Watch game 1' }).click();
+      await page.locator('.game .wb-nav [aria-current="page"]', { hasText: 'Game 1' }).waitFor({ timeout: STEP_MS });
+      await page.getByText('Drafter A’s view: drafter B’s hand stays hidden').first().waitFor({ timeout: STEP_MS });
+      await page.locator('.game .board:not(.board-empty)').first().waitFor({ timeout: STEP_MS });
+      await page.locator('.game .live-pill').waitFor({ timeout: STEP_MS });
+      await shot(page, `${tag}-4-game`);
+      await page.locator('.wb-score[data-score="1-0"]').waitFor({ timeout: 20_000 });
+      await page.locator('.wb-over', { hasText: 'Game 1: drafter A won' }).waitFor({ timeout: STEP_MS });
+      // Then game 2, picked up from match.json.
+      await page.locator('.game .wb-nav [aria-current="page"]', { hasText: 'Game 2' }).waitFor({ timeout: 20_000 });
+      check(sockets.length === 0, `watching opened no socket at all, so never the seat (${sockets.join(', ')})`);
+    },
+  };
+  return sc;
+}
+
+scenarios.push(
+  watchScenario({ name: 'watch two bots (D440), a desktop: tile, form, the draft replay advancing, the decks, the board following game 1 then game 2', viewport: { width: 1440, height: 900 }, tag: 'desktop' }),
+  watchScenario({ name: 'watch two bots (D440), a phone (390×844): the same, from the lobby to game 2', viewport: { width: 390, height: 844 }, tag: 'phone' }),
+);
 
 // ---------------------------------------------------------------------------
 // Runner

@@ -25,13 +25,14 @@ const G = {
   cube: <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12 4 7.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />,
   review: <path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4M12 8v4l3 2" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />,
   practice: <path d="M12 3v3M12 18v3M3 12h3M18 12h3M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />,
+  watch: <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />,
   live: <path d="M12 12h.01M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />,
 };
 
 const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-export function lobbyTiles(o: { onPlay: () => void; onDraftBuild: () => void; samples: number; playLine?: string }): Tile[] {
-  return [
+export function lobbyTiles(o: { onPlay: () => void; onDraftBuild: () => void; samples: number; playLine?: string; watch?: boolean }): Tile[] {
+  const tiles: Tile[] = [
     { id: 'play', title: 'Play vs Bot', line: o.playLine ?? 'A full game against the bot, with the coach beside the board.', glyph: G.play, onClick: o.onPlay, primary: true },
     { id: 'draft', title: 'Draft vs Bot', line: 'Draft a cube against bots, or with a friend, then play your deck.', glyph: G.draft, onClick: () => (location.hash = '#draft') },
     { id: 'build', title: 'Draft & build', line: 'For a paper draft: track your pool, get each pick called, build the best 40.', glyph: G.build, onClick: o.onDraftBuild },
@@ -40,6 +41,9 @@ export function lobbyTiles(o: { onPlay: () => void; onDraftBuild: () => void; sa
     { id: 'cube', title: 'The cubes', line: `${CUBES.length} cubes: their cards, themes and the lab’s numbers.`, glyph: G.cube, onClick: () => (location.hash = `#cube/${CUBES[0]?.id ?? 'synergy'}`) },
     { id: 'live', title: 'Watch live', line: 'Follow a game on mtg-table’s own board, read-only.', glyph: G.live, onClick: () => scrollTo('lobby-live') },
   ];
+  // mtg-table D440: only when the engine on this PC runs watches (/health "watch": 1).
+  if (o.watch) tiles.splice(3, 0, { id: 'watch', title: 'Watch two bots', line: 'Two bots draft a cube, then play a best of three while you watch.', glyph: G.watch, onClick: () => (location.hash = '#watch') });
+  return tiles;
 }
 
 export function LobbyTiles({ tiles }: { tiles: Tile[] }) {

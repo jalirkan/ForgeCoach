@@ -17,8 +17,12 @@
  * creature (the names as the prompt writes them, engine ids and all), else
  * pass — so the steps check out and no correction is asked.
  * Its `type` is "moment <first line>", which the cadence check counts per game.
+ *
+ * `watch: true` (or the fake watch's options) adds the /watch routes of
+ * mtg-table D440 (e2e/fakewatch.mjs) and `/health` `"watch": 1`.
  */
 import http from 'node:http';
+import { createFakeWatch, WATCH_CORS_HEADERS } from '../fakewatch.mjs';
 
 /** A plan-mode reply (PLAN:, STEPS:, END) that the page's check accepts at any moment. */
 export function planAnswer(user) {
@@ -41,13 +45,15 @@ export function planAnswer(user) {
   return `A fake coach: nothing to add.\nPLAN: Nothing new for now; keep your mana up.\nSTEPS:\n1. ${step}\nEND`;
 }
 
-export function startFakeHelper({ port = 0, answerMs = 50 } = {}) {
+export function startFakeHelper({ port = 0, answerMs = 50, watch = false } = {}) {
   const asks = [];
+  const fakeWatch = watch ? createFakeWatch(watch === true ? {} : watch) : null;
   const server = http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-ForgeCoach-Token');
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    if (fakeWatch) for (const [k, v] of Object.entries(WATCH_CORS_HEADERS)) res.setHeader(k, v);
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       return res.end();
@@ -55,7 +61,17 @@ export function startFakeHelper({ port = 0, answerMs = 50 } = {}) {
     const url = new URL(req.url, 'http://x');
     if (url.pathname === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ ok: true, helper: 1, claude: 'fake (playtest)', models: ['opus', 'sonnet', 'haiku'], queue: { running: 0, waiting: 0 }, thinking: ['default', 'low', 'off'] }));
+      return res.end(JSON.stringify({ ok: true, helper: 1, claude: 'fake (playtest)', models: ['opus', 'sonnet', 'haiku'], queue: { running: 0, waiting: 0 }, thinking: ['default', 'low', 'off'], ...(fakeWatch ? fakeWatch.health() : {}) }));
+    }
+    if (fakeWatch && (url.pathname === '/watch' || url.pathname.startsWith('/watch/'))) {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => {
+        const r = fakeWatch.handle(req.method, url.pathname, url.search, req.headers, body) ?? { status: 404, headers: {}, body: '' };
+        res.writeHead(r.status, r.headers);
+        res.end(r.body);
+      });
+      return;
     }
     if (url.pathname === '/coach' && req.method === 'POST') {
       let body = '';
@@ -88,6 +104,6 @@ export function startFakeHelper({ port = 0, answerMs = 50 } = {}) {
     res.end();
   });
   return new Promise((resolve) =>
-    server.listen(port, '127.0.0.1', () => resolve({ url: `http://127.0.0.1:${server.address().port}`, asks, close: () => server.close() })),
+    server.listen(port, '127.0.0.1', () => resolve({ url: `http://127.0.0.1:${server.address().port}`, asks, watch: fakeWatch, close: () => server.close() })),
   );
 }

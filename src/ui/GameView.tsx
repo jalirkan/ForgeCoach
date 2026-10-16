@@ -6,7 +6,7 @@
  * get Board / Coach tabs and a bottom scrubber dock.
  */
 import { CardRefContext } from './CoachText.tsx';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { GameLog } from '../log.ts';
 import type { AnyCard, GameStateBody } from '../protocol.ts';
 import { extractDecisions, type Decision } from '../decisions.ts';
@@ -86,6 +86,8 @@ export function GameView({
   closeLabel,
   onSettings,
   onEngineReview,
+  who,
+  banner,
 }: {
   log: GameLog;
   title: string;
@@ -101,6 +103,10 @@ export function GameView({
   onSettings: () => void;
   /** Opens the engine review screen for this game (ui/review). */
   onEngineReview?: () => void;
+  /** In place of "You vs …" under the title (a watch of two bots: whose eyes the log is). */
+  who?: ReactNode;
+  /** A strip under the top bar (a watch's scoreboard). */
+  banner?: ReactNode;
 }) {
   const frames = useMemo(() => stateFrames(log), [log]);
   const names = useMemo(() => allCardNames(log), [log]);
@@ -325,8 +331,8 @@ export function GameView({
             <div className="topbar-title">
               <span className="topbar-game">{title}</span>
               <span className="topbar-sub">
-                You vs {opp?.name ?? 'Opponent'}
-                {over && (
+                {who ?? <>You vs {opp?.name ?? 'Opponent'}</>}
+                {over && !who && (
                   <span className={cx('result', over.winner === log.seat ? 'is-win' : over.winner === null ? 'is-draw' : 'is-loss')}>
                     {over.winner === log.seat ? 'Won' : over.winner === null ? 'Draw' : 'Lost'}
                   </span>
@@ -362,6 +368,7 @@ export function GameView({
             )}
           </header>
           {live && live.detail && !wide && <div className="live-banner">{live.detail}</div>}
+          {banner}
 
           {wide ? (
             <div className="cols">
