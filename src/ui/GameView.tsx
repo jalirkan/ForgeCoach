@@ -15,7 +15,7 @@ import type { LiveStatus } from '../live.ts';
 import { Board } from './Board.tsx';
 import { LogDrawer, LogTab } from './play/LogDrawer.tsx';
 import './play/log.css';
-import { useHoverGuard } from './hoverGuard.ts';
+import { NO_HOVER, hoverOf, useHoverGuard, useHoverOutlived, type HoverState } from './hoverGuard.ts';
 import { CardDetail, HoverPreview } from './CardDetail.tsx';
 import { BoardStateRef, CardActionsContext, type CardActions } from './cardContext.ts';
 import { cachedMap, prefetchCards, useCardsVersion } from './cardData.ts';
@@ -123,8 +123,8 @@ export function GameView({
   const closeLog = useCallback(() => setLogOpen(false), []);
   const [guideName, setGuideName] = useState<string | null>(guideNameNow);
   const [detail, setDetail] = useState<{ card: AnyCard; state: GameStateBody | null } | null>(null);
-  const [hover, setHover] = useState<{ name: string | null; rect: DOMRect | null }>({ name: null, rect: null });
-  const clearHover = useCallback(() => setHover({ name: null, rect: null }), []);
+  const [hover, setHover] = useState<HoverState>(NO_HOVER);
+  const clearHover = useCallback(() => setHover(NO_HOVER), []);
   useHoverGuard(hover.name, clearHover);
   const wide = useMediaQuery('(min-width: 1024px)');
 
@@ -228,15 +228,16 @@ export function GameView({
   );
   const jumpToDecision = useCallback(() => switchMode('decisions'), [switchMode]);
 
+  useHoverOutlived(hover, clearHover, state);
   const boardStateRef = useRef<GameStateBody | null>(state);
   boardStateRef.current = state;
   const actions = useMemo<CardActions>(
     () => ({
       open: (card, st) => {
-        setHover({ name: null, rect: null });
+        setHover(NO_HOVER);
         setDetail({ card, state: st });
       },
-      hover: (name, rect) => setHover({ name, rect: rect ?? null }),
+      hover: (name, rect, source) => setHover(hoverOf(name, rect, source)),
     }),
     [],
   );

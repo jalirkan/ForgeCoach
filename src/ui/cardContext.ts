@@ -4,12 +4,13 @@
  */
 import { createContext, useContext } from 'react';
 import type { AnyCard, GameStateBody } from '../protocol.ts';
+import type { HoverSource } from './hoverGuard.ts';
 
 export interface CardActions {
   /** Open the detail sheet for a card as it is in `state`. */
   open(card: AnyCard, state: GameStateBody | null): void;
-  /** Desktop hover preview: a name and the anchor rect, or null to hide. */
-  hover(name: string | null, rect?: DOMRect): void;
+  /** Desktop hover preview: a name and the anchor rect, or null to hide; a board card also names its id and tile. */
+  hover(name: string | null, rect?: DOMRect, source?: HoverSource): void;
 }
 
 export const CardActionsContext = createContext<CardActions>({
