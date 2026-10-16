@@ -122,11 +122,11 @@ export const LIFEGAIN_GUIDE_TEXT = `Selesnya lifegain tokens (synergy cube).
 
 Plan: cheap creatures gain life whenever creatures enter, lifegain payoffs grow, and token makers do the work.
 - Enablers: Soul Warden (any creature entering, the opponent's too), Lunarch Veteran (another creature of yours entering), Prosperous Innkeeper (Treasure, and another creature of yours entering). Play them on turns one and two; they gain nothing on their own.
-- Payoffs: Ajani's Pridemate gets a counter for each life gain event, so each enabler is a separate counter; Conclave Mentor adds a counter to each counter event (and gains life when it dies); Welcoming Vampire draws a card once a turn when a creature with power 2 or less enters.
-- Token makers: Adeline (a Human token attacking every attack; her power is your creature count) and Brimaz (a Cat token on attack and block) fill the board and trigger everything.
-- Sequence: enablers first, Pridemate next, token makers last; attack with Adeline and Brimaz as soon as it is safe, since every token that enters gains life.
-- Brimaz is a fine blocker; Adeline is better attacking.
-Trap: don't run the payoffs out without an enabler on the board. Win by going wide, with Pridemate and Adeline enormous.`;
+- Payoffs: Ajani's Pridemate gets a counter for each life gain event, so each enabler is a separate counter; Conclave Mentor adds a counter to each counter event (and gains life when it dies).
+- Token makers: Brimaz (a Cat token on attack and block) and Battle Screech (two flying Birds, and two more when you flash it back by tapping three white creatures) fill the board and trigger everything. Militia Bugler looks at the top four for a creature with power 2 or less: an enabler, Pridemate or Mentor of the Meek.
+- Sequence: enablers first, Pridemate next, token makers last; attack with Brimaz as soon as it is safe, since every token that enters gains life.
+- Brimaz is a fine blocker too: it makes a token when it blocks.
+Trap: don't run the payoffs out without an enabler on the board. Win by going wide, with Pridemate enormous.`;
 
 const BUILTINS: readonly Guide[] = Object.freeze([
   Object.freeze({ id: RAKDOS_GUIDE_ID, name: 'Rakdos sacrifice (cube)', text: RAKDOS_GUIDE_TEXT }),

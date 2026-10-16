@@ -29,7 +29,8 @@ afterEach(() => refreshCustomCubes([]));
 
 describe('the document', () => {
   it('round-trips through parseCube: the same cards, in their sections, Forge’s gaps and the AI flags', () => {
-    const names = [...generateCube(LIB, { size: 180, seed: 4, rating: 'lab' }).cards, 'Twinned Vision', 'Goblin Bombardment', 'Micromancer', 'Dead // Gone', 'Grist, the Hunger Tide'].filter((n) => LIB.byName.has(n));
+    // A Set: the seeded cube may already hold one of the five added cards (it drew Micromancer once Synergy v3 changed the library).
+    const names = [...new Set([...generateCube(LIB, { size: 180, seed: 4, rating: 'lab' }).cards, 'Twinned Vision', 'Goblin Bombardment', 'Micromancer', 'Dead // Gone', 'Grist, the Hunger Tide'])].filter((n) => LIB.byName.has(n));
     const cards = names.map((n) => LIB.byName.get(n)!);
     const doc = cubeMarkdown({ title: 'Friday Cube', blurb: 'For the Friday table.', cards, date: '2026-10-16' });
     const cube = parseCube(doc);
