@@ -14,6 +14,7 @@ import { apply, legalLines, newDraft, toAct, type GridDraft } from './draft.ts';
 import {
   cleanName, createRoom, cubeHash, forgetRoom, friendLinks, joinLink, lastOpponentEvent, loadRooms, ownerRoomBase, parseCreated, parseJoinHash,
   parseRoomState, replayMatches, roomCardsSeen, RoomClient, RoomError, roomSupport, saveRoom, sseParser, toGridDraft, type RoomState, type SavedRoom,
+  checkRoomCube, parseRoomCube,
   closeRoom, FUNNEL_LOST, newFriendLink, reconnectNote, SIGNIN_AFTER, SIGNIN_EXPIRED, SIGNIN_REDIRECT,
 } from './room.ts';
 
@@ -404,6 +405,59 @@ describe('the room as the pick screen sees it', () => {
   it('the cube hash is the server\'s (sha256 of the de-duplicated names, newline-joined)', async () => {
     // mtg-table draft-room.mjs cubeHash(['A', 'B', 'A']): createHash('sha256').update('A\\nB').digest('hex')
     expect(await cubeHash(['A', 'B', 'A'])).toBe('23519a43c66b4c342f25b32e09797ec5f3fc0be388cd8243fb3449afbdce4013');
+  });
+});
+
+describe('the room\'s whole cube (mtg-table D444, GET /room/<id>/cube)', () => {
+  const OWN = [...new Set(CUBE)].slice(0, 60);
+  const room = async () => {
+    const hash = await cubeHash(OWN);
+    const state = { id: 'rAbcdEFG1', cube: { id: 'my-friday-cube', title: 'Friday Cube', hash, size: OWN.length } };
+    const answer = { ok: true, room: 'rAbcdEFG1', id: 'my-friday-cube', title: 'Friday Cube', hash, size: OWN.length, cards: OWN };
+    return { state, answer };
+  };
+  it('fetches it with the seat token in the header, then the hash matches: the list as the room deals it', async () => {
+    const { state, answer } = await room();
+    const ff = fakeFetch(() => json(answer));
+    const c = new RoomClient('http://h:8644', 'rAbcdEFG1', 'a'.repeat(22), ff.f);
+    const got = await c.cube();
+    expect(ff.calls[0]!.url).toBe('http://h:8644/room/rAbcdEFG1/cube');
+    expect((ff.calls[0]!.init.headers as Record<string, string>)['X-Room-Token']).toBe('a'.repeat(22));
+    expect(ff.calls[0]!.init.method ?? 'GET').toBe('GET');
+    expect(got?.cards).toEqual(OWN);
+    expect(await checkRoomCube(got!, state)).toEqual({ ok: true, cards: OWN });
+  });
+  it('the checked list runs the replay check of a finished draft', async () => {
+    const { state, answer } = await room();
+    let d = newDraft({ cubeId: 'my-friday-cube', format: 'grid', cube: [...OWN], seed: 7, youFirst: false, now: 0 }) as GridDraft;
+    while (!d.done) d = apply(d, { kind: 'line', line: legalLines(d)[d.log.length % legalLines(d).length]! }, 0) as GridDraft;
+    const s = stateOf(d, 1, 30, { cube: state.cube });
+    const r = await checkRoomCube(parseRoomCube(answer)!, s);
+    expect(r.ok && replayMatches(s, r.cards)).toBe(true);
+  });
+  it('a mismatch is refused, with what is wrong: another hash, a list out of order, another room, a short list', async () => {
+    const { state, answer } = await room();
+    const no = async (a: unknown, st = state) => {
+      const c = parseRoomCube(a);
+      return c ? await checkRoomCube(c, st) : { ok: false, problem: 'unreadable' };
+    };
+    expect(await no({ ...answer, hash: 'f'.repeat(64) })).toEqual({ ok: false, problem: expect.stringMatching(/fingerprint differs.*new room/) });
+    expect(await no({ ...answer, cards: [...OWN].reverse() })).toMatchObject({ ok: false, problem: expect.stringMatching(/fingerprint/) });
+    expect(await no(answer, { ...state, cube: { ...state.cube, hash: 'e'.repeat(64) } })).toMatchObject({ ok: false });
+    expect(await no({ ...answer, room: 'rOther0001' })).toMatchObject({ ok: false, problem: expect.stringMatching(/another room/) });
+    expect(await no({ ...answer, cards: OWN.slice(1), size: OWN.length - 1 })).toMatchObject({ ok: false, problem: expect.stringMatching(/59 cards/) });
+    expect(await no({ ...answer, cards: [...OWN.slice(1), OWN[1]] })).toMatchObject({ ok: false, problem: expect.stringMatching(/twice/) });
+    // Not a cube list at all.
+    for (const bad of [null, { ...answer, ok: false }, { ...answer, size: 3 }, { ...answer, cards: [...OWN.slice(1), 'x'.repeat(151)] }, { ...answer, cards: [...OWN.slice(1), 'Bad\u0007Name'] }, { ...answer, hash: 'H' }]) expect(parseRoomCube(bad)).toBeNull();
+    const ff = fakeFetch(() => json({ ok: true, cards: 'nope' }));
+    await expect(new RoomClient('http://h:8644', 'rAbcdEFG1', 'a'.repeat(22), ff.f).cube()).rejects.toMatchObject({ code: 'bad' });
+  });
+  it('an older room (404 code "cube") is null: the stand-in stays; 403 and offline are errors', async () => {
+    const c = (h: () => Response | Promise<Response>) => new RoomClient('http://h:8644', 'rAbcdEFG1', 'a'.repeat(22), fakeFetch(h).f);
+    expect(await c(() => json({ ok: false, code: 'cube', message: 'this room was made before it kept its card list (D444): make a new room' }, 404)).cube()).toBeNull();
+    await expect(c(() => json({ ok: false, code: 'not-found', message: 'no such room' }, 404)).cube()).rejects.toMatchObject({ status: 404 });
+    await expect(c(() => json({ ok: false, code: 'token', message: 'wrong link' }, 403)).cube()).rejects.toMatchObject({ status: 403 });
+    await expect(c(() => Promise.reject(new Error('down'))).cube()).rejects.toMatchObject({ code: 'offline' });
   });
 });
 

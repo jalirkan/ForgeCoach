@@ -5,7 +5,8 @@
  * The coach helper's /watch routes (mtg-table D440, docs/watch-bots.md):
  *
  *   GET  /health                "watch": 1 when it can run one, "watchRunning"
- *   POST /watch                 202 {id, seed, state, game} | 409 {code: "busy", running} | 400 | 503
+ *   POST /watch                 202 {id, seed, state, game} | 409 {code: "busy", running} | 400 (the
+ *                               route's or the cube parser's words) | 413 (a cubeDoc past 256 KB) | 503
  *   GET  /watch                 {running, watches: [...]}
  *   GET  /watch/<id>            {id, running, match, draft}
  *   GET  /watch/<id>/game/<n>   the game's frame log, complete lines; live.ts's
@@ -87,6 +88,7 @@ export async function startWatch(body: WatchBody, o: WatchClientOptions = {}): P
   if (r.status === 409 && b.code === 'busy' && typeof b.running === 'string' && ID.test(b.running)) {
     return { ok: false, status: 409, message: 'Another watch is running on your PC: one at a time.', busy: b.running };
   }
+  if (r.status === 413) return { ok: false, status: 413, message: messageOf(r.body, 'Your cube’s list is too big for the engine on your PC (at most 256 KB).') };
   if (r.status === 503) return { ok: false, status: 503, message: messageOf(r.body, 'The engine on your PC can’t run a watch right now.') };
   return { ok: false, status: r.status, message: messageOf(r.body, `The engine refused the watch (HTTP ${r.status}).`) };
 }
