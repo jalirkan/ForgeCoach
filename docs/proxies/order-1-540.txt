@@ -192,20 +192,20 @@
 1 Blade Splicer
 1 Intangible Virtue
 1 Battle Screech
-1 Adeline, Resplendent Cathar
-1 Welcoming Vampire
+1 Militia Bugler
+1 Kor Skyfisher
 1 Brimaz, King of Oreskos
 1 Swords to Plowshares
 1 Prismatic Ending
 1 March of Otherworldly Light
 1 Sun Titan
-1 Elspeth, Sun's Champion
+1 Serra Paragon
 1 Mentor of the Meek
 1 Reveillark
 1 Opt
-1 Consider
-1 Brainstorm
-1 Ponder
+1 Tolarian Terror
+1 Brazen Borrower
+1 Sower of Temptation
 1 Thought Scour
 1 Delver of Secrets
 1 Snapcaster Mage
@@ -220,7 +220,7 @@
 1 Mana Leak
 1 Remand
 1 Unsummon
-1 Deep Analysis
+1 Mist Raven
 1 Torrential Gearhulk
 1 Watcher for Tomorrow
 1 Jace, Vryn's Prodigy
@@ -318,7 +318,7 @@
 1 Lightning Helix
 1 Showdown of the Skalds
 1 Risen Reef
-1 Lonis, Cryptozoologist
+1 Uro, Titan of Nature's Wrath
 1 Walking Ballista
 1 Hangarback Walker
 1 Smuggler's Copter

@@ -10,7 +10,7 @@ import { colourBaselines, labCardView } from './labStats.ts';
 
 const synergy = context('synergy', loadMeta());
 const RAKDOS = ['Blood Artist', 'Viscera Seer', 'Goblin Bombardment', 'Bloodghast', 'Fatal Push', 'Lightning Bolt', 'Mayhem Devil', 'Priest of Forgotten Gods', 'Young Pyromancer', 'Zulaport Cutthroat'];
-const GRID = ['Carrion Feeder', 'Juri, Master of the Revue', 'Yawgmoth, Thran Physician', 'Wood Elves', 'Lotus Cobra', 'Eternal Witness', 'Opt', 'Ponder', 'Mana Leak'];
+const GRID = ['Carrion Feeder', 'Juri, Master of the Revue', 'Yawgmoth, Thran Physician', 'Wood Elves', 'Lotus Cobra', 'Eternal Witness', 'Opt', 'Thought Scour', 'Mana Leak'];
 
 const vCube = loadCube('vintage');
 const human = parseHumanCards(JSON.parse(readFileSync(new URL('../../public/cubes/vintage-cube-180.human.json', import.meta.url), 'utf8')));

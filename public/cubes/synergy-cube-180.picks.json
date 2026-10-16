@@ -17,7 +17,7 @@
  "cube": {
   "file": "synergy-cube-180.md",
   "cards": 180,
-  "matched": 79
+  "matched": 78
  },
  "picks": 2316631,
  "drafts": 52652,
@@ -83,10 +83,10 @@
    "taken": 4709,
    "colors": "W"
   },
-  "Adeline, Resplendent Cathar": {
-   "s": 0.886,
-   "seen": 27023,
-   "taken": 5441,
+  "Serra Paragon": {
+   "s": -0.401,
+   "seen": 34954,
+   "taken": 4524,
    "colors": "W"
   },
   "Swords to Plowshares": {
@@ -107,23 +107,17 @@
    "taken": 4378,
    "colors": "W"
   },
-  "Consider": {
-   "s": -1.016,
-   "seen": 38878,
-   "taken": 4107,
+  "Brazen Borrower": {
+   "s": -0.113,
+   "seen": 28878,
+   "taken": 3842,
    "colors": "U"
   },
-  "Brainstorm": {
-   "s": -0.105,
-   "seen": 28710,
-   "taken": 3728,
-   "colors": "U"
-  },
-  "Ponder": {
-   "s": 0.17,
-   "seen": 28254,
-   "taken": 4166,
-   "colors": "U"
+  "Uro, Titan of Nature's Wrath": {
+   "s": 0.897,
+   "seen": 25190,
+   "taken": 3308,
+   "colors": "UG"
   },
   "Snapcaster Mage": {
    "s": 1.449,

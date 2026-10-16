@@ -23,7 +23,7 @@ describe('the shipped library (scripts/library/build.ts)', () => {
     }
     expect(LIB.dropped).toBe(0);
     expect(LIB.cards.length).toBe(names.size);
-    expect(LIB.cards.length).toBe(1592);
+    expect(LIB.cards.length).toBe(1590);
     expect(new Set(LIB.cards.map((c) => c.name))).toEqual(names);
     expect(LIB.sources.map((s) => s.id)).toEqual([...SHIPPED_CUBES.map((c) => c.id), ...LIBRARY_LISTS.map((l) => l.id)]);
     expect(LIB.cards.filter((c) => c.noFacts)).toEqual([]);
@@ -103,7 +103,7 @@ describe('parseLibrary', () => {
     const a = await loadLibrary('/x/', f);
     const b = await loadLibrary('/x/', f);
     expect(a).toBe(b);
-    expect(a.cards.length).toBe(1592);
+    expect(a.cards.length).toBe(1590);
     expect(asked).toBe(1);
   });
 });
