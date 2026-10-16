@@ -40,8 +40,16 @@ export const hasBlue = (colors: string | null | undefined): boolean => !!colors 
 export function blueCaveat(cubeId: string | null | undefined, colors: string | null | undefined): string | null {
   const s = blueStatsFor(cubeId);
   if (!s || !hasBlue(colors)) return null;
+  // Synergy: J135/J137 traced blue's deficit in this cube to its card-flow cards (cantrips,
+  // looters), which Forge plays poorly in every colour; J111's v1 equal-quality figure no
+  // longer describes the cube after v3 cut three of them.
+  if (cubeId === 'synergy') return SYNERGY_BLUE_CAVEAT;
   return `Blue’s lab win rate is held down by Forge’s play with blue, not by the cards: at equal deck quality its blue decks won ${pc(s.equalQualityWin)} (95% ${Math.round(s.equalQualityLo * 100)}–${Math.round(s.equalQualityHi * 100)}%) in this cube’s lab. Human players don’t see this.`;
 }
+
+/** Synergy's caveat (lab results J135 and J137, Forge-vs-Forge). */
+export const SYNERGY_BLUE_CAVEAT =
+  'Blue’s lab win rate here is held down by its card-draw cards (cantrips, looters): Forge plays them poorly, about 3 points (95% 2–4) per such card in a deck, in every colour. Version 3 cut three of them. Human players don’t see this.';
 
 /** Where the lines come from, for a title attribute. */
 export const BLUE_SOURCE = 'Cube lab result J111 (Forge-vs-Forge drafts): words only, no number on this page is changed by it.';
