@@ -59,6 +59,8 @@ const ReportPage = lazy(() => import('./lab/ReportPage.tsx'));
 const ReviewApp = lazy(() => import('./review/ReviewApp.tsx'));
 // #practice[/<puzzle id>]: puzzles from the player's own games (lazy).
 const PracticeApp = lazy(() => import('./practice/PracticeApp.tsx'));
+// #watch[/<id>]: two bots draft a cube and play a best of three (mtg-table D440; lazy).
+const WatchApp = lazy(() => import('./watch/WatchApp.tsx'));
 // #ambience: the board scenery preview (lazy; no engine).
 const AmbiencePage = lazy(() => import('./ambience/AmbiencePage.tsx'));
 
@@ -161,6 +163,13 @@ export function App() {
       <MetaApp />
     ) : /^#history\b/.test(hash) ? (
       <HistoryApp />
+    ) : /^#watch\b/.test(hash) ? (
+      <WatchApp
+        onExit={() => {
+          history.replaceState(null, '', location.pathname + location.search);
+          setHash('');
+        }}
+      />
     ) : /^#practice\b/.test(hash) ? (
       <PracticeApp />
     ) : /^#lab\/ladder\b/.test(hash) ? (

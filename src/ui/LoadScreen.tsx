@@ -119,6 +119,25 @@ function useConnectSlow(play: PlayStatus | null): boolean {
   return connecting && slow;
 }
 
+/**
+ * mtg-table D440: the engine on this PC can run a watch of two bots (`/health` `"watch": 1`).
+ * Asked once, through a lazy chunk; false while asking and when there is no helper.
+ */
+function useWatchAvailable(): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void import('../watch/client.ts')
+      .then((m) => m.watchCaps())
+      .then((c) => live && setOn(c.watch))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+  return on;
+}
+
 function SeatStatusBox({ play, url, engineServed = false }: { play: PlayStatus | null; url: string; engineServed?: boolean }) {
   const slow = useConnectSlow(play);
   const text = seatStatusText(play, url, { engineServed, slow });
@@ -345,6 +364,7 @@ export function LoadScreen({
   const [more, setMore] = useState(false);
   const [seatInput, setSeatInput] = useState(seatUrl);
   useEffect(() => setSeatInput(seatUrl), [seatUrl]);
+  const watch = useWatchAvailable();
   if (engineServed && !more) {
     return <EngineConnect seatUrl={seatUrl} play={play} onPlay={onPlay} onCancel={onCancelPlay} onMore={() => setMore(true)} onSettings={onSettings} />;
   }
@@ -372,7 +392,7 @@ export function LoadScreen({
         </section>
 
         <LobbyTiles
-          tiles={lobbyTiles({ onPlay: () => onPlay(engineServed ? homeSeatUrl : seatInput.trim() || homeSeatUrl), onDraftBuild: onDraft, samples: SAMPLES.length, playLine: playLine(play) })}
+          tiles={lobbyTiles({ onPlay: () => onPlay(engineServed ? homeSeatUrl : seatInput.trim() || homeSeatUrl), onDraftBuild: onDraft, samples: SAMPLES.length, playLine: playLine(play), watch })}
         />
 
         <EnginePanel url={seatInput} onUrl={setSeatInput} homeSeatUrl={homeSeatUrl} engineServed={engineServed} play={play} onPlay={onPlay} onCancel={onCancelPlay} />

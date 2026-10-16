@@ -29,7 +29,8 @@ export function GridBoard({
   why,
   whyExtra,
 }: {
-  d: GridDraft;
+  /** The grid on screen (a live draft, or a watch's replay: only these four are read). */
+  d: Pick<GridDraft, 'slots' | 'firstLine' | 'g' | 'grids'>;
   /** It is your pick. */
   mine: boolean;
   selected: number | null;
