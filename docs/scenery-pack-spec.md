@@ -1073,7 +1073,10 @@ board's fallback note say so, with these steps.
 
 If a pack fails on the board, ForgeCoach falls back to the built-in scenery.
 It logs why in the console (`ForgeCoach scenery: …`); dev builds also show it
-in the board's corner.
+in the board's corner. A stage-1 file that fails or takes over 15 s is tried
+once more after 2 s before its biome falls back, and a biome that fell back
+switches to the pack when its files arrive (waited for up to two minutes), so
+a slow first fetch from a CDN costs that biome a while, not the game.
 
 ## 7. Content rules
 
