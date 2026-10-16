@@ -8,12 +8,16 @@
  * when it ships them (cube/human.ts; score.ts blends them into card values). The scoring context is rebuilt when
  * card data arrives, so the page works from the first paint (document
  * colours only) and sharpens a moment later.
+ *
+ * `standIn`: a cube this browser does not have (a friend's own cube in a
+ * draft room, cube/custom.ts) is read as a plain list of the cards seen so
+ * far, so the pick screen works; it grows as the room shows more.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CardInfo } from '../../cards.ts';
 import { getCards } from '../../cards.ts';
 import { cubeInfo, loadCubeDoc, loadShippedMeta } from '../../cube/cubes.ts';
-import type { Cube } from '../../cube/parseCube.ts';
+import { parseCube, type Cube } from '../../cube/parseCube.ts';
 import { metaMatchesCube, type CubeMeta } from '../../cube/meta.ts';
 import { getImportedMeta, setImportedMeta } from '../../cube/metaStore.ts';
 import { makeContext, type CubeContext } from '../../cube/score.ts';
@@ -37,7 +41,12 @@ export interface CubeData {
 
 const BASE = import.meta.env.BASE_URL;
 
-export function useCubeData(cubeId: string | null): CubeData {
+/** A plain cube document of `names`, for a cube this browser does not have. */
+export function standInDoc(title: string, names: string[]): string {
+  return `# ${title.replace(/\s+/g, ' ').trim() || 'A cube'}\n\n## The list\n\n${[...new Set(names)].join('\n')}\n`;
+}
+
+export function useCubeData(cubeId: string | null, standIn?: { title: string; names: string[] } | null): CubeData {
   const [cube, setCube] = useState<Cube | null>(null);
   const [shipped, setShipped] = useState<CubeMeta | null>(null);
   const [imported, setImported] = useState<CubeMeta | null>(null);
@@ -52,10 +61,14 @@ export function useCubeData(cubeId: string | null): CubeData {
     setInfos(null);
     setHuman(null);
     setError(null);
+  }, [cubeId]);
+
+  useEffect(() => {
     const info = cubeId ? cubeInfo(cubeId) : undefined;
-    if (!info) return;
+    const doc = !info && standIn?.names.length ? standInDoc(standIn.title, standIn.names) : null;
+    if (!info && !doc) return;
     let live = true;
-    loadCubeDoc(info, BASE)
+    (info ? loadCubeDoc(info, BASE) : Promise.resolve(parseCube(doc!)))
       .then((c) => {
         if (!live) return;
         setCube(c);
@@ -66,13 +79,15 @@ export function useCubeData(cubeId: string | null): CubeData {
           .catch(() => undefined);
       })
       .catch((e: unknown) => live && setError(e instanceof Error ? e.message : String(e)));
-    loadShippedMeta(info, BASE).then((m) => live && setShipped(m));
-    getImportedMeta(info.id).then((m) => live && setImported(m));
-    if (info.humanData) humanCardsFor(info).then((h) => live && setHuman(h));
+    if (info) {
+      loadShippedMeta(info, BASE).then((m) => live && setShipped(m));
+      getImportedMeta(info.id).then((m) => live && setImported(m));
+      if (info.humanData) humanCardsFor(info).then((h) => live && setHuman(h));
+    }
     return () => {
       live = false;
     };
-  }, [cubeId]);
+  }, [cubeId, standIn?.title, standIn?.names.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const meta = imported ?? shipped;
   const metaSource: MetaSource = imported ? 'imported' : shipped ? 'shipped' : null;

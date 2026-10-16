@@ -750,6 +750,19 @@ export function replayMatches(s: RoomState, cubeNames: string[]): boolean | null
   }
 }
 
+/**
+ * Every card the room has shown this seat: both seats' picks, the log's lines and the grid on offer.
+ * For a cube this browser does not have (the owner's own, cube/custom.ts): the room sends only its
+ * hash and size, so the pick screen reads these as the cube until the draft is over.
+ */
+export function roomCardsSeen(s: RoomState): string[] {
+  const out = new Set<string>();
+  for (const seat of s.seats) for (const n of seat.picks) out.add(n);
+  for (const e of s.log) for (const n of e.cards) out.add(n);
+  for (const n of s.slots) if (n) out.add(n);
+  return [...out];
+}
+
 /** SHA-256 of the cube as the room deals from it (de-duplicated, '\n'-joined), hex; the server's `cube.hash`. */
 export async function cubeHash(names: string[], subtle: SubtleCrypto = globalThis.crypto.subtle): Promise<string> {
   const bytes = new TextEncoder().encode([...new Set(names)].join('\n'));

@@ -39,6 +39,8 @@ const DraftApp = lazy(() => import('./draft/DraftApp.tsx'));
 const FriendApp = lazy(() => import('./draft/FriendApp.tsx'));
 // #cube/<id>: a cube's own page (its cards in the cube section's collection view).
 const CubePage = lazy(() => import('./draft/CubePage.tsx'));
+// #cube/new[?from=<id>], #cube/edit/<id>: the cube builder, your own cube from the card library (lazy).
+const CubeBuilder = lazy(() => import('./cubeBuilder/CubeBuilder.tsx'));
 
 // #ask-gallery: every ask kind rendered from fixtures (a design/QA page); lazy so the fixtures stay out of the main bundle.
 const AskGallery = lazy(() => import('./play/AskGallery.tsx'));
@@ -180,6 +182,8 @@ export function App() {
       <ReportPage />
     ) : /^#lab\b/.test(hash) ? (
       <LabPage />
+    ) : /^#cube\/(new|edit)\b/.test(hash) ? (
+      <CubeBuilder key={hash.replace(/\?.*$/, '')} route={hash.slice(6)} onExit={() => (history.length > 1 ? history.back() : (location.hash = '#draft/setup'))} />
     ) : /^#cube\/[\w-]+/.test(hash) ? (
       <CubePage id={hash.slice(6)} onExit={() => (history.length > 1 ? history.back() : (location.hash = '#draft/setup'))} />
     ) : /^#draft\/friend\b/.test(hash) ? (

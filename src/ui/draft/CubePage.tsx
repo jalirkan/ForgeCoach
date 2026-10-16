@@ -8,7 +8,8 @@
  * summary line with colour dots and a curve sparkline, and the cube's
  * themes and archetypes as quiet chips, and a "How to draft" tab
  * (#cube/<id>/guide) with the cube's guide. Read-only: the cube documents
- * are Justin's, edited in the repository.
+ * are Justin's, edited in the repository; your own cubes (cube/custom.ts)
+ * open in the cube builder from Edit.
  */
 import { useEffect, useMemo, useState } from 'react';
 import '../deck/deck.css';
@@ -59,8 +60,10 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
           {CUBES.map((c) => (
             <a key={c.id} href={`#cube/${c.id}${view === 'guide' ? '/guide' : ''}`} className={cx(c.id === info.id && 'is-on')}>
               {cubeShortName(c)}
+              {c.custom ? ' (yours)' : ''}
             </a>
           ))}
+          <a href="#cube/new">+ New cube</a>
         </nav>
       </header>
       <div className="cp-head">
@@ -73,7 +76,12 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
         </div>
         <div className="cp-side">
           {meta && <MiniCurve names={all} meta={meta} />}
-          <a className="btn-gold cp-draft" href="#draft/setup">
+          {info.custom && (
+            <a className="btn-line cp-draft" href={`#cube/edit/${info.id}`}>
+              Edit
+            </a>
+          )}
+          <a className="btn-gold cp-draft" href={`#draft/setup?cube=${info.id}`}>
             Draft this cube
           </a>
         </div>
