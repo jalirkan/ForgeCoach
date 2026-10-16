@@ -535,8 +535,13 @@ lists (`docs/proxies/mtgo-vintage-cube-540.txt`, `old-school-93-94-360.txt`),
 
 A lab rating is a Forge-vs-Forge win rate from the cubes the card was measured
 in, so a card that won in a weaker cube can rate above one that held its own in
-a stronger one. Your cube has no lab data of its own. **Watch two bots** can't
-use your own cubes yet: the engine deals only the cubes in its own folder.
+a stronger one. Your cube has no lab data of its own. **Watch two bots** takes
+your own cubes when the engine on your PC is new enough (otherwise they show
+greyed, with a note to update mtg-table): the cube goes to it as its list, and the lab drafter rates its
+cards by Forge's draft ranks. In **Draft with a friend**, your friend's browser
+reads the whole list of your cube from the room and checks it against the
+room's fingerprint before drafting from it; a list that doesn't match is
+refused.
 
 The library is generated: `node --experimental-transform-types
 scripts/library/build.ts [--fetch] [--engine-facts <mtg-table

@@ -383,14 +383,19 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
   const room = useFriendRoom(entry);
   const { state, link, note, data, game, opponent } = room;
   const ctx = data.ctx;
-  const names = useMemo(() => data.cube?.cards.map((c) => c.name) ?? null, [data.cube]);
+  const roomCube = room.roomCube;
+  // The owner's own cube (cube/custom.ts) that this browser does not have: the room's own list once it is checked
+  // against the hash (D444), which the replay check then uses as is; an older room's is only what it has shown, so no check.
+  const listed = roomCube?.kind === 'cards' ? roomCube.cards : null;
+  const docNames = useMemo(() => data.cube?.cards.map((c) => c.name) ?? null, [data.cube]);
+  const names = listed ?? docNames;
   const [sameCube, setSameCube] = useState<boolean | null>(null);
   useEffect(() => {
+    if (listed) return setSameCube(true);
     if (!names || !state || !globalThis.crypto?.subtle) return;
     void cubeHash(names).then((h) => setSameCube(h === state.cube.hash));
-  }, [names, state?.cube.hash]); // eslint-disable-line react-hooks/exhaustive-deps
-  // The owner's own cube (cube/custom.ts) that this browser does not have: read from what the room shows, so no hash or replay check.
-  const standIn = !!state && !cubeInfo(state.cube.id);
+  }, [names, listed, state?.cube.hash]); // eslint-disable-line react-hooks/exhaustive-deps
+  const standIn = !!state && !cubeInfo(state.cube.id) && !listed;
   const replay = useMemo(() => (state?.done && names && !standIn ? replayMatches(state, names) : null), [state, names, standIn]);
   // D407: this seat's own engine review of a finished game, opened over the room.
   const [review, setReview] = useState<{ log: GameLog; report: unknown; title: string } | null>(null);
@@ -427,6 +432,9 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
   }
   if (link === 'gone' && !state) {
     return <Message title="This room is gone" text={note ?? 'The room expired, or this link is not right for it.'} onBack={() => go('#draft/friend')} />;
+  }
+  if (roomCube?.kind === 'bad') {
+    return <Message title="This room’s cube can’t be checked" text={roomCube.problem} onBack={() => go('#draft/friend')} />;
   }
   if (!state || !game || !ctx) {
     return (

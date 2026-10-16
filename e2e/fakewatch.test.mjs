@@ -11,6 +11,8 @@
 import { describe, expect, it } from 'vitest';
 import { createFakeWatch } from './fakewatch.mjs';
 import { parseWatchList, parseWatchState } from '../src/watch/data.ts';
+import { defaultForm, watchCapsOf, watchRequest } from '../src/watch/choices.ts';
+import { cubeMarkdown } from '../src/cube/custom.ts';
 import { connectLive } from '../src/live.ts';
 
 const clockAt = () => {
@@ -89,5 +91,49 @@ describe('the fake /watch', () => {
     expect(log.over).not.toBeNull();
     expect(log.frames.length).toBeGreaterThan(1000);
     expect(statuses.has('error')).toBe(false);
+  });
+
+  it('D443/D444: the lists on /health; ForgeCoach\'s own request with forge-ranks and a cube of yours is taken; the route\'s 400s and 413', () => {
+    const c = clockAt();
+    const w = createFakeWatch({ now: c.now, engine: 'd444' });
+    const caps = watchCapsOf(w.health());
+    expect(caps.players.map((o) => o.id)).toEqual(['Cautious', 'Default', 'Experimental', 'Reckless', 'search-v2']);
+    expect(caps.custom && caps.sendsDrafters && caps.llmCap?.maxUsd === 1).toBe(true);
+    const cards = 'Opt Brainstorm Ponder Preordain Counterspell Mana-Leak Daze Force-Spike Remand Impulse'.split(' ').map((n) => ({ name: n.replace('-', ' '), colors: 'U', type: 'Instant', mv: 1 }));
+    const doc = cubeMarkdown({ title: 'Friday Cube', blurb: '', cards });
+    const f = { ...defaultForm('my-friday-cube', caps), drafter: { A: 'lab', B: 'forge-ranks' }, player: { A: 'search-v2', B: 'Reckless' }, seed: '7' };
+    const r = watchRequest(f, caps, { title: 'Friday Cube', doc });
+    expect('body' in r).toBe(true);
+    const post = (b) => w.handle('POST', '/watch', '', {}, JSON.stringify(b));
+    // The route's refusals first (nothing runs yet).
+    expect(post({ ...r.body, drafterA: 'forge-ranks' }).status).toBe(400);
+    expect(post({ ...r.body, drafterB: 'llm:opus' }).status).toBe(400);
+    expect(post({ ...r.body, playerB: 'llm:sonnet' }).status).toBe(400);
+    expect(post({ ...r.body, cubeDoc: undefined }).status).toBe(400);
+    expect(post({ ...r.body, cube: 'fair-fight-cube-180' }).status).toBe(400);
+    const prose = post({ ...r.body, cubeDoc: { title: 'x', markdown: '# Just prose\n' } });
+    expect([prose.status, JSON.parse(prose.body).message]).toEqual([400, expect.stringMatching(/the cube parser: no "## The list" section/)]);
+    expect(post({ ...r.body, cubeDoc: { title: 'x', markdown: '#'.repeat(300 * 1024) } }).status).toBe(413);
+    // Then ForgeCoach's own body: 202, and match.json says what it is from the first write.
+    const a = post(r.body);
+    expect(a.status).toBe(202);
+    const id = JSON.parse(a.body).id;
+    expect(id).toBe('watch-my-friday-cube-7');
+    let s = state(w, id);
+    expect(s.match).toMatchObject({ cubeTitle: 'Friday Cube', drafters: { A: 'lab', B: 'forge-ranks' }, cost: null });
+    c.go(1600);
+    s = state(w, id);
+    expect(s.draft?.drafters).toEqual({ A: 'lab', B: 'forge-ranks' });
+    expect(s.draft?.cube.title).toBe('Friday Cube');
+  });
+  it('D443: a Claude drafter\'s cost in match.json, moving while it drafts', () => {
+    const c = clockAt();
+    const w = createFakeWatch({ now: c.now, engine: 'd444' });
+    const a = w.handle('POST', '/watch', '', {}, JSON.stringify({ cube: 'fair-fight-cube-180', drafterB: 'llm:sonnet', playerA: 'SEARCH', playerB: 'default' }));
+    expect(a.status).toBe(202);
+    const id = JSON.parse(a.body).id;
+    expect(state(w, id).match?.cost).toMatchObject({ side: 'B', drafter: 'llm:sonnet', calls: 6 });
+    c.go(1600);
+    expect(state(w, id).match?.cost).toMatchObject({ calls: 18, decisions: 18, fallbacks: 0, usd: 0.2988 });
   });
 });

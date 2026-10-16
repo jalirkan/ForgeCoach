@@ -413,3 +413,15 @@
   min-height: 100vh;
   min-height: 100dvh;
 }
+.wb-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.wb-cap {
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+.wb-spent {
+  margin: 4px 0 0;
+  line-height: 1.45;
+}

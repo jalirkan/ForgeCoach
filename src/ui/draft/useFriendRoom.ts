@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { initialDeck, type DeckState } from '../../draft/deck.ts';
 import type { DraftAction, DraftEvent, GridDraft } from '../../draft/draft.ts';
-import { reconnectNote, roomCardsSeen, RoomClient, RoomError, saveRoom, toGridDraft, type RoomState, type SavedRoom } from '../../draft/room.ts';
+import { checkRoomCube, reconnectNote, roomCardsSeen, RoomClient, RoomError, saveRoom, toGridDraft, type RoomState, type SavedRoom } from '../../draft/room.ts';
 import { isFunnelHost, servedByTunnel } from '../../play/seatUrl.ts';
 import type { SavedDraft } from '../../draft/store.ts';
 import { useCubeData, type CubeData } from '../deck/useCubeData.ts';
@@ -19,6 +19,15 @@ import { cubeInfo } from '../../cube/cubes.ts';
 import type { DraftGame } from './useDraftGame.ts';
 
 export type RoomLink = 'connecting' | 'live' | 'reconnecting' | 'gone';
+
+/**
+ * A cube this browser does not have (the owner's own, cube/custom.ts), fetched
+ * once from the room (D444 `GET /room/<id>/cube`) and checked against the
+ * state's hash: `cards` (checked: the pick helper, the hash and the replay
+ * check use it), `none` (an older room, or it could not be read: the stand-in
+ * from what the room has shown), `bad` (the list is not the room's: refused).
+ */
+export type RoomCubeState = { kind: 'loading' } | { kind: 'cards'; cards: string[] } | { kind: 'none'; why: string | null } | { kind: 'bad'; problem: string };
 
 export interface FriendRoom {
   entry: SavedRoom;
@@ -30,6 +39,8 @@ export interface FriendRoom {
   data: CubeData;
   game: DraftGame | null;
   opponent: string;
+  /** Null for a cube this browser has. */
+  roomCube: RoomCubeState | null;
   setDeck: (d: DeckState) => void;
   update: (patch: Partial<SavedRoom>) => void;
   /** Show a state the room answered with (a newer version wins). */
@@ -80,9 +91,32 @@ export function useFriendRoom(entry0: SavedRoom): FriendRoom {
     });
   }, []);
 
-  // A cube this browser does not have (the owner's own, cube/custom.ts): the cards the room has shown so far.
+  // A cube this browser does not have (the owner's own, cube/custom.ts): the room's whole list (D444), checked
+  // against its hash; on an older room, the cards the room has shown so far.
   const cubeId = state?.cube.id ?? entry.cubeId;
-  const standIn = useMemo(() => (state && !cubeInfo(cubeId) ? { title: state.cube.title, names: roomCardsSeen(state) } : null), [state, cubeId]);
+  const foreign = !!state && !cubeInfo(cubeId);
+  const [roomCube, setRoomCube] = useState<RoomCubeState | null>(null);
+  const cubeAsked = useRef(false);
+  useEffect(() => {
+    if (!foreign || !state || cubeAsked.current) return;
+    cubeAsked.current = true;
+    setRoomCube({ kind: 'loading' });
+    const want = { id: state.id, cube: state.cube };
+    client
+      .cube()
+      .then(async (c) => {
+        if (!c) return setRoomCube({ kind: 'none', why: null });
+        if (!globalThis.crypto?.subtle) return setRoomCube({ kind: 'none', why: 'this browser can’t check the list' });
+        const r = await checkRoomCube(c, want);
+        setRoomCube(r.ok ? { kind: 'cards', cards: r.cards } : { kind: 'bad', problem: r.problem });
+      })
+      .catch((e: unknown) => setRoomCube({ kind: 'none', why: e instanceof Error ? e.message : String(e) }));
+  }, [foreign, state, client]);
+  const listed = roomCube?.kind === 'cards' ? roomCube.cards : null;
+  const standIn = useMemo(() => {
+    if (!state || !foreign || !roomCube || roomCube.kind === 'loading' || roomCube.kind === 'bad') return null;
+    return { title: state.cube.title, names: listed ?? roomCardsSeen(state) };
+  }, [state, foreign, roomCube, listed]);
   const data = useCubeData(cubeId, standIn);
   const draft = useMemo(() => (state ? toGridDraft(state) : null), [state]);
   const opponent = state ? state.seats[(1 - state.you) as 0 | 1].name : 'your friend';
@@ -154,7 +188,7 @@ export function useFriendRoom(entry0: SavedRoom): FriendRoom {
     };
   }, [draft, state, entry.hints, entry.side, entry.deck, data, busy, theirs, act, update, setDeck]);
 
-  return { entry, state, link, note, draft, data, game, opponent, setDeck, update, take };
+  return { entry, state, link, note, draft, data, game, opponent, roomCube: foreign ? roomCube : null, setDeck, update, take };
 }
 
 /** The deck to start from once the draft is over: the saved one, else the whole pool with the side column set aside. */
