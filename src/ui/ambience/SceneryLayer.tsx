@@ -18,7 +18,8 @@ import { createPortal } from 'react-dom';
 import type { GameLog } from '../../log.ts';
 import type { Card, GameStateBody } from '../../protocol.ts';
 import { isHidden } from '../../protocol.ts';
-import { SceneryTracker, slotsOf } from '../../ambience/model.ts';
+import { dualsOf, SceneryTracker, slotsOf } from '../../ambience/model.ts';
+import { bridgePictures } from '../../ambience/bridges.ts';
 import { sceneryEvents } from '../../ambience/events.ts';
 import { cachedMap, useCardsVersion } from '../cardData.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
@@ -165,6 +166,8 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     if (!load?.pack) return;
     const phone = window.innerWidth < 700;
     for (const w of growthPictures(load.pack, scenery.players.flatMap((p) => p.slots), { half: fill, phone })) warmPicture(w);
+    // Spec 1.8: a side's bridge warms with its split's pictures (the half board only).
+    if (fill) for (const w of bridgePictures(load.pack, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
   }, [scenery, load?.pack, fill]);
 
   useLayoutEffect(() => {
@@ -189,6 +192,7 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
                 pulses={fx.pulses.get(t.playerId)}
                 fx={fx.fx.get(t.playerId)}
                 fill={fill ? 'half' : 'strip'}
+                duals={dualsOf(scenery, t.playerId)}
               />
               {accents && <SceneryOverlay slots={slotsOf(scenery, t.playerId)} pack={load.pack} edge={t.top ? 'top' : 'bottom'} reduced={reduced} />}
             </>,

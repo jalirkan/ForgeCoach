@@ -23,6 +23,11 @@
  * next stage (0..1), so the renderer can grow the scene a little with every
  * land instead of only at the thresholds.
  *
+ * Duals (spec 1.8): a land that counts ½ to each of exactly two biomes (a
+ * "Land — Forest Island", or a land that taps for exactly those two colours)
+ * is also counted per pair ({@link dualPairs}): a pack's bridge for that pair
+ * widens the seam between them by it.
+ *
  * Slots: a biome claims the next slot the first time its weight is above zero
  * and keeps it for the rest of the game, even if those lands later leave (the
  * slot then shows stage 0, a withered scene). Order needs history, so it is a
@@ -76,6 +81,33 @@ export function landBiomes(card: AnyCard, cards?: Map<string, CardInfo>): Partia
   const uniq = [...new Set(colors)];
   if (uniq.length >= 1 && uniq.length <= 2) return split(uniq.map((x) => COLOR_BIOME[x]!));
   return { wastes: 1 };
+}
+
+/**
+ * A biome pair's key, the same for both orders: the two names in
+ * alphabetical order joined by `+` (`forest+island`). Spec 1.8's `bridges`
+ * are keyed by it.
+ */
+export function pairKey(a: Biome, b: Biome): string {
+  return a < b ? `${a}+${b}` : `${b}+${a}`;
+}
+
+/** The pair a land belongs to both of (½ to each of exactly two biomes, {@link landBiomes}), or null. */
+export function landPair(w: Partial<Record<Biome, number>> | null): string | null {
+  if (!w) return null;
+  const bs = (Object.keys(w) as Biome[]).filter((b) => (w[b] ?? 0) > 0);
+  return bs.length === 2 && Math.abs(w[bs[0]!]! - 0.5) < 1e-9 && Math.abs(w[bs[1]!]! - 0.5) < 1e-9 ? pairKey(bs[0]!, bs[1]!) : null;
+}
+
+/** Spec 1.8: how many of one player's lands are duals of each pair (only pairs with one or more), keyed by {@link pairKey}. */
+export function dualPairs(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>): Record<string, number> {
+  const out: Record<string, number> = {};
+  const p = state.players.find((x) => x.id === playerId);
+  for (const card of p?.zones.battlefield?.cards ?? []) {
+    const k = landPair(landBiomes(card, cards));
+    if (k) out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
 }
 
 function split(biomes: Biome[]): Partial<Record<Biome, number>> {
@@ -165,6 +197,8 @@ export interface SlotState {
 export interface PlayerScenery {
   playerId: number;
   slots: SlotState[];
+  /** Spec 1.8: this player's dual lands per biome pair ({@link dualPairs}); absent is none. */
+  duals?: Record<string, number>;
 }
 
 export interface Scenery {
@@ -206,7 +240,8 @@ export function stepScenery(prev: Scenery | null, state: GameStateBody, opts: Sc
       slots.push({ biome: b, index: slots.length, weight: weights[b]!, stage, progress, peak: stage });
       have.add(b);
     }
-    players.push({ playerId: p.id, slots });
+    const duals = dualPairs(state, p.id, opts.cards);
+    players.push(Object.keys(duals).length ? { playerId: p.id, slots, duals } : { playerId: p.id, slots });
   }
   return { players, thresholds };
 }
@@ -318,6 +353,13 @@ export class SceneryTracker {
   current(): { scenery: Scenery | null; state: GameStateBody | null } {
     return { scenery: this.scenery, state: this.lastState };
   }
+}
+
+const NO_DUALS: Readonly<Record<string, number>> = Object.freeze({});
+
+/** A player's dual lands per biome pair (spec 1.8), or none. */
+export function dualsOf(s: Scenery | null | undefined, playerId: number): Readonly<Record<string, number>> {
+  return s?.players.find((p) => p.playerId === playerId)?.duals ?? NO_DUALS;
 }
 
 /** A player's slots, or [] when the scenery does not know them. */

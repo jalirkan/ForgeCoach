@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.7)
+# Scenery pack spec (schema 1, version 1.8)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -23,6 +23,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.4 | One more accent piece, the **full-area** piece (§2, *Full-area accents*): `anchor: "area"`, one transparent picture across the whole player area, beneath the strip and the cards, with `fit`, an optional `safe` rect or `position`, `minWidthPx`; at most one per stage; its own budget (§3). Every other piece and every 1.0–1.3 pack is unchanged. |
 | 1.5 | The **half board** (§2, *The half board*): the scenery fills each player's whole half of the board (Settings → Fill each side, on by default), split side by side in proportion to their lands, each biome at its own stage, both halves upright with a mist band along the centre line, and a soft dark scrim under the card rows. Optional per-stage **`half`** pictures (an opaque desktop picture and an optional portrait `phone` one, with the scene's `subjectBand` — and optional `focal` / `safe` — for the crop) and a top-level **`half`** layout (`seamRatio`, `minShare`, `mist`); their budget (§3). A 1.0–1.4 pack fills the half with its strip art, cover-cropped. |
 | 1.7 | **Transition frames** (§2, *Transition frames*): an optional per-biome **`transitions`** with a few in-between pictures for each stage step (`from`, `frames` of a desktop `src` and a `phone`, a `holdMs` per frame and a `fadeMs`), played with hard cuts when a land steps the stage — limited animation, a drawing held ~200 ms, then one short fade into the new stage. A step without frames, and every 1.0–1.6 pack, cross-fades as in 1.6. |
+| 1.8 | **Bridges across the seam** (§2, *Bridges across the seam*): an optional top-level **`bridges`** map keyed by a biome pair (`"forest+island"`; both orders find the one entry), each a transparent ground piece drawn over the seam where the two biomes meet on one side of the half board — a desktop `src` and a `phone` seam crop, an `anchor` on the seam (the centre's height, the width as a fraction of the half's) — faded in with the second biome, mirrored when the board has the pair the other way round; and `dualsWiden`: each of the pair's two-colour lands widens their seam (and the bridge with it). A 1.0–1.7 pack, and a pair with no bridge, keeps today's seam. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -56,6 +57,7 @@ other game information.
 - **Accents (1.3).** Besides the strip, each player's area can carry a few **accents**: pictures in its corners and bands along its edges (vines creeping in as the forest grows, frost and spray for islands, ash for mountains). They grow with the same stages, sit beneath every card and control, and are a separate setting (Settings → Board accents, on whenever the scenery is on).
 - **Full-area accents (1.4).** One more kind of accent: a single transparent picture over the whole player area, for sparse marks scattered beneath the cards (vines, dead branches, grass, sand and shells, lava) that thicken with the stage. It sits under the strip as well as under the cards, and the same setting covers it.
 - **The half board (1.5).** With Settings → Fill each side (on by default), the strip grows into the player's whole half of the board: the same slots, side by side in proportion to the lands, each at its own stage, the cards on top, a soft dark band under each card row. A pack's `half` pictures are drawn where it has them; otherwise its strip art (or the built-in scene) is cover-cropped to the half. Off, the board shows the strip as in 1.4.
+- **Bridges (1.8).** Where two biomes meet on one side of the half board, a pack may draw a **bridge** over their seam: a ground object that belongs to both (a river from the lagoon into the forest floor, a road from the plains up into the mountains). A two-colour land still counts ½ to each of its biomes, and also widens the seam between them a little, the bridge with it — the dual is the land that connects.
 - **Hidden information.** Only the viewing seat's redacted battlefield is read, so the scenery never shows anything the board does not.
 
 ## 2. Manifest format
@@ -80,6 +82,7 @@ and a key under `effects` that is not an effect event.
 | `effects` | object | — | 1.2. One-shot effects for every biome, and `maxConcurrent`. See *Effects*. |
 | `half` | object | see *The half board* | 1.5. How each half is shared between biomes and meets the other half. |
 | `growth` | object | `{ "crossfade": true, "seconds": 1.2 }` | 1.6. The growth between stages: whether the next stage cross-fades in land by land, and how long one land's fade takes. See *Growth between stages*. |
+| `bridges` | object | — | 1.8. A ground piece per biome pair, drawn across the seam where the two meet, and how the pair's dual lands widen that seam. See *Bridges across the seam*. |
 
 ### `strip`
 
@@ -932,6 +935,139 @@ The second Island plays two frames, 200 ms each, then fades into stage 2
 over 180 ms: 580 ms in all. `src/ambience/transitions.test.ts` validates this
 exact block. If you change it, it must stay error- and warning-free.
 
+### Bridges across the seam (1.8)
+
+When one side of the board has two colours, the half board (1.5) shows two
+pictures side by side, meeting in a soft seam: two postcards laid edge to
+edge. 1.8 lets a pack draw something **both biomes share** across that seam
+— a ground object, true to both colours: a river leaving the lagoon into the
+forest floor, a road from the plains up into the mountains, a causeway of
+bone over the swamp into the meadow, lava running into the sea. And it gives
+two-colour lands a visible job: each one **widens the seam** between its two
+biomes, and the bridge grows with it.
+
+**When it is drawn.** On the half board (Settings → Fill each side), for every
+two neighbouring panels that both have lands (a withered panel's seam has
+none) whose pair has an entry under `bridges`. Any order: the pair is looked up
+alphabetically (`island` and `forest` find `"forest+island"`), and the piece is
+**mirrored** when the board has the two the other way round from the key (the
+key's order is the art's left and right). A side with three biomes draws a
+bridge on each of its two seams that has one.
+
+- **Where.** The piece's **centre** sits on the middle of the seam across the
+  half, at `anchor.y` of the half's height down (0 the half's top, 1 its
+  bottom; your half and the opponent's are both upright, so the lower part is
+  the ground on both), **`anchor.width`** of the half's width wide (its height
+  follows the picture's shape). It follows the seam as the panels' shares
+  change with every land, as the panels do (900 ms).
+- **Z-order.** Over both panels and their seam mist, under the centre line's
+  mist band (it fades with the panels there), the full-area accent, the
+  card-row scrim and every card.
+- **Desktop or phone.** The `phone` piece where the half itself is nearer the
+  phone picture's shape (4 : 5) than the desktop one's (16 : 5) on a log scale
+  (narrower than about 1.6 : 1: a phone's half, about square); else, or with
+  no `phone`, the desktop piece.
+- **Arrival and departure.** It fades in with the second biome's arrival, over
+  that biome's `bloom.durationMs`, once its file has loaded; when either biome
+  loses its lands it fades out the same way. On the first paint (a page
+  opened mid-game) it is simply there. **Reduced motion**
+  (`prefers-reduced-motion`, or Settings → Motion → Stills only): no fade,
+  there or gone at once.
+- **Loading.** A side's bridge warms in the background with its split's
+  pictures, at the shape the board shows. A piece that fails is not drawn.
+- **Dual lands.** A land that counts ½ to each of exactly two biomes (a
+  "Land — Forest Island", or a land that taps for exactly those two colours,
+  §1) is a **dual** of that pair. Each dual on the side widens that pair's
+  seam by `dualsWiden` of the half's width, up to `maxSeamRatio`: the
+  overlap grows, the bridge is scaled by the same factor (seam ÷ the
+  `half.seamRatio` it was drawn for), and the gradient and its mist widen with
+  it. The weights stay ½ / ½ (shares, stages and growth are unchanged). A
+  pair with no bridge keeps the plain seam, whatever its duals: the widening
+  is the bridge's. A triome (three colours) widens nothing.
+
+**Top-level `bridges`**: an object keyed by pair, `"<biome>+<biome>"` (two
+different biomes, either order; a pair given twice keeps the first, with a
+warning). Each entry:
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `src` | URL (`.webp` `.avif` `.png` `.jpg`) | — | **Required.** The desktop seam crop: a transparent picture painted over the two biomes' desktop half pictures meeting at a seam, the key's first biome on the left. |
+| `src2x` | URL | — | Its 2x file (through `srcset`). |
+| `anchor` | `{ "y", "width" }` | `{ "y": 0.72, "width": 0.4 }` | `y` 0–1: the centre's height as a fraction of the half's, from its top. `width` 0.05–1: the piece's width as a fraction of the half's width, at the plain seam. A bad value falls back to its default. |
+| `phone` | `{ "src", "src2x", "anchor" }` | — | The phone seam crop, painted over the two phone pictures; `src` **required**; its `anchor` defaults to the desktop one's. A bad `phone.src` drops only the phone piece. |
+| `dualsWiden` | 0–0.1 | 0.02 | How much each dual of the pair widens their seam, as a fraction of the half's width. 0: duals change nothing. |
+| `maxSeamRatio` | 0–0.3 | 0.18 | The widest the duals make that seam. Never narrower than the plain seam. |
+| `bytes` | whole number | — | Every file of the entry (`src`, `src2x`, `phone.src`, `phone.src2x`), for the budget (§3). |
+
+An entry with no usable `src` is dropped (that pair keeps the plain seam), and
+out-of-range numbers fall back to their defaults, each with a warning. A
+1.0–1.7 pack has no `bridges`: every seam is drawn as before, duals or not.
+
+**How to paint them.** A ground object, never a sky-crossing one: an arch or
+a vine bridge through the sky smudges into haze (and would cross two different
+skies). Keep it below the horizon, in the lower half of the piece, wider and
+nearer on one side, narrower and further on the other, so it reads as lying
+on both grounds. Paint it over the seam as ForgeCoach composites it (§2, *The
+half board*: equal shares, the 10% overlap with its gradient and mist), then
+keep only the object with a **soft alpha falloff** (no hard edge anywhere, and
+nothing where the piece's box ends), so it melts into whatever stage either
+side is at. One piece per pair serves every stage.
+pack-v8 was made that way: each pair's stage-3 pictures composited at a
+2560 × 800 desktop half and a 1280 × 1280 phone half, the object's shape
+painted in at 60%, img2img at strength 0.68 (DreamShaper XL), kept inside the
+shape's feathered mask; desktop pieces 1024 × 440 at `anchor`
+`{ "y": 0.725, "width": 0.4 }`, phone pieces 768 × 704 at
+`{ "y": 0.725, "width": 0.6 }`.
+
+<!-- example-bridges -->
+```json
+{
+  "schema": 1,
+  "spec": "1.8",
+  "name": "Justin's tidewood, a river across the seam",
+  "stageThresholds": [1, 2],
+  "half": { "seamRatio": 0.1 },
+  "biomes": {
+    "forest": {
+      "stages": [
+        { "layers": [], "half": { "src": "forest/s1-half.webp", "phone": { "src": "forest/s1-phone.webp" } } },
+        { "layers": [], "half": { "src": "forest/s2-half.webp", "phone": { "src": "forest/s2-phone.webp" } } }
+      ]
+    },
+    "island": {
+      "stages": [
+        { "layers": [], "half": { "src": "island/s1-half.webp", "phone": { "src": "island/s1-phone.webp" } } },
+        { "layers": [], "half": { "src": "island/s2-half.webp", "phone": { "src": "island/s2-phone.webp" } } }
+      ]
+    }
+  },
+  "bridges": {
+    "forest+island": {
+      "src": "bridges/forest-island.webp",
+      "phone": { "src": "bridges/forest-island-phone.webp", "anchor": { "y": 0.725, "width": 0.6 } },
+      "anchor": { "y": 0.725, "width": 0.4 },
+      "dualsWiden": 0.02,
+      "maxSeamRatio": 0.18,
+      "bytes": 230000
+    }
+  }
+}
+```
+
+You play an Island, then a Forest: your half splits island | forest, the
+reverse of the key, so the river is drawn **mirrored** (it leaves the lagoon
+on the left). Its centre sits on the seam, 72.5% of the way down your half,
+40% of the half wide. Then two more of each and two Breeding Pools ("Land —
+Forest Island", ½ to each): island 3, forest 3, equal shares, and two duals,
+so on a desktop half 1600 px wide the seam is 0.10 + 2 × 0.02 = **0.14** of
+it (224 px), the panels are 912 px each with the second starting at 688 px,
+the seam's middle — the river's centre — is at **800 px**, and the river is
+0.4 × 1.4 = **0.56** of the half wide (896 px). Two more Breeding Pools take
+the seam to the 0.18 cap; a fifth adds nothing. On a phone (a half about
+square) the phone piece is drawn, 60% of the half wide at the plain seam.
+`src/ambience/bridges.test.ts` validates this exact block and checks these
+numbers. If you change it, it must stay error- and warning-free.
+
 ## 3. Files and budgets
 
 | What | Format | Size |
@@ -981,6 +1117,11 @@ Budgets for transition frames (1.7), counted apart from everything above:
 - **1x only** (no `src2x`): a frame is held about a tenth of a second. Opaque WebP (quality 70–80) or AVIF, at the `half` shapes: **2048 × 640** and **1024 × 1280**.
 - **1–4 frames per step**; two or three is the look.
 - A device warms only the next step's frames at the shape it shows, never the whole set.
+
+Budgets for bridges (1.8), counted apart from everything above:
+- **≤ 3 MB for the pack's bridges** (declare `bytes` per entry; the validator warns past it). Ten pairs at a desktop and a phone piece each, about 100–200 KB a piece, fit.
+- **Transparent** WebP (quality 80–86) or AVIF, mostly clear. pack-v8's sizes: the desktop piece **1024 × 440** (1.25x of a 2048-wide half's 0.4), the phone piece **768 × 704**; a `src2x` only if the piece must be sharp on a 2x desktop.
+- One piece per pair (it serves every stage); one picture per shape.
 
 The whole pack should stay ≤ 30 MB, effects and accents included (half pictures count apart: up to 40 MB more for five biomes).
 
@@ -1061,6 +1202,7 @@ board's fallback note say so, with these steps.
 3. Play lands for either side with the buttons, or press **Demo sequence**. **Undo** and **Reset** step back.
 4. Drag **Stage** to see every stage of every claimed biome without playing more lands (whole stages, no growth between them).
    **Lands** (1.6) sets a land count per biome for either side, 0–7: one step plays or takes back one land, so the growth between stages can be stepped through land by land, with each land's fade, flash and effects.
+   **Bridges** (1.8): give a side two biomes with a bridge (with Fill each side on) and it fades in on their seam; take one biome's lands back to 0 and it fades out. *Play → Watery Grave* is a dual of island and swamp: each one widens that seam by the pack's `dualsWiden`.
 5. Switch **Motion** to *Stills only* to check posters and reduced motion.
 6. **Creature enters** and **Attack** under *Play* change the made-up game, and fire the effects the engine derives from it. The event list shows what the engine emitted.
 7. **View → Board accents** turns the accents on and off on the preview (Settings → Board accents does it on the board). Narrow the window under 600 px to see the corners-only fit. The pasted-manifest check and the pack status list each biome's accent pieces per stage and their declared size, and the stages with a full-area piece (1.4).

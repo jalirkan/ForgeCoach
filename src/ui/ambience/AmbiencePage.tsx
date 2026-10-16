@@ -17,7 +17,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { Card, GameStateBody } from '../../protocol.ts';
-import { BIOME_LABEL, sceneryFromLog, slotsOf, type Biome } from '../../ambience/model.ts';
+import { BIOME_LABEL, dualsOf, sceneryFromLog, slotsOf, type Biome } from '../../ambience/model.ts';
 import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '../../ambience/effects.ts';
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
 import { SIM_PLAYERS, simLandCount, simLog, simSetLandCount, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
@@ -186,6 +186,7 @@ export default function AmbiencePage() {
               <>
                 <SceneryStrip
                   slots={slotsOf(scenery, SIM_PLAYERS[1])}
+                  duals={dualsOf(scenery, SIM_PLAYERS[1])}
                   pack={pack}
                   edge="top"
                   orient={orient}
@@ -211,6 +212,7 @@ export default function AmbiencePage() {
               <>
                 <SceneryStrip
                   slots={slotsOf(scenery, SIM_PLAYERS[0])}
+                  duals={dualsOf(scenery, SIM_PLAYERS[0])}
                   pack={pack}
                   edge="bottom"
                   reduced={reduced}

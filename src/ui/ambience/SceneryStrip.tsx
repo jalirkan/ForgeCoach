@@ -29,6 +29,14 @@
  * frames (or not loaded yet), the strip art, or reduced motion: the 1.6
  * cross-fade (or the instant change) as before.
  *
+ * Bridges across the seam (spec 1.8): on the half board, where two live
+ * biomes meet and the pack has a bridge for the pair, the bridge piece is
+ * drawn over their seam (ambience/bridges.ts: the anchor, the mirror, the
+ * phone piece for a phone-shaped half), above both panels and under the
+ * centre line's mist; it fades in with the second biome's arrival (its bloom)
+ * and out when either leaves, at once with reduced motion. Each of the pair's
+ * dual lands widens their seam (`dualsWiden`), the bridge with it.
+ *
  * `fill="half"` (spec 1.5, Settings → Fill each side): the same slots fill
  * the player's whole half of the board instead of a strip, split by land
  * count (layout.ts `halfLayout`), each slot's art in a frame of the art's
@@ -43,7 +51,8 @@ import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, growthOf, halfAt, layersAt, type Pa
 import { growthMs, nextStageFade, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
 import { nextStepFrames, transitionFrames, tweenAllowed, type TransitionShape } from '../../ambience/transitions.ts';
 import { pictureReady, warmPicture } from '../../ambience/pack.ts';
-import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt } from '../../ambience/layout.ts';
+import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt, type HalfSlotLayout } from '../../ambience/layout.ts';
+import { bridgePlacements, halfSeams, phoneHalf, seamCentreCss, type BridgePlacement } from '../../ambience/bridges.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import { useFadeIn, useFadeStack } from './useFade.ts';
@@ -68,6 +77,8 @@ export interface SceneryStripProps {
   stageOverride?: number | null;
   /** `strip` (default): along the outer edge; `half` (spec 1.5): the player's whole half of the board. */
   fill?: 'strip' | 'half';
+  /** Spec 1.8: the player's dual lands per biome pair (model.ts `dualsOf`); they widen a bridged pair's seam. */
+  duals?: Readonly<Record<string, number>>;
   className?: string;
   style?: CSSProperties;
 }
@@ -85,7 +96,9 @@ export function usePageVisible(): boolean {
   return v;
 }
 
-export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', className, style }: SceneryStripProps) {
+const NO_DUALS: Readonly<Record<string, number>> = {};
+
+export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, className, style }: SceneryStripProps) {
   const visible = usePageVisible();
   const settled = useRef(false);
   useEffect(() => {
@@ -95,6 +108,12 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const strip: PackStrip = pack?.strip ?? DEFAULT_STRIP;
   const half = fill === 'half';
   const layout = useMemo(() => (half ? halfLayout(slots, pack, stageOverride) : slotLayout(slots, pack, stageOverride)), [half, slots, pack, stageOverride]);
+  // Spec 1.8: each seam's width (a bridged pair's widened by its duals), and the bridges, at the half's shape.
+  const hostRef = useRef<HTMLDivElement>(null);
+  const bridged = half && !!pack?.bridges;
+  const halfAspect = usePanelAspect(hostRef, bridged && layout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone));
+  const seams = useMemo(() => (bridged ? halfSeams(layout as HalfSlotLayout[], pack, duals) : null), [bridged, layout, pack, duals]);
+  const placements = useMemo(() => (bridged ? bridgePlacements(layout as HalfSlotLayout[], pack, duals, { phone: phoneHalf(halfAspect) }) : []), [bridged, layout, pack, duals, halfAspect]);
   if (layout.length === 0 && !fx?.length) return null;
   const rotated = edge === 'top' && orient === 'rotated';
   const halfCfg = pack?.half ?? DEFAULT_HALF_LAYOUT;
@@ -113,6 +132,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
     <>
       {layout.length > 0 && (
         <div
+          ref={hostRef}
           className={['scn', `scn-${edge}`, half && 'scn-half', half && `scn-fade-${fadeAt}`, rotated && 'scn-rotated', edge === 'top' && !rotated && !half && 'scn-upright', reduced && 'is-reduced', !visible && 'is-paused', className].filter(Boolean).join(' ')}
           style={half ? halfVars : vars}
           aria-hidden="true"
@@ -121,8 +141,23 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
           <Settled.Provider value={settled}>
             <div className="scn-row">
               {layout.map(({ slot, stage, progress, grow }, i) => (
-                <Slot key={slot.biome} slot={slot} stage={stage} progress={progress} grow={grow} first={i === 0} pack={pack?.biomes[slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[slot.biome] ?? 0} half={half} />
+                <Slot
+                  key={slot.biome}
+                  slot={slot}
+                  stage={stage}
+                  progress={progress}
+                  grow={grow}
+                  first={i === 0}
+                  pack={pack?.biomes[slot.biome]}
+                  growth={growth}
+                  reduced={reduced}
+                  paused={!visible}
+                  pulse={pulses?.[slot.biome] ?? 0}
+                  half={half}
+                  seam={seams && i > 0 && seams[i] !== halfCfg.seamRatio ? `${+(seams[i]! * 100).toFixed(2)}cqw` : undefined}
+                />
               ))}
+              {seams && <Bridges placements={placements} layout={layout as HalfSlotLayout[]} seams={seams} pack={pack} reduced={reduced} />}
             </div>
             {half && <div className="scn-mist" />}
           </Settled.Provider>
@@ -183,6 +218,7 @@ function Slot({
   paused,
   pulse,
   half = false,
+  seam,
 }: {
   slot: SlotState;
   stage: number;
@@ -195,6 +231,8 @@ function Slot({
   paused: boolean;
   pulse: number;
   half?: boolean;
+  /** Spec 1.8: this slot's own seam (a bridged pair's, widened by its duals), as CSS; else the half's. */
+  seam?: string;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const settled = useContext(Settled);
@@ -318,7 +356,7 @@ function Slot({
     <div
       ref={ref}
       className={['scn-slot', first && 'is-first', withered && 'is-withered'].filter(Boolean).join(' ')}
-      style={{ flexGrow: grow }}
+      style={seam ? ({ flexGrow: grow, '--scn-seam': seam } as CSSProperties) : { flexGrow: grow }}
       data-biome={slot.biome}
       data-stage={stage}
       data-progress={progress || undefined}
@@ -345,6 +383,74 @@ function Slot({
         </>
       )}
       {pulse > 0 && settled.current && !reduced && <span key={pulse} className="scn-flash" />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Bridges across the seam (spec 1.8)
+
+/** How long a bridge fades: the bloom of the biome that arrived second (the later slot). */
+function bridgeMs(p: BridgePlacement, layout: readonly HalfSlotLayout[], pack: ScenePack | null): number {
+  const l = layout[p.index - 1]!.slot;
+  const r = layout[p.index]!.slot;
+  const later = l.index > r.index ? l : r;
+  return pack?.biomes[later.biome]?.bloom.durationMs ?? PROCEDURAL_BLOOM.durationMs;
+}
+
+/**
+ * The side's bridges: each drawn while its pair is live, and kept for one
+ * fade after it is not (either biome withered), fading out. With reduced
+ * motion, there and gone at once.
+ */
+function Bridges({ placements, layout, seams, pack, reduced }: { placements: BridgePlacement[]; layout: HalfSlotLayout[]; seams: number[]; pack: ScenePack | null; reduced: boolean }) {
+  const settled = useContext(Settled);
+  const [gone, setGone] = useState<{ p: BridgePlacement; ms: number }[]>([]);
+  const prev = useRef<{ p: BridgePlacement; ms: number }[]>([]);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const now = placements.map((p) => ({ p, ms: reduced ? 0 : bridgeMs(p, layout, pack) }));
+  const keys = placements.map((p) => p.key).join('|');
+  useEffect(() => {
+    const left = prev.current.filter((x) => !placements.some((p) => p.key === x.p.key) && x.ms > 0);
+    prev.current = now;
+    if (!left.length) return;
+    setGone((g) => [...g.filter((x) => !left.some((y) => y.p.key === x.p.key)), ...left]);
+    timers.current.push(setTimeout(() => setGone((g) => g.filter((x) => !left.includes(x))), Math.max(...left.map((x) => x.ms)) + 80));
+  }, [keys]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const leaving = gone.filter((x) => !placements.some((p) => p.key === x.p.key) && x.p.index < layout.length);
+  // One list, so a bridge that stops being wanted keeps its element (and its loaded picture) while it fades out.
+  return (
+    <>
+      {[...now.map((x) => ({ ...x, leaving: false })), ...leaving.map((x) => ({ ...x, leaving: true }))].map((x) => (
+        <BridgeView key={x.p.key} p={x.p} layout={layout} seams={seams} ms={x.ms} leaving={x.leaving} fadeIn={settled.current && !reduced} />
+      ))}
+    </>
+  );
+}
+
+/** One bridge piece: centred on its seam at the anchor's height, as wide as the anchor (and the duals) say, mirrored when the board's order is the art's reverse. */
+function BridgeView({ p, layout, seams, ms, leaving, fadeIn }: { p: BridgePlacement; layout: HalfSlotLayout[]; seams: number[]; ms: number; leaving: boolean; fadeIn: boolean }) {
+  const img = useRef<HTMLImageElement>(null);
+  // Drawn once its file is here (warmed with the split's pictures), so the fade never starts on an empty box.
+  const [loaded, setLoaded] = useState(false);
+  const [fades] = useState(fadeIn);
+  useEffect(() => {
+    const el = img.current;
+    if (el?.complete && el.naturalWidth > 0) setLoaded(true);
+  }, [p.picture.src]);
+  const shown = loaded && !leaving;
+  const fadeMs = fades || leaving ? ms : 0;
+  const style = {
+    left: seamCentreCss(layout, seams, p.index),
+    top: `${+(p.y * 100).toFixed(2)}%`,
+    width: `${+(p.width * 100).toFixed(2)}cqw`,
+    opacity: shown ? 1 : 0,
+    transition: [`left 900ms ease`, `width 900ms ease`, fadeMs > 0 ? `opacity ${fadeMs}ms ease` : null].filter(Boolean).join(', '),
+  } as CSSProperties;
+  return (
+    <div className={['scn-bridge', p.mirror && 'is-mirrored'].filter(Boolean).join(' ')} style={style} data-bridge={p.key} data-bridge-shape={p.phone ? 'phone' : 'desktop'} data-bridge-scale={p.scale !== 1 ? p.scale : undefined}>
+      <img ref={img} src={p.picture.src} srcSet={p.picture.src2x ? `${p.picture.src} 1x, ${p.picture.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => setLoaded(true)} />
     </div>
   );
 }
