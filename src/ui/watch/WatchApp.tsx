@@ -23,7 +23,7 @@ import '../deck/deck.css';
 import '../forge-theme.css';
 import '../draft/draft.css';
 import './watch.css';
-import { CUBES, cubeShortName } from '../../cube/cubes.ts';
+import { CUBES, cubeShortName, SHIPPED_CUBES } from '../../cube/cubes.ts';
 import { connectLive, type LiveStatus } from '../../live.ts';
 import type { GameLog } from '../../log.ts';
 import { redactSeatUrl } from '../../play/seatUrl.ts';
@@ -87,6 +87,9 @@ function Chips({ options, value, onPick, label }: { options: SeatOption[]; value
   );
 }
 
+/** Why your own cubes can't be watched: POST /watch takes only a cube file the engine has (mtg-table docs/watch-bots.md). */
+const WATCH_CUSTOM_NOTE = 'Your own cubes can’t be watched yet: the engine on your PC deals only the cubes in its own folder.';
+
 function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: string) => void }) {
   const [caps, setCaps] = useState<WatchCaps | null>(null);
   const [recent, setRecent] = useState<{ running: string | null; watches: WatchListEntry[] } | null>(null);
@@ -99,7 +102,7 @@ function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: strin
     void watchCaps().then((c) => {
       if (!live) return;
       setCaps(c);
-      setForm((f) => f ?? defaultForm(CUBES.find((x) => x.id === 'fair-fight')?.file ?? CUBES[0]!.file, c));
+      setForm((f) => f ?? defaultForm(CUBES.find((x) => x.id === 'fair-fight')?.file ?? SHIPPED_CUBES[0]!.file, c));
       if (c.watch) void listWatches().then((l) => live && setRecent(l));
     });
     return () => {
@@ -207,12 +210,18 @@ function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: strin
         <section className="panel">
           <div className="fx-label panel-h">Cube</div>
           <div className="wb-chips is-cubes" role="radiogroup" aria-label="Cube">
-            {CUBES.map((c) => (
+            {CUBES.filter((c) => !c.custom).map((c) => (
               <button key={c.id} type="button" role="radio" aria-checked={form.cube === c.file} className={cx('wb-chip', form.cube === c.file && 'is-on')} onClick={() => set({ cube: c.file })}>
                 {cubeShortName(c)}
               </button>
             ))}
+            {CUBES.filter((c) => c.custom).map((c) => (
+              <button key={c.id} type="button" role="radio" aria-checked={false} className="wb-chip" disabled title={WATCH_CUSTOM_NOTE} data-unavailable="">
+                {cubeShortName(c)}
+              </button>
+            ))}
           </div>
+          {CUBES.some((c) => c.custom) && <p className="tiny muted wb-blurb">{WATCH_CUSTOM_NOTE}</p>}
           <p className="tiny muted wb-blurb">{CUBES.find((c) => c.file === form.cube)?.blurb} 18 grids of 9, the first pick alternating.</p>
           <div className="wb-row">
             <div className="wb-field">

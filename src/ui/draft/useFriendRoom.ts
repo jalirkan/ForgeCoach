@@ -11,10 +11,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { initialDeck, type DeckState } from '../../draft/deck.ts';
 import type { DraftAction, DraftEvent, GridDraft } from '../../draft/draft.ts';
-import { reconnectNote, RoomClient, RoomError, saveRoom, toGridDraft, type RoomState, type SavedRoom } from '../../draft/room.ts';
+import { reconnectNote, roomCardsSeen, RoomClient, RoomError, saveRoom, toGridDraft, type RoomState, type SavedRoom } from '../../draft/room.ts';
 import { isFunnelHost, servedByTunnel } from '../../play/seatUrl.ts';
 import type { SavedDraft } from '../../draft/store.ts';
 import { useCubeData, type CubeData } from '../deck/useCubeData.ts';
+import { cubeInfo } from '../../cube/cubes.ts';
 import type { DraftGame } from './useDraftGame.ts';
 
 export type RoomLink = 'connecting' | 'live' | 'reconnecting' | 'gone';
@@ -79,7 +80,10 @@ export function useFriendRoom(entry0: SavedRoom): FriendRoom {
     });
   }, []);
 
-  const data = useCubeData(state?.cube.id ?? entry.cubeId);
+  // A cube this browser does not have (the owner's own, cube/custom.ts): the cards the room has shown so far.
+  const cubeId = state?.cube.id ?? entry.cubeId;
+  const standIn = useMemo(() => (state && !cubeInfo(cubeId) ? { title: state.cube.title, names: roomCardsSeen(state) } : null), [state, cubeId]);
+  const data = useCubeData(cubeId, standIn);
   const draft = useMemo(() => (state ? toGridDraft(state) : null), [state]);
   const opponent = state ? state.seats[(1 - state.you) as 0 | 1].name : 'your friend';
 

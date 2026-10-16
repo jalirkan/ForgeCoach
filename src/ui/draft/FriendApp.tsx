@@ -278,10 +278,12 @@ function Lobby({ go, onExit }: { go: (h: string, replace?: boolean) => void; onE
             {CUBES.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.title}
+                {c.custom ? ' (yours)' : ''}
               </option>
             ))}
           </select>
         </label>
+        {cubeInfo(cubeId)?.custom && <p className="fr-small">Your own cube: your friend’s browser sees each card as the room deals it, without the whole list.</p>}
         <label className="fr-field">
           <span>Your name</span>
           <input value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder="Justin" aria-label="Your name" />
@@ -387,7 +389,9 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
     if (!names || !state || !globalThis.crypto?.subtle) return;
     void cubeHash(names).then((h) => setSameCube(h === state.cube.hash));
   }, [names, state?.cube.hash]); // eslint-disable-line react-hooks/exhaustive-deps
-  const replay = useMemo(() => (state?.done && names ? replayMatches(state, names) : null), [state, names]);
+  // The owner's own cube (cube/custom.ts) that this browser does not have: read from what the room shows, so no hash or replay check.
+  const standIn = !!state && !cubeInfo(state.cube.id);
+  const replay = useMemo(() => (state?.done && names && !standIn ? replayMatches(state, names) : null), [state, names, standIn]);
   // D407: this seat's own engine review of a finished game, opened over the room.
   const [review, setReview] = useState<{ log: GameLog; report: unknown; title: string } | null>(null);
   const [reviewNote, setReviewNote] = useState<string | null>(null);
@@ -433,7 +437,11 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
     );
   }
   const other = (1 - state.you) as 0 | 1;
-  const cubeNote = sameCube === false ? 'Your copy of this cube differs from the room’s: some card details may be missing.' : null;
+  const cubeNote = standIn
+    ? `${state.cube.title} is a cube made by the room’s owner, which this browser doesn’t have: the pick helper knows only the cards the room has shown.`
+    : sameCube === false
+      ? 'Your copy of this cube differs from the room’s: some card details may be missing.'
+      : null;
   const linkNote = link === 'reconnecting' ? `Reconnecting to the room… ${note ?? ''}` : link === 'gone' ? (note ?? 'The room has gone.') : null;
 
   if (!state.seats[other].joined) {

@@ -6,9 +6,15 @@
  * <file>.meta.json from mtg-table's cube lab beside it, and for the cube
  * 17Lands covers a <file>.human.json, cube/human.ts), and loading them.
  * `fetch` is injected so tests run in node.
+ *
+ * Beside the shipped cubes, `CUBES` holds the player's own (cube/custom.ts,
+ * made in the cube builder): `custom: true`, no lab data, the document kept
+ * in this browser. They are read at start and again whenever the builder
+ * saves (`refreshCustomCubes`), so every screen that lists cubes sees them.
  */
 import { parseCube, type Cube } from './parseCube.ts';
 import { parseMeta, type CubeMeta } from './meta.ts';
+import { listCustomCubes, type CustomCube } from './custom.ts';
 
 export interface CubeInfo {
   id: string;
@@ -32,12 +38,21 @@ export interface CubeInfo {
   humanData?: boolean;
   /** True when a 17Lands human pick model ships beside the document (<file>.picks.json, cube/humanPicks.ts; docs/human-picks.md). */
   humanPicks?: boolean;
+  /** The player's own cube (cube/custom.ts): its document lives in this browser, not under public/cubes/. */
+  custom?: true;
+  /** A custom cube's document. */
+  doc?: string;
+  /** A custom cube's last save (caches key on it). */
+  version?: number;
+  /** A card whose art stands for the cube on its tile. */
+  art?: string;
 }
 
 /** The crumb name: `short`, else the title without " Cube". */
 export const cubeShortName = (c: Pick<CubeInfo, 'title' | 'short'>): string => c.short ?? c.title.replace(/ Cube$/, '');
 
-export const CUBES: CubeInfo[] = [
+/** The cubes that ship with the site. */
+export const SHIPPED_CUBES: readonly CubeInfo[] = [
   { id: 'synergy', file: 'synergy-cube-180', title: 'Synergy Cube', size: 180, blurb: 'Nine overlapping themes, tight power band, no combos.', accent: 'BR', humanData: true, humanPicks: true },
   { id: 'modern-era', file: 'modern-era-cube-180', title: 'Modern-Era Cube', size: 180, blurb: 'Ten guild archetypes with a few famous bombs.', accent: 'UG', humanPicks: true },
   { id: 'vintage', file: 'vintage-cube-180', title: 'Vintage Cube', size: 180, blurb: 'Power, Moxen and cheat decks, cut to 180 for two.', accent: 'UR', humanData: true, humanPicks: true },
@@ -52,16 +67,39 @@ export const CUBES: CubeInfo[] = [
   { id: 'twobert', file: 'twobert-cube-180', title: "Evan's Twobert Cube", short: 'Twobert', size: 180, blurb: 'Evan’s second cube: 180 cards of blink, aristocrats, artifacts and tokens, with shocks and fetches.', accent: 'WB', labData: false },
 ];
 
+/** A custom cube as the registry lists it. */
+export function customCubeInfo(c: CustomCube): CubeInfo {
+  const info: CubeInfo = { id: c.id, file: c.id, title: c.title, size: c.cards.length, blurb: c.blurb || 'Your own cube, from the card library.', accent: c.accent || 'WUBRG', labData: false, custom: true, doc: c.doc, version: c.updatedAt };
+  if (c.cards[0]) info.art = c.cards[0];
+  return info;
+}
+
+/** Every cube: the shipped ones, then yours (refreshed in place, so a list read at render time is current). */
+export const CUBES: CubeInfo[] = [...SHIPPED_CUBES];
+
+/** Re-reads your cubes from this browser's storage into `CUBES` (after the builder saves or deletes one). */
+export function refreshCustomCubes(list: CustomCube[] = listCustomCubes()): void {
+  const mine = list.filter((c) => !SHIPPED_CUBES.some((s) => s.id === c.id)).map(customCubeInfo);
+  CUBES.splice(SHIPPED_CUBES.length, CUBES.length - SHIPPED_CUBES.length, ...mine);
+}
+refreshCustomCubes();
+
 export function cubeInfo(id: string): CubeInfo | undefined {
   return CUBES.find((c) => c.id === id);
+}
+
+/** The cube's document as text: a custom cube's own, else public/cubes/<file>.md. */
+export async function loadCubeText(info: CubeInfo, base: string, fetcher: Fetch = (u) => fetch(u)): Promise<string> {
+  if (info.custom) return info.doc ?? '';
+  const res = await fetcher(`${base}cubes/${info.file}.md`);
+  if (!res.ok) throw new Error(`The cube list couldn’t be downloaded (HTTP ${res.status}).`);
+  return res.text();
 }
 
 type Fetch = (url: string) => Promise<Pick<Response, 'ok' | 'status' | 'text' | 'json'>>;
 
 export async function loadCubeDoc(info: CubeInfo, base: string, fetcher: Fetch = (u) => fetch(u)): Promise<Cube> {
-  const res = await fetcher(`${base}cubes/${info.file}.md`);
-  if (!res.ok) throw new Error(`The cube list couldn’t be downloaded (HTTP ${res.status}).`);
-  return parseCube(await res.text());
+  return parseCube(await loadCubeText(info, base, fetcher));
 }
 
 /** The shipped meta for a cube, or null when there is none (or it is unreadable). */

@@ -507,6 +507,41 @@ agree DIR` prints the lab agreement table.
 `./scripts/play.sh --engine-only --deck decks/<name>.dck --mirror` (or
 `--ai-deck decks/<other>.dck`) — and press **Play vs Bot**.
 
+## Make your own cube
+
+**Make a cube** on the start page (`#cube/new`) opens the cube builder. Its
+library is every card ForgeCoach knows: the cubes here and the two big proxy
+lists (`docs/proxies/mtgo-vintage-cube-540.txt`, `old-school-93-94-360.txt`),
+1,592 cards.
+
+- **Start** empty, from any cube, or with **Generate**: a balanced cube in
+  the Omega Cube's shape (24 cards a colour, 2 gold cards a pair, 18
+  colourless, 22 lands at 180, on Omega's curve). The same seed makes the
+  same cube. It can prefer the cards the lab rates higher, and leaves out the
+  cards Forge doesn't have and the ones the bot plays badly.
+- **Browse** by name, colour, type, mana value, the cube or list a card comes
+  from, and the lab's rating. A card's sheet shows its picture, where it
+  comes from and its lab numbers.
+- **The summary** counts the cube against its size (180, 360 or any), each
+  colour's playables, the curve, the type mix, gold cards and lands, and
+  warns about cards Forge has no script for, cards the bot plays badly,
+  repeats, a size the drafts deal short, and colours a Grid draft leaves
+  short.
+- **Save** keeps it in this browser. It then appears in every cube list,
+  marked yours: Draft vs Bot, Draft & build, Play vs Bot's decks and Draft
+  with a friend. **Export .md** writes a cube document that opens again here
+  (and in mtg-table's cube lab); **Import** reads a `.md` document or a plain
+  list (`1 Opt`, `Opt`, a `.dck`).
+
+A lab rating is a Forge-vs-Forge win rate from the cubes the card was measured
+in, so a card that won in a weaker cube can rate above one that held its own in
+a stronger one. Your cube has no lab data of its own. **Watch two bots** can't
+use your own cubes yet: the engine deals only the cubes in its own folder.
+
+The library is generated: `node --experimental-transform-types
+scripts/library/build.ts [--fetch] [--engine-facts <mtg-table
+cubes/library/library-pool.tsv>]` writes `public/cubes/library.json`.
+
 ## Draft with a friend
 
 You and a friend grid-draft a cube, each in your own browser. The draft

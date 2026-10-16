@@ -7,6 +7,7 @@ import { parseCube, type Cube } from '../parseCube.ts';
 import { parseMeta, type CubeMeta } from '../meta.ts';
 import { cubeInfo } from '../cubes.ts';
 import { makeContext, type CubeContext } from '../score.ts';
+import { parseLibrary, type Library } from '../library.ts';
 
 export type CubeId = 'synergy' | 'modern-era' | 'vintage' | 'pauper' | 'omega' | 'fair-fight' | 'peasant' | 'evybaby' | 'twobert';
 
@@ -80,4 +81,9 @@ export function samplePool(cube: Cube, colors: string, n: number, seed: number):
   const l = shuffle(lands).slice(0, Math.round(n * 0.12));
   const rest = shuffle(other).slice(0, n - main.length - l.length);
   return [...main, ...l, ...rest].map((c) => c.name);
+}
+
+/** The shipped card library (public/cubes/library.json, scripts/library/build.ts). */
+export function loadShippedLibrary(): Library {
+  return parseLibrary(JSON.parse(readFileSync(new URL('../../../public/cubes/library.json', import.meta.url), 'utf8')));
 }

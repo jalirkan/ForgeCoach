@@ -18,7 +18,7 @@
  *                which asks mtg-table's match launcher to deal the match.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { CUBES, cubeInfo, type CubeInfo } from '../../cube/cubes.ts';
+import { CUBES, cubeInfo, loadCubeText, type CubeInfo } from '../../cube/cubes.ts';
 import type { CubeMeta } from '../../cube/meta.ts';
 import { aiFlagsFromDoc, noFlags, withMetaFlags, type AiFlags } from '../../draft/aiFlags.ts';
 import { deckCount, exportList, forForge, mainNames, sideboardFit, toMatchDeck, type DeckState, type FitFacts } from '../../draft/deck.ts';
@@ -87,7 +87,7 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 }
 
 export function CubeArt({ cube, className }: { cube: CubeInfo; className?: string }) {
-  const info = useCardInfo(CUBE_ART[cube.id]);
+  const info = useCardInfo(CUBE_ART[cube.id] ?? cube.art);
   const art = info?.image?.artCrop ?? info?.faces?.[0]?.image?.artCrop;
   return (
     <span className={cx('cube-art2', className)} aria-hidden="true">
@@ -132,7 +132,11 @@ export function DraftSetup({
   onFriend?: () => void;
   hints: boolean;
 }) {
-  const [cubeId, setCubeId] = useState(CUBES[0]?.id ?? 'synergy');
+  // #draft/setup?cube=<id> (a cube's page, the cube builder's "Draft it") opens on that cube.
+  const [cubeId, setCubeId] = useState(() => {
+    const asked = typeof location === 'undefined' ? null : new URLSearchParams(location.hash.split('?')[1] ?? '').get('cube');
+    return asked && cubeInfo(asked) ? asked : (CUBES[0]?.id ?? 'synergy');
+  });
   const [format, setFormat] = useState<Format>('booster');
   const [players, setPlayers] = useState(2);
   const [first, setFirst] = useState<'you' | 'ai' | 'toss'>('toss');
@@ -366,10 +370,18 @@ export function DraftSetup({
               <span className="ctile-body">
                 <span className="ctile-t">{c.title}</span>
                 <span className="ctile-d">{c.blurb}</span>
-                <span className="ctile-m">{c.size} cards{c.labData === false ? '' : ' · lab data'}</span>
+                <span className="ctile-m">
+                  {c.size} cards{c.custom ? ' · yours' : c.labData === false ? '' : ' · lab data'}
+                </span>
               </span>
             </button>
           ))}
+          <a className="ctile ctile-new" href="#cube/new">
+            <span className="ctile-body">
+              <span className="ctile-t">Make your own cube</span>
+              <span className="ctile-d">Pick cards from every cube and proxy list ForgeCoach knows, or generate a balanced one.</span>
+            </span>
+          </a>
         </div>
       </Sheet>
     </div>
@@ -384,8 +396,8 @@ function useAiFlags(cubeId: string, meta: CubeMeta | null, names: string[]): AiF
     const info = cubeInfo(cubeId);
     if (!info) return;
     let live = true;
-    fetch(`${BASE}cubes/${info.file}.md`)
-      .then((r) => (r.ok ? r.text() : ''))
+    loadCubeText(info, BASE)
+      .catch(() => '')
       .then((t) => live && setFlags(withMetaFlags(aiFlagsFromDoc(t, names), meta)))
       .catch(() => undefined);
     return () => {

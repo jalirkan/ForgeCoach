@@ -13,7 +13,7 @@ import { loadCube } from '../cube/testdata/load.ts';
 import { apply, legalLines, newDraft, toAct, type GridDraft } from './draft.ts';
 import {
   cleanName, createRoom, cubeHash, forgetRoom, friendLinks, joinLink, lastOpponentEvent, loadRooms, ownerRoomBase, parseCreated, parseJoinHash,
-  parseRoomState, replayMatches, RoomClient, RoomError, roomSupport, saveRoom, sseParser, toGridDraft, type RoomState, type SavedRoom,
+  parseRoomState, replayMatches, roomCardsSeen, RoomClient, RoomError, roomSupport, saveRoom, sseParser, toGridDraft, type RoomState, type SavedRoom,
   closeRoom, FUNNEL_LOST, newFriendLink, reconnectNote, SIGNIN_AFTER, SIGNIN_EXPIRED, SIGNIN_REDIRECT,
 } from './room.ts';
 
@@ -389,6 +389,17 @@ describe('the room as the pick screen sees it', () => {
     bad.log[3]!.cards = ['Not A Card'];
     expect(replayMatches(bad, CUBE)).toBe(false);
     expect(replayMatches({ ...s, seed: (s.seed ?? 0) + 1 }, CUBE)).toBe(false);
+  });
+  it('a cube this browser lacks (the owner\'s own): every card the room has shown, picks, log and grid', () => {
+    let d = fresh();
+    d = apply(d, { kind: 'line', line: 0 }, 0) as GridDraft;
+    d = apply(d, { kind: 'line', line: 4 }, 0) as GridDraft;
+    const s = stateOf(d, 1, 3, { cube: { id: 'my-friday-cube', title: 'Friday Cube', hash: 'h', size: 180 } });
+    const seen = roomCardsSeen(s);
+    expect(new Set(seen).size).toBe(seen.length);
+    for (const n of [...d.picks.you, ...d.picks.ai, ...d.slots.filter((x): x is string => !!x)]) expect(seen).toContain(n);
+    expect(seen.every((n) => CUBE.includes(n))).toBe(true);
+    expect(seen.length).toBe(new Set([...d.picks.you, ...d.picks.ai, ...d.slots.filter(Boolean)]).size);
   });
   it('the cube hash is the server\'s (sha256 of the de-duplicated names, newline-joined)', async () => {
     // mtg-table draft-room.mjs cubeHash(['A', 'B', 'A']): createHash('sha256').update('A\\nB').digest('hex')

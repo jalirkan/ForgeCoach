@@ -38,7 +38,10 @@
  * against the fake /watch routes (e2e/fakewatch.mjs): the lobby tile, the
  * form, the draft replay advancing, the decks, the board following game 1
  * over HTTP (no socket at all) and moving on to game 2, on a desktop and a
- * phone (SHOTS=<dir> saves their screenshots).
+ * phone (SHOTS=<dir> saves their screenshots); the cube builder (#cube/new):
+ * a small cube generated from the card library, a Forge warning added and
+ * taken out, saved in this browser, then Draft vs Bot dealing a Grid draft
+ * from it, on a desktop and a phone (SHOTS=docs/screens/cube-builder).
  *
  * Environment: BUILD=0 (reuse dist/), APP_URL (test a running ForgeCoach
  * instead; it must be on a Vite port), HEADLESS=0, ONLY=<substring of a
@@ -1263,6 +1266,100 @@ function watchScenario({ name, viewport, tag }) {
 scenarios.push(
   watchScenario({ name: 'watch two bots (D440), a desktop: tile, form, the draft replay advancing, the decks, the board following game 1 then game 2', viewport: { width: 1440, height: 900 }, tag: 'desktop' }),
   watchScenario({ name: 'watch two bots (D440), a phone (390×844): the same, from the lobby to game 2', viewport: { width: 390, height: 844 }, tag: 'phone' }),
+);
+
+// ---------------------------------------------------------------------------
+// The cube builder (#cube/new): a small cube from the card library, saved, then a Grid draft vs the bot on it.
+
+function cubeBuilderScenario({ name, viewport, tag }) {
+  return {
+    name,
+    context: { viewport, ...(tag === 'phone' ? { isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : {}) },
+    async run({ page, app }) {
+      const phone = tag === 'phone';
+      await page.goto(app);
+      await page.locator('.lobby-tile', { hasText: 'Make a cube' }).click({ timeout: STEP_MS });
+      await page.waitForURL(/#cube\/new$/, { timeout: STEP_MS });
+      await page.locator('.cb-rows .cb-card').first().waitFor({ timeout: STEP_MS });
+      check((await page.locator('.cb-count').innerText()).includes('1592 of 1592'), 'the whole library is listed');
+      await page.locator('.cb-title').fill('Friday Cube');
+      await page.locator('.cb-blurb').fill('A quick cube for the Friday table.');
+      // The generator: 45 cards, seed 42, by lab rating.
+      await page.getByRole('textbox', { name: 'Cards' }).fill('45');
+      await page.getByRole('textbox', { name: 'Seed' }).fill('42');
+      await page.locator('[data-cb-generate]').click();
+      await page.locator('.cb-msg', { hasText: 'Generated 45 cards (seed 42, by lab rating).' }).waitFor({ timeout: STEP_MS });
+      // Twinned Vision: Forge has no script for it, so the summary says stop.
+      await page.getByRole('textbox', { name: 'Find a card' }).fill('Twinned Vision');
+      await page.locator('.cb-card[data-card="Twinned Vision"] .cb-add').click();
+      await page.getByRole('textbox', { name: 'Find a card' }).fill('');
+      if (phone) await page.getByRole('tab', { name: /Your cube/ }).click();
+      await page.locator('[data-cb-count]', { hasText: '46' }).waitFor({ timeout: STEP_MS });
+      await page.locator('.cb-warn li[data-warning="forge"]', { hasText: 'Twinned Vision' }).waitFor({ timeout: STEP_MS });
+      check((await page.locator('.cb-warn li[data-warning="deal"]').innerText()).includes('5 grids of 9'), 'the summary says a Grid draft deals 5 grids');
+      await shot(page, `cube-builder-${tag}-1-summary`);
+      // Take it out again from the cube's list.
+      await page.getByRole('button', { name: 'Take Twinned Vision out' }).click();
+      await page.locator('[data-cb-count]', { hasText: '45' }).waitFor({ timeout: STEP_MS });
+      check((await page.locator('.cb-warn li[data-warning="forge"]').count()) === 0, 'no Forge warning once it is out');
+      if (phone) await page.getByRole('tab', { name: /Library/ }).click();
+      await page.locator('select[aria-label="Type"]').selectOption('land');
+      await page.locator('select[aria-label="From"]').selectOption('old-school');
+      await shot(page, `cube-builder-${tag}-2-library`);
+      await page.locator('select[aria-label="Type"]').selectOption('');
+      await page.locator('select[aria-label="From"]').selectOption('');
+      // Save: the cube is registered, marked yours, and kept in this browser.
+      await page.locator('[data-cb-save]').click();
+      await page.locator('.cb-msg', { hasText: 'Saved: Friday Cube, 45 cards.' }).waitFor({ timeout: STEP_MS });
+      await page.waitForURL(/#cube\/edit\/my-friday-cube$/, { timeout: STEP_MS });
+      const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('forgecoach.customCubes.v1') ?? '[]'));
+      check(stored.length === 1 && stored[0].id === 'my-friday-cube' && stored[0].cards.length === 45 && stored[0].doc.startsWith('# Friday Cube'), `the cube is saved in this browser (${JSON.stringify(stored.map((c) => [c.id, c.cards.length]))})`);
+      // Draft it: Draft vs Bot opens on it; a Grid draft deals from it.
+      await page.getByRole('link', { name: 'Draft it' }).click();
+      await page.locator('.setup .cube-pick', { hasText: 'Friday Cube · 45 cards' }).waitFor({ timeout: STEP_MS });
+      await page.getByRole('radio', { name: 'Grid' }).click();
+      await page.locator('.adv-toggle').click();
+      await page.getByRole('radiogroup', { name: 'First pick' }).getByRole('radio', { name: 'You' }).click();
+      await page.locator('.setup .btn-begin').click();
+      await page.locator('.pk.is-grid').waitFor({ timeout: STEP_MS });
+      const draft = await page.evaluate(() => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const v = localStorage.getItem(localStorage.key(i));
+          if (v && v.includes('"cubeId":"my-friday-cube"')) return JSON.parse(v);
+        }
+        return null;
+      });
+      const d = draft?.draft ?? draft;
+      check(d && d.cubeId === 'my-friday-cube' && d.format === 'grid' && d.grids === 5, `a Grid draft of 5 grids on the custom cube (${JSON.stringify(d && { cubeId: d.cubeId, format: d.format, grids: d.grids })})`);
+      const names = new Set(stored[0].cards);
+      check(d.dealt.every((n) => names.has(n)), 'every dealt card is from the custom cube');
+      await page.locator('.garrow:not([disabled])').first().click({ timeout: STEP_MS });
+      // The take button: in the pick bar on a desktop, the dock's on a phone.
+      await page.locator('button:visible:text-matches("^Take (column|row)")').first().click({ timeout: STEP_MS });
+      await page.waitForFunction(
+        () => {
+          for (let i = 0; i < localStorage.length; i++) {
+            const v = localStorage.getItem(localStorage.key(i)) ?? '';
+            if (v.includes('"cubeId":"my-friday-cube"')) return (JSON.parse(v).draft ?? JSON.parse(v)).picks.you.length === 3;
+          }
+          return false;
+        },
+        null,
+        { timeout: STEP_MS },
+      );
+      await shot(page, `cube-builder-${tag}-3-draft`);
+      // The cube's own page lists it, marked yours, with Edit.
+      await page.goto(`${app}#cube/my-friday-cube`);
+      await page.locator('.cp-title', { hasText: 'Friday Cube' }).waitFor({ timeout: STEP_MS });
+      await page.locator('.cp-crumbs a', { hasText: 'Friday (yours)' }).waitFor({ timeout: STEP_MS });
+      await page.getByRole('link', { name: 'Edit' }).waitFor({ timeout: STEP_MS });
+    },
+  };
+}
+
+scenarios.push(
+  cubeBuilderScenario({ name: 'the cube builder, a desktop: generate a small cube, a Forge warning, save, Draft vs Bot deals a Grid draft from it', viewport: { width: 1440, height: 900 }, tag: 'desktop' }),
+  cubeBuilderScenario({ name: 'the cube builder, a phone (390×844): the same, between the Library and Your cube tabs', viewport: { width: 390, height: 844 }, tag: 'phone' }),
 );
 
 // ---------------------------------------------------------------------------
