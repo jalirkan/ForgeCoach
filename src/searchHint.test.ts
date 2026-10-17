@@ -7,6 +7,10 @@ import type { GameStateBody, InputBody } from './protocol.ts';
 import { isHidden } from './protocol.ts';
 import {
   askHint,
+  askRoomHint,
+  HINT_OFF_TABLE,
+  roomHintInfo,
+  roomHintInfoOf,
   helperHintAvailable,
   hintCardIds,
   hintCaveat,
@@ -198,6 +202,70 @@ describe('asking', () => {
     expect(isRefused(junk) && junk.message).toMatch(/could not be read/);
     const bad = await askHint(t, { ...req, gameId: '../x' }, async () => ok(answer()));
     expect(isRefused(bad)).toBe(true);
+  });
+});
+
+describe('at a table of two (mtg-table D453): the room, behind this seat\'s token', () => {
+  const room = { base: 'https://play.example.org/', id: 'rAbC12_xy', token: 'seat-token-0' };
+  it('asks the room, never the helper: this seat, the moment, the room token in a header — no pool, no deck', async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    const f: HintFetch = async (url, init) => {
+      calls.push({ url, init });
+      return ok(answer());
+    };
+    const r = await askRoomHint(room, { gameId: 'friend-m1790000000042', seat: 1, stateSeq: 900, inputSeq: 903, budgetMs: 3000 }, f);
+    expect(isRefused(r)).toBe(false);
+    expect(calls[0]!.url).toBe('https://play.example.org/room/rAbC12_xy/hint');
+    expect(calls[0]!.url).not.toContain('seat-token-0');
+    expect(calls[0]!.init!.method).toBe('POST');
+    expect((calls[0]!.init!.headers as Record<string, string>)['X-Room-Token']).toBe('seat-token-0');
+    const body = JSON.parse(String(calls[0]!.init!.body));
+    expect(body).toEqual({ gameId: 'friend-m1790000000042', seat: 1, stateSeq: 900, inputSeq: 903, budgetMs: 3000 });
+  });
+  it('sends a game id only when it is a table\'s: the room names the game itself', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const f: HintFetch = async (_u, init) => {
+      bodies.push(JSON.parse(String(init!.body)));
+      return ok(answer());
+    };
+    await askRoomHint(room, { gameId: 'friend-m1790000000042-seat1', seat: 1, stateSeq: 5 }, f);
+    await askRoomHint(room, { gameId: 'human-ws-7', seat: 1, stateSeq: 5 }, f);
+    await askRoomHint(room, { gameId: null, seat: 1, stateSeq: 5 }, f);
+    expect(bodies.map((b) => b.gameId)).toEqual(['friend-m1790000000042-seat1', undefined, undefined]);
+  });
+  it('an older room (404) or one without hints (503) is off — the off text, not an error', async () => {
+    for (const [status, body] of [[404, { ok: false, code: 'gone', message: 'no such room' }], [503, { ok: false, code: 'off', message: 'x' }]] as const) {
+      const r = await askRoomHint(room, { seat: 0, stateSeq: 5 }, async () => ok(body, status));
+      expect(isRefused(r) && [r.code, r.message]).toEqual(['off', HINT_OFF_TABLE]);
+    }
+  });
+  it('the room\'s other answers, in plain words', async () => {
+    const req = { seat: 0, stateSeq: 5 };
+    const game = await askRoomHint(room, req, async () => ok({ ok: false, code: 'game' }, 409));
+    expect(isRefused(game) && game.code).toBe('moved-on');
+    const none = await askRoomHint(room, req, async () => ok({ ok: false, code: 'no-game' }, 409));
+    expect(isRefused(none) && [none.code, none.message]).toEqual([null, 'No game is being played in the room right now.']);
+    const moved = await askRoomHint(room, req, async () => ok({ ok: false, code: 'moved-on' }, 409));
+    expect(isRefused(moved) && moved.code).toBe('moved-on');
+    const tok = await askRoomHint(room, req, async () => ok({ ok: false, code: 'token' }, 403));
+    expect(isRefused(tok) && tok.message).toMatch(/room link no longer works/);
+    const down = await askRoomHint(room, req, async () => { throw new TypeError('fetch failed'); });
+    expect(isRefused(down) && down.message).toMatch(/room’s PC/);
+  });
+  it('availability is the room\'s state `hint: 1`, read with this seat\'s token', async () => {
+    expect(roomHintInfoOf({ v: 1, id: 'r', hint: 1 }).available).toBe(true);
+    expect(roomHintInfoOf({ v: 1, id: 'r', hint: 0 }).available).toBe(false);
+    expect(roomHintInfoOf({ v: 1, id: 'r' }).available).toBe(false);
+    const calls: { url: string; init?: RequestInit }[] = [];
+    const info = await roomHintInfo(room, async (url, init) => {
+      calls.push({ url, init });
+      return ok({ v: 1, id: room.id, hint: 1 });
+    });
+    expect(info.available).toBe(true);
+    expect(calls[0]!.url).toBe('https://play.example.org/room/rAbC12_xy');
+    expect((calls[0]!.init!.headers as Record<string, string>)['X-Room-Token']).toBe('seat-token-0');
+    expect((await roomHintInfo(room, async () => ok({ ok: false, code: 'gone' }, 404))).available).toBe(false);
+    expect((await roomHintInfo(room, async () => { throw new TypeError('fetch failed'); })).available).toBe(false);
   });
 });
 

@@ -2,7 +2,7 @@
  * ForgeCoach — play/coachChoice.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Which coach sits beside the board in a game against the bot (the Coach
+ * Which coach sits beside the board in a game, against the bot or a friend (the Coach
  * panel's selector): the search AI (the engine on your PC plays the decision
  * out for a few seconds: free, so it answers by itself at every decision it
  * can judge), Claude (the existing coach, through Claude Code on your PC or

@@ -72,6 +72,7 @@ import { BugButton, BugMenuItem, useBugContext } from '../bug/BugReport.tsx';
 import { gameFacts } from '../../bug/report.ts';
 import { tableRoom } from '../../bug/deliver.ts';
 import { loadFriendTable } from '../../play/friendTable.ts';
+import { savedRoomSeat } from '../../play/friendReview.ts';
 import { redactSeatUrl } from '../../play/seatUrl.ts';
 import { coachUseStorage, noteGamePlayed } from '../../coachUse.ts';
 import { gameKeyOf } from './autoPlan.ts';
@@ -729,7 +730,16 @@ export function PlayView({
       return !o;
     });
 
-  const search = useSearchCoach({ log, state, input, seat, askOpen: !!ask, enabled: againstAi && !over });
+  // The search AI at a table of two too (mtg-table D453): each seat asks the room for its own decisions,
+  // behind its own room token — the seat of THIS socket's friend table, never a stale one.
+  const atTable = snap.table !== null || (!!log?.hello && opponentIsHuman(log.hello));
+  const tableUrl = atTable ? snap.url : null;
+  const roomSeat = useMemo(() => {
+    if (!tableUrl) return null;
+    const t = loadFriendTable();
+    return t && t.url === tableUrl ? savedRoomSeat(t.room, t.seat) : null;
+  }, [tableUrl]);
+  const search = useSearchCoach({ log, state, input, seat, askOpen: !!ask, enabled: !!log?.hello && !over, table: atTable, room: roomSeat });
   const claudeAsk = useClaudeAsk();
   const coach = (
     <PlayCoach
@@ -787,7 +797,7 @@ export function PlayView({
         counter={counter}
         toggles={toggles}
         ask={wide ? askNode : null}
-        hint={againstAi && !over ? <AskNowRow coach={search} claudeAsk={search.kind === 'claude' ? claudeAsk : null} /> : null}
+        hint={!over ? <AskNowRow coach={search} claudeAsk={search.kind === 'claude' ? claudeAsk : null} /> : null}
       />
       {damageBar}
       <HandDock player={me} landOpen={landOpen} collapsed={handHidden} onToggle={toggleHand} />
