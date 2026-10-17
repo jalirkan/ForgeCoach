@@ -137,7 +137,7 @@ describe('the pairs manifest', () => {
     expect(warnings).toContain('pairs.forest+island.stageMap: 3 pair stages, 1 pictured; the later ones show the last stage');
   });
   it('finds pairs.json in a folder, or takes a .json URL as it is', () => {
-    expect(pairsManifestUrl('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v0/')).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v0/pairs.json');
+    expect(pairsManifestUrl('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v1/')).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v1/pairs.json');
     expect(pairsManifestUrl('http://127.0.0.1:8650/pairs')).toBe('http://127.0.0.1:8650/pairs/pairs.json');
     expect(pairsManifestUrl('http://127.0.0.1:8650/my.json')).toBe('http://127.0.0.1:8650/my.json');
     expect(pairsManifestUrl('javascript:x')).toBeNull();
@@ -273,7 +273,7 @@ describe('warming', () => {
 
 describe('loading and prefs', () => {
   it('fetches ForgeCoach’s pairs with ForgeCoach’s pack, none with another pack, and takes ?pairs= for one page', () => {
-    expect(FORGECOACH_PAIRS_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v0/');
+    expect(FORGECOACH_PAIRS_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v1/');
     expect(pairsUrlOf(DEFAULT_PREFS)).toBe(FORGECOACH_PAIRS_URL);
     expect(pairsUrlOf({ ...DEFAULT_PREFS, packUrl: 'http://127.0.0.1:8650/' })).toBeNull();
     expect(pairsUrlOf({ ...DEFAULT_PREFS, mode: 'procedural' })).toBeNull();

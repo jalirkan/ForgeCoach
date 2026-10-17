@@ -51,11 +51,12 @@ export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgeco
 /**
  * Spec 1.9: ForgeCoach's own pair bands, a second manifest (`pairs.json` at
  * this base) in a ref of its own on the same repository, since the main pack
- * fills most of jsDelivr's 50 MB per ref. `pairs-v0` is the DRAFT (one
- * picture per pair, reused for all three stages); `pairs-v1` (three stages and
- * their frames) replaces it when the art lands.
+ * fills most of jsDelivr's 50 MB per ref. `pairs-v1`: the ten pairs, three
+ * stages each, desktop and phone at 1x and 2x, two to four frames per stage
+ * step, about 33 MB (`pairs-v1.test.ts` is its manifest). The draft
+ * `pairs-v0` (one picture per pair) stays up but nothing points at it.
  */
-export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v0/';
+export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v1/';
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true };
 
