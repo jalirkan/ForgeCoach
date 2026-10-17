@@ -13,6 +13,16 @@
  *                         knowledge: {opponent, opponentModel: "pool"|"basic-lands"|…}, measure, …}
  *                  → 409 {code: "moved-on"|"superseded"|"not-yet"} · 400 / 403 / 404 / 429 / 503 / 504
  *
+ * At a table of two (mtg-table D453) the helper's own door refuses the game —
+ * a seat's log holds that player's hand — and each seat asks the draft room
+ * instead, behind its own room token (play/friendReview.ts's seat handle):
+ *
+ *   GET  /room/<id>       → the seat's state, with `hint: 1` when the room's computer answers hints
+ *   POST /room/<id>/hint  {seat, stateSeq, inputSeq?, budgetMs?, gameId?} → /hint's answer, for
+ *                         THIS seat's own log of the room's game; the room models the friend's
+ *                         hidden cards from the cube and their picks (no pool is sent)
+ *                         → 409 {code: "no-game"|"game"} · 503 {code: "off"} · 404 before D453
+ *
  * The engine on the player's PC plays the decision in front of them out for a
  * few seconds, from that seat's own log (the engine reads its own copy: this
  * page sends only which moment — the `seq` of the state and the input the
@@ -32,6 +42,7 @@ import type { GameLog } from './log.ts';
 import { cardIndex } from './decisions.ts';
 import { visibleName } from './review.ts';
 import { TOKEN_HEADER, type HelperTarget } from './coachHelper.ts';
+import { ROOM_TOKEN_HEADER, seatRoomUrl, type SeatHandle } from './play/friendReview.ts';
 import { cleanText, int, num } from './lab/status.ts';
 
 export type HintKind = 'spell' | 'attack' | 'block' | 'target';
@@ -83,8 +94,11 @@ export interface HintRefused {
   ok: false;
   /** HTTP status, or 0 when the helper could not be reached or answered nonsense. */
   status: number;
-  /** `superseded`: a newer hint replaced this one (say nothing); `moved-on`: the game went on. */
-  code: 'superseded' | 'moved-on' | 'not-yet' | null;
+  /**
+   * `superseded`: a newer hint replaced this one (say nothing); `moved-on`: the game went on; `off`: the
+   * room's computer gives no hints (a helper from before mtg-table D453, or without the hint) — not an error.
+   */
+  code: 'superseded' | 'moved-on' | 'not-yet' | 'off' | null;
   message: string;
 }
 
@@ -129,6 +143,29 @@ export async function hintInfo(target: HelperTarget, f: HintFetch = defaultFetch
   try {
     const res = await f(`${target.baseUrl}/health`, { method: 'GET', headers: headers(target, false), ...(c ? { signal: c.signal } : {}), cache: 'no-store' });
     return hintInfoOf(await res.json());
+  } catch {
+    return { available: false, engine: null, budgetMs: null };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/** At a table of two: the hint is off on the room's computer (or the room is from before mtg-table D453). */
+export const HINT_OFF_TABLE = 'The search AI isn’t offered at this table: the engine on the room’s PC doesn’t give hints yet (it needs the latest ForgeCoach there).';
+
+/** What a room's state says about hints (mtg-table D453: `hint: 1`); the room says nothing of its engine's start. */
+export function roomHintInfoOf(state: unknown): HintInfo {
+  return { available: helperHintAvailable(state), engine: null, budgetMs: null };
+}
+
+/** GET /room/<id> with this seat's token and read `hint` (never throws; not available when the room cannot be read). */
+export async function roomHintInfo(room: SeatHandle, f: HintFetch = defaultFetch, timeoutMs = 4000): Promise<HintInfo> {
+  const c = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = c ? setTimeout(() => c.abort(), timeoutMs) : null;
+  try {
+    const res = await f(seatRoomUrl(room, ''), { method: 'GET', headers: { [ROOM_TOKEN_HEADER]: room.token }, ...(c ? { signal: c.signal } : {}), cache: 'no-store' });
+    if (!res.ok) return { available: false, engine: null, budgetMs: null };
+    return roomHintInfoOf(await res.json());
   } catch {
     return { available: false, engine: null, budgetMs: null };
   } finally {
@@ -260,6 +297,7 @@ export function parseHint(raw: unknown): SearchHint {
 }
 
 const UNREACHABLE = 'Couldn’t reach the engine on your PC: start ForgeCoach again (the app-menu launcher, or ./scripts/play.sh).';
+const ROOM_UNREACHABLE = 'Couldn’t reach the room’s PC for a hint — try again in a moment.';
 const STATUS_WORDS: Record<number, string> = {
   403: 'The engine on your PC won’t give a hint for this game.',
   404: 'The engine on your PC has no log of this game.',
@@ -268,17 +306,52 @@ const STATUS_WORDS: Record<number, string> = {
   504: 'The search AI took too long and was stopped — try again.',
 };
 
+const ROOM_STATUS_WORDS: Record<number, string> = {
+  403: 'This seat’s room link no longer works — open the room again.',
+  429: 'Too many hints at once — try again in a few seconds.',
+  504: 'The search AI took too long and was stopped — try again.',
+};
+
 /** POST /hint. Never throws: a hint, or why not. */
 export async function askHint(target: HelperTarget, req: HintRequest, f: HintFetch = defaultFetch, signal?: AbortSignal): Promise<SearchHint | HintRefused> {
   if (!GAME_ID.test(req.gameId) || req.gameId.includes('..')) return { ok: false, status: 0, code: null, message: 'This game has no id the engine can look up.' };
   const body: Record<string, unknown> = { gameId: req.gameId, seat: req.seat, stateSeq: req.stateSeq };
   for (const k of ['inputSeq', 'oppPool', 'oppKnown', 'budgetMs'] as const) if (req[k] !== undefined) body[k] = req[k];
+  return postHint(`${target.baseUrl}/hint`, headers(target, true), body, f, signal, false);
+}
+
+/** A table's game id the room knows (`friend-m<13 digits>`, or a seat's log of it); anything else is not sent. */
+const TABLE_GAME_ID = /^friend-m[0-9]{13}(-seat[01])?$/;
+
+/** POST /room/<id>/hint (mtg-table D453) — at a table of two. */
+export interface RoomHintRequest {
+  /** Sent only when it is a table's game id: the room checks it is the game it plays now. */
+  gameId?: string | null;
+  seat: number;
+  stateSeq: number;
+  inputSeq?: number;
+  budgetMs?: number;
+}
+
+/**
+ * POST /room/<id>/hint: this seat's hint at a table of two, from the room behind this seat's token. No pool,
+ * never a deck: the room models the friend's hidden cards itself. Never throws: a hint, or why not — an
+ * old room (404) or one without hints (503) is `code: "off"`.
+ */
+export async function askRoomHint(room: SeatHandle, req: RoomHintRequest, f: HintFetch = defaultFetch, signal?: AbortSignal): Promise<SearchHint | HintRefused> {
+  const body: Record<string, unknown> = { seat: req.seat, stateSeq: req.stateSeq };
+  if (typeof req.gameId === 'string' && TABLE_GAME_ID.test(req.gameId)) body.gameId = req.gameId;
+  for (const k of ['inputSeq', 'budgetMs'] as const) if (req[k] !== undefined) body[k] = req[k];
+  return postHint(seatRoomUrl(room, '/hint'), { 'Content-Type': 'application/json', [ROOM_TOKEN_HEADER]: room.token }, body, f, signal, true);
+}
+
+async function postHint(url: string, hdrs: Record<string, string>, body: Record<string, unknown>, f: HintFetch, signal: AbortSignal | undefined, room: boolean): Promise<SearchHint | HintRefused> {
   let res: Pick<Response, 'ok' | 'status' | 'json'>;
   try {
-    res = await f(`${target.baseUrl}/hint`, { method: 'POST', headers: headers(target, true), body: JSON.stringify(body), ...(signal ? { signal } : {}) });
+    res = await f(url, { method: 'POST', headers: hdrs, body: JSON.stringify(body), ...(signal ? { signal } : {}) });
   } catch (e) {
     const aborted = e instanceof Error && e.name === 'AbortError';
-    return { ok: false, status: 0, code: aborted ? 'superseded' : null, message: aborted ? 'Cancelled.' : UNREACHABLE };
+    return { ok: false, status: 0, code: aborted ? 'superseded' : null, message: aborted ? 'Cancelled.' : room ? ROOM_UNREACHABLE : UNREACHABLE };
   }
   let data: unknown = null;
   try {
@@ -288,9 +361,16 @@ export async function askHint(target: HelperTarget, req: HintRequest, f: HintFet
   }
   const d = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
   if (!res.ok) {
+    if (room) {
+      // The room's own refusals (D453): an old room has no route (404), one without hints says off (503).
+      if (res.status === 404 || res.status === 503 || d.code === 'off') return { ok: false, status: res.status, code: 'off', message: HINT_OFF_TABLE };
+      if (d.code === 'game') return { ok: false, status: res.status, code: 'moved-on', message: 'The game moved on before the search AI finished.' };
+      if (d.code === 'no-game') return { ok: false, status: res.status, code: null, message: 'No game is being played in the room right now.' };
+    }
     const code = d.code === 'superseded' || d.code === 'moved-on' || d.code === 'not-yet' ? d.code : null;
     if (code === 'moved-on' || code === 'not-yet') return { ok: false, status: res.status, code, message: 'The game moved on before the search AI finished.' };
     if (code === 'superseded') return { ok: false, status: res.status, code, message: '' };
+    if (room) return { ok: false, status: res.status, code: null, message: ROOM_STATUS_WORDS[res.status] ?? cleanText(d.message, 300) ?? `The room’s PC answered HTTP ${res.status}.` };
     return { ok: false, status: res.status, code: null, message: STATUS_WORDS[res.status] ?? cleanText(d.message, 300) ?? `The engine on your PC answered HTTP ${res.status}.` };
   }
   try {
