@@ -25,7 +25,7 @@
  * M67: a double block with no player row, steppers, Reset [R], Space only on
  * a legal split, the engine's refusal in the sentence line; a trampler's
  * player row locked until every blocker has lethal); the coach's "Copy
- * prompt" with no helper; the search hint ("What would the search AI do?",
+ * prompt" with no helper; the search AI coach (Ask now, S,
  * mtg-table D429) against a fake helper that offers it.
  * result and mid-game; live watch on /observe never opening /ws; declaring
  * attackers and blockers as the combat study has them (blocker first, badges
@@ -33,7 +33,7 @@
  * combat); combat damage
  * by the engine's rule (mtg-table M67: no defender row without trample, the
  * engine's refusal shown, a trampler's excess); the coach's "Copy prompt" with
- * no helper; the search hint ("What would the search AI do?", mtg-table D429)
+ * no helper; the search AI coach (the default, asking by itself; mtg-table D429)
  * against a fake helper that offers it; watching two bots (mtg-table D440)
  * against the fake /watch routes (e2e/fakewatch.mjs): the lobby tile, the
  * form, the draft replay advancing, the decks, the board following game 1
@@ -1079,6 +1079,8 @@ const scenarios = [
       await u.mode('main');
       const coach = page.locator('.play-coach');
       await coach.waitFor({ timeout: STEP_MS });
+      // The search AI is the default coach; Claude is one click away.
+      await coach.locator('.pc-pick').getByRole('radio', { name: 'Claude' }).click();
       await coach.getByText('No coach connected').waitFor({ timeout: STEP_MS });
       const copy = coach.getByRole('button', { name: 'Copy prompt' });
       await copy.click();
@@ -1124,7 +1126,7 @@ function hintHelper(engine) {
 }
 
 const hintScenario = {
-  name: 'the search hint: asked with a button or S, the pick in board words, how sure, the caveat',
+  name: 'the search AI coach: the default, asking by itself once per decision, Ask now and S, the pick in board words, the selector',
   engine: { scene: 'main3' },
   helper: (engine) => {
     hintScenario.fake = hintHelper(engine);
@@ -1134,35 +1136,54 @@ const hintScenario = {
     const u = ui(page);
     await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
     await u.mode('main');
-    const hint = page.locator('.actionbar .ds-hint');
-    const btn = hint.getByRole('button', { name: /What would the search AI do\?/ });
-    await btn.waitFor({ timeout: STEP_MS });
-    await btn.click();
-    await page.locator('[data-search-hint="thinking"]').getByText('Search AI thinking…').waitFor({ timeout: STEP_MS });
-    const done = page.locator('[data-search-hint="done"]');
+    const asked = hintScenario.fake.asked;
+    // Search AI is the default coach: it asks by itself, with the engine's start in the busy line.
+    const coachPick = page.locator('.pc-pick [role="radio"][aria-checked="true"]');
+    check((await coachPick.innerText()).trim() === 'Search AI', 'the search AI is the default coach');
+    await page.locator('.actionbar [data-search-hint="asking"]').getByText('The engine is starting (about 10 s the first time)…').waitFor({ timeout: STEP_MS });
+    const done = page.locator('.actionbar [data-search-hint="answered"]');
     await done.waitFor({ timeout: STEP_MS });
     const line = await done.locator('.ds-hint-line').innerText();
     check(/^Search AI\s+Play (your )?Mountain first, then: cast Shock, or cast nothing now — too close to call$/i.test(line.trim()), `the pick in board words (${line})`);
     check(!/#\d/.test(line), `no engine id on screen (${line})`);
-    const caveat = await done.locator('.ds-hint-caveat').innerText();
-    check(caveat.startsWith('Knows only what you know'), `the caveat (${caveat})`);
-    const asked = hintScenario.fake.asked;
-    check(asked.length === 1, `one question per click (${asked.length})`);
+    // The Coach panel: the move, the other choices, the caveat and the budget used.
+    const panel = page.locator('[data-search-coach="answered"]');
+    await panel.waitFor({ timeout: STEP_MS });
+    const panelText = await panel.innerText();
+    check(panelText.includes('Knows only what you know') && panelText.includes('Looked 3.1 s of a 3.0 s budget.'), `the panel's caveat and budget (${panelText})`);
+    await shot(page, 'search-coach-answered');
+    // A re-render is not a new question.
+    await page.waitForTimeout(1200);
+    check(asked.length === 1, `asked once for the decision (${asked.length})`);
     const body = asked[0];
     check(body.gameId === engine.gameId && body.seat === 0 && Number.isInteger(body.stateSeq) && body.stateSeq > 0, `the moment: game, seat, state seq (${JSON.stringify(body)})`);
     check(Object.keys(body).every((k) => ['gameId', 'seat', 'stateSeq', 'inputSeq', 'oppPool', 'oppKnown', 'budgetMs'].includes(k)), `no other field, never a deck (${Object.keys(body)})`);
     // The cards it names glow on the board.
     const shock = mine(engine, 'Shock');
     await page.locator(`.game [data-card-id="${shock}"][data-search-pick]`).first().waitFor({ state: 'attached', timeout: STEP_MS });
-    // Play the land: a new board, a new decision -- the answer goes, the button is back; S asks again.
+    // Play the land: a new board, a new decision -- the answer goes, and the search AI asks again by itself.
     await sent(engine, 'clickCard', () => u.click(mine(engine, 'Mountain')));
     await engine.waitFor(() => engine.game.landPlayed, 'the land played');
-    await btn.waitFor({ timeout: STEP_MS });
-    check((await page.locator('[data-search-pick]').count()) === 0, 'the glow goes with the answer');
+    await engine.waitFor(() => asked.length === 2, 'a new question for the new decision');
+    check(asked[1].stateSeq > body.stateSeq, `the new moment (${asked.map((a) => a.stateSeq)})`);
+    await done.waitFor({ timeout: STEP_MS });
+    // Ask now, a button like Skip, and S ask again for the same decision.
+    const askNow = page.locator('.actionbar [data-ask-now="search"]');
+    check((await askNow.getAttribute('class')).includes('ab-tool'), 'Ask now is a slot button');
     await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
     await page.keyboard.press('s');
+    await engine.waitFor(() => asked.length === 3, 'S asks again');
     await done.waitFor({ timeout: STEP_MS });
-    check(asked.length === 2 && asked[1].stateSeq > body.stateSeq, `S asks for the new moment (${asked.map((a) => a.stateSeq)})`);
+    // Off: nothing asks, not even S; the decision panel's row goes.
+    await page.locator('.pc-pick').getByRole('radio', { name: 'Off' }).click();
+    await page.keyboard.press('s');
+    await page.waitForTimeout(900);
+    check(asked.length === 3 && (await page.locator('.actionbar [data-ask-now]').count()) === 0, `off asks nothing (${asked.length})`);
+    // Claude: chosen and kept; it never asks the search AI by itself.
+    await page.locator('.pc-pick').getByRole('radio', { name: 'Claude' }).click();
+    check((await page.evaluate(() => localStorage.getItem('forgecoach.coachKind'))) === 'claude', 'the choice is kept');
+    await page.waitForTimeout(900);
+    check(asked.length === 3, `Claude chosen: no search question by itself (${asked.length})`);
     check(engine.acts().filter((a) => a.action !== 'clickCard').length === 0, `asking sent the engine nothing (${JSON.stringify(engine.acts())})`);
   },
 };

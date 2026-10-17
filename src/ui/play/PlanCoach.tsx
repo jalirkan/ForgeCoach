@@ -18,7 +18,8 @@
  *   done, until the next moment's plan; "Ask about this" asks the moment on
  *   screen in the same format. Earlier advice folds away below.
  */
-import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { setClaudeAsk } from './coachAsk.ts';
 import type { AskBody, GameStateBody, InputBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import { getAnswer, slotKey, stopAnswer, useAnswer } from '../answers.ts';
@@ -91,6 +92,7 @@ export const PlanCoach = memo(function PlanCoach({
   onOpenGuides,
   onOpenSettings,
   onCollapse,
+  picker,
 }: {
   log: GameLog | null;
   state: GameStateBody | null;
@@ -102,6 +104,8 @@ export const PlanCoach = memo(function PlanCoach({
   onOpenGuides: () => void;
   onOpenSettings: () => void;
   onCollapse?: () => void;
+  /** The coach selector, under the head. */
+  picker?: ReactNode;
 }) {
   const [auto, setAuto] = useState(() => readLS(AUTO_KEY) === '1');
   const availability = useCoachAvailability();
@@ -201,6 +205,13 @@ export const PlanCoach = memo(function PlanCoach({
   // the moment on screen already has advice (auto-coach's plan for it, or your question): no second button
   const askedNow = !!(nowMoment && ((ownAsk && nowAskBase && baseAnswerKey(ownAsk.key) === nowAskBase) || (plan?.moment && plan.moment.id === nowMoment.id)));
 
+  // The decision panel's Ask now (coachAsk.ts): the moment on screen, while it has no advice yet.
+  const askHere = nowMoment && !askedNow ? askNow : null;
+  useEffect(() => {
+    setClaudeAsk(askHere);
+    return () => setClaudeAsk(null);
+  }, [askHere]);
+
   return (
     <div className="coach play-coach plan-coach">
       <div className="pc-head">
@@ -223,6 +234,7 @@ export const PlanCoach = memo(function PlanCoach({
           </button>
         )}
       </div>
+      {picker}
       <button className="guide-btn" onClick={onOpenGuides}>
         <IconBook size={14} />
         <span className="muted">Play guide</span>

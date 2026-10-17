@@ -129,6 +129,15 @@ source: *Automatic* (the default: the helper when it is found, else your key),
 Sonnet 5.5 → `sonnet`, Haiku 4.5 → `haiku` for Claude Code). Either way the
 coach gets the decision's state and the exact text of the cards involved.
 
+**Which coach.** The Coach panel beside the board starts on **Search AI**: the
+engine on your PC plays each decision it can judge (your main-phase spells,
+attacks, blocks and targets) out for a few seconds and says what it would do,
+how sure it is and the other choices it weighed. It is free, so it answers by
+itself; elsewhere it says there is no hint for that decision. **Claude** is the
+coach below (it spends usage, so it asks by itself only with Auto-coach on);
+**Off** asks nothing. The decision panel's **Ask now** asks whichever coach is
+chosen; S asks the search AI. The choice is kept in this browser.
+
 **Which model does what.** Settings has two model choices. **Live coach
 model** coaches you during a game (Auto-coach and *Ask about this*):
 *Automatic* is Sonnet 5.5, or Haiku 4.5 when Model is Haiku; in the Steps style

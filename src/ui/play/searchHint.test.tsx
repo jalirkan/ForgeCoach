@@ -13,7 +13,7 @@ import { DecisionSlot } from './DecisionSlot.tsx';
 import { describeInput, type InputMode, type InputView } from './inputView.ts';
 import { attentionOf, passToggles } from './decisionModel.ts';
 import { KEY_BINDINGS, PLAY_KEYS, planPlayKey } from './playKeys.ts';
-import { HINT_BUTTON } from './SearchHint.tsx';
+import { ASK_NOW } from './SearchHint.tsx';
 
 const INPUT: InputBody = {
   prompt: 'Priority: Justin\nTurn: 3 (Justin)\nPhase: Main phase, precombat\nStack: Empty',
@@ -37,10 +37,10 @@ describe('the search hint in the decision slot', () => {
         <DecisionSlot view={view} busy={null} pool={null} canUndo={false} undoDepth={0} onOk={() => undefined} onCancel={() => undefined} onAct={() => undefined}
           onHelp={() => undefined} flash={null} wide attention={attention} toggles={toggles} hint={hint} />,
       );
-    const html = render(<div className="ds-hint"><button className="ds-hint-btn">{HINT_BUTTON}</button></div>);
+    const html = render(<div className="ds-hint"><button className="ab-tool ds-ask-now">{ASK_NOW}</button></div>);
     const text = html.slice(html.indexOf('class="ab-text"'), html.indexOf('class="ab-go"'));
     expect(text).toContain('class="ds-hint-slot"><div class="ds-hint"');
-    expect(text).toContain('What would the search AI do?');
+    expect(text).toContain('Ask now');
     expect(render(null)).not.toContain('ds-hint');
   });
 });
