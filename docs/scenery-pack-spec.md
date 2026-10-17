@@ -638,14 +638,15 @@ draws, and what a pack can give it:
   little of its sky and ground cut, or, with no phone picture, about the
   middle third of the desktop picture. One picture per biome per half, chosen
   by `srcset` for the screen's density (1x or 2x, never more).
-- **The card-row scrim.** Under each row of cards (and under the "No
-  permanents" note) ForgeCoach draws a soft dark band: the board's own
-  background colour, opaque within 6 px of the cards, then feathered from 0.85
-  to nothing over 30 px. A card's edge and any text near it sit on exactly the
-  colour they sit on with the scenery off, however busy the art; the sky and
-  the edges of the half keep their full colour. So keep the subject out of the
-  card rows' usual places only as far as the art allows: the scrim takes care of
-  readability.
+- **The card-row scrim.** Under each row of cards ForgeCoach draws a soft
+  tint, no wider than the cards it holds: the board's own background colour at
+  `--scn-scrim-strength` (0.35 by default), within 2 px of the cards, then
+  feathered to nothing over 14 px, so your art shows through it. Text on the
+  board never relies on it: every label (a card's P/T, counters, a pile's
+  count, the "No permanents" note) sits on a frame of its own. Cards have their
+  own frames too, so busy art under a row is fine. (Until 17 October 2026 the
+  band was opaque within 6 px of the cards and feathered from 0.85 over 30 px;
+  it hid too much of the art.)
 - **Effects and accents** keep working: the effects play in the strip-sized
   box at the outer edge as before, the land flash and the stage-up bloom play
   in the panel, accents draw over the half as over the board.

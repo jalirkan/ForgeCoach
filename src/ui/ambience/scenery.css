@@ -680,6 +680,10 @@
      skin), so a card's edge and any text sit on today's colour. Classic tints the two sides. */
   --scn-scrim-top: #191e28;
   --scn-scrim-me: #1e1f21;
+  /* How strong the card-row scrim is at its core (0 = none, 1 = the old opaque band). The one knob:
+     text never relies on it (every label on the board has its own frame), so it only sets how much
+     of the scenery shows under the cards. ambience/scrim.ts SCRIM_STRENGTH is its default. */
+  --scn-scrim-strength: 0.35;
 }
 :root[data-skin='stack'] {
   --scn-scrim-top: var(--surface, #171a1e);
@@ -758,14 +762,25 @@
   background: linear-gradient(to top, var(--scn-mist-color), transparent);
 }
 
-/* The card-row scrim (HalfScrim.tsx): a soft dark band under each card row,
-   opaque next to the cards, feathered out over the art (§5: ~0.85, ~30 px). */
+/* The card-row scrim (HalfScrim.tsx): a soft tint under each card row, no wider than its cards,
+   at --scn-scrim-strength, feathered out over ~14 px, so the scenery shows through. */
 .scn-scrims {
   position: absolute;
   inset: 0;
   z-index: -1;
   pointer-events: none;
   overflow: hidden;
+  opacity: var(--scn-scrim-strength, 0.35);
+}
+/* The scrim no longer carries text: the "No permanents" note gets a frame of its own over the art. */
+.battlefield:has(> .scn-scrims) .bf-empty,
+.battlefield:has(.scn-half) .bf-empty {
+  width: fit-content;
+  margin-inline: auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: var(--text-2);
+  background: rgba(10, 11, 14, 0.78);
 }
 .scn-scrim {
   position: absolute;

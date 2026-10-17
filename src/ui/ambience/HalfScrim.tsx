@@ -3,9 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The card-row scrim of the half board (spec 1.5, art direction §5): a soft
- * dark band under each card row of a player's half, so the cards and the
- * little text on the board read as well as on the plain board while the sky
- * and the edges keep their colour. The board's own components know nothing
+ * tint under each card row of a player's half, no wider than its cards, at
+ * scenery.css's `--scn-scrim-strength`, so the scenery shows through. The board's own components know nothing
  * of it: it measures their rows (`.bf-cards`, `.bf-empty`) inside the host
  * and draws a band under each (ambience/scrim.ts `scrimRects`), at z-index -1
  * in the host's isolated context: above the art, beneath every card.
