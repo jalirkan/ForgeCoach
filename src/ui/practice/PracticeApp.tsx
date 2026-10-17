@@ -46,6 +46,7 @@ import { Logo } from '../Logo.tsx';
 import { useCoachAvailability, useMediaQuery } from '../hooks.ts';
 import { stateCardNames, cx } from '../util.ts';
 import { addSamples, onBookChange, puzzleLog, readBook, scanHistory, updateBook } from './practiceData.ts';
+import { familyOf, nav } from '../nav.ts';
 
 function useBook(): PuzzleBook {
   const [book, setBook] = useState(readBook);
@@ -93,8 +94,11 @@ export default function PracticeApp() {
   }, [runScan]);
 
   const order = useMemo(() => practiceOrder(book.puzzles), [book.puzzles]);
+  // A puzzle from the list is a new entry; the next puzzle replaces it; the list is up a level (nav.ts).
   const open = (id: string | null) => {
-    location.hash = id ? `#practice/${encodeURIComponent(id)}` : '#practice';
+    if (id) nav().go(`#practice/${encodeURIComponent(id)}`);
+    else if (familyOf(location.hash)) nav().up();
+    else location.hash = '#practice';
   };
   const current = openId ? book.puzzles.find((p) => p.id === openId) ?? null : null;
   const next = (fromId: string) => {

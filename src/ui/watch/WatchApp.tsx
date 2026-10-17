@@ -36,6 +36,7 @@ import { IconChevronLeft } from '../Icons.tsx';
 import { SettingsDialog } from '../SettingsDialog.tsx';
 import { cx } from '../util.ts';
 import { DraftReplay } from './DraftReplay.tsx';
+import { nav } from '../nav.ts';
 
 const POLL_MS = 1500;
 const NEXT_GAME_MS = 6000;
@@ -57,9 +58,9 @@ export default function WatchApp({ onExit }: { onExit: () => void }) {
   return (
     <>
       {id ? (
-        <WatchRun key={id} id={id} onBack={() => (location.hash = '#watch')} onSettings={() => setSettings(true)} />
+        <WatchRun key={id} id={id} onBack={() => nav().up()} onSettings={() => setSettings(true)} />
       ) : (
-        <WatchSetup onExit={onExit} onOpen={(w) => (location.hash = `#watch/${w}`)} />
+        <WatchSetup onExit={onExit} onOpen={(w) => nav().go(`#watch/${w}`)} />
       )}
       <SettingsDialog open={settings} onClose={() => setSettings(false)} />
     </>

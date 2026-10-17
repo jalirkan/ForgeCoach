@@ -11,7 +11,7 @@
  * are Justin's, edited in the repository; your own cubes (cube/custom.ts)
  * open in the cube builder from Edit.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import '../deck/deck.css';
 import '../forge-theme.css';
 import './draft.css';
@@ -21,6 +21,7 @@ import { kindCounts } from '../../draft/poolView.ts';
 import { prefetchCards } from '../cardData.ts';
 import { IconChevronLeft } from '../Icons.tsx';
 import { cx } from '../util.ts';
+import { nav } from '../nav.ts';
 import { CardInfoSheet } from '../deck/sheets.tsx';
 import { useCubeData } from '../deck/useCubeData.ts';
 import { CubeGuideView } from '../guide/CubeGuide.tsx';
@@ -29,6 +30,24 @@ import { ColourDots, MiniCurve } from './Pool.tsx';
 import { useCubeMeta } from './useCubeMeta.ts';
 
 const norm = (s: string) => s.toLowerCase().replace(/[’']/g, "'");
+
+/** A link to another cube's page (or tab): it replaces this one in the history (nav.ts), so Back leaves the cubes in one step. */
+function Sibling({ href, className, current, children }: { href: string; className?: string; current?: boolean; children: ReactNode }) {
+  return (
+    <a
+      href={href}
+      className={className}
+      aria-current={current ? 'page' : undefined}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        nav().go(href);
+      }}
+    >
+      {children}
+    </a>
+  );
+}
 
 export default function CubePage({ id: route, onExit }: { id: string; onExit: () => void }) {
   const [id = '', sub] = route.split('/');
@@ -52,16 +71,16 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
   return (
     <div className="fx cube-page">
       <header className="cp-top">
-        <button className="link-back" onClick={onExit}>
+        <button className="link-back" onClick={onExit} title="Up to where you opened the cubes from">
           <IconChevronLeft size={14} /> Back
         </button>
         <nav className="cp-crumbs fx-label">
           <span>Cubes</span>
           {CUBES.map((c) => (
-            <a key={c.id} href={`#cube/${c.id}${view === 'guide' ? '/guide' : ''}`} className={cx(c.id === info.id && 'is-on')}>
+            <Sibling key={c.id} href={`#cube/${c.id}${view === 'guide' ? '/guide' : ''}`} className={cx(c.id === info.id && 'is-on')}>
               {cubeShortName(c)}
               {c.custom ? ' (yours)' : ''}
-            </a>
+            </Sibling>
           ))}
           <a href="#cube/new">+ New cube</a>
         </nav>
@@ -88,12 +107,12 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
       </div>
 
       <nav className="cg-tabs" aria-label="Cube page">
-        <a href={`#cube/${info.id}`} aria-current={view === 'cards' ? 'page' : undefined}>
+        <Sibling href={`#cube/${info.id}`} current={view === 'cards'}>
           Cards
-        </a>
-        <a href={`#cube/${info.id}/guide`} aria-current={view === 'guide' ? 'page' : undefined}>
+        </Sibling>
+        <Sibling href={`#cube/${info.id}/guide`} current={view === 'guide'}>
           How to draft
-        </a>
+        </Sibling>
       </nav>
 
       {view === 'guide' ? (

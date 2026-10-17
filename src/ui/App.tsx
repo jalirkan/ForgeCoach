@@ -29,6 +29,10 @@ import { PlayView } from './play/PlayView.tsx';
 import { useFriendReview } from './play/useFriendReview.ts';
 import { hasSampleReview } from './review/samples.ts';
 import { BugReportHost } from './bug/BugReport.tsx';
+import { nav } from './nav.ts';
+
+// Watch every hash change from the start, so a family of sibling pages knows where it was entered from (nav.ts).
+if (typeof window !== 'undefined') nav();
 
 // #deck: Draft & build, the deck assistant (lazy: its own bundle).
 const DeckApp = lazy(() => import('./deck/DeckApp.tsx'));
@@ -185,7 +189,7 @@ export function App() {
     ) : /^#cube\/(new|edit)\b/.test(hash) ? (
       <CubeBuilder key={hash.replace(/\?.*$/, '')} route={hash.slice(6)} onExit={() => (history.length > 1 ? history.back() : (location.hash = '#draft/setup'))} />
     ) : /^#cube\/[\w-]+/.test(hash) ? (
-      <CubePage id={hash.slice(6)} onExit={() => (history.length > 1 ? history.back() : (location.hash = '#draft/setup'))} />
+      <CubePage id={hash.slice(6)} onExit={() => nav().up()} />
     ) : /^#draft\/friend\b/.test(hash) ? (
       <FriendApp
         onExit={() => {
