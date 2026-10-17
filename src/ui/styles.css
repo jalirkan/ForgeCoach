@@ -638,7 +638,7 @@ code {
 }
 
 .game.is-narrow {
-  --dock-h: 112px;
+  --dock-h: 150px;
   min-height: 100dvh;
   padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom));
 }
@@ -817,6 +817,60 @@ code {
 }
 
 /* phone dock */
+/* Play the timeline on from a moment (Timeline.tsx PlayBar): Play / Pause, the speed, Live. */
+.tl-play {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-top: 10px;
+}
+.dock-play .tl-play {
+  margin-top: 0;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+.tl-play-btn {
+  min-width: 84px;
+}
+.tl-speed {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.tl-speed-chip {
+  padding: 3px 8px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.tl-speed-chip + .tl-speed-chip {
+  border-left: 1px solid var(--line);
+}
+.tl-speed-chip.is-on {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.tl-live {
+  margin-left: auto;
+}
+span.tl-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ok);
+}
+span.tl-live .live-dot {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
+}
+
 .dock {
   position: fixed;
   left: 0;
