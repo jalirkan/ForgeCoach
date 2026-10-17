@@ -20,7 +20,8 @@
  * top-level `bridges` (per biome pair, a transparent ground piece drawn
  * across the seam where the two biomes meet on one side, placed by an anchor
  * on the seam, and how much each of the pair's dual lands widens that seam).
- * A 1.1–1.7 pack reads as before.
+ * Spec 1.9's pair bands come in a second manifest of their own (pairs.ts);
+ * a pack carries them as `pairs` once loaded. A 1.1–1.8 pack reads as before.
  *
  * A pack is untrusted input, served from wherever the user pointed the page:
  * every string is cleaned and clipped, every number range-checked, every URL
@@ -32,10 +33,11 @@
  */
 import { cleanText, int, num } from '../lab/status.ts';
 import { BIOMES, MAX_STAGES, pairKey, type Biome } from './model.ts';
+import type { PairsPack } from './pairs.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
-export const SPEC_VERSION = '1.8';
+export const SPEC_VERSION = '1.9';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */
@@ -647,7 +649,8 @@ function parseMirror(v: Obj, path: string, warn: string[]): boolean {
   return true;
 }
 
-function parseBytes(v: Obj, path: string, warn: string[]): number | null {
+/** @internal Shared with pairs.ts (spec 1.9). */
+export function parseBytes(v: Obj, path: string, warn: string[]): number | null {
   if (v.bytes === undefined || v.bytes === null) return null;
   const bytes = int(v.bytes, 0, 1e9);
   if (bytes === null) warn.push(`${path}.bytes: a whole number of bytes; ignored`);
@@ -930,6 +933,12 @@ export interface ScenePack {
   growth?: PackGrowth;
   /** Spec 1.8: bridges across the seam, keyed by {@link pairKey} (both orders of a pair find the one entry), or undefined / null. */
   bridges?: Partial<Record<string, PackBridge>> | null;
+  /**
+   * Spec 1.9: the pair bands, from the second manifest (`pairs.json`) the
+   * loader fetches beside this one (pack.ts `resolveScenery`), or undefined /
+   * null (every seam as in 1.8).
+   */
+  pairs?: PairsPack | null;
 }
 
 export interface ManifestResult {
@@ -942,8 +951,8 @@ export interface ManifestResult {
 
 export const DEFAULT_STRIP: PackStrip = { heightRatio: 0.46, minHeightPx: 64, maxHeightPx: 280, seamPx: 120, fadeRatio: 0.38, order: 'arrival' };
 
-type Obj = Record<string, unknown>;
-const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
+export type Obj = Record<string, unknown>;
+export const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 function oneOf<T extends string>(v: unknown, allowed: readonly T[], dflt: T, path: string, warn: string[]): T {
   if (v === undefined || v === null) return dflt;
@@ -952,7 +961,8 @@ function oneOf<T extends string>(v: unknown, allowed: readonly T[], dflt: T, pat
   return dflt;
 }
 
-function ranged(v: unknown, min: number, max: number, dflt: number, path: string, warn: string[], whole = false): number {
+/** @internal Shared with pairs.ts (spec 1.9). */
+export function ranged(v: unknown, min: number, max: number, dflt: number, path: string, warn: string[], whole = false): number {
   if (v === undefined || v === null) return dflt;
   const n = whole ? int(v, min, max) : num(v, min, max);
   if (n === null) {
@@ -1130,7 +1140,8 @@ function phoneBand(desk: HalfPicture): [number, number] {
 }
 
 /** Spec 1.5: a stage's `half` pictures, or null (dropped with a warning when unusable). */
-function parseHalf(v: unknown, base: string, path: string, warn: string[]): PackHalf | null {
+/** @internal Shared with pairs.ts (spec 1.9). */
+export function parseHalf(v: unknown, base: string, path: string, warn: string[]): PackHalf | null {
   if (v === undefined || v === null) return null;
   if (!isObj(v)) {
     warn.push(`${path}: not an object; ignored`);
@@ -1200,7 +1211,8 @@ function parseGrowth(v: unknown, warn: string[]): PackGrowth {
  * dropped whole (the app then cross-fades it), as is a step repeated; when a
  * stage was dropped the stage numbers no longer line up, so every step is.
  */
-function parseTransitions(v: unknown, base: string, path: string, warn: string[], stageCount: number, stagesIntact: boolean): PackTransitions | null {
+/** @internal Shared with pairs.ts (spec 1.9). */
+export function parseTransitions(v: unknown, base: string, path: string, warn: string[], stageCount: number, stagesIntact: boolean): PackTransitions | null {
   if (v === undefined || v === null) return null;
   if (!isObj(v)) {
     warn.push(`${path}: not an object; ignored`);

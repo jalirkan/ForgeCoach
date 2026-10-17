@@ -10,13 +10,21 @@
  * face-down card is never classified), so the scenery shows nothing the
  * viewing seat's redacted state does not already show.
  *
- * Classification of one land (weights always sum to 1 per land):
+ * Classification of one land (weights always sum to 1 per land), by the
+ * colours it produces:
  *   1. Basic land types on its type line (Island, Swamp, …, Wastes), split
  *      evenly: a "Land — Island Swamp" dual gives ½ island, ½ swamp.
- *   2. Else the colours it taps for (`manaColorsOf`: Scryfall data when the
+ *   2. A "choose a colour as it enters" land (the Thriving lands: "Add {W} or
+ *      one mana of the chosen color"): its fixed colour plus the colour chosen
+ *      for it, when the caller knows it (state.ts `chosenColors`, the viewing
+ *      seat's own answers), ½ / ½; its fixed colour alone while the choice is
+ *      unknown (an opponent's, or before the answer). Before 2026-10-16 it fell
+ *      to step 3, whose Scryfall data lists all five colours: wastes.
+ *   3. Else the colours it taps for (`manaColorsOf`: Scryfall data when the
  *      caller has it, else the wire's ability text), one or two colours split
- *      evenly.
- *   3. Else (colourless, unknown, or three or more colours) → wastes.
+ *      evenly (a Pathway's card data lists both faces' colours: ½ / ½).
+ *   4. Else (colourless, unknown, no mana at all — a fetch land — or three or
+ *      more colours) → wastes.
  *
  * Growth: a biome's land weight sets its integer stage (1 / 2–3 / 4–5 / 6+
  * lands by default) and, between two thresholds, its progress toward the
@@ -36,7 +44,7 @@
 import type { AnyCard, GameStateBody } from '../protocol.ts';
 import type { GameLog } from '../log.ts';
 import type { CardInfo } from '../cards.ts';
-import { hasType, manaColorsOf, visibleCard } from '../state.ts';
+import { chosenColorSource, hasType, manaColorsOf, visibleCard, type ChosenColors } from '../state.ts';
 
 export const BIOMES = ['island', 'swamp', 'mountain', 'forest', 'plains', 'wastes'] as const;
 export type Biome = (typeof BIOMES)[number];
@@ -71,12 +79,19 @@ export function isBiome(v: unknown): v is Biome {
   return typeof v === 'string' && (BIOMES as readonly string[]).includes(v);
 }
 
-/** How one land splits across biomes (weights sum to 1), or null when it is not a visible land. */
-export function landBiomes(card: AnyCard, cards?: Map<string, CardInfo>): Partial<Record<Biome, number>> | null {
+/** How one land splits across biomes (weights sum to 1), or null when it is not a visible land. `chosen`: the colours chosen for "choose a colour" lands, by card id. */
+export function landBiomes(card: AnyCard, cards?: Map<string, CardInfo>, chosen?: ChosenColors): Partial<Record<Biome, number>> | null {
   const c = visibleCard(card);
   if (!c || c.faceDown || !hasType(c, 'Land')) return null;
   const typed = Object.keys(TYPE_BIOME).filter((t) => new RegExp(`\\b${t}\\b`).test(c.types));
   if (typed.length > 0) return split(typed.map((t) => TYPE_BIOME[t]!));
+  const cc = chosenColorSource(c, cards);
+  if (cc) {
+    const pick = chosen?.get(c.id);
+    const made = [...new Set([...cc.fixed, ...(pick ? [pick] : [])])].filter((x) => x in COLOR_BIOME);
+    if (made.length >= 1 && made.length <= 2) return split(made.map((x) => COLOR_BIOME[x]!));
+    return { wastes: 1 };
+  }
   const colors = (manaColorsOf(c, cards) ?? []).filter((x) => x in COLOR_BIOME);
   const uniq = [...new Set(colors)];
   if (uniq.length >= 1 && uniq.length <= 2) return split(uniq.map((x) => COLOR_BIOME[x]!));
@@ -100,11 +115,11 @@ export function landPair(w: Partial<Record<Biome, number>> | null): string | nul
 }
 
 /** Spec 1.8: how many of one player's lands are duals of each pair (only pairs with one or more), keyed by {@link pairKey}. */
-export function dualPairs(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>): Record<string, number> {
+export function dualPairs(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>, chosen?: ChosenColors): Record<string, number> {
   const out: Record<string, number> = {};
   const p = state.players.find((x) => x.id === playerId);
   for (const card of p?.zones.battlefield?.cards ?? []) {
-    const k = landPair(landBiomes(card, cards));
+    const k = landPair(landBiomes(card, cards, chosen));
     if (k) out[k] = (out[k] ?? 0) + 1;
   }
   return out;
@@ -118,12 +133,12 @@ function split(biomes: Biome[]): Partial<Record<Biome, number>> {
 }
 
 /** Each biome's land weight on one player's battlefield (only biomes with weight > 0). */
-export function biomeWeights(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>): Partial<Record<Biome, number>> {
+export function biomeWeights(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>, chosen?: ChosenColors): Partial<Record<Biome, number>> {
   const out: Partial<Record<Biome, number>> = {};
   const p = state.players.find((x) => x.id === playerId);
   if (!p) return out;
   for (const card of p.zones.battlefield?.cards ?? []) {
-    const w = landBiomes(card, cards);
+    const w = landBiomes(card, cards, chosen);
     if (!w) continue;
     for (const [b, v] of Object.entries(w) as [Biome, number][]) out[b] = round((out[b] ?? 0) + v);
   }
@@ -210,6 +225,8 @@ export interface Scenery {
 export interface SceneryOptions {
   thresholds?: readonly number[];
   cards?: Map<string, CardInfo>;
+  /** The colours chosen for "choose a colour" lands (the Thriving lands), by card id: state.ts `chosenColors`. */
+  chosen?: ChosenColors;
 }
 
 export function emptyScenery(thresholds: readonly number[] = DEFAULT_STAGE_THRESHOLDS): Scenery {
@@ -227,30 +244,30 @@ export function stepScenery(prev: Scenery | null, state: GameStateBody, opts: Sc
   const players: PlayerScenery[] = [];
   for (const p of state.players ?? []) {
     const before = prev?.players.find((x) => x.playerId === p.id);
-    const weights = biomeWeights(state, p.id, opts.cards);
+    const weights = biomeWeights(state, p.id, opts.cards, opts.chosen);
     const slots: SlotState[] = (before?.slots ?? []).map((s) => {
       const weight = weights[s.biome] ?? 0;
       const { stage, progress } = growthFor(weight, thresholds);
       return { ...s, weight, stage, progress, peak: Math.max(s.peak, stage) };
     });
     const have = new Set(slots.map((s) => s.biome));
-    for (const b of firstSeenOrder(state, p.id, opts.cards)) {
+    for (const b of firstSeenOrder(state, p.id, opts.cards, opts.chosen)) {
       if (have.has(b) || !((weights[b] ?? 0) > 0)) continue;
       const { stage, progress } = growthFor(weights[b]!, thresholds);
       slots.push({ biome: b, index: slots.length, weight: weights[b]!, stage, progress, peak: stage });
       have.add(b);
     }
-    const duals = dualPairs(state, p.id, opts.cards);
+    const duals = dualPairs(state, p.id, opts.cards, opts.chosen);
     players.push(Object.keys(duals).length ? { playerId: p.id, slots, duals } : { playerId: p.id, slots });
   }
   return { players, thresholds };
 }
 
-function firstSeenOrder(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>): Biome[] {
+function firstSeenOrder(state: GameStateBody, playerId: number, cards?: Map<string, CardInfo>, chosen?: ChosenColors): Biome[] {
   const p = state.players.find((x) => x.id === playerId);
   const out: Biome[] = [];
   for (const card of p?.zones.battlefield?.cards ?? []) {
-    const w = landBiomes(card, cards);
+    const w = landBiomes(card, cards, chosen);
     if (!w) continue;
     for (const b of BIOMES) if ((w[b] ?? 0) > 0 && !out.includes(b)) out.push(b);
   }
@@ -302,8 +319,17 @@ export class SceneryTracker {
 
   /** Change options (thresholds, card data); the next `at` starts over. */
   setOptions(opts: SceneryOptions) {
-    this.opts = opts;
+    this.opts = { ...opts, chosen: opts.chosen ?? this.opts.chosen };
     this.first = null;
+  }
+
+  /**
+   * The colours chosen for "choose a colour" lands so far, without starting
+   * over: a choice is made once, as its land enters, so only the states still
+   * to come need it (each state's weights are counted afresh).
+   */
+  setChosen(chosen: ChosenColors | undefined) {
+    this.opts = { ...this.opts, chosen };
   }
 
   at(log: GameLog, frameIndex: number): Scenery {

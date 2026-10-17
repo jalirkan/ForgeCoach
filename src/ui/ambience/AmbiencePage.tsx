@@ -10,7 +10,9 @@
  * pack URL with its validation and its effect files listed, or a pasted
  * manifest previewed as is — how an art pack is tried with no engine running.
  * Spec 1.6: a land count per biome for either side (1–7 and back), so the
- * growth between stages can be stepped through land by land.
+ * growth between stages can be stepped through land by land. Spec 1.9: with
+ * ForgeCoach's own pack (or `?pairs=<url>`), the pair bands load beside it,
+ * and each side's header names its bands (the dual, the shock, the width).
  *
  * Everything here is made up in the page (ambience/sim.ts). It never opens a
  * socket to the engine.
@@ -21,9 +23,11 @@ import { BIOME_LABEL, dualsOf, sceneryFromLog, slotsOf, type Biome } from '../..
 import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '../../ambience/effects.ts';
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
 import { SIM_PLAYERS, simLandCount, simLog, simSetLandCount, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
-import { browserLoader, checkEffectFiles, fetchManifest, manifestUrlFor, preloadPack, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
+import { browserLoader, checkEffectFiles, fetchManifest, loadPairs, manifestUrlFor, preloadPack, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
+import { pairBands, pairsBytes, type PairsPack } from '../../ambience/pairs.ts';
+import { halfLayout } from '../../ambience/layout.ts';
 import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
-import { currentPrefs, loadSceneryPrefs, saveSceneryPrefs } from '../../ambience/prefs.ts';
+import { currentPrefs, loadSceneryPrefs, pairsUrlOf, saveSceneryPrefs } from '../../ambience/prefs.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
@@ -57,7 +61,7 @@ const DEFAULT_PACK_URL = 'http://127.0.0.1:8650/';
 type PackState =
   | { status: 'none' }
   | { status: 'loading'; url: string }
-  | { status: 'ok' | 'failed'; url: string; manifestUrl: string | null; pack: ScenePack | null; errors: string[]; warnings: string[]; note: string | null };
+  | { status: 'ok' | 'failed'; url: string; manifestUrl: string | null; pack: ScenePack | null; errors: string[]; warnings: string[]; note: string | null; pairs?: PairsPack | null };
 
 export default function AmbiencePage() {
   const [plays, setPlays] = useState<SimPlay[]>([]);
@@ -82,7 +86,10 @@ export default function AmbiencePage() {
 
   const log = useMemo(() => simLog(plays), [plays]);
   const scenery = useMemo(() => sceneryFromLog(log, Infinity), [log]);
-  const pack = pastedPack ?? (usePack && packState.status === 'ok' ? packState.pack : null);
+  const basePack = pastedPack ?? (usePack && packState.status === 'ok' ? packState.pack : null);
+  // Spec 1.9: the pair bands loaded beside the pack (a pasted manifest gets them too).
+  const loadedPairs = packState.status === 'ok' ? (packState.pairs ?? null) : null;
+  const pack = useMemo(() => (basePack && loadedPairs && basePack.pairs !== loadedPairs ? { ...basePack, pairs: loadedPairs } : basePack), [basePack, loadedPairs]);
   const fx = useSceneryFx(pack, reduced);
   const lastState = log.frames.at(-1)!.body as GameStateBody;
   const creaturesOf = (player: number) => (lastState.players.find((x) => x.id === player)?.zones.battlefield?.cards ?? []).filter((c) => /Creature/.test((c as Card).types)).map((c) => c.id);
@@ -131,12 +138,14 @@ export default function AmbiencePage() {
   const loadPack = async (u: string) => {
     if (!u.trim()) return;
     setPackState({ status: 'loading', url: u });
+    const pairsUrl = pairsUrlOf({ ...initial, mode: 'pack', packUrl: u });
+    const pairsP = pairsUrl ? loadPairs(pairsUrl, { fetch: (x, i) => fetch(x, i) }) : Promise.resolve(null);
     const m = await fetchManifest(u, { fetch: (x, i) => fetch(x, i) });
     if (!m.pack) {
       setPackState({ status: 'failed', url: u, manifestUrl: m.manifestUrl, pack: null, errors: m.errors, warnings: m.warnings, note: 'Showing the built-in scenery.' });
       return;
     }
-    const pre = await preloadPack(m.pack, browserLoader(), { maxStage: 6 });
+    const [pre, pairs] = await Promise.all([preloadPack(m.pack, browserLoader(), { maxStage: 6 }), pairsP]);
     const p = pre.failed.length ? withoutBiomes(m.pack, pre.failed) : m.pack;
     // A pack with effects and no stage art (spec 1.2) is usable too.
     const any = Object.keys(p.biomes).length > 0 || !!p.effects;
@@ -148,6 +157,7 @@ export default function AmbiencePage() {
       errors: any ? [] : ['No asset loaded.'],
       warnings: [...m.warnings, ...pre.reasons],
       note: pre.failed.length ? `${pre.failed.map((b) => BIOME_LABEL[b]).join(', ')} fell back to the built-in scenery.` : null,
+      pairs,
     });
     setUsePack(true);
   };
@@ -181,6 +191,7 @@ export default function AmbiencePage() {
             top
             slots={counts(SIM_PLAYERS[1])}
             creatures={creaturesOf(SIM_PLAYERS[1])}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[1]).length > 0}
             strip={
               <>
@@ -207,6 +218,7 @@ export default function AmbiencePage() {
             player={SIM_PLAYERS[0]}
             slots={counts(SIM_PLAYERS[0])}
             creatures={creaturesOf(SIM_PLAYERS[0])}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[0]).length > 0}
             strip={
               <>
@@ -436,7 +448,15 @@ function describe(e: SceneryEvent): string {
   return `damage · ${who} · ${e.amount}`;
 }
 
-function MockSide({ title, player, top, slots, creatures, strip, plays, scrim }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; creatures: number[]; strip: React.ReactNode; plays: SimPlay[]; scrim?: boolean }) {
+/** Spec 1.9: a side's pair bands in words, for the preview's caption (the dual and shock names are for this only). */
+function bandCaption(pack: ScenePack | null, slots: ReturnType<typeof slotsOf>, duals: Readonly<Record<string, number>>, stageOverride: number | null): string | null {
+  if (!pack?.pairs) return null;
+  const bands = pairBands(halfLayout(slots, pack, stageOverride), pack.pairs, duals);
+  if (!bands.length) return null;
+  return bands.map((b) => `${b.pair.dual ?? b.key}${b.pair.shock ? ` (${b.pair.shock})` : ''}: ${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ');
+}
+
+function MockSide({ title, player, top, slots, creatures, strip, plays, scrim, bands }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; creatures: number[]; strip: React.ReactNode; plays: SimPlay[]; scrim?: boolean; bands?: string | null }) {
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const lands = plays.filter((p): p is Extract<SimPlay, { kind: 'land' }> => p.kind === 'land' && p.player === player);
   const summary = slots.length ? slots.map((s) => `${BIOME_LABEL[s.biome]} ${fmt(s.weight)} · stage ${s.stage}${s.progress && s.progress < 1 ? ` +${Math.round(s.progress * 100)}%` : ''}`).join('   ') : 'No lands yet';
@@ -463,6 +483,11 @@ function MockSide({ title, player, top, slots, creatures, strip, plays, scrim }:
       <div className="amb-side-h">
         <b>{title}</b>
         <span className="amb-summary">{summary}</span>
+        {bands && (
+          <span className="amb-summary amb-bands" data-amb-bands={player}>
+            Pair band · {bands}
+          </span>
+        )}
       </div>
       <div className="amb-bf scn-host" data-amb-player={player} ref={setHost}>
         {scrim && host && <HalfScrim host={host} selector=".amb-chips:not(:empty), .amb-creatures" version={plays.length} />}
@@ -558,6 +583,11 @@ function PackCard({
               Loaded <b>{state.pack!.name}</b>
               {state.pack!.author ? ` by ${state.pack!.author}` : ''}: {Object.keys(state.pack!.biomes).length ? `${Object.keys(state.pack!.biomes).map((b) => BIOME_LABEL[b as Biome]).join(', ')}. Other biomes use the built-in scenery.` : 'effects only, over the built-in scenery.'}
               {state.pack!.overlays ? ` Accents: ${Object.keys(state.pack!.overlays).map((b) => BIOME_LABEL[b as Biome]).join(', ')}.` : ''}
+              {state.pairs ? (
+                <div data-amb-pairs>
+                  Pair bands (spec 1.9): <b>{state.pairs.name}</b>, {Object.keys(state.pairs.pairs).length} pairs ({(pairsBytes(state.pairs) / 1048576).toFixed(1)} MB declared).{state.pairs.note ? ` ${state.pairs.note}` : ''}
+                </div>
+              ) : null}
             </>
           ) : (
             <>Not loaded. {state.note}</>

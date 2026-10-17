@@ -16,6 +16,9 @@
  * `?fill=off` (or `on`) does the same for "Fill each side" (spec 1.5): the
  * scenery fills each player's whole half of the board (on by default), or,
  * off, keeps to the strip along their land row.
+ * `?pairs=off` (or a URL) does the same for spec 1.9's pair bands: by default
+ * they come from ForgeCoach's own pairs pack (`FORGECOACH_PAIRS_URL`), and only
+ * with ForgeCoach's own scenery pack, whose pictures they were painted to meet.
  */
 
 export type SceneryMode = 'off' | 'procedural' | 'pack';
@@ -29,6 +32,11 @@ export interface SceneryPrefs {
   accents: boolean;
   /** Spec 1.5: the scenery fills each player's whole half (true), or only the strip along their land row. */
   fill: boolean;
+  /**
+   * Spec 1.9: where the pair bands come from for this page load (`?pairs=`): a
+   * URL, or '' for none. Absent: {@link pairsUrlOf}'s default. Never stored.
+   */
+  pairsUrl?: string;
 }
 
 export const SCENERY_KEY = 'forgecoach.scenery';
@@ -40,6 +48,15 @@ export const SCENERY_KEY = 'forgecoach.scenery';
  * cached copy.
  */
 export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v8/pack/';
+/**
+ * Spec 1.9: ForgeCoach's own pair bands, a second manifest (`pairs.json` at
+ * this base) in a ref of its own on the same repository, since the main pack
+ * fills most of jsDelivr's 50 MB per ref. `pairs-v1`: the ten pairs, three
+ * stages each, desktop and phone at 1x and 2x, two to four frames per stage
+ * step, about 33 MB (`pairs-v1.test.ts` is its manifest). The draft
+ * `pairs-v0` (one picture per pair) stays up but nothing points at it.
+ */
+export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v1/';
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true };
 
@@ -105,11 +122,13 @@ function switchParam(search: string, hash: string, name: string): boolean | null
   return v === 'off' || v === '0' ? false : v === 'on' || v === '1' ? true : null;
 }
 
-/** The stored prefs with the page's `?scenery=`, `?accents=` and `?fill=` applied. */
+/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=` and `?pairs=` applied. */
 export function effectivePrefs(stored: SceneryPrefs, search: string, hash: string): SceneryPrefs {
   const a = switchParam(search, hash, 'accents');
   const f = switchParam(search, hash, 'fill');
-  const withAccents = a === null && f === null ? stored : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }) };
+  const pr = sceneryParam(search, hash, 'pairs');
+  const pairs = pr === null ? {} : { pairsUrl: pr === 'off' || pr === '0' ? '' : pr === 'forgecoach' || pr === 'on' ? FORGECOACH_PAIRS_URL : pr };
+  const withAccents = a === null && f === null && pr === null ? stored : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...pairs };
   const p = sceneryParam(search, hash);
   if (!p) return withAccents;
   if (p === 'off') return { ...withAccents, mode: 'off' };
@@ -141,4 +160,16 @@ export function fillOn(p: SceneryPrefs): boolean {
 /** Stills only? `system` follows the OS's prefers-reduced-motion. */
 export function reducedMotion(pref: MotionPref, systemReduces: boolean): boolean {
   return pref === 'reduce' || (pref === 'system' && systemReduces);
+}
+
+/**
+ * Spec 1.9: the pairs manifest's base URL for these prefs, or null for none:
+ * the page's `?pairs=` when given; else ForgeCoach's own pairs with
+ * ForgeCoach's own pack (the bands were painted between its pictures); else
+ * none (a pack of your own brings its bands with `?pairs=<url>`).
+ */
+export function pairsUrlOf(p: SceneryPrefs): string | null {
+  if (p.mode !== 'pack') return null;
+  if (p.pairsUrl !== undefined) return p.pairsUrl.trim() || null;
+  return p.packUrl.trim() === FORGECOACH_PACK_URL ? FORGECOACH_PAIRS_URL : null;
 }

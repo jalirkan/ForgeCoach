@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.8)
+# Scenery pack spec (schema 1, version 1.9)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -24,6 +24,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.5 | The **half board** (§2, *The half board*): the scenery fills each player's whole half of the board (Settings → Fill each side, on by default), split side by side in proportion to their lands, each biome at its own stage, both halves upright with a mist band along the centre line, and a soft dark scrim under the card rows. Optional per-stage **`half`** pictures (an opaque desktop picture and an optional portrait `phone` one, with the scene's `subjectBand` — and optional `focal` / `safe` — for the crop) and a top-level **`half`** layout (`seamRatio`, `minShare`, `mist`); their budget (§3). A 1.0–1.4 pack fills the half with its strip art, cover-cropped. |
 | 1.7 | **Transition frames** (§2, *Transition frames*): an optional per-biome **`transitions`** with a few in-between pictures for each stage step (`from`, `frames` of a desktop `src` and a `phone`, a `holdMs` per frame and a `fadeMs`), played with hard cuts when a land steps the stage — limited animation, a drawing held ~200 ms, then one short fade into the new stage. A step without frames, and every 1.0–1.6 pack, cross-fades as in 1.6. |
 | 1.8 | **Bridges across the seam** (§2, *Bridges across the seam*): an optional top-level **`bridges`** map keyed by a biome pair (`"forest+island"`; both orders find the one entry), each a transparent ground piece drawn over the seam where the two biomes meet on one side of the half board — a desktop `src` and a `phone` seam crop, an `anchor` on the seam (the centre's height, the width as a fraction of the half's) — faded in with the second biome, mirrored when the board has the pair the other way round; and `dualsWiden`: each of the pair's two-colour lands widens their seam (and the bridge with it). A 1.0–1.7 pack, and a pair with no bridge, keeps today's seam. |
+| 1.9 | **Pair bands** (§2, *Pair bands*): a second, optional manifest, **`pairs.json`**, fetched beside `scenery.json` from a pairs URL of its own (ForgeCoach's comes with ForgeCoach's pack; `?pairs=<url>` or `off` for any page): per biome pair, the pair's own place (named for its `dual` and `shock`), three `stages` of 1.5 `half` pictures and 1.7 `transitions`, a `band` width rule (`min`, `perDual`, `max`) and a `stageMap`. Where two biomes meet on one side of the half board, the seam opens into that place, wider with every land that is both colours. Lands that make two colours count ½ / ½ as the shocks do, the Thriving lands included (§1). No pairs, or a pair without an entry, keeps the 1.8 seam. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -37,8 +38,9 @@ other game information.
 - **Biomes.** There are six: `island`, `swamp`, `mountain`, `forest`, `plains`, `wastes`.
 - **Classifying a land.**
   - Basic land types on the type line come first: `Land — Island Swamp` gives ½ island and ½ swamp.
-  - Otherwise, the colours the land taps for, when it makes one or two colours.
-  - Anything else goes to `wastes`: colourless, unknown, or three or more colours.
+  - A land that chooses a colour as it enters (the Thriving lands: "Add {W} or one mana of the chosen color"): its fixed colour and the chosen one, ½ / ½, once the viewing seat's own choice is known; its fixed colour alone until then, and for an opponent's (1.9; before, it went to `wastes`).
+  - Otherwise, the colours the land taps for, when it makes one or two colours (a Pathway's card data lists both faces' colours, so it counts ½ / ½).
+  - Anything else goes to `wastes`: colourless, unknown, no mana at all (a fetch land), or three or more colours.
 - **Slots.** A biome claims the next slot, left to right, the first time one of its lands appears. It keeps that slot for the rest of the game. If all its lands leave, it shows a withered (greyed) stage 1.
 - **Stages.** A biome's land count sets its stage:
 
@@ -58,6 +60,7 @@ other game information.
 - **Full-area accents (1.4).** One more kind of accent: a single transparent picture over the whole player area, for sparse marks scattered beneath the cards (vines, dead branches, grass, sand and shells, lava) that thicken with the stage. It sits under the strip as well as under the cards, and the same setting covers it.
 - **The half board (1.5).** With Settings → Fill each side (on by default), the strip grows into the player's whole half of the board: the same slots, side by side in proportion to the lands, each at its own stage, the cards on top, a soft dark band under each card row. A pack's `half` pictures are drawn where it has them; otherwise its strip art (or the built-in scene) is cover-cropped to the half. Off, the board shows the strip as in 1.4.
 - **Bridges (1.8).** Where two biomes meet on one side of the half board, a pack may draw a **bridge** over their seam: a ground object that belongs to both (a river from the lagoon into the forest floor, a road from the plains up into the mountains). A two-colour land still counts ½ to each of its biomes, and also widens the seam between them a little, the bridge with it — the dual is the land that connects.
+- **Pair bands (1.9).** A second, optional manifest may give each pair a place of its own: where the two biomes meet on one side of the half board, the seam opens into a third panel, the pair's landscape (named for its dual land), which widens with every land that is both colours.
 - **Hidden information.** Only the viewing seat's redacted battlefield is read, so the scenery never shows anything the board does not.
 
 ## 2. Manifest format
@@ -83,6 +86,8 @@ and a key under `effects` that is not an effect event.
 | `half` | object | see *The half board* | 1.5. How each half is shared between biomes and meets the other half. |
 | `growth` | object | `{ "crossfade": true, "seconds": 1.2 }` | 1.6. The growth between stages: whether the next stage cross-fades in land by land, and how long one land's fade takes. See *Growth between stages*. |
 | `bridges` | object | — | 1.8. A ground piece per biome pair, drawn across the seam where the two meet, and how the pair's dual lands widen that seam. See *Bridges across the seam*. |
+
+1.9's pair bands are not a field here: they are a manifest of their own, `pairs.json` (*Pair bands*).
 
 ### `strip`
 
@@ -1068,6 +1073,176 @@ square) the phone piece is drawn, 60% of the half wide at the plain seam.
 `src/ambience/bridges.test.ts` validates this exact block and checks these
 numbers. If you change it, it must stay error- and warning-free.
 
+### Pair bands (1.9)
+
+A bridge (1.8) is an accent on the seam; the seam itself is still two
+postcards meeting. 1.9 lets the seam **become a place**: when one side of the
+half board has two colours, a third painted panel opens between their two
+pictures, the colour pair's own landscape (named for its dual land: Tundra's
+ice shelf between the island and the plains, Volcanic Island's cone between
+the sea and the mountains), and every land that is **both** colours widens it.
+
+**A second manifest.** The pair pictures are a pack of their own,
+`pairs.json` at the root of a **pairs URL**, fetched beside `scenery.json`
+(the live pack fills most of jsDelivr's 50 MB per ref, so the pairs live in a
+ref of their own). ForgeCoach's own pairs come with ForgeCoach's own pack
+(they were painted to meet its pictures): `FORGECOACH_PAIRS_URL` in
+`src/ambience/prefs.ts`. Any page takes **`?pairs=<url>`** (a folder holding
+`pairs.json`, or the `.json` itself) or `?pairs=off` for one page load; a pack
+of your own has no pairs unless you pass one. A pairs manifest that does not
+load or validate only means no bands (the console says why); it never holds
+the pack back.
+
+**When a band is drawn.** On the half board (Settings → Fill each side), for
+every two neighbouring panels that both have lands whose pair has an entry in
+`pairs.json`. Any order: the entry is found by the pair's alphabetical key
+(`island` and `forest` find `"forest+island"`), and its pictures are
+**mirrored** when the board has the two the other way round from the key (the
+key's first biome is the art's left). Three colours on a side make two seams
+and two bands, each with its own entry. No pairs, no entry, the strip (Fill
+each side off) or a withered neighbour: the seam is drawn exactly as in 1.8.
+
+- **Width.** `band.min` of the half's width as soon as the side has both
+  colours, plus `band.perDual` for each of the side's lands that is **both**
+  colours (a dual, a shock, a Pathway, a "taps for either" land, a Thriving
+  land whose chosen colour is the other one: §1), at most `band.max`. It is
+  the 1.8 seam's rule (`seamRatio` + `dualsWiden` per dual, at most
+  `maxSeamRatio`) with the band's own numbers, and the duals are counted the
+  same way. The defaults reach a full middle third (0.34) at six duals.
+- **Where.** The band is a panel of the half's row between its two biomes.
+  Each of them **gives up half its width**, but never more than half its own
+  share: next to a narrow panel the band is narrower (the floor), so no panel
+  disappears. The band meets each neighbour in **half the seam they met in**
+  (the gradient mask and its breath of mist), so a band of no width is exactly
+  the seam it replaces, a bridged pair's widened seam included. The shares
+  move with every land, as the panels do (900 ms).
+- **The crop.** The band shows its picture cover-cropped about the picture's
+  focal point (by default its centre, in the subject band), as a panel does
+  (1.5): a narrow band shows the heart of the place (the ice cliff, the
+  volcano, the mesa), a wide one the whole picture. The `phone` picture where
+  the half itself is phone-shaped (narrower than about 1.6 : 1, as a bridge's
+  phone piece), else the desktop one.
+- **Stage.** `stageMap` maps the **lower** of the two neighbours' stages to the
+  pair's stage: with the default `[[1, 2], [3, 4], [5, 6]]`, neighbours at
+  stages 1–2 show the pair's stage 1, 3–4 its stage 2, 5–6 its stage 3. A
+  stage past the pair's last picture shows the last.
+- **Stage steps.** When the pair's stage changes, its **transition frames**
+  play (the pair's own `transitions`, in 1.7's shape and with 1.7's rules:
+  hard cuts at each hold, then one fade; backwards when it shrinks; only
+  frames already loaded), else the band cross-fades over `growth.seconds`.
+  Between stages there is no growth cross-fade: the band grows in width.
+- **Z-order.** A band is a panel: over the panel on its left, under the one on
+  its right where they overlap, under the centre line's mist band, the bridge
+  (a bridge on the same seam is drawn **over** the band, centred on it), the
+  full-area accent, the card-row scrim and every card.
+- **Arrival and departure.** A band opens once its picture has loaded: until
+  then it has no width and the seam is today's. It then widens from nothing
+  and fades in over the later biome's `bloom.durationMs`; when either biome
+  loses its lands it fades out and gives its width back the same way. On the
+  first paint (a page opened mid-game) it is simply there. **Reduced motion**:
+  no fade and no widening, there or gone at once.
+- **Loading.** A side's band pictures (the pair stage its neighbours map to,
+  and the next one) warm in the background with the split's pictures, at the
+  shape the board shows; the next step's frames warm while the band sits at
+  its stage. A picture that fails is not drawn (the seam stays).
+- **Names.** `dual` and `shock` are the names the place is painted for. They
+  are shown in captions (the `#ambience` preview names each side's bands) and
+  never read by anything else.
+
+**`pairs.json`** (top level):
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `schema` | `1` | — | **Required.** |
+| `spec` | `"1.9"` | — | Informational, as in `scenery.json`. |
+| `name`, `author`, `license` | string ≤ 80 | "Untitled pairs" | Shown on `#ambience`. |
+| `note` | string ≤ 400 | — | Shown on `#ambience` (a draft says so here). |
+| `pairs` | object | — | **Required.** Keyed by pair, `"<biome>+<biome>"`: two different biomes, either order (both orders are one pair; a pair given twice keeps the first, with a warning). At least one usable entry. |
+
+**Each pair:**
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `dual`, `shock` | string ≤ 60 | — | The dual land and the shock land the place is named for. Captions only. |
+| `stages` | 1–6 objects `{ "half": … }` | — | **Required.** The pair's stages, `stages[0]` its stage 1 (three is the plan). Each `half` is exactly a stage's 1.5 `half`: `src` (**required**), `src2x`, `phone` (`src`, `src2x`, `subjectBand`, …), `subjectBand`, `width` / `height`, `focal`, `safe`, `bytes`. A stage without a usable `half` is dropped (and then `transitions` is ignored, as in 1.7); a pair with no stage left is dropped. |
+| `transitions` | 1.7's `transitions` | — | `holdMs`, `fadeMs`, `steps[]` of `from` and `frames[]` (`src`, `phone`, `holdMs`), `bytes`: the in-betweens of the pair's own stage steps. |
+| `band` | `{ "min", "perDual", "max" }` | `{ 0.10, 0.04, 0.34 }` | Fractions of the half's width. `min` 0–0.5, `perDual` 0–0.2, `max` 0–0.6 and never under `min`. A bad value falls back to its default, with a warning. |
+| `stageMap` | `[[from, to], …]` | `[[1, 2], [3, 4], [5, 6]]` | Neighbour stages per pair stage: entry k holds the lower neighbour stages that show pair stage k + 1, from stage 1 up with no gap (1–6). Anything else falls back to the default, with a warning. |
+| `bytes` | whole number | — | Anything of the pair's not declared in its stages and steps, for the budget (§3). |
+
+As elsewhere, every URL is http(s) or relative to `pairs.json`, every string
+is cleaned and every number range-checked; unknown fields are ignored.
+
+**How to paint them** (the concept sheet of 2026-10-16,
+`~/scenery-packs/pair-scenery-concepts/`): a composite of the two biomes'
+pictures at the same stage, A | M | B at the half's size each (2048 × 640),
+the middle M started from the two mirrored and cross-faded with the horizon
+warped from A's height to B's; img2img over A's inner 512 px | M | B's inner
+512 px with a strength map (about 0.18 at the sides, 0.66 in the middle), then
+the middle 2048 × 640 kept. Each place's outer 10–15% stays close to its
+neighbour, which is what lets the band meet the panels at any width; its heart
+(the thing a narrow band shows) in the middle third. Opaque, the subject in
+the subject band, the bottom ~30% calm, as any half picture (1.5); the phone
+picture the same place at 4 : 5. Each stage the same place grown, painted
+against the neighbours' stages it is shown beside (`stageMap`). One entry per
+pair serves both orders (mirrored), so nothing in it may read only one way
+round (no text, no lettering, no one-handed subject).
+
+<!-- example-pairs -->
+```json
+{
+  "schema": 1,
+  "spec": "1.9",
+  "name": "ForgeCoach pair scenery, pairs-v1",
+  "author": "jalirkan",
+  "license": "CC BY 4.0",
+  "note": "The shape pairs-v1 ships in (spec 1.9): three stages per pair, desktop and phone at 1x and 2x, two frames per step. The bytes are placeholders; the art lane writes the real ones.",
+  "pairs": {
+    "forest+island": {
+      "dual": "Tropical Island",
+      "shock": "Breeding Pool",
+      "band": {"min": 0.1, "perDual": 0.04, "max": 0.34},
+      "stageMap": [[1, 2], [3, 4], [5, 6]],
+      "stages": [
+        {"half": {"src": "pairs/forest-island/s1-half.webp", "src2x": "pairs/forest-island/s1-half@2x.webp", "phone": {"src": "pairs/forest-island/s1-phone.webp", "src2x": "pairs/forest-island/s1-phone@2x.webp"}, "subjectBand": [0.35, 0.6], "bytes": 380000}},
+        {"half": {"src": "pairs/forest-island/s2-half.webp", "src2x": "pairs/forest-island/s2-half@2x.webp", "phone": {"src": "pairs/forest-island/s2-phone.webp", "src2x": "pairs/forest-island/s2-phone@2x.webp"}, "subjectBand": [0.35, 0.6], "bytes": 380000}},
+        {"half": {"src": "pairs/forest-island/s3-half.webp", "src2x": "pairs/forest-island/s3-half@2x.webp", "phone": {"src": "pairs/forest-island/s3-phone.webp", "src2x": "pairs/forest-island/s3-phone@2x.webp"}, "subjectBand": [0.35, 0.6], "bytes": 380000}}
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {"from": 1, "frames": [{"src": "pairs/forest-island/s1to2-f1-half.webp", "phone": "pairs/forest-island/s1to2-f1-phone.webp"}, {"src": "pairs/forest-island/s1to2-f2-half.webp", "phone": "pairs/forest-island/s1to2-f2-phone.webp"}], "bytes": 190000},
+          {"from": 2, "frames": [{"src": "pairs/forest-island/s2to3-f1-half.webp", "phone": "pairs/forest-island/s2to3-f1-phone.webp"}, {"src": "pairs/forest-island/s2to3-f2-half.webp", "phone": "pairs/forest-island/s2to3-f2-phone.webp"}], "bytes": 190000}
+        ]
+      }
+    }
+  }
+}
+```
+
+The pairs live at `…@pairs-v1/`, so this file is `…@pairs-v1/pairs.json`
+and its pictures resolve beside it. You play an Island, then a Forest: your
+half splits island | forest and the band opens between them, mirrored (the
+key has the forest on the left), at **0.10** of the half: half of it from
+each panel (0.45 each), and on a desktop half 1600 px wide it overlaps each
+neighbour by half the 0.10 seam (80 px). On a pack whose thresholds are
+`[1, 2, 3, 4, 5, 6]` (ForgeCoach's own) both biomes are at stage 1, so the
+band shows pair stage 1. Then another Island and Forest and two Breeding
+Pools ("Land — Forest Island", ½ to each): island 3, forest 3, two duals, so
+the band is 0.10 + 2 × 0.04 = **0.18** (the panels 0.41 each) and the
+neighbours' lower stage is 3: pair stage **2**, its 1 → 2 frames playing
+(two frames, 200 ms each, then 180 ms into stage 2). Across that half the
+row is 1600 + 2 × 80 = 1760 px, the band is 0.18 × 1760 ≈ **317 px** wide and
+its centre is at 0.5 × 1760 − 80 = **800 px**, where a bridge on that seam
+is drawn over it. Four more Breeding Pools (six duals) take it to the 0.34
+cap; a seventh adds nothing. Next to a panel at its 0.15 floor, a 0.34 band
+takes only half that panel's share from it, and is drawn 0.15 wide.
+`src/ambience/pairs.test.ts` validates this exact block, checks it is the
+`forest+island` entry of `docs/pairs-manifest-draft.json` (all ten pairs in
+this shape, the file the art lane matches) and checks these numbers. If you
+change it, it must stay error- and warning-free.
+
 ## 3. Files and budgets
 
 | What | Format | Size |
@@ -1122,6 +1297,12 @@ Budgets for bridges (1.8), counted apart from everything above:
 - **≤ 3 MB for the pack's bridges** (declare `bytes` per entry; the validator warns past it). Ten pairs at a desktop and a phone piece each, about 100–200 KB a piece, fit.
 - **Transparent** WebP (quality 80–86) or AVIF, mostly clear. pack-v8's sizes: the desktop piece **1024 × 440** (1.25x of a 2048-wide half's 0.4), the phone piece **768 × 704**; a `src2x` only if the piece must be sharp on a 2x desktop.
 - One piece per pair (it serves every stage); one picture per shape.
+
+Budgets for pair bands (1.9), in their own manifest and their own ref:
+- **≤ 4 MB per pair** of stage pictures, desktop and phone, 1x and 2x (declare `bytes` on each `half`; a picture repeated across stages counts once), and 1.7's **≤ 2 MB** of frames per pair. Three stages at about 380 KB each and two steps of two frames fit with room to spare.
+- **≤ 45 MB for the pairs pack** (the validator warns past it): a jsDelivr ref holds at most 50 MB, so the pairs never share the main pack's ref.
+- The pictures at the `half` shapes: **2048 × 640** (`src2x` 4096 × 1280) and **1024 × 1280** (`src2x` 2048 × 2560); frames 1x only.
+- A device loads only the bands its sides show (the pair stage they map to and the next), never the set.
 
 The whole pack should stay ≤ 30 MB, effects and accents included (half pictures count apart: up to 40 MB more for five biomes).
 
@@ -1202,6 +1383,7 @@ board's fallback note say so, with these steps.
 3. Play lands for either side with the buttons, or press **Demo sequence**. **Undo** and **Reset** step back.
 4. Drag **Stage** to see every stage of every claimed biome without playing more lands (whole stages, no growth between them).
    **Lands** (1.6) sets a land count per biome for either side, 0–7: one step plays or takes back one land, so the growth between stages can be stepped through land by land, with each land's fade, flash and effects.
+   **Pair bands** (1.9): with ForgeCoach's own pack (or `?pairs=<url>`), the pack status names the pairs loaded and each side's header names its bands (the dual, the shock, the width, the duals and the pair stage). Give a side two biomes and the band opens on their seam; *Play → Watery Grave* is a dual of island and swamp: each one widens the Underground Sea band by its `perDual`.
    **Bridges** (1.8): give a side two biomes with a bridge (with Fill each side on) and it fades in on their seam; take one biome's lands back to 0 and it fades out. *Play → Watery Grave* is a dual of island and swamp: each one widens that seam by the pack's `dualsWiden`.
 5. Switch **Motion** to *Stills only* to check posters and reduced motion.
 6. **Creature enters** and **Attack** under *Play* change the made-up game, and fire the effects the engine derives from it. The event list shows what the engine emitted.
