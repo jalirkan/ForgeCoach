@@ -2,16 +2,17 @@
  * ForgeCoach — ambience/pairs-v1.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * pairs-v1, the pair-band pack (spec 1.9) that FORGECOACH_PAIRS_URL points at:
- * a snapshot of its pairs.json, byte for byte what jsDelivr serves at
+ * pairs-v1, the pair-band pack (spec 1.9) FORGECOACH_PAIRS_URL pointed at
+ * until pairs-v2 (pairs-v2.test.ts): a snapshot of its pairs.json, byte for
+ * byte what jsDelivr serves at
  * https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v1/pairs.json
  * (sha256 38e6efadf2054991b9bafc9a6504942519ed06ccef9d142e82b0dd327b14a0c9,
  * compared with `cmp` against two fetches of the CDN's copy on 2026-10-17;
  * every one of the 272 pictures it names answered 200 from the same ref, and
  * their sizes add up to the manifest's declared 32,669,372 bytes). Three
  * stages per pair, desktop and phone at 1x and 2x, two to four frames per
- * step. The draft pairs-v0 tag stays up, but nothing points at it any more,
- * so its snapshot test went with it.
+ * step. The tag stays up and this test keeps its snapshot, against the tag's
+ * own URL rather than the constant; the draft pairs-v0's went with it.
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -20,7 +21,9 @@ import { halfLayout } from './layout.ts';
 import { MAX_TRANSITION_FRAMES } from './manifest.ts';
 import { pairKey, type Biome, type SlotState } from './model.ts';
 import { DEFAULT_PAIR_BAND, DEFAULT_STAGE_MAP, MAX_PAIRS_PACK_BYTES, pairBands, pairsBytes, validatePairs } from './pairs.ts';
-import { FORGECOACH_PAIRS_URL } from './prefs.ts';
+
+/** The tag this snapshot is from (FORGECOACH_PAIRS_URL now names pairs-v2). */
+const PAIRS_V1_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v1/';
 
 const FIVE: Biome[] = ['plains', 'island', 'swamp', 'mountain', 'forest'];
 const slot = (b: Biome, index: number): SlotState => ({ biome: b, index, weight: 2, stage: 2, peak: 2 });
@@ -28,11 +31,10 @@ const slot = (b: Biome, index: number): SlotState => ({ biome: b, index, weight:
 describe('pairs-v1', () => {
   const bytes = readFileSync(new URL('./testdata/pairs-v1.pairs.json', import.meta.url));
   const raw = JSON.parse(bytes.toString('utf8'));
-  const r = validatePairs(raw, `${FORGECOACH_PAIRS_URL}pairs.json`);
+  const r = validatePairs(raw, `${PAIRS_V1_URL}pairs.json`);
   const pairs = r.pairs!;
 
-  it('is the pairs URL, and the snapshot is the file jsDelivr serves', () => {
-    expect(FORGECOACH_PAIRS_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v1/');
+  it('is the file jsDelivr serves at pairs-v1', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('38e6efadf2054991b9bafc9a6504942519ed06ccef9d142e82b0dd327b14a0c9');
   });
 
@@ -47,7 +49,7 @@ describe('pairs-v1', () => {
     const keys = Object.keys(pairs.pairs).sort();
     expect(keys).toEqual(FIVE.flatMap((a, i) => FIVE.slice(i + 1).map((b) => pairKey(a, b))).sort());
     for (const p of Object.values(pairs.pairs)) {
-      const dir = `${FORGECOACH_PAIRS_URL}pairs/${p!.left}-${p!.right}/`;
+      const dir = `${PAIRS_V1_URL}pairs/${p!.left}-${p!.right}/`;
       expect(p!.left < p!.right).toBe(true);
       expect(p!.dual && p!.shock).toBeTruthy();
       expect(p!.stages).toHaveLength(3);
@@ -73,7 +75,7 @@ describe('pairs-v1', () => {
       for (const s of t.steps) {
         expect(s.frames.length).toBeGreaterThanOrEqual(2);
         expect(s.frames.length).toBeLessThanOrEqual(4);
-        expect(s.frames.every((f) => f.src.startsWith(`${FORGECOACH_PAIRS_URL}pairs/${p!.left}-${p!.right}/`) && !!f.phone)).toBe(true);
+        expect(s.frames.every((f) => f.src.startsWith(`${PAIRS_V1_URL}pairs/${p!.left}-${p!.right}/`) && !!f.phone)).toBe(true);
       }
       counts[p!.key] = t.steps.map((s) => s.frames.length);
     }
