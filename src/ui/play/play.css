@@ -1151,8 +1151,8 @@ button.avatar.is-chosen {
    (lands are --land-k of a creature), so both battlefields are on screen.
    A side never shrinks below its rows at the floor size (--side-min, from
    ui/boardFit.ts, which mirrors the paddings here): past that the board
-   scrolls, so cards never slide under a life bar. Rows scroll sideways inside
-   their own lane (cards.css). In landscape the board just scrolls (the dock is
+   scrolls, so cards never slide under a life bar. Rows scroll sideways
+   (cards.css). In landscape the board just scrolls (the dock is
    a side column there). */
 @media (max-width: 1023px) and (orientation: portrait) {
   .play-phone-main {
@@ -1178,23 +1178,11 @@ button.avatar.is-chosen {
   .play-phone-main .board {
     --fit-floor: 54px;
   }
-  .play-phone-main .board {
-    /* The combat lane's widest card here (play/lane.css): its height is reserved from it. */
-    --lane-cw-max: 64px;
-  }
-  @media (max-width: 560px) {
-    .play-phone-main .board {
-      --lane-cw-max: 50px;
-    }
-  }
   .play-phone-main .player > .battlefield {
     flex: 1 1 0;
     /* every row at the floor size, plus the paddings (ui/boardFit.ts phoneSideFit) */
-    min-height: var(--side-min, calc(var(--fit-pad, 26px) + var(--fit-rows, 1.8) * var(--fit-floor) * 88 / 63 + var(--lane-h, 0px)));
+    min-height: var(--side-min, calc(var(--fit-pad, 26px) + var(--fit-rows, 1.8) * var(--fit-floor) * 88 / 63));
     container: side / size;
-    /* The combat lane on a phone: a thin band (play/lane.css), its height a constant per lane kind:
-       its widest card, plus the room above and below for badges and chips (--lane-room-t/-b). */
-    --lane-h: calc(var(--lane-k, 0) * var(--lane-cw-max, 50px) + min(var(--lane-k, 0), 1) * 22px);
     justify-content: safe center;
   }
   .play-phone-main .battlefield,
@@ -1203,7 +1191,7 @@ button.avatar.is-chosen {
   }
   .play-phone-main .bf-row {
     --land-k: 0.8;
-    --cw-fit: clamp(var(--fit-floor), calc((100cqh - var(--fit-pad, 26px) - var(--lane-h, 0px)) / var(--fit-rows, 1.8) * 63 / 88), 104px);
+    --cw-fit: clamp(var(--fit-floor), calc((100cqh - var(--fit-pad, 26px)) / var(--fit-rows, 1.8) * 63 / 88), 104px);
     --cw: var(--cw-fit);
     flex: none;
     gap: 0;

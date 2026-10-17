@@ -524,9 +524,12 @@ async function reloadCheck(s, onReload) {
 async function coachOn(s) {
   // A phone's coach is a sheet over the board; its cadence is the same code, checked on a desktop seat.
   if (s.phone) return;
-  // The panel's own switch, as a person would turn it on.
+  // The panel's own switch, as a person would turn it on: Claude first (the search AI is the default coach).
   const sw = s.page.locator('.play-coach .switch input[type="checkbox"]').first();
   try {
+    const claude = s.page.locator('.play-coach .pc-pick').getByRole('radio', { name: 'Claude' });
+    await claude.waitFor({ state: 'attached', timeout: 20_000 });
+    if ((await claude.getAttribute('aria-checked')) !== 'true') await claude.click({ timeout: 5000 });
     await sw.waitFor({ state: 'attached', timeout: 20_000 });
     if (!(await sw.isChecked())) await s.page.locator('.play-coach .switch').first().click({ timeout: 5000 });
     s.coachOn = (await sw.isChecked()) === true;

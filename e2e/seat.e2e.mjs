@@ -25,7 +25,7 @@
  * M67: a double block with no player row, steppers, Reset [R], Space only on
  * a legal split, the engine's refusal in the sentence line; a trampler's
  * player row locked until every blocker has lethal); the coach's "Copy
- * prompt" with no helper; the search hint ("What would the search AI do?",
+ * prompt" with no helper; the search AI coach (Ask now, S,
  * mtg-table D429) against a fake helper that offers it.
  * result and mid-game; live watch on /observe never opening /ws; declaring
  * attackers and blockers as the combat study has them (blocker first, badges
@@ -33,7 +33,7 @@
  * combat); combat damage
  * by the engine's rule (mtg-table M67: no defender row without trample, the
  * engine's refusal shown, a trampler's excess); the coach's "Copy prompt" with
- * no helper; the search hint ("What would the search AI do?", mtg-table D429)
+ * no helper; the search AI coach (the default, asking by itself; mtg-table D429)
  * against a fake helper that offers it; watching two bots (mtg-table D440)
  * against the fake /watch routes (e2e/fakewatch.mjs): the lobby tile, the
  * form, the draft replay advancing, the decks, the board following game 1
@@ -223,7 +223,7 @@ function theirs(engine, name) {
 /**
  * Declaring blocks (scene `blocks`), blocker first as the combat study §4 has it: the AI attacks with
  * Goblin Guide, Hill Giant and Storm Crow (a flyer); you have Memnite, Raging Goblin and a summoning-sick
- * Hill Giant. The attack lane; your creature, then its attacker — assign, a double block, remove by the
+ * Hill Giant. The attackers in their own row with an arrow to you; your creature, then its attacker — assign, a double block, remove by the
  * same two clicks again, move to another attacker, a refused flyer block in the game's terms — each as
  * the engine's own attacker-first clicks, the badges and lines on the board; then `end`: NO BLOCKS [Esc]
  * (every block off by the engine's clicks, then OK) or DONE BLOCKING (the engine's OK).
@@ -258,14 +258,15 @@ async function blockDeclaration({ page, engine, app }, end) {
     await armed(blocker).waitFor({ state: 'detached', timeout: STEP_MS });
   };
 
-  // The attack lane: the attackers in the engine's order, on their side; no combat list anywhere.
-  const cols = page.locator('.player-top [data-combat-lane="attack"] [data-lane-col]');
-  await cols.first().waitFor({ timeout: STEP_MS });
-  const order = await cols.evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-lane-col'))));
-  check(JSON.stringify(order) === JSON.stringify(engine.game.attackers), `the attack lane holds ${engine.game.attackers} in order (${order})`);
-  check(!(await page.locator('.combat-panel, .combat-list, [data-combat-lane="block"]').count()), 'no combat list and no block lane on the board');
+  // The attackers stay in their own row, tapped with the attacking outline, each with an arrow to you;
+  // no attack lane and no combat list anywhere.
+  const atk = page.locator('.player-top .bf-row-permanents .tile.is-attacking');
+  await atk.first().waitFor({ timeout: STEP_MS });
+  const inRow = await atk.evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-card-id'))));
+  check(JSON.stringify([...inRow].sort()) === JSON.stringify([...engine.game.attackers].sort()), `the attackers ${engine.game.attackers} are in their row (${inRow})`);
+  check(!(await page.locator('.combat-panel, .combat-list, [data-combat-lane]').count()), 'no combat list and no attack lane on the board');
   check(!/unblocked/i.test(await page.locator('.board').innerText()), 'no "unblocked" anywhere');
-  check(/→\s*You/.test(await page.locator('.player-top [data-lane-label]').innerText()), 'one target label for the lane: → You');
+  for (const a of engine.game.attackers) await page.locator(`.combat-line.is-target[data-line-from="${a}"][data-line-to="player0"]`).waitFor({ state: 'attached', timeout: STEP_MS });
   // The slot as the study quotes it; the summoning-sick mark is gone in their combat; no badge before a block.
   await bar.getByText('Click a creature, then click the attacker it blocks').waitFor({ timeout: STEP_MS });
   await bar.locator('[data-slot-action="skip"]', { hasText: 'No blocks' }).waitFor({ timeout: STEP_MS });
@@ -338,8 +339,8 @@ async function blockDeclaration({ page, engine, app }, end) {
   check(engine.game.players[0].life === 16, `Hill Giant and Storm Crow got through (${engine.game.players[0].life})`);
 }
 
-/** The combat lanes' cards, chips and ×s. */
-const LANE_ITEMS = '[data-combat-lane] .tile, [data-combat-lane] .lane-chip, [data-combat-lane] .lane-unblock';
+/** The attackers in their rows, and their target chips. */
+const LANE_ITEMS = '.battlefield .tile.is-attacking, .battlefield .lane-chip';
 /** Every card on the table and in the hand, and the stack's items. */
 const BOARD_ITEMS = '.battlefield .tile, .hand-dock .tile, [data-stack-item]';
 
@@ -347,12 +348,12 @@ const BOARD_ITEMS = '.battlefield .tile, .hand-dock .tile, [data-stack-item]';
  * Whatever of `sel` would be cut off: each item is brought into view as a player would (scrolling its row,
  * then the board) and must then lie wholly inside the window and inside every box that clips it, and a
  * card must be what a tap at its centre reaches (itself, or a card it is fanned or piled with — never a
- * chip, the dock or the panel). A row that scrolls sideways must say so: a lane by `data-lane-more`, a row
- * by its edge fade (`data-fade`). Returns the problems, [] when none.
+ * chip, the dock or the panel). A row that scrolls sideways must say so, by its edge fade (`data-fade`).
+ * Returns the problems, [] when none.
  */
 async function clipped(page, sel = LANE_ITEMS) {
   return page.evaluate(async (sel) => {
-    // Cards still sliding into a lane (laneMotion) are judged where they land.
+    // Cards still tapping are judged where they land.
     await Promise.all(document.getAnimations().filter((a) => Number.isFinite(a.effect?.getComputedTiming().endTime)).map((a) => a.finished.catch(() => {})));
     const out = [];
     const clippers = (el) => {
@@ -389,18 +390,16 @@ async function clipped(page, sel = LANE_ITEMS) {
         // A held hand overlaps by design (a hover lifts the card): only the table's cards are tapped where they lie.
         else if (el.classList.contains('tile') && !el.closest('.hand-dock')) {
           const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-          const row = el.closest('[data-combat-lane], .bf-cards, .battlefield');
+          const row = el.closest('.bf-cards, .battlefield');
           problem = !hit || !(el.contains(hit) || (hit.closest('.tile') && row && row.contains(hit))) ? `${what}: a tap at its centre reaches ${hit ? `.${String(hit.className).split(' ')[0]}` : 'nothing'}` : null;
         } else problem = null;
         if (!problem) break;
       }
       if (problem) out.push(problem);
     }
-    for (const row of document.querySelectorAll('[data-combat-lane] .lane-cols, .bf-cards')) {
+    for (const row of document.querySelectorAll('.bf-cards')) {
       if (row.scrollWidth <= row.clientWidth + 1 || getComputedStyle(row).overflowX === 'visible') continue;
-      const lane = row.closest('[data-combat-lane]');
-      const said = lane ? lane.hasAttribute('data-lane-more') : row.hasAttribute('data-fade');
-      if (!said) out.push(`${lane ? `the ${lane.getAttribute('data-combat-lane')} lane` : 'a row'} scrolls sideways with nothing saying so`);
+      if (!row.hasAttribute('data-fade')) out.push('a row scrolls sideways with nothing saying so');
     }
     if (document.documentElement.scrollWidth > innerWidth + 1) out.push(`the page scrolls sideways (${document.documentElement.scrollWidth} > ${innerWidth})`);
     return out;
@@ -410,18 +409,18 @@ const laneClipping = (page) => clipped(page, LANE_ITEMS);
 
 /**
  * Eight attackers and eight blockers (scene `swarm`) at `viewport`: every attacker takes a block (but the
- * flyer), blocker first as the combat study's board does it — your creature, then the attacker in the
- * lane, scrolled to as a player would — and at each step nothing in the attack lane is clipped; every
- * pair has its line and its badge, blockers stay in their rows, and a line follows its attacker as the
- * lane scrolls (met at the lane's edge while the attacker is out of view).
+ * flyer), blocker first as the combat study's board does it — your creature, then the attacker in its
+ * row, scrolled to as a player would — and at each step no attacker is clipped; every pair has its line
+ * and its badge, attackers and blockers stay in their rows, and a line follows its attacker as its row
+ * scrolls (met at the row's edge while the attacker is out of view).
  */
 function wideCombat(viewport, shot) {
   return async ({ page, engine, app }) => {
     await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
     await page.locator('.game.play.mode-block').waitFor({ timeout: STEP_MS });
-    const cols = page.locator('.player-top [data-combat-lane="attack"] [data-lane-col]');
+    const cols = page.locator('.player-top .bf-row-permanents .tile.is-attacking');
     await cols.nth(7).waitFor({ timeout: STEP_MS });
-    check(!(await page.locator('[data-combat-lane="block"]').count()), 'no block lane: blockers stay in their rows');
+    check(!(await page.locator('[data-combat-lane]').count()), 'no lane: attackers and blockers stay in their rows');
     // Collected, not thrown at once: the screenshot of the whole combat comes first.
     const problems = (await laneClipping(page)).map((p) => `eight attackers at ${viewport}: ${p}`);
     const attackers = engine.game.attackers.slice();
@@ -454,14 +453,14 @@ function wideCombat(viewport, shot) {
     const last = attackers.at(-1);
     await pair(mineFree[k], last);
     pairs.push([last, mineFree[k]]);
-    await page.evaluate(() => document.querySelectorAll('[data-combat-lane] .lane-cols').forEach((l) => (l.scrollLeft = 0)));
+    await page.evaluate(() => document.querySelectorAll('.bf-cards').forEach((l) => (l.scrollLeft = 0)));
     if (shot) {
       mkdirSync(path.dirname(shot), { recursive: true });
-      await page.evaluate(() => document.querySelector('.player-top [data-combat-lane]')?.scrollIntoView({ block: 'center' }));
+      await page.evaluate(() => document.querySelector('.player-top .bf-row-permanents')?.scrollIntoView({ block: 'center' }));
       await page.screenshot({ path: shot });
     }
     problems.push(...(await laneClipping(page)).map((p) => `eight attackers blocked at ${viewport}: ${p}`));
-    // Every pair: a line, the same badge number on both cards, the blocker in its row (never a lane).
+    // Every pair: a line, the same badge number on both cards, both in their rows.
     const marks = await page.evaluate((pairs) => {
       const out = [];
       const tile = (id) => document.querySelector(`.battlefield .tile[data-card-id="${id}"]`);
@@ -469,14 +468,15 @@ function wideCombat(viewport, shot) {
       for (const [a, b] of pairs) {
         if (!document.querySelector(`.combat-line.is-block[data-line-from="${a}"][data-line-to="${b}"]`)) out.push(`no line from ${a} to ${b}`);
         if (n(a) === null || n(a) !== n(b)) out.push(`blocker ${b} wears ${n(b)}, its attacker ${a} wears ${n(a)}`);
-        if (tile(b)?.closest('[data-combat-lane]')) out.push(`blocker ${b} left its row for a lane`);
+        if (!tile(b)?.closest('.player-me .bf-row-permanents')) out.push(`blocker ${b} is not in its row`);
+        if (!tile(a)?.closest('.player-top .bf-row-permanents')) out.push(`attacker ${a} is not in its row`);
       }
       return out;
     }, pairs);
     problems.push(...marks);
-    // A line follows its attacker as the lane scrolls, and never leaves the lane's visible width.
+    // A line follows its attacker as its row scrolls, and never leaves the row's visible width.
     const follow = await page.evaluate(async ([a, b]) => {
-      const lane = document.querySelector('.player-top [data-combat-lane="attack"] .lane-cols');
+      const lane = document.querySelector(`.battlefield .tile[data-card-id="${a}"]`)?.closest('.bf-cards');
       if (!lane || lane.scrollWidth <= lane.clientWidth + 1) return [];
       const frames = () => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
       const path = () => document.querySelector(`.combat-line.is-block[data-line-from="${a}"][data-line-to="${b}"]`);
@@ -495,9 +495,9 @@ function wideCombat(viewport, shot) {
         await frames();
         const x = start() + host.left;
         xs.push(x);
-        if (!(x >= r.left - 2 && x <= r.right + 2)) out.push(`the line to ${b} starts at ${Math.round(x)}, outside the lane (${Math.round(r.left)}–${Math.round(r.right)}) at scroll ${s ? 'end' : 'start'}`);
+        if (!(x >= r.left - 2 && x <= r.right + 2)) out.push(`the line to ${b} starts at ${Math.round(x)}, outside the row (${Math.round(r.left)}–${Math.round(r.right)}) at scroll ${s ? 'end' : 'start'}`);
       }
-      if (Math.abs(xs[0] - xs[1]) < 1) out.push(`the line from attacker ${a} did not move with the lane`);
+      if (Math.abs(xs[0] - xs[1]) < 1) out.push(`the line from attacker ${a} did not move with its row`);
       lane.scrollLeft = 0;
       return out;
     }, pairs.at(-1));
@@ -511,8 +511,8 @@ function wideCombat(viewport, shot) {
 
 /**
  * A crowded table (scene `crowd`) at `viewport`: ten creatures a side, six lands, a hand of twelve. Every
- * card on the table and in the hand can be brought into view whole; then Alpha Strike sends all ten into
- * your attack lane, and nothing there is cut off either.
+ * card on the table and in the hand can be brought into view whole; then Alpha Strike sends all ten to
+ * attack from their row, and none of them is cut off either.
  */
 function crowdedTable(viewport, shot) {
   return async ({ page, engine, app }) => {
@@ -526,11 +526,11 @@ function crowdedTable(viewport, shot) {
     await page.locator('.game.play.mode-attack').waitFor({ timeout: STEP_MS });
     await page.locator('[data-engine-button="cancel"]', { hasText: /alpha/i }).first().click({ timeout: STEP_MS });
     await engine.waitFor(() => engine.game.attackers.length === 10, 'ten attackers');
-    await page.locator('.player-me [data-combat-lane="attack"] [data-lane-col]').nth(9).waitFor({ timeout: STEP_MS });
-    await page.evaluate(() => document.querySelectorAll('[data-combat-lane] .lane-cols').forEach((l) => (l.scrollLeft = 0)));
+    await page.locator('.player-me .bf-row-permanents .tile.is-attacking').nth(9).waitFor({ timeout: STEP_MS });
+    await page.evaluate(() => document.querySelectorAll('.bf-cards').forEach((l) => (l.scrollLeft = 0)));
     if (shot) {
       mkdirSync(path.dirname(shot), { recursive: true });
-      await page.evaluate(() => document.querySelector('.player-me [data-combat-lane]')?.scrollIntoView({ block: 'center' }));
+      await page.evaluate(() => document.querySelector('.player-me .bf-row-permanents')?.scrollIntoView({ block: 'center' }));
       await page.screenshot({ path: shot });
     }
     problems.push(...(await clipped(page, LANE_ITEMS)).map((p) => `ten attackers at ${viewport}: ${p}`));
@@ -841,34 +841,34 @@ const scenarios = [
   },
 
   {
-    name: 'a phone (390×844): eight attackers and their blockers, blocker first — nothing in the attack lane cut off, a line per pair',
+    name: 'a phone (390×844): eight attackers and their blockers, blocker first — no attacker cut off, a line per pair',
     engine: { scene: 'swarm', selection: true },
     context: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     run: wideCombat('390×844', env.LANE_SHOT ? path.join(ROOT, env.LANE_SHOT) : null),
   },
 
   {
-    name: 'a desktop (1440×900): eight attackers and their blockers, blocker first — nothing in the attack lane cut off, a line per pair',
+    name: 'a desktop (1440×900): eight attackers and their blockers, blocker first — no attacker cut off, a line per pair',
     engine: { scene: 'swarm' },
     run: wideCombat('1440×900', env.LANE_SHOT_DESKTOP ? path.join(ROOT, env.LANE_SHOT_DESKTOP) : null),
   },
 
   {
-    name: 'a phone (390×844): a crowded table — every card in reach, ten attackers in the lane',
+    name: 'a phone (390×844): a crowded table — every card in reach, ten attackers in their row',
     engine: { scene: 'crowd' },
     context: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
     run: crowdedTable('390×844', env.CROWD_SHOT ? path.join(ROOT, env.CROWD_SHOT) : null),
   },
 
   {
-    name: 'a tablet (820×1180): a crowded table — every card in reach, ten attackers in the lane',
+    name: 'a tablet (820×1180): a crowded table — every card in reach, ten attackers in their row',
     engine: { scene: 'crowd' },
     context: { viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true },
     run: crowdedTable('820×1180', null),
   },
 
   {
-    name: 'a desktop (1440×900): a crowded table — every card in reach, ten attackers in the lane',
+    name: 'a desktop (1440×900): a crowded table — every card in reach, ten attackers in their row',
     engine: { scene: 'crowd' },
     run: crowdedTable('1440×900', null),
   },
@@ -1079,6 +1079,8 @@ const scenarios = [
       await u.mode('main');
       const coach = page.locator('.play-coach');
       await coach.waitFor({ timeout: STEP_MS });
+      // The search AI is the default coach; Claude is one click away.
+      await coach.locator('.pc-pick').getByRole('radio', { name: 'Claude' }).click();
       await coach.getByText('No coach connected').waitFor({ timeout: STEP_MS });
       const copy = coach.getByRole('button', { name: 'Copy prompt' });
       await copy.click();
@@ -1124,7 +1126,7 @@ function hintHelper(engine) {
 }
 
 const hintScenario = {
-  name: 'the search hint: asked with a button or S, the pick in board words, how sure, the caveat',
+  name: 'the search AI coach: the default, asking by itself once per decision, Ask now and S, the pick in board words, the selector',
   engine: { scene: 'main3' },
   helper: (engine) => {
     hintScenario.fake = hintHelper(engine);
@@ -1134,35 +1136,54 @@ const hintScenario = {
     const u = ui(page);
     await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
     await u.mode('main');
-    const hint = page.locator('.actionbar .ds-hint');
-    const btn = hint.getByRole('button', { name: /What would the search AI do\?/ });
-    await btn.waitFor({ timeout: STEP_MS });
-    await btn.click();
-    await page.locator('[data-search-hint="thinking"]').getByText('Search AI thinking…').waitFor({ timeout: STEP_MS });
-    const done = page.locator('[data-search-hint="done"]');
+    const asked = hintScenario.fake.asked;
+    // Search AI is the default coach: it asks by itself, with the engine's start in the busy line.
+    const coachPick = page.locator('.pc-pick [role="radio"][aria-checked="true"]');
+    check((await coachPick.innerText()).trim() === 'Search AI', 'the search AI is the default coach');
+    await page.locator('.actionbar [data-search-hint="asking"]').getByText('The engine is starting (about 10 s the first time)…').waitFor({ timeout: STEP_MS });
+    const done = page.locator('.actionbar [data-search-hint="answered"]');
     await done.waitFor({ timeout: STEP_MS });
     const line = await done.locator('.ds-hint-line').innerText();
     check(/^Search AI\s+Play (your )?Mountain first, then: cast Shock, or cast nothing now — too close to call$/i.test(line.trim()), `the pick in board words (${line})`);
     check(!/#\d/.test(line), `no engine id on screen (${line})`);
-    const caveat = await done.locator('.ds-hint-caveat').innerText();
-    check(caveat.startsWith('Knows only what you know'), `the caveat (${caveat})`);
-    const asked = hintScenario.fake.asked;
-    check(asked.length === 1, `one question per click (${asked.length})`);
+    // The Coach panel: the move, the other choices, the caveat and the budget used.
+    const panel = page.locator('[data-search-coach="answered"]');
+    await panel.waitFor({ timeout: STEP_MS });
+    const panelText = await panel.innerText();
+    check(panelText.includes('Knows only what you know') && panelText.includes('Looked 3.1 s of a 3.0 s budget.'), `the panel's caveat and budget (${panelText})`);
+    await shot(page, 'search-coach-answered');
+    // A re-render is not a new question.
+    await page.waitForTimeout(1200);
+    check(asked.length === 1, `asked once for the decision (${asked.length})`);
     const body = asked[0];
     check(body.gameId === engine.gameId && body.seat === 0 && Number.isInteger(body.stateSeq) && body.stateSeq > 0, `the moment: game, seat, state seq (${JSON.stringify(body)})`);
     check(Object.keys(body).every((k) => ['gameId', 'seat', 'stateSeq', 'inputSeq', 'oppPool', 'oppKnown', 'budgetMs'].includes(k)), `no other field, never a deck (${Object.keys(body)})`);
     // The cards it names glow on the board.
     const shock = mine(engine, 'Shock');
     await page.locator(`.game [data-card-id="${shock}"][data-search-pick]`).first().waitFor({ state: 'attached', timeout: STEP_MS });
-    // Play the land: a new board, a new decision -- the answer goes, the button is back; S asks again.
+    // Play the land: a new board, a new decision -- the answer goes, and the search AI asks again by itself.
     await sent(engine, 'clickCard', () => u.click(mine(engine, 'Mountain')));
     await engine.waitFor(() => engine.game.landPlayed, 'the land played');
-    await btn.waitFor({ timeout: STEP_MS });
-    check((await page.locator('[data-search-pick]').count()) === 0, 'the glow goes with the answer');
+    await engine.waitFor(() => asked.length === 2, 'a new question for the new decision');
+    check(asked[1].stateSeq > body.stateSeq, `the new moment (${asked.map((a) => a.stateSeq)})`);
+    await done.waitFor({ timeout: STEP_MS });
+    // Ask now, a button like Skip, and S ask again for the same decision.
+    const askNow = page.locator('.actionbar [data-ask-now="search"]');
+    check((await askNow.getAttribute('class')).includes('ab-tool'), 'Ask now is a slot button');
     await page.evaluate(() => (document.activeElement instanceof HTMLElement ? document.activeElement.blur() : undefined));
     await page.keyboard.press('s');
+    await engine.waitFor(() => asked.length === 3, 'S asks again');
     await done.waitFor({ timeout: STEP_MS });
-    check(asked.length === 2 && asked[1].stateSeq > body.stateSeq, `S asks for the new moment (${asked.map((a) => a.stateSeq)})`);
+    // Off: nothing asks, not even S; the decision panel's row goes.
+    await page.locator('.pc-pick').getByRole('radio', { name: 'Off' }).click();
+    await page.keyboard.press('s');
+    await page.waitForTimeout(900);
+    check(asked.length === 3 && (await page.locator('.actionbar [data-ask-now]').count()) === 0, `off asks nothing (${asked.length})`);
+    // Claude: chosen and kept; it never asks the search AI by itself.
+    await page.locator('.pc-pick').getByRole('radio', { name: 'Claude' }).click();
+    check((await page.evaluate(() => localStorage.getItem('forgecoach.coachKind'))) === 'claude', 'the choice is kept');
+    await page.waitForTimeout(900);
+    check(asked.length === 3, `Claude chosen: no search question by itself (${asked.length})`);
     check(engine.acts().filter((a) => a.action !== 'clickCard').length === 0, `asking sent the engine nothing (${JSON.stringify(engine.acts())})`);
   },
 };

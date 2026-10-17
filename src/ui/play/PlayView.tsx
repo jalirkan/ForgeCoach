@@ -41,7 +41,8 @@ import { allCardNames, cx, readLS, writeLS } from '../util.ts';
 import { AskDialog, OpeningDialog, openingKind } from './AskDialog.tsx';
 import { DamageBar } from './DamageBar.tsx';
 import { DecisionSlot, OppWaitingLine } from './DecisionSlot.tsx';
-import { SearchHint } from './SearchHint.tsx';
+import { AskNowRow, useSearchCoach } from './SearchHint.tsx';
+import { useClaudeAsk } from './coachAsk.ts';
 import { attentionOf, inputCounter, markedTitle, nudgeDelay, offersTheyAct, passToggles, theyActWhyNot, yieldLit } from './decisionModel.ts';
 import { GameOverCard } from './GameOverCard.tsx';
 import type { FriendReviewView } from './useFriendReview.ts';
@@ -540,7 +541,7 @@ export function PlayView({
             ? q('.player-me .battlefield')
             : view.mode === 'pay'
               ? q('.player-me .bf-chips') ?? q('.player-me .battlefield')
-              : q('.combat-lane') ?? q('.player-me .battlefield');
+              : q('.player-top .tile.is-attacking') ?? q('.player-me .battlefield');
       el?.scrollIntoView({ block: view.mode === 'attack' ? 'start' : 'center', behavior: 'smooth' });
     }, 60);
     return () => clearTimeout(t);
@@ -728,8 +729,11 @@ export function PlayView({
       return !o;
     });
 
+  const search = useSearchCoach({ log, state, input, seat, askOpen: !!ask, enabled: againstAi && !over });
+  const claudeAsk = useClaudeAsk();
   const coach = (
     <PlayCoach
+      search={search}
       log={log}
       state={state}
       input={input}
@@ -783,7 +787,7 @@ export function PlayView({
         counter={counter}
         toggles={toggles}
         ask={wide ? askNode : null}
-        hint={<SearchHint log={log} state={state} input={input} seat={seat} askOpen={!!ask} enabled={againstAi && !over} />}
+        hint={againstAi && !over ? <AskNowRow coach={search} claudeAsk={search.kind === 'claude' ? claudeAsk : null} /> : null}
       />
       {damageBar}
       <HandDock player={me} landOpen={landOpen} collapsed={handHidden} onToggle={toggleHand} />

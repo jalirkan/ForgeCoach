@@ -10,6 +10,7 @@ import type { Decision } from '../decisions.ts';
 import { phaseLabel } from '../decisions.ts';
 import { IconChevronLeft, IconChevronRight, IconList, KindIcon } from './Icons.tsx';
 import type { StateFrame } from './util.ts';
+import { PLAY_SPEEDS, type PlaySpeed } from '../timelinePlay.ts';
 import { cx } from './util.ts';
 
 export type ScrubMode = 'decisions' | 'frames';
@@ -34,10 +35,66 @@ interface ListProps {
   seat: number;
   /** Drawn under the mode switch (the win-chance line, ui/winchance). */
   extra?: ReactNode;
+  /** Play / pause / speed / live (PlayBar), under the mode switch. */
+  play?: ReactNode;
+}
+
+/**
+ * Play the timeline forward from the moment shown (timelinePlay.ts): Play /
+ * Pause, the speed beside it, and on a game still being played "Live" while
+ * the view follows the newest moment, or Jump to live when it does not.
+ */
+export function PlayBar({
+  playing,
+  speed,
+  onToggle,
+  onSpeed,
+  live,
+  disabled,
+}: {
+  playing: boolean;
+  speed: PlaySpeed;
+  onToggle: () => void;
+  onSpeed: (s: PlaySpeed) => void;
+  live: { following: boolean; onJump: () => void } | null;
+  disabled?: boolean;
+}) {
+  const atEdge = !!live?.following;
+  return (
+    <div className="tl-play" role="group" aria-label="Play the game">
+      <button
+        className={cx('btn btn-sm tl-play-btn', playing ? 'btn-quiet' : 'btn-primary')}
+        onClick={onToggle}
+        disabled={disabled || (atEdge && !playing)}
+        aria-pressed={playing}
+        data-replay-play=""
+        title={atEdge && !playing ? 'Following the game as it is played' : playing ? 'Pause here' : 'Play on from this moment'}
+      >
+        {playing ? '❚❚ Pause' : '▶ Play'}
+      </button>
+      <span className="tl-speed" role="radiogroup" aria-label="Speed">
+        {PLAY_SPEEDS.map((s) => (
+          <button key={s} role="radio" aria-checked={speed === s} className={cx('tl-speed-chip', speed === s && 'is-on')} onClick={() => onSpeed(s)}>
+            {s}×
+          </button>
+        ))}
+      </span>
+      {live &&
+        (atEdge ? (
+          <span className="tl-live is-on" data-replay-following="">
+            <span className="live-dot" /> Live
+          </span>
+        ) : (
+          <button className="btn btn-sm btn-quiet tl-live" onClick={live.onJump} data-replay-live="">
+            Jump to live
+          </button>
+        ))}
+    </div>
+  );
 }
 
 export function TimelineList(props: ListProps) {
-  const { mode, onMode, decisions, frames, extra } = props;
+  const { mode, onMode, decisions, frames, extra, play } = props;
   return (
     <div className="timeline">
       <div className="timeline-head">
@@ -49,6 +106,7 @@ export function TimelineList(props: ListProps) {
             All states <span className="seg-n">{frames.length}</span>
           </button>
         </div>
+        {play}
         {extra}
       </div>
       <div className="timeline-scroll">
@@ -193,6 +251,7 @@ export function ScrubDock({
   subtitle,
   kind,
   onOpenList,
+  play,
 }: {
   mode: ScrubMode;
   count: number;
@@ -202,9 +261,12 @@ export function ScrubDock({
   subtitle: string;
   kind?: Decision['kind'];
   onOpenList: () => void;
+  /** Play / pause / speed / live (PlayBar), above the scrubber. */
+  play?: ReactNode;
 }) {
   return (
     <div className="dock" role="region" aria-label="Timeline scrubber">
+      {play && <div className="dock-row dock-play">{play}</div>}
       <div className="dock-row">
         <button className="icon-btn dock-nav" onClick={() => onSelect(index - 1)} disabled={index <= 0} aria-label="Previous">
           <IconChevronLeft size={20} />

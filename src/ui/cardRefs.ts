@@ -36,7 +36,7 @@ export interface CardRef {
   text: string;
   /** What tells it apart on the board: the combat badge number, "4/4", "tapped", "2nd from left"; null when the name alone is enough. */
   tag: string | null;
-  /** The tag is the combat lane's badge number. */
+  /** The tag is the combat pair's badge number. */
   combat: boolean;
 }
 

@@ -3,17 +3,24 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * The card-row scrim of the half board (spec 1.5, art direction §5): when the
- * scenery fills a player's half, a soft dark band sits under each card row,
- * so the cards and the little text on the board stay as readable as on the
- * plain board while the sky and the edges keep their full colour. Pure: the
- * rectangles from measured boxes, and the contrast arithmetic the tests use
- * to prove the band never lowers contrast. Drawn by ui/ambience/HalfScrim.tsx.
+ * scenery fills a player's half, a soft tint sits under each card row, so a
+ * card's edge stands off busy art while the scenery shows through it. Pure:
+ * the rectangles from measured boxes, and the contrast arithmetic the tests
+ * use. Drawn by ui/ambience/HalfScrim.tsx.
  *
  * The band is the row's cards (their union, clipped to the row's visible box
- * when it scrolls sideways) grown by `pad` px: inside it the board's own
- * background colour, opaque, so a card's edge and any text there sit on
- * exactly today's background; beyond it a feather (~30 px) from `edge`
- * opacity (~0.85) down to nothing over the art.
+ * when it scrolls sideways) grown by `pad` px — no wider than the cards it
+ * holds — then a short feather (~14 px) from `edge` down to nothing. The
+ * whole band is the board's own background colour at
+ * `--scn-scrim-strength` (scenery.css, one token, ~0.35), so the pair bands
+ * and the backgrounds show through it. Its strength does not carry
+ * readability: every piece of text on the board sits on a frame of its own
+ * (a tile's P/T, counters, pile count; the "No permanents" note), and the
+ * tests check that text against the brightest art.
+ *
+ * Until 2026-10-17 the band was opaque within 6 px of the cards, then
+ * feathered from 0.85 over 30 px: dark boxes that hid the scenery (Justin's
+ * watch, item 2).
  */
 
 export interface Box {
@@ -30,12 +37,14 @@ export interface ScrimRow {
   items: Box[];
 }
 
-/** The band's core reaches this far past the cards (px), opaque. */
-export const SCRIM_PAD_PX = 6;
+/** The band's core reaches this far past the cards (px). */
+export const SCRIM_PAD_PX = 2;
 /** Then it feathers out over this many px. */
-export const SCRIM_FEATHER_PX = 30;
-/** The feather starts at this opacity (§5: ~0.85). */
-export const SCRIM_EDGE_ALPHA = 0.85;
+export const SCRIM_FEATHER_PX = 14;
+/** The feather starts at this share of the band's strength. */
+export const SCRIM_EDGE_ALPHA = 0.7;
+/** The default of scenery.css's `--scn-scrim-strength`: the band's opacity at its core. */
+export const SCRIM_STRENGTH = 0.35;
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 

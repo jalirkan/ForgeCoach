@@ -7,7 +7,9 @@
  * piles, ownership frames, and the play-mode click affordances.
  *
  * Sizes are one variable: --cw, the card's width. A tapped card lies in a slot
- * as wide as the card is tall, so tapping never reflows a row.
+ * as wide as the card is tall, so tapping never reflows a row. On the table
+ * --cw is a share of --tile-w, the tile size token (100px; a replay's or a
+ * watch's board column scales it with its width, styles.css *Game layout*).
  */
 
 /* ------------------------------------------------------------------ */
@@ -17,22 +19,22 @@
 .hand-dock-row,
 .zone-grid,
 .hand-tiles {
-  --cw: 100px;
+  --cw: var(--tile-w, 100px);
 }
 .bf-row-lands {
-  --cw: 88px;
+  --cw: calc(var(--tile-w, 100px) * 0.88);
 }
 .bf-row.is-dense {
-  --cw: 86px;
+  --cw: calc(var(--tile-w, 100px) * 0.86);
 }
 .bf-row-lands.is-dense {
-  --cw: 78px;
+  --cw: calc(var(--tile-w, 100px) * 0.78);
 }
 .bf-row.is-crowded {
-  --cw: 74px;
+  --cw: calc(var(--tile-w, 100px) * 0.74);
 }
 .bf-row-lands.is-crowded {
-  --cw: 68px;
+  --cw: calc(var(--tile-w, 100px) * 0.68);
 }
 @media (max-width: 560px) {
   /* Phones: rows scroll sideways rather than shrinking cards past legible. */
@@ -143,10 +145,7 @@
   }
   .game.play.is-wide .play-board .bf-row {
     --rows-h: calc(var(--ch-lands, 1) * var(--land-k) + var(--ch-perm, 1));
-    /* The combat lane's height (play/lane.css computes the lane's card width the same way). */
-    --lane-cw: clamp(48px, min(calc((100cqw - 44px - 10px * var(--lane-n, 1)) / max(var(--lane-w, 1), 1)), 22cqh), 112px);
-    --lane-h: calc(var(--lane-cw) * var(--lane-k, 0) + 22px * min(var(--lane-k, 0), 1));
-    --cw-h: calc((100cqh - 18px - var(--attach-h, 0px) - var(--lane-h)) / var(--rows-h) * 63 / 88);
+    --cw-h: calc((100cqh - 18px - var(--attach-h, 0px)) / var(--rows-h) * 63 / 88);
     --cw-w: calc((100cqw - 24px) / var(--slots-row, 6) - 9px);
     --cw-fit: clamp(58px, min(var(--cw-h), var(--cw-w)), 200px);
     --cw: var(--cw-fit);
@@ -174,9 +173,6 @@
   }
 }
 @container side (max-height: 250px) {
-  .game.play.is-wide .play-board .battlefield[data-lane] {
-    flex-wrap: wrap;
-  }
   .game.play.is-wide .play-board .battlefield {
     flex-direction: row;
     align-items: center;

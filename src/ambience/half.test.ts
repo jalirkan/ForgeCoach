@@ -13,7 +13,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_HALF_LAYOUT, halfAt, halfBytes, halfUrls, hasHalfArt, layersAt, MAX_HALF_BYTES, validateManifest } from './manifest.ts';
 import { halfArt, halfArtOf, halfFrame, pickHalfPicture, halfFrameCss, halfLayout, halfSpans, STRIP_ART, type HalfArt } from './layout.ts';
-import { contrast, hexRgb, over, scrimRects, SCRIM_EDGE_ALPHA, type Rgb } from './scrim.ts';
+import { contrast, hexRgb, over, scrimRects, SCRIM_EDGE_ALPHA, SCRIM_FEATHER_PX, SCRIM_PAD_PX, SCRIM_STRENGTH, type Rgb } from './scrim.ts';
 import { DEFAULT_PREFS, effectivePrefs, fillOn, loadSceneryPrefs } from './prefs.ts';
 import { halfGolden } from './testdata/halfGolden.ts';
 import type { Biome, SlotState } from './model.ts';
@@ -284,9 +284,10 @@ function token(css: string, selector: string, name: string): Rgb {
   return hexRgb(m[1]!);
 }
 
-describe('spec 1.5: the scrim never lowers contrast', () => {
+describe('spec 1.5: the scrim is a light tint, and text reads on its own frames', () => {
   const styles = readFileSync(new URL('../ui/styles.css', import.meta.url), 'utf8');
   const skins = readFileSync(new URL('../ui/skins.css', import.meta.url), 'utf8');
+  const cards = readFileSync(new URL('../ui/cards.css', import.meta.url), 'utf8');
   const scenery = readFileSync(new URL('../ui/ambience/scenery.css', import.meta.url), 'utf8');
   /** A scrim token in scenery.css for a skin's block: a hex, or var(--surface) resolved from the skin. */
   const scrimToken = (sel: string, name: string, surface: Rgb): Rgb => {
@@ -303,29 +304,68 @@ describe('spec 1.5: the scrim never lowers contrast', () => {
     { name: 'felt', css: skins, sel: ":root[data-skin='felt']", plain: { top: over([14, 32, 27], 0.35, hexRgb('#1a312b')), me: over([14, 32, 27], 0.35, hexRgb('#1a312b')) } },
   ];
   const WHITE: Rgb = [255, 255, 255];
+  // The brightest art a half can put under a card row: white, a sunlit yellow, a sky blue.
+  const BRIGHT: Rgb[] = [WHITE, [255, 220, 90], [150, 210, 255]];
+  /** The declarations of the first rule whose selector list is exactly `sel`. */
+  const rule = (css: string, sel: string): string => {
+    const at = css.indexOf(`\n${sel} {`);
+    if (at < 0) throw new Error(sel);
+    return css.slice(at, css.indexOf('}', at));
+  };
+  const rgba = (decl: string): { rgb: Rgb; a: number } => {
+    const m = /background:\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/.exec(decl);
+    if (!m) throw new Error(decl);
+    return { rgb: [Number(m[1]), Number(m[2]), Number(m[3])], a: Number(m[4]) };
+  };
+  const ink = (decl: string, skinCss: string, skinSel: string): Rgb => {
+    const m = /\n\s*color:\s*([^;]+);/.exec(decl)!;
+    const v = m[1]!.trim();
+    return v.startsWith('var(') ? token(skinCss, skinSel, /var\((--[a-z0-9-]+)/.exec(v)![1]!) : hexRgb(v);
+  };
 
-  it('paints the band’s core in the board’s own colour, per side', () => {
+  it('paints the band in the board’s own colour, per side, at one strength token', () => {
     expect(scenery).toMatch(/\.scn-scrim-in\s*{[^}]*background:\s*var\(--scn-scrim\)/);
     expect(scenery).toMatch(/\.player-top \.scn-scrims,[^{]*{\s*--scn-scrim:\s*var\(--scn-scrim-top\)/);
+    expect(scenery).toMatch(/\n\.scn-scrims\s*{[^}]*opacity:\s*var\(--scn-scrim-strength/);
+    const m = /--scn-scrim-strength:\s*([\d.]+);/.exec(rule(scenery, ':root'))!;
+    expect(Number(m[1])).toBe(SCRIM_STRENGTH);
+    // Far more transparent than the old opaque band, so the pair bands and backgrounds show through.
+    expect(SCRIM_STRENGTH).toBeLessThanOrEqual(0.5);
+    expect(SCRIM_STRENGTH * SCRIM_EDGE_ALPHA).toBeLessThan(0.4);
+  });
+
+  it('is no wider than the cards it holds, give or take a short feather', () => {
+    expect(SCRIM_PAD_PX).toBeLessThanOrEqual(4);
+    expect(SCRIM_FEATHER_PX).toBeLessThanOrEqual(16);
+    const host = { left: 0, top: 0, width: 1200, height: 300 };
+    const [band] = scrimRects(host, [{ box: { left: 0, top: 0, width: 1200, height: 140 }, items: [{ left: 500, top: 10, width: 100, height: 140 }, { left: 610, top: 10, width: 100, height: 140 }] }]);
+    expect(band!.width).toBe(210 + 2 * SCRIM_PAD_PX);
+    expect(band!.left).toBe(500 - SCRIM_PAD_PX);
   });
 
   for (const { name, css, sel, plain } of SKINS)
-    it(`${name}: text and card edges in the band read as on the plain board, and better than over today’s strip`, () => {
+    it(`${name}: the band’s colour is the plain board’s, and the board’s labels read on their own frames over the brightest art`, () => {
       const surface = token(css, sel, '--surface');
       for (const side of ['top', 'me'] as const) {
         const scrim = scrimToken(sel, `--scn-scrim-${side}`, surface);
-        // Within a few levels of the plain board's colour on that side.
         for (let i = 0; i < 3; i++) expect(Math.abs(scrim[i]! - plain[side][i]!), `${side} channel ${i}`).toBeLessThanOrEqual(3);
-        for (const t of ['--text', '--muted', '--faint']) {
-          const ink = token(css, sel, t);
-          const today = contrast(ink, plain[side]);
-          // The core is opaque: whatever art lies under it, ink reads as on the plain board (within 3%).
-          for (const art of [WHITE, [0, 0, 0] as Rgb, [255, 200, 0] as Rgb]) expect(contrast(ink, over(scrim, 1, art)) / today, `${side} ${t}`).toBeGreaterThan(0.97);
-          // Today's land row sits on the strip's art with no band at all: art of the ink's own colour leaves 1:1.
-          expect(contrast(ink, ink)).toBeLessThan(today);
+      }
+      // Reduced contrast check: with the scrim this faint, the text on the board must carry its own
+      // backing. Each label's frame (its own background at its own alpha) over the brightest art,
+      // with the scrim's tint between, keeps that text at WCAG AA (4.5 : 1).
+      const frames: [string, string][] = [
+        ['P/T', rule(cards, '.tile-pt')],
+        ['counters', rule(cards, '.mk')],
+        ['pile count', rule(cards, '.pile-count')],
+        ['No permanents', rule(scenery, '.battlefield:has(> .scn-scrims) .bf-empty,\n.battlefield:has(.scn-half) .bf-empty')],
+      ];
+      for (const [what, decl] of frames) {
+        const bg = rgba(decl);
+        const fg = ink(decl, css, sel);
+        for (const art of BRIGHT) {
+          const under = over(plain.me, SCRIM_STRENGTH, art);
+          expect(contrast(fg, over(bg.rgb, bg.a, under)), `${what} over ${art.join(',')}`).toBeGreaterThanOrEqual(4.5);
         }
-        // The feather's start (0.85) over the brightest art still keeps body text at WCAG AA.
-        expect(contrast(token(css, sel, '--text'), over(scrim, SCRIM_EDGE_ALPHA, WHITE))).toBeGreaterThanOrEqual(4.5);
       }
     });
 });

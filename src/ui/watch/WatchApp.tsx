@@ -30,12 +30,13 @@ import { redactSeatUrl } from '../../play/seatUrl.ts';
 import { BEST_OF, canStart, capLine, costLine, costlyPicks, defaultForm, drafterBlock, drafterLabel, PACES, playerLabel, seedOf, watchRequest, type SeatOption, type WatchCaps, type WatchForm } from '../../watch/choices.ts';
 import { gameLogUrl, getWatch, listWatches, startWatch, stopWatch, waitIdle, watchCaps } from '../../watch/client.ts';
 import { gameToFollow, TERMINAL, type WatchListEntry, type WatchMatch, type WatchSide, type WatchState } from '../../watch/data.ts';
-import { atDecks, replayReducer, startReplay, stepDelay, type ReplayAction, type ReplayState } from '../../watch/replay.ts';
+import { atDecks, ReplayClock, replayReducer, startReplay, type ReplayAction, type ReplayState } from '../../watch/replay.ts';
 import { GameView, type LiveInfo } from '../GameView.tsx';
 import { IconChevronLeft } from '../Icons.tsx';
 import { SettingsDialog } from '../SettingsDialog.tsx';
 import { cx } from '../util.ts';
 import { DraftReplay } from './DraftReplay.tsx';
+import { nav } from '../nav.ts';
 
 const POLL_MS = 1500;
 const NEXT_GAME_MS = 6000;
@@ -57,9 +58,9 @@ export default function WatchApp({ onExit }: { onExit: () => void }) {
   return (
     <>
       {id ? (
-        <WatchRun key={id} id={id} onBack={() => (location.hash = '#watch')} onSettings={() => setSettings(true)} />
+        <WatchRun key={id} id={id} onBack={() => nav().up()} onSettings={() => setSettings(true)} />
       ) : (
-        <WatchSetup onExit={onExit} onOpen={(w) => (location.hash = `#watch/${w}`)} />
+        <WatchSetup onExit={onExit} onOpen={(w) => nav().go(`#watch/${w}`)} />
       )}
       <SettingsDialog open={settings} onClose={() => setSettings(false)} />
     </>
@@ -466,11 +467,11 @@ function WatchRun({ id, onBack, onSettings }: { id: string; onBack: () => void; 
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const dispatch = useCallback((a: ReplayAction) => setReplay((s) => (draftRef.current ? replayReducer(s, a, draftRef.current) : s)), []);
-  useEffect(() => {
-    if (!draft || !replay.playing) return;
-    const t = setTimeout(() => dispatch({ kind: 'tick' }), stepDelay(replay));
-    return () => clearTimeout(t);
-  }, [draft, replay, dispatch]);
+  // The pick timer restarts only when the step, play/pause or the speed change — not on each poll,
+  // which hands in a new draft object every 1.5 s (watch/replay.ts ReplayClock).
+  const clock = useMemo(() => new ReplayClock({ set: (fn, ms) => setTimeout(fn, ms), clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>) }), []);
+  useEffect(() => clock.sync(replay, !!draft, () => dispatch({ kind: 'tick' })));
+  useEffect(() => () => clock.stop(), [clock]);
   const [stopping, setStopping] = useState<string | null>(null);
   const sideName = useMemo(() => sideNameOf(match, draft), [match, draft]);
   const follow = gameToFollow(match);

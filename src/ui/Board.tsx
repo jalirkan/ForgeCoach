@@ -14,10 +14,9 @@ import { chosenColors, manaSummary, turnFacts, type ManaSource } from '../state.
 import { cachedMap, useCardsVersion } from './cardData.ts';
 import { BoardMarksContext, usePlay, type BoardMarks, type CardCombatMark } from './cardContext.ts';
 import { combatMarks } from './play/combatLines.ts';
-import { combatLayout, hasAttackLane, hideSickMark, type CombatLayout, type LaneTarget } from './play/combatLayout.ts';
-import { CombatLane } from './play/CombatLane.tsx';
+import { combatLayout, hideSickMark, type CombatLayout, type LaneTarget } from './play/combatLayout.ts';
+import './play/lane.css';
 import { CombatArrows } from './play/CombatArrows.tsx';
-import { useLaneMotion } from './play/laneMotion.ts';
 import { StackPanel } from './StackPanel.tsx';
 import { BoardArrows } from './BoardArrows.tsx';
 import { stackEntries, stackMarks, type StackEntry } from './stackModel.ts';
@@ -57,7 +56,7 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackEl
     for (const p of state.players) for (const c of p.zones.battlefield.cards) if (!isHidden(c)) m.set(c.id, c as Card);
     return m;
   }, [state]);
-  // Combat on the board: the attack lane, and a line from each attacker to each of its blockers.
+  // Combat on the board: attackers stay in their rows; a line from each to what it attacks and to each of its blockers.
   const layout = useMemo(
     () =>
       combatLayout(
@@ -73,8 +72,6 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackEl
       ),
     [state, seat, log.hello, combat],
   );
-  const boardRef = useRef<HTMLDivElement>(null);
-  useLaneMotion(boardRef, layout);
 
   if (!me) {
     return (
@@ -85,7 +82,7 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackEl
   }
   return (
     <BoardMarksContext.Provider value={marks}>
-      <div ref={boardRef} className={cx('board', layout.columns.length > 0 && 'in-combat', hideSickMark(state, seat) && 'hide-sick')}>
+      <div className={cx('board', layout.attackers.length > 0 && 'in-combat', hideSickMark(state, seat) && 'hide-sick')}>
         {opps.map((p) => (
           <PlayerArea key={p.id} player={p} state={state} log={log} frameIndex={frameIndex} seat={seat} byId={byId} layout={layout} top />
         ))}
@@ -101,7 +98,7 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackEl
 
 // ---------------------------------------------------------------------------
 
-function groupBattlefield(player: PlayerState, byId: Map<number, Card>, placed: ReadonlySet<number>) {
+function groupBattlefield(player: PlayerState, byId: Map<number, Card>) {
   const landCards: { card: Card; attachments: number }[] = [];
   const creatures: { card: Card; att: Card[] }[] = [];
   const other: { card: Card; att: Card[] }[] = [];
@@ -109,7 +106,6 @@ function groupBattlefield(player: PlayerState, byId: Map<number, Card>, placed: 
     if (isHidden(any)) continue;
     const c = any as Card;
     if (c.attachedToId !== null && byId.has(c.attachedToId)) continue; // drawn on its host
-    if (placed.has(c.id)) continue; // drawn in a combat lane
     const att = c.attachmentIds.map((id) => byId.get(id)).filter((x): x is Card => !!x);
     const kind = typeKind(c.types);
     if (kind === 'land') landCards.push({ card: c, attachments: att.length });
@@ -150,15 +146,13 @@ const PlayerArea = memo(function PlayerArea({
   top?: boolean;
   hideHand?: boolean;
 }) {
-  const { lands, creatures, other } = useMemo(() => groupBattlefield(player, byId, layout.placed), [player, byId, layout.placed]);
+  const { lands, creatures, other } = useMemo(() => groupBattlefield(player, byId), [player, byId]);
   const mine = player.id === seat;
   const side = mine ? 'me' : 'opp';
-  const attachmentsOf = (c: Card) => c.attachmentIds.map((id) => byId.get(id)).filter((x): x is Card => !!x);
-  const lane = hasAttackLane(layout, player.id);
   const chipped = (card: Card, att: Card[]) => {
     const tile = <CardTile key={card.id} card={card} attachments={att} side={side} />;
-    const t = layout.pendingChips.get(card.id);
-    return t ? <PendingChip key={card.id} target={t}>{tile}</PendingChip> : tile;
+    const t = layout.chips.get(card.id);
+    return t ? <TargetChip key={card.id} target={t}>{tile}</TargetChip> : tile;
   };
   const permanents = [...creatures, ...other];
   const landWeight = lands.reduce((n, g) => n + pileWeight(g), 0);
@@ -174,9 +168,7 @@ const PlayerArea = memo(function PlayerArea({
       >
         {creatures.map(({ card, att }) => chipped(card, att))}
         {creatures.length > 0 && other.length > 0 && <span className="bf-gap" aria-hidden="true" />}
-        {other.map(({ card, att }) => (
-          <CardTile key={card.id} card={card} attachments={att} side={side} />
-        ))}
+        {other.map(({ card, att }) => chipped(card, att))}
       </Row>
     ),
     lands.length > 0 && (
@@ -188,12 +180,6 @@ const PlayerArea = memo(function PlayerArea({
     ),
   ].filter(Boolean);
   if (top) rows.reverse();
-  // The lane sits nearest the centre line: below their rows, above yours.
-  if (lane) {
-    const el = <CombatLane key="lane" layout={layout} playerId={player.id} side={side} byId={byId} attachmentsOf={attachmentsOf} />;
-    if (top) rows.push(el);
-    else rows.unshift(el);
-  }
   const empty = rows.length === 0;
   // Portrait phones: the rows' height and the side's floor (ui/boardFit.ts, play.css).
   const fit = phoneSideFit({ permanents: permanents.length > 0, lands: lands.length > 0, maxAttach: Math.max(0, ...permanents.map((p) => p.att.length)) });
@@ -216,13 +202,8 @@ const PlayerArea = memo(function PlayerArea({
             '--ch-lands': lands.length ? 1 : 0,
             '--ch-perm': permanents.length ? 1 : 0,
             '--attach-h': permanents.some((p) => p.att.length > 0) ? '34px' : '0px',
-            // The combat lane's height in lane card widths (a lying card is one width tall).
-            '--lane-k': lane ? (!layout.upright ? 1 : 88 / 63).toFixed(2) : 0,
-            '--lane-w': layout.weight.toFixed(2),
-            '--lane-n': layout.columns.length,
           } as CSSProperties
         }
-        data-lane={lane ? 'attack' : undefined}
       >
         {empty ? <div className="bf-empty">No permanents</div> : rows}
       </div>
@@ -232,10 +213,10 @@ const PlayerArea = memo(function PlayerArea({
   );
 });
 
-/** A creature being declared as an attacker against a planeswalker: the chip says which. */
-function PendingChip({ target, children }: { target: LaneTarget; children: ReactNode }) {
+/** An attacker whose target differs from the others' (or one being declared at a planeswalker): the chip says which. */
+function TargetChip({ target, children }: { target: LaneTarget; children: ReactNode }) {
   return (
-    <span className="lane-slot is-pending-attack">
+    <span className="lane-slot is-attack-target">
       {children}
       <span className={cx('lane-chip', `lane-chip-${target.kind}`)} title={`Attacking ${target.label}`} aria-label={`attacking ${target.label}`}>
         {target.initial}
@@ -362,7 +343,9 @@ function PlayerHeader({
             {(player.name || '?').charAt(0)}
           </button>
         ) : (
-          <span className={cx('avatar', mine ? 'avatar-me' : 'avatar-opp')}>{(player.name || '?').charAt(0)}</span>
+          <span className={cx('avatar', mine ? 'avatar-me' : 'avatar-opp')} data-player-id={player.id}>
+            {(player.name || '?').charAt(0)}
+          </span>
         )}
         <div className="phead-names">
           <div className="phead-name">
@@ -488,7 +471,7 @@ function OppHand({ n }: { n: number }) {
 
 // ---------------------------------------------------------------------------
 // The line between the two sides: turn/phase and (replay) the stack. Combat is
-// drawn on the sides themselves: the attack lane (play/CombatLane.tsx) and the block lines (play/CombatArrows.tsx).
+// drawn on the sides themselves: the attack and block lines (play/CombatArrows.tsx).
 
 const STEPS: { label: string; phases: string[] }[] = [
   { label: 'Upkeep', phases: ['UNTAP', 'UPKEEP'] },

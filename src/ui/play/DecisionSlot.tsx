@@ -86,7 +86,7 @@ export function DecisionSlot({
   toggles: PassToggle[];
   /** An open question rendered in the slot (desktop), or null. */
   ask?: ReactNode;
-  /** "What would the search AI do?" (SearchHint.tsx, mtg-table D429): a row under the text; it renders nothing when not offered. */
+  /** Ask now and the search AI's answer (SearchHint.tsx AskNowRow, mtg-table D429): a row under the text; it renders nothing when not offered. */
   hint?: ReactNode;
 }) {
   const [menu, setMenu] = useState(false);
@@ -177,7 +177,7 @@ export function DecisionSlot({
           )
         )}
       </div>
-      {/* "What would the search AI do?" (SearchHint.tsx): a row of its own under the text. */}
+      {/* Ask now and the search AI's answer (SearchHint.tsx): a row of its own under the text. */}
       {hint && <div className="ds-hint-slot">{hint}</div>}
       {/* The question in the slot: its one-line peek in place, or the whole question grown upward over the board. */}
       {ask && <div className="ds-ask">{ask}</div>}

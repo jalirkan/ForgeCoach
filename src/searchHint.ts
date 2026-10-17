@@ -65,6 +65,8 @@ export interface SearchHint {
   /** Why there is no pick (`unsupported`), in the engine's words. */
   message: string | null;
   ms: number | null;
+  /** The budget this hint ran under (ms), when the engine says. */
+  budgetMs: number | null;
 }
 
 export interface HintRequest {
@@ -102,6 +104,36 @@ function headers(t: HelperTarget, json: boolean): Record<string, string> {
   if (json) h['Content-Type'] = 'application/json';
   if (t.token) h[TOKEN_HEADER] = t.token;
   return h;
+}
+
+export interface HintInfo {
+  available: boolean;
+  /** `/health` `hintEngine`: `idle` / `starting` (the first hint waits ~10 s for it) / `ready`; null when not said. */
+  engine: 'idle' | 'starting' | 'ready' | null;
+  /** `/health` `hintBudgetMs.default`: how long a hint looks, when said. */
+  budgetMs: number | null;
+}
+
+/** What /health says about hints (never throws). */
+export function hintInfoOf(health: unknown): HintInfo {
+  const h = (health && typeof health === 'object' ? health : {}) as Record<string, unknown>;
+  const e = h.hintEngine;
+  const b = h.hintBudgetMs && typeof h.hintBudgetMs === 'object' ? (h.hintBudgetMs as Record<string, unknown>).default : null;
+  return { available: helperHintAvailable(health), engine: e === 'idle' || e === 'starting' || e === 'ready' ? e : null, budgetMs: int(b, 100, 60_000) };
+}
+
+/** GET /health and read the hint fields (never throws; not available when the helper is not there). */
+export async function hintInfo(target: HelperTarget, f: HintFetch = defaultFetch, timeoutMs = 1500): Promise<HintInfo> {
+  const c = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = c ? setTimeout(() => c.abort(), timeoutMs) : null;
+  try {
+    const res = await f(`${target.baseUrl}/health`, { method: 'GET', headers: headers(target, false), ...(c ? { signal: c.signal } : {}), cache: 'no-store' });
+    return hintInfoOf(await res.json());
+  } catch {
+    return { available: false, engine: null, budgetMs: null };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 /** GET /health and read `hint` (never throws; false when the helper is not there). */
@@ -223,6 +255,7 @@ export function parseHint(raw: unknown): SearchHint {
     stateSeq: int(b.stateSeq, 0, 2 ** 31) ?? 0,
     message: cleanText(b.message, 300),
     ms: int(b.wallMs, 0, 600_000),
+    budgetMs: int(b.budgetMs, 0, 600_000),
   };
 }
 

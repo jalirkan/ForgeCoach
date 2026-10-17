@@ -26,7 +26,8 @@ import { useMediaQuery, useStepKeys } from './hooks.ts';
 import { IconGear, IconX } from './Icons.tsx';
 import { Logo } from './Logo.tsx';
 import { Sheet } from './Sheet.tsx';
-import { ScrubDock, TimelineList, actionsSummary, stripRound, type ScrubMode } from './Timeline.tsx';
+import { PlayBar, ScrubDock, TimelineList, actionsSummary, stripRound, type ScrubMode } from './Timeline.tsx';
+import { cursorReducer, following, stepDelay, type CursorAction, type PlaySpeed } from '../timelinePlay.ts';
 import { useAnsweredKeys } from './answers.ts';
 import { allCardNames, cx, stateFrames } from './util.ts';
 import { phaseLabel } from '../decisions.ts';
@@ -160,8 +161,9 @@ export function GameView({
   useEffect(() => {
     const prev = prevLens.current;
     if (live) {
-      setDIdx((i) => (i >= prev.d - 1 ? Math.max(0, decisions.length - 1) : i));
-      setFIdx((i) => (i >= prev.f - 1 ? Math.max(0, frames.length - 1) : i));
+      const grow = (i: number, p: number, n: number) => cursorReducer({ i, playing: false, speed: 1 }, { kind: 'grow', prev: p, count: n, live: true }).i;
+      setDIdx((i) => grow(i, prev.d, decisions.length));
+      setFIdx((i) => grow(i, prev.f, frames.length));
     }
     prevLens.current = { d: decisions.length, f: frames.length };
   }, [decisions.length, frames.length, live]);
@@ -171,13 +173,41 @@ export function GameView({
   selFrame.current = decisions[dIdx]?.frameIndex ?? selFrame.current;
   const count = mode === 'decisions' ? decisions.length : frames.length;
   const index = mode === 'decisions' ? dIdx : fIdx;
-  const select = useCallback(
-    (i: number) => {
-      const n = mode === 'decisions' ? decisions.length : frames.length;
-      const c = Math.min(Math.max(0, i), Math.max(0, n - 1));
-      (mode === 'decisions' ? setDIdx : setFIdx)(c);
-    },
-    [mode, decisions.length, frames.length],
+
+  // Play / pause / live (timelinePlay.ts): a chosen moment pauses there; Play moves on from it at the
+  // chosen speed and, on a game still being played, hands over to following the newest moment.
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState<PlaySpeed>(1);
+  const liveNow = !!live && !log.over;
+  const now = useRef({ index, count, playing, speed, mode, liveNow });
+  now.current = { index, count, playing, speed, mode, liveNow };
+  const apply = useCallback((a: CursorAction) => {
+    const n = now.current;
+    const next = cursorReducer({ i: n.index, playing: n.playing, speed: n.speed }, a);
+    if (next.i !== n.index) (n.mode === 'decisions' ? setDIdx : setFIdx)(next.i);
+    setPlaying(next.playing);
+    setSpeed(next.speed);
+  }, []);
+  // The timer: one moment on per step. It depends on the moment shown, not on the log, which a live
+  // watch replaces every poll (a timer reset each time would never fire).
+  useEffect(() => {
+    if (!playing) return;
+    const t = setTimeout(() => apply({ kind: 'tick', count: now.current.count, live: now.current.liveNow }), stepDelay(mode, speed));
+    return () => clearTimeout(t);
+  }, [playing, speed, index, mode, apply]);
+  const select = useCallback((i: number) => apply({ kind: 'select', i, count: now.current.count }), [apply]);
+  const togglePlay = useCallback(() => apply({ kind: 'toggle', count: now.current.count, live: now.current.liveNow }), [apply]);
+  const jumpLive = useCallback(() => apply({ kind: 'live', count: now.current.count }), [apply]);
+  const isFollowing = following({ i: index }, count, liveNow);
+  const playBar = (
+    <PlayBar
+      playing={playing}
+      speed={speed}
+      onToggle={togglePlay}
+      onSpeed={(s) => apply({ kind: 'speed', speed: s })}
+      live={liveNow ? { following: isFollowing, onJump: jumpLive } : null}
+      disabled={count < 2}
+    />
   );
   const step = useCallback(
     (delta: number | 'first' | 'last') => {
@@ -213,6 +243,7 @@ export function GameView({
   const switchMode = useCallback(
     (m: ScrubMode) => {
       if (m === mode) return;
+      setPlaying(false);
       // Keep the board where it is when switching.
       if (m === 'frames') {
         const fi = decisions[dIdx]?.frameIndex;
@@ -263,6 +294,7 @@ export function GameView({
   const jumpToMarker = useCallback(
     (i: number) => {
       if (mode !== 'decisions') setMode('decisions');
+      setPlaying(false);
       setDIdx(i);
       setListOpen(false);
     },
@@ -271,6 +303,7 @@ export function GameView({
   const jumpToFilm = useCallback(
     (m: FilmMoment) => {
       if (mode !== 'decisions') setMode('decisions');
+      setPlaying(false);
       setDIdx(decisionAtFrame(decisions, m.decision.frameIndex));
       setPhoneTab('board');
     },
@@ -281,6 +314,7 @@ export function GameView({
   );
   const list = (
     <TimelineList
+      play={playBar}
       extra={<WinChanceLine log={log} decisions={wcDecisions} current={frameIndex} onMarker={jumpToMarker} />}
       mode={mode}
       onMode={switchMode}
@@ -397,6 +431,7 @@ export function GameView({
                 subtitle={dockSub}
                 kind={decision?.kind}
                 onOpenList={() => setListOpen(true)}
+                play={playBar}
               />
               <Sheet open={listOpen} onClose={() => setListOpen(false)} title="Timeline" className="sheet-list" width={460}>
                 {list}

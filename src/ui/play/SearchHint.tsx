@@ -2,49 +2,59 @@
  * ForgeCoach — ui/play/SearchHint.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * "What would the search AI do?" in the decision slot (mtg-table D429,
- * searchHint.ts): a button, never automatic, shown only when the engine on
- * your PC offers hints (its /health says `hint: 1`), in a game against the
- * bot, at a decision the engine can judge (main-phase spells, attacks,
- * blocks, targets). S asks too. While it runs: "Search AI thinking…". Then
- * one line — the pick in board words and how sure it is ("clearly best", or
- * the runner-up and "too close to call") — and the caveat: it knows only what
- * you know. The cards it names glow on the board (`data-search-pick`) until
- * the decision changes.
+ * The search AI as a coach (mtg-table D429, searchHint.ts), in two places:
+ *
+ *   - the Coach panel: a selector — Search AI (the default), Claude, Off
+ *     (play/coachChoice.ts, kept per viewer) — and, with Search AI chosen, its
+ *     answer for the decision in front of you: the move in board words, how
+ *     sure it is, the other choices it weighed, how long it looked against its
+ *     budget, or "no hint for this decision" where it does not judge;
+ *   - the decision panel: Ask now, a button like Skip, for whichever coach is
+ *     chosen (S asks the search AI), and the search AI's answer in one line
+ *     under it.
+ *
+ * With Search AI chosen it answers by itself, once per decision it can judge
+ * (main-phase spells, attacks, blocks, targets): the engine on your PC is
+ * free. One question at a time; a new decision cancels the one still out
+ * (play/hintRunner.ts). Shown only in a game against the bot when the engine
+ * on your PC offers hints (`/health` `hint: 1`). The cards it names glow on
+ * the board (`data-search-pick`) until the decision changes.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { GameStateBody, InputBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import { pageHelperTarget } from '../../coachHelper.ts';
-import { askHint, hintCardIds, hintDecisionKey, hintMoment, hintSupported, hintWords, isRefused, type SearchHint as Hint } from '../../searchHint.ts';
+import { askHint, hintCardIds, hintChoiceWords, hintDecisionKey, hintInfo, hintMoment, hintWords, type HintInfo, type HintVerdict, type SearchHint as Hint } from '../../searchHint.ts';
+import { COACH_KIND_KEY, COACH_KINDS, coachPlan, readCoachKind, type CoachKind } from '../../play/coachChoice.ts';
+import { HintRunner, type HintPhase } from '../../play/hintRunner.ts';
 import { opponentFields } from '../review/useReviewRun.ts';
 import { IconSpark } from '../Icons.tsx';
-import { cx } from '../util.ts';
+import { cx, readLS, writeLS } from '../util.ts';
 import './searchHint.css';
 
-export const HINT_BUTTON = 'What would the search AI do?';
-export const HINT_THINKING = 'Search AI thinking…';
+export const ASK_NOW = 'Ask now';
+export const HINT_THINKING = 'The engine is thinking…';
 export const HINT_TITLE = 'The engine on your PC plays this decision out for a few seconds and says what it would do (S)';
+export const NO_HINT = 'No hint for this decision: the search AI judges your main-phase spells, attacks, blocks and targets.';
+export const HINT_OFF = 'The search AI needs the engine on your PC with hints on. Start ForgeCoach on your PC (the app-menu launcher, or ./scripts/play.sh).';
 
-type Phase = { key: string; state: 'idle' } | { key: string; state: 'thinking' } | { key: string; state: 'done'; hint: Hint } | { key: string; state: 'error'; message: string };
+const NO_INFO: HintInfo = { available: false, engine: null, budgetMs: null };
 
-/** Is the helper offering hints? Asked once, and again every 20 s while it says no (a PC started later). */
-function useHintAvailable(on: boolean): boolean {
-  const [ok, setOk] = useState(false);
+/** What /health says about hints: asked now, and every 20 s (a PC started later; the engine's state). */
+function useHintInfo(on: boolean): HintInfo {
+  const [info, setInfo] = useState<HintInfo>(NO_INFO);
   useEffect(() => {
     if (!on) return;
     let live = true;
-    const check = () => void hintSupported(pageHelperTarget()).then((v) => live && setOk(v));
+    const check = () => void hintInfo(pageHelperTarget()).then((v) => live && setInfo(v));
     check();
-    const t = setInterval(() => {
-      if (!ok) check();
-    }, 20_000);
+    const t = setInterval(check, 20_000);
     return () => {
       live = false;
       clearInterval(t);
     };
-  }, [on, ok]);
-  return on && ok;
+  }, [on]);
+  return on ? info : NO_INFO;
 }
 
 /** Marks the pick's cards on the board; React never sets this attribute, so a re-render keeps it. */
@@ -63,7 +73,27 @@ function useBoardMarks(ids: number[], version: unknown) {
   }, [sig, version]);
 }
 
-export function SearchHint({
+export interface SearchCoach {
+  kind: CoachKind;
+  setKind: (k: CoachKind) => void;
+  /** The engine on your PC offers hints, in a game against the bot. */
+  available: boolean;
+  info: HintInfo;
+  /** The hint for the decision on screen (`none` when the search AI does not judge it). */
+  phase: HintPhase;
+  ask: () => void;
+  /** S asks the search AI (a coach is chosen and hints are offered). */
+  searchKey: boolean;
+  state: GameStateBody | null;
+  seat: number | null;
+}
+
+/**
+ * The search AI for the board: the coach chosen, the engine's hint state, and
+ * the runner that asks once per decision with Search AI chosen. One per game
+ * screen (PlayView); the Coach panel and the decision panel read it.
+ */
+export function useSearchCoach({
   log,
   state,
   input,
@@ -79,111 +109,237 @@ export function SearchHint({
   askOpen: boolean;
   /** A game against the bot, still going (never at a table of two). */
   enabled: boolean;
-}) {
-  const available = useHintAvailable(enabled);
-  const key = enabled ? hintDecisionKey(state, input, seat, hintMoment(log)?.stateSeq ?? null) : null;
-  const [phase, setPhase] = useState<Phase | null>(null);
-  const ctrl = useRef<AbortController | null>(null);
-  // A new decision drops the last answer (and stops a question still running).
-  useEffect(() => {
-    ctrl.current?.abort();
-    ctrl.current = null;
-    setPhase(key ? { key, state: 'idle' } : null);
-  }, [key]);
-  useEffect(() => () => ctrl.current?.abort(), []);
-
-  const latest = useRef({ log, seat, key });
-  latest.current = { log, seat, key };
-  const ask = useCallback(async () => {
-    const { log: lg, seat: st, key: k } = latest.current;
-    const moment = hintMoment(lg);
-    const gameId = lg?.header?.gameId ?? null;
-    if (!k || !lg || !moment || !gameId || (st !== 0 && st !== 1)) return;
-    ctrl.current?.abort();
-    const c = new AbortController();
-    ctrl.current = c;
-    setPhase({ key: k, state: 'thinking' });
-    const opp = await opponentFields(lg);
-    if (c.signal.aborted) return;
-    const r = await askHint(pageHelperTarget(), { gameId, seat: st, stateSeq: moment.stateSeq, ...(moment.inputSeq ? { inputSeq: moment.inputSeq } : {}), ...opp }, undefined, c.signal);
-    if (c.signal.aborted || latest.current.key !== k) return;
-    if (isRefused(r)) {
-      if (r.code === 'superseded') return; // a newer question for this game is on its way
-      setPhase({ key: k, state: 'error', message: r.message });
-      return;
-    }
-    setPhase({ key: k, state: 'done', hint: r });
+}): SearchCoach {
+  const [kind, setKindState] = useState<CoachKind>(() => readCoachKind(readLS));
+  const setKind = useCallback((k: CoachKind) => {
+    setKindState(k);
+    writeLS(COACH_KIND_KEY, k);
   }, []);
+  const info = useHintInfo(enabled);
+  const available = enabled && info.available;
+  const plan = coachPlan(kind, false, available);
 
-  const shown = available && !!key && !!phase && phase.key === key;
-  // S asks, while the button is there and nothing else wants the key.
+  const latest = useRef({ log, seat });
+  latest.current = { log, seat };
+  const runner = useMemo(
+    () =>
+      new HintRunner(async (_key, signal) => {
+        const { log: lg, seat: st } = latest.current;
+        const moment = hintMoment(lg);
+        const gameId = lg?.header?.gameId ?? null;
+        if (!lg || !moment || !gameId || (st !== 0 && st !== 1)) return { ok: false, status: 0, code: null, message: 'This game has no moment the engine can look up yet.' };
+        const opp = await opponentFields(lg);
+        if (signal.aborted) return { ok: false, status: 0, code: 'superseded', message: '' };
+        return askHint(pageHelperTarget(), { gameId, seat: st, stateSeq: moment.stateSeq, ...(moment.inputSeq ? { inputSeq: moment.inputSeq } : {}), ...opp }, undefined, signal);
+      }),
+    [],
+  );
+  useEffect(() => () => runner.dispose(), [runner]);
+  const phase = useSyncExternalStore(
+    useCallback((l) => runner.subscribe(l), [runner]),
+    () => runner.get(),
+    () => runner.get(),
+  );
+
+  const key = available && kind !== 'off' ? hintDecisionKey(state, input, seat, hintMoment(log)?.stateSeq ?? null) : null;
+  // Every render: the same decision is a no-op, a new one cancels the last question and (Search AI) asks once.
   useEffect(() => {
-    if (!shown || askOpen) return;
+    runner.setDecision(key, plan.searchAuto);
+  });
+
+  const ask = useCallback(() => runner.ask(), [runner]);
+  // S asks the search AI, while a decision it judges is open and nothing else wants the key.
+  useEffect(() => {
+    if (!plan.searchKey || !key || askOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== 's' || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
       const t = e.target as HTMLElement | null;
       const tag = (t?.tagName ?? '').toLowerCase();
       if (t?.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select') return;
-      if (phase?.state === 'thinking') return;
       e.preventDefault();
-      void ask();
+      runner.ask();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [shown, askOpen, phase?.state, ask]);
+  }, [plan.searchKey, key, askOpen, runner]);
 
-  const done = shown && phase.state === 'done' ? phase.hint : null;
-  useBoardMarks(hintCardIds(done), state);
+  useBoardMarks(hintCardIds(phase.state === 'answered' ? phase.hint : null), state);
+  return { kind, setKind, available, info, phase, ask, searchKey: plan.searchKey, state, seat };
+}
 
-  if (!shown) return null;
-  if (phase.state === 'idle') {
-    return (
-      <div className="ds-hint" data-search-hint="idle">
-        <button type="button" className="ds-hint-btn" onClick={() => void ask()} title={HINT_TITLE}>
-          <IconSpark size={13} />
-          <span>{HINT_BUTTON}</span>
-          <kbd className="ds-kbd" aria-hidden="true">
-            S
-          </kbd>
+// ---------------------------------------------------------------------------
+// The selector
+
+export function CoachPicker({ kind, onKind }: { kind: CoachKind; onKind: (k: CoachKind) => void }) {
+  const shown = COACH_KINDS.find((k) => k.id === kind) ?? COACH_KINDS[0]!;
+  return (
+    <div className="pc-pick" data-coach-kind={kind}>
+      <div className="seg pc-pick-seg" role="radiogroup" aria-label="Coach">
+        {COACH_KINDS.map((k) => (
+          <button key={k.id} type="button" role="radio" aria-checked={kind === k.id} className={cx(kind === k.id && 'is-on')} onClick={() => onKind(k.id)} title={k.blurb}>
+            {k.label}
+          </button>
+        ))}
+      </div>
+      <p className="tiny muted pc-pick-blurb">{shown.blurb}</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Words shared by both places
+
+const VERDICT_WORDS: Record<HintVerdict, string> = { best: 'best', tie: 'as good', close: 'close', worse: 'worse', 'not-graded': 'not judged' };
+const TYPE_WORDS = { spell: 'Your main phase', attack: 'Your attack', block: 'Your blocks', target: 'Your target' } as const;
+
+const secs = (ms: number) => `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)} s`;
+
+/** "Looked 2.4 s of a 3 s budget" — the answer's own time against its budget (or /health's). */
+export function budgetLine(h: Pick<Hint, 'ms' | 'budgetMs'>, healthBudget: number | null): string | null {
+  const budget = h.budgetMs ?? healthBudget;
+  if (h.ms === null) return budget ? `A ${secs(budget)} look.` : null;
+  return budget ? `Looked ${secs(h.ms)} of a ${secs(budget)} budget.` : `Looked ${secs(h.ms)}.`;
+}
+
+/** The thinking line: the engine's first hint waits for it to start (about 10 s). */
+export function thinkingLine(info: HintInfo): string {
+  if (info.engine === 'idle' || info.engine === 'starting') return 'The engine is starting (about 10 s the first time)…';
+  return info.budgetMs ? `The engine is thinking (about ${secs(info.budgetMs)})…` : HINT_THINKING;
+}
+
+/** The other choices the search AI weighed, best first, in board words (never the engine's ids). */
+export function otherChoices(h: Hint, state: GameStateBody | null, seat: number | null, max = 3): { line: string; verdict: string }[] {
+  const skip = new Set([h.pick, h.runnerUp].filter(Boolean) as string[]);
+  return h.options
+    .filter((o) => !skip.has(o.token))
+    .slice(0, max)
+    .map((o) => ({ line: hintChoiceWords(o.token, state, seat), verdict: o.verdict ? VERDICT_WORDS[o.verdict] : '' }));
+}
+
+// ---------------------------------------------------------------------------
+// The decision panel: Ask now, and the search AI's answer in one line
+
+export function AskNowRow({ coach, claudeAsk }: { coach: SearchCoach; claudeAsk: (() => void) | null }) {
+  const { kind, phase, available } = coach;
+  if (kind === 'off') return null;
+  const searchOpen = available && phase.state !== 'none';
+  const forSearch = kind === 'search';
+  if (forSearch ? !searchOpen : !claudeAsk && !(searchOpen && phase.state !== 'idle')) return null;
+  const asking = phase.state === 'asking';
+  return (
+    <div className="ds-hint" data-search-hint={phase.state} data-coach-kind={kind}>
+      {(forSearch || claudeAsk) && (
+        <button
+          type="button"
+          className="ab-tool ds-ask-now"
+          onClick={forSearch ? coach.ask : (claudeAsk ?? undefined)}
+          disabled={forSearch && asking}
+          title={forSearch ? HINT_TITLE : 'Ask Claude about this moment; the answer is in the Coach panel'}
+          data-ask-now={kind}
+        >
+          {forSearch && asking ? <span className="spinner spinner-sm" aria-hidden="true" /> : <IconSpark size={13} />}
+          <span className="ab-tool-main">{ASK_NOW}</span>
+          {forSearch && (
+            <kbd className="ds-kbd" aria-hidden="true">
+              S
+            </kbd>
+          )}
         </button>
-      </div>
-    );
-  }
-  if (phase.state === 'thinking') {
+      )}
+      {searchOpen && <HintLine coach={coach} compact />}
+    </div>
+  );
+}
+
+/** The search AI's answer, one line (the decision panel) or with its reasons (the Coach panel). */
+function HintLine({ coach, compact }: { coach: SearchCoach; compact?: boolean }) {
+  const { phase, state, seat, info } = coach;
+  if (phase.state === 'asking') {
     return (
-      <div className="ds-hint" data-search-hint="thinking" role="status" aria-live="polite">
-        <span className="ds-hint-line is-thinking">
-          <span className="spinner spinner-sm" aria-hidden="true" />
-          {HINT_THINKING}
-        </span>
-      </div>
+      <span className="ds-hint-line is-thinking" role="status" aria-live="polite">
+        {!compact && <span className="spinner spinner-sm" aria-hidden="true" />}
+        {thinkingLine(info)}
+      </span>
     );
   }
-  if (phase.state === 'error') {
-    return (
-      <div className="ds-hint" data-search-hint="error" role="status">
-        <span className="ds-hint-line is-error">{phase.message}</span>
-        <button type="button" className="ds-hint-again" onClick={() => void ask()}>
-          Try again
-        </button>
-      </div>
-    );
-  }
+  if (phase.state === 'error') return <span className="ds-hint-line is-error" role="status">{phase.message}</span>;
+  if (phase.state !== 'answered') return null;
   const w = hintWords(phase.hint, state, seat);
   return (
-    <div className="ds-hint" data-search-hint="done" role="status" aria-live="polite">
-      <div className="ds-hint-line is-answer" title={`${w.line}${w.strength ? ` — ${w.strength}` : ''}`}>
-        <span className="ds-hint-k">Search AI</span> <span className="ds-hint-pick">{w.line}</span>
-        {w.strength && (
-          <>
-            {' — '}
-            <span className={cx('ds-hint-strength', `is-${phase.hint.strength}`)}>{w.strength}</span>
-          </>
-        )}
+    <span className="ds-hint-line is-answer" role="status" aria-live="polite" title={`${w.line}${w.strength ? ` — ${w.strength}` : ''}. ${w.caveatLong}`}>
+      <span className="ds-hint-k">Search AI</span> <span className="ds-hint-pick">{w.line}</span>
+      {w.strength && (
+        <>
+          {' — '}
+          <span className={cx('ds-hint-strength', `is-${phase.hint.strength}`)}>{w.strength}</span>
+        </>
+      )}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The Coach panel with Search AI chosen
+
+export function SearchCoachBody({ coach, myMove }: { coach: SearchCoach; myMove: boolean }) {
+  const { phase, state, seat, info, available } = coach;
+  if (!available) {
+    return (
+      <div className="card-box notice pc-wait" data-search-coach="off">
+        <p className="muted small">{HINT_OFF}</p>
       </div>
-      <div className="ds-hint-caveat" title={w.caveatLong}>
+    );
+  }
+  if (phase.state === 'none') {
+    return (
+      <div className="card-box notice pc-wait" data-search-coach="none">
+        <p className="muted small">{myMove ? NO_HINT : 'Waiting for your next decision. The search AI answers by itself at each one it can judge.'}</p>
+      </div>
+    );
+  }
+  const head = state && phase.state === 'answered' && phase.hint.type ? TYPE_WORDS[phase.hint.type] : 'This decision';
+  return (
+    <div className="card-box answer pc-search" data-search-coach={phase.state}>
+      <div className="box-h">
+        <span>{head}</span>
+        <span className="tiny muted">Search AI · free</span>
+      </div>
+      {phase.state === 'idle' && <p className="muted small">Ready to look at this decision.</p>}
+      {phase.state === 'asking' && <HintLine coach={coach} />}
+      {phase.state === 'error' && <HintLine coach={coach} />}
+      {phase.state === 'answered' && <Answered hint={phase.hint} state={state} seat={seat} info={info} />}
+      <div className="pc-search-foot">
+        <button type="button" className="btn btn-quiet btn-sm" onClick={coach.ask} disabled={phase.state === 'asking'} title={HINT_TITLE}>
+          <IconSpark size={13} /> {phase.state === 'idle' ? ASK_NOW : 'Ask again'} <kbd className="ds-kbd">S</kbd>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Answered({ hint, state, seat, info }: { hint: Hint; state: GameStateBody | null; seat: number | null; info: HintInfo }) {
+  const w = hintWords(hint, state, seat);
+  const others = otherChoices(hint, state, seat);
+  const budget = budgetLine(hint, info.budgetMs);
+  return (
+    <div className="pc-search-answer">
+      <p className="pc-search-pick">{w.line}</p>
+      {w.strength && <p className={cx('pc-search-strength', `is-${hint.strength}`)}>{w.strength}</p>}
+      {hint.status === 'unsupported' && hint.message && <p className="tiny muted">{hint.message}</p>}
+      {others.length > 0 && (
+        <ul className="pc-search-others" aria-label="Other choices it weighed">
+          {others.map((o, i) => (
+            <li key={i}>
+              {o.line}
+              {o.verdict && <span className="muted"> · {o.verdict}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="tiny muted" title={w.caveatLong}>
         {w.caveat}
-      </div>
+        {budget && ` ${budget}`}
+      </p>
     </div>
   );
 }

@@ -21,7 +21,7 @@
  * Settings → Live coach model (claude.ts `liveModelOf`: Sonnet unless chosen) with
  * the least thinking unless Coach thinking says Low — measured on recorded late-game plans.
  */
-import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { AskBody, GameStateBody, InputBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import type { Decision } from '../../decisions.ts';
@@ -57,6 +57,8 @@ import {
 import { keepAdviceInBrowser, persistAdvice, restoreKeptAdvice } from './keepAdvice.ts';
 import { sessionAdviceStorage } from './adviceStore.ts';
 import { PlanCoach } from './PlanCoach.tsx';
+import { CoachPicker, SearchCoachBody, type SearchCoach } from './SearchHint.tsx';
+import { setClaudeAsk } from './coachAsk.ts';
 import './coach.css';
 
 const AUTO_KEY = 'forgecoach.autoCoach';
@@ -94,12 +96,41 @@ type PlayCoachProps = {
 };
 
 /**
- * The live coach: plan mode (Settings → Coach style: Steps, the default;
- * PlanCoach.tsx) or the short / detailed styles below.
+ * The live coach. The selector at the top (play/coachChoice.ts) picks it:
+ * Search AI (the default: the engine's hint, SearchHint.tsx), Claude (plan
+ * mode — Settings → Coach style: Steps, the default; PlanCoach.tsx — or the
+ * short / detailed styles below), or Off. Claude's panel is mounted only
+ * while Claude is chosen, so it never asks by itself otherwise, whatever its
+ * Auto-coach switch says.
  */
-export const PlayCoach = memo(function PlayCoach(props: PlayCoachProps) {
+export const PlayCoach = memo(function PlayCoach({ search, ...props }: PlayCoachProps & { search: SearchCoach }) {
   const availability = useCoachAvailability();
-  return (availability.settings.coachStyle ?? 'plan') === 'plan' ? <PlanCoach {...props} /> : <StyleCoach {...props} />;
+  const picker = <CoachPicker kind={search.kind} onKind={search.setKind} />;
+  useEffect(() => {
+    if (search.kind !== 'claude') setClaudeAsk(null);
+  }, [search.kind]);
+  if (search.kind === 'claude') return (availability.settings.coachStyle ?? 'plan') === 'plan' ? <PlanCoach {...props} picker={picker} /> : <StyleCoach {...props} picker={picker} />;
+  return (
+    <div className="coach play-coach" data-coach-kind={search.kind}>
+      <div className="pc-head">
+        <div className="pc-title">Coach</div>
+        {props.onCollapse && (
+          <button className="icon-btn pc-collapse" onClick={props.onCollapse} aria-label="Hide the coach" title="Hide the coach">
+            <IconChevronDown size={16} />
+          </button>
+        )}
+      </div>
+      {picker}
+      {search.kind === 'search' ? (
+        <SearchCoachBody coach={search} myMove={props.myMove} />
+      ) : (
+        <div className="card-box notice pc-wait" data-search-coach="coach-off">
+          <p className="muted small">The coach is off. Pick Search AI or Claude above for advice.</p>
+        </div>
+      )}
+      <p className="tiny muted pc-foot">The coach only advises — every move is yours.</p>
+    </div>
+  );
 });
 
 const StyleCoach = memo(function StyleCoach({
@@ -113,6 +144,7 @@ const StyleCoach = memo(function StyleCoach({
   onOpenGuides,
   onOpenSettings,
   onCollapse,
+  picker,
 }: {
   log: GameLog | null;
   state: GameStateBody | null;
@@ -126,6 +158,8 @@ const StyleCoach = memo(function StyleCoach({
   onOpenSettings: () => void;
   /** Desktop sidebar: fold the coach away (the phase steps stay). */
   onCollapse?: () => void;
+  /** The coach selector, under the head. */
+  picker?: ReactNode;
 }) {
   const [auto, setAuto] = useState(() => readLS(AUTO_KEY) === '1');
   // Auto-coach only asks when something can answer (Claude Code on the PC, or an API key).
@@ -237,6 +271,13 @@ const StyleCoach = memo(function StyleCoach({
     return coachPrompt(log, d, { live: true, plan: { forTurn: plan.forTurn ?? 0 } });
   }, [log, plan, moment]);
 
+  // The decision panel's Ask now (coachAsk.ts): this moment, while there is one.
+  const askHere = useMemo(() => (decision && key ? () => askNow(key, decision) : null), [decision, key, askNow]);
+  useEffect(() => {
+    setClaudeAsk(askHere);
+    return () => setClaudeAsk(null);
+  }, [askHere]);
+
   return (
     <div className="coach play-coach">
       <div className="pc-head">
@@ -259,6 +300,7 @@ const StyleCoach = memo(function StyleCoach({
           </button>
         )}
       </div>
+      {picker}
       <button className="guide-btn" onClick={onOpenGuides}>
         <IconBook size={14} />
         <span className="muted">Play guide</span>
