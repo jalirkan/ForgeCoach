@@ -74,6 +74,44 @@ export function replayReducer(s: ReplayState, a: ReplayAction, d: Pick<WatchDraf
 /** How long the current step stays before a tick. */
 export const stepDelay = (s: ReplayState): number => Math.round(BASE_PICK_MS / s.speed);
 
+/** What the replay's timer depends on: the step on screen, playing or not, the speed — never the draft object. */
+export const clockKey = (s: ReplayState): string => `${s.i}|${s.playing ? 1 : 0}|${s.speed}`;
+
+export interface Timers {
+  set: (fn: () => void, ms: number) => unknown;
+  clear: (h: unknown) => void;
+}
+
+/**
+ * The replay's pick timer. The watch screen re-renders on every poll of
+ * GET /watch/<id> (1.5 s), each with a freshly parsed draft; the timer used to
+ * restart on each, so a step longer than the poll (1× is 1.6 s, 0.5× 3.2 s)
+ * never fired and the replay stood on its first pick — only 2× and 4× moved
+ * (Justin's watch, item 4). `sync` restarts it only when `clockKey` changes.
+ */
+export class ReplayClock {
+  private key: string | null = null;
+  private handle: unknown = null;
+  constructor(private readonly timers: Timers) {}
+  sync(s: ReplayState, ready: boolean, tick: () => void): void {
+    const key = ready && s.playing ? clockKey(s) : null;
+    if (key === this.key) return;
+    this.stop();
+    this.key = key;
+    if (key === null) return;
+    this.handle = this.timers.set(() => {
+      this.handle = null;
+      this.key = null;
+      tick();
+    }, stepDelay(s));
+  }
+  stop(): void {
+    if (this.handle !== null) this.timers.clear(this.handle);
+    this.handle = null;
+    this.key = null;
+  }
+}
+
 export interface ReplayView {
   /** The pick on screen; null at the decks. */
   pick: WatchPick | null;
