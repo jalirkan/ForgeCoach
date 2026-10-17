@@ -2,22 +2,21 @@
  * ForgeCoach — ui/play/combatLayout.test.tsx
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * The attack lane and the block lines (combatLayout.ts, CombatLane.tsx,
- * laneMotion.ts): who is in the attack lane and in what order, the target as
- * one label or a chip per card, a line from each attacker to each blocker
- * (confirmed and still being declared) while the blockers stay in their rows,
- * hidden information (a concealed id is never placed or joined; a face-down
- * attacker's hidden face is never read), the cards' own selectable attributes
- * inside the lane, and a server render of a lane.
+ * Combat on the board (combatLayout.ts, Board.tsx): attackers stay in their
+ * own rows (Justin's play test, 2026-10-17: the attack lane is gone), tapped
+ * with the attacking outline, with a line to what each attacks — the
+ * defending player's portrait or the planeswalker — and a chip only when the
+ * targets differ; a line from each attacker to each blocker (confirmed and
+ * still being declared) while the blockers stay in their rows; hidden
+ * information (a concealed id is never joined; a face-down attacker's hidden
+ * face is never read); and a server render of the board in combat.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { AnyCard, Card, CombatBand, GameStateBody } from '../../protocol.ts';
-import { BoardMarksContext, PlayContext, type PlayInteraction } from '../cardContext.ts';
 import { combatMarks } from './combatLines.ts';
-import { combatLayout, hasAttackLane, hideSickMark, shortName, type LayoutNames } from './combatLayout.ts';
-import { CombatLane } from './CombatLane.tsx';
-import { movedIds, placementKeys } from './laneMotion.ts';
+import { combatLayout, hideSickMark, shortName, type LayoutNames } from './combatLayout.ts';
+import { Board } from '../Board.tsx';
 
 function card(id: number, controller: number, extra: Partial<Card> = {}): Card {
   return {
@@ -37,8 +36,8 @@ function state(bf0: AnyCard[], bf1: AnyCard[], bands: CombatBand[] | null, extra
   return {
     turn: 3, round: 2, phase: 'COMBAT_DECLARE_BLOCKERS', activePlayer: 1, priority: 0,
     players: [
-      { id: 0, name: 'Justin', life: 20, zones: zones(bf0) },
-      { id: 1, name: 'Forge AI', life: 20, zones: zones(bf1) },
+      { id: 0, name: 'Justin', life: 20, poison: 0, manaPool: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, zones: zones(bf0) },
+      { id: 1, name: 'Forge AI', life: 20, poison: 0, manaPool: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, zones: zones(bf1) },
     ],
     stack: [], stackCards: [], combat: bands ? { bands } : null, events: [], ...extra,
   } as unknown as GameStateBody;
@@ -46,174 +45,149 @@ function state(bf0: AnyCard[], bf1: AnyCard[], bands: CombatBand[] | null, extra
 const names: LayoutNames = { player: (id) => (id === 0 ? 'You' : 'The bot'), avatar: (id) => (id === 0 ? 'Justin' : 'Forge AI') };
 const lay = (s: GameStateBody, marks = combatMarks(s)) => combatLayout(s, names, marks);
 
-describe('the attack lane', () => {
-  it('holds every attacker the engine lists, in its order, and nothing outside combat', () => {
+describe('attackers stay in their rows', () => {
+  it('lists every attacker the engine lists, in its order, and nothing outside combat', () => {
     const s = state([card(1, 0)], [card(9, 1, { tapped: true }), card(7, 1, { tapped: true }), card(8, 1)], [band([9], []), band([7, 8], [])]);
     const l = lay(s);
-    expect(l.columns.map((c) => c.attackerId)).toEqual([9, 7, 8]);
-    expect(l.columns.every((c) => c.controller === 1)).toBe(true);
-    expect([...l.placed].sort()).toEqual([7, 8, 9]);
-    expect(lay(state([card(1, 0)], [card(9, 1)], null)).columns).toEqual([]);
-    expect(lay(state([card(1, 0)], [card(9, 1)], [])).placed.size).toBe(0);
+    expect(l.attackers.map((c) => c.attackerId)).toEqual([9, 7, 8]);
+    expect(l.attackers.every((c) => c.controller === 1)).toBe(true);
+    expect(lay(state([card(1, 0)], [card(9, 1)], null)).attackers).toEqual([]);
+    expect(lay(state([card(1, 0)], [card(9, 1)], [])).lines).toEqual([]);
   });
 
-  it('sizes columns: a lying attacker is wider than an upright one, and an upright one makes the lane tall', () => {
-    const l = lay(state([], [card(9, 1, { tapped: true }), card(8, 1)], [band([9, 8], [])]));
-    expect(l.columns.map((c) => c.weight)).toEqual([1.4, 1]);
-    expect(l.upright).toBe(true);
-    expect(lay(state([], [card(9, 1, { tapped: true })], [band([9], [])])).upright).toBe(false);
-  });
-
-  it('never places an id the viewer cannot see, and never reads a face-down attacker’s hidden face', () => {
+  it('never joins an id the viewer cannot see, and never reads a face-down attacker’s hidden face', () => {
     const fd = card(9, 1, { name: '', faceDown: true, alt: { name: 'Secret Morph' } as never, tapped: true });
     const s = state([card(1, 0)], [hidden(8, 1), fd], [band([8, 9], [])]);
     const l = lay(s);
-    expect(l.columns.map((c) => c.attackerId)).toEqual([9]);
+    expect(l.attackers.map((c) => c.attackerId)).toEqual([9]);
     expect(JSON.stringify(l)).not.toContain('Secret Morph');
-    // The board never holds the opponent's in-play face-down `alt` (faceDown.ts drops it on read): the lane draws a nameless card.
-    const asRead = { ...fd, alt: null } as Card;
-    const html = renderToStaticMarkup(<CombatLane layout={lay(state([card(1, 0)], [asRead], [band([9], [])]))} playerId={1} side="opp" byId={new Map([[9, asRead]])} />);
-    expect(html).not.toContain('Secret Morph');
-    expect(html).toContain('Face-down card');
   });
 });
 
-describe('the target', () => {
-  it('collapses to one label at the lane’s edge when every attacker has the same target', () => {
+describe('what each attacks', () => {
+  it('a line from each attacker to the player’s portrait; no chip when they all attack the same', () => {
     const l = lay(state([card(1, 0)], [card(9, 1), card(8, 1)], [band([9], []), band([8], [])]));
-    expect(l.laneTarget).toMatchObject({ kind: 'player', id: 0, label: 'You', initial: 'J' });
-    expect(l.columns.every((c) => !c.chip)).toBe(true);
-    expect(l.lines).toEqual([]);
+    expect(l.lines).toEqual([
+      { kind: 'target', from: { card: 9 }, to: { player: 0 }, pending: false },
+      { kind: 'target', from: { card: 8 }, to: { player: 0 }, pending: false },
+    ]);
+    expect(l.chips.size).toBe(0);
+    expect(l.attackers[0]!.target).toMatchObject({ kind: 'player', id: 0, label: 'You', initial: 'J' });
   });
 
-  it('puts a chip on each card when targets differ, and a thin line to a planeswalker', () => {
+  it('targets that differ: a chip on each card as well, and a line to the planeswalker', () => {
     const karn = card(5, 0, { name: 'Karn, Scion of Urza', types: 'Legendary Planeswalker - Karn', power: null, toughness: null });
     const l = lay(state([karn], [card(9, 1), card(8, 1)], [band([9], [], { kind: 'card', id: 5 }), band([8], [])]));
-    expect(l.laneTarget).toBe(null);
-    expect(l.columns.map((c) => [c.attackerId, c.chip, c.target?.label, c.target?.initial])).toEqual([
-      [9, true, 'Karn', 'K'],
-      [8, true, 'You', 'J'],
+    expect([...l.chips].map(([id, t]) => [id, t.label, t.initial])).toEqual([
+      [9, 'Karn', 'K'],
+      [8, 'You', 'J'],
     ]);
-    expect(l.lines).toEqual([{ kind: 'target', from: { card: 9 }, to: { card: 5 }, pending: false }]);
+    expect(l.lines).toEqual([
+      { kind: 'target', from: { card: 9 }, to: { card: 5 }, pending: false },
+      { kind: 'target', from: { card: 8 }, to: { player: 0 }, pending: false },
+    ]);
   });
 
-  it('one planeswalker for the whole lane: one label and one line from it, not a line per attacker', () => {
-    const karn = card(5, 0, { name: 'Karn, Scion of Urza', types: 'Legendary Planeswalker - Karn' });
-    const l = lay(state([karn], [card(9, 1), card(8, 1)], [band([9, 8], [], { kind: 'card', id: 5 })]));
-    expect(l.laneTarget?.label).toBe('Karn');
-    expect(l.lines).toEqual([{ kind: 'target', from: { lane: 1 }, to: { card: 5 }, pending: false }]);
-  });
-
-  it('a face-down defender is "a permanent", and a null defender gets no chip', () => {
+  it('a face-down defender is "a permanent", and a null defender gets no line or chip', () => {
     const fd = card(5, 0, { name: '', faceDown: true });
     const l = lay(state([fd], [card(9, 1), card(8, 1)], [band([9], [], { kind: 'card', id: 5 }), band([8], [], null)]));
-    expect(l.columns[0]!.target).toMatchObject({ label: 'a permanent', initial: '?' });
-    expect(l.columns[1]).toMatchObject({ target: null, chip: false });
+    expect(l.attackers[0]!.target).toMatchObject({ label: 'a permanent', initial: '?' });
+    expect(l.attackers[1]!.target).toBe(null);
+    expect(l.chips.has(8)).toBe(false);
+    expect(l.lines.filter((x) => x.from.card === 8)).toEqual([]);
     expect(shortName('Jace Beleren')).toBe('Jace Beleren');
   });
 
-  it('an attacker still being declared against a planeswalker gets a chip and a line (M65 chosen.attacks)', () => {
+  it('an attacker still being declared gets its line, pending — and a chip at a planeswalker (M65 chosen.attacks)', () => {
     const pw = card(7, 1, { name: 'Elspeth, Sun’s Champion', types: 'Legendary Planeswalker - Elspeth' });
-    const s = state([card(1, 0)], [pw], null, { activePlayer: 0, phase: 'COMBAT_DECLARE_ATTACKERS' });
-    const marks = combatMarks(s, new Map(), new Set([1]), [{ attackerId: 1, defender: { kind: 'card', id: 7 } }]);
+    const s = state([card(1, 0), card(2, 0)], [pw], null, { activePlayer: 0, phase: 'COMBAT_DECLARE_ATTACKERS' });
+    const marks = combatMarks(s, new Map(), new Set([1, 2]), [{ attackerId: 1, defender: { kind: 'card', id: 7 } }, { attackerId: 2, defender: { kind: 'player', id: 1 } }]);
     const l = combatLayout(s, names, marks);
-    expect(l.columns).toEqual([]);
-    expect(l.pendingChips.get(1)).toMatchObject({ label: 'Elspeth', initial: 'E' });
-    expect(l.lines).toEqual([{ kind: 'target', from: { card: 1 }, to: { card: 7 }, pending: true }]);
+    expect(l.attackers).toEqual([]);
+    expect(l.chips.get(1)).toMatchObject({ label: 'Elspeth', initial: 'E' });
+    expect(l.chips.has(2)).toBe(false);
+    expect(l.lines).toEqual([
+      { kind: 'target', from: { card: 1 }, to: { card: 7 }, pending: true },
+      { kind: 'target', from: { card: 2 }, to: { player: 1 }, pending: true },
+    ]);
   });
 });
 
 describe('blocks as lines', () => {
-  it('joins each attacker to each of its blockers; the blockers stay in their rows', () => {
+  const blocks = (l: ReturnType<typeof lay>) => l.lines.filter((x) => x.kind === 'block');
+  it('joins each attacker to each of its blockers', () => {
     const s = state([card(1, 0), card(2, 0), card(3, 0)], [card(9, 1, { tapped: true }), card(8, 1, { tapped: true })], [band([9], [1, 2]), band([8], [3])]);
-    const l = lay(s);
-    expect(l.lines).toEqual([
+    expect(blocks(lay(s))).toEqual([
       { kind: 'block', from: { card: 9 }, to: { card: 1 }, pending: false },
       { kind: 'block', from: { card: 9 }, to: { card: 2 }, pending: false },
       { kind: 'block', from: { card: 8 }, to: { card: 3 }, pending: false },
     ]);
-    expect([...l.placed].sort()).toEqual([8, 9]);
-    expect(l.columns[0]!.weight).toBe(1.4);
-    expect(hasAttackLane(l, 1)).toBe(true);
-    expect(hasAttackLane(l, 0)).toBe(false);
   });
 
   it('draws the blocks being declared too (marked pending); a pick with no attacker is not joined', () => {
     const s = state([card(1, 0), card(2, 0)], [card(9, 1), card(8, 1)], [band([9], []), band([8], [])]);
-    const l = lay(s, combatMarks(s, new Map([[1, 8], [2, null]])));
-    expect(l.lines).toEqual([{ kind: 'block', from: { card: 8 }, to: { card: 1 }, pending: true }]);
-    expect(l.placed.has(1)).toBe(false);
+    expect(blocks(lay(s, combatMarks(s, new Map([[1, 8], [2, null]]))))).toEqual([{ kind: 'block', from: { card: 8 }, to: { card: 1 }, pending: true }]);
   });
 
   it('a blocker of two attackers gets a line from each', () => {
-    const l = lay(state([card(1, 0)], [card(9, 1), card(8, 1)], [band([9], [1]), band([8], [1])]));
-    expect(l.lines).toEqual([
+    expect(blocks(lay(state([card(1, 0)], [card(9, 1), card(8, 1)], [band([9], [1]), band([8], [1])])))).toEqual([
       { kind: 'block', from: { card: 9 }, to: { card: 1 }, pending: false },
       { kind: 'block', from: { card: 8 }, to: { card: 1 }, pending: false },
     ]);
   });
 
   it('never joins a concealed blocker, nor an attacker listed as blocking itself', () => {
-    expect(lay(state([hidden(1, 0)], [card(9, 1)], [band([9], [1])])).lines).toEqual([]);
-    expect(lay(state([], [card(9, 1)], [band([9], [9])])).lines).toEqual([]);
+    expect(blocks(lay(state([hidden(1, 0)], [card(9, 1)], [band([9], [1])])))).toEqual([]);
+    expect(blocks(lay(state([], [card(9, 1)], [band([9], [9])])))).toEqual([]);
   });
 });
 
-describe('the lane, rendered', () => {
-  const atk = [card(9, 1, { tapped: true, attacking: true }), card(8, 1, { tapped: true, attacking: true })];
+describe('the board in combat, rendered', () => {
+  const log = { frames: [], hello: null, header: null, over: null, seat: 0 } as never;
+  const atk = [card(9, 1, { tapped: true, attacking: true }), card(8, 1, { tapped: true, attacking: true }), card(6, 1)];
   const blk = card(1, 0, { blocking: true });
   const s = state([blk, card(2, 0)], atk, [band([9], [1]), band([8], [])]);
-  const l = lay(s);
-  const byId = new Map<number, Card>([...atk, blk].map((c) => [c.id, c]));
+  let cached: string | null = null;
+  const board = () => (cached ??= renderToStaticMarkup(<Board log={log} state={s} frameIndex={0} seat={0} />));
+  /** The markup of one player's side. */
+  const side = (cls: string) => {
+    const html = board();
+    return html.slice(html.indexOf(`class="player ${cls}`), html.indexOf('</section>', html.indexOf(`class="player ${cls}`)));
+  };
+  const tileOf = (h: string, id: number) => h.slice(h.lastIndexOf('<div class="tile', h.indexOf(`data-card-id="${id}"`)), h.indexOf(`data-card-id="${id}"`));
 
-  it('an attack lane: the cards in the engine’s order, one target label, no list words, no blocker', () => {
-    const html = renderToStaticMarkup(<CombatLane layout={l} playerId={1} side="opp" byId={byId} />);
-    expect(html).toContain('data-combat-lane="attack"');
-    expect([...html.matchAll(/data-lane-col="(\d+)"/g)].map((m) => m[1])).toEqual(['9', '8']);
-    expect(html).toMatch(/data-lane-label="1"[^>]*>.*→.* You</);
-    expect(html).not.toMatch(/unblocked|Combat</i);
-    expect(html).not.toContain('lane-chip');
-    expect(html).not.toContain('data-card-id="1"');
+  it('has no attack lane: each attacker is in its own side’s creature row, tapped, with the attacking outline', () => {
+    expect(board()).not.toMatch(/combat-lane|data-combat-lane|data-lane/);
+    const theirs = side('player-top');
+    const row = theirs.slice(theirs.indexOf('bf-row-permanents'));
+    for (const id of [9, 8]) {
+      expect(row).toContain(`data-card-id="${id}"`);
+      expect(tileOf(theirs, id)).toMatch(/is-tapped/);
+      expect(tileOf(theirs, id)).toMatch(/is-attacking/);
+    }
+    // In the engine's row order, with the one that stayed home beside them.
+    expect([...row.matchAll(/class="tile [^"]*"[^>]*data-card-id="(\d+)"/g)].map((m) => m[1])).toEqual(['9', '8', '6']);
+    expect(tileOf(theirs, 6)).not.toMatch(/is-attacking/);
   });
 
-  it('the attacker with a blocker wears its pair number; the other none', () => {
-    const html = renderToStaticMarkup(
-      <BoardMarksContext.Provider value={{ stack: new Map(), combat: combatMarks(s) }}>
-        <CombatLane layout={l} playerId={1} side="opp" byId={byId} />
-      </BoardMarksContext.Provider>,
-    );
-    expect(html.match(/tile-pair pair-attacker[^>]*>1</g)?.length).toBe(1);
-    expect(html.match(/tile-pair/g)?.length).toBe(1);
+  it('the blocker stays in its row, and the attacker and its blocker wear the same badge, joined by a line', () => {
+    const mine = side('player-me');
+    expect(mine.slice(mine.indexOf('bf-row-permanents'))).toContain('data-card-id="1"');
+    expect(board()).toMatch(/is-pair-attacker[\s\S]*tile-pair pair-attacker[^>]*>1</);
+    expect(board()).toMatch(/is-pair-blocker[\s\S]*tile-pair pair-blocker[^>]*>1</);
+    expect(lay(s).lines).toContainEqual({ kind: 'block', from: { card: 9 }, to: { card: 1 }, pending: false });
   });
 
-  it('the cards keep their own clicks: the engine’s selectable outline and data-mark', () => {
-    const play: PlayInteraction = {
-      mark: (c) => (c.id === 9 || c.id === 8 ? 'act' : null),
-      hint: () => false,
-      click: () => undefined,
-      chosen: () => null,
-      blockersFor: () => [],
-      playerMark: () => false,
-      clickPlayer: () => undefined,
-    };
-    const atkHtml = renderToStaticMarkup(
-      <PlayContext.Provider value={play}>
-        <CombatLane layout={l} playerId={1} side="opp" byId={byId} />
-      </PlayContext.Provider>,
-    );
-    expect(atkHtml.match(/data-mark="act"/g)?.length).toBe(2);
+  it('a line from each attacker to your portrait, which the arrows find by its player id', () => {
+    expect(lay(s).lines.filter((x) => x.kind === 'target')).toEqual([
+      { kind: 'target', from: { card: 9 }, to: { player: 0 }, pending: false },
+      { kind: 'target', from: { card: 8 }, to: { player: 0 }, pending: false },
+    ]);
+    expect(side('player-me')).toMatch(/class="avatar avatar-me"[^>]*data-player-id="0"/);
   });
 });
 
-describe('motion and marks', () => {
-  it('knows which cards changed place (into the lane, back to the row); a blocker never moves', () => {
-    const a = placementKeys(lay(state([card(1, 0)], [card(9, 1), card(8, 1)], [band([9], [1]), band([8], [])])));
-    const b = placementKeys(lay(state([card(1, 0)], [card(9, 1), card(8, 1)], [band([9], []), band([8], [1])])));
-    expect(movedIds(a, b)).toEqual([]);
-    expect(movedIds(b, new Map())).toEqual([8, 9]);
-    expect(movedIds(new Map(), a)).toEqual([8, 9]);
-  });
-
+describe('marks', () => {
   it('hides the summoning-sick mark in the other player’s combat only', () => {
     const s = (activePlayer: number, phase: string) => state([], [], null, { activePlayer, phase });
     expect(hideSickMark(s(1, 'COMBAT_DECLARE_BLOCKERS'), 0)).toBe(true);

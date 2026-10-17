@@ -39,7 +39,7 @@ export function CoachText({ text, symbols = true }: { text: string; symbols?: bo
           >
             {s.text}
             {s.tag && (
-              <span className={s.combat ? 'coach-card-n' : 'coach-card-tag'} title={s.combat ? `Number ${s.tag} in the combat lane` : undefined}>
+              <span className={s.combat ? 'coach-card-n' : 'coach-card-tag'} title={s.combat ? `Pair ${s.tag} in combat` : undefined}>
                 {s.tag}
               </span>
             )}

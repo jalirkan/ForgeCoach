@@ -541,7 +541,7 @@ export function PlayView({
             ? q('.player-me .battlefield')
             : view.mode === 'pay'
               ? q('.player-me .bf-chips') ?? q('.player-me .battlefield')
-              : q('.combat-lane') ?? q('.player-me .battlefield');
+              : q('.player-top .tile.is-attacking') ?? q('.player-me .battlefield');
       el?.scrollIntoView({ block: view.mode === 'attack' ? 'start' : 'center', behavior: 'smooth' });
     }, 60);
     return () => clearTimeout(t);

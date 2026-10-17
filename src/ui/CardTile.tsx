@@ -206,8 +206,8 @@ function TokenMark() {
 
 /**
  * Card images this page has already shown. A tile that mounts afresh (a land
- * that taps leaves its untapped pile for a tapped one, an attacker moves into
- * the combat lane, a pile of two becomes a lone card) gets a new <img>: lazy,
+ * that taps leaves its untapped pile for a tapped one, a pile of two becomes a
+ * lone card) gets a new <img>: lazy,
  * at opacity 0 until its load event, so the card went blank — the dark,
  * rotated text face of a tapped card — for as long as that took, and for good
  * when the watch moved on first. A src seen loaded draws at once, eagerly,

@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * A card whose image this page has shown keeps it on a fresh mount. Tapping
- * remounts a tile (a land leaves its untapped pile for a tapped one, an
- * attacker moves into the combat lane); the new tile used to start with its
+ * remounts a tile (a land leaves its untapped pile for a tapped one; an
+ * attacker used to move into the attack lane); the new tile used to start with its
  * image at opacity 0 and lazy, so a tapped card went blank until the image
  * loaded again (Justin's watch, 2026-10-17).
  */

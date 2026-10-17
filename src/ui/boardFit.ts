@@ -82,18 +82,3 @@ export function edgeFade(scrollLeft: number, clientWidth: number, scrollWidth: n
   return start && end ? 'start end' : start ? 'start' : end ? 'end' : '';
 }
 
-/**
- * How many items of a sideways-scrolling row lie wholly or partly past each
- * edge of its view (the combat lanes' "+3 ›" chips): `items` are the items'
- * left and right edges and `viewLeft` / `viewRight` the view's, all in the
- * same coordinates. An item cut by less than `slack` px is in view.
- */
-export function edgeCounts(viewLeft: number, viewRight: number, items: ReadonlyArray<{ left: number; right: number }>, slack = 2): { before: number; after: number } {
-  let before = 0;
-  let after = 0;
-  for (const it of items) {
-    if (it.left < viewLeft - slack) before++;
-    else if (it.right > viewRight + slack) after++;
-  }
-  return { before, after };
-}

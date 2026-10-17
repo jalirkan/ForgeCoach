@@ -145,10 +145,7 @@
   }
   .game.play.is-wide .play-board .bf-row {
     --rows-h: calc(var(--ch-lands, 1) * var(--land-k) + var(--ch-perm, 1));
-    /* The combat lane's height (play/lane.css computes the lane's card width the same way). */
-    --lane-cw: clamp(48px, min(calc((100cqw - 44px - 10px * var(--lane-n, 1)) / max(var(--lane-w, 1), 1)), 22cqh), 112px);
-    --lane-h: calc(var(--lane-cw) * var(--lane-k, 0) + 22px * min(var(--lane-k, 0), 1));
-    --cw-h: calc((100cqh - 18px - var(--attach-h, 0px) - var(--lane-h)) / var(--rows-h) * 63 / 88);
+    --cw-h: calc((100cqh - 18px - var(--attach-h, 0px)) / var(--rows-h) * 63 / 88);
     --cw-w: calc((100cqw - 24px) / var(--slots-row, 6) - 9px);
     --cw-fit: clamp(58px, min(var(--cw-h), var(--cw-w)), 200px);
     --cw: var(--cw-fit);
@@ -176,9 +173,6 @@
   }
 }
 @container side (max-height: 250px) {
-  .game.play.is-wide .play-board .battlefield[data-lane] {
-    flex-wrap: wrap;
-  }
   .game.play.is-wide .play-board .battlefield {
     flex-direction: row;
     align-items: center;

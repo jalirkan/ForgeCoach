@@ -13,21 +13,11 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Combat is drawn by placement (CombatLane.tsx, lane.css); the few lines
-   position cannot say (CombatArrows.tsx) are drawn over the board. */
+/* Combat stays in the rows (combatLayout.ts); what position cannot say — who
+   attacks what, who blocks whom — is lines over the board (CombatArrows.tsx). */
 
 .game.play .board {
   position: relative;
-}
-.combat-arrows {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 30;
-  pointer-events: none;
-  overflow: visible;
 }
 
 /* Attacking / blocking: the frame and the lines say it; the flag shrinks to a corner badge. */

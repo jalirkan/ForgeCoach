@@ -534,8 +534,8 @@ class Game {
 
   /**
    * A crowded table (scene `crowd`): your first main with ten creatures ready to attack, six lands and a
-   * hand of twelve; the AI has ten creatures and three lands. Every row, the hand and (after Alpha Strike)
-   * the attack lane hold more cards than a phone's width.
+   * hand of twelve; the AI has ten creatures and three lands. Every row and the hand hold more cards
+   * than a phone's width (and, after Alpha Strike, all ten attack from their row).
    */
   sceneCrowd() {
     const me = this.players[HUMAN];

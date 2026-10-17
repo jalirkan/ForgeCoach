@@ -6,12 +6,12 @@
  * study §2 and §4): an attacker with blockers wears a numbered badge, every
  * creature blocking it wears the same number, and a curved line joins the
  * attacker to each of its blockers — on the board, between the real cards
- * (`combatLayout.ts` lists the lines; the attackers sit in the attack lane,
+ * (`combatLayout.ts` lists the lines; the attackers stay in their rows,
  * the blockers stay in their rows).
  *
  * Numbers go 1, 2, 3… over the attackers that have a blocker, in the engine's
- * attack order: an unblocked attacker has no pair, so no badge (it is in the
- * attack lane, which says "attacking" already), and the numbers never skip.
+ * attack order: an unblocked attacker has no pair, so no badge (its red
+ * outline and its arrow say "attacking" already), and the numbers never skip.
  *
  * Pure: the marks come from `state.combat` — protocol §3.1 — plus the blocks
  * and attacks declared but not yet confirmed (the engine's own M65
@@ -154,12 +154,13 @@ export function curveBetween(a: Box, b: Box, lane = 0, endInset = 10): Curve {
   };
 }
 
-/** Fan numbers so lines sharing an end fan out instead of overlapping. */
-export function lanes(links: readonly { to: { card: number } }[]): number[] {
-  const count = new Map<number, number>();
+/** Fan numbers so lines sharing an end (a card, or a player's portrait) fan out instead of overlapping. */
+export function lanes(links: readonly { to: { card: number } | { player: number } }[]): number[] {
+  const count = new Map<string, number>();
   return links.map((l) => {
-    const n = count.get(l.to.card) ?? 0;
-    count.set(l.to.card, n + 1);
+    const k = 'card' in l.to ? `c${l.to.card}` : `p${l.to.player}`;
+    const n = count.get(k) ?? 0;
+    count.set(k, n + 1);
     return n;
   });
 }
