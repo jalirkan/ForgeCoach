@@ -205,13 +205,33 @@ function TokenMark() {
 }
 
 /**
+ * Card images this page has already shown. A tile that mounts afresh (a land
+ * that taps leaves its untapped pile for a tapped one, an attacker moves into
+ * the combat lane, a pile of two becomes a lone card) gets a new <img>: lazy,
+ * at opacity 0 until its load event, so the card went blank — the dark,
+ * rotated text face of a tapped card — for as long as that took, and for good
+ * when the watch moved on first. A src seen loaded draws at once, eagerly,
+ * from the browser's cache.
+ */
+const shownImages = new Set<string>();
+const SHOWN_CAP = 4000;
+export function noteImageShown(src: string): void {
+  if (shownImages.size >= SHOWN_CAP) shownImages.clear();
+  shownImages.add(src);
+}
+export function imageShown(src: string): boolean {
+  return shownImages.has(src);
+}
+
+/**
  * The card face: a text face (name, cost, art crop, type) that is always there
  * and sized like a card, and the full card image on top of it once it loads.
  */
 export function CardFace({ card, info, kind, eager }: { card: Card; info: CardInfo | undefined; kind: ReturnType<typeof typeKind>; eager?: boolean }) {
   const img = imageOf(card, info);
   const [state, setState] = useState<{ src: string; ok: boolean | null } | null>(null);
-  const status = state && img && state.src === img.src ? state.ok : null;
+  const known = !!img && shownImages.has(img.src);
+  const status = state && img && state.src === img.src ? state.ok : known ? true : null;
   const art = imageForCard(info, card)?.artCrop;
   // A token with no art (yet, or ever) is a compact translucent label, not a card-coloured box.
   const placeholderToken = card.token && !card.faceDown && status !== true;
@@ -254,14 +274,20 @@ export function CardFace({ card, info, kind, eager }: { card: Card; info: CardIn
           srcSet={img.srcSet}
           sizes="(max-width: 560px) 90px, 170px"
           alt=""
-          loading={eager ? 'eager' : 'lazy'}
+          loading={eager || known ? 'eager' : 'lazy'}
           decoding="async"
           draggable={false}
           ref={(el) => {
             // A cached image can finish before React attaches onLoad.
-            if (el && el.complete && el.naturalWidth > 0 && status !== true) setState({ src: img.src, ok: true });
+            if (el && el.complete && el.naturalWidth > 0 && status !== true) {
+              noteImageShown(img.src);
+              setState({ src: img.src, ok: true });
+            }
           }}
-          onLoad={() => setState({ src: img.src, ok: true })}
+          onLoad={() => {
+            noteImageShown(img.src);
+            setState({ src: img.src, ok: true });
+          }}
           onError={() => setState({ src: img.src, ok: false })}
         />
       )}
