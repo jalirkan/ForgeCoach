@@ -575,6 +575,35 @@ export class RoomClient {
   }
 
   /**
+   * D444: the room's whole cube (`GET /room/<id>/cube`), for a seat whose
+   * browser does not have it (the owner's own, cube/custom.ts). Null for a room
+   * made before D444 (404 `{code: "cube"}`); other failures are a RoomError.
+   * Check it with `checkRoomCube` before using it.
+   */
+  async cube(): Promise<RoomCube | null> {
+    let r: Response;
+    try {
+      r = await this.f(this.url('/cube'), { headers: this.headers(false) });
+    } catch {
+      throw new RoomError('The room’s computer cannot be reached.', 0, 'offline');
+    }
+    if (!r.ok) {
+      const e = await errorOf(r, 'Reading the room’s cube');
+      if (r.status === 404 && e.code === 'cube') return null;
+      throw e;
+    }
+    let body: unknown = null;
+    try {
+      body = await r.json();
+    } catch {
+      /* not JSON */
+    }
+    const c = parseRoomCube(body);
+    if (!c) throw new RoomError('The room answered something that is not a cube list.', r.status, 'bad');
+    return c;
+  }
+
+  /**
    * The live stream, reconnecting by itself (1 s, 2 s, 4 s … 15 s). `onState`
    * gets every state; `onStatus` says live / reconnecting / gone (the room
    * expired, or the link is wrong). Returns stop().
@@ -748,6 +777,60 @@ export function replayMatches(s: RoomState, cubeNames: string[]): boolean | null
   } catch {
     return false;
   }
+}
+
+/**
+ * Every card the room has shown this seat: both seats' picks, the log's lines and the grid on offer.
+ * For a cube this browser does not have (the owner's own, cube/custom.ts): the room sends only its
+ * hash and size, so the pick screen reads these as the cube until the draft is over.
+ */
+export function roomCardsSeen(s: RoomState): string[] {
+  const out = new Set<string>();
+  for (const seat of s.seats) for (const n of seat.picks) out.add(n);
+  for (const e of s.log) for (const n of e.cards) out.add(n);
+  for (const n of s.slots) if (n) out.add(n);
+  return [...out];
+}
+
+/** `GET /room/<id>/cube`'s answer (D444): the names `hash` is the SHA-256 of, de-duplicated in the owner's order. */
+export interface RoomCube {
+  room: string;
+  id: string;
+  title: string;
+  hash: string;
+  size: number;
+  cards: string[];
+}
+
+/** The room's limits: at most 2,000 names of at most 150 characters. */
+const MAX_ROOM_CUBE = 2000;
+const MAX_ROOM_NAME = 150;
+
+/** A strict read of `GET /room/<id>/cube`'s answer, or null. */
+export function parseRoomCube(v: unknown): RoomCube | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  const o = v as Record<string, unknown>;
+  if (o.ok !== true || !isStr(o.room) || !isStr(o.id) || !isStr(o.title) || !isStr(o.hash) || !/^[0-9a-f]{64}$/.test(o.hash) || !isInt(o.size)) return null;
+  if (!strs(o.cards, MAX_ROOM_CUBE) || o.cards.length !== o.size || o.cards.some((n) => !n || n.length > MAX_ROOM_NAME)) return null;
+  // eslint-disable-next-line no-control-regex
+  if (o.cards.some((n) => /[\u0000-\u001f]/.test(n))) return null;
+  return { room: o.room, id: o.id, title: o.title.slice(0, 200), hash: o.hash, size: o.size, cards: [...o.cards] };
+}
+
+/**
+ * Is this the cube the room deals from? Its id and size must be the state's,
+ * the list de-duplicated, and SHA-256 of the names the state's `cube.hash`
+ * (and the answer's own `hash`). Anything else is refused with what is wrong:
+ * the page must not draft, or check a draft, from a list that is not the room's.
+ */
+export async function checkRoomCube(c: RoomCube, s: Pick<RoomState, 'id' | 'cube'>, subtle?: SubtleCrypto): Promise<{ ok: true; cards: string[] } | { ok: false; problem: string }> {
+  const bad = (why: string) => ({ ok: false as const, problem: `The room’s card list doesn’t match the room (${why}), so this page won’t draft from it. Ask the room’s owner to make a new room.` });
+  if (c.room !== s.id || c.id !== s.cube.id) return bad('another room or cube');
+  if (new Set(c.cards).size !== c.cards.length) return bad('a card listed twice');
+  if (c.size !== s.cube.size) return bad(`${c.size} cards, the room says ${s.cube.size}`);
+  const h = await cubeHash(c.cards, subtle);
+  if (h !== c.hash || h !== s.cube.hash) return bad('its fingerprint differs');
+  return { ok: true, cards: c.cards };
 }
 
 /** SHA-256 of the cube as the room deals from it (de-duplicated, '\n'-joined), hex; the server's `cube.hash`. */

@@ -31,7 +31,7 @@ describe('pick values', () => {
 
 describe('grid', () => {
   // Top row: Rakdos gold; middle row: green; bottom row: blue; columns mix them.
-  const grid = ['Mayhem Devil', 'Juri, Master of the Revue', 'Yawgmoth, Thran Physician', 'Wood Elves', 'Lotus Cobra', 'Eternal Witness', 'Opt', 'Ponder', 'Mana Leak'];
+  const grid = ['Mayhem Devil', 'Juri, Master of the Revue', 'Yawgmoth, Thran Physician', 'Wood Elves', 'Lotus Cobra', 'Eternal Witness', 'Opt', 'Thought Scour', 'Mana Leak'];
 
   it('picks the line that fits the pool, and says what the opponent answers with', () => {
     const a = recommendGrid(grid, RAKDOS, ctx);

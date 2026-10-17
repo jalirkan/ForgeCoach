@@ -20,17 +20,19 @@ const BASE = import.meta.env.BASE_URL;
 const ctxCache = new Map<string, Promise<CubeContext>>();
 
 function loadCtx(cubeId: string): Promise<CubeContext> {
-  let p = ctxCache.get(cubeId);
+  const info = cubeInfo(cubeId);
+  if (!info) return Promise.reject(new Error(`Unknown cube “${cubeId}”.`));
+  // A custom cube saved again is another cube (cube/custom.ts).
+  const key = `${cubeId}@${info.version ?? ''}`;
+  let p = ctxCache.get(key);
   if (!p) {
-    const info = cubeInfo(cubeId);
-    if (!info) return Promise.reject(new Error(`Unknown cube “${cubeId}”.`));
     p = (async () => {
       const cube = await loadCubeDoc(info, BASE);
       const [infos, shipped, imported] = await Promise.all([getCards(cube.cards.map((c) => c.name)).catch(() => null), loadShippedMeta(info, BASE), getImportedMeta(info.id)]);
       return makeContext(cube, infos, imported ?? shipped);
     })();
-    p.catch(() => ctxCache.delete(cubeId));
-    ctxCache.set(cubeId, p);
+    p.catch(() => ctxCache.delete(key));
+    ctxCache.set(key, p);
   }
   return p;
 }

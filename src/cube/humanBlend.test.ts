@@ -157,7 +157,7 @@ describe('Synergy: the anchored blend for a cube of another environment (docs/hu
 
   it('the file is marked as from another cube', () => {
     expect(syn.anchor).toBe('cube');
-    expect(syn.cube.matched).toBe(79);
+    expect(syn.cube.matched).toBe(78);
     expect(human.anchor).toBeUndefined();
   });
 

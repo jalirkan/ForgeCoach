@@ -23,11 +23,11 @@ import '../deck/deck.css';
 import '../forge-theme.css';
 import '../draft/draft.css';
 import './watch.css';
-import { CUBES, cubeShortName } from '../../cube/cubes.ts';
+import { CUBES, cubeShortName, SHIPPED_CUBES } from '../../cube/cubes.ts';
 import { connectLive, type LiveStatus } from '../../live.ts';
 import type { GameLog } from '../../log.ts';
 import { redactSeatUrl } from '../../play/seatUrl.ts';
-import { BEST_OF, canStart, costlyPicks, defaultForm, drafterLabel, PACES, playerLabel, seedOf, watchRequest, type SeatOption, type WatchCaps, type WatchForm } from '../../watch/choices.ts';
+import { BEST_OF, canStart, capLine, costLine, costlyPicks, defaultForm, drafterBlock, drafterLabel, PACES, playerLabel, seedOf, watchRequest, type SeatOption, type WatchCaps, type WatchForm } from '../../watch/choices.ts';
 import { gameLogUrl, getWatch, listWatches, startWatch, stopWatch, waitIdle, watchCaps } from '../../watch/client.ts';
 import { gameToFollow, TERMINAL, type WatchListEntry, type WatchMatch, type WatchSide, type WatchState } from '../../watch/data.ts';
 import { atDecks, replayReducer, startReplay, stepDelay, type ReplayAction, type ReplayState } from '../../watch/replay.ts';
@@ -69,22 +69,37 @@ export default function WatchApp({ onExit }: { onExit: () => void }) {
 // ---------------------------------------------------------------------------
 // The form
 
-function Chips({ options, value, onPick, label }: { options: SeatOption[]; value: string; onPick: (id: string) => void; label: string }) {
+function Chips({ options, value, onPick, label, blocked }: { options: SeatOption[]; value: string; onPick: (id: string) => void; label: string; blocked?: (id: string) => string | null }) {
   const shown = options.find((o) => o.id === value) ?? options[0];
+  const why = blocked ? options.map((o) => (o.id === value ? null : blocked(o.id))).find((x) => x) ?? null : null;
   return (
     <div className="wb-field">
       <div className="fx-label sub-h">{label}</div>
       <div className="wb-chips" role="radiogroup" aria-label={label}>
-        {options.map((o) => (
-          <button key={o.id} type="button" role="radio" aria-checked={o.id === value} className={cx('wb-chip', o.id === value && 'is-on', o.costly && 'is-costly')} onClick={() => onPick(o.id)}>
-            {o.label}
-            {o.costly && <span className="wb-cost-mark" aria-label="costs money"> $</span>}
-          </button>
-        ))}
+        {options.map((o) => {
+          const no = o.id === value ? null : (blocked?.(o.id) ?? null);
+          return (
+            <button key={o.id} type="button" role="radio" aria-checked={o.id === value} className={cx('wb-chip', o.id === value && 'is-on', o.costly && 'is-costly')} onClick={() => onPick(o.id)} disabled={!!no} title={no ?? undefined} data-unavailable={no ? '' : undefined}>
+              {o.label}
+              {o.costly && <span className="wb-cost-mark" aria-label="costs money"> $</span>}
+            </button>
+          );
+        })}
       </div>
       {shown && <p className="tiny muted wb-blurb">{shown.blurb}</p>}
+      {why && <p className="tiny muted wb-blurb" data-blocked="">{why}</p>}
     </div>
   );
+}
+
+/** Why your own cubes can't be watched on an older engine: POST /watch takes a cube of yours only with `/health` `watchCustom: 1` (mtg-table D444). */
+const WATCH_CUSTOM_NOTE = 'Your own cubes can’t be watched with this engine: it deals only the cubes in its own folder. Update mtg-table to watch one of yours.';
+const WATCH_CUSTOM_ON = 'Your own cube goes to the engine as its list: no lab ratings, so the lab drafter rates its cards by Forge’s draft ranks.';
+
+/** The picked cube's own title and document when it is one of yours, else null. */
+function customOf(cube: string): { title: string; doc: string } | null {
+  const c = CUBES.find((x) => x.file === cube);
+  return c?.custom ? { title: c.title, doc: c.doc ?? '' } : null;
 }
 
 function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: string) => void }) {
@@ -99,7 +114,7 @@ function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: strin
     void watchCaps().then((c) => {
       if (!live) return;
       setCaps(c);
-      setForm((f) => f ?? defaultForm(CUBES.find((x) => x.id === 'fair-fight')?.file ?? CUBES[0]!.file, c));
+      setForm((f) => f ?? defaultForm(CUBES.find((x) => x.id === 'fair-fight')?.file ?? SHIPPED_CUBES[0]!.file, c));
       if (c.watch) void listWatches().then((l) => live && setRecent(l));
     });
     return () => {
@@ -111,7 +126,7 @@ function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: strin
 
   const start = useCallback(async () => {
     if (!form || !caps) return;
-    const r = watchRequest(form, caps);
+    const r = watchRequest(form, caps, customOf(form.cube));
     if ('problem' in r) {
       setProblem(r.problem);
       return;
@@ -184,7 +199,12 @@ function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: strin
   }
   const costly = costlyPicks(form, caps);
   const seed = seedOf(form.seed);
-  const ok = canStart(form, caps);
+  const custom = customOf(form.cube);
+  const ok = canStart(form, caps, custom);
+  const request = watchRequest(form, caps, custom);
+  // A problem the player can't fix from the side panels (a cube too big, an older engine): said under the cube.
+  const cubeProblem = custom && 'problem' in request && !/^Tick the box|^Pick who|^One side/.test(request.problem) ? request.problem : null;
+  const cap = capLine(caps.llmCap);
   const runningNow = recent?.running ?? caps.running;
   const finished = (recent?.watches ?? []).filter((w) => w.id !== runningNow).slice(0, 6);
   return (
@@ -207,12 +227,26 @@ function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: strin
         <section className="panel">
           <div className="fx-label panel-h">Cube</div>
           <div className="wb-chips is-cubes" role="radiogroup" aria-label="Cube">
-            {CUBES.map((c) => (
+            {CUBES.filter((c) => !c.custom).map((c) => (
               <button key={c.id} type="button" role="radio" aria-checked={form.cube === c.file} className={cx('wb-chip', form.cube === c.file && 'is-on')} onClick={() => set({ cube: c.file })}>
                 {cubeShortName(c)}
               </button>
             ))}
+            {CUBES.filter((c) => c.custom).map((c) =>
+              caps.custom ? (
+                <button key={c.id} type="button" role="radio" aria-checked={form.cube === c.file} className={cx('wb-chip', form.cube === c.file && 'is-on')} onClick={() => set({ cube: c.file })} data-custom="">
+                  {cubeShortName(c)}
+                </button>
+              ) : (
+                <button key={c.id} type="button" role="radio" aria-checked={false} className="wb-chip" disabled title={WATCH_CUSTOM_NOTE} data-unavailable="">
+                  {cubeShortName(c)}
+                </button>
+              ),
+            )}
           </div>
+          {CUBES.some((c) => c.custom) && !caps.custom && <p className="tiny muted wb-blurb">{WATCH_CUSTOM_NOTE}</p>}
+          {custom && <p className="tiny muted wb-blurb">{WATCH_CUSTOM_ON}</p>}
+          {cubeProblem && <p className="tiny wb-bad">{cubeProblem}</p>}
           <p className="tiny muted wb-blurb">{CUBES.find((c) => c.file === form.cube)?.blurb} 18 grids of 9, the first pick alternating.</p>
           <div className="wb-row">
             <div className="wb-field">
@@ -251,7 +285,7 @@ function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: strin
               {s === 'A' && <span className="wb-eyes"> · you watch the games from this side</span>}
             </div>
             {caps.drafters.length > 1 ? (
-              <Chips label="Drafts with" options={caps.drafters} value={form.drafter[s]} onPick={(v) => setSide('drafter', s, v)} />
+              <Chips label="Drafts with" options={caps.drafters} value={form.drafter[s]} onPick={(v) => setSide('drafter', s, v)} blocked={(id) => drafterBlock(form, s, id)} />
             ) : (
               <div className="wb-field">
                 <div className="fx-label sub-h">Drafts with</div>
@@ -271,6 +305,7 @@ function WatchSetup({ onExit, onOpen }: { onExit: () => void; onOpen: (id: strin
               <li key={`${o.id}-${i}`}>{o.cost}</li>
             ))}
           </ul>
+          {cap && <p className="tiny wb-cap">{cap}</p>}
           <label className="wb-confirm">
             <input type="checkbox" checked={form.costOk} onChange={(e) => set({ costOk: e.target.checked })} /> I accept the cost of this watch.
           </label>
@@ -510,6 +545,11 @@ function WatchRun({ id, onBack, onSettings }: { id: string; onBack: () => void; 
         <p className="setup-note wb-status" data-status={match?.status ?? 'starting'}>
           {error ?? statusLine(match, !!draft)}
         </p>
+        {match?.cost && (
+          <p className="tiny muted wb-spent" data-cost={match.cost.usd ?? ''}>
+            {costLine(match.cost, !!draft || TERMINAL.includes(match.status))}
+          </p>
+        )}
         {state?.draftProblem && <p className="setup-note is-bad">The draft came back unreadable, so it can’t be replayed: {state.draftProblem}</p>}
         <GameNav match={match} at="draft" onPick={setView} />
       </div>
@@ -606,6 +646,7 @@ function WatchGame({
           ) : null}
         </p>
       )}
+      {match.cost && TERMINAL.includes(match.status) && <p className="tiny muted wb-spent">{costLine(match.cost, true)}</p>}
     </div>
   );
   const who = <>Drafter A’s view: drafter B’s hand stays hidden</>;

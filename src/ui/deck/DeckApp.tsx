@@ -139,6 +139,7 @@ function DeckHome({
                   <span className="cube-blurb">{c.blurb}</span>
                   <span className="cube-meta">
                     <span>{c.size} cards</span>
+                    {c.custom && <span>Yours</span>}
                     {c.labData !== false && <span>Lab data</span>}
                   </span>
                 </span>
@@ -148,6 +149,9 @@ function DeckHome({
               </button>
             ))}
           </div>
+          <p className="hero-sub">
+            Drafting a cube of your own? <a href="#cube/new">Make it in the cube builder</a> and it appears here.
+          </p>
         </section>
 
         <section className="load-section">

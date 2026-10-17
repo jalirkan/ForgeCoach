@@ -129,6 +129,26 @@ export interface WatchMatch {
   winner: WatchSide | 'draw' | null;
   current: number | null;
   updatedAt: string | null;
+  /** D443: each side's drafter id, from the first write; null on an older runner. */
+  drafters: Record<WatchSide, string> | null;
+  /** D443: what a Claude drafter spent (null without one, or on an older runner). */
+  cost: WatchCost | null;
+}
+
+/** match.json `cost` (D443): a Claude drafter's spend, current while it drafts, final once the draft is written. */
+export interface WatchCost {
+  side: WatchSide;
+  drafter: string;
+  calls: number;
+  callErrors: number;
+  decisions: number;
+  fallbacks: number;
+  /** Dollars at list price (the Claude Code CLI's own figure). */
+  usd: number | null;
+  /** Why the cap or the fallback stop ended the watch (`max-usd`, `max-calls`, `fallbacks`, `aborted`), or null. */
+  stopped: string | null;
+  why: string | null;
+  caps: { maxUsd: number; maxCalls: number; maxFallbackRate: number } | null;
 }
 
 export class WatchDataError extends Error {
@@ -361,6 +381,38 @@ function parseGame(v: unknown, i: number): WatchGame | string {
   };
 }
 
+function draftersOf(v: unknown): Record<WatchSide, string> | null {
+  if (!isObj(v)) return null;
+  const one = (x: unknown) => (isObj(x) && typeof x.drafter === 'string' && /^[A-Za-z0-9:=._-]{1,64}$/.test(x.drafter) ? x.drafter : null);
+  const a = one(v.A);
+  const b = one(v.B);
+  return a && b ? { A: a, B: b } : null;
+}
+
+function parseCost(v: unknown): WatchCost | null {
+  if (!isObj(v)) return null;
+  const s = side(v.side);
+  const drafter = typeof v.drafter === 'string' && /^[A-Za-z0-9:=._-]{1,64}$/.test(v.drafter) ? v.drafter : null;
+  if (!s || !drafter) return null;
+  const n = (x: unknown) => intIn(x, 0, 1e6) ?? 0;
+  const c = isObj(v.caps) ? v.caps : null;
+  const caps = c && numIn(c.maxUsd, 0, 1e4) !== null && intIn(c.maxCalls, 0, 1e6) !== null && numIn(c.maxFallbackRate, 0, 1) !== null
+    ? { maxUsd: c.maxUsd as number, maxCalls: c.maxCalls as number, maxFallbackRate: c.maxFallbackRate as number }
+    : null;
+  return {
+    side: s,
+    drafter,
+    calls: n(v.calls),
+    callErrors: n(v.callErrors),
+    decisions: n(v.decisions),
+    fallbacks: n(v.fallbacks),
+    usd: numIn(v.usd, 0, 1e4),
+    stopped: typeof v.stopped === 'string' && /^[a-z-]{1,20}$/.test(v.stopped) ? v.stopped : null,
+    why: cleanText(v.why, 400),
+    caps,
+  };
+}
+
 /** match.json → the view model, or a WatchDataError. */
 export function parseWatchMatch(raw: unknown): WatchMatch {
   if (!isObj(raw) || raw.v !== 1 || raw.kind !== 'watch-match') throw new WatchDataError(['not a v1 watch-match']);
@@ -401,6 +453,8 @@ export function parseWatchMatch(raw: unknown): WatchMatch {
     winner: result(raw.winner),
     current: intIn(raw.current, 1, 9),
     updatedAt: cleanText(raw.updatedAt, 40),
+    drafters: draftersOf(raw.drafters),
+    cost: parseCost(raw.cost),
   };
 }
 

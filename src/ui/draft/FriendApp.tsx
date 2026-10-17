@@ -278,10 +278,12 @@ function Lobby({ go, onExit }: { go: (h: string, replace?: boolean) => void; onE
             {CUBES.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.title}
+                {c.custom ? ' (yours)' : ''}
               </option>
             ))}
           </select>
         </label>
+        {cubeInfo(cubeId)?.custom && <p className="fr-small">Your own cube: your friend’s browser sees each card as the room deals it, without the whole list.</p>}
         <label className="fr-field">
           <span>Your name</span>
           <input value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder="Justin" aria-label="Your name" />
@@ -381,13 +383,20 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
   const room = useFriendRoom(entry);
   const { state, link, note, data, game, opponent } = room;
   const ctx = data.ctx;
-  const names = useMemo(() => data.cube?.cards.map((c) => c.name) ?? null, [data.cube]);
+  const roomCube = room.roomCube;
+  // The owner's own cube (cube/custom.ts) that this browser does not have: the room's own list once it is checked
+  // against the hash (D444), which the replay check then uses as is; an older room's is only what it has shown, so no check.
+  const listed = roomCube?.kind === 'cards' ? roomCube.cards : null;
+  const docNames = useMemo(() => data.cube?.cards.map((c) => c.name) ?? null, [data.cube]);
+  const names = listed ?? docNames;
   const [sameCube, setSameCube] = useState<boolean | null>(null);
   useEffect(() => {
+    if (listed) return setSameCube(true);
     if (!names || !state || !globalThis.crypto?.subtle) return;
     void cubeHash(names).then((h) => setSameCube(h === state.cube.hash));
-  }, [names, state?.cube.hash]); // eslint-disable-line react-hooks/exhaustive-deps
-  const replay = useMemo(() => (state?.done && names ? replayMatches(state, names) : null), [state, names]);
+  }, [names, listed, state?.cube.hash]); // eslint-disable-line react-hooks/exhaustive-deps
+  const standIn = !!state && !cubeInfo(state.cube.id) && !listed;
+  const replay = useMemo(() => (state?.done && names && !standIn ? replayMatches(state, names) : null), [state, names, standIn]);
   // D407: this seat's own engine review of a finished game, opened over the room.
   const [review, setReview] = useState<{ log: GameLog; report: unknown; title: string } | null>(null);
   const [reviewNote, setReviewNote] = useState<string | null>(null);
@@ -424,6 +433,9 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
   if (link === 'gone' && !state) {
     return <Message title="This room is gone" text={note ?? 'The room expired, or this link is not right for it.'} onBack={() => go('#draft/friend')} />;
   }
+  if (roomCube?.kind === 'bad') {
+    return <Message title="This room’s cube can’t be checked" text={roomCube.problem} onBack={() => go('#draft/friend')} />;
+  }
   if (!state || !game || !ctx) {
     return (
       <div className="fx dr-wait">
@@ -433,7 +445,11 @@ function RoomScreen({ entry, build, go, onSettings }: { entry: SavedRoom; build:
     );
   }
   const other = (1 - state.you) as 0 | 1;
-  const cubeNote = sameCube === false ? 'Your copy of this cube differs from the room’s: some card details may be missing.' : null;
+  const cubeNote = standIn
+    ? `${state.cube.title} is a cube made by the room’s owner, which this browser doesn’t have: the pick helper knows only the cards the room has shown.`
+    : sameCube === false
+      ? 'Your copy of this cube differs from the room’s: some card details may be missing.'
+      : null;
   const linkNote = link === 'reconnecting' ? `Reconnecting to the room… ${note ?? ''}` : link === 'gone' ? (note ?? 'The room has gone.') : null;
 
   if (!state.seats[other].joined) {
