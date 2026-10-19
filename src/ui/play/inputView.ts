@@ -18,8 +18,9 @@ import { stackKind } from '../stackModel.ts';
 import { withBoardNames, withoutEngineIds } from '../../engineText.ts';
 import { seatLabels } from '../../play/aiName.ts';
 import type { AnyCard, AskBody, Card, GameStateBody, InputBody, InputButton } from '../../protocol.ts';
-import { isHidden, keywordsOf, playableOf, selectablePlayersOf } from '../../protocol.ts';
+import { chosenOf, isHidden, keywordsOf, playableOf, selectablePlayersOf } from '../../protocol.ts';
 import { cardIndex, cardName } from '../../decisions.ts';
+import { abilityWords, parsePrompt, promptWords } from './promptWords.ts';
 
 export type InputMode =
   /** No prompt for this seat (the AI is acting, or nothing has arrived yet). */
@@ -81,6 +82,17 @@ export interface InputView {
   fromHand?: boolean;
   /** The attacker named by a block prompt ("Select creatures to block X (12)"). */
   blockingAttackerId: number | null;
+  /**
+   * One line of context for a choice, from the prompt's parts (promptWords.ts):
+   * "First target: Tireless Tracker. Choose a different target for the rest of
+   * the effect.", "Targeted so far: …", "This is part of the cost…". Null when
+   * there is nothing to add.
+   */
+  context?: string | null;
+  /** The card a target or choice prompt is about, as the board names it ("Arc Trail"), or null. */
+  source?: string | null;
+  /** That source's ability text as Forge printed it in the prompt, or null when it printed none (a sub-ability). */
+  sourceText?: string | null;
 }
 
 const MAIN = new Set(['MAIN1', 'MAIN2']);
@@ -116,6 +128,17 @@ function playerName(state: GameStateBody | null, id: number | null, seat: number
   return state?.players.find((p) => p.id === id)?.name ?? 'Opponent';
 }
 
+/**
+ * A name from one of Forge's target lists ("Tireless Tracker (93)", "Forge AI")
+ * as the board says it: a seat's engine label is "you" or the board's name for
+ * that seat; a card keeps its name (the id comes out where it is drawn).
+ */
+function entityName(entity: string, state: GameStateBody | null, seat: number | null): string {
+  const pl = state?.players.find((x) => x.name === entity);
+  if (pl) return pl.id === seat ? 'you' : playerName(state, pl.id, seat);
+  return entity;
+}
+
 const NO_BUTTON: InputButton = { label: '', enabled: false };
 
 function btn(b: InputButton | undefined, meaning: string | null = null): ButtonView {
@@ -145,6 +168,36 @@ export function topOfStack(state: GameStateBody, seat: number | null): { who: st
 
 function firstLine(s: string): string {
   return (s.split('\n').find((l) => l.trim()) ?? '').trim();
+}
+
+/**
+ * The title of a prompt no branch reads: its first line, unless that line is
+ * only the card the prompt is about ("Island (32)" over "Put Island on the top
+ * or bottom of your library?", "Depower (8) - Target creature gets…" over
+ * "Select target creature"), when the instruction under it is the title.
+ */
+function otherTitle(p: string, input: InputBody, state: GameStateBody | null, seat: number | null): string {
+  const first = firstLine(p);
+  const { parts, said } = readPrompt(p, input, state, seat);
+  if (!parts.source || !parts.ask || parts.ask === first || /\?$/.test(first)) return first;
+  return said?.title ?? parts.ask.split('\n').pop()!.trim();
+}
+
+/** A prompt's parts and the words promptWords.ts has for it (null: no rule takes it). */
+function readPrompt(p: string, input: InputBody, state: GameStateBody | null, seat: number | null) {
+  const parts = parsePrompt(p, state?.players.map((pl) => pl.name).filter(Boolean) ?? []);
+  const source = parts.source ? withoutEngineIds(parts.source) : null;
+  const chosen = chosenOf(input);
+  const said = promptWords({
+    parts,
+    min: input.selectable.min,
+    max: input.selectable.max,
+    chosen: chosen ? chosen.cardIds.length + chosen.playerIds.length : null,
+    ok: input.buttons.ok,
+    sourceName: source,
+    nameOf: (entity) => entityName(entity, state, seat),
+  });
+  return { parts, source, said };
 }
 
 /** The whole prompt as one line, for the engine-text row. */
@@ -243,6 +296,9 @@ export function describeInput(
     title: words(v.title),
     detail: v.detail === null ? null : words(v.detail),
     engineText: words(v.engineText),
+    ...(v.context ? { context: words(v.context) } : {}),
+    ...(v.source ? { source: words(v.source) } : {}),
+    ...(v.sourceText ? { sourceText: words(v.sourceText) } : {}),
     payFor: v.payFor === null ? null : words(v.payFor),
   };
 }
@@ -287,7 +343,7 @@ function describeInputRaw(
   const players = selectablePlayersOf(input);
   const playerPick = (players?.length ?? 0) > 0;
   const selecting = (input.selectable.mode !== 'none' && (input.selectable.cardIds.length > 0 || input.selectable.mode === 'players')) || playerPick;
-  const v = base('other', firstLine(p) || 'Your move');
+  const v = base('other', otherTitle(p, input, state, seat) || 'Your move');
   const primaryDefault = (): 'ok' | 'cancel' | null => (focus === 'cancel' && cancel.enabled ? 'cancel' : ok.enabled ? 'ok' : cancel.enabled && focus === 'cancel' ? 'cancel' : null);
   v.primary = primaryDefault();
 
@@ -465,14 +521,9 @@ function describeInputRaw(
     const cardPick = input.selectable.mode === 'cards' && input.selectable.cardIds.length > 0;
     const onlyPlayers = input.selectable.mode === 'players' || (playerPick && !cardPick);
     const what = onlyPlayers ? 'a player' : n > 1 ? `up to ${n}` : 'one';
-    // "Source (12)\nWhat to do": headline the instruction, name the source.
-    // InputSelectTargets: "Host - Select up to two target …\nTargeted:\n<names>\n(1 more can be targeted)".
-    const all = p.split('\n').map((l) => l.trim()).filter(Boolean);
-    const cut = all.findIndex((l) => /^Targeted:/i.test(l));
-    const lines = (cut >= 0 ? all.slice(0, cut) : all).filter((l) => !/^\(\d+ more can be targeted\)$/i.test(l));
-    const dash = lines.length === 1 ? /^(.+?) - (.+)$/.exec(lines[0]!) : null;
-    const source = dash ? dash[1]!.replace(/\s*\(\d+\)\s*$/, '') : lines.length > 1 ? lines[0]!.replace(/\s*\(\d+\)\s*$/, '') : null;
-    const ask = dash ? dash[2]! : lines.length > 1 ? lines[lines.length - 1]! : lines[0] ?? 'Make a choice';
+    // Forge's message, in parts (promptWords.ts): the source, the instruction, what is already targeted.
+    const { parts, source, said } = readPrompt(p, input, state, seat);
+    const ask = said?.title ?? (parts.ask || 'Make a choice');
     // Nothing listed: the prompt says whether a player is wanted ("Select target player", "target opponent").
     // M66 decides when the frame says (a list: players and/or cards); else the prompt's words.
     const clickWhat: InputView['clickWhat'] = fromHand
@@ -483,7 +534,7 @@ function describeInputRaw(
           : playerPick
             ? 'card or player'
             : 'card'
-        : input.selectable.mode === 'players' || (!selecting && PLAYER_ONLY.test(ask) && !CARD_WORDS.test(ask))
+        : input.selectable.mode === 'players' || (!selecting && PLAYER_ONLY.test(parts.ask) && !CARD_WORDS.test(parts.ask))
           ? 'player'
           : selecting
             ? 'card'
@@ -500,6 +551,9 @@ function describeInputRaw(
       mode: 'target',
       title: ask,
       detail: source ? `${source} — ${how.charAt(0).toLowerCase()}${how.slice(1)}` : how,
+      context: said?.context ?? null,
+      source,
+      sourceText: abilityWords(parts.ability) ? withoutEngineIds(abilityWords(parts.ability)) : null,
       needClick: !ok.enabled,
       clickWhat,
       fromHand,

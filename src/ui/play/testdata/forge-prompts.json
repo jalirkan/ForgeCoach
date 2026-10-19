@@ -1,0 +1,774 @@
+[
+ {
+  "class": "later-target",
+  "from": "var/games/match-m1792256279309-g2/frames.jsonl",
+  "seq": 472,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Arc Trail (28) -  \n\nSelect any other target (1 damage)\nParent Targeted:[Tireless Tracker (93)]",
+   "focusCardId": 28,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": false
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": true
+    },
+    "focus": null
+   },
+   "selectable": {
+    "cardIds": [
+     29,
+     1,
+     70,
+     61
+    ],
+    "min": 1,
+    "max": 1,
+    "mode": "cards",
+    "playerIds": [
+     0,
+     1
+    ],
+    "chosen": {
+     "cardIds": [],
+     "playerIds": [],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": []
+  }
+ },
+ {
+  "class": "later-target",
+  "from": "var/games/match-m1792253448450/frames.jsonl",
+  "seq": 376,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Arc Trail (28) -  \n\nSelect any other target (1 damage)\nParent Targeted:[Goblin Shaman Token (121)]",
+   "focusCardId": 28,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": false
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": true
+    },
+    "focus": null
+   },
+   "selectable": {
+    "cardIds": [
+     68,
+     71
+    ],
+    "min": 1,
+    "max": 1,
+    "mode": "cards",
+    "playerIds": [
+     0,
+     1
+    ],
+    "chosen": {
+     "cardIds": [],
+     "playerIds": [],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": []
+  }
+ },
+ {
+  "class": "one-target",
+  "from": "var/games/match-m1792253448450/frames.jsonl",
+  "seq": 368,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Arc Trail (28) - Arc Trail deals 2 damage to any target and 1 damage to any other target.  \n\nSelect any target (2 damage)",
+   "focusCardId": 28,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": false
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": true
+    },
+    "focus": null
+   },
+   "selectable": {
+    "cardIds": [
+     68,
+     121,
+     71
+    ],
+    "min": 1,
+    "max": 1,
+    "mode": "cards",
+    "playerIds": [
+     0,
+     1
+    ],
+    "chosen": {
+     "cardIds": [],
+     "playerIds": [],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": []
+  }
+ },
+ {
+  "class": "sacrifice-cost",
+  "from": "var/games/match-m1791649145759/frames.jsonl",
+  "seq": 1579,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Priest of Forgotten Gods (28)\n - {T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice a creature. You add {B}{B} and draw a card.   \nSelect other creature to sacrifice (2 left)",
+   "focusCardId": 28,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": false
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": true
+    },
+    "focus": "ok"
+   },
+   "selectable": {
+    "cardIds": [
+     38,
+     23,
+     13,
+     21,
+     17,
+     249,
+     4
+    ],
+    "min": 2,
+    "max": 2,
+    "mode": "cards",
+    "playerIds": [],
+    "chosen": {
+     "cardIds": [],
+     "playerIds": [],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": [
+    {
+     "playerId": 0,
+     "zones": [
+      "battlefield"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "class": "sacrifice-cost",
+  "from": "var/games/match-m1791666843336/frames.jsonl",
+  "seq": 707,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Woe Strider (35)\n - Sacrifice another creature: Scry 1.\nSelect another creature to sacrifice (1 left)",
+   "focusCardId": 35,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": false
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": true
+    },
+    "focus": "ok"
+   },
+   "selectable": {
+    "cardIds": [
+     39,
+     24,
+     36,
+     23,
+     178,
+     21
+    ],
+    "min": 1,
+    "max": 1,
+    "mode": "cards",
+    "playerIds": [],
+    "chosen": {
+     "cardIds": [],
+     "playerIds": [],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": [
+    {
+     "playerId": 0,
+     "zones": [
+      "battlefield"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "class": "divide-damage",
+  "from": "var/games/friend-m1792262156023-seat0/frames.jsonl",
+  "seq": 917,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Justin"
+   },
+   {
+    "id": 1,
+    "name": "Evan"
+   }
+  ],
+  "input": {
+   "prompt": "Inferno Titan (9) - Whenever Inferno Titan enters or attacks, it deals 3 damage divided as you choose among one, two, or three targets. [Zone Changer: Inferno Titan (9)]\n\nSelect any target to distribute damage to\nTargeted: \nGoblin Shaman Token (126)\n(2 more can be targeted)",
+   "focusCardId": 9,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": false
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": false
+    },
+    "focus": null
+   },
+   "selectable": {
+    "cardIds": [
+     14,
+     122,
+     123,
+     124,
+     9,
+     126
+    ],
+    "min": 1,
+    "max": 3,
+    "mode": "cards",
+    "playerIds": [
+     0,
+     1
+    ],
+    "chosen": {
+     "cardIds": [
+      126
+     ],
+     "playerIds": [],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [
+    126
+   ],
+   "weak": [],
+   "openZones": []
+  }
+ },
+ {
+  "class": "forge-syntax",
+  "from": "var/games/match-m1791671758740-g2/frames.jsonl",
+  "seq": 1659,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Sun Titan (23) - Whenever Sun Titan enters or attacks, you may return target permanent card with mana value 3 or less from your graveyard to the battlefield. [Zone Changer: Sun Titan (23)]\n\nSelect target Permanent.YouCtrl+cmcLE3",
+   "focusCardId": 23,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": false
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": false
+    },
+    "focus": null
+   },
+   "selectable": {
+    "cardIds": [
+     18,
+     21,
+     26,
+     1,
+     22,
+     4
+    ],
+    "min": 1,
+    "max": 1,
+    "mode": "cards",
+    "playerIds": [],
+    "chosen": {
+     "cardIds": [],
+     "playerIds": [],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": [
+    {
+     "playerId": 0,
+     "zones": [
+      "graveyard"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "class": "several-targets",
+  "from": "var/games/match-m1791649145759/frames.jsonl",
+  "seq": 1570,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Priest of Forgotten Gods (28) - {T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice a creature. You add {B}{B} and draw a card.   \n\nSelect target player\nTargeted: \nForge AI\n(1 more can be targeted)",
+   "focusCardId": 28,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": true
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": true
+    },
+    "focus": "ok"
+   },
+   "selectable": {
+    "cardIds": [],
+    "min": 0,
+    "max": 2,
+    "mode": "none",
+    "playerIds": [
+     0,
+     1
+    ],
+    "chosen": {
+     "cardIds": [],
+     "playerIds": [
+      1
+     ],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [
+    1
+   ],
+   "weak": [],
+   "openZones": []
+  }
+ },
+ {
+  "class": "optional-target",
+  "from": "fixtures/games/human-comfort-13.jsonl",
+  "seq": 572,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Ant-Man's Air Force (23) - Whenever this creature attacks, up to one target creature gets -1/-0 until end of turn. [Attacker: Ant-Man's Air Force (23)]\n\nSelect up to one target creature",
+   "focusCardId": 23,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": true
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": false
+    },
+    "focus": "ok"
+   },
+   "selectable": {
+    "cardIds": [
+     23,
+     42
+    ],
+    "min": 0,
+    "max": 1,
+    "mode": "cards"
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": []
+  }
+ },
+ {
+  "class": "optional-target",
+  "from": "var/games/match-m1791671758740-g2/frames.jsonl",
+  "seq": 655,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Yawgmoth, Thran Physician (27) - Pay 1 life, Sacrifice another creature: Put a -1/-1 counter on up to one target creature and draw a card. \n\nSelect target creature",
+   "focusCardId": 27,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": true
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": true
+    },
+    "focus": "ok"
+   },
+   "selectable": {
+    "cardIds": [
+     26,
+     21,
+     56,
+     58,
+     121,
+     75
+    ],
+    "min": 0,
+    "max": 1,
+    "mode": "cards",
+    "playerIds": [],
+    "chosen": {
+     "cardIds": [],
+     "playerIds": [],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": []
+  }
+ },
+ {
+  "class": "one-target",
+  "from": "fixtures/games/human-auto-7.jsonl",
+  "seq": 254,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Depower (8) - Target creature gets -4/-0 until end of turn. Draw a card.\n\nSelect target creature",
+   "focusCardId": 8,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": false
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": true
+    }
+   },
+   "selectable": {
+    "cardIds": [
+     63
+    ],
+    "min": 1,
+    "max": 1,
+    "mode": "cards"
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": []
+  }
+ },
+ {
+  "class": "one-target",
+  "from": "var/games/match-m1792256279309-g2/frames.jsonl",
+  "seq": 891,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Reanimate (3) - Put target creature card from a graveyard onto the battlefield under your control. You lose life equal to its mana value.  \n\nChoose target creature card in a graveyard",
+   "focusCardId": 3,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": false
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": true
+    },
+    "focus": null
+   },
+   "selectable": {
+    "cardIds": [
+     27,
+     29,
+     1,
+     93,
+     78,
+     94,
+     68,
+     58,
+     70
+    ],
+    "min": 1,
+    "max": 1,
+    "mode": "cards",
+    "playerIds": [],
+    "chosen": {
+     "cardIds": [],
+     "playerIds": [],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": [
+    {
+     "playerId": 0,
+     "zones": [
+      "graveyard"
+     ]
+    },
+    {
+     "playerId": 1,
+     "zones": [
+      "graveyard"
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "class": "one-target",
+  "from": "var/games/match-m1791671758740-g2/frames.jsonl",
+  "seq": 1080,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Blood Artist (1) - Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life. [Zone Changer: Phyrexian Myr Token (129)]\n\nSelect target player",
+   "focusCardId": 1,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "OK",
+     "enabled": false
+    },
+    "cancel": {
+     "label": "Cancel",
+     "enabled": false
+    },
+    "focus": null
+   },
+   "selectable": {
+    "cardIds": [],
+    "min": 1,
+    "max": 1,
+    "mode": "none",
+    "playerIds": [
+     0,
+     1
+    ],
+    "chosen": {
+     "cardIds": [],
+     "playerIds": [],
+     "blocks": [],
+     "attacks": []
+    }
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": []
+  }
+ },
+ {
+  "class": "instruction-under-card",
+  "from": "fixtures/games/human-scry-7.jsonl",
+  "seq": 55,
+  "seat": 0,
+  "players": [
+   {
+    "id": 0,
+    "name": "Human"
+   },
+   {
+    "id": 1,
+    "name": "Forge AI"
+   }
+  ],
+  "input": {
+   "prompt": "Island (32)\n\nPut Island on the top or bottom of your library?",
+   "focusCardId": 32,
+   "focusCard": null,
+   "buttons": {
+    "ok": {
+     "label": "Top",
+     "enabled": true
+    },
+    "cancel": {
+     "label": "Bottom",
+     "enabled": true
+    }
+   },
+   "selectable": {
+    "cardIds": [],
+    "min": 0,
+    "max": 0,
+    "mode": "none"
+   },
+   "highlighted": [],
+   "weak": [],
+   "openZones": []
+  }
+ }
+]

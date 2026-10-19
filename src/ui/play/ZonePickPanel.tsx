@@ -39,7 +39,9 @@ export function ZonePickPanel({
   const play = usePlay();
   const title = zonePickTitle(pick, seat, state);
   const count = pickCountWords(pick.min, pick.max);
-  const source = /^(.+?)\s+-\s+/.exec(view.engineText.split('\n')[0] ?? '')?.[1]?.replace(/\s*\(\d+\)\s*$/, '') ?? null;
+  const source = view.source ?? /^(.+?)\s+-\s+/.exec(view.engineText.split('\n')[0] ?? '')?.[1]?.replace(/\s*\(\d+\)\s*$/, '') ?? null;
+  // The eyebrow names the source: the slot's "Reveillark: choose …" says the rest without it.
+  const ask = source && view.title.startsWith(`${source}: `) ? view.title.slice(source.length + 2).replace(/^./, (c) => c.toUpperCase()) : view.title;
   if (folded) {
     return (
       <button type="button" className="zpick-pill" onClick={() => setFolded(false)} aria-label={`${title}: show the cards`}>
@@ -56,7 +58,7 @@ export function ZonePickPanel({
           <div className="zpick-eyebrow">{source ?? 'Your choice'}</div>
           <h2 className="zpick-title">{title}</h2>
           <div className="zpick-sub">
-            {view.title && view.title !== title && <span>{view.title}</span>}
+            {ask && ask !== title && <span>{ask}</span>}
             {count && <span className="zpick-count">{count}</span>}
             <span className={cx('zpick-chosen', pick.chosenCount > 0 && 'has-picks')}>
               <span className="zpick-dot" aria-hidden="true" />

@@ -166,8 +166,9 @@ describe('describeInput', () => {
     });
     const v = describeInput(i, state(), ME);
     expect(v.mode).toBe('target');
-    expect(v.title).toBe('Select target creature');
+    expect(v.title).toBe('Depower: choose target creature');
     expect(v.detail).toMatch(/^Depower — tap one/);
+    expect(v.source).toBe('Depower');
   });
 
   it('an open ask or a finished game hides the engine buttons', () => {
@@ -358,7 +359,8 @@ describe('cardRole', () => {
     const st = state({ activePlayer: OPP, priority: OPP });
     const c = ctxFor(i, st);
     expect(c.view.mode).toBe('target');
-    expect(c.view.title).toBe('Select target player');
+    expect(c.view.title).toBe('Blood Artist: choose target player');
+    expect(c.view.sourceText).toBe('Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life.');
     expect(c.view.clickWhat).toBe('player');
     expect(c.view.detail).toMatch(/portrait/);
     expect(playerClickable(c)).toBe(true);
