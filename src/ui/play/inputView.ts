@@ -467,9 +467,14 @@ function describeInputRaw(
     const what = onlyPlayers ? 'a player' : n > 1 ? `up to ${n}` : 'one';
     // "Source (12)\nWhat to do": headline the instruction, name the source.
     // InputSelectTargets: "Host - Select up to two target …\nTargeted:\n<names>\n(1 more can be targeted)".
+    // A second "another target" part adds "Parent Targeted:[<names>]": what the first part chose,
+    // which this part must not choose again (Arc Trail). Never the instruction.
     const all = p.split('\n').map((l) => l.trim()).filter(Boolean);
+    const parents = parentTargets(all);
     const cut = all.findIndex((l) => /^Targeted:/i.test(l));
-    const lines = (cut >= 0 ? all.slice(0, cut) : all).filter((l) => !/^\(\d+ more can be targeted\)$/i.test(l));
+    const lines = (cut >= 0 ? all.slice(0, cut) : all).filter(
+      (l) => !/^\(\d+ more can be targeted\)$/i.test(l) && !PARENT_TARGETED.test(l),
+    );
     const dash = lines.length === 1 ? /^(.+?) - (.+)$/.exec(lines[0]!) : null;
     const source = dash ? dash[1]!.replace(/\s*\(\d+\)\s*$/, '') : lines.length > 1 ? lines[0]!.replace(/\s*\(\d+\)\s*$/, '') : null;
     const ask = dash ? dash[2]! : lines.length > 1 ? lines[lines.length - 1]! : lines[0] ?? 'Make a choice';
@@ -499,7 +504,9 @@ function describeInputRaw(
       ...v,
       mode: 'target',
       title: ask,
-      detail: source ? `${source} — ${how.charAt(0).toLowerCase()}${how.slice(1)}` : how,
+      detail:
+        (source ? `${source} — ${how.charAt(0).toLowerCase()}${how.slice(1)}` : how) +
+        (parents.length > 0 ? ` Already targeted: ${parents.join(', ')}. Choose a different target.` : ''),
       needClick: !ok.enabled,
       clickWhat,
       fromHand,
@@ -507,6 +514,20 @@ function describeInputRaw(
     };
   }
   return v;
+}
+
+/** Forge's "Parent Targeted:[a, b]" line (InputSelectTargets, a part that needs another target). */
+export const PARENT_TARGETED = /^Parent Targeted:/i;
+
+/** The names on a prompt's "Parent Targeted:[…]" line, or none. */
+export function parentTargets(lines: readonly string[]): string[] {
+  const line = lines.find((l) => PARENT_TARGETED.test(l));
+  if (!line) return [];
+  const body = line.replace(PARENT_TARGETED, '').trim().replace(/^\[/, '').replace(/\]$/, '');
+  return body
+    .split(',')
+    .map((n) => n.trim())
+    .filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------
