@@ -7,7 +7,9 @@
  * layout bar, the mainboard as stacks with LAND and SIDEBOARD columns (tap
  * or drag a card across), and the Basic Lands panel. "Suggest a build" asks
  * the deck assistant's builder (src/cube/builder.ts) to fill the mainboard
- * and the basics; its score and reasons stay in a quiet note.
+ * and the basics; its score and reasons stay in a quiet note. "Suggest lands"
+ * (builder.ts `suggestLands`) keeps the cards the player chose and fills in only
+ * the land count and the basics' colour split, with a one-line why.
  *
  * Export (ui/DeckExport.tsx): "Copy list" sits beside Submit (the stat bar on
  * a wide screen, the bottom dock on a phone), so the deck on screen — picked
@@ -15,9 +17,9 @@
  * (count, .txt / .dck / .cod, Share…) is under the basic lands.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { buildDecks } from '../../cube/builder.ts';
+import { buildDecks, suggestLands } from '../../cube/builder.ts';
 import type { CubeContext } from '../../cube/score.ts';
-import { BASIC_KEYS, BASIC_NAME, deckCount, deckFromBuild, exportList, mainNames, MIN_DECK, moveCard, setBasic, type BasicKey, type DeckState } from '../../draft/deck.ts';
+import { BASIC_KEYS, BASIC_NAME, deckCount, deckFromBuild, exportList, mainNames, MIN_DECK, moveCard, setBasic, withSuggestedLands, type BasicKey, type DeckState } from '../../draft/deck.ts';
 import { kindCounts } from '../../draft/poolView.ts';
 import { IconChevronLeft } from '../Icons.tsx';
 import { cx } from '../util.ts';
@@ -64,6 +66,7 @@ export function DeckEditor({
   const [prefs, setPrefs] = usePrefs('deck-main', { layout: 'stacks', group: 'cmc', size: 104 });
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [landNote, setLandNote] = useState<string | null>(null);
   const main = useMemo(() => mainNames(deck), [deck]);
   const count = deckCount(deck);
   const kinds = kindCounts(main, meta);
@@ -76,7 +79,14 @@ export function DeckEditor({
       const b = buildDecks(ctx, pool)[0];
       setBusy(false);
       if (b) onDeck(deckFromBuild(b, pool));
+      setLandNote(null);
     }, 30);
+  };
+
+  const lands = () => {
+    const s = suggestLands(deck.main, ctx);
+    setLandNote(s ? s.note : 'No coloured spells in the mainboard yet: add some, then suggest lands.');
+    if (s) onDeck(withSuggestedLands(deck, s));
   };
 
   useEffect(() => {
@@ -123,9 +133,14 @@ export function DeckEditor({
           prefs={prefs}
           onChange={setPrefs}
           right={
-            <button className="btn-line de-suggest" onClick={suggest} disabled={busy}>
-              {busy ? 'Building…' : 'Suggest a build'}
-            </button>
+            <>
+              <button className="btn-line de-suggest" onClick={lands} title="Keep my cards; fill in the land count and the basics">
+                Suggest lands
+              </button>
+              <button className="btn-line de-suggest" onClick={suggest} disabled={busy}>
+                {busy ? 'Building…' : 'Suggest a build'}
+              </button>
+            </>
           }
         />
       </div>
@@ -167,6 +182,7 @@ export function DeckEditor({
               </div>
             ))}
           </div>
+          {landNote && <p className="de-help quiet-italic">{landNote}</p>}
           {deck.suggestion && (
             <div className="de-note">
               <div className="fx-label">Suggested build</div>

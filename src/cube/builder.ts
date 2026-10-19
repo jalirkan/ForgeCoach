@@ -669,6 +669,70 @@ export function swapOptions(ctx: CubeContext, pool: string[], build: DeckBuild, 
   return res.sort((a, b) => b.delta - a.delta || byName(a.name, b.name));
 }
 
+/** "Suggest lands": the land count and the basics' colour split for spells the player chose, nothing else. */
+export interface LandSuggestion {
+  /** Lands the deck should run, nonbasic lands already in the main included. */
+  landCount: number;
+  basics: Partial<Record<Colour, number>>;
+  colors: string;
+  splash: string | null;
+  /** What the main still needs to reach 40 (0 when it is there). */
+  short: number;
+  note: string;
+}
+
+/**
+ * Lands for a hand-picked main (Evan's ask): its spells stay exactly as chosen, and
+ * so do the nonbasic lands in it. The count is the builder's (the lab's when it has
+ * one, else 16 on a low curve, 17 otherwise), raised to 18 at most when the spells
+ * leave the deck short of 40. The colours are the spells' own: a colour in at most
+ * three cards, each with one pip of it, beside two or more full colours, is a splash
+ * (the builder's three-source rule); the basics split as the builder splits them.
+ * Null when there is nothing coloured to cast.
+ */
+export function suggestLands(main: string[], ctx: CubeContext): LandSuggestion | null {
+  const spells = main.filter((n) => !ctx.facts.get(n)?.land && !BASIC_NAMES.has(n));
+  const nonbasics = main.filter((n) => ctx.facts.get(n)?.land && !BASIC_NAMES.has(n));
+  const cards: Record<string, number> = {};
+  const heavy: Record<string, boolean> = {};
+  for (const s of spells) {
+    const f = ctx.facts.get(s);
+    if (!f) continue;
+    for (const c of COLOURS) {
+      const n = f.pips[c] ?? 0;
+      if (n <= 0) continue;
+      cards[c] = (cards[c] ?? 0) + 1;
+      if (n > 1) heavy[c] = true;
+    }
+  }
+  const used = COLOURS.filter((c) => (cards[c] ?? 0) > 0).sort((a, b) => (cards[b] ?? 0) - (cards[a] ?? 0) || COLOURS.indexOf(a) - COLOURS.indexOf(b));
+  if (used.length === 0) return null;
+  const light = used.filter((c) => (cards[c] ?? 0) <= 3 && !heavy[c]);
+  const splash = used.length >= 3 && light.length > 0 ? (light[light.length - 1] ?? null) : null;
+  const colors = COLOURS.filter((c) => used.includes(c) && c !== splash).join('');
+  const arch = findArchetype(ctx.meta?.meta ?? null, colors, topThemes(spells, ctx, 1)[0]?.[0]);
+  const ml = metaLandCount(ctx, arch);
+  const avgMv = spells.length ? spells.reduce((s, x) => s + (ctx.facts.get(x)?.mv ?? 3), 0) / spells.length : 0;
+  const base = ml?.lands ?? (avgMv <= 2.4 ? 16 : 17);
+  const landCount = Math.max(base, Math.min(18, DECK_SIZE - spells.length), nonbasics.length);
+  const basics = chooseBasics(spells, nonbasics, colors, splash, landCount, ctx);
+  const short = Math.max(0, DECK_SIZE - spells.length - landCount);
+  const basicText = COLOURS.filter((c) => (basics[c] ?? 0) > 0)
+    .map((c) => `${basics[c]} ${BASIC_OF[c]}`)
+    .join(', ');
+  const why = landCount > base ? `${landCount} lands to reach 40 with ${spells.length} spells` : ml && ml.lands === landCount ? ml.note.replace(/\.$/, '') : `${landCount} lands for a curve averaging ${round1(avgMv)}`;
+  const note =
+    `${why}: ${basicText || 'no basics'}` +
+    (nonbasics.length ? ` with your ${nonbasics.length} nonbasic land${nonbasics.length === 1 ? '' : 's'}` : '') +
+    (splash ? `; ${splash} is a splash` : '') +
+    (short
+      ? `. Add ${short} more card${short === 1 ? '' : 's'} to reach 40.`
+      : spells.length + landCount > DECK_SIZE
+        ? `. That is ${spells.length + landCount} cards: cut ${spells.length + landCount - DECK_SIZE} spell${spells.length + landCount - DECK_SIZE === 1 ? '' : 's'} for 40.`
+        : '.');
+  return { landCount, basics, colors, splash, short, note };
+}
+
 /** The 40 as [count, name] lines: spells, nonbasic lands, basics. */
 export function mainDeck(b: DeckBuild): Array<[number, string]> {
   const m = new Map<string, number>();
