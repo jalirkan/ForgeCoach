@@ -10,6 +10,7 @@
  *                  → 200 {ok:true, kind:"search-hint", status:"ok"|"trivial"|"unsupported",
  *                         pick?, strength?: "clear"|"close"|"only", runnerUp?, landFirst?,
  *                         options: [{token, label, verdict?, winRate?, …}],
+ *                         line?: [{kind, text, ids}], lineStop?,   (mtg-table D454: the pick's sub-choices)
  *                         knowledge: {opponent, opponentModel: "pool"|"basic-lands"|…}, measure, …}
  *                  → 409 {code: "moved-on"|"superseded"|"not-yet"} · 400 / 403 / 404 / 429 / 503 / 504
  *
@@ -50,6 +51,23 @@ export interface HintOption {
   same: string[];
 }
 
+/**
+ * One step of the pick's line (mtg-table D454): what Forge's own AI answered
+ * inside the recommended move — "Quantum Reduction → Peggy Carter, Secret
+ * Agent", "sacrifice → Memnite", "X = 3", "then equip … → …". The engine's
+ * default, never graded. `ids`: the cards its text names, each one the board
+ * shows this seat by name (the helper checks; `hintLineSteps` again).
+ */
+export type HintStepKind = 'target' | 'x' | 'sacrifice' | 'discard' | 'exile' | 'return' | 'tap' | 'mode' | 'choose' | 'number' | 'trigger' | 'then';
+export interface HintStep {
+  kind: HintStepKind;
+  text: string;
+  ids: number[];
+}
+const STEP_KINDS: readonly HintStepKind[] = ['target', 'x', 'sacrifice', 'discard', 'exile', 'return', 'tap', 'mode', 'choose', 'number', 'trigger', 'then'];
+/** Most steps a line carries (mtg-table HintLine.MAX_STEPS). */
+export const LINE_MAX = 8;
+
 export interface SearchHint {
   status: HintStatus;
   type: HintKind | null;
@@ -67,6 +85,8 @@ export interface SearchHint {
   ms: number | null;
   /** The budget this hint ran under (ms), when the engine says. */
   budgetMs: number | null;
+  /** The pick's line (mtg-table D454): `[]` when the move asks nothing more; null when the engine sent none. */
+  line: HintStep[] | null;
 }
 
 export interface HintRequest {
@@ -256,7 +276,24 @@ export function parseHint(raw: unknown): SearchHint {
     message: cleanText(b.message, 300),
     ms: int(b.wallMs, 0, 600_000),
     budgetMs: int(b.budgetMs, 0, 600_000),
+    line: status === 'unsupported' ? null : parseLine(b.line),
   };
+}
+
+/** The answer's `line`, checked: known kinds, short one-line text, whole-number ids; null when there is none. */
+export function parseLine(raw: unknown): HintStep[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: HintStep[] = [];
+  for (const r of raw.slice(0, LINE_MAX)) {
+    if (!r || typeof r !== 'object') continue;
+    const o = r as Record<string, unknown>;
+    const kind = typeof o.kind === 'string' && (STEP_KINDS as readonly string[]).includes(o.kind) ? (o.kind as HintStepKind) : null;
+    const text = cleanText(o.text, 300);
+    if (!kind || !text) continue;
+    const ids = Array.isArray(o.ids) ? o.ids.filter((x): x is number => Number.isInteger(x) && (x as number) >= 0).slice(0, 16) : [];
+    out.push({ kind, text, ids });
+  }
+  return out;
 }
 
 const UNREACHABLE = 'Couldn’t reach the engine on your PC: start ForgeCoach again (the app-menu launcher, or ./scripts/play.sh).';
@@ -434,6 +471,21 @@ export function hintWords(h: SearchHint, state: GameStateBody | null, seat: numb
     if (land) line = `Play ${land} first, then: ${lowerFirst(line)}`;
   }
   return { line, strength: STRENGTH_WORDS[h.strength], caveat, caveatLong };
+}
+
+/**
+ * The pick's line as the board can show it (mtg-table D454): a step is kept
+ * only when every card it names is one the board's state shows by name — the
+ * helper already withholds any other line; this is the page's own check, so a
+ * step about a card that has since left view is not shown. The engine words
+ * each step; "then …" steps start with a capital here.
+ */
+export function hintLineSteps(h: Pick<SearchHint, 'line' | 'pick'>, state: GameStateBody | null, seat: number | null): HintStep[] {
+  if (!h.pick || !h.line || !h.line.length) return [];
+  const name = namesIn(state, seat);
+  return h.line
+    .filter((st) => st.ids.every((id) => name(id) !== null))
+    .map((st) => ({ ...st, text: st.text.charAt(0).toUpperCase() + st.text.slice(1) }));
 }
 
 /** Card ids the pick names, for highlighting on the board (your cards and the attackers they meet). */

@@ -12,7 +12,7 @@ import { coachPlan, COACH_KIND_KEY, parseCoachKind, readCoachKind } from './coac
 import { HintRunner, type HintAsk } from './hintRunner.ts';
 import type { HintRefused, SearchHint } from '../searchHint.ts';
 
-const HINT: SearchHint = { status: 'ok', type: 'spell', pick: 'pass', strength: 'close', runnerUp: 'cast:5', landFirst: null, options: [], knowledge: 'basic-lands', measure: 'leaf', stateSeq: 9, message: null, ms: 2400, budgetMs: 3000 };
+const HINT: SearchHint = { status: 'ok', type: 'spell', pick: 'pass', strength: 'close', runnerUp: 'cast:5', landFirst: null, options: [], knowledge: 'basic-lands', measure: 'leaf', stateSeq: 9, message: null, ms: 2400, budgetMs: 3000, line: null };
 
 /** A fake POST /hint: each call waits until the test answers it. */
 function fake() {

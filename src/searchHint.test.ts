@@ -15,9 +15,11 @@ import {
   hintKindOf,
   hintMoment,
   hintSupported,
+  hintLineSteps,
   hintWords,
   isRefused,
   parseHint,
+  parseLine,
   type HintFetch,
   type SearchHint,
 } from './searchHint.ts';
@@ -206,4 +208,34 @@ it('every answer the engine can give reads back (the helper\'s own shapes)', () 
   expect(hintWords(trivial, main.state, 0)).toMatchObject({ line: 'Cast nothing now', strength: 'the only choice' });
   const h: SearchHint = parseHint(answer({ options: [{ token: 'cast:3', label: 'x', verdict: 'best', same: ['cast:4', 'bad token'] }] }));
   expect(h.options[0]!.same).toEqual(['cast:4']);
+});
+
+describe('the pick’s line (mtg-table D454)', () => {
+  // Seed 42's turn 7, second main phase: the real engine's answer (mtg-table docs/search-hint.md).
+  const main2 = momentAt(auto, (p, s) => /^Priority/.test(p) && s.phase === 'MAIN2' && s.activePlayer === 0 && s.turn === 7 && !s.stack.length);
+  const ANSWER = { ok: true, v: 1, kind: 'search-hint', status: 'ok', type: 'spell', turn: 7, pick: 'cast:5', strength: 'clear',
+    options: [{ token: 'cast:5', label: 'cast Quantum Reduction', verdict: 'best' }, { token: 'pass', label: 'cast nothing now', verdict: 'worse' }],
+    knowledge: { opponentModel: 'basic-lands' }, measure: 'leaf', stateSeq: 497,
+    line: [{ kind: 'target', text: 'Quantum Reduction → Peggy Carter, Secret Agent', ids: [5, 44] }], lineStop: 'passed' };
+  it('reads the line: known kinds, one-line text, whole-number ids', () => {
+    const h = parseHint(ANSWER);
+    expect(h.line).toEqual([{ kind: 'target', text: 'Quantum Reduction → Peggy Carter, Secret Agent', ids: [5, 44] }]);
+    expect(parseHint({ ...ANSWER, line: undefined }).line).toBeNull();
+    expect(parseHint({ ...ANSWER, line: [] }).line).toEqual([]);
+    expect(parseLine([{ kind: 'nonsense', text: 'x', ids: [] }, { kind: 'x', text: 'X =\n3', ids: [1.5, -1, 'a', 2] }, { kind: 'mode', text: '' }]))
+      .toEqual([{ kind: 'x', text: 'X = 3', ids: [2] }]);
+    expect(parseLine(Array.from({ length: 12 }, () => ({ kind: 'number', text: 'number = 1', ids: [] })))).toHaveLength(8);
+  });
+  it('shows the steps whose cards the board shows by name, as the engine worded them', () => {
+    expect(main2.state.turn).toBe(7);
+    const steps = hintLineSteps(parseHint(ANSWER), main2.state, 0);
+    expect(steps.map((s) => s.text)).toEqual(['Quantum Reduction → Peggy Carter, Secret Agent']);
+  });
+  it('drops a step that names a card this seat cannot see', () => {
+    const hiddenId = main2.state.players[1]!.zones.hand.cards.find((c) => isHidden(c))?.id;
+    expect(hiddenId).toBeDefined();
+    const h = parseHint({ ...ANSWER, line: [...ANSWER.line, { kind: 'choose', text: 'choose → Doombot', ids: [hiddenId] }, { kind: 'then', text: 'then cast a ghost', ids: [999999] }] });
+    expect(hintLineSteps(h, main2.state, 0).map((s) => s.text)).toEqual(['Quantum Reduction → Peggy Carter, Secret Agent']);
+    expect(hintLineSteps({ ...h, pick: null }, main2.state, 0)).toEqual([]);
+  });
 });

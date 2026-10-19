@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import type { GameStateBody } from '../../protocol.ts';
 import type { SearchHint } from '../../searchHint.ts';
 import type { HintPhase } from '../../play/hintRunner.ts';
-import { AskNowRow, budgetLine, CoachPicker, NO_HINT, otherChoices, SearchCoachBody, thinkingLine, type SearchCoach } from './SearchHint.tsx';
+import { AskNowRow, budgetLine, CoachPicker, LINE_HEAD, NO_HINT, otherChoices, SearchCoachBody, thinkingLine, type SearchCoach } from './SearchHint.tsx';
 
 const card = (id: number, name: string, controller = 0) => ({ id, name, setCode: null, manaCost: null, types: 'Creature', power: '2', toughness: '2', loyalty: null, damage: 0, counters: {}, tapped: false, sick: false, attacking: false, blocking: false, faceDown: false, token: false, alt: null, attachedToId: null, attachmentIds: [], controller, owner: controller, zone: 'hand', abilities: [], keywords: [] });
 const STATE = {
@@ -28,7 +28,7 @@ const HINT: SearchHint = {
     { token: 'pass', label: 'pass', verdict: 'tie', winRate: 0.6, same: [] },
     { token: 'cast:6', label: 'cast Grizzly Bears #6', verdict: 'worse', winRate: 0.5, same: [] },
   ],
-  knowledge: 'basic-lands', measure: 'leaf', stateSeq: 9, message: null, ms: 2420, budgetMs: 3000,
+  knowledge: 'basic-lands', measure: 'leaf', stateSeq: 9, message: null, ms: 2420, budgetMs: 3000, line: null,
 };
 
 const coachIn = (phase: HintPhase, over: Partial<SearchCoach> = {}): SearchCoach => ({
@@ -101,5 +101,34 @@ describe('the Coach panel', () => {
   it('error, and off when the engine offers no hints', () => {
     expect(body(coachIn({ state: 'error', key: 'd', message: 'Search hints are off on your PC (the bridge is not built).' }))).toContain('Search hints are off');
     expect(body(coachIn({ state: 'idle', key: 'd' }, { available: false }))).toContain('needs the engine on your PC with hints on');
+  });
+});
+
+describe('the pick’s line (mtg-table D454)', () => {
+  const LINED: SearchHint = { ...HINT, line: [
+    { kind: 'target', text: 'Shock → Grizzly Bears', ids: [5, 6] },
+    { kind: 'then', text: 'then cast Grizzly Bears', ids: [6] },
+    { kind: 'choose', text: 'choose → Lightning Bolt', ids: [77] },
+  ] };
+  const body = (h: SearchHint) => renderToStaticMarkup(<SearchCoachBody coach={coachIn({ state: 'answered', key: 'd', hint: h })} myMove />);
+  it('the Coach panel prints the engine’s own choices under the move, as small steps', () => {
+    const html = body(LINED);
+    expect(html).toContain('data-search-line');
+    expect(html).toContain(LINE_HEAD);
+    expect(html).toMatch(/<li data-step-kind="target">Shock → Grizzly Bears<\/li><li data-step-kind="then">Then cast Grizzly Bears<\/li>/);
+    expect(html.indexOf('data-search-line')).toBeGreaterThan(html.indexOf('pc-search-pick'));
+    expect(html.indexOf('data-search-line')).toBeLessThan(html.indexOf('pc-search-others'));
+  });
+  it('a step naming a card the board does not show by name is not printed', () => {
+    expect(body(LINED)).not.toContain('Lightning Bolt');
+  });
+  it('no line, or an empty one: no steps', () => {
+    expect(body(HINT)).not.toContain('data-search-line');
+    expect(body({ ...HINT, line: [] })).not.toContain('data-search-line');
+  });
+  it('the decision panel keeps one line; the steps ride in its title', () => {
+    const html = renderToStaticMarkup(<AskNowRow coach={coachIn({ state: 'answered', key: 'd', hint: LINED })} claudeAsk={null} />);
+    expect(html).not.toContain('data-search-line');
+    expect(html).toContain(`${LINE_HEAD}: Shock → Grizzly Bears; Then cast Grizzly Bears.`);
   });
 });
