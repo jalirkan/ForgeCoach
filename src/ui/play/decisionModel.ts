@@ -18,7 +18,6 @@ import type { ActBody, AskBody, GameStateBody, InputBody, YieldState } from '../
 import { chosenOf, selectablePlayersOf } from '../../protocol.ts';
 import { cancel, yieldTo } from '../../play/acts.ts';
 import type { ButtonView, InputView } from './inputView.ts';
-import { PARENT_TARGETED } from './inputView.ts';
 import { buttonWords, canPassAhead, primaryView } from './actionWords.ts';
 import type { SelectionSummary } from './selection.ts';
 
@@ -157,7 +156,7 @@ export function inputCounter(input: InputBody | null, view: InputView): string |
   let n = 0;
   if (at >= 0) {
     for (const l of lines.slice(at + 1)) {
-      if (/^\(\d+ more can be targeted\)$/i.test(l) || PARENT_TARGETED.test(l)) break;
+      if (/^\(\d+ more can be targeted\)$/i.test(l) || /^Parent Targeted:/i.test(l)) break; // an earlier part's targets, not this one's
       n++;
     }
   }

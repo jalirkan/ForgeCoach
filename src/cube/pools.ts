@@ -83,6 +83,11 @@ export function newPool(cubeId: string, name: string, now = Date.now()): SavedPo
   return { id: `pool-${now.toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`, cubeId, name, cards: [], opp: [], format: null, updatedAt: now };
 }
 
+/** A pool holding a whole deck the player owns (cubes.ts `kind: 'deck'`): every card in its document, once, in its order. */
+export function deckPool(cubeId: string, name: string, cards: readonly string[], now = Date.now()): SavedPool {
+  return { ...newPool(cubeId, name, now), cards: [...new Set(cards)] };
+}
+
 const norm = (s: string) =>
   s
     .toLowerCase()

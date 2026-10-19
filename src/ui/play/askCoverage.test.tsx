@@ -318,7 +318,7 @@ describe('ask coverage: a card choice in any zone has something to click', () =>
   test('the title says which zone, the count is the engine’s (highlighted)', () => {
     const input = targetInput([41, 42], 0, 2, [41]);
     const view = describeInput(input, state, 0);
-    expect(view.title).toBe('Select up to 2 target creature cards in your graveyard');
+    expect(view.title).toBe('Reveillark: choose up to 2 target creature cards in your graveyard');
     const pick = zonePick(input, state, 0, view.mode)!;
     expect(pick.chosenCount).toBe(1);
     expect(pick.picks.find((p) => p.id === 41)!.chosen).toBe(true);

@@ -766,6 +766,14 @@ export function PlayView({
     />
   ) : null;
 
+  // The text of the card a choice is for: Forge's ability text in the prompt, else (a sub-ability's later
+  // target, which Forge prints with no text) the card's cached oracle text.
+  const sourceText = useMemo(
+    () => view.sourceText ?? (view.source ? (safeCached(view.source)?.oracleText ?? null) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [view.sourceText, view.source, cardsVersion],
+  );
+
   const dock = (
     <div className={cx('play-dock', damageBar && 'has-damage-bar')} ref={dockRef}>
       <DecisionSlot
@@ -788,6 +796,7 @@ export function PlayView({
         toggles={toggles}
         ask={wide ? askNode : null}
         hint={againstAi && !over ? <AskNowRow coach={search} claudeAsk={search.kind === 'claude' ? claudeAsk : null} /> : null}
+        sourceText={sourceText}
       />
       {damageBar}
       <HandDock player={me} landOpen={landOpen} collapsed={handHidden} onToggle={toggleHand} />

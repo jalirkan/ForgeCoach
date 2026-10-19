@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { Card, GameStateBody, InputBody } from '../../protocol.ts';
-import { cardRole, describeInput, handNeeded, noticeLine, parentTargets, parsePay, pickRefusal, playerClickable, stripSeatVocative } from './inputView.ts';
+import { cardRole, describeInput, handNeeded, noticeLine, parsePay, pickRefusal, playerClickable, stripSeatVocative } from './inputView.ts';
 import { planPlayKey, type PlayKeyContext } from './playKeys.ts';
 import { liveDecision, liveKind, momentKey } from './liveDecision.ts';
 import { canPassAhead, PASS_EOT, passMenu, primaryView } from './actionWords.ts';
@@ -166,23 +166,9 @@ describe('describeInput', () => {
     });
     const v = describeInput(i, state(), ME);
     expect(v.mode).toBe('target');
-    expect(v.title).toBe('Select target creature');
+    expect(v.title).toBe('Depower: choose target creature');
     expect(v.detail).toMatch(/^Depower — tap one/);
-  });
-
-  it('a second "another target" part: the first part\'s target is named, never the headline (Arc Trail)', () => {
-    const i = input('Arc Trail - Select another target creature or player\nParent Targeted:[Goblin Shaman Token]', {
-      buttons: { ok: { label: 'OK', enabled: false }, cancel: { label: 'Cancel', enabled: true } },
-      selectable: { cardIds: [5], min: 1, max: 1, mode: 'cards' },
-    });
-    const v = describeInput(i, state(), ME);
-    expect(v.mode).toBe('target');
-    expect(v.title).toBe('Select another target creature or player');
-    expect(v.title).not.toMatch(/Parent/);
-    expect(v.detail).toMatch(/^Arc Trail — tap/);
-    expect(v.detail).toMatch(/Already targeted: Goblin Shaman Token\. Choose a different target\.$/);
-    expect(parentTargets(['x', 'Parent Targeted:[Goblin Guide, Ornithopter]'])).toEqual(['Goblin Guide', 'Ornithopter']);
-    expect(parentTargets(['Lightning Bolt - Select any target'])).toEqual([]);
+    expect(v.source).toBe('Depower');
   });
 
   it('an open ask or a finished game hides the engine buttons', () => {
@@ -373,7 +359,8 @@ describe('cardRole', () => {
     const st = state({ activePlayer: OPP, priority: OPP });
     const c = ctxFor(i, st);
     expect(c.view.mode).toBe('target');
-    expect(c.view.title).toBe('Select target player');
+    expect(c.view.title).toBe('Blood Artist: choose target player');
+    expect(c.view.sourceText).toBe('Whenever Blood Artist or another creature dies, target player loses 1 life and you gain 1 life.');
     expect(c.view.clickWhat).toBe('player');
     expect(c.view.detail).toMatch(/portrait/);
     expect(playerClickable(c)).toBe(true);

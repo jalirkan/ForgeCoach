@@ -124,6 +124,12 @@ export function selectionSummary(
     case 'pay':
       return { active: true, count: null, line: 'Tap lands to pay', confirm: null };
     default:
-      return { active: true, count: null, line: view.needClick ? (view.clickWhat === 'player' ? 'Click a player’s portrait' : 'Click to select') : null, confirm: null };
+      // The prompt's context ("First target: Tireless Tracker. Choose a different target…") says more than "Click to select".
+      return {
+        active: true,
+        count: null,
+        line: view.context ? view.context : view.needClick ? (view.clickWhat === 'player' ? 'Click a player’s portrait' : 'Click to select') : null,
+        confirm: null,
+      };
   }
 }
