@@ -256,16 +256,19 @@ glossary: "the bot", "the engine on your PC", "Claude Code on your PC"). The log
   Commander precon (Wizards' list via MTGJSON; id `counter-blitz`, size 88):
   not a cube but a deck he owns, `CubeInfo.kind: 'deck'`. `cubes.ts`
   `DRAFT_CUBES` (with a friend — the room knows only mtg-table's cubes —, the
-  meta pages, the lobby count) leaves it out; `AI_DRAFT_CUBES` (Draft vs AI's
-  picker) lists it after the cubes, as Booster or Winston only (`draft.ts`
-  `gridFits`: 88 cards fill 9 grids, a drafter ends short of playables);
+  meta pages, the lobby count, Play vs Bot's fresh cube decks, Watch two bots)
+  leaves it out; `AI_DRAFT_CUBES` (Draft vs AI's picker) lists it after the
+  cubes, as Booster or Winston only (`draft.ts` `gridFits`: 88 cards fill 9
+  grids, a drafter ends short of playables). Both are refreshed in place with
+  `CUBES` (`refreshCustomCubes`), so your own cubes are in both;
   `OWNED_DECKS` puts it under the deck assistant's "Build from a
   deck you own", whose tile opens a pool of the whole list on the Build tab
   (`pools.ts` `deckPool`); its cube page offers "Build a 40 from it" and no
   How to draft. Basics are left out, and so are the three cards that make mana
   only for a commander (Arcane Signet, Command Tower, Path of Ancestry: none
   outside Commander), listed under its `## Commander only`. No lab data, no
-  Grid golden entry (never drafted). Its play guide is `guide.ts`
+  Grid golden entry (never drafted). It is a `SHIPPED_CUBES` entry, so its
+  cards are in the cube builder's library (`library.json`). Its play guide is `guide.ts`
   `COUNTER_BLITZ_GUIDE_ID` (green-white). Tests: `cube/counterBlitz.test.ts`.
 - `public/samples/` — two gzipped sample logs from mtg-table's fixture corpus.
 - `e2e/playtest/` — the full-game playtest (`npm run playtest`, README § Full-game playtest). A UI-only monkey (`monkey.mjs`) reads the engine's offer from the seat socket (`tap.mjs`, Playwright's WebSocket events; it never sends a frame) and clicks the board's control for it. An offered option with no control is an `unreachable-option` finding, judged only once the board draws the wire's input (`data-input-seq` on PlayView's board; a board that stays behind is `board-lag`). `checks.mjs` holds the invariants: stack panel, combat badges, the log through a reload, hidden names in the DOM. `scripts.mjs` (Forge card scripts: priority candidates), `decks.mjs` (cube drafts, `.dck`), `fakehelper.mjs`, `report.mjs`. Modes: `fake` (CI, the fake engine), `solo` (real Forge via POST /match), `table` (the draft room, two browsers, Bo3). Run with `--experimental-transform-types` (the npm script does).

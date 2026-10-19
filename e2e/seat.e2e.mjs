@@ -1366,7 +1366,7 @@ function cubeBuilderScenario({ name, viewport, tag }) {
       await page.locator('.lobby-tile', { hasText: 'Make a cube' }).click({ timeout: STEP_MS });
       await page.waitForURL(/#cube\/new$/, { timeout: STEP_MS });
       await page.locator('.cb-rows .cb-card').first().waitFor({ timeout: STEP_MS });
-      check((await page.locator('.cb-count').innerText()).includes('1590 of 1590'), 'the whole library is listed');
+      check((await page.locator('.cb-count').innerText()).includes('1669 of 1669'), 'the whole library is listed');
       await page.locator('.cb-title').fill('Friday Cube');
       await page.locator('.cb-blurb').fill('A quick cube for the Friday table.');
       // The generator: 45 cards, seed 42, by lab rating.
