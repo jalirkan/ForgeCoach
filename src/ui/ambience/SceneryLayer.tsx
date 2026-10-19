@@ -206,7 +206,7 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
                 fill={fill ? 'half' : 'strip'}
                 duals={dualsOf(scenery, t.playerId)}
               />
-              {accents && <SceneryOverlay slots={slotsOf(scenery, t.playerId)} pack={load.pack} edge={t.top ? 'top' : 'bottom'} reduced={reduced} />}
+              {accents && <SceneryOverlay slots={slotsOf(scenery, t.playerId)} pack={load.pack} edge={t.top ? 'top' : 'bottom'} reduced={reduced} half={fill} duals={dualsOf(scenery, t.playerId)} />}
             </>,
             t.el,
             `scn-${t.playerId}`,

@@ -145,7 +145,7 @@ export interface HalfSlotLayout extends SlotLayout {
  * order as the strip ({@link slotLayout}); each slot keeps its own stage.
  */
 export function halfLayout(slots: SlotState[], pack: ScenePack | null, stageOverride: number | null = null): HalfSlotLayout[] {
-  const layout = slotLayout(slots, pack, stageOverride);
+  const layout = foldPanels(slotLayout(slots, pack, stageOverride));
   if (!layout.length) return [];
   const min = (pack?.half ?? DEFAULT_HALF_LAYOUT).minShare;
   const floor = layout.map((l) => (l.stage > 0 && l.slot.weight > 0 ? min : min / 2));
@@ -166,6 +166,41 @@ export function halfLayout(slots: SlotState[], pack: ScenePack | null, stageOver
     });
   }
   return layout.map((l, i) => ({ ...l, grow: Math.round(shares[i]! * 1000) / 1000, share: Math.round(shares[i]! * 1000) / 1000 }));
+}
+
+/** Spec 1.10: the most panels a half shows. */
+export const MAX_HALF_PANELS = 3;
+
+/**
+ * Spec 1.10: a half shows at most {@link MAX_HALF_PANELS} biomes — the
+ * heaviest live ones (ties: the earlier arrival), then withered ones if there
+ * is room. Each biome left out folds its land weight into the nearest kept
+ * panel in the row (a tie: the heavier, then the left), so the panels still
+ * share the half by every land; its own picture is not drawn, and the kept
+ * panel keeps its own stage. Order is the row's. A fourth and fifth colour on
+ * one side made seven panels and bands in a half (four biomes, three bands,
+ * six seams), none wide enough to read.
+ */
+export function foldPanels<T extends SlotLayout>(layout: T[]): T[] {
+  if (layout.length <= MAX_HALF_PANELS) return layout;
+  const live = (l: SlotLayout) => l.stage > 0 && l.slot.weight > 0;
+  const rank = layout.map((l, i) => ({ l, i })).sort((a, b) => Number(live(b.l)) - Number(live(a.l)) || b.l.slot.weight - a.l.slot.weight || a.l.slot.index - b.l.slot.index);
+  const keep = new Set(rank.slice(0, MAX_HALF_PANELS).map((x) => x.i));
+  const extra = layout.map(() => 0);
+  layout.forEach((l, i) => {
+    if (keep.has(i) || !live(l)) return;
+    let best = -1;
+    for (const j of keep) {
+      if (best < 0) best = j;
+      const dj = Math.abs(j - i);
+      const db = Math.abs(best - i);
+      const wj = layout[j]!.slot.weight;
+      const wb = layout[best]!.slot.weight;
+      if (dj < db || (dj === db && (wj > wb || (wj === wb && j < best)))) best = j;
+    }
+    extra[best] = extra[best]! + l.slot.weight;
+  });
+  return layout.flatMap((l, i) => (keep.has(i) ? [extra[i] ? { ...l, slot: { ...l.slot, weight: l.slot.weight + extra[i]! } } : l] : []));
 }
 
 /** The art frame a slot shows on the half: the art's shape (width / height), its focal point and safe rect. */

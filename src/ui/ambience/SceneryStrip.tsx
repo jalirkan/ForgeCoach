@@ -61,12 +61,12 @@
 import { createContext, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Biome, SlotState } from '../../ambience/model.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, growthOf, halfAt, layersAt, type PackBiome, type PackGrowth, type PackHalf, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
-import { growthMs, nextStageFade, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
+import { growthMs, slotStageFade, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
 import { nextStepFrames, transitionFrames, tweenAllowed, type TransitionShape } from '../../ambience/transitions.ts';
 import { pictureReady, warmPicture } from '../../ambience/pack.ts';
 import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt, type HalfSlotLayout } from '../../ambience/layout.ts';
 import { bridgePlacements, halfSeams, phoneHalf, seamCentreCss, type BridgePlacement } from '../../ambience/bridges.ts';
-import { halfRow, pairBands, pairHalfAt, rowCentreCss, type PairBandPlacement, type RowItem } from '../../ambience/pairs.ts';
+import { bandedSeams, halfRow, pairBands, pairHalfAt, rowCentreCss, type PairBandPlacement, type RowItem } from '../../ambience/pairs.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import { useFadeIn, useFadeStack } from './useFade.ts';
@@ -130,8 +130,10 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const bands = useMemo(() => (pairsPack ? pairBands(layout as HalfSlotLayout[], pairsPack, duals) : []), [pairsPack, layout, duals]);
   const bandLife = useBandLife(bands, layout as HalfSlotLayout[], pack, reduced);
   const halfAspect = usePanelAspect(hostRef, (bridged && layout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone)) || bandLife.shown.some((b) => b.pair.stages.some((st) => !!st.half?.phone)));
-  const seams = useMemo(() => (half ? halfSeams(layout as HalfSlotLayout[], pack, duals) : null), [half, layout, pack, duals]);
-  const placements = useMemo(() => (bridged ? bridgePlacements(layout as HalfSlotLayout[], pack, duals, { phone: phoneHalf(halfAspect) }) : []), [bridged, layout, pack, duals, halfAspect]);
+  // Spec 1.10: a seam with a band (wanted, or fading out) draws no bridge and keeps the base seam.
+  const banded = useMemo(() => bandedSeams(bandLife.shown), [bandLife.shown]);
+  const seams = useMemo(() => (half ? halfSeams(layout as HalfSlotLayout[], pack, duals, banded) : null), [half, layout, pack, duals, banded]);
+  const placements = useMemo(() => (bridged ? bridgePlacements(layout as HalfSlotLayout[], pack, duals, { phone: phoneHalf(halfAspect), banded }) : []), [bridged, layout, pack, duals, halfAspect, banded]);
   const row: RowItem[] | null = useMemo(() => (seams ? halfRow(layout as HalfSlotLayout[], seams, bandLife.shown, bandLife.isOpen) : null), [seams, layout, bandLife]);
   if (layout.length === 0 && !fx?.length) return null;
   const rotated = edge === 'top' && orient === 'rotated';
@@ -167,7 +169,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
                       return <Band key={`band:${b.key}`} b={b} share={it.share} seam={seam} open={bandLife.isOpen(b.key)} leaving={bandLife.leaving.has(b.key)} ms={bandLife.msOf(b)} phone={phoneHalf(halfAspect)} growth={growth} reduced={reduced} onReady={bandLife.ready} />;
                     }
                     const l = (layout as HalfSlotLayout[])[it.index]!;
-                    return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={it.share} first={k === 0} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} seam={seam} />;
+                    return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={it.share} first={k === 0} afterBand={row[k - 1]?.kind === 'band'} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} seam={seam} />;
                   })
                 : layout.map(({ slot, stage, progress, grow }, i) => (
                     <Slot key={slot.biome} slot={slot} stage={stage} progress={progress} grow={grow} first={i === 0} pack={pack?.biomes[slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[slot.biome] ?? 0} half={half} />
@@ -234,6 +236,7 @@ function Slot({
   pulse,
   half = false,
   seam,
+  afterBand = false,
 }: {
   slot: SlotState;
   stage: number;
@@ -248,6 +251,8 @@ function Slot({
   half?: boolean;
   /** Spec 1.8: this slot's own seam (a bridged pair's, widened by its duals), as CSS; else the half's. */
   seam?: string;
+  /** Spec 1.10: the item left of it is a pair band (no seam mist here: the band is the transition). */
+  afterBand?: boolean;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const settled = useContext(Settled);
@@ -305,7 +310,8 @@ function Slot({
   const proc = useMemo(() => (pack ? [] : proceduralLayers(slot.biome, drawn, uid)), [pack, slot.biome, drawn, uid]);
   const procNext = useMemo(() => (pack || !hasNextStage ? [] : proceduralLayers(slot.biome, drawn + 1, uid).filter((l) => !proc.some((c) => c.id === l.id))), [pack, hasNextStage, slot.biome, drawn, uid, proc]);
   const hasNext = pack ? (pic ? !!nextArt : nextStills.length > 0) : procNext.length > 0;
-  const fade = nextStageFade(progress, hasNext, growth);
+  // Spec 1.10: a half picture is never drawn half over another (two horizons); strip layers still cross-fade by the progress.
+  const fade = slotStageFade(progress, hasNext, growth, !!pic);
 
   const bloom = pack?.bloom ?? PROCEDURAL_BLOOM;
   let order = 0;
@@ -370,7 +376,7 @@ function Slot({
   return (
     <div
       ref={ref}
-      className={['scn-slot', first && 'is-first', withered && 'is-withered'].filter(Boolean).join(' ')}
+      className={['scn-slot', first && 'is-first', withered && 'is-withered', afterBand && 'is-after-band'].filter(Boolean).join(' ')}
       style={seam ? ({ flexGrow: grow, '--scn-seam': seam } as CSSProperties) : { flexGrow: grow }}
       data-biome={slot.biome}
       data-stage={stage}

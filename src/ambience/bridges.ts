@@ -20,11 +20,16 @@
  *   how much the duals widened the seam.
  * - The phone piece where the half is nearer the phone picture's shape than
  *   the desktop one's (layout.ts `pickHalfPicture`'s log-scale rule).
+ * - Spec 1.10: a seam with a pair band (1.9) draws the band and no bridge,
+ *   and keeps the base seam (the duals widen the band instead): `banded`,
+ *   the seams' indices (pairs.ts `bandedSeams`).
  */
 import type { BridgePicture, PackBridge, ScenePack } from './manifest.ts';
 import { DEFAULT_HALF_LAYOUT } from './manifest.ts';
 import { pairKey, type Biome } from './model.ts';
 import type { HalfSlotLayout } from './layout.ts';
+
+const NONE: ReadonlySet<number> = new Set();
 
 /** The CSS cap on a seam's width (scenery.css: `min(var(--scn-seam), 14vw)`), as a fraction of the viewport's width. */
 export const SEAM_CAP_VW = 0.14;
@@ -59,12 +64,13 @@ export function seamRatioFor(base: number, bridge: PackBridge | null | undefined
  * fraction of the half's width: each live pair with a bridge widened by its
  * duals ({@link seamRatioFor}), every other seam the pack's base.
  */
-export function halfSeams(layout: readonly HalfSlotLayout[], pack: ScenePack | null | undefined, duals: Readonly<Record<string, number>> = {}): number[] {
+export function halfSeams(layout: readonly HalfSlotLayout[], pack: ScenePack | null | undefined, duals: Readonly<Record<string, number>> = {}, banded: ReadonlySet<number> = NONE): number[] {
   const base = pack?.half?.seamRatio ?? DEFAULT_HALF_LAYOUT.seamRatio;
   return layout.map((r, i) => {
     if (i === 0) return 0;
     const l = layout[i - 1]!;
-    const found = l.stage > 0 && r.stage > 0 ? bridgeFor(pack, l.slot.biome, r.slot.biome) : null;
+    // Spec 1.10: a seam with a pair band has no bridge, so its duals widen the band, not the seam.
+    const found = l.stage > 0 && r.stage > 0 && !banded.has(i) ? bridgeFor(pack, l.slot.biome, r.slot.biome) : null;
     return seamRatioFor(base, found?.bridge, duals[pairKey(l.slot.biome, r.slot.biome)] ?? 0);
   });
 }
@@ -96,15 +102,18 @@ export interface BridgePlacement {
  * for, at the shape the half shows (`phone`: the phone piece where there is
  * one).
  */
-export function bridgePlacements(layout: readonly HalfSlotLayout[], pack: ScenePack | null | undefined, duals: Readonly<Record<string, number>> = {}, opts: { phone?: boolean } = {}): BridgePlacement[] {
+export function bridgePlacements(layout: readonly HalfSlotLayout[], pack: ScenePack | null | undefined, duals: Readonly<Record<string, number>> = {}, opts: { phone?: boolean; banded?: ReadonlySet<number> } = {}): BridgePlacement[] {
   if (!pack?.bridges || layout.length < 2) return [];
   const base = pack.half?.seamRatio ?? DEFAULT_HALF_LAYOUT.seamRatio;
-  const seams = halfSeams(layout, pack, duals);
+  const banded = opts.banded ?? NONE;
+  const seams = halfSeams(layout, pack, duals, banded);
   const out: BridgePlacement[] = [];
   for (let i = 1; i < layout.length; i++) {
     const l = layout[i - 1]!;
     const r = layout[i]!;
     if (!(l.stage > 0 && r.stage > 0)) continue;
+    // Spec 1.10: the band wins. A bridge was painted for a plain seam; over a pair's own place it is a second picture pasted on the first.
+    if (banded.has(i)) continue;
     const found = bridgeFor(pack, l.slot.biome, r.slot.biome);
     if (!found) continue;
     const phone = !!opts.phone && !!found.bridge.phone;

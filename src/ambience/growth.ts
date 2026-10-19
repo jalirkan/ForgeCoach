@@ -39,6 +39,20 @@ export function nextStageFade(progress: number | undefined, hasNext: boolean, gr
   return easeGrowth(p);
 }
 
+/**
+ * Spec 1.10: how strongly a slot's next stage shows over the current one on
+ * the half board. A half picture is a whole painting with its own horizon,
+ * so two of them half-transparent read as a double exposure (two horizons,
+ * the next stage's spires ghosted over this one's): between two thresholds a
+ * half picture stays the stage's own (0) and the slot only widens; the next
+ * picture arrives at its threshold, through its frames (1.7) or the fade over
+ * the old picture held beneath. Strip layers (`picture` false) cross-fade by
+ * the progress as in 1.6.
+ */
+export function slotStageFade(progress: number | undefined, hasNext: boolean, growth: PackGrowth, picture: boolean): number {
+  return picture ? 0 : nextStageFade(progress, hasNext, growth);
+}
+
 /** How long one land's fade takes, in ms: the pack's `growth.seconds`, 0 with reduced motion. */
 export function growthMs(growth: PackGrowth, reduced: boolean): number {
   return reduced ? 0 : Math.round(Math.max(0, growth.seconds) * 1000);

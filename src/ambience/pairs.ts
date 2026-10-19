@@ -24,11 +24,11 @@
  *   0 is exactly the seam it replaces ({@link halfRow}).
  * - The stage: `stageMap` on the LOWER of the two neighbours' stages.
  */
-import { BIOMES, MAX_STAGES, pairKey, type Biome } from './model.ts';
+import { BIOMES, MAX_STAGES, pairKey, type Biome, type SlotState } from './model.ts';
 import { cleanText, int } from '../lab/status.ts';
-import { isObj, packBase, parseBytes, parseHalf, parseTransitions, ranged, type PackHalf, type PackStage, type PackTransitions } from './manifest.ts';
-import type { HalfSlotLayout } from './layout.ts';
-import { SEAM_CAP_VW, widenedRatio } from './bridges.ts';
+import { isObj, packBase, parseBytes, parseHalf, parseTransitions, ranged, type PackHalf, type PackStage, type PackTransitions, type ScenePack } from './manifest.ts';
+import { halfLayout, type HalfSlotLayout } from './layout.ts';
+import { halfSeams, SEAM_CAP_VW, widenedRatio } from './bridges.ts';
 
 /** The pair pack's manifest, at the root of the pairs URL. */
 export const PAIRS_MANIFEST_FILE = 'pairs.json';
@@ -362,6 +362,11 @@ export function pairBands(layout: readonly HalfSlotLayout[], pairs: PairsPack | 
   return out;
 }
 
+/** Spec 1.10: the seams (the index of the slot right of each) that have a pair band, so they draw no bridge (bridges.ts). */
+export function bandedSeams(bands: readonly Pick<PairBandPlacement, 'index'>[]): ReadonlySet<number> {
+  return new Set(bands.map((b) => b.index));
+}
+
 /** One item of the half's flex row: a biome's panel, or a pair's band between two. */
 export interface RowItem {
   kind: 'slot' | 'band';
@@ -424,6 +429,55 @@ export function rowCentre(items: readonly Pick<RowItem, 'share' | 'seam'>[], i: 
   let pulled = 0;
   for (let k = 1; k <= i; k++) pulled += px(k);
   return (before + items[i]!.share / sum / 2) * total - pulled;
+}
+
+/** Each row item's span across a half `width` px wide in a viewport `vw` px wide, as the flex row lays it out (rowCentre's rule): its left edge, its width, and the seam it overlaps the item before in (px, capped at 14vw). */
+export function rowSpans(items: readonly Pick<RowItem, 'share' | 'seam'>[], width: number, vw = Infinity): { left: number; width: number; seam: number }[] {
+  const px = (k: number) => (k === 0 ? 0 : Math.min(items[k]!.seam * width, SEAM_CAP_VW * vw));
+  const total = width + items.reduce((n, _, k) => n + px(k), 0);
+  const sum = items.reduce((n, x) => n + x.share, 0) || 1;
+  let x = 0;
+  return items.map((it, k) => {
+    const w = (it.share / sum) * total;
+    const left = x - px(k);
+    x = left + w;
+    return { left: Math.round(left * 10) / 10, width: Math.round(w * 10) / 10, seam: Math.round(px(k) * 10) / 10 };
+  });
+}
+
+/**
+ * Spec 1.10: where a biome's own panel lies across its half, for drawing
+ * something of that biome's over its panel only (the full-area accent): the
+ * panel's span and the ramps it shares with its neighbours (px), from the same
+ * row the half board lays out (folded to three panels, the bands as wide as
+ * when open). Null when the half is not split (the biome fills it), or when the
+ * biome has no panel (folded away).
+ */
+export function halfPanelSpan(
+  slots: SlotState[],
+  pack: ScenePack | null,
+  biome: Biome,
+  width: number,
+  opts: { duals?: Readonly<Record<string, number>>; stageOverride?: number | null; vw?: number } = {},
+): { left: number; right: number; fadeLeft: number; fadeRight: number } | 'none' | null {
+  const layout = halfLayout(slots, pack, opts.stageOverride ?? null);
+  if (layout.length < 2 || !(width > 0)) return layout.some((l) => l.slot.biome === biome) || !layout.length ? null : 'none';
+  const duals = opts.duals ?? {};
+  const bands = pairBands(layout, pack?.pairs ?? null, duals);
+  const seams = halfSeams(layout, pack, duals, bandedSeams(bands));
+  const items = halfRow(layout, seams, bands);
+  const at = items.findIndex((it) => it.kind === 'slot' && it.key === biome);
+  if (at < 0) return 'none';
+  const spans = rowSpans(items, width, opts.vw);
+  const me = spans[at]!;
+  const next = spans[at + 1];
+  return { left: Math.max(0, me.left), right: Math.min(width, me.left + me.width), fadeLeft: at === 0 ? 0 : me.seam, fadeRight: next ? next.seam : 0 };
+}
+
+/** Spec 1.10: a mask that keeps a panel's span, eased in and out over the seams it shares (px). */
+export function panelMaskCss(s: { left: number; right: number; fadeLeft: number; fadeRight: number }): string {
+  const r = (n: number) => `${Math.round(n)}px`;
+  return `linear-gradient(to right, transparent ${r(s.left)}, #000 ${r(s.left + s.fadeLeft)}, #000 ${r(s.right - s.fadeRight)}, transparent ${r(s.right)})`;
 }
 
 /** {@link rowCentre} as CSS for an element inside the half (a size container: `cqw` is the half's width). */

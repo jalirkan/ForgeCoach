@@ -46,6 +46,11 @@ const LANDS: { name: SimLandName; short: string; tone: string }[] = [
   { name: 'Command Tower', short: '5-colour', tone: 'multi' },
 ];
 
+/** The ten original duals, one row of their own: each widens its pair's band (spec 1.9) or bridged seam (1.8). */
+const DUALS: { name: SimLandName; short: string; tone: string }[] = (
+  ['Tundra', 'Underground Sea', 'Badlands', 'Taiga', 'Savannah', 'Scrubland', 'Volcanic Island', 'Bayou', 'Plateau', 'Tropical Island'] as const
+).map((name) => ({ name, short: name, tone: 'multi' }));
+
 const DEMO: SimPlay[] = [
   { kind: 'land', player: 1, name: 'Island' },
   { kind: 'land', player: 2, name: 'Forest' },
@@ -85,11 +90,13 @@ export default function AmbiencePage() {
   const [countSide, setCountSide] = useState<number>(SIM_PLAYERS[0]);
 
   const log = useMemo(() => simLog(plays), [plays]);
-  const scenery = useMemo(() => sceneryFromLog(log, Infinity), [log]);
   const basePack = pastedPack ?? (usePack && packState.status === 'ok' ? packState.pack : null);
   // Spec 1.9: the pair bands loaded beside the pack (a pasted manifest gets them too).
   const loadedPairs = packState.status === 'ok' ? (packState.pairs ?? null) : null;
   const pack = useMemo(() => (basePack && loadedPairs && basePack.pairs !== loadedPairs ? { ...basePack, pairs: loadedPairs } : basePack), [basePack, loadedPairs]);
+  // The pack's own stage thresholds, as the board uses them (SceneryLayer): ForgeCoach's pack steps a stage with every land.
+  const thresholds = pack?.stageThresholds ?? undefined;
+  const scenery = useMemo(() => sceneryFromLog(log, Infinity, { thresholds }), [log, thresholds]);
   const fx = useSceneryFx(pack, reduced);
   const lastState = log.frames.at(-1)!.body as GameStateBody;
   const creaturesOf = (player: number) => (lastState.players.find((x) => x.id === player)?.zones.battlefield?.cards ?? []).filter((c) => /Creature/.test((c as Card).types)).map((c) => c.id);
@@ -124,7 +131,7 @@ export default function AmbiencePage() {
     prevPlays.current = plays;
     if (plays.length !== before.length + 1 || before.some((p, i) => p !== plays[i])) return;
     const prevLog = simLog(before);
-    const ev = sceneryEvents(sceneryFromLog(prevLog, Infinity), scenery, log.frames.at(-1)!.body as never);
+    const ev = sceneryEvents(sceneryFromLog(prevLog, Infinity, { thresholds }), scenery, log.frames.at(-1)!.body as never);
     fx.push(ev, scenery, place);
     setEventsLog((l) => [...ev.map(describe), ...l].slice(0, 6));
   }, [plays]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -207,7 +214,7 @@ export default function AmbiencePage() {
                   stageOverride={stage || null}
                   fill={fill ? 'half' : 'strip'}
                 />
-                {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[1])} pack={pack} edge="top" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} />}
+                {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[1])} pack={pack} edge="top" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} half={fill} duals={dualsOf(scenery, SIM_PLAYERS[1])} />}
               </>
             }
             plays={plays}
@@ -233,7 +240,7 @@ export default function AmbiencePage() {
                   stageOverride={stage || null}
                   fill={fill ? 'half' : 'strip'}
                 />
-                {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[0])} pack={pack} edge="bottom" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} />}
+                {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[0])} pack={pack} edge="bottom" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} half={fill} duals={dualsOf(scenery, SIM_PLAYERS[0])} />}
               </>
             }
             plays={plays}
@@ -248,6 +255,13 @@ export default function AmbiencePage() {
                 <div className="amb-group-h">{p === SIM_PLAYERS[0] ? 'You' : 'Opponent'}</div>
                 <div className="amb-lands">
                   {LANDS.map((l) => (
+                    <button key={l.name} className={`amb-land t-${l.tone}`} onClick={() => play({ kind: 'land', player: p, name: l.name })} data-play={`${p}:${l.name}`}>
+                      {l.short}
+                    </button>
+                  ))}
+                </div>
+                <div className="amb-lands amb-duals" aria-label="Duals">
+                  {DUALS.map((l) => (
                     <button key={l.name} className={`amb-land t-${l.tone}`} onClick={() => play({ kind: 'land', player: p, name: l.name })} data-play={`${p}:${l.name}`}>
                       {l.short}
                     </button>
@@ -463,7 +477,7 @@ function MockSide({ title, player, top, slots, creatures, strip, plays, scrim, b
   const chips = (
     <div className="amb-chips" aria-label={`${title}'s lands`}>
       {lands.map((l, i) => (
-        <span key={i} className={`amb-chip t-${LANDS.find((x) => x.name === l.name)?.tone ?? 'C'}`}>
+        <span key={i} className={`amb-chip t-${[...LANDS, ...DUALS].find((x) => x.name === l.name)?.tone ?? 'C'}`}>
           {l.name}
         </span>
       ))}
