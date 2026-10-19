@@ -59,11 +59,8 @@
   transition: flex-grow 900ms ease;
   /* Neighbours overlap by the seam width, and each fades in over it. */
   margin-left: calc(-1 * min(var(--scn-seam, 120px), 14vw));
-  /* Spec 1.10: eased (smoothstep at its quarters), so neither picture ends on a visible line where the ramp starts or stops. */
-  --scn-seam-w: min(var(--scn-seam, 120px), 14vw);
-  --scn-seam-ramp: transparent 0, rgba(0, 0, 0, 0.156) calc(var(--scn-seam-w) * 0.25), rgba(0, 0, 0, 0.5) calc(var(--scn-seam-w) * 0.5), rgba(0, 0, 0, 0.844) calc(var(--scn-seam-w) * 0.75), #000 var(--scn-seam-w);
-  -webkit-mask-image: linear-gradient(to right, var(--scn-seam-ramp));
-  mask-image: linear-gradient(to right, var(--scn-seam-ramp));
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 min(var(--scn-seam, 120px), 14vw));
+  mask-image: linear-gradient(to right, transparent 0, #000 min(var(--scn-seam, 120px), 14vw));
 }
 .scn-slot.is-first {
   margin-left: 0;

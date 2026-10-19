@@ -25,7 +25,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.7 | **Transition frames** (§2, *Transition frames*): an optional per-biome **`transitions`** with a few in-between pictures for each stage step (`from`, `frames` of a desktop `src` and a `phone`, a `holdMs` per frame and a `fadeMs`), played with hard cuts when a land steps the stage — limited animation, a drawing held ~200 ms, then one short fade into the new stage. A step without frames, and every 1.0–1.6 pack, cross-fades as in 1.6. |
 | 1.8 | **Bridges across the seam** (§2, *Bridges across the seam*): an optional top-level **`bridges`** map keyed by a biome pair (`"forest+island"`; both orders find the one entry), each a transparent ground piece drawn over the seam where the two biomes meet on one side of the half board — a desktop `src` and a `phone` seam crop, an `anchor` on the seam (the centre's height, the width as a fraction of the half's) — faded in with the second biome, mirrored when the board has the pair the other way round; and `dualsWiden`: each of the pair's two-colour lands widens their seam (and the bridge with it). A 1.0–1.7 pack, and a pair with no bridge, keeps today's seam. |
 | 1.9 | **Pair bands** (§2, *Pair bands*): a second, optional manifest, **`pairs.json`**, fetched beside `scenery.json` from a pairs URL of its own (ForgeCoach's comes with ForgeCoach's pack; `?pairs=<url>` or `off` for any page): per biome pair, the pair's own place (named for its `dual` and `shock`), three `stages` of 1.5 `half` pictures and 1.7 `transitions`, a `band` width rule (`min`, `perDual`, `max`) and a `stageMap`. Where two biomes meet on one side of the half board, the seam opens into that place, wider with every land that is both colours. Lands that make two colours count ½ / ½ as the shocks do, the Thriving lands included (§1). No pairs, or a pair without an entry, keeps the 1.8 seam. |
-| 1.10 | **Calm seams** (§2, *Calm seams*), layout only, no new field: a half shows at most **three** panels (the rest fold into their nearest kept neighbour); a seam with a pair band draws **no bridge**; a half picture is never drawn half over its next stage; a full-area accent is drawn over **its own biome's panel** only; seam masks eased and the seam mist lighter, none at a band. Every 1.0–1.9 pack and pairs manifest is read unchanged. |
+| 1.10 | **Calm seams** (§2, *Calm seams*), layout only, no new field: a half shows at most **three** panels (the rest fold into their nearest kept neighbour); a seam with a pair band draws **no bridge**; a half picture is never drawn half over its next stage; a full-area accent is drawn over **its own biome's panel** only; the seam mist lighter, none at a band. Every 1.0–1.9 pack and pairs manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -1289,12 +1289,12 @@ is read as before.
   neighbours. The island's shells no longer lie over the volcano, nor the
   plains' feathers over the lagoon. A half with one panel draws it whole, as
   before; a biome folded away draws none.
-- **Softer seams, less mist.** A panel or band fades in over its seam with an
-  eased ramp (smoothstep at its quarters) instead of a straight one, so
-  neither picture ends on a visible line. The seam's breath of mist is drawn
-  only on a plain seam (a band is the transition itself), over the middle half
-  of the seam, below the sky, at half the mist colour: seams no longer add up
-  to a tint over the half.
+- **Less mist.** The seam's breath of mist is drawn only on a plain seam (a
+  pair band is the transition itself), over the middle half of the seam,
+  below the sky, at half the mist colour: seams no longer add up to a tint
+  over the half. The ramp itself stays straight: an eased (smoothstep) ramp
+  was tried and measured worse, its steeper middle a bigger step across the
+  seam on all ten pairs (`~/scenery-packs/seams-v1/SUMMARY.md`).
 
 **How to paint for it.** Nothing new is needed. A pair band still meets its
 neighbours in half their seam; a narrow band (the 0.10 `min`) shows only the
