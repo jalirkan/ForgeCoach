@@ -1024,6 +1024,13 @@ painted in at 60%, img2img at strength 0.68 (DreamShaper XL), kept inside the
 shape's feathered mask; desktop pieces 1024 × 440 at `anchor`
 `{ "y": 0.725, "width": 0.4 }`, phone pieces 768 × 704 at
 `{ "y": 0.725, "width": 0.6 }`.
+pack-v9 repainted them as **one picture across the seam**, with no object
+outline: the same composite, img2img with a strength map high over the
+seam's ground and falling away to both sides and up to the horizon (0.62),
+a prompt naming where the two grounds meet (a lava-rock shore with surf, a
+sandy beach), and that same soft shape as the alpha; same sizes and anchors
+(`~/scenery-packs/seams-v1/`). A piece painted in one stage's light still
+sits in that light at every stage.
 
 <!-- example-bridges -->
 ```json
