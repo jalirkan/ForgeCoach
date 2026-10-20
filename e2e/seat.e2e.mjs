@@ -34,7 +34,9 @@
  * by the engine's rule (mtg-table M67: no defender row without trample, the
  * engine's refusal shown, a trampler's excess); the coach's "Copy prompt" with
  * no helper; the search AI coach (the default, asking by itself; mtg-table D429)
- * against a fake helper that offers it; watching two bots (mtg-table D440)
+ * against a fake helper that offers it, and at a table of two (mtg-table D453)
+ * against a fake draft room (8644): asked of the room with the seat's room
+ * token, never the helper, no pool sent; an older room's off text; watching two bots (mtg-table D440)
  * against the fake /watch routes (e2e/fakewatch.mjs): the lobby tile, the
  * form, the draft replay advancing, the decks, the board following game 1
  * over HTTP (no socket at all) and moving on to game 2, on a desktop and a
@@ -100,12 +102,14 @@ async function appUrl() {
 }
 
 /** Everything off the machine is answered here; WebSockets are not routed (they reach the fake engine). */
-async function isolate(context, appOrigin, helper = null) {
+async function isolate(context, appOrigin, helper = null, room = null) {
   await context.route('**/*', (route) => {
     const u = new URL(route.request().url());
     if (u.origin === appOrigin) return route.continue();
     // A scenario's fake coach helper (127.0.0.1:8643); without one it is refused, as when none runs.
     if (helper && u.hostname === '127.0.0.1' && u.port === '8643') return helper(route, u);
+    // A scenario's fake draft room listener (127.0.0.1:8644, mtg-table D400/D453).
+    if (room && u.hostname === '127.0.0.1' && u.port === '8644') return room(route, u);
     if (u.hostname === 'fonts.googleapis.com') return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
     if (u.hostname === 'api.scryfall.com') return route.fulfill({ status: 404, contentType: 'application/json', body: '{"object":"error","code":"not_found","status":404,"details":"e2e"}' });
     return route.abort('connectionrefused');
@@ -1097,6 +1101,18 @@ const scenarios = [
 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
 
+/** The engine's answer for main3's decision: cast Shock or nothing, too close to call, the Mountain first. */
+function hintAnswer(engine, body, extra = {}) {
+  const shock = mine(engine, 'Shock');
+  const mountain = engine.game.players[0].hand.find((x) => x.name === 'Mountain');
+  return {
+    ok: true, v: 1, kind: 'search-hint', gameId: body.gameId ?? null, seat: body.seat, stateSeq: body.stateSeq, status: 'ok', type: 'spell', measure: 'leaf',
+    pick: `cast:${shock}`, strength: 'close', runnerUp: 'pass', ...(mountain ? { landFirst: mountain.id } : {}),
+    options: [{ token: `cast:${shock}`, label: 'cast Shock', verdict: 'best', winRate: 0.61 }, { token: 'pass', label: 'cast nothing now', verdict: 'close', winRate: 0.58 }],
+    knowledge: { opponent: 'unknown', opponentModel: 'basic-lands', ownDeck: null }, wallMs: 3100, ...extra,
+  };
+}
+
 /** /health says `hint: 1` (and that Claude Code is not ready: no coach questions); POST /hint answers after 600 ms. */
 function hintHelper(engine) {
   const asked = [];
@@ -1110,15 +1126,7 @@ function hintHelper(engine) {
       const body = JSON.parse(req.postData() ?? '{}');
       asked.push(body);
       await new Promise((r) => setTimeout(r, 600));
-      const shock = mine(engine, 'Shock');
-      const mountain = engine.game.players[0].hand.find((x) => x.name === 'Mountain');
-      const answer = {
-        ok: true, v: 1, kind: 'search-hint', gameId: body.gameId, seat: body.seat, stateSeq: body.stateSeq, status: 'ok', type: 'spell', measure: 'leaf',
-        pick: `cast:${shock}`, strength: 'close', runnerUp: 'pass', ...(mountain ? { landFirst: mountain.id } : {}),
-        options: [{ token: `cast:${shock}`, label: 'cast Shock', verdict: 'best', winRate: 0.61 }, { token: 'pass', label: 'cast nothing now', verdict: 'close', winRate: 0.58 }],
-        knowledge: { opponent: 'unknown', opponentModel: 'basic-lands', ownDeck: null }, wallMs: 3100,
-      };
-      return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(answer) });
+      return route.fulfill({ status: 200, headers: CORS, contentType: 'application/json', body: JSON.stringify(hintAnswer(engine, body)) });
     }
     return route.fulfill({ status: 404, headers: CORS, contentType: 'application/json', body: '{"ok":false,"type":"error","message":"not found"}' });
   };
@@ -1189,6 +1197,99 @@ const hintScenario = {
   },
 };
 scenarios.push(hintScenario);
+
+// The search hint at a table of two (mtg-table D453): the seat asks the draft room, behind its room token,
+// never the coach helper's /hint. A fake room listener (8644) and a friend table saved in this browser.
+const TABLE_ROOM = { id: 'rAbC12_xy', token: 'room-seat-token-0', matchId: 'm1790000000042' };
+const tableSeatUrl = (engine) => `${engine.seatUrl}?seat=game-seat-token`;
+const tableInit = {
+  fn: ({ table, rooms }) => {
+    localStorage.setItem('forgecoach.friendTable.v1', JSON.stringify(table));
+    localStorage.setItem('forgecoach.friendRooms.v1', JSON.stringify(rooms));
+  },
+  arg: (engine) => ({
+    table: { room: TABLE_ROOM.id, seat: 0, game: 1, url: tableSeatUrl(engine), opponent: 'Sam', back: '#draft/friend', over: false, matchId: TABLE_ROOM.matchId },
+    rooms: [{ id: TABLE_ROOM.id, seat: 0, base: 'http://127.0.0.1:8644', token: TABLE_ROOM.token }],
+  }),
+};
+
+/** The room listener: GET /room/<id> (the state: `hint` as given), POST /room/<id>/hint (the answer after 300 ms); every route needs the seat's token. */
+function fakeRoom(engine, { hint }) {
+  const asked = [];
+  const handler = async (route, u) => {
+    const req = route.request();
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+    const json = (status, b) => route.fulfill({ status, headers: CORS, contentType: 'application/json', body: JSON.stringify(b) });
+    if ((await req.headerValue('x-room-token')) !== TABLE_ROOM.token) return json(403, { ok: false, code: 'token', message: 'wrong token' });
+    if (u.pathname === `/room/${TABLE_ROOM.id}` && req.method() === 'GET') return json(200, { v: 1, id: TABLE_ROOM.id, version: 9, you: 0, done: true, ...(hint === undefined ? {} : { hint }) });
+    if (u.pathname === `/room/${TABLE_ROOM.id}/hint` && req.method() === 'POST') {
+      const body = JSON.parse(req.postData() ?? '{}');
+      asked.push(body);
+      await new Promise((r) => setTimeout(r, 300));
+      return json(200, hintAnswer(engine, { ...body, gameId: `friend-${TABLE_ROOM.matchId}-seat0` }, { knowledge: { opponent: 'pool:room', opponentModel: 'pool', ownDeck: null } }));
+    }
+    return json(404, { ok: false, code: 'gone', message: 'no such room' });
+  };
+  handler.asked = asked;
+  return handler;
+}
+
+const tableHintScenario = {
+  name: 'the search AI at a table of two (mtg-table D453): asked of the room with the seat\'s room token, never the helper; no pool sent',
+  engine: { scene: 'main3', table: true, gameId: `friend-${TABLE_ROOM.matchId}` },
+  init: tableInit,
+  helper: (engine) => {
+    tableHintScenario.helperFake = hintHelper(engine);
+    return tableHintScenario.helperFake;
+  },
+  room: (engine) => {
+    tableHintScenario.fake = fakeRoom(engine, { hint: 1 });
+    return tableHintScenario.fake;
+  },
+  async run({ page, engine, app }) {
+    const u = ui(page);
+    await page.goto(`${app}?play=1&seat=${encodeURIComponent(tableSeatUrl(engine))}`);
+    await u.mode('main');
+    const done = page.locator('.actionbar [data-search-hint="answered"]');
+    await done.waitFor({ timeout: STEP_MS });
+    const line = await done.locator('.ds-hint-line').innerText();
+    check(/cast Shock, or cast nothing now — too close to call$/i.test(line.trim()), `the room's pick in board words (${line})`);
+    const asked = tableHintScenario.fake.asked;
+    check(asked.length === 1, `asked the room once (${asked.length})`);
+    const body = asked[0];
+    check(body.seat === 0 && Number.isInteger(body.stateSeq) && body.stateSeq > 0 && body.gameId === `friend-${TABLE_ROOM.matchId}`, `the moment, this seat, the table's game id (${JSON.stringify(body)})`);
+    check(Object.keys(body).every((k) => ['gameId', 'seat', 'stateSeq', 'inputSeq', 'budgetMs'].includes(k)), `no pool, never a deck (${Object.keys(body)})`);
+    check(tableHintScenario.helperFake.asked.length === 0, 'the coach helper\'s /hint was never asked at a table');
+    const panel = await page.locator('[data-search-coach="answered"]').innerText();
+    check(/cast Shock/i.test(panel) && panel.includes('hidden cards from the cube'), `the Coach panel shows it, with the room's pool as the caveat (${panel})`);
+    // A new decision asks the room again by itself.
+    await sent(engine, 'clickCard', () => u.click(mine(engine, 'Mountain')));
+    await engine.waitFor(() => asked.length === 2, 'a new question to the room for the new decision');
+    check(tableHintScenario.helperFake.asked.length === 0, 'still never the helper');
+  },
+};
+scenarios.push(tableHintScenario);
+
+const tableOldRoomScenario = {
+  name: 'the search AI at a table whose room\'s PC predates the hint: the off text, never an error, nothing asked',
+  engine: { scene: 'main3', table: true, gameId: `friend-${TABLE_ROOM.matchId}` },
+  init: tableInit,
+  room: (engine) => {
+    tableOldRoomScenario.fake = fakeRoom(engine, { hint: undefined });
+    return tableOldRoomScenario.fake;
+  },
+  async run({ page, engine, app }) {
+    const u = ui(page);
+    await page.goto(`${app}?play=1&seat=${encodeURIComponent(tableSeatUrl(engine))}`);
+    await u.mode('main');
+    // The room's state has no `hint`: an older room's PC (first "asking", then its own words).
+    const off = page.locator('[data-search-coach="off"]', { hasText: 'needs the latest ForgeCoach there' });
+    await off.waitFor({ timeout: STEP_MS });
+    await page.waitForTimeout(900);
+    check(tableOldRoomScenario.fake.asked.length === 0 && (await page.locator('.actionbar [data-ask-now="search"]').count()) === 0, 'nothing asked, no Ask now for the search AI');
+  },
+};
+scenarios.push(tableOldRoomScenario);
 
 // ---------------------------------------------------------------------------
 // Watch two bots (mtg-table D440): a fake helper with the /watch routes
@@ -1457,7 +1558,8 @@ async function runOne(browser, app, s, round) {
   const appOrigin = new URL(app).origin;
   const context = await browser.newContext(s.context ?? { viewport: { width: 1440, height: 900 } });
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: appOrigin });
-  await isolate(context, appOrigin, s.helper ? s.helper(engine) : null);
+  await isolate(context, appOrigin, s.helper ? s.helper(engine) : null, s.room ? s.room(engine) : null);
+  if (s.init) await context.addInitScript(s.init.fn, s.init.arg(engine));
   const page = await context.newPage();
   const errors = [];
   const sockets = [];

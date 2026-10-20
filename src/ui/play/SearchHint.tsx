@@ -16,15 +16,21 @@
  * With Search AI chosen it answers by itself, once per decision it can judge
  * (main-phase spells, attacks, blocks, targets): the engine on your PC is
  * free. One question at a time; a new decision cancels the one still out
- * (play/hintRunner.ts). Shown only in a game against the bot when the engine
- * on your PC offers hints (`/health` `hint: 1`). The cards it names glow on
- * the board (`data-search-pick`) until the decision changes.
+ * (play/hintRunner.ts). Against the bot it asks the engine on your PC
+ * (`/health` `hint: 1`, POST /hint). At a table of two (mtg-table D453) each
+ * player asks the draft room, behind their own room token, for their own
+ * decisions only (the room's state `hint: 1`, POST /room/<id>/hint): a friend's
+ * browser cannot reach the room owner's helper, and the helper's own door
+ * refuses a game between two people. A room without hints (an older one: 404)
+ * shows the off text, never an error. The cards it names glow on the board
+ * (`data-search-pick`) until the decision changes.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { GameStateBody, InputBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import { pageHelperTarget } from '../../coachHelper.ts';
-import { askHint, hintCardIds, hintChoiceWords, hintDecisionKey, hintInfo, hintLineSteps, hintMoment, hintWords, type HintInfo, type HintVerdict, type SearchHint as Hint } from '../../searchHint.ts';
+import { askHint, askRoomHint, HINT_OFF_TABLE, TABLE_HINT_OFF, type TableHintOff, hintCardIds, hintChoiceWords, hintDecisionKey, hintInfo, hintLineSteps, hintMoment, hintWords, roomHintInfo, type HintInfo, type HintVerdict, type SearchHint as Hint } from '../../searchHint.ts';
+import type { SeatHandle } from '../../play/friendReview.ts';
 import { COACH_KIND_KEY, COACH_KINDS, coachPlan, readCoachKind, type CoachKind } from '../../play/coachChoice.ts';
 import { HintRunner, type HintPhase } from '../../play/hintRunner.ts';
 import { opponentFields } from '../review/useReviewRun.ts';
@@ -39,21 +45,29 @@ export const NO_HINT = 'No hint for this decision: the search AI judges your mai
 export const HINT_OFF = 'The search AI needs the engine on your PC with hints on. Start ForgeCoach on your PC (the app-menu launcher, or ./scripts/play.sh).';
 
 const NO_INFO: HintInfo = { available: false, engine: null, budgetMs: null };
+/** At a table, before the room's state has been read. */
+export const HINT_CHECKING_TABLE = 'Asking the room’s PC whether it gives search hints…';
 
-/** What /health says about hints: asked now, and every 20 s (a PC started later; the engine's state). */
-function useHintInfo(on: boolean): HintInfo {
+/**
+ * What /health says about hints — or, at a table of two, the room's state (mtg-table D453: a friend's
+ * browser cannot read the room owner's /health): asked now, and every 20 s (a PC started later; the
+ * engine's state).
+ */
+function useHintInfo(on: boolean, room: SeatHandle | null): HintInfo {
   const [info, setInfo] = useState<HintInfo>(NO_INFO);
+  const roomKey = room ? `${room.base}|${room.id}|${room.token}` : '';
   useEffect(() => {
     if (!on) return;
     let live = true;
-    const check = () => void hintInfo(pageHelperTarget()).then((v) => live && setInfo(v));
+    setInfo(NO_INFO);
+    const check = () => void (room ? roomHintInfo(room) : hintInfo(pageHelperTarget())).then((v) => live && setInfo(v));
     check();
     const t = setInterval(check, 20_000);
     return () => {
       live = false;
       clearInterval(t);
     };
-  }, [on]);
+  }, [on, roomKey]); // eslint-disable-line react-hooks/exhaustive-deps
   return on ? info : NO_INFO;
 }
 
@@ -76,8 +90,12 @@ function useBoardMarks(ids: number[], version: unknown) {
 export interface SearchCoach {
   kind: CoachKind;
   setKind: (k: CoachKind) => void;
-  /** The engine on your PC offers hints, in a game against the bot. */
+  /** Hints are offered: the engine on your PC against the bot, the room's at a table of two. */
   available: boolean;
+  /** A table of two (mtg-table D453): the hint comes from the room, and the off text says so. */
+  table: boolean;
+  /** At a table, when not available: why, in words (the room gone, an older room's PC, no seat here, …). */
+  offText: string | null;
   info: HintInfo;
   /** The hint for the decision on screen (`none` when the search AI does not judge it). */
   phase: HintPhase;
@@ -100,6 +118,8 @@ export function useSearchCoach({
   seat,
   askOpen,
   enabled,
+  table = false,
+  room = null,
 }: {
   log: GameLog | null;
   state: GameStateBody | null;
@@ -107,26 +127,48 @@ export function useSearchCoach({
   seat: number | null;
   /** A question is open: S belongs to it. */
   askOpen: boolean;
-  /** A game against the bot, still going (never at a table of two). */
+  /** A game still going: against the bot, or at a table of two. */
   enabled: boolean;
+  /** A table of two: the hint is the room's, for this seat (mtg-table D453), never the helper's /hint. */
+  table?: boolean;
+  /** This seat's room and token (play/friendReview.ts `savedRoomSeat`), at a table; null when it is not known. */
+  room?: SeatHandle | null;
 }): SearchCoach {
   const [kind, setKindState] = useState<CoachKind>(() => readCoachKind(readLS));
   const setKind = useCallback((k: CoachKind) => {
     setKindState(k);
     writeLS(COACH_KIND_KEY, k);
   }, []);
-  const info = useHintInfo(enabled);
-  const available = enabled && info.available;
+  // At a table, only through the room (never the helper's /hint); with no room known, no hint.
+  const roomSeat = table ? room : null;
+  const info = useHintInfo(enabled && (!table || !!roomSeat), roomSeat);
+  // A room that answers "off" (an older one has no route: 404) turns the hint off for this room, without an error.
+  const roomKey = roomSeat ? `${roomSeat.base}|${roomSeat.id}` : '';
+  const [offFor, setOffFor] = useState<{ key: string; why: TableHintOff } | null>(null);
+  // A later read of the room's state that says `hint: 1` (the room's PC restarted with hints, say) lifts it.
+  useEffect(() => {
+    if (info.available) setOffFor(null);
+  }, [info]);
+  const offHere = table && offFor?.key === roomKey ? offFor.why : null;
+  const available = enabled && info.available && !offHere;
+  const offText = !table || available ? null : !roomSeat ? TABLE_HINT_OFF['no-seat'] : (offHere ?? info.off) ? TABLE_HINT_OFF[(offHere ?? info.off)!] : HINT_CHECKING_TABLE;
   const plan = coachPlan(kind, false, available);
 
-  const latest = useRef({ log, seat });
-  latest.current = { log, seat };
+  const latest = useRef({ log, seat, roomSeat, table, roomKey });
+  latest.current = { log, seat, roomSeat, table, roomKey };
   const runner = useMemo(
     () =>
       new HintRunner(async (_key, signal) => {
-        const { log: lg, seat: st } = latest.current;
+        const { log: lg, seat: st, roomSeat: rs, table: atTable, roomKey: rk } = latest.current;
         const moment = hintMoment(lg);
         const gameId = lg?.header?.gameId ?? null;
+        if (atTable) {
+          if (!rs) return { ok: false, status: 0, code: 'off', off: 'no-seat', message: TABLE_HINT_OFF['no-seat'] };
+          if (!lg || !moment || (st !== 0 && st !== 1)) return { ok: false, status: 0, code: null, message: 'This game has no moment the engine can look up yet.' };
+          const r = await askRoomHint(rs, { gameId, seat: st, stateSeq: moment.stateSeq, ...(moment.inputSeq ? { inputSeq: moment.inputSeq } : {}) }, undefined, signal);
+          if ('code' in r && r.code === 'off') setOffFor({ key: rk, why: r.off ?? 'off' });
+          return r;
+        }
         if (!lg || !moment || !gameId || (st !== 0 && st !== 1)) return { ok: false, status: 0, code: null, message: 'This game has no moment the engine can look up yet.' };
         const opp = await opponentFields(lg);
         if (signal.aborted) return { ok: false, status: 0, code: 'superseded', message: '' };
@@ -164,7 +206,7 @@ export function useSearchCoach({
   }, [plan.searchKey, key, askOpen, runner]);
 
   useBoardMarks(hintCardIds(phase.state === 'answered' ? phase.hint : null), state);
-  return { kind, setKind, available, info, phase, ask, searchKey: plan.searchKey, state, seat };
+  return { kind, setKind, available, table, offText, info, phase, ask, searchKey: plan.searchKey, state, seat };
 }
 
 // ---------------------------------------------------------------------------
@@ -284,11 +326,11 @@ function HintLine({ coach, compact }: { coach: SearchCoach; compact?: boolean })
 // The Coach panel with Search AI chosen
 
 export function SearchCoachBody({ coach, myMove }: { coach: SearchCoach; myMove: boolean }) {
-  const { phase, state, seat, info, available } = coach;
+  const { phase, state, seat, info, available, table } = coach;
   if (!available) {
     return (
       <div className="card-box notice pc-wait" data-search-coach="off">
-        <p className="muted small">{HINT_OFF}</p>
+        <p className="muted small">{table ? (coach.offText ?? HINT_OFF_TABLE) : HINT_OFF}</p>
       </div>
     );
   }

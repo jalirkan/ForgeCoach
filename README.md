@@ -136,7 +136,10 @@ how sure it is and the other choices it weighed. It is free, so it answers by
 itself; elsewhere it says there is no hint for that decision. **Claude** is the
 coach below (it spends usage, so it asks by itself only with Auto-coach on);
 **Off** asks nothing. The decision panel's **Ask now** asks whichever coach is
-chosen; S asks the search AI. The choice is kept in this browser.
+chosen; S asks the search AI. The choice is kept in this browser. In a game
+with a friend each of you gets the search AI for your own decisions only: it
+is asked through the draft room on the room's PC, which knows only what you
+saw (the cube and your friend's picks), never your friend's hand or deck.
 
 **Which model does what.** Settings has two model choices. **Live coach
 model** coaches you during a game (Auto-coach and *Ask about this*):

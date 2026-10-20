@@ -28,6 +28,7 @@ import { CubeGuideView } from '../guide/CubeGuide.tsx';
 import { Collection, usePrefs, ViewBar } from './Collection.tsx';
 import { ColourDots, MiniCurve } from './Pool.tsx';
 import { useCubeMeta } from './useCubeMeta.ts';
+import { DraftedColours } from './DraftedColours.tsx';
 
 const norm = (s: string) => s.toLowerCase().replace(/[’']/g, "'");
 
@@ -164,6 +165,7 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
             </div>
           )}
           <Collection names={shown} meta={meta} prefs={prefs} onInfo={setCard} empty={<p className="quiet-italic center">No card matches.</p>} />
+          <DraftedColours cubeId={info.id} />
           {ctx.cube.archetypes.length > 0 && (
             <section className="cp-arch">
               <h2 className="de-h">

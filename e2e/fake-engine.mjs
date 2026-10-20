@@ -1234,8 +1234,10 @@ class Game {
 // The bridge: sockets, the session's frames, catch-ups.
 
 export class FakeEngine {
-  constructor({ gameId = 'human-ws-0', gameCount = 3, scene = 'pregame', dropMode = 'default', aiLife = 3, verbose = false, playable = false, deathTrigger = false, selection = false } = {}) {
+  constructor({ gameId = 'human-ws-0', gameCount = 3, scene = 'pregame', dropMode = 'default', aiLife = 3, verbose = false, playable = false, deathTrigger = false, selection = false, table = false } = {}) {
     this.baseGameId = gameId;
+    /** A table of two's handshake (mtg-table M59): `match.opponent: "human"`; the other seat is still played by the fake. */
+    this.table = table;
     this.playable = playable;
     this.selection = selection;
     this.deathTrigger = deathTrigger;
@@ -1293,7 +1295,9 @@ export class FakeEngine {
         { id: HUMAN, name: 'Human', isAi: false },
         { id: AI, name: 'Forge AI', isAi: true },
       ],
-      match: { yourDeck: { name: 'Mono-Red Test', path: 'decks/e2e-red.dck', cards: 40 }, aiDeck: { name: 'Red Probe', cards: 40 }, aiProfile: 'Default', games: this.gameCount },
+      match: this.table
+        ? { yourDeck: { name: 'Mono-Red Test', path: 'decks/e2e-red.dck', cards: 40 }, opponentDeck: { name: 'Red Probe', cards: 40 }, opponent: 'human', games: this.gameCount }
+        : { yourDeck: { name: 'Mono-Red Test', path: 'decks/e2e-red.dck', cards: 40 }, aiDeck: { name: 'Red Probe', cards: 40 }, aiProfile: 'Default', games: this.gameCount },
     });
     const game = new Game({ out: (type, body) => this.emit(type, body), aiLife: this.aiLife, scene: 'none', playable: this.playable, deathTrigger: this.deathTrigger, selection: this.selection });
     this.game = game;

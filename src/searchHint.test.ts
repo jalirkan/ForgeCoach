@@ -7,6 +7,10 @@ import type { GameStateBody, InputBody } from './protocol.ts';
 import { isHidden } from './protocol.ts';
 import {
   askHint,
+  askRoomHint,
+  roomHintInfo,
+  TABLE_HINT_OFF,
+  roomHintInfoOf,
   helperHintAvailable,
   hintCardIds,
   hintCaveat,
@@ -203,6 +207,72 @@ describe('asking', () => {
   });
 });
 
+describe('at a table of two (mtg-table D453): the room, behind this seat\'s token', () => {
+  const room = { base: 'https://play.example.org/', id: 'rAbC12_xy', token: 'seat-token-0' };
+  it('asks the room, never the helper: this seat, the moment, the room token in a header — no pool, no deck', async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    const f: HintFetch = async (url, init) => {
+      calls.push({ url, init });
+      return ok(answer());
+    };
+    const r = await askRoomHint(room, { gameId: 'friend-m1790000000042', seat: 1, stateSeq: 900, inputSeq: 903, budgetMs: 3000 }, f);
+    expect(isRefused(r)).toBe(false);
+    expect(calls[0]!.url).toBe('https://play.example.org/room/rAbC12_xy/hint');
+    expect(calls[0]!.url).not.toContain('seat-token-0');
+    expect(calls[0]!.init!.method).toBe('POST');
+    expect((calls[0]!.init!.headers as Record<string, string>)['X-Room-Token']).toBe('seat-token-0');
+    const body = JSON.parse(String(calls[0]!.init!.body));
+    expect(body).toEqual({ gameId: 'friend-m1790000000042', seat: 1, stateSeq: 900, inputSeq: 903, budgetMs: 3000 });
+  });
+  it('sends a game id only when it is a table\'s: the room names the game itself', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const f: HintFetch = async (_u, init) => {
+      bodies.push(JSON.parse(String(init!.body)));
+      return ok(answer());
+    };
+    await askRoomHint(room, { gameId: 'friend-m1790000000042-seat1', seat: 1, stateSeq: 5 }, f);
+    await askRoomHint(room, { gameId: 'human-ws-7', seat: 1, stateSeq: 5 }, f);
+    await askRoomHint(room, { gameId: null, seat: 1, stateSeq: 5 }, f);
+    expect(bodies.map((b) => b.gameId)).toEqual(['friend-m1790000000042-seat1', undefined, undefined]);
+  });
+  it('the room gone (404), hints off (503) or the link replaced (403) is off, each in its own words — not an error', async () => {
+    for (const [status, body, why] of [[404, { ok: false, code: 'gone', message: 'no such room' }, 'gone'], [503, { ok: false, code: 'off', message: 'x' }, 'off'], [403, { ok: false, code: 'token' }, 'link']] as const) {
+      const r = await askRoomHint(room, { seat: 0, stateSeq: 5 }, async () => ok(body, status));
+      expect(isRefused(r) && [r.code, r.off, r.message]).toEqual(['off', why, TABLE_HINT_OFF[why]]);
+    }
+    expect(new Set(Object.values(TABLE_HINT_OFF)).size).toBe(Object.keys(TABLE_HINT_OFF).length);
+    expect(TABLE_HINT_OFF.gone).not.toMatch(/latest ForgeCoach/);
+    expect(TABLE_HINT_OFF['no-seat']).not.toMatch(/latest ForgeCoach/);
+  });
+  it('the room\'s other answers, in plain words', async () => {
+    const req = { seat: 0, stateSeq: 5 };
+    const game = await askRoomHint(room, req, async () => ok({ ok: false, code: 'game' }, 409));
+    expect(isRefused(game) && game.code).toBe('moved-on');
+    const none = await askRoomHint(room, req, async () => ok({ ok: false, code: 'no-game' }, 409));
+    expect(isRefused(none) && [none.code, none.message]).toEqual([null, 'No game is being played in the room right now.']);
+    const moved = await askRoomHint(room, req, async () => ok({ ok: false, code: 'moved-on' }, 409));
+    expect(isRefused(moved) && moved.code).toBe('moved-on');
+    const down = await askRoomHint(room, req, async () => { throw new TypeError('fetch failed'); });
+    expect(isRefused(down) && down.message).toMatch(/room’s PC/);
+  });
+  it('availability is the room\'s state `hint: 1`, read with this seat\'s token', async () => {
+    expect(roomHintInfoOf({ v: 1, id: 'r', hint: 1 })).toMatchObject({ available: true, off: null });
+    expect(roomHintInfoOf({ v: 1, id: 'r', hint: 0 })).toMatchObject({ available: false, off: 'off' });
+    expect(roomHintInfoOf({ v: 1, id: 'r' })).toMatchObject({ available: false, off: 'old' });
+    const calls: { url: string; init?: RequestInit }[] = [];
+    const info = await roomHintInfo(room, async (url, init) => {
+      calls.push({ url, init });
+      return ok({ v: 1, id: room.id, hint: 1 });
+    });
+    expect(info.available).toBe(true);
+    expect(calls[0]!.url).toBe('https://play.example.org/room/rAbC12_xy');
+    expect((calls[0]!.init!.headers as Record<string, string>)['X-Room-Token']).toBe('seat-token-0');
+    expect(await roomHintInfo(room, async () => ok({ ok: false, code: 'gone' }, 404))).toMatchObject({ available: false, off: 'gone' });
+    expect(await roomHintInfo(room, async () => ok({ ok: false, code: 'token' }, 403))).toMatchObject({ available: false, off: 'link' });
+    expect(await roomHintInfo(room, async () => { throw new TypeError('fetch failed'); })).toMatchObject({ available: false, off: 'unreachable' });
+  });
+});
+
 it('every answer the engine can give reads back (the helper\'s own shapes)', () => {
   const trivial = parseHint({ ok: true, kind: 'search-hint', status: 'trivial', pick: 'pass', strength: 'only', options: [{ token: 'pass', label: 'pass' }], knowledge: { opponentModel: 'pool' } });
   expect(hintWords(trivial, main.state, 0)).toMatchObject({ line: 'Cast nothing now', strength: 'the only choice' });
@@ -222,9 +292,16 @@ describe('the pick’s line (mtg-table D454)', () => {
     expect(h.line).toEqual([{ kind: 'target', text: 'Quantum Reduction → Peggy Carter, Secret Agent', ids: [5, 44] }]);
     expect(parseHint({ ...ANSWER, line: undefined }).line).toBeNull();
     expect(parseHint({ ...ANSWER, line: [] }).line).toEqual([]);
-    expect(parseLine([{ kind: 'nonsense', text: 'x', ids: [] }, { kind: 'x', text: 'X =\n3', ids: [1.5, -1, 'a', 2] }, { kind: 'mode', text: '' }]))
-      .toEqual([{ kind: 'x', text: 'X = 3', ids: [2] }]);
-    expect(parseLine(Array.from({ length: 12 }, () => ({ kind: 'number', text: 'number = 1', ids: [] })))).toHaveLength(8);
+    // ONE malformed step rejects the whole line, as the helper does
+    const good = { kind: 'number', text: 'number = 1', ids: [] };
+    for (const bad of [{ kind: 'nonsense', text: 'x', ids: [] }, { kind: 'x', text: 'X =\n3', ids: [2] }, { kind: 'x', text: 'Fireball: X = 3', ids: [1.5] },
+      { kind: 'x', text: 'Fireball: X = 3', ids: [-1] }, { kind: 'x', text: 'Fireball: X = 3', ids: 'a' }, { kind: 'mode', text: '' }, null, 'x', []]) {
+      expect(parseLine([good, bad])).toBeNull();
+    }
+    expect(parseLine([good, { kind: 'number', text: 'number = 2' }])).toEqual([{ ...good }, { kind: 'number', text: 'number = 2', ids: [] }]);
+    expect(parseLine(Array.from({ length: 8 }, () => good))).toHaveLength(8);
+    expect(parseLine(Array.from({ length: 9 }, () => good))).toBeNull();
+    expect(parseHint({ ...ANSWER, line: [...ANSWER.line, { kind: 'bogus', text: 'x', ids: [] }] }).line).toBeNull();
   });
   it('shows the steps whose cards the board shows by name, as the engine worded them', () => {
     expect(main2.state.turn).toBe(7);

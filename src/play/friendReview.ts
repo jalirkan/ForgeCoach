@@ -74,12 +74,17 @@ export function savedRoomSeat(id: string, seat: 0 | 1, s?: Pick<Storage, 'getIte
   return null;
 }
 
-const url = (h: SeatHandle, p: string) => `${h.base.replace(/\/+$/, '')}/room/${encodeURIComponent(h.id)}${p}`;
+/** The header a seat's token travels in (never the URL), on every room route. */
+export const ROOM_TOKEN_HEADER = 'X-Room-Token';
+
+/** A route of this seat's room: `<base>/room/<id><p>` (the review, the log, the state, the search hint). */
+export const seatRoomUrl = (h: SeatHandle, p: string) => `${h.base.replace(/\/+$/, '')}/room/${encodeURIComponent(h.id)}${p}`;
+const url = seatRoomUrl;
 
 async function get(h: SeatHandle, p: string, what: string, f: FetchLike): Promise<Response> {
   let r: Response;
   try {
-    r = await f(url(h, p), { headers: { 'X-Room-Token': h.token }, cache: 'no-store' });
+    r = await f(url(h, p), { headers: { [ROOM_TOKEN_HEADER]: h.token }, cache: 'no-store' });
   } catch {
     throw new SeatReviewError('The room’s computer cannot be reached.', 0, 'offline');
   }
