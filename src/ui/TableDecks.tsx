@@ -10,7 +10,7 @@
  * The bot's list is never shown: only where it comes from.
  */
 import { useMemo, useState } from 'react';
-import { CUBES } from '../cube/cubes.ts';
+import { DRAFT_CUBES } from '../cube/cubes.ts';
 import { listPools } from '../cube/pools.ts';
 import { loadDraft } from '../draft/store.ts';
 import {
@@ -26,9 +26,9 @@ import {
 } from '../play/tableDecks.ts';
 import { cx } from './util.ts';
 
-/** The cubes a fresh deck can come from: the ones the drafting bots know (lab data or not, all draftable). */
+/** The cubes a fresh deck can come from: the ones the drafting bots know (lab data or not, all draftable; a deck you own is not one). */
 export function tableCubes(): CubeRef[] {
-  return CUBES.map((c) => ({ id: c.id, title: c.title }));
+  return DRAFT_CUBES.map((c) => ({ id: c.id, title: c.title }));
 }
 
 /** The table as chosen in this browser, settled against what is still saved. */

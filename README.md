@@ -522,9 +522,10 @@ agree DIR` prints the lab agreement table.
 ## Make your own cube
 
 **Make a cube** on the start page (`#cube/new`) opens the cube builder. Its
-library is every card ForgeCoach knows: the cubes here and the two big proxy
-lists (`docs/proxies/mtgo-vintage-cube-540.txt`, `old-school-93-94-360.txt`),
-1,590 cards.
+library is every card ForgeCoach knows: the cubes here, Counter Blitz (the
+Final Fantasy Commander deck Justin owns) and the two big proxy lists
+(`docs/proxies/mtgo-vintage-cube-540.txt`, `old-school-93-94-360.txt`), 1,669
+cards.
 
 - **Start** empty, from any cube, or with **Generate**: a balanced cube in
   the Omega Cube's shape (24 cards a colour, 2 gold cards a pair, 18

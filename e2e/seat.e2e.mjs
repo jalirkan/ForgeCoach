@@ -40,8 +40,9 @@
  * over HTTP (no socket at all) and moving on to game 2, on a desktop and a
  * phone (SHOTS=<dir> saves their screenshots); the cube builder (#cube/new):
  * a small cube generated from the card library, a Forge warning added and
- * taken out, saved in this browser, then Draft vs Bot dealing a Grid draft
- * from it, on a desktop and a phone (SHOTS=docs/screens/cube-builder).
+ * taken out, saved in this browser, then Draft vs Bot dealing a Winston draft
+ * from it (a 45-card cube is too small for Grid), on a desktop and a phone
+ * (SHOTS=docs/screens/cube-builder).
  *
  * Environment: BUILD=0 (reuse dist/), APP_URL (test a running ForgeCoach
  * instead; it must be on a Vite port), HEADLESS=0, ONLY=<substring of a
@@ -1366,7 +1367,7 @@ function cubeBuilderScenario({ name, viewport, tag }) {
       await page.locator('.lobby-tile', { hasText: 'Make a cube' }).click({ timeout: STEP_MS });
       await page.waitForURL(/#cube\/new$/, { timeout: STEP_MS });
       await page.locator('.cb-rows .cb-card').first().waitFor({ timeout: STEP_MS });
-      check((await page.locator('.cb-count').innerText()).includes('1590 of 1590'), 'the whole library is listed');
+      check((await page.locator('.cb-count').innerText()).includes('1669 of 1669'), 'the whole library is listed');
       await page.locator('.cb-title').fill('Friday Cube');
       await page.locator('.cb-blurb').fill('A quick cube for the Friday table.');
       // The generator: 45 cards, seed 42, by lab rating.
@@ -1399,14 +1400,16 @@ function cubeBuilderScenario({ name, viewport, tag }) {
       await page.waitForURL(/#cube\/edit\/my-friday-cube$/, { timeout: STEP_MS });
       const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('forgecoach.customCubes.v1') ?? '[]'));
       check(stored.length === 1 && stored[0].id === 'my-friday-cube' && stored[0].cards.length === 45 && stored[0].doc.startsWith('# Friday Cube'), `the cube is saved in this browser (${JSON.stringify(stored.map((c) => [c.id, c.cards.length]))})`);
-      // Draft it: Draft vs Bot opens on it; a Grid draft deals from it.
+      // Draft it: Draft vs Bot opens on it. A 45-card cube is under Grid's 18 grids (draft.ts gridFits,
+      // since #181), so Grid is not offered; Winston deals the whole list.
       await page.getByRole('link', { name: 'Draft it' }).click();
       await page.locator('.setup .cube-pick', { hasText: 'Friday Cube · 45 cards' }).waitFor({ timeout: STEP_MS });
-      await page.getByRole('radio', { name: 'Grid' }).click();
+      check((await page.getByRole('radio', { name: 'Grid' }).count()) === 0, 'Grid is not offered for a 45-card cube');
+      await page.getByRole('radio', { name: 'Winston' }).click();
       await page.locator('.adv-toggle').click();
       await page.getByRole('radiogroup', { name: 'First pick' }).getByRole('radio', { name: 'You' }).click();
       await page.locator('.setup .btn-begin').click();
-      await page.locator('.pk.is-grid').waitFor({ timeout: STEP_MS });
+      await page.locator('.pk-title', { hasText: /^Pile 1$/ }).waitFor({ timeout: STEP_MS });
       const draft = await page.evaluate(() => {
         for (let i = 0; i < localStorage.length; i++) {
           const v = localStorage.getItem(localStorage.key(i));
@@ -1415,17 +1418,16 @@ function cubeBuilderScenario({ name, viewport, tag }) {
         return null;
       });
       const d = draft?.draft ?? draft;
-      check(d && d.cubeId === 'my-friday-cube' && d.format === 'grid' && d.grids === 5, `a Grid draft of 5 grids on the custom cube (${JSON.stringify(d && { cubeId: d.cubeId, format: d.format, grids: d.grids })})`);
+      check(d && d.cubeId === 'my-friday-cube' && d.format === 'winston' && d.dealt.length === 45, `a Winston draft of the whole custom cube (${JSON.stringify(d && { cubeId: d.cubeId, format: d.format, dealt: d.dealt?.length })})`);
       const names = new Set(stored[0].cards);
       check(d.dealt.every((n) => names.has(n)), 'every dealt card is from the custom cube');
-      await page.locator('.garrow:not([disabled])').first().click({ timeout: STEP_MS });
-      // The take button: in the pick bar on a desktop, the dock's on a phone.
-      await page.locator('button:visible:text-matches("^Take (column|row)")').first().click({ timeout: STEP_MS });
+      // Take the first pile: in the pick bar on a desktop, the dock's on a phone.
+      await page.locator('button:visible:text-matches("^Take pile")').first().click({ timeout: STEP_MS });
       await page.waitForFunction(
         () => {
           for (let i = 0; i < localStorage.length; i++) {
             const v = localStorage.getItem(localStorage.key(i)) ?? '';
-            if (v.includes('"cubeId":"my-friday-cube"')) return (JSON.parse(v).draft ?? JSON.parse(v)).picks.you.length === 3;
+            if (v.includes('"cubeId":"my-friday-cube"')) return (JSON.parse(v).draft ?? JSON.parse(v)).picks.you.length >= 1;
           }
           return false;
         },
@@ -1443,7 +1445,7 @@ function cubeBuilderScenario({ name, viewport, tag }) {
 }
 
 scenarios.push(
-  cubeBuilderScenario({ name: 'the cube builder, a desktop: generate a small cube, a Forge warning, save, Draft vs Bot deals a Grid draft from it', viewport: { width: 1440, height: 900 }, tag: 'desktop' }),
+  cubeBuilderScenario({ name: 'the cube builder, a desktop: generate a small cube, a Forge warning, save, Draft vs Bot deals a Winston draft from it (too small for Grid)', viewport: { width: 1440, height: 900 }, tag: 'desktop' }),
   cubeBuilderScenario({ name: 'the cube builder, a phone (390×844): the same, between the Library and Your cube tabs', viewport: { width: 390, height: 844 }, tag: 'phone' }),
 );
 

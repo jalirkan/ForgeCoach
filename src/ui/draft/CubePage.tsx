@@ -100,9 +100,15 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
               Edit
             </a>
           )}
-          <a className="btn-gold cp-draft" href={`#draft/setup?cube=${info.id}`}>
-            Draft this cube
-          </a>
+          {info.kind === 'deck' ? (
+            <a className="btn-gold cp-draft" href="#deck">
+              Build a 40 from it
+            </a>
+          ) : (
+            <a className="btn-gold cp-draft" href={`#draft/setup?cube=${info.id}`}>
+              Draft this cube
+            </a>
+          )}
         </div>
       </div>
 
@@ -110,9 +116,11 @@ export default function CubePage({ id: route, onExit }: { id: string; onExit: ()
         <Sibling href={`#cube/${info.id}`} current={view === 'cards'}>
           Cards
         </Sibling>
-        <Sibling href={`#cube/${info.id}/guide`} current={view === 'guide'}>
-          How to draft
-        </Sibling>
+        {info.kind !== 'deck' && (
+          <Sibling href={`#cube/${info.id}/guide`} current={view === 'guide'}>
+            How to draft
+          </Sibling>
+        )}
       </nav>
 
       {view === 'guide' ? (

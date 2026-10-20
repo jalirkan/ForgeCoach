@@ -156,7 +156,7 @@ export function inputCounter(input: InputBody | null, view: InputView): string |
   let n = 0;
   if (at >= 0) {
     for (const l of lines.slice(at + 1)) {
-      if (/^\(\d+ more can be targeted\)$/i.test(l)) break;
+      if (/^\(\d+ more can be targeted\)$/i.test(l) || /^Parent Targeted:/i.test(l)) break; // an earlier part's targets, not this one's
       n++;
     }
   }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, it } from 'vitest';
-import { allBuilds, buildDecks, checkBuild, dckText, deckText, evaluateBuild, mainDeck, sideboard, swapOptions, DECK_SIZE } from './builder.ts';
+import { allBuilds, buildDecks, checkBuild, dckText, deckText, evaluateBuild, mainDeck, sideboard, suggestLands, swapOptions, DECK_SIZE } from './builder.ts';
 import { castableIn } from './facts.ts';
 import { cardValue } from './score.ts';
 import { context, loadMeta, loadRealMeta, samplePool, type CubeId } from './testdata/load.ts';
@@ -229,5 +229,56 @@ describe('meta tolerance', () => {
     const ctx = context('synergy', m);
     const [b] = buildDecks(ctx, samplePool(ctx.cube, 'BR', 45, 3));
     expect(b!.landCount).toBeLessThanOrEqual(17);
+  });
+});
+
+describe('suggest lands (a hand-picked main keeps its cards)', () => {
+  const ctx = context('synergy', null);
+  const pool = samplePool(ctx.cube, 'BR', 45, 3);
+  const best = buildDecks(ctx, pool)[0]!;
+  const sum = (b: Partial<Record<string, number>>) => Object.values(b).reduce((a: number, x) => a + (x ?? 0), 0);
+
+  it("the builder's own spells get the builder's own land count and split", () => {
+    const s = suggestLands([...best.spells, ...best.nonbasics], ctx)!;
+    expect(s.landCount).toBe(best.landCount);
+    expect(s.colors).toBe(best.colors);
+    expect(s.splash).toBe(best.splash);
+    expect(sum(s.basics) + best.nonbasics.length).toBe(best.landCount);
+    expect(s.basics).toEqual(best.basics);
+    expect(s.short).toBe(0);
+  });
+
+  it('a short main gets up to 18 lands and is told what it still needs', () => {
+    const s = suggestLands(best.spells.slice(0, 20), ctx)!;
+    expect(s.landCount).toBe(18);
+    expect(s.short).toBe(2);
+    expect(s.note).toMatch(/Add 2 more cards to reach 40\.$/);
+  });
+
+  it('a long main keeps its land count and says how many spells to cut', () => {
+    const extra = pool.filter((n) => !best.spells.includes(n) && !ctx.facts.get(n)?.land && castableIn(ctx.facts.get(n)!, best.colors)).slice(0, 2);
+    const s = suggestLands([...best.spells, ...extra], ctx)!;
+    expect(s.landCount).toBe(best.landCount);
+    expect(s.note).toMatch(new RegExp(`cut ${extra.length} spells? for 40\\.$`));
+  });
+
+  it('a light third colour is a splash; nothing coloured is null', () => {
+    const main = best.spells.filter((n) => castableIn(ctx.facts.get(n)!, best.colors));
+    const splashCard = ctx.cube.cards
+      .map((c) => c.name)
+      .find((n) => {
+        const f = ctx.facts.get(n);
+        return f && !f.land && Object.keys(f.pips).length === 1 && (f.pips.G ?? 0) === 1;
+      })!;
+    const s = suggestLands([...main, splashCard], ctx)!;
+    expect(s.splash).toBe('G');
+    expect(s.colors).toBe(best.colors);
+    // This main already has three G sources (Prophetic Prism and two Treasure makers): no G basics, the builder's rule.
+    expect(s.basics.G ?? 0).toBe(0);
+    const plain = suggestLands([...main.filter((n) => !ctx.facts.get(n)?.fixer), splashCard], ctx)!;
+    expect(plain.splash).toBe('G');
+    expect(plain.basics.G).toBe(2);
+    expect(sum(plain.basics)).toBe(plain.landCount);
+    expect(suggestLands([], ctx)).toBeNull();
   });
 });
