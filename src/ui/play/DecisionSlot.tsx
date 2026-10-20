@@ -60,6 +60,7 @@ export function DecisionSlot({
   toggles,
   ask = null,
   hint = null,
+  sourceText = null,
 }: {
   view: InputView;
   busy: 'ok' | 'cancel' | null;
@@ -88,6 +89,12 @@ export function DecisionSlot({
   ask?: ReactNode;
   /** Ask now and the search AI's answer (SearchHint.tsx AskNowRow, mtg-table D429): a row under the text; it renders nothing when not offered. */
   hint?: ReactNode;
+  /**
+   * The text of the card a target or choice is for (Arc Trail's "deals 2 damage to any target and 1 damage to
+   * another target"): the prompt's own ability text, else the card's cached oracle text (PlayView). Shown
+   * under the selection line while a choice is up, so a later target's amounts can be read off the card.
+   */
+  sourceText?: string | null;
 }) {
   const [menu, setMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -144,7 +151,8 @@ export function DecisionSlot({
               {view.payFor ? ` for ${view.payFor}` : ''}
             </span>
           ) : (
-            <span className="ab-title-text">
+            // Forge's own words (ids out) on hover: the title is ours, the engine's text stays one hover away.
+            <span className="ab-title-text" title={engine && engine !== view.title ? `Engine: ${engine}` : undefined}>
               {nudge}
               {view.title}
             </span>
@@ -163,10 +171,17 @@ export function DecisionSlot({
               {counter ?? (selection.count ? `${selection.count} selected` : 'Click to select')}
             </span>
             {selection.line && (selection.count || counter || !/^click to select$/i.test(selection.line)) && (
-              <span className={cx('ab-select-line', !selection.count && 'is-hint')}>{selection.line}</span>
+              <span className={cx('ab-select-line', !selection.count && 'is-hint', !!view.context && selection.line === view.context && 'is-context')}>{selection.line}</span>
             )}
           </div>
-        ) : view.detail && !theirs ? (
+        ) : null}
+        {/* The card the choice is for, and its text: a later target's amounts are on the card, not in the prompt. */}
+        {!flash && selection?.active && view.mode === 'target' && view.source && sourceText && (
+          <div className="ab-sub ab-source" title={`${view.source} — ${sourceText}`}>
+            <b className="ab-source-name">{view.source}</b> {sourceText}
+          </div>
+        )}
+        {flash || (selection?.active && (selection.line || counter)) ? null : view.detail && !theirs ? (
           <div className="ab-sub ab-detail">{view.detail}</div>
         ) : (
           showEngine &&

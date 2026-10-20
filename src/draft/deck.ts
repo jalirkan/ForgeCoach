@@ -9,7 +9,7 @@
  * so it is saved with the draft.
  */
 import { BASIC_OF, BASIC_NAMES } from '../cube/colors.ts';
-import { mainDeck, sideboard, type DeckBuild } from '../cube/builder.ts';
+import { mainDeck, sideboard, type DeckBuild, type LandSuggestion } from '../cube/builder.ts';
 import { safeDeckName, type MatchDeck } from './launch.ts';
 import { makeDeckList, type DeckList } from '../cube/deckExport.ts';
 
@@ -43,6 +43,13 @@ export function deckFromBuild(b: DeckBuild, pool: string[]): DeckState {
   const basics = noBasics();
   for (const k of BASIC_KEYS) if (k !== 'C') basics[k] = b.basics[k] ?? 0;
   return { main, side, basics, suggestion: { name: b.name, score: b.score, reasons: b.reasons } };
+}
+
+/** "Suggest lands": the basics for the spells already in the main (builder.ts `suggestLands`); the cards stay. */
+export function withSuggestedLands(d: DeckState, s: LandSuggestion): DeckState {
+  const basics = noBasics();
+  for (const k of BASIC_KEYS) if (k !== 'C') basics[k] = s.basics[k] ?? 0;
+  return { ...d, basics };
 }
 
 export const basicCount = (d: DeckState) => BASIC_KEYS.reduce((s, k) => s + (d.basics[k] ?? 0), 0);

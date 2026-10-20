@@ -98,7 +98,9 @@ describe('the slot at priority with Forge’s End Turn', () => {
     const html = slot(PRIORITY, { wide: true });
     expect(html).toMatch(/class="actionbar decision-slot ab-priority is-pending"/);
     expect(html).toContain('ab-eyebrow is-yours');
-    expect(html).toMatch(/class="ab-title-text">/);
+    expect(html).toMatch(/class="ab-title-text"[^>]*>/);
+    // Forge's own words stay one hover away
+    expect(html).toContain('title="Engine: Priority: Sam');
   });
 });
 
