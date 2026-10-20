@@ -158,6 +158,12 @@ export interface Settings {
    * helper has a model (evalClient.ts).
    */
   winChance?: boolean;
+  /**
+   * mtg-table D455: when a Draft vs Bot match starts, send your own deck to the
+   * engine on your PC, for the cube page's real-draft colour shares (never the
+   * bot's deck). On by default (absent = on); false turns it off.
+   */
+  recordDrafts?: boolean;
 }
 
 function storage(): Storage | null {
@@ -184,6 +190,7 @@ export function loadSettings(): Settings {
     if (isCoachStyle(v.coachStyle)) out.coachStyle = v.coachStyle;
     if (isSkin(v.skin)) out.skin = v.skin;
     if (v.winChance === true) out.winChance = true;
+    if (v.recordDrafts === false) out.recordDrafts = false;
   } catch {
     /* corrupt or unavailable storage → defaults */
   }
@@ -212,6 +219,7 @@ export function saveSettings(s: Settings): void {
         coachStyle: isCoachStyle(s.coachStyle) ? s.coachStyle : DEFAULT_COACH_STYLE,
         skin: isSkin(s.skin) ? s.skin : DEFAULT_SKIN,
         winChance: s.winChance === true,
+        ...(s.recordDrafts === false ? { recordDrafts: false } : {}),
       }),
     );
   } catch {

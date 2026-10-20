@@ -198,6 +198,8 @@ export interface EngineHealth {
   aiPolicies: AiPolicy[];
   /** The search budget's limits (D333 `aiSearchMs`), when advertised and sane. */
   aiSearchMs?: SearchBudget;
+  /** mtg-table D455 (`draftDecks: 1`): the helper keeps real drafts' decks (POST /draft-deck), for the cube page's colour shares. */
+  draftDecks?: true;
 }
 
 const isPolicy = (x: unknown): x is AiPolicy => AI_POLICIES.some((p) => p.id === x);
@@ -252,7 +254,7 @@ export async function engineHealth(opts: LaunchOptions = {}): Promise<EngineHeal
   const to = withTimeout(opts.timeoutMs ?? 1500);
   try {
     const res = await f(`${t.baseUrl}/health`, { headers: headers(t, false), signal: to.signal });
-    let j: { match?: unknown; engine?: unknown; engine_start?: unknown; engine_start_profile?: unknown; engine_start_policy?: unknown; aiPolicies?: unknown; aiSearchMs?: unknown } = {};
+    let j: { match?: unknown; engine?: unknown; engine_start?: unknown; engine_start_profile?: unknown; engine_start_policy?: unknown; aiPolicies?: unknown; aiSearchMs?: unknown; draftDecks?: unknown } = {};
     try {
       j = ((await res.json()) ?? {}) as typeof j;
     } catch {
@@ -271,6 +273,7 @@ export async function engineHealth(opts: LaunchOptions = {}): Promise<EngineHeal
       ...(canWake && j.engine_start_policy === 1 && aiPolicies.length > 0 ? { canPickPolicy: true } : {}),
       aiPolicies,
       ...(aiSearchMs ? { aiSearchMs } : {}),
+      ...(j.draftDecks === 1 ? { draftDecks: true as const } : {}),
     };
   } catch {
     return { status: 'down', canWake: false, aiPolicies: [] };

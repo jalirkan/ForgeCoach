@@ -156,6 +156,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           </span>
         </fieldset>
         <WinChanceField s={s} setS={setS} />
+        <RecordDraftsField s={s} setS={setS} />
 
         <h3 className="settings-group">Everything else</h3>
         <fieldset className="field">
@@ -289,6 +290,22 @@ function CoachSourceField({ s, setS }: { s: Settings; setS: (s: Settings) => voi
               : 'No coach yet: start ForgeCoach on your PC with Claude Code logged in, or add a key below. Until then, “Copy prompt” gives you the question to paste into Claude.'}
       </span>
     </fieldset>
+  );
+}
+
+/** mtg-table D455: your own Draft vs Bot decks to the cube page's real-draft colour shares; on by default. */
+function RecordDraftsField({ s, setS }: { s: Settings; setS: (s: Settings) => void }) {
+  return (
+    <label className="field check-row">
+      <input type="checkbox" checked={s.recordDrafts !== false} onChange={(e) => setS({ ...s, recordDrafts: e.target.checked ? undefined : false })} />
+      <span>
+        <span className="field-label">Count my drafts against the bot</span>
+        <span className="field-help">
+          When a Draft vs Bot match starts, the engine on your PC keeps your deck so the cube’s page can show which colours real
+          drafts end up in. Only your deck, never the bot’s, and it stays on your PC.
+        </span>
+      </span>
+    </label>
   );
 }
 

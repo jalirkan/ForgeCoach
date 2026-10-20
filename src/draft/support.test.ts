@@ -144,6 +144,8 @@ describe('a sleeping engine (D308)', () => {
     expect(await engineHealth({ fetch: () => json(200, { ...idle, engine: 'running' }), target })).toEqual({ status: 'ready', canWake: true, aiPolicies: [] });
     expect(await engineHealth({ fetch: () => json(200, { ok: true, helper: 1, match: 1 }), target })).toEqual({ status: 'ready', canWake: false, aiPolicies: [] });
     expect(await engineHealth({ fetch: () => json(200, { ok: false, helper: 1, match: 1, engine: 'idle' }), target })).toEqual({ status: 'asleep', canWake: false, aiPolicies: [] });
+    // mtg-table D455: a helper that keeps real drafts' decks says so; the match set-up then records yours.
+    expect(await engineHealth({ fetch: () => json(200, { ...idle, draftDecks: 1 }), target })).toEqual({ status: 'asleep', canWake: true, aiPolicies: [], draftDecks: true });
     // The match set-up can still Begin: POST /match wakes the engine.
     expect(await launcherStatus({ fetch: () => json(200, idle), target })).toBe('asleep');
     expect(await matchSupported({ fetch: () => json(200, idle), target })).toBe(true);

@@ -2210,6 +2210,136 @@ button.seat-chip:hover {
   font: 15px/1.4 var(--serif);
   color: var(--text-2);
 }
+/* ---- Drafted colours (DraftedColours.tsx): real drafts' colour shares, counts with 95% intervals ---- */
+.dshare {
+  margin-top: 30px;
+}
+.dshare-sub {
+  margin: 8px 0 0;
+  font: 12px/1.4 var(--mono);
+  color: var(--text-2);
+}
+.dshare-note {
+  margin: 8px 0 0;
+  font: italic 14px/1.45 var(--serif);
+  color: var(--muted);
+  max-width: 760px;
+}
+.dshare-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px 32px;
+  margin-top: 14px;
+}
+.dshare-h {
+  margin-bottom: 6px;
+}
+.dshare-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dshare-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 170px) minmax(60px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.dshare-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 14.5px/1.25 var(--serif);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dshare-pips {
+  display: inline-flex;
+  gap: 2px;
+}
+.dshare-pip {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  vertical-align: -1px;
+}
+.dshare-pip.is-W { background: #f3ead0; }
+.dshare-pip.is-U { background: #3d8be0; }
+.dshare-pip.is-B { background: #2d2740; }
+.dshare-pip.is-R { background: #e0473b; }
+.dshare-pip.is-G { background: #3fa45d; }
+.dshare-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(var(--fx-bg-rgb), 0.6);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.dshare-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(var(--fx-gold-rgb), 0.55);
+}
+/* The 95% interval: a band over the bar, from lo to hi. */
+.dshare-ci {
+  position: absolute;
+  top: 3px;
+  height: 2px;
+  background: var(--text);
+  opacity: 0.55;
+}
+.dshare-num {
+  font: 11.5px/1.2 var(--mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.dshare-num b {
+  color: var(--text);
+  font-weight: 600;
+}
+.dshare-never {
+  margin: 8px 0 0;
+  font: italic 13px/1.4 var(--serif);
+  color: var(--muted);
+}
+.dshare-time {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+.dshare-table {
+  border-collapse: collapse;
+  font: 12px/1.3 var(--mono);
+}
+.dshare-table th,
+.dshare-table td {
+  padding: 4px 10px 4px 0;
+  text-align: right;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.dshare-table th:first-child {
+  text-align: left;
+}
+.dshare-table td.is-zero {
+  color: var(--muted);
+}
+@media (max-width: 560px) {
+  .dshare-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .dshare-bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
 @media (max-width: 560px) {
   .cp-title {
     font-size: 32px;
