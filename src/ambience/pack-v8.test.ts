@@ -7,7 +7,9 @@
  * half's width per dual land up to 0.18) validates on this client: a snapshot
  * of its scenery.json, identical to what jsDelivr serves at the tag, taken
  * when FORGECOACH_PACK_URL moved to it. pack-v7.3 stays at its tag
- * (pack-v7-3.test.ts) as the fallback.
+ * (pack-v7-3.test.ts) as the fallback. (The default is pack-v9 now, the
+ * bridges repainted across the seam and two accent artefacts painted out:
+ * pack-v9.test.ts. pack-v8 stays at its tag, this snapshot with it.)
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -25,7 +27,6 @@ describe('pack-v8', () => {
   const old = JSON.parse(readFileSync(new URL('./testdata/pack-v7.3.scenery.json', import.meta.url), 'utf8'));
   const r = validateManifest(manifest, `${FORGECOACH_PACK_URL}scenery.json`);
   const pack = r.pack!;
-  it('is the default pack URL', () => expect(FORGECOACH_PACK_URL).toContain('@pack-v8/pack/'));
   it('validates with no errors, no warning about its spec or its bridges, and is written for this spec', () => {
     expect(r.errors).toEqual([]);
     // pack-v7.3's one warning (swamp's full-area accents over their 3 MB) is unchanged; nothing new.
