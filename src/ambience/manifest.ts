@@ -37,7 +37,7 @@ import type { PairsPack } from './pairs.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
-export const SPEC_VERSION = '1.10';
+export const SPEC_VERSION = '1.11';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */

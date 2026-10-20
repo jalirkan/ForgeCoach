@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.10)
+# Scenery pack spec (schema 1, version 1.11)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -26,6 +26,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.8 | **Bridges across the seam** (§2, *Bridges across the seam*): an optional top-level **`bridges`** map keyed by a biome pair (`"forest+island"`; both orders find the one entry), each a transparent ground piece drawn over the seam where the two biomes meet on one side of the half board — a desktop `src` and a `phone` seam crop, an `anchor` on the seam (the centre's height, the width as a fraction of the half's) — faded in with the second biome, mirrored when the board has the pair the other way round; and `dualsWiden`: each of the pair's two-colour lands widens their seam (and the bridge with it). A 1.0–1.7 pack, and a pair with no bridge, keeps today's seam. |
 | 1.9 | **Pair bands** (§2, *Pair bands*): a second, optional manifest, **`pairs.json`**, fetched beside `scenery.json` from a pairs URL of its own (ForgeCoach's comes with ForgeCoach's pack; `?pairs=<url>` or `off` for any page): per biome pair, the pair's own place (named for its `dual` and `shock`), three `stages` of 1.5 `half` pictures and 1.7 `transitions`, a `band` width rule (`min`, `perDual`, `max`) and a `stageMap`. Where two biomes meet on one side of the half board, the seam opens into that place, wider with every land that is both colours. Lands that make two colours count ½ / ½ as the shocks do, the Thriving lands included (§1). No pairs, or a pair without an entry, keeps the 1.8 seam. |
 | 1.10 | **Calm seams** (§2, *Calm seams*), layout only, no new field: a half shows at most **three** panels (the rest fold into their nearest kept neighbour); a seam with a pair band draws **no bridge**; a half picture is never drawn half over its next stage; a full-area accent is drawn over **its own biome's panel** only; the seam mist lighter, none at a band. Every 1.0–1.9 pack and pairs manifest is read unchanged. |
+| 1.11 | **Land rules** (§2, *Land rules*), classification only, no new field: a land that makes **no coloured mana** (a fetch land, Ancient Tomb, the Landscapes, Mutavault, Urza's Saga, the basic Wastes), or **any colour** (City of Brass, Exotic Orchard), draws **no biome**, and so opens no `wastes` slot; a fixed **three-colour** land splits into thirds as a Triome does; a **Pathway** (any multi-face land) counts as the face in play only; a typeless land with **no card data** draws nothing until its data loads. No land claims `wastes` any more; a pack may still paint one. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -36,12 +37,13 @@ upright as a distant vista that dissolves at both ends. The strip sits *behind* 
 cards. It never takes clicks and never covers cards, life, prompts or any
 other game information.
 
-- **Biomes.** There are six: `island`, `swamp`, `mountain`, `forest`, `plains`, `wastes`.
-- **Classifying a land.**
-  - Basic land types on the type line come first: `Land — Island Swamp` gives ½ island and ½ swamp.
+- **Biomes.** There are six: `island`, `swamp`, `mountain`, `forest`, `plains`, `wastes` (from 1.11 no land claims `wastes`: §2, *Land rules*).
+- **Classifying a land** (1.11; *Land rules* in §2 has the table).
+  - Basic land types on the type line come first: `Land — Island Swamp` gives ½ island and ½ swamp, a Triome ⅓ each.
   - A land that chooses a colour as it enters (the Thriving lands: "Add {W} or one mana of the chosen color"): its fixed colour and the chosen one, ½ / ½, once the viewing seat's own choice is known; its fixed colour alone until then, and for an opponent's (1.9; before, it went to `wastes`).
-  - Otherwise, the colours the land taps for, when it makes one or two colours (a Pathway's card data lists both faces' colours, so it counts ½ / ½).
-  - Anything else goes to `wastes`: colourless, unknown, no mana at all (a fetch land), or three or more colours.
+  - A Pathway, or any card with a land face: the face in play only, so a Pathway is one colour (1.11; 1.9 counted both faces ½ / ½).
+  - Otherwise, the colours the land taps for, when it makes one, two or three colours, split evenly (Seaside Citadel in thirds, 1.11).
+  - Anything else is **not scenery**, like a mana rock: no coloured mana (a fetch land until it fetches, colourless lands, the basic Wastes), any colour (four or five), or no card data yet. Before 1.11 these went to `wastes`, the built-in scene.
 - **Slots.** A biome claims the next slot, left to right, the first time one of its lands appears. It keeps that slot for the rest of the game. If all its lands leave, it shows a withered (greyed) stage 1.
 - **Stages.** A biome's land count sets its stage:
 
@@ -1311,6 +1313,37 @@ neighbour's colours and horizon too.
 
 `src/ambience/seams.test.ts` checks these rules on pack-v8 and pairs-v2 as
 jsDelivr serves them.
+
+### Land rules (1.11)
+
+On 17 October 2026 Evan's Arid Mesa drew the built-in grey Wastes scene over
+his whole half, and a withered grey sliver of it stayed after he cracked it.
+An audit of every land in Justin's cubes
+(`~/scenery-packs/seams-v1/FOLLOW-UP.md`, `lands-audit.csv`: 124 cards) found
+34 that fell to that default and 10 Pathways counted as both colours. 1.11
+changes only how a land is classified (`src/ambience/model.ts`
+`landBiomes`); no manifest field is new, and every pack and pairs manifest is
+read as before.
+
+| The land | Examples | It draws |
+| --- | --- | --- |
+| Basic land types on its type line | Island, Snow-Covered Island; Bayou, the shocks, Hedge Maze; the Triomes | each type's biome, split evenly (½ / ½, ⅓ each); two types are a dual of their pair (1.8, 1.9). Unchanged |
+| Chooses a colour as it enters | the Thriving lands | its fixed colour; with the viewing seat's own choice, ½ / ½ and a dual. Unchanged |
+| Two land faces, or a land face (Pathway, MDFC) | Blightstep Pathway // Searstep Pathway; Soporific Springs | the face in play only: Blightstep a swamp, Searstep a mountain, **not a dual** (1.9 counted both faces) |
+| Taps for one or two colours, no basic type | painlands, checklands, bouncelands, gainlands, temples, filter lands, the Restless lands | those colours, ½ / ½ and a dual for two. Unchanged |
+| Taps for three fixed colours | Seaside Citadel, the Lairs | ⅓ each, as a Triome (was `wastes`) |
+| Makes no coloured mana | the fetch lands, Evolving Wilds, Prismatic Vista; Ancient Tomb, Ash Barrens, the MH3 Landscapes; Mishra's Factory, Mutavault; Urza's Saga; Strip Mine, Wasteland; the basic Wastes | **nothing** (was `wastes`): no slot, no flash, no widening. A fetch land's slot is claimed by the land it fetches |
+| Taps for any colour | City of Brass, Exotic Orchard, Mana Confluence, Command Tower | **nothing** (was `wastes`): four or five colours say nothing the deck's other lands do not |
+| No basic type, and no card data | any typeless land while Scryfall is offline, rate-limited, or not loaded yet | **nothing**, quietly (was `wastes`); the console says so once per card in development. The engine never sends a land's mana ability, so card data is the only source; when it arrives the scenery is counted again |
+
+Everything that is not a land is still not scenery (a Mox, a Treasure, a
+mana creature), a face-down land is still nothing, and a type-changing effect
+still wins (under Blood Moon an Arid Mesa reads `Land — Mountain` and draws a
+mountain). No land claims the `wastes` biome now; the name stays valid so a
+pack that paints one still validates, and `#ambience` no longer offers a
+Wastes or five-colour land.
+
+`src/ambience/model.test.ts` checks every row with the audit's own examples.
 
 ## 3. Files and budgets
 

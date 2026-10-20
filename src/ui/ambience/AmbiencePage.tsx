@@ -35,15 +35,14 @@ import { HalfScrim } from './HalfScrim.tsx';
 import { useSceneryFx, type PlaceCard } from './useScenery.ts';
 import './ambience-page.css';
 
+/** Spec 1.11: no Wastes or five-colour land here — a land that makes no coloured mana, or any colour, draws nothing. */
 const LANDS: { name: SimLandName; short: string; tone: string }[] = [
   { name: 'Island', short: 'Island', tone: 'U' },
   { name: 'Swamp', short: 'Swamp', tone: 'B' },
   { name: 'Mountain', short: 'Mountain', tone: 'R' },
   { name: 'Forest', short: 'Forest', tone: 'G' },
   { name: 'Plains', short: 'Plains', tone: 'W' },
-  { name: 'Wastes', short: 'Wastes', tone: 'C' },
   { name: 'Watery Grave', short: 'U/B dual', tone: 'multi' },
-  { name: 'Command Tower', short: '5-colour', tone: 'multi' },
 ];
 
 /** The ten original duals, one row of their own: each widens its pair's band (spec 1.9) or bridged seam (1.8). */
@@ -404,7 +403,6 @@ const COUNT_LANDS: { biome: Biome; name: SimLandName; tone: string }[] = [
   { biome: 'mountain', name: 'Mountain', tone: 'R' },
   { biome: 'forest', name: 'Forest', tone: 'G' },
   { biome: 'plains', name: 'Plains', tone: 'W' },
-  { biome: 'wastes', name: 'Wastes', tone: 'C' },
 ];
 const MAX_COUNT_LANDS = 7;
 

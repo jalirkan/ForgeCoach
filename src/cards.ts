@@ -92,7 +92,7 @@ export function isLookupName(name: string | null | undefined): boolean {
 }
 
 /** Cache / matching key: cleaned, lower-cased, diacritics stripped. */
-function keyOf(name: string): string {
+export function keyOf(name: string): string {
   return cleanCardName(name)
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
