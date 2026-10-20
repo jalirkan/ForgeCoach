@@ -722,16 +722,21 @@
 .scn-half .scn-slot {
   container-type: size;
 }
-/* The seam between two biomes: the gradient mask, and a breath of mist in it. */
-.scn-half .scn-slot:not(.is-first)::after {
+/* The seam between two biomes: the gradient mask, and a breath of mist in it — spec 1.10: only on a plain seam (a pair
+   band is the transition itself, so neither the band nor the panel after it adds mist), over the middle half of the
+   seam, at most half the mist colour, and only below the sky, so seams never add up to a tint over the half. */
+.scn-half .scn-slot:not(.is-first):not(.scn-band):not(.is-after-band)::after {
   content: '';
   position: absolute;
-  top: 0;
+  top: 30%;
   bottom: 0;
-  left: 0;
-  width: min(var(--scn-seam, 120px), 14vw);
+  left: calc(min(var(--scn-seam, 120px), 14vw) * 0.25);
+  width: calc(min(var(--scn-seam, 120px), 14vw) * 0.5);
   z-index: 290;
-  background: linear-gradient(to right, transparent, var(--scn-mist-color) 62%, transparent);
+  background: linear-gradient(to right, transparent, var(--scn-mist-color) 50%, transparent);
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%);
+  mask-image: linear-gradient(to bottom, transparent, #000 30%);
   pointer-events: none;
 }
 .scn-frame {

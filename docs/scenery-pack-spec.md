@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.9)
+# Scenery pack spec (schema 1, version 1.10)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -25,6 +25,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.7 | **Transition frames** (§2, *Transition frames*): an optional per-biome **`transitions`** with a few in-between pictures for each stage step (`from`, `frames` of a desktop `src` and a `phone`, a `holdMs` per frame and a `fadeMs`), played with hard cuts when a land steps the stage — limited animation, a drawing held ~200 ms, then one short fade into the new stage. A step without frames, and every 1.0–1.6 pack, cross-fades as in 1.6. |
 | 1.8 | **Bridges across the seam** (§2, *Bridges across the seam*): an optional top-level **`bridges`** map keyed by a biome pair (`"forest+island"`; both orders find the one entry), each a transparent ground piece drawn over the seam where the two biomes meet on one side of the half board — a desktop `src` and a `phone` seam crop, an `anchor` on the seam (the centre's height, the width as a fraction of the half's) — faded in with the second biome, mirrored when the board has the pair the other way round; and `dualsWiden`: each of the pair's two-colour lands widens their seam (and the bridge with it). A 1.0–1.7 pack, and a pair with no bridge, keeps today's seam. |
 | 1.9 | **Pair bands** (§2, *Pair bands*): a second, optional manifest, **`pairs.json`**, fetched beside `scenery.json` from a pairs URL of its own (ForgeCoach's comes with ForgeCoach's pack; `?pairs=<url>` or `off` for any page): per biome pair, the pair's own place (named for its `dual` and `shock`), three `stages` of 1.5 `half` pictures and 1.7 `transitions`, a `band` width rule (`min`, `perDual`, `max`) and a `stageMap`. Where two biomes meet on one side of the half board, the seam opens into that place, wider with every land that is both colours. Lands that make two colours count ½ / ½ as the shocks do, the Thriving lands included (§1). No pairs, or a pair without an entry, keeps the 1.8 seam. |
+| 1.10 | **Calm seams** (§2, *Calm seams*), layout only, no new field: a half shows at most **three** panels (the rest fold into their nearest kept neighbour); a seam with a pair band draws **no bridge**; a half picture is never drawn half over its next stage; a full-area accent is drawn over **its own biome's panel** only; the seam mist lighter, none at a band. Every 1.0–1.9 pack and pairs manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -61,6 +62,7 @@ other game information.
 - **The half board (1.5).** With Settings → Fill each side (on by default), the strip grows into the player's whole half of the board: the same slots, side by side in proportion to the lands, each at its own stage, the cards on top, a soft dark band under each card row. A pack's `half` pictures are drawn where it has them; otherwise its strip art (or the built-in scene) is cover-cropped to the half. Off, the board shows the strip as in 1.4.
 - **Bridges (1.8).** Where two biomes meet on one side of the half board, a pack may draw a **bridge** over their seam: a ground object that belongs to both (a river from the lagoon into the forest floor, a road from the plains up into the mountains). A two-colour land still counts ½ to each of its biomes, and also widens the seam between them a little, the bridge with it — the dual is the land that connects.
 - **Pair bands (1.9).** A second, optional manifest may give each pair a place of its own: where the two biomes meet on one side of the half board, the seam opens into a third panel, the pair's landscape (named for its dual land), which widens with every land that is both colours.
+- **Calm seams (1.10).** A half shows at most three biomes; a seam with a band has no bridge; a half picture changes only at a stage; a full-area accent stays over its own biome.
 - **Hidden information.** Only the viewing seat's redacted battlefield is read, so the scenery never shows anything the board does not.
 
 ## 2. Manifest format
@@ -780,7 +782,7 @@ quarter-land is about a seventh):
 | 6+ | stage 4 |
 
 **What fades in, and what does not.**
-- **Half pictures** (1.5): the next stage's `half` picture over the current one, each in its own crop (its own `subjectBand`, `focal`, `safe`). With the half filled, a slot draws at most **two pictures** once a fade has run.
+- **Half pictures** (1.5): the next stage's `half` picture over the current one, each in its own crop (its own `subjectBand`, `focal`, `safe`). With the half filled, a slot draws at most **two pictures** once a fade has run. *Since 1.10 a half picture no longer fades in by the progress: between two thresholds the slot widens and keeps its stage's picture, and the next one arrives at its threshold (§2, *Calm seams*).*
 - **Strip layers**: the next stage's **still** (`image`) layers whose file or box differs from the current stage's layer with the same `id`, or whose `id` is new. A layer kept unchanged (same `id`, file and box) is drawn once.
 - **Moving layers** (`video`, `sprite`) are the current stage's only: the next stage's loops start when the stage is reached, so the moving-layer budget (§3) is unchanged. A stage-4 loop arrives at 6 lands, as before.
 - **Accents** (1.3, 1.4): a corner or edge piece that is new in the next stage (a new `id` at that anchor) is drawn already, **still**, at the same fraction of its `opacity`; a piece replaced under the same `id` changes at the threshold. A **full-area** piece whose picture changes (`front-s2` → `front-s3`) cross-fades like a half picture. Fading pieces come after every full piece, so the ≤ 6 cap cuts them first, and they never count as moving. ForgeCoach's built-in accents and its built-in scene grow the same way (a built-in layer that is new in the next stage fades in).
@@ -958,7 +960,9 @@ none) whose pair has an entry under `bridges`. Any order: the pair is looked up
 alphabetically (`island` and `forest` find `"forest+island"`), and the piece is
 **mirrored** when the board has the two the other way round from the key (the
 key's order is the art's left and right). A side with three biomes draws a
-bridge on each of its two seams that has one.
+bridge on each of its two seams that has one. *Since 1.10 a seam with a pair band (1.9)
+draws the band and no bridge, and its duals widen the band, not the seam
+(§2, *Calm seams*).*
 
 - **Where.** The piece's **centre** sits on the middle of the seam across the
   half, at `anchor.y` of the half's height down (0 the half's top, 1 its
@@ -1133,9 +1137,9 @@ each side off) or a withered neighbour: the seam is drawn exactly as in 1.8.
   frames already loaded), else the band cross-fades over `growth.seconds`.
   Between stages there is no growth cross-fade: the band grows in width.
 - **Z-order.** A band is a panel: over the panel on its left, under the one on
-  its right where they overlap, under the centre line's mist band, the bridge
-  (a bridge on the same seam is drawn **over** the band, centred on it), the
-  full-area accent, the card-row scrim and every card.
+  its right where they overlap, under the centre line's mist band, the full-area
+  accent, the card-row scrim and every card. *(Until 1.10 a bridge on the same
+  seam was drawn over the band; since 1.10 a banded seam has no bridge.)*
 - **Arrival and departure.** A band opens once its picture has loaded: until
   then it has no width and the seam is today's. It then widens from nothing
   and fades in over the later biome's `bloom.durationMs`; when either biome
@@ -1243,6 +1247,63 @@ takes only half that panel's share from it, and is drawn 0.15 wide.
 `forest+island` entry of `docs/pairs-manifest-draft.json` (all ten pairs in
 this shape, the file the art lane matches) and checks these numbers. If you
 change it, it must stay error- and warning-free.
+
+### Calm seams (1.10)
+
+On 17 October 2026 Justin played the half board with pack-v8 and pairs-v2 and
+called the seams "janky", "pretty crazy", "messed up": a hard cut with a
+smudge over it, a bridge pasted over a pair band, a lava river running into
+the sea with no shore, a shell over a volcano, a doubled horizon, and a fog of
+four biomes in one half. The diagnosis (`~/scenery-packs/seams-v1/diag/DIAGNOSIS.md`)
+found most of it in the layout, not the pictures. 1.10 changes only what
+ForgeCoach draws; no manifest field is new, and every pack and pairs manifest
+is read as before.
+
+- **At most three panels a half.** A half shows the **three heaviest** live
+  biomes by land weight (a tie goes to the earlier arrival; a withered panel
+  only when fewer than three are live). Each biome left out **folds** into the
+  nearest kept panel in the row (a tie goes to the heavier, then the left one):
+  its land weight is added to that panel's share, so the half is still split by
+  every land, but its picture, its seams and its bands are not drawn. The kept
+  panel keeps its own stage (an Island does not grow the forest). Three panels
+  make at most two seams, or two bands and four band edges; four biomes made
+  three bands and six seams, none wide enough to read. The strip (Fill each
+  side off) and the accents' corner and edge pieces are unchanged.
+- **The band wins its seam.** A seam whose pair has an entry in `pairs.json`
+  (1.9) draws the band and **no bridge** (1.8), whether or not the band's
+  picture has loaded yet, and keeps the base `seamRatio` (the duals widen the
+  band, by its `perDual`). A bridge was painted over a plain seam; over the
+  pair's own place it is a second picture pasted on the first. A bridge is
+  drawn only on a seam with no band: no pairs, `?pairs=off`, or a pair with no
+  entry.
+- **One horizon per panel.** A half picture (1.5) is a whole painting with its
+  own horizon; at a partial progress (1.6) the next stage half over it showed
+  both (a dual's half land does it on ForgeCoach's pack, whose every land is a
+  stage). Between two thresholds a slot now keeps its stage's half picture and
+  only widens; the next picture arrives at its threshold, through its frames
+  (1.7) or the fade over the old picture held beneath. Strip layers (packs
+  without `half`) cross-fade by the progress as before, and so do the accents.
+- **A full-area accent over its own panel.** On a split half, the full-area
+  piece (1.4), which is the dominant biome's, is masked to that biome's panel:
+  whole across it, eased out over the seams (or band edges) it shares with its
+  neighbours. The island's shells no longer lie over the volcano, nor the
+  plains' feathers over the lagoon. A half with one panel draws it whole, as
+  before; a biome folded away draws none.
+- **Less mist.** The seam's breath of mist is drawn only on a plain seam (a
+  pair band is the transition itself), over the middle half of the seam,
+  below the sky, at half the mist colour: seams no longer add up to a tint
+  over the half. The ramp itself stays straight: an eased (smoothstep) ramp
+  was tried and measured worse, its steeper middle a bigger step across the
+  seam on all ten pairs (`~/scenery-packs/seams-v1/SUMMARY.md`).
+
+**How to paint for it.** Nothing new is needed. A pair band still meets its
+neighbours in half their seam; a narrow band (the 0.10 `min`) shows only the
+heart of its picture, so its outer edges, painted to continue the neighbours'
+own edges, are rarely on screen: paint the heart's sides to sit on either
+neighbour's colours and horizon too.
+
+`src/ambience/seams.test.ts` checks these rules on pack-v8 and pairs-v2 as
+jsDelivr serves them.
 
 ## 3. Files and budgets
 

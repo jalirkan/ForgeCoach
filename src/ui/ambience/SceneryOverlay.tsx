@@ -32,6 +32,7 @@ import { growthMs } from '../../ambience/growth.ts';
 import { areaPlacement, DEFAULT_AREA, overlayPieces, POSITION_CSS, type PlacedOverlay } from '../../ambience/overlay.ts';
 import { builtinAreaSrc, builtinOverlaySrc } from './overlayArt.ts';
 import { usePageVisible } from './SceneryStrip.tsx';
+import { halfPanelSpan, panelMaskCss } from '../../ambience/pairs.ts';
 import { useFadeIn, useFadeStack } from './useFade.ts';
 import './scenery.css';
 
@@ -46,9 +47,13 @@ export interface SceneryOverlayProps {
   widthPx?: number | null;
   /** Spec 1.4 preview (`#ambience`): add the built-in full-area placeholder where the pack gives none. */
   builtinArea?: boolean;
+  /** Spec 1.10: the scenery fills the half (Settings → Fill each side): a full-area piece is drawn over its own biome's panel only. */
+  half?: boolean;
+  /** The side's dual lands per pair (model.ts `dualsOf`), for the half's row (band widths). */
+  duals?: Readonly<Record<string, number>>;
 }
 
-export const SceneryOverlay = memo(function SceneryOverlay({ slots, pack, edge, reduced, stageOverride = null, widthPx, builtinArea = false }: SceneryOverlayProps) {
+export const SceneryOverlay = memo(function SceneryOverlay({ slots, pack, edge, reduced, stageOverride = null, widthPx, builtinArea = false, half = false, duals }: SceneryOverlayProps) {
   const root = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState<number | null>(null);
   const [heightPx, setHeightPx] = useState(0);
@@ -76,14 +81,19 @@ export const SceneryOverlay = memo(function SceneryOverlay({ slots, pack, edge, 
   }, []);
   const width = widthPx ?? measured;
   const pieces = useMemo(() => (width === null ? [] : overlayPieces(slots, pack, { side: edge, widthPx: width, reduced, stageOverride, builtinArea })), [slots, pack, edge, width, reduced, stageOverride, builtinArea]);
-  const areas = pieces.filter((p) => p.anchor === 'area');
+  // Spec 1.10: on a split half the full-area piece belongs to its biome's panel (the island's shells never over the volcano):
+  // masked to that panel's span, eased out over the seams it shares; not drawn when its biome has no panel (folded away).
+  const areaBiome = pieces.find((p) => p.anchor === 'area')?.biome ?? null;
+  const span = useMemo(() => (half && areaBiome && width ? halfPanelSpan(slots, pack, areaBiome, width, { duals, stageOverride, vw: typeof window === 'undefined' ? Infinity : window.innerWidth }) : null), [half, areaBiome, width, slots, pack, duals, stageOverride]);
+  const areas = span === 'none' ? [] : pieces.filter((p) => p.anchor === 'area');
+  const areaMask = span && span !== 'none' ? panelMaskCss(span) : undefined;
   const rest = areas.length ? pieces.filter((p) => p.anchor !== 'area') : pieces;
   const state = [reduced && 'is-reduced', !visible && 'is-paused'];
   const ms = growthMs(growthOf(pack), reduced);
   return (
     <>
       {areas.length > 0 && (
-        <div className={['scn-ovl', 'scn-ovl-area', `scn-ovl-${edge}`, ...state].filter(Boolean).join(' ')} aria-hidden="true" data-area-accents={areas.length}>
+        <div className={['scn-ovl', 'scn-ovl-area', `scn-ovl-${edge}`, ...state].filter(Boolean).join(' ')} style={areaMask ? { WebkitMaskImage: areaMask, maskImage: areaMask } : undefined} aria-hidden="true" data-area-accents={areas.length} data-area-panel={areaMask ? areaBiome! : undefined}>
           <AreaFade areas={areas} ms={ms} bloom={settled.current && !reduced} box={{ w: width ?? 0, h: heightPx }} />
         </div>
       )}

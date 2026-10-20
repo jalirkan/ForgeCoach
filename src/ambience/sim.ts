@@ -18,6 +18,17 @@ export const SIM_LANDS = {
   Wastes: 'Basic Land',
   'Watery Grave': 'Land - Island Swamp',
   'Command Tower': 'Land',
+  // The ten original duals (each "Land - <type> <type>", ½ / ½ and a dual of its pair), so #ambience can widen any pair's band.
+  Tundra: 'Land - Plains Island',
+  'Underground Sea': 'Land - Island Swamp',
+  Badlands: 'Land - Swamp Mountain',
+  Taiga: 'Land - Mountain Forest',
+  Savannah: 'Land - Forest Plains',
+  Scrubland: 'Land - Plains Swamp',
+  'Volcanic Island': 'Land - Island Mountain',
+  Bayou: 'Land - Swamp Forest',
+  Plateau: 'Land - Mountain Plains',
+  'Tropical Island': 'Land - Forest Island',
 } as const;
 export type SimLandName = keyof typeof SIM_LANDS;
 
