@@ -133,6 +133,22 @@
 .pc-search-strength.is-clear {
   color: var(--ok);
 }
+/* The pick's line (mtg-table D454): the engine's own choices inside the move, as small steps. */
+.pc-search-line {
+  margin: 0 0 2px;
+  padding-left: 8px;
+  border-left: 2px solid var(--line, var(--muted));
+}
+.pc-search-line > p {
+  margin: 0;
+}
+.pc-search-line ol {
+  margin: 1px 0 0;
+  padding-left: 16px;
+  font-size: 12.5px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
 .pc-search-others {
   margin: 2px 0;
   padding-left: 16px;

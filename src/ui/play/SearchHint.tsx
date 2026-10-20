@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { GameStateBody, InputBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import { pageHelperTarget } from '../../coachHelper.ts';
-import { askHint, askRoomHint, HINT_OFF_TABLE, TABLE_HINT_OFF, type TableHintOff, hintCardIds, hintChoiceWords, hintDecisionKey, hintInfo, hintMoment, hintWords, roomHintInfo, type HintInfo, type HintVerdict, type SearchHint as Hint } from '../../searchHint.ts';
+import { askHint, askRoomHint, HINT_OFF_TABLE, TABLE_HINT_OFF, type TableHintOff, hintCardIds, hintChoiceWords, hintDecisionKey, hintInfo, hintLineSteps, hintMoment, hintWords, roomHintInfo, type HintInfo, type HintVerdict, type SearchHint as Hint } from '../../searchHint.ts';
 import type { SeatHandle } from '../../play/friendReview.ts';
 import { COACH_KIND_KEY, COACH_KINDS, coachPlan, readCoachKind, type CoachKind } from '../../play/coachChoice.ts';
 import { HintRunner, type HintPhase } from '../../play/hintRunner.ts';
@@ -307,8 +307,10 @@ function HintLine({ coach, compact }: { coach: SearchCoach; compact?: boolean })
   if (phase.state === 'error') return <span className="ds-hint-line is-error" role="status">{phase.message}</span>;
   if (phase.state !== 'answered') return null;
   const w = hintWords(phase.hint, state, seat);
+  const how = hintLineSteps(phase.hint, state, seat).map((st) => st.text);
   return (
-    <span className="ds-hint-line is-answer" role="status" aria-live="polite" title={`${w.line}${w.strength ? ` — ${w.strength}` : ''}. ${w.caveatLong}`}>
+    <span className="ds-hint-line is-answer" role="status" aria-live="polite"
+      title={`${w.line}${w.strength ? ` — ${w.strength}` : ''}.${how.length ? ` ${LINE_HEAD}: ${how.join('; ')}.` : ''} ${w.caveatLong}`}>
       <span className="ds-hint-k">Search AI</span> <span className="ds-hint-pick">{w.line}</span>
       {w.strength && (
         <>
@@ -359,6 +361,26 @@ export function SearchCoachBody({ coach, myMove }: { coach: SearchCoach; myMove:
   );
 }
 
+/** The head of the pick's line (mtg-table D454): the engine's own choices inside the move, not graded. */
+export const LINE_HEAD = 'How the engine would play it';
+export const LINE_TITLE = 'What Forge’s own AI chose inside this move when the search AI played it out: its default, not something the search compared.';
+
+/** The pick's line as small steps under the move (mtg-table D454); nothing when the move asks nothing more. */
+export function HintSteps({ hint, state, seat }: { hint: Hint; state: GameStateBody | null; seat: number | null }) {
+  const steps = hintLineSteps(hint, state, seat);
+  if (!steps.length) return null;
+  return (
+    <div className="pc-search-line" data-search-line="">
+      <p className="tiny muted" title={LINE_TITLE}>{LINE_HEAD}</p>
+      <ol aria-label={LINE_HEAD}>
+        {steps.map((st, i) => (
+          <li key={i} data-step-kind={st.kind}>{st.text}</li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function Answered({ hint, state, seat, info }: { hint: Hint; state: GameStateBody | null; seat: number | null; info: HintInfo }) {
   const w = hintWords(hint, state, seat);
   const others = otherChoices(hint, state, seat);
@@ -367,6 +389,7 @@ function Answered({ hint, state, seat, info }: { hint: Hint; state: GameStateBod
     <div className="pc-search-answer">
       <p className="pc-search-pick">{w.line}</p>
       {w.strength && <p className={cx('pc-search-strength', `is-${hint.strength}`)}>{w.strength}</p>}
+      <HintSteps hint={hint} state={state} seat={seat} />
       {hint.status === 'unsupported' && hint.message && <p className="tiny muted">{hint.message}</p>}
       {others.length > 0 && (
         <ul className="pc-search-others" aria-label="Other choices it weighed">
