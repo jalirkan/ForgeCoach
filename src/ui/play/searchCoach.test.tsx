@@ -9,9 +9,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { GameStateBody } from '../../protocol.ts';
-import type { SearchHint } from '../../searchHint.ts';
+import { HINT_OFF_TABLE, TABLE_HINT_OFF, type SearchHint } from '../../searchHint.ts';
 import type { HintPhase } from '../../play/hintRunner.ts';
-import { AskNowRow, budgetLine, CoachPicker, NO_HINT, otherChoices, SearchCoachBody, thinkingLine, type SearchCoach } from './SearchHint.tsx';
+import { AskNowRow, budgetLine, CoachPicker, HINT_OFF, NO_HINT, otherChoices, SearchCoachBody, thinkingLine, type SearchCoach } from './SearchHint.tsx';
 
 const card = (id: number, name: string, controller = 0) => ({ id, name, setCode: null, manaCost: null, types: 'Creature', power: '2', toughness: '2', loyalty: null, damage: 0, counters: {}, tapped: false, sick: false, attacking: false, blocking: false, faceDown: false, token: false, alt: null, attachedToId: null, attachmentIds: [], controller, owner: controller, zone: 'hand', abilities: [], keywords: [] });
 const STATE = {
@@ -32,7 +32,7 @@ const HINT: SearchHint = {
 };
 
 const coachIn = (phase: HintPhase, over: Partial<SearchCoach> = {}): SearchCoach => ({
-  kind: 'search', setKind: () => undefined, available: true, info: { available: true, engine: 'ready', budgetMs: 3000 }, phase, ask: () => undefined, searchKey: true, state: STATE, seat: 0, ...over,
+  kind: 'search', setKind: () => undefined, available: true, table: false, offText: null, info: { available: true, engine: 'ready', budgetMs: 3000 }, phase, ask: () => undefined, searchKey: true, state: STATE, seat: 0, ...over,
 });
 
 describe('the decision panel: Ask now', () => {
@@ -97,6 +97,22 @@ describe('the Coach panel', () => {
     expect(html).toContain('Knows only what you know (hidden cards as lands).');
     expect(otherChoices(HINT, STATE, 0)).toEqual([{ line: 'Cast Grizzly Bears', verdict: 'worse' }]);
     expect(budgetLine({ ms: null, budgetMs: null }, 3000)).toBe('A 3.0 s look.');
+  });
+  it('at a table of two (mtg-table D453): the same coach, the room\'s hint; off says it is the room\'s PC', () => {
+    const at = { table: true, info: { available: true, engine: null, budgetMs: null } } as const;
+    expect(body(coachIn({ state: 'answered', key: 'd', hint: HINT }, at))).toContain('Cast Shock, or cast nothing now');
+    expect(renderToStaticMarkup(<AskNowRow coach={coachIn({ state: 'idle', key: 'd' }, at)} claudeAsk={null} />)).toContain('data-ask-now="search"');
+    expect(thinkingLine(at.info)).toBe('The engine is thinking…');
+    const off = body(coachIn({ state: 'none', key: null }, { ...at, available: false, offText: HINT_OFF_TABLE }));
+    expect(off).toContain(HINT_OFF_TABLE);
+    expect(off).not.toContain(HINT_OFF);
+    // Each reason in its own words: a closed room or a browser with no seat is not "needs the latest ForgeCoach".
+    for (const why of ['gone', 'no-seat', 'link'] as const) {
+      const html = body(coachIn({ state: 'none', key: null }, { ...at, available: false, offText: TABLE_HINT_OFF[why] }));
+      expect(html).toContain(TABLE_HINT_OFF[why].slice(0, 30));
+      expect(html).not.toContain('latest ForgeCoach');
+    }
+    expect(renderToStaticMarkup(<AskNowRow coach={coachIn({ state: 'none', key: null }, { ...at, available: false })} claudeAsk={null} />)).toBe('');
   });
   it('error, and off when the engine offers no hints', () => {
     expect(body(coachIn({ state: 'error', key: 'd', message: 'Search hints are off on your PC (the bridge is not built).' }))).toContain('Search hints are off');
