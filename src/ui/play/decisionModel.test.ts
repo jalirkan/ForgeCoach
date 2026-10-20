@@ -115,6 +115,12 @@ describe('the counter line', () => {
     });
     expect(inputCounter(one, describeInput(one, state(), ME))).toBe('1/2 · up to 1 more');
   });
+  it('never counts the first part\'s "Parent Targeted:" line as a chosen target', () => {
+    const none = input('Arc Trail - Select another target\nParent Targeted:[Goblin Shaman Token]', false, true, { mode: 'cards', cardIds: [5, 6], min: 1, max: 1 });
+    expect(inputCounter(none, describeInput(none, state(), ME))).toBe('0/1 · need 1 more');
+    const one = input('Arc Trail - Select another target\nTargeted:\nGoblin Guide\nParent Targeted:[Goblin Shaman Token]', true, true, { mode: 'cards', cardIds: [5, 6], min: 1, max: 1 });
+    expect(inputCounter(one, describeInput(one, state(), ME))).toBe('1/1');
+  });
   it('says nothing it cannot read: no max, or not a targeting input', () => {
     const nomax = input('Lightning Bolt - Select any target', false, true);
     expect(inputCounter(nomax, describeInput(nomax, state(), ME))).toBeNull();
