@@ -30,6 +30,9 @@ describe('Drafted colours (real drafts)', () => {
   it('reading: a quiet line', () => {
     expect(renderToStaticMarkup(<DraftedColoursView res={null} />)).toContain('Reading the drafts');
   });
+  it('no engine on this PC at all (a visitor): nothing at all', () => {
+    expect(renderToStaticMarkup(<DraftedColoursView res={{ state: 'none' }} />)).toBe('');
+  });
   it('none yet', () => {
     const html = renderToStaticMarkup(<DraftedColoursView res={{ state: 'ok', data: { cube: 'omega', scripts: true, decks: [] } }} />);
     expect(html).toContain('Drafted colours (real drafts)');

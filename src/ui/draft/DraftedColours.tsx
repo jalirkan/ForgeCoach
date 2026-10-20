@@ -83,6 +83,8 @@ export function DraftedColoursView({ res }: { res: DraftDecksResult | null }) {
       </section>
     );
   }
+  // No engine on this PC at all (most visitors): nothing to say, so the panel stays out of the page.
+  if (res.state === 'none') return null;
   if (res.state !== 'ok' || !table) {
     return (
       <section className="dshare">

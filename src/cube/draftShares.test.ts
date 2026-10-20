@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { loadSettings, saveSettings, SETTINGS_KEY } from '../claude.ts';
 import {
   draftShares,
   fetchDraftDecks,
@@ -138,7 +139,7 @@ describe('the client', () => {
   });
   it('says why when it cannot read them', async () => {
     expect((await fetchDraftDecks('omega', { target, fetch: () => resp(404, { type: 'error', message: 'not found' }) })).state).toBe('unavailable');
-    expect((await fetchDraftDecks('omega', { target, fetch: () => Promise.reject(new Error('refused')) })).state).toBe('unavailable');
+    expect((await fetchDraftDecks('omega', { target, fetch: () => Promise.reject(new Error('refused')) })).state).toBe('none');
     expect((await fetchDraftDecks('omega', { target, fetch: () => resp(400, { message: 'bad cube' }) }))).toEqual({ state: 'error', message: 'bad cube' });
     expect((await fetchDraftDecks('omega', { target, fetch: () => resp(200, { ok: true, v: 1, cube: 'other', decks: [] }) })).state).toBe('error');
   });
@@ -156,5 +157,20 @@ describe('the client', () => {
     expect(JSON.parse(String(seen[0]![1]?.body))).toEqual(rec);
     expect(await recordSoloDeck(rec, { target, fetch: () => resp(404, {}) })).toBe(false);
     expect(await recordSoloDeck(rec, { target, fetch: () => Promise.reject(new Error('down')) })).toBe(false);
+  });
+});
+
+describe('the setting: counting your drafts against the bot', () => {
+  it('is on by default, can be turned off, and round-trips', () => {
+    const mem = new Map<string, string>();
+    vi.stubGlobal('localStorage', { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v) });
+    expect(loadSettings().recordDrafts).toBeUndefined();
+    saveSettings({ ...loadSettings(), recordDrafts: false });
+    expect(loadSettings().recordDrafts).toBe(false);
+    saveSettings({ ...loadSettings(), recordDrafts: undefined });
+    expect(loadSettings().recordDrafts).toBeUndefined();
+    mem.set(SETTINGS_KEY, JSON.stringify({ recordDrafts: 'no' }));
+    expect(loadSettings().recordDrafts).toBeUndefined();
+    vi.unstubAllGlobals();
   });
 });

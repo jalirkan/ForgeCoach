@@ -50,6 +50,7 @@ import { cx } from '../util.ts';
 import { roomSupport } from '../../draft/room.ts';
 import { DeckExport } from '../DeckExport.tsx';
 import { recordSoloDeck } from '../../cube/draftShares.ts';
+import { loadSettings } from '../../claude.ts';
 import type { StartOptions } from './useDraftGame.ts';
 
 const BASE = import.meta.env.BASE_URL;
@@ -515,7 +516,8 @@ export function MatchSetup({
     setResult(r);
     // mtg-table D455: the deck you took into the match is this draft's, for the cube page's real-draft colour shares
     // (your own deck only; the bot's is never sent). A rebuilt deck replaces it (keyed by the draft's id).
-    if (r.ok && health?.draftDecks) void recordSoloDeck({ cubeId: draft.cubeId, draftId: draft.id, format: draft.format, main: yours.main });
+    // Settings → "Count my drafts against the bot" turns it off.
+    if (r.ok && health?.draftDecks && loadSettings().recordDrafts !== false) void recordSoloDeck({ cubeId: draft.cubeId, draftId: draft.id, format: draft.format, main: yours.main });
     if (r.ok && r.warnings.length === 0) setTimeout(takeSeat, 900);
   };
   useEffect(() => {

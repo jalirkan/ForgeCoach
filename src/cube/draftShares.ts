@@ -211,6 +211,8 @@ export interface DraftDecksOptions {
 
 export type DraftDecksResult =
   | { state: 'ok'; data: DraftDecks }
+  /** No engine on this PC answered at all (a visitor with no helper): the page says nothing. */
+  | { state: 'none' }
   /** No helper, or one without the ledger (an older mtg-table: no `draftDecks` route). */
   | { state: 'unavailable'; message: string }
   | { state: 'error'; message: string };
@@ -242,7 +244,7 @@ async function call(path: string, init: RequestInit, o: DraftDecksOptions): Prom
 /** GET /draft-decks?cube=<id>: this cube's recorded decks, as colour counts. */
 export async function fetchDraftDecks(cube: string, o: DraftDecksOptions = {}): Promise<DraftDecksResult> {
   const r = await call(`/draft-decks?cube=${encodeURIComponent(cube)}`, { method: 'GET' }, o);
-  if (r.status === 0) return { state: 'unavailable', message: 'The engine on your PC isn’t running, so the drafts it recorded can’t be read.' };
+  if (r.status === 0) return { state: 'none' };
   if (r.status === 404) return { state: 'unavailable', message: 'The engine on your PC is older and doesn’t record drafts yet: update mtg-table.' };
   if (r.status !== 200) {
     const m = r.body && typeof r.body === 'object' ? (r.body as { message?: unknown }).message : null;
