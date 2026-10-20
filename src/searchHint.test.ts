@@ -231,11 +231,34 @@ describe('the pick’s line (mtg-table D454)', () => {
     const steps = hintLineSteps(parseHint(ANSWER), main2.state, 0);
     expect(steps.map((s) => s.text)).toEqual(['Quantum Reduction → Peggy Carter, Secret Agent']);
   });
-  it('drops a step that names a card this seat cannot see', () => {
+  it('rejects the WHOLE line when any step names a card this seat cannot see, as the helper does', () => {
     const hiddenId = main2.state.players[1]!.zones.hand.cards.find((c) => isHidden(c))?.id;
     expect(hiddenId).toBeDefined();
-    const h = parseHint({ ...ANSWER, line: [...ANSWER.line, { kind: 'choose', text: 'choose → Doombot', ids: [hiddenId] }, { kind: 'then', text: 'then cast a ghost', ids: [999999] }] });
-    expect(hintLineSteps(h, main2.state, 0).map((s) => s.text)).toEqual(['Quantum Reduction → Peggy Carter, Secret Agent']);
-    expect(hintLineSteps({ ...h, pick: null }, main2.state, 0)).toEqual([]);
+    const withStep = (st: unknown) => parseHint({ ...ANSWER, line: [...ANSWER.line, st] });
+    // a name behind a hidden card's id; an id not on the board
+    expect(hintLineSteps(withStep({ kind: 'choose', text: 'choose → Doombot', ids: [hiddenId] }), main2.state, 0)).toEqual([]);
+    expect(hintLineSteps(withStep({ kind: 'then', text: 'then cast an unseen card', ids: [999999] }), main2.state, 0)).toEqual([]);
+    // PLANTED: ids [] with a name in the text -- the grammar catches it
+    expect(hintLineSteps(withStep({ kind: 'choose', text: 'choose → Doctor Doom', ids: [] }), main2.state, 0)).toEqual([]);
+    expect(hintLineSteps(withStep({ kind: 'target', text: 'an unseen card → Doctor Doom', ids: [] }), main2.state, 0)).toEqual([]);
+    // a mode or an X names exactly its own card
+    expect(hintLineSteps(withStep({ kind: 'mode', text: 'an unseen card mode → Destroy target artifact.', ids: [] }), main2.state, 0)).toEqual([]);
+    expect(hintLineSteps(withStep({ kind: 'x', text: 'X = 3', ids: [] }), main2.state, 0)).toEqual([]);
+    // a visible name the ids do not list
+    expect(hintLineSteps(withStep({ kind: 'target', text: 'Quantum Reduction → Peggy Carter, Secret Agent', ids: [5] }), main2.state, 0)).toEqual([]);
+    expect(hintLineSteps({ ...parseHint(ANSWER), pick: null }, main2.state, 0)).toEqual([]);
+  });
+  it('every shape the helper allows passes on the page too', () => {
+    const steps = [
+      { kind: 'x', text: 'Quantum Reduction: X = 2', ids: [5] },
+      { kind: 'mode', text: 'Quantum Reduction mode → Destroy target artifact.', ids: [5] },
+      { kind: 'sacrifice', text: 'sacrifice → Peggy Carter, Secret Agent, an unseen card', ids: [44] },
+      { kind: 'trigger', text: 'Quantum Reduction trigger → the opponent, you', ids: [5] },
+      { kind: 'then', text: 'then equip Quantum Reduction → a token', ids: [5] },
+      { kind: 'number', text: 'number = 4', ids: [] },
+    ];
+    const got = hintLineSteps(parseHint({ ...ANSWER, line: [...ANSWER.line, ...steps] }), main2.state, 0).map((s) => s.text);
+    expect(got).toHaveLength(7);
+    expect(got[5]).toBe('Then equip Quantum Reduction → a token');
   });
 });

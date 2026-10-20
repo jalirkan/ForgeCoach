@@ -111,23 +111,25 @@ describe('the pick’s line (mtg-table D454)', () => {
     { kind: 'choose', text: 'choose → Lightning Bolt', ids: [77] },
   ] };
   const body = (h: SearchHint) => renderToStaticMarkup(<SearchCoachBody coach={coachIn({ state: 'answered', key: 'd', hint: h })} myMove />);
+  const CLEAN: SearchHint = { ...LINED, line: LINED.line!.slice(0, 2) };
   it('the Coach panel prints the engine’s own choices under the move, as small steps', () => {
-    const html = body(LINED);
+    const html = body(CLEAN);
     expect(html).toContain('data-search-line');
     expect(html).toContain(LINE_HEAD);
     expect(html).toMatch(/<li data-step-kind="target">Shock → Grizzly Bears<\/li><li data-step-kind="then">Then cast Grizzly Bears<\/li>/);
     expect(html.indexOf('data-search-line')).toBeGreaterThan(html.indexOf('pc-search-pick'));
     expect(html.indexOf('data-search-line')).toBeLessThan(html.indexOf('pc-search-others'));
   });
-  it('a step naming a card the board does not show by name is not printed', () => {
+  it('a step naming a card the board does not show by name: the whole line is not printed', () => {
     expect(body(LINED)).not.toContain('Lightning Bolt');
+    expect(body(LINED)).not.toContain('data-search-line');
   });
   it('no line, or an empty one: no steps', () => {
     expect(body(HINT)).not.toContain('data-search-line');
     expect(body({ ...HINT, line: [] })).not.toContain('data-search-line');
   });
   it('the decision panel keeps one line; the steps ride in its title', () => {
-    const html = renderToStaticMarkup(<AskNowRow coach={coachIn({ state: 'answered', key: 'd', hint: LINED })} claudeAsk={null} />);
+    const html = renderToStaticMarkup(<AskNowRow coach={coachIn({ state: 'answered', key: 'd', hint: CLEAN })} claudeAsk={null} />);
     expect(html).not.toContain('data-search-line');
     expect(html).toContain(`${LINE_HEAD}: Shock → Grizzly Bears; Then cast Grizzly Bears.`);
   });

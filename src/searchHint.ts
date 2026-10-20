@@ -473,19 +473,57 @@ export function hintWords(h: SearchHint, state: GameStateBody | null, seat: numb
   return { line, strength: STRENGTH_WORDS[h.strength], caveat, caveatLong };
 }
 
+const L_ITEM = '(?:\u0001|an unseen card|a token|you|the opponent)';
+const L_LIST = `${L_ITEM}(?:, ${L_ITEM})*`;
+/** The step shapes, as mtg-table's helper checks them (tools/hint-runner.mjs `checkLine`), names taken out as \u0001. */
+const LINE_GRAMMAR: Record<HintStepKind, RegExp> = {
+  target: new RegExp(`^${L_ITEM} → ${L_LIST}$`),
+  trigger: new RegExp(`^${L_ITEM} trigger → ${L_LIST}$`),
+  x: /^\u0001: X = \d+$/,
+  number: /^number = \d+$/,
+  sacrifice: new RegExp(`^sacrifice → ${L_LIST}$`),
+  discard: new RegExp(`^discard → ${L_LIST}$`),
+  exile: new RegExp(`^exile → ${L_LIST}$`),
+  return: new RegExp(`^return → ${L_LIST}$`),
+  tap: new RegExp(`^tap → ${L_LIST}$`),
+  choose: new RegExp(`^choose → ${L_LIST}$`),
+  then: new RegExp(`^then (?:cast|activate|equip|play) ${L_ITEM}(?: → ${L_LIST})?$`),
+  mode: /^\u0001 mode → [^\n\u0001]{1,120}$/,
+};
+
 /**
- * The pick's line as the board can show it (mtg-table D454): a step is kept
- * only when every card it names is one the board's state shows by name — the
- * helper already withholds any other line; this is the page's own check, so a
- * step about a card that has since left view is not shown. The engine words
- * each step; "then …" steps start with a capital here.
+ * The pick's line as the board can show it (mtg-table D454), checked on the
+ * page as the helper checks it (defence in depth): every id a step lists is a
+ * card the board's state shows by name, and the step's text, with exactly
+ * those names taken out, is one of the line's fixed shapes — whose only other
+ * words are "you", "the opponent", "an unseen card" and "a token"; a `mode` or
+ * `x` step names exactly its own card. ONE bad step rejects the whole line
+ * (nothing is shown), as the helper withholds it. "then …" steps start with a
+ * capital here.
  */
-export function hintLineSteps(h: Pick<SearchHint, 'line' | 'pick'>, state: GameStateBody | null, seat: number | null): HintStep[] {
-  if (!h.pick || !h.line || !h.line.length) return [];
-  const name = namesIn(state, seat);
-  return h.line
-    .filter((st) => st.ids.every((id) => name(id) !== null))
-    .map((st) => ({ ...st, text: st.text.charAt(0).toUpperCase() + st.text.slice(1) }));
+export function hintLineSteps(h: Pick<SearchHint, 'line' | 'pick'>, state: GameStateBody | null, _seat: number | null = null): HintStep[] {
+  if (!h.pick || !h.line || !h.line.length || h.line.length > LINE_MAX || !state) return [];
+  const cards = cardIndex(state);
+  const out: HintStep[] = [];
+  for (const st of h.line) {
+    const g = LINE_GRAMMAR[st.kind];
+    if (!g) return [];
+    const names: string[] = [];
+    for (const id of st.ids) {
+      const n = visibleName(cards.get(id));
+      if (!n) return [];
+      names.push(n);
+    }
+    if ((st.kind === 'mode' || st.kind === 'x') && st.ids.length !== 1) return [];
+    let t = st.text;
+    for (const n of [...names].sort((a, b) => b.length - a.length)) {
+      if (!t.includes(n)) return [];
+      t = t.split(n).join('\u0001');
+    }
+    if (!g.test(t)) return [];
+    out.push({ ...st, text: st.text.charAt(0).toUpperCase() + st.text.slice(1) });
+  }
+  return out;
 }
 
 /** Card ids the pick names, for highlighting on the board (your cards and the attackers they meet). */
