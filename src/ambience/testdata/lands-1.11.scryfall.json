@@ -1,0 +1,157 @@
+[
+ {
+  "name": "Arid Mesa",
+  "layout": "normal",
+  "type_line": "Land",
+  "oracle_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.",
+  "colors": []
+ },
+ {
+  "name": "Seaside Citadel",
+  "layout": "normal",
+  "type_line": "Land",
+  "oracle_text": "This land enters tapped.\n{T}: Add {G}, {W}, or {U}.",
+  "produced_mana": [
+   "G",
+   "U",
+   "W"
+  ],
+  "colors": []
+ },
+ {
+  "name": "Blightstep Pathway // Searstep Pathway",
+  "layout": "modal_dfc",
+  "type_line": "Land // Land",
+  "produced_mana": [
+   "B",
+   "R"
+  ],
+  "colors": [],
+  "card_faces": [
+   {
+    "name": "Blightstep Pathway",
+    "type_line": "Land",
+    "oracle_text": "{T}: Add {B}.",
+    "mana_cost": ""
+   },
+   {
+    "name": "Searstep Pathway",
+    "type_line": "Land",
+    "oracle_text": "{T}: Add {R}.",
+    "mana_cost": ""
+   }
+  ]
+ },
+ {
+  "name": "Bayou",
+  "layout": "normal",
+  "type_line": "Land — Swamp Forest",
+  "oracle_text": "({T}: Add {B} or {G}.)",
+  "produced_mana": [
+   "B",
+   "G"
+  ],
+  "colors": []
+ },
+ {
+  "name": "Thriving Isle",
+  "layout": "normal",
+  "type_line": "Land",
+  "oracle_text": "This land enters tapped. As it enters, choose a color other than blue.\n{T}: Add {U} or one mana of the chosen color.",
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "colors": []
+ },
+ {
+  "name": "City of Brass",
+  "layout": "normal",
+  "type_line": "Land",
+  "oracle_text": "Whenever this land becomes tapped, it deals 1 damage to you.\n{T}: Add one mana of any color.",
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "colors": []
+ },
+ {
+  "name": "Exotic Orchard",
+  "layout": "normal",
+  "type_line": "Land",
+  "oracle_text": "{T}: Add one mana of any color that a land an opponent controls could produce.",
+  "produced_mana": [
+   "B",
+   "G",
+   "R",
+   "U",
+   "W"
+  ],
+  "colors": []
+ },
+ {
+  "name": "Ancient Tomb",
+  "layout": "normal",
+  "type_line": "Land",
+  "oracle_text": "{T}: Add {C}{C}. This land deals 2 damage to you.",
+  "produced_mana": [
+   "C"
+  ],
+  "colors": []
+ },
+ {
+  "name": "Mutavault",
+  "layout": "normal",
+  "type_line": "Land",
+  "oracle_text": "{T}: Add {C}.\n{1}: This land becomes a 2/2 creature with all creature types until end of turn. It's still a land.",
+  "produced_mana": [
+   "C"
+  ],
+  "colors": []
+ },
+ {
+  "name": "Urza's Saga",
+  "layout": "saga",
+  "type_line": "Enchantment Land — Urza's Saga",
+  "oracle_text": "(As this Saga enters and after your draw step, add a lore counter. Sacrifice after III.)\nI — This Saga gains \"{T}: Add {C}.\"\nII — This Saga gains \"{2}, {T}: Create a 0/0 colorless Construct artifact creature token with 'This token gets +1/+1 for each artifact you control.'\"\nIII — Search your library for an artifact card with mana cost {0} or {1}, put it onto the battlefield, then shuffle.",
+  "produced_mana": [
+   "C"
+  ],
+  "colors": []
+ },
+ {
+  "name": "Zagoth Triome",
+  "layout": "normal",
+  "type_line": "Land — Swamp Forest Island",
+  "oracle_text": "({T}: Add {B}, {G}, or {U}.)\nThis land enters tapped.\nCycling {3} ({3}, Discard this card: Draw a card.)",
+  "produced_mana": [
+   "B",
+   "G",
+   "U"
+  ],
+  "colors": []
+ },
+ {
+  "name": "Wastes",
+  "layout": "normal",
+  "type_line": "Basic Land",
+  "oracle_text": "{T}: Add {C}.",
+  "produced_mana": [
+   "C"
+  ],
+  "colors": []
+ },
+ {
+  "name": "Prismatic Vista",
+  "layout": "normal",
+  "type_line": "Land",
+  "oracle_text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield, then shuffle.",
+  "colors": []
+ }
+]

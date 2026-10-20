@@ -10,21 +10,34 @@
  * face-down card is never classified), so the scenery shows nothing the
  * viewing seat's redacted state does not already show.
  *
- * Classification of one land (weights always sum to 1 per land), by the
- * colours it produces:
- *   1. Basic land types on its type line (Island, Swamp, …, Wastes), split
- *      evenly: a "Land — Island Swamp" dual gives ½ island, ½ swamp.
+ * Classification of one land (spec 1.11; weights always sum to 1 per land),
+ * by the coloured mana it makes. A land that makes no coloured mana is not
+ * scenery: `null`, like a mana rock.
+ *   1. Basic land types on its type line (Island, Swamp, Mountain, Forest,
+ *      Plains), split evenly: a "Land — Island Swamp" dual gives ½ island,
+ *      ½ swamp, a Triome ⅓ each. The basic Wastes is not a colour: `null`.
  *   2. A "choose a colour as it enters" land (the Thriving lands: "Add {W} or
  *      one mana of the chosen color"): its fixed colour plus the colour chosen
  *      for it, when the caller knows it (state.ts `chosenColors`, the viewing
  *      seat's own answers), ½ / ½; its fixed colour alone while the choice is
- *      unknown (an opponent's, or before the answer). Before 2026-10-16 it fell
- *      to step 3, whose Scryfall data lists all five colours: wastes.
- *   3. Else the colours it taps for (`manaColorsOf`: Scryfall data when the
- *      caller has it, else the wire's ability text), one or two colours split
- *      evenly (a Pathway's card data lists both faces' colours: ½ / ½).
- *   4. Else (colourless, unknown, no mana at all — a fetch land — or three or
- *      more colours) → wastes.
+ *      unknown (an opponent's, or before the answer).
+ *   3. A multi-face card (a Pathway, an MDFC with a land face): the face in
+ *      play only, by the colours its own text adds (`CardInfo.faces`), so a
+ *      Pathway is one colour and not a dual.
+ *   4. Else the colours it taps for (`manaColorsOf`: Scryfall data when the
+ *      caller has it, else the wire's ability text): one, two or three
+ *      colours split evenly (a fixed three-colour land, Seaside Citadel, in
+ *      thirds as a Triome is).
+ *   5. Else `null`: no coloured mana (a fetch land until it fetches, Ancient
+ *      Tomb, the Landscapes, Mutavault, Urza's Saga), any colour (City of
+ *      Brass, Exotic Orchard: four or five colours say nothing about the
+ *      deck), or no card data. The wire never carries a land's mana ability,
+ *      so a typeless land with no Scryfall data waits quietly (logged once per
+ *      card in dev) instead of opening a slot; the data's arrival restarts the
+ *      tracker. Before 1.11 all of these went to `wastes`, the built-in
+ *      procedural scene, and kept that slot for the rest of the game. No land
+ *      claims `wastes` now; the biome stays in {@link BIOMES} so a pack that
+ *      paints one still validates.
  *
  * Growth: a biome's land weight sets its integer stage (1 / 2–3 / 4–5 / 6+
  * lands by default) and, between two thresholds, its progress toward the
@@ -44,7 +57,8 @@
 import type { AnyCard, GameStateBody } from '../protocol.ts';
 import type { GameLog } from '../log.ts';
 import type { CardInfo } from '../cards.ts';
-import { chosenColorSource, hasType, manaColorsOf, visibleCard, type ChosenColors } from '../state.ts';
+import { keyOf } from '../cards.ts';
+import { chosenColorSource, hasType, infoFor, manaColorsInText, manaColorsOf, visibleCard, type ChosenColors } from '../state.ts';
 
 export const BIOMES = ['island', 'swamp', 'mountain', 'forest', 'plains', 'wastes'] as const;
 export type Biome = (typeof BIOMES)[number];
@@ -64,7 +78,6 @@ const TYPE_BIOME: Record<string, Biome> = {
   Mountain: 'mountain',
   Forest: 'forest',
   Plains: 'plains',
-  Wastes: 'wastes',
 };
 const COLOR_BIOME: Record<string, Biome> = { W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' };
 
@@ -79,7 +92,7 @@ export function isBiome(v: unknown): v is Biome {
   return typeof v === 'string' && (BIOMES as readonly string[]).includes(v);
 }
 
-/** How one land splits across biomes (weights sum to 1), or null when it is not a visible land. `chosen`: the colours chosen for "choose a colour" lands, by card id. */
+/** How one land splits across biomes (weights sum to 1), or null when it is not a visible land or makes no coloured mana (spec 1.11). `chosen`: the colours chosen for "choose a colour" lands, by card id. */
 export function landBiomes(card: AnyCard, cards?: Map<string, CardInfo>, chosen?: ChosenColors): Partial<Record<Biome, number>> | null {
   const c = visibleCard(card);
   if (!c || c.faceDown || !hasType(c, 'Land')) return null;
@@ -88,14 +101,28 @@ export function landBiomes(card: AnyCard, cards?: Map<string, CardInfo>, chosen?
   const cc = chosenColorSource(c, cards);
   if (cc) {
     const pick = chosen?.get(c.id);
-    const made = [...new Set([...cc.fixed, ...(pick ? [pick] : [])])].filter((x) => x in COLOR_BIOME);
-    if (made.length >= 1 && made.length <= 2) return split(made.map((x) => COLOR_BIOME[x]!));
-    return { wastes: 1 };
+    return byColours([...cc.fixed, ...(pick ? [pick] : [])]);
   }
-  const colors = (manaColorsOf(c, cards) ?? []).filter((x) => x in COLOR_BIOME);
-  const uniq = [...new Set(colors)];
-  if (uniq.length >= 1 && uniq.length <= 2) return split(uniq.map((x) => COLOR_BIOME[x]!));
-  return { wastes: 1 };
+  const info = infoFor(c.name, cards);
+  const face = info?.faces?.length ? info.faces.find((f) => keyOf(f.name) === keyOf(c.name)) : undefined;
+  if (face) return byColours(manaColorsInText(face.oracleText) ?? []);
+  const got = byColours(manaColorsOf(c, cards) ?? []);
+  if (!got && !info) noCardData(c.name);
+  return got;
+}
+
+/** One to three colours split evenly; none, or four or five (an any-colour land), is not scenery. */
+function byColours(colours: readonly string[]): Partial<Record<Biome, number>> | null {
+  const uniq = [...new Set(colours.filter((x) => x in COLOR_BIOME))];
+  return uniq.length >= 1 && uniq.length <= 3 ? split(uniq.map((x) => COLOR_BIOME[x]!)) : null;
+}
+
+const quietNoData = new Set<string>();
+/** Spec 1.11: a typeless land with no card data draws nothing; say so once per card, in dev only. */
+function noCardData(name: string) {
+  if (quietNoData.has(name)) return;
+  quietNoData.add(name);
+  if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) console.info(`[scenery] no card data for the land "${name}": it draws no biome until its data loads (spec 1.11)`);
 }
 
 /**
