@@ -8,8 +8,8 @@ import { isHidden } from './protocol.ts';
 import {
   askHint,
   askRoomHint,
-  HINT_OFF_TABLE,
   roomHintInfo,
+  TABLE_HINT_OFF,
   roomHintInfoOf,
   helperHintAvailable,
   hintCardIds,
@@ -233,11 +233,14 @@ describe('at a table of two (mtg-table D453): the room, behind this seat\'s toke
     await askRoomHint(room, { gameId: null, seat: 1, stateSeq: 5 }, f);
     expect(bodies.map((b) => b.gameId)).toEqual(['friend-m1790000000042-seat1', undefined, undefined]);
   });
-  it('an older room (404) or one without hints (503) is off — the off text, not an error', async () => {
-    for (const [status, body] of [[404, { ok: false, code: 'gone', message: 'no such room' }], [503, { ok: false, code: 'off', message: 'x' }]] as const) {
+  it('the room gone (404), hints off (503) or the link replaced (403) is off, each in its own words — not an error', async () => {
+    for (const [status, body, why] of [[404, { ok: false, code: 'gone', message: 'no such room' }, 'gone'], [503, { ok: false, code: 'off', message: 'x' }, 'off'], [403, { ok: false, code: 'token' }, 'link']] as const) {
       const r = await askRoomHint(room, { seat: 0, stateSeq: 5 }, async () => ok(body, status));
-      expect(isRefused(r) && [r.code, r.message]).toEqual(['off', HINT_OFF_TABLE]);
+      expect(isRefused(r) && [r.code, r.off, r.message]).toEqual(['off', why, TABLE_HINT_OFF[why]]);
     }
+    expect(new Set(Object.values(TABLE_HINT_OFF)).size).toBe(Object.keys(TABLE_HINT_OFF).length);
+    expect(TABLE_HINT_OFF.gone).not.toMatch(/latest ForgeCoach/);
+    expect(TABLE_HINT_OFF['no-seat']).not.toMatch(/latest ForgeCoach/);
   });
   it('the room\'s other answers, in plain words', async () => {
     const req = { seat: 0, stateSeq: 5 };
@@ -247,15 +250,13 @@ describe('at a table of two (mtg-table D453): the room, behind this seat\'s toke
     expect(isRefused(none) && [none.code, none.message]).toEqual([null, 'No game is being played in the room right now.']);
     const moved = await askRoomHint(room, req, async () => ok({ ok: false, code: 'moved-on' }, 409));
     expect(isRefused(moved) && moved.code).toBe('moved-on');
-    const tok = await askRoomHint(room, req, async () => ok({ ok: false, code: 'token' }, 403));
-    expect(isRefused(tok) && tok.message).toMatch(/room link no longer works/);
     const down = await askRoomHint(room, req, async () => { throw new TypeError('fetch failed'); });
     expect(isRefused(down) && down.message).toMatch(/room’s PC/);
   });
   it('availability is the room\'s state `hint: 1`, read with this seat\'s token', async () => {
-    expect(roomHintInfoOf({ v: 1, id: 'r', hint: 1 }).available).toBe(true);
-    expect(roomHintInfoOf({ v: 1, id: 'r', hint: 0 }).available).toBe(false);
-    expect(roomHintInfoOf({ v: 1, id: 'r' }).available).toBe(false);
+    expect(roomHintInfoOf({ v: 1, id: 'r', hint: 1 })).toMatchObject({ available: true, off: null });
+    expect(roomHintInfoOf({ v: 1, id: 'r', hint: 0 })).toMatchObject({ available: false, off: 'off' });
+    expect(roomHintInfoOf({ v: 1, id: 'r' })).toMatchObject({ available: false, off: 'old' });
     const calls: { url: string; init?: RequestInit }[] = [];
     const info = await roomHintInfo(room, async (url, init) => {
       calls.push({ url, init });
@@ -264,8 +265,9 @@ describe('at a table of two (mtg-table D453): the room, behind this seat\'s toke
     expect(info.available).toBe(true);
     expect(calls[0]!.url).toBe('https://play.example.org/room/rAbC12_xy');
     expect((calls[0]!.init!.headers as Record<string, string>)['X-Room-Token']).toBe('seat-token-0');
-    expect((await roomHintInfo(room, async () => ok({ ok: false, code: 'gone' }, 404))).available).toBe(false);
-    expect((await roomHintInfo(room, async () => { throw new TypeError('fetch failed'); })).available).toBe(false);
+    expect(await roomHintInfo(room, async () => ok({ ok: false, code: 'gone' }, 404))).toMatchObject({ available: false, off: 'gone' });
+    expect(await roomHintInfo(room, async () => ok({ ok: false, code: 'token' }, 403))).toMatchObject({ available: false, off: 'link' });
+    expect(await roomHintInfo(room, async () => { throw new TypeError('fetch failed'); })).toMatchObject({ available: false, off: 'unreachable' });
   });
 });
 

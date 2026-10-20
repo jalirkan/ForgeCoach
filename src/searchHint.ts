@@ -100,6 +100,8 @@ export interface HintRefused {
    */
   code: 'superseded' | 'moved-on' | 'not-yet' | 'off' | null;
   message: string;
+  /** With `off`, at a table: why (TABLE_HINT_OFF has the words). */
+  off?: TableHintOff;
 }
 
 export type HintFetch = (url: string, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'json'>>;
@@ -126,6 +128,8 @@ export interface HintInfo {
   engine: 'idle' | 'starting' | 'ready' | null;
   /** `/health` `hintBudgetMs.default`: how long a hint looks, when said. */
   budgetMs: number | null;
+  /** At a table (mtg-table D453), when not available: why, from the room. */
+  off?: TableHintOff | null;
 }
 
 /** What /health says about hints (never throws). */
@@ -150,12 +154,32 @@ export async function hintInfo(target: HelperTarget, f: HintFetch = defaultFetch
   }
 }
 
-/** At a table of two: the hint is off on the room's computer (or the room is from before mtg-table D453). */
+/**
+ * Why the search AI is not offered at a table of two (mtg-table D453), each in its own words:
+ * `old` the room's PC runs a ForgeCoach from before the room's hint (its state has no `hint`, or no route);
+ * `off` it has hints off now (`hint: 0`, or 503); `gone` the room is closed or expired (404);
+ * `link` this seat's room link was replaced (403); `no-seat` this browser holds no seat of the room
+ * for this game; `unreachable` the room's PC did not answer (it is asked again).
+ */
+export type TableHintOff = 'old' | 'off' | 'gone' | 'link' | 'no-seat' | 'unreachable';
+
+/** The room's PC runs a ForgeCoach from before the room's hint. */
 export const HINT_OFF_TABLE = 'The search AI isn’t offered at this table: the engine on the room’s PC doesn’t give hints yet (it needs the latest ForgeCoach there).';
+
+export const TABLE_HINT_OFF: Record<TableHintOff, string> = {
+  old: HINT_OFF_TABLE,
+  off: 'The engine on the room’s PC has search hints off right now.',
+  gone: 'This game’s room is closed or has expired, so the search AI can’t be asked here.',
+  link: 'This browser’s link to the room no longer works (the room’s owner made a new one), so the search AI can’t be asked here.',
+  'no-seat': 'The search AI at a table asks the room your seat is in: open this game from the room’s screen (Draft with a friend) to use it.',
+  unreachable: 'Couldn’t reach the room’s PC to ask about search hints — trying again.',
+};
 
 /** What a room's state says about hints (mtg-table D453: `hint: 1`); the room says nothing of its engine's start. */
 export function roomHintInfoOf(state: unknown): HintInfo {
-  return { available: helperHintAvailable(state), engine: null, budgetMs: null };
+  const available = helperHintAvailable(state);
+  const has = typeof state === 'object' && state !== null && 'hint' in state;
+  return { available, engine: null, budgetMs: null, off: available ? null : has ? 'off' : 'old' };
 }
 
 /** GET /room/<id> with this seat's token and read `hint` (never throws; not available when the room cannot be read). */
@@ -164,10 +188,10 @@ export async function roomHintInfo(room: SeatHandle, f: HintFetch = defaultFetch
   const timer = c ? setTimeout(() => c.abort(), timeoutMs) : null;
   try {
     const res = await f(seatRoomUrl(room, ''), { method: 'GET', headers: { [ROOM_TOKEN_HEADER]: room.token }, ...(c ? { signal: c.signal } : {}), cache: 'no-store' });
-    if (!res.ok) return { available: false, engine: null, budgetMs: null };
+    if (!res.ok) return { available: false, engine: null, budgetMs: null, off: res.status === 404 ? 'gone' : res.status === 403 ? 'link' : 'unreachable' };
     return roomHintInfoOf(await res.json());
   } catch {
-    return { available: false, engine: null, budgetMs: null };
+    return { available: false, engine: null, budgetMs: null, off: 'unreachable' };
   } finally {
     if (timer) clearTimeout(timer);
   }
@@ -307,7 +331,6 @@ const STATUS_WORDS: Record<number, string> = {
 };
 
 const ROOM_STATUS_WORDS: Record<number, string> = {
-  403: 'This seat’s room link no longer works — open the room again.',
   429: 'Too many hints at once — try again in a few seconds.',
   504: 'The search AI took too long and was stopped — try again.',
 };
@@ -362,8 +385,10 @@ async function postHint(url: string, hdrs: Record<string, string>, body: Record<
   const d = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
   if (!res.ok) {
     if (room) {
-      // The room's own refusals (D453): an old room has no route (404), one without hints says off (503).
-      if (res.status === 404 || res.status === 503 || d.code === 'off') return { ok: false, status: res.status, code: 'off', message: HINT_OFF_TABLE };
+      // The room's own refusals (D453). A hint is asked only once the room's state said `hint: 1`, so the
+      // room's PC has the route: a 404 is the room gone, a 503 hints off, a 403 this seat's link replaced.
+      const off: TableHintOff | null = res.status === 404 ? 'gone' : res.status === 503 || d.code === 'off' ? 'off' : res.status === 403 ? 'link' : null;
+      if (off) return { ok: false, status: res.status, code: 'off', off, message: TABLE_HINT_OFF[off] };
       if (d.code === 'game') return { ok: false, status: res.status, code: 'moved-on', message: 'The game moved on before the search AI finished.' };
       if (d.code === 'no-game') return { ok: false, status: res.status, code: null, message: 'No game is being played in the room right now.' };
     }

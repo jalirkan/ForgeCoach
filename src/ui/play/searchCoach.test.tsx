@@ -9,7 +9,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { GameStateBody } from '../../protocol.ts';
-import { HINT_OFF_TABLE, type SearchHint } from '../../searchHint.ts';
+import { HINT_OFF_TABLE, TABLE_HINT_OFF, type SearchHint } from '../../searchHint.ts';
 import type { HintPhase } from '../../play/hintRunner.ts';
 import { AskNowRow, budgetLine, CoachPicker, HINT_OFF, NO_HINT, otherChoices, SearchCoachBody, thinkingLine, type SearchCoach } from './SearchHint.tsx';
 
@@ -32,7 +32,7 @@ const HINT: SearchHint = {
 };
 
 const coachIn = (phase: HintPhase, over: Partial<SearchCoach> = {}): SearchCoach => ({
-  kind: 'search', setKind: () => undefined, available: true, table: false, info: { available: true, engine: 'ready', budgetMs: 3000 }, phase, ask: () => undefined, searchKey: true, state: STATE, seat: 0, ...over,
+  kind: 'search', setKind: () => undefined, available: true, table: false, offText: null, info: { available: true, engine: 'ready', budgetMs: 3000 }, phase, ask: () => undefined, searchKey: true, state: STATE, seat: 0, ...over,
 });
 
 describe('the decision panel: Ask now', () => {
@@ -103,9 +103,15 @@ describe('the Coach panel', () => {
     expect(body(coachIn({ state: 'answered', key: 'd', hint: HINT }, at))).toContain('Cast Shock, or cast nothing now');
     expect(renderToStaticMarkup(<AskNowRow coach={coachIn({ state: 'idle', key: 'd' }, at)} claudeAsk={null} />)).toContain('data-ask-now="search"');
     expect(thinkingLine(at.info)).toBe('The engine is thinking…');
-    const off = body(coachIn({ state: 'none', key: null }, { ...at, available: false }));
+    const off = body(coachIn({ state: 'none', key: null }, { ...at, available: false, offText: HINT_OFF_TABLE }));
     expect(off).toContain(HINT_OFF_TABLE);
     expect(off).not.toContain(HINT_OFF);
+    // Each reason in its own words: a closed room or a browser with no seat is not "needs the latest ForgeCoach".
+    for (const why of ['gone', 'no-seat', 'link'] as const) {
+      const html = body(coachIn({ state: 'none', key: null }, { ...at, available: false, offText: TABLE_HINT_OFF[why] }));
+      expect(html).toContain(TABLE_HINT_OFF[why].slice(0, 30));
+      expect(html).not.toContain('latest ForgeCoach');
+    }
     expect(renderToStaticMarkup(<AskNowRow coach={coachIn({ state: 'none', key: null }, { ...at, available: false })} claudeAsk={null} />)).toBe('');
   });
   it('error, and off when the engine offers no hints', () => {

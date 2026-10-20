@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { GameStateBody, InputBody } from '../../protocol.ts';
 import type { GameLog } from '../../log.ts';
 import { pageHelperTarget } from '../../coachHelper.ts';
-import { askHint, askRoomHint, HINT_OFF_TABLE, hintCardIds, hintChoiceWords, hintDecisionKey, hintInfo, hintMoment, hintWords, roomHintInfo, type HintInfo, type HintVerdict, type SearchHint as Hint } from '../../searchHint.ts';
+import { askHint, askRoomHint, HINT_OFF_TABLE, TABLE_HINT_OFF, type TableHintOff, hintCardIds, hintChoiceWords, hintDecisionKey, hintInfo, hintMoment, hintWords, roomHintInfo, type HintInfo, type HintVerdict, type SearchHint as Hint } from '../../searchHint.ts';
 import type { SeatHandle } from '../../play/friendReview.ts';
 import { COACH_KIND_KEY, COACH_KINDS, coachPlan, readCoachKind, type CoachKind } from '../../play/coachChoice.ts';
 import { HintRunner, type HintPhase } from '../../play/hintRunner.ts';
@@ -45,6 +45,8 @@ export const NO_HINT = 'No hint for this decision: the search AI judges your mai
 export const HINT_OFF = 'The search AI needs the engine on your PC with hints on. Start ForgeCoach on your PC (the app-menu launcher, or ./scripts/play.sh).';
 
 const NO_INFO: HintInfo = { available: false, engine: null, budgetMs: null };
+/** At a table, before the room's state has been read. */
+export const HINT_CHECKING_TABLE = 'Asking the room’s PC whether it gives search hints…';
 
 /**
  * What /health says about hints — or, at a table of two, the room's state (mtg-table D453: a friend's
@@ -92,6 +94,8 @@ export interface SearchCoach {
   available: boolean;
   /** A table of two (mtg-table D453): the hint comes from the room, and the off text says so. */
   table: boolean;
+  /** At a table, when not available: why, in words (the room gone, an older room's PC, no seat here, …). */
+  offText: string | null;
   info: HintInfo;
   /** The hint for the decision on screen (`none` when the search AI does not judge it). */
   phase: HintPhase;
@@ -140,8 +144,14 @@ export function useSearchCoach({
   const info = useHintInfo(enabled && (!table || !!roomSeat), roomSeat);
   // A room that answers "off" (an older one has no route: 404) turns the hint off for this room, without an error.
   const roomKey = roomSeat ? `${roomSeat.base}|${roomSeat.id}` : '';
-  const [offFor, setOffFor] = useState<string | null>(null);
-  const available = enabled && info.available && !(table && offFor === roomKey);
+  const [offFor, setOffFor] = useState<{ key: string; why: TableHintOff } | null>(null);
+  // A later read of the room's state that says `hint: 1` (the room's PC restarted with hints, say) lifts it.
+  useEffect(() => {
+    if (info.available) setOffFor(null);
+  }, [info]);
+  const offHere = table && offFor?.key === roomKey ? offFor.why : null;
+  const available = enabled && info.available && !offHere;
+  const offText = !table || available ? null : !roomSeat ? TABLE_HINT_OFF['no-seat'] : (offHere ?? info.off) ? TABLE_HINT_OFF[(offHere ?? info.off)!] : HINT_CHECKING_TABLE;
   const plan = coachPlan(kind, false, available);
 
   const latest = useRef({ log, seat, roomSeat, table, roomKey });
@@ -153,10 +163,10 @@ export function useSearchCoach({
         const moment = hintMoment(lg);
         const gameId = lg?.header?.gameId ?? null;
         if (atTable) {
-          if (!rs) return { ok: false, status: 0, code: 'off', message: HINT_OFF_TABLE };
+          if (!rs) return { ok: false, status: 0, code: 'off', off: 'no-seat', message: TABLE_HINT_OFF['no-seat'] };
           if (!lg || !moment || (st !== 0 && st !== 1)) return { ok: false, status: 0, code: null, message: 'This game has no moment the engine can look up yet.' };
           const r = await askRoomHint(rs, { gameId, seat: st, stateSeq: moment.stateSeq, ...(moment.inputSeq ? { inputSeq: moment.inputSeq } : {}) }, undefined, signal);
-          if ('code' in r && r.code === 'off') setOffFor(rk);
+          if ('code' in r && r.code === 'off') setOffFor({ key: rk, why: r.off ?? 'off' });
           return r;
         }
         if (!lg || !moment || !gameId || (st !== 0 && st !== 1)) return { ok: false, status: 0, code: null, message: 'This game has no moment the engine can look up yet.' };
@@ -196,7 +206,7 @@ export function useSearchCoach({
   }, [plan.searchKey, key, askOpen, runner]);
 
   useBoardMarks(hintCardIds(phase.state === 'answered' ? phase.hint : null), state);
-  return { kind, setKind, available, table, info, phase, ask, searchKey: plan.searchKey, state, seat };
+  return { kind, setKind, available, table, offText, info, phase, ask, searchKey: plan.searchKey, state, seat };
 }
 
 // ---------------------------------------------------------------------------
@@ -318,7 +328,7 @@ export function SearchCoachBody({ coach, myMove }: { coach: SearchCoach; myMove:
   if (!available) {
     return (
       <div className="card-box notice pc-wait" data-search-coach="off">
-        <p className="muted small">{table ? HINT_OFF_TABLE : HINT_OFF}</p>
+        <p className="muted small">{table ? (coach.offText ?? HINT_OFF_TABLE) : HINT_OFF}</p>
       </div>
     );
   }
