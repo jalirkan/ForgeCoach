@@ -51,15 +51,16 @@ export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgeco
 /**
  * Spec 1.9: ForgeCoach's own pair bands, a second manifest (`pairs.json` at
  * this base) in a ref of its own on the same repository, since the main pack
- * fills most of jsDelivr's 50 MB per ref. `pairs-v3` (spec 1.12): the meeting
- * road, Justin's pick of 2026-10-19 — every pair a motif pair, the road, river
- * or causeway both lands share drawn over the plain seam, three stages,
- * desktop and phone at 1x and 2x, two frames per stage step
- * (`pairs-v3.test.ts` is its manifest). `pairs-v2` (the ten painted places,
- * `pairs-v2.test.ts`), `pairs-v1` and the draft `pairs-v0` stay up, but
- * nothing points at them.
+ * fills most of jsDelivr's 50 MB per ref. `pairs-v3.1` (spec 1.12): the meeting
+ * road, Justin's pick of 2026-10-19 -- every pair a motif pair, the road, river
+ * or causeway both lands share drawn over the plain seam -- with the repaints
+ * he asked for after judging it (Tundra and Underground Sea, Godless Shrine's
+ * shrine, every phone motif); three stages, desktop and phone at 1x and 2x,
+ * two frames per stage step (`pairs-v3.1.test.ts` is its manifest). `pairs-v3`
+ * (`pairs-v3.test.ts`), `pairs-v2`, `pairs-v1` and the draft `pairs-v0` stay
+ * up, but nothing points at them.
  */
-export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3/';
+export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3.1/';
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true };
 

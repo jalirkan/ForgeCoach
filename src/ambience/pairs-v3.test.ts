@@ -2,8 +2,8 @@
  * ForgeCoach — ambience/pairs-v3.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * pairs-v3, the pair pack (spec 1.12) that FORGECOACH_PAIRS_URL points at: a
- * snapshot of its pairs.json, byte for byte what jsDelivr serves at
+ * pairs-v3, the pair pack (spec 1.12) FORGECOACH_PAIRS_URL pointed at until
+ * pairs-v3.1 (pairs-v3.1.test.ts): a snapshot of its pairs.json, byte for byte what jsDelivr serves at
  * https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3/pairs.json
  * (sha256 f19d3bde92160b1e98717d35dc40307844514d883fa2067d93d69b3c9b011318, compared with `cmp` against the CDN's copy on 2026-10-21;
  * every one of the 200 pictures it names answered 200 from the same ref,
@@ -22,7 +22,9 @@ import { halfLayout } from './layout.ts';
 import { MAX_TRANSITION_FRAMES } from './manifest.ts';
 import { pairKey, type Biome, type SlotState } from './model.ts';
 import { DEFAULT_STAGE_MAP, MAX_PAIR_HALF_BYTES, MAX_PAIRS_PACK_BYTES, halfRow, motifBands, motifWidth, pairBands, pairHalfAt, pairMotifAt, pairsBytes, panelBands, validatePairs } from './pairs.ts';
-import { FORGECOACH_PAIRS_URL } from './prefs.ts';
+
+/** The tag this snapshot is from (FORGECOACH_PAIRS_URL now names pairs-v3.1); the tag stays up. */
+const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3/';
 
 const FIVE: Biome[] = ['plains', 'island', 'swamp', 'mountain', 'forest'];
 const slot = (b: Biome, index: number, weight = 2): SlotState => ({ biome: b, index, weight, stage: Math.min(6, weight), peak: Math.min(6, weight) });
@@ -33,8 +35,7 @@ describe('pairs-v3', () => {
   const r = validatePairs(raw, `${FORGECOACH_PAIRS_URL}pairs.json`);
   const pairs = r.pairs!;
 
-  it('is the pairs URL, and the snapshot is the file jsDelivr serves', () => {
-    expect(FORGECOACH_PAIRS_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3/');
+  it('is the file jsDelivr serves at pairs-v3', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('f19d3bde92160b1e98717d35dc40307844514d883fa2067d93d69b3c9b011318');
   });
 

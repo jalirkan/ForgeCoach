@@ -279,7 +279,7 @@ describe('warming', () => {
 
 describe('loading and prefs', () => {
   it('fetches ForgeCoach’s pairs with ForgeCoach’s pack, none with another pack, and takes ?pairs= for one page', () => {
-    expect(FORGECOACH_PAIRS_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3/');
+    expect(FORGECOACH_PAIRS_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3.1/');
     expect(pairsUrlOf(DEFAULT_PREFS)).toBe(FORGECOACH_PAIRS_URL);
     expect(pairsUrlOf({ ...DEFAULT_PREFS, packUrl: 'http://127.0.0.1:8650/' })).toBeNull();
     expect(pairsUrlOf({ ...DEFAULT_PREFS, mode: 'procedural' })).toBeNull();
