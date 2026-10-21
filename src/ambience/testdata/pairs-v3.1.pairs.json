@@ -1,0 +1,1060 @@
+{
+ "schema": 1,
+ "spec": "1.12",
+ "name": "ForgeCoach pair scenery, pairs-v3.1",
+ "author": "jalirkan",
+ "license": "CC BY 4.0",
+ "note": "pairs-v3.1 (spec 1.12): pairs-v3's meeting road with Tundra (dark stones through the snow) and Underground Sea (a causeway of black rocks with a glowing waterline) repainted, Godless Shrine's shrine made to read, and every phone motif repainted as a road. Three stages, desktop and phone at 1x and 2x, two frames a step. Keys a+b alphabetical; the art has a on its left.",
+ "pairs": {
+  "forest+island": {
+   "dual": "Tropical Island",
+   "shock": "Breeding Pool",
+   "place": "a wide luminous turquoise river, winding between mossy jungle mounds and ferns on the left and a primordial turquoise lagoon shore on the right",
+   "band": {
+    "min": 0.2,
+    "perDual": 0.03,
+    "max": 0.32
+   },
+   "stageMap": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "stages": [
+    {
+     "motif": {
+      "src": "pairs/forest-island/s1-motif.webp",
+      "src2x": "pairs/forest-island/s1-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-island/s1-motif-phone.webp",
+       "src2x": "pairs/forest-island/s1-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 168366
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/forest-island/s2-motif.webp",
+      "src2x": "pairs/forest-island/s2-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-island/s2-motif-phone.webp",
+       "src2x": "pairs/forest-island/s2-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 198484
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/forest-island/s3-motif.webp",
+      "src2x": "pairs/forest-island/s3-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-island/s3-motif-phone.webp",
+       "src2x": "pairs/forest-island/s3-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 200166
+     }
+    }
+   ],
+   "motifTransitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "pairs/forest-island/s1to2-f1-motif.webp",
+        "phone": "pairs/forest-island/s1to2-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/forest-island/s1to2-f2-motif.webp",
+        "phone": "pairs/forest-island/s1to2-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 102392
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "pairs/forest-island/s2to3-f1-motif.webp",
+        "phone": "pairs/forest-island/s2to3-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/forest-island/s2to3-f2-motif.webp",
+        "phone": "pairs/forest-island/s2to3-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 112386
+     }
+    ]
+   }
+  },
+  "forest+mountain": {
+   "dual": "Taiga",
+   "shock": "Stomping Ground",
+   "place": "a stony mountain road of red earth, climbing between dark conifers and mossy roots on the left and red volcanic rock and scree on the right",
+   "band": {
+    "min": 0.2,
+    "perDual": 0.03,
+    "max": 0.32
+   },
+   "stageMap": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "stages": [
+    {
+     "motif": {
+      "src": "pairs/forest-mountain/s1-motif.webp",
+      "src2x": "pairs/forest-mountain/s1-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-mountain/s1-motif-phone.webp",
+       "src2x": "pairs/forest-mountain/s1-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 166818
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/forest-mountain/s2-motif.webp",
+      "src2x": "pairs/forest-mountain/s2-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-mountain/s2-motif-phone.webp",
+       "src2x": "pairs/forest-mountain/s2-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 186702
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/forest-mountain/s3-motif.webp",
+      "src2x": "pairs/forest-mountain/s3-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-mountain/s3-motif-phone.webp",
+       "src2x": "pairs/forest-mountain/s3-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 188032
+     }
+    }
+   ],
+   "motifTransitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "pairs/forest-mountain/s1to2-f1-motif.webp",
+        "phone": "pairs/forest-mountain/s1to2-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/forest-mountain/s1to2-f2-motif.webp",
+        "phone": "pairs/forest-mountain/s1to2-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 98476
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "pairs/forest-mountain/s2to3-f1-motif.webp",
+        "phone": "pairs/forest-mountain/s2to3-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/forest-mountain/s2to3-f2-motif.webp",
+        "phone": "pairs/forest-mountain/s2to3-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 107396
+     }
+    ]
+   }
+  },
+  "forest+plains": {
+   "dual": "Savannah",
+   "shock": "Temple Garden",
+   "place": "a broad pale dirt road with wheel ruts and wildflowers, running from the edge of a mossy forest on the left into tall golden grass on the right",
+   "band": {
+    "min": 0.2,
+    "perDual": 0.03,
+    "max": 0.32
+   },
+   "stageMap": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "stages": [
+    {
+     "motif": {
+      "src": "pairs/forest-plains/s1-motif.webp",
+      "src2x": "pairs/forest-plains/s1-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-plains/s1-motif-phone.webp",
+       "src2x": "pairs/forest-plains/s1-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 180130
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/forest-plains/s2-motif.webp",
+      "src2x": "pairs/forest-plains/s2-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-plains/s2-motif-phone.webp",
+       "src2x": "pairs/forest-plains/s2-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 188358
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/forest-plains/s3-motif.webp",
+      "src2x": "pairs/forest-plains/s3-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-plains/s3-motif-phone.webp",
+       "src2x": "pairs/forest-plains/s3-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 186820
+     }
+    }
+   ],
+   "motifTransitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "pairs/forest-plains/s1to2-f1-motif.webp",
+        "phone": "pairs/forest-plains/s1to2-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/forest-plains/s1to2-f2-motif.webp",
+        "phone": "pairs/forest-plains/s1to2-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 99234
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "pairs/forest-plains/s2to3-f1-motif.webp",
+        "phone": "pairs/forest-plains/s2to3-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/forest-plains/s2to3-f2-motif.webp",
+        "phone": "pairs/forest-plains/s2to3-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 106068
+     }
+    ]
+   }
+  },
+  "forest+swamp": {
+   "dual": "Bayou",
+   "shock": "Overgrown Tomb",
+   "place": "a long wooden boardwalk causeway on posts, over green bog water, between mossy forest roots on the left and a flooded cypress swamp with hanging moss on the right",
+   "band": {
+    "min": 0.2,
+    "perDual": 0.03,
+    "max": 0.32
+   },
+   "stageMap": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "stages": [
+    {
+     "motif": {
+      "src": "pairs/forest-swamp/s1-motif.webp",
+      "src2x": "pairs/forest-swamp/s1-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-swamp/s1-motif-phone.webp",
+       "src2x": "pairs/forest-swamp/s1-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 168336
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/forest-swamp/s2-motif.webp",
+      "src2x": "pairs/forest-swamp/s2-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-swamp/s2-motif-phone.webp",
+       "src2x": "pairs/forest-swamp/s2-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 204274
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/forest-swamp/s3-motif.webp",
+      "src2x": "pairs/forest-swamp/s3-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/forest-swamp/s3-motif-phone.webp",
+       "src2x": "pairs/forest-swamp/s3-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 197222
+     }
+    }
+   ],
+   "motifTransitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "pairs/forest-swamp/s1to2-f1-motif.webp",
+        "phone": "pairs/forest-swamp/s1to2-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/forest-swamp/s1to2-f2-motif.webp",
+        "phone": "pairs/forest-swamp/s1to2-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 101670
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "pairs/forest-swamp/s2to3-f1-motif.webp",
+        "phone": "pairs/forest-swamp/s2to3-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/forest-swamp/s2to3-f2-motif.webp",
+        "phone": "pairs/forest-swamp/s2to3-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 108866
+     }
+    ]
+   }
+  },
+  "island+mountain": {
+   "dual": "Volcanic Island",
+   "shock": "Steam Vents",
+   "place": "a black basalt causeway split by a glowing lava channel steaming into the sea, running out between a turquoise sea on the left and red volcanic slopes on the right, white surf on its shore",
+   "band": {
+    "min": 0.2,
+    "perDual": 0.03,
+    "max": 0.32
+   },
+   "stageMap": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "stages": [
+    {
+     "motif": {
+      "src": "pairs/island-mountain/s1-motif.webp",
+      "src2x": "pairs/island-mountain/s1-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/island-mountain/s1-motif-phone.webp",
+       "src2x": "pairs/island-mountain/s1-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 173536
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/island-mountain/s2-motif.webp",
+      "src2x": "pairs/island-mountain/s2-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/island-mountain/s2-motif-phone.webp",
+       "src2x": "pairs/island-mountain/s2-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 199216
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/island-mountain/s3-motif.webp",
+      "src2x": "pairs/island-mountain/s3-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/island-mountain/s3-motif-phone.webp",
+       "src2x": "pairs/island-mountain/s3-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 219452
+     }
+    }
+   ],
+   "motifTransitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "pairs/island-mountain/s1to2-f1-motif.webp",
+        "phone": "pairs/island-mountain/s1to2-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/island-mountain/s1to2-f2-motif.webp",
+        "phone": "pairs/island-mountain/s1to2-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 103608
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "pairs/island-mountain/s2to3-f1-motif.webp",
+        "phone": "pairs/island-mountain/s2to3-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/island-mountain/s2to3-f2-motif.webp",
+        "phone": "pairs/island-mountain/s2to3-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 117986
+     }
+    ]
+   }
+  },
+  "island+plains": {
+   "dual": "Tundra",
+   "shock": "Hallowed Fountain",
+   "place": "a wide road of dark flagstones between snow banks, lined with small stone cairns, running from a cold blue sea with an ice shelf on the left across a frozen white plain on the right",
+   "band": {
+    "min": 0.2,
+    "perDual": 0.03,
+    "max": 0.32
+   },
+   "stageMap": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "stages": [
+    {
+     "motif": {
+      "src": "pairs/island-plains/s1-motif.webp",
+      "src2x": "pairs/island-plains/s1-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/island-plains/s1-motif-phone.webp",
+       "src2x": "pairs/island-plains/s1-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 197204
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/island-plains/s2-motif.webp",
+      "src2x": "pairs/island-plains/s2-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/island-plains/s2-motif-phone.webp",
+       "src2x": "pairs/island-plains/s2-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 208952
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/island-plains/s3-motif.webp",
+      "src2x": "pairs/island-plains/s3-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/island-plains/s3-motif-phone.webp",
+       "src2x": "pairs/island-plains/s3-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 227992
+     }
+    }
+   ],
+   "motifTransitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "pairs/island-plains/s1to2-f1-motif.webp",
+        "phone": "pairs/island-plains/s1to2-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/island-plains/s1to2-f2-motif.webp",
+        "phone": "pairs/island-plains/s1to2-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 108752
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "pairs/island-plains/s2to3-f1-motif.webp",
+        "phone": "pairs/island-plains/s2to3-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/island-plains/s2to3-f2-motif.webp",
+        "phone": "pairs/island-plains/s2to3-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 122674
+     }
+    ]
+   }
+  },
+  "island+swamp": {
+   "dual": "Underground Sea",
+   "shock": "Watery Grave",
+   "place": "a long causeway of black rocks and old wooden pilings across dark water, its waterline glowing bioluminescent teal, crossing open water between a luminous lagoon on the left and a dark misty fen on the right",
+   "band": {
+    "min": 0.2,
+    "perDual": 0.03,
+    "max": 0.32
+   },
+   "stageMap": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "stages": [
+    {
+     "motif": {
+      "src": "pairs/island-swamp/s1-motif.webp",
+      "src2x": "pairs/island-swamp/s1-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/island-swamp/s1-motif-phone.webp",
+       "src2x": "pairs/island-swamp/s1-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 172156
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/island-swamp/s2-motif.webp",
+      "src2x": "pairs/island-swamp/s2-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/island-swamp/s2-motif-phone.webp",
+       "src2x": "pairs/island-swamp/s2-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 212410
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/island-swamp/s3-motif.webp",
+      "src2x": "pairs/island-swamp/s3-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/island-swamp/s3-motif-phone.webp",
+       "src2x": "pairs/island-swamp/s3-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 208194
+     }
+    }
+   ],
+   "motifTransitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "pairs/island-swamp/s1to2-f1-motif.webp",
+        "phone": "pairs/island-swamp/s1to2-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/island-swamp/s1to2-f2-motif.webp",
+        "phone": "pairs/island-swamp/s1to2-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 106614
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "pairs/island-swamp/s2to3-f1-motif.webp",
+        "phone": "pairs/island-swamp/s2to3-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/island-swamp/s2to3-f2-motif.webp",
+        "phone": "pairs/island-swamp/s2to3-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 118024
+     }
+    ]
+   }
+  },
+  "mountain+plains": {
+   "dual": "Plateau",
+   "shock": "Sacred Foundry",
+   "place": "a pale mountain pass road climbing between red boulders, from golden grassland on the left up into red rocky mountain foothills on the right",
+   "band": {
+    "min": 0.2,
+    "perDual": 0.03,
+    "max": 0.32
+   },
+   "stageMap": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "stages": [
+    {
+     "motif": {
+      "src": "pairs/mountain-plains/s1-motif.webp",
+      "src2x": "pairs/mountain-plains/s1-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/mountain-plains/s1-motif-phone.webp",
+       "src2x": "pairs/mountain-plains/s1-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 187092
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/mountain-plains/s2-motif.webp",
+      "src2x": "pairs/mountain-plains/s2-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/mountain-plains/s2-motif-phone.webp",
+       "src2x": "pairs/mountain-plains/s2-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 182924
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/mountain-plains/s3-motif.webp",
+      "src2x": "pairs/mountain-plains/s3-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/mountain-plains/s3-motif-phone.webp",
+       "src2x": "pairs/mountain-plains/s3-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 184858
+     }
+    }
+   ],
+   "motifTransitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "pairs/mountain-plains/s1to2-f1-motif.webp",
+        "phone": "pairs/mountain-plains/s1to2-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/mountain-plains/s1to2-f2-motif.webp",
+        "phone": "pairs/mountain-plains/s1to2-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 101148
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "pairs/mountain-plains/s2to3-f1-motif.webp",
+        "phone": "pairs/mountain-plains/s2to3-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/mountain-plains/s2to3-f2-motif.webp",
+        "phone": "pairs/mountain-plains/s2to3-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 103500
+     }
+    ]
+   }
+  },
+  "mountain+swamp": {
+   "dual": "Badlands",
+   "shock": "Blood Crypt",
+   "place": "a road cut through black rock, its cracks glowing with lava, running between dark murky fen water on the left and red scorched rock on the right, wisps of smoke",
+   "band": {
+    "min": 0.2,
+    "perDual": 0.03,
+    "max": 0.32
+   },
+   "stageMap": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "stages": [
+    {
+     "motif": {
+      "src": "pairs/mountain-swamp/s1-motif.webp",
+      "src2x": "pairs/mountain-swamp/s1-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/mountain-swamp/s1-motif-phone.webp",
+       "src2x": "pairs/mountain-swamp/s1-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 166590
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/mountain-swamp/s2-motif.webp",
+      "src2x": "pairs/mountain-swamp/s2-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/mountain-swamp/s2-motif-phone.webp",
+       "src2x": "pairs/mountain-swamp/s2-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 203780
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/mountain-swamp/s3-motif.webp",
+      "src2x": "pairs/mountain-swamp/s3-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/mountain-swamp/s3-motif-phone.webp",
+       "src2x": "pairs/mountain-swamp/s3-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 210204
+     }
+    }
+   ],
+   "motifTransitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "pairs/mountain-swamp/s1to2-f1-motif.webp",
+        "phone": "pairs/mountain-swamp/s1to2-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/mountain-swamp/s1to2-f2-motif.webp",
+        "phone": "pairs/mountain-swamp/s1to2-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 102648
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "pairs/mountain-swamp/s2to3-f1-motif.webp",
+        "phone": "pairs/mountain-swamp/s2to3-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/mountain-swamp/s2to3-f2-motif.webp",
+        "phone": "pairs/mountain-swamp/s2to3-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 113298
+     }
+    ]
+   }
+  },
+  "plains+swamp": {
+   "dual": "Scrubland",
+   "shock": "Godless Shrine",
+   "place": "a long pale stone causeway of old worn flagstones, across a dark peat moor, from golden grass on the left to black water and bleached stones on the right",
+   "band": {
+    "min": 0.2,
+    "perDual": 0.03,
+    "max": 0.32
+   },
+   "stageMap": [
+    [
+     1,
+     2
+    ],
+    [
+     3,
+     4
+    ],
+    [
+     5,
+     6
+    ]
+   ],
+   "stages": [
+    {
+     "motif": {
+      "src": "pairs/plains-swamp/s1-motif.webp",
+      "src2x": "pairs/plains-swamp/s1-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/plains-swamp/s1-motif-phone.webp",
+       "src2x": "pairs/plains-swamp/s1-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 187166
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/plains-swamp/s2-motif.webp",
+      "src2x": "pairs/plains-swamp/s2-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/plains-swamp/s2-motif-phone.webp",
+       "src2x": "pairs/plains-swamp/s2-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 212164
+     }
+    },
+    {
+     "motif": {
+      "src": "pairs/plains-swamp/s3-motif.webp",
+      "src2x": "pairs/plains-swamp/s3-motif@2x.webp",
+      "width": 532,
+      "height": 640,
+      "phone": {
+       "src": "pairs/plains-swamp/s3-motif-phone.webp",
+       "src2x": "pairs/plains-swamp/s3-motif-phone@2x.webp",
+       "width": 266,
+       "height": 1024
+      },
+      "bytes": 358872
+     }
+    }
+   ],
+   "motifTransitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "pairs/plains-swamp/s1to2-f1-motif.webp",
+        "phone": "pairs/plains-swamp/s1to2-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/plains-swamp/s1to2-f2-motif.webp",
+        "phone": "pairs/plains-swamp/s1to2-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 107206
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "pairs/plains-swamp/s2to3-f1-motif.webp",
+        "phone": "pairs/plains-swamp/s2to3-f1-motif-phone.webp"
+       },
+       {
+        "src": "pairs/plains-swamp/s2to3-f2-motif.webp",
+        "phone": "pairs/plains-swamp/s2to3-f2-motif-phone.webp"
+       }
+      ],
+      "bytes": 174124
+     }
+    ]
+   }
+  }
+ }
+}

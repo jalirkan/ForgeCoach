@@ -1483,7 +1483,7 @@ pair stage 2 (its two frames, then the fade), 0.20 + 2 × 0.03 = **0.26**
 (416 px); four more Breeding Pools take it to the 0.32 cap (512 px). Next to
 a panel at its 0.15 floor the motif is drawn 0.15 wide. The panels keep their
 whole shares throughout. `src/ambience/pairs.test.ts` validates this exact
-block and checks these numbers; `pairs-v3.test.ts` is the live manifest.
+block and checks these numbers; `pairs-v3.1.test.ts` is the live manifest (pairs-v3 with Tundra, Underground Sea, Godless Shrine's shrine and every phone motif repainted; `pairs-v3.test.ts` keeps pairs-v3).
 
 ## 3. Files and budgets
 
