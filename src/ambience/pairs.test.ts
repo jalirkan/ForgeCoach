@@ -10,7 +10,9 @@
  * the warming, the 1.6 / 1.7 / 1.8-only fallback (no pairs: today's row
  * exactly), the loader and the prefs, and the spec's worked example — the
  * `forest+island` entry of docs/pairs-manifest-draft.json, the file the art
- * lane matches.
+ * lane matches. Spec 1.12, motifs: a motif pair's kind, its seam left plain,
+ * its drawn width, a band pair's motif, the motif frames, the warming, and
+ * 1.12's worked example.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -26,7 +28,11 @@ import {
   DEFAULT_PAIR_BAND,
   DEFAULT_STAGE_MAP,
   halfRow,
+  motifBands,
+  motifWidth,
   normalisePairKey,
+  pairMotifAt,
+  panelBands,
   pairBands,
   pairFor,
   pairHalfAt,
@@ -124,7 +130,7 @@ describe('the pairs manifest', () => {
     ]);
   });
   it('refuses a manifest with no usable pair, or that is not schema 1', () => {
-    expect(validatePairs({ schema: 1, pairs: {} }, BASE).errors).toEqual(['No pair has a usable stage picture.']);
+    expect(validatePairs({ schema: 1, pairs: {} }, BASE).errors).toEqual(['No pair has a usable stage picture or motif.']);
     expect(validatePairs({ schema: 2, pairs: {} }, BASE).errors[0]).toMatch(/schema: expected 1/);
     expect(validatePairs({ schema: 1 }, BASE).errors[0]).toMatch(/^pairs: missing/);
     expect(validatePairs([], BASE).errors[0]).toMatch(/not a JSON object/);
@@ -273,7 +279,7 @@ describe('warming', () => {
 
 describe('loading and prefs', () => {
   it('fetches ForgeCoach’s pairs with ForgeCoach’s pack, none with another pack, and takes ?pairs= for one page', () => {
-    expect(FORGECOACH_PAIRS_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/');
+    expect(FORGECOACH_PAIRS_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3/');
     expect(pairsUrlOf(DEFAULT_PREFS)).toBe(FORGECOACH_PAIRS_URL);
     expect(pairsUrlOf({ ...DEFAULT_PREFS, packUrl: 'http://127.0.0.1:8650/' })).toBeNull();
     expect(pairsUrlOf({ ...DEFAULT_PREFS, mode: 'procedural' })).toBeNull();
@@ -376,5 +382,145 @@ describe('the spec’s worked example', () => {
     // Six duals reach the cap; a seventh adds nothing.
     expect(bandWidth(pairs.pairs['forest+island']!.band, 6)).toBe(0.34);
     expect(bandWidth(pairs.pairs['forest+island']!.band, 7)).toBe(0.34);
+  });
+});
+
+describe('motifs (spec 1.12)', () => {
+  const mstage = (d: string, n: number) => ({ motif: { src: `pairs/${d}/s${n}-motif.webp`, src2x: `pairs/${d}/s${n}-motif@2x.webp`, width: 532, height: 640, phone: { src: `pairs/${d}/s${n}-motif-phone.webp`, width: 266, height: 1024 }, bytes: 1000 } });
+  const mentry = (d: string, extra: Record<string, unknown> = {}) => ({ dual: 'D', shock: 'S', band: { min: 0.2, perDual: 0.03, max: 0.32 }, stages: [mstage(d, 1), mstage(d, 2), mstage(d, 3)], ...extra });
+  const frames = (d: string) => ({ steps: [1, 2].map((from) => ({ from, frames: [1, 2].map((k) => ({ src: `pairs/${d}/s${from}to${from + 1}-f${k}-motif.webp`, phone: `pairs/${d}/s${from}to${from + 1}-f${k}-motif-phone.webp` })), bytes: 10 })) });
+
+  it('a pair with motifs and no half pictures is a motif pair: its motifs resolved, its frames its motifTransitions', () => {
+    const { pairs, warnings } = read({ 'forest+island': mentry('fi', { motifTransitions: frames('fi') }) });
+    expect(warnings).toEqual([]);
+    const p = pairs.pairs['forest+island']!;
+    expect(p.kind).toBe('motif');
+    expect(p.stages.map((s) => [!!s.half, s.motif!.src])).toEqual([1, 2, 3].map((n) => [false, `http://127.0.0.1:8650/pairs/fi/s${n}-motif.webp`]));
+    expect([p.stages[0]!.motif!.width, p.stages[0]!.motif!.height, p.stages[0]!.motif!.phone!.width, p.stages[0]!.motif!.phone!.height]).toEqual([532, 640, 266, 1024]);
+    expect(pairMotifAt(p, 2)!.src).toBe('http://127.0.0.1:8650/pairs/fi/s2-motif.webp');
+    expect(pairMotifAt(p, 9)!.src).toBe('http://127.0.0.1:8650/pairs/fi/s3-motif.webp');
+    expect(pairHalfAt(p, 1)).toBeNull();
+    expect(p.transitions!.steps.map((s) => [s.from, s.frames.map((f) => f.src.split('/').pop())])).toEqual([
+      [1, ['s1to2-f1-motif.webp', 's1to2-f2-motif.webp']],
+      [2, ['s2to3-f1-motif.webp', 's2to3-f2-motif.webp']],
+    ]);
+    // Every file once: three motifs' bytes and the two steps'.
+    expect(p.bytes).toBe(3020);
+  });
+  it('any half makes a band pair (1.9): its stages need a half, and a motif on one is kept, drawn over the band', () => {
+    const { pairs, warnings } = read({ 'forest+island': { stages: [{ ...stage('fi', 1), ...mstage('fi', 1) }, stage('fi', 2), mstage('fi', 3)] } });
+    const p = pairs.pairs['forest+island']!;
+    expect(p.kind).toBe('band');
+    expect(p.stages.map((s) => [!!s.half, !!s.motif])).toEqual([
+      [true, true],
+      [true, false],
+    ]);
+    expect(warnings).toEqual(['pairs.forest+island.stages[2]: no usable half picture; stage dropped', 'pairs.forest+island.stageMap: 3 pair stages, 2 pictured; the later ones show the last stage']);
+  });
+  it('warns about the frames the other kind plays, drops a motif stage without a usable motif, and a pair with none', () => {
+    const { pairs, warnings } = read({
+      'forest+island': mentry('fi', { transitions: frames('fi') }),
+      'island+swamp': { stages: [mstage('is', 1), { motif: { src: 'bad.gif' } }] },
+      'forest+swamp': { stages: [{ motif: null }, {}] },
+      'island+plains': entry('ip', { motifTransitions: frames('ip') }),
+    });
+    expect(Object.keys(pairs.pairs).sort()).toEqual(['forest+island', 'island+plains', 'island+swamp']);
+    expect(pairs.pairs['forest+island']!.transitions).toBeNull();
+    expect(pairs.pairs['island+plains']!.transitions).toBeNull();
+    expect(pairs.pairs['island+swamp']!.stages).toHaveLength(1);
+    expect(warnings).toEqual([
+      'pairs.forest+island.transitions: a motif pair has no half pictures to step between (its frames are `motifTransitions`); ignored',
+      'pairs.island+swamp.stages[1].motif.src: expected .webp, .avif, .png or .jpg; picture dropped',
+      'pairs.island+swamp.stages[1]: no usable motif (and the pair has no half pictures); stage dropped',
+      'pairs.island+swamp.stageMap: 3 pair stages, 1 pictured; the later ones show the last stage',
+      'pairs.forest+swamp.stages[0]: no usable motif (and the pair has no half pictures); stage dropped',
+      'pairs.forest+swamp.stages[1]: no usable motif (and the pair has no half pictures); stage dropped',
+      'pairs.forest+swamp: no stage with a usable motif; pair dropped',
+      'pairs.island+plains.motifTransitions: only a motif pair plays motif frames (a band pair’s motif cross-fades with its stage); ignored'.replace('’', "'"),
+    ]);
+  });
+  it('leaves a motif pair’s seam plain: no band in the row, the shares and seams the layout’s, no bridge on it', () => {
+    const { pairs } = read({ 'forest+island': mentry('fi'), 'island+swamp': entry('is') });
+    const layout = halfLayout([slot('forest', 0, 2), slot('island', 1, 2), slot('swamp', 2, 2)], null);
+    const bands = pairBands(layout, pairs, { 'forest+island': 2 });
+    expect(bands.map((b) => [b.key, b.pair.kind, b.width])).toEqual([
+      ['forest+island', 'motif', 0.26],
+      ['island+swamp', 'band', 0.1],
+    ]);
+    expect(motifBands(bands).map((b) => b.key)).toEqual(['forest+island']);
+    expect(panelBands(bands).map((b) => b.key)).toEqual(['island+swamp']);
+    const seams = halfSeams(layout, null);
+    const row = halfRow(layout, seams, panelBands(bands));
+    expect(row.map((x) => [x.kind, x.key])).toEqual([
+      ['slot', 'forest'],
+      ['slot', 'island'],
+      ['band', 'island+swamp'],
+      ['slot', 'swamp'],
+    ]);
+    // The forest | island seam is the layout's own: the first two items as with no pairs at all.
+    const plain = halfRow(layout, seams);
+    expect(row[1]!.seam).toBe(plain[1]!.seam);
+  });
+  it('is drawn the band’s width, never wider than either neighbour’s share', () => {
+    expect(motifWidth(0.26, 0.5, 0.5)).toBe(0.26);
+    expect(motifWidth(0.32, 0.85, 0.15)).toBe(0.15);
+    expect(motifWidth(0.2, 0.15, 0.85)).toBe(0.15);
+    expect(motifWidth(-1, 0.5, 0.5)).toBe(0);
+  });
+  it('warms the motifs a side may show (its pair stage and the next), at the board’s shape', () => {
+    const { pairs } = read({ 'forest+island': mentry('fi') });
+    const side = [
+      { biome: 'island' as Biome, stage: 1 },
+      { biome: 'forest' as Biome, stage: 2 },
+    ];
+    expect(pairPictures(pairs, [side], { phone: false }).map((p) => p.src.split('/').pop())).toEqual(['s1-motif.webp', 's2-motif.webp']);
+    expect(pairPictures(pairs, [side], { phone: true }).map((p) => [p.src.split('/').pop(), p.src2x])).toEqual([
+      ['s1-motif-phone.webp', null],
+      ['s2-motif-phone.webp', null],
+    ]);
+  });
+});
+
+describe('the spec’s worked example for motifs (1.12)', () => {
+  const md = readFileSync(new URL('../../docs/scenery-pack-spec.md', import.meta.url), 'utf8');
+  const block = /<!-- example-motifs -->\s*```json\n([\s\S]*?)```/.exec(md);
+  const example = JSON.parse(block![1]!);
+  const V3 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3/pairs.json';
+
+  it('validates with no warnings, and its numbers hold', () => {
+    const r = validatePairs(example, V3);
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([]);
+    const pairs: PairsPack = r.pairs!;
+    const p = pairs.pairs['forest+island']!;
+    expect(p.kind).toBe('motif');
+    expect(pairMotifAt(p, 1)!.src).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3/pairs/forest-island/s1-motif.webp');
+    const step = (cards: ReturnType<typeof land>[]) => stepScenery(null, simState(new Map([[1, cards]]), [], 1), { thresholds: SIX });
+    // An Island, then a Forest: the seam is the plain seam, the motif over it mirrored, 0.20 wide, pair stage 1.
+    const two = step([land(1, 'Island', 'Basic Land - Island'), land(2, 'Forest', 'Basic Land - Forest')]);
+    const l1 = halfLayout(two.players[0]!.slots, null);
+    const b1 = pairBands(l1, pairs, dualsOf(two, 1));
+    expect(b1.map((b) => [b.key, b.mirror, b.width, b.stage])).toEqual([['forest+island', true, 0.2, 1]]);
+    const row = halfRow(l1, halfSeams(l1, null), panelBands(b1));
+    expect(row.map((x) => [x.kind, x.share, x.seam])).toEqual([
+      ['slot', 0.5, 0],
+      ['slot', 0.5, 0.1],
+    ]);
+    const w = motifWidth(b1[0]!.width, l1[0]!.share, l1[1]!.share);
+    const centre = seamCentre(row, row.map((x) => x.seam), 1, 1600, 1920);
+    expect(centre).toBeCloseTo(800, 6);
+    expect([centre - (w * 1600) / 2, centre + (w * 1600) / 2]).toEqual([640, 960]);
+    // Two more of each and two Breeding Pools: pair stage 2, 0.26 (416 px); four more reach the 0.32 cap (512 px).
+    const lands = [land(1, 'Island', 'Basic Land - Island'), land(2, 'Forest', 'Basic Land - Forest'), land(3, 'Island', 'Basic Land - Island'), land(4, 'Forest', 'Basic Land - Forest'), land(5, 'Breeding Pool', 'Land - Forest Island'), land(6, 'Breeding Pool', 'Land - Forest Island')];
+    const sc = step(lands);
+    const layout = halfLayout(sc.players[0]!.slots, null);
+    const bands = pairBands(layout, pairs, dualsOf(sc, 1));
+    expect(bands.map((b) => [b.duals, b.width, b.stage])).toEqual([[2, 0.26, 2]]);
+    expect(Math.round(motifWidth(bands[0]!.width, layout[0]!.share, layout[1]!.share) * 1600)).toBe(416);
+    expect(bandWidth(p.band, 6)).toBe(0.32);
+    expect(Math.round(bandWidth(p.band, 6) * 1600)).toBe(512);
+    expect(p.transitions!.steps.map((s) => s.frames.length)).toEqual([2, 2]);
+    // Next to a panel at its 0.15 floor, 0.15.
+    expect(motifWidth(bandWidth(p.band, 6), 0.85, 0.15)).toBe(0.15);
   });
 });

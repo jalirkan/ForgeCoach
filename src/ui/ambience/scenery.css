@@ -1024,3 +1024,31 @@
 .scn-band.is-mirrored .scn-band-art {
   transform: scaleX(-1);
 }
+
+/* Spec 1.12: a motif (SceneryStrip `MotifView`): the pair's transparent picture over a plain seam, centred on the seam
+   (left: the seam's middle, in the half's container units), the half's full height, stretched to its box (painted for
+   that shape, never cropped, so its own soft banks are the band's edges); over both panels, under the centre line's mist
+   (it sits in the row, so the row's mist mask fades it as it fades the panels). A band pair's motif fills the band. */
+.scn-half .scn-motif {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.scn-motif-art {
+  position: absolute;
+  inset: 0;
+}
+.scn-motif.is-mirrored .scn-motif-art {
+  transform: scaleX(-1);
+}
+.scn-motif-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+}

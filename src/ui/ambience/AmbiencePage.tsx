@@ -460,12 +460,12 @@ function describe(e: SceneryEvent): string {
   return `damage · ${who} · ${e.amount}`;
 }
 
-/** Spec 1.9: a side's pair bands in words, for the preview's caption (the dual and shock names are for this only). */
+/** Spec 1.9: a side's pair bands in words (1.12: a motif pair says so), for the preview's caption (the dual and shock names are for this only). */
 function bandCaption(pack: ScenePack | null, slots: ReturnType<typeof slotsOf>, duals: Readonly<Record<string, number>>, stageOverride: number | null): string | null {
   if (!pack?.pairs) return null;
   const bands = pairBands(halfLayout(slots, pack, stageOverride), pack.pairs, duals);
   if (!bands.length) return null;
-  return bands.map((b) => `${b.pair.dual ?? b.key}${b.pair.shock ? ` (${b.pair.shock})` : ''}: ${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ');
+  return bands.map((b) => `${b.pair.dual ?? b.key}${b.pair.shock ? ` (${b.pair.shock})` : ''}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ');
 }
 
 function MockSide({ title, player, top, slots, creatures, strip, plays, scrim, bands }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; creatures: number[]; strip: React.ReactNode; plays: SimPlay[]; scrim?: boolean; bands?: string | null }) {

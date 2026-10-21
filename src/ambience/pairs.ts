@@ -23,6 +23,16 @@
  *   band meets each of them in half the seam they met in, so a band of width
  *   0 is exactly the seam it replaces ({@link halfRow}).
  * - The stage: `stageMap` on the LOWER of the two neighbours' stages.
+ *
+ * Motifs (spec 1.12): a pair stage may carry a `motif`, a transparent picture
+ * painted for the band's own narrow, full-height shape (pairs-v3: the road or
+ * river both lands share, running from the foreground up the seam to the
+ * horizon). A pair whose stages carry a motif and no `half` is a MOTIF pair:
+ * its seam stays the plain 1.10 seam (the panels give up no width) and the
+ * motif is drawn over it, centred on the seam, {@link motifWidth} of the half
+ * wide and the half's full height, so its own soft banks are the band's edges.
+ * A pair with `half` pictures is a BAND pair as in 1.9, and a motif on one of
+ * its stages is drawn over the band's picture, in the band's box.
  */
 import { BIOMES, MAX_STAGES, pairKey, type Biome, type SlotState } from './model.ts';
 import { cleanText, int } from '../lab/status.ts';
@@ -32,8 +42,8 @@ import { halfSeams, SEAM_CAP_VW, widenedRatio } from './bridges.ts';
 
 /** The pair pack's manifest, at the root of the pairs URL. */
 export const PAIRS_MANIFEST_FILE = 'pairs.json';
-/** The spec version that added pair bands. */
-export const PAIRS_SPEC = '1.9';
+/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs). */
+export const PAIRS_SPEC = '1.12';
 const MAX_PAIRS_MANIFEST_BYTES = 256 * 1024;
 
 /** How wide a pair's band is, as fractions of the half's width. */
@@ -59,6 +69,25 @@ export const MAX_PAIR_HALF_BYTES = 4 * 1024 * 1024;
 /** Declared files of the whole pairs pack past this get a warning: jsDelivr serves a ref of at most 50 MB. */
 export const MAX_PAIRS_PACK_BYTES = 45 * 1024 * 1024;
 
+/**
+ * Spec 1.12: a stage's motif, in the shape of a 1.5 `half` (`src`, `src2x`,
+ * `phone`, `width` / `height` of the 1x file, `bytes`); its picture is
+ * transparent and drawn stretched to its box (`fill`), never cropped.
+ */
+export type PairMotif = PackHalf;
+
+/** A pair's stage: a 1.5 `half` (a band pair), a 1.12 `motif`, or both. */
+export interface PairStage extends PackStage {
+  motif?: PairMotif;
+}
+
+/**
+ * `band` (spec 1.9): the pair's pictures are an opaque panel between its two
+ * biomes (a motif, where a stage has one, drawn over it). `motif` (1.12): no
+ * stage has a `half`, the seam stays plain and the motif is drawn over it.
+ */
+export type PairKind = 'band' | 'motif';
+
 export interface PackPair {
   /** {@link pairKey}: the two biomes in alphabetical order, `forest+island`. */
   key: string;
@@ -68,15 +97,33 @@ export interface PackPair {
   /** The dual land and the shock land the place is named for: for a caption only, never read by the rules. */
   dual: string | null;
   shock: string | null;
-  /** stages[0] is the pair's stage 1; each has a `half` (and no strip layers). */
-  stages: PackStage[];
-  /** Spec 1.7's in-betweens per stage step, or null (a step cross-fades). */
+  /** Spec 1.12: how the pair is drawn ({@link PairKind}). */
+  kind: PairKind;
+  /** stages[0] is the pair's stage 1; each has a `half` (a band pair) or a `motif` (a motif pair), and no strip layers. */
+  stages: PairStage[];
+  /** Spec 1.7's in-betweens per stage step, or null (a step cross-fades). A motif pair's are its motif's (`motifTransitions`). */
   transitions: PackTransitions | null;
   band: PairBand;
   /** Index k (0-based) holds the neighbour stages [from, to] that show pair stage k + 1. */
   stageMap: [number, number][];
-  /** Declared bytes of the pair's stage pictures (each file once) and frames. */
+  /** Declared bytes of the pair's stage pictures and motifs (each file once) and frames. */
   bytes: number;
+}
+
+/** Spec 1.12: the motif a pair shows at a pair stage (the last stage it has past its end), or null. */
+export function pairMotifAt(pair: PackPair | null | undefined, stage: number): PairMotif | null {
+  if (!pair || stage <= 0 || !pair.stages.length) return null;
+  return pair.stages[Math.min(stage, pair.stages.length) - 1]?.motif ?? null;
+}
+
+/**
+ * Spec 1.12: a motif pair's drawn width, as a fraction of the half: the band's
+ * width for the side's duals ({@link bandWidth}), but never wider than either
+ * neighbour's share, so it covers at most half of each panel beside it (the
+ * floor a band keeps, {@link halfRow}).
+ */
+export function motifWidth(width: number, leftShare: number, rightShare: number): number {
+  return r4(Math.max(0, Math.min(width, leftShare, rightShare)));
 }
 
 export interface PairsPack {
@@ -190,29 +237,39 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
   const [left, right] = rawKey.split('+') as [Biome, Biome];
   const rawStages: unknown[] = Array.isArray(e.stages) ? e.stages : [];
   if (rawStages.length > MAX_STAGES) warn.push(`${path}.stages: more than ${MAX_STAGES}; the rest ignored`);
-  const stages: PackStage[] = [];
+  // Spec 1.12: a pair none of whose stages names a `half` is a motif pair; any `half` makes it a band pair.
+  const kind: PairKind = rawStages.some((st) => isObj(st) && st.half !== undefined && st.half !== null) ? 'band' : 'motif';
+  const stages: PairStage[] = [];
   rawStages.slice(0, MAX_STAGES).forEach((st, i) => {
     const sp = `${path}.stages[${i}]`;
-    if (!isObj(st)) return void warn.push(`${sp}: not an object { half }; stage dropped`);
+    if (!isObj(st)) return void warn.push(`${sp}: not an object { half, motif }; stage dropped`);
+    const motif = parseHalf(st.motif, base, `${sp}.motif`, warn);
+    if (kind === 'motif') {
+      if (!motif) return void warn.push(`${sp}: no usable motif (and the pair has no half pictures); stage dropped`);
+      return void stages.push({ layers: [], motif });
+    }
     const half = parseHalf(st.half, base, `${sp}.half`, warn);
     if (!half) return void warn.push(`${sp}: no usable half picture; stage dropped`);
-    stages.push({ layers: [], half });
+    stages.push(motif ? { layers: [], half, motif } : { layers: [], half });
   });
   if (!stages.length) {
-    warn.push(`${path}: no stage with a usable half picture; pair dropped`);
+    warn.push(`${path}: no stage with a usable ${kind === 'motif' ? 'motif' : 'half picture'}; pair dropped`);
     return null;
   }
   const intact = stages.length === Math.min(rawStages.length, MAX_STAGES);
-  const transitions = parseTransitions(e.transitions, base, `${path}.transitions`, warn, stages.length, intact);
+  if (kind === 'motif' && e.transitions !== undefined && e.transitions !== null) warn.push(`${path}.transitions: a motif pair has no half pictures to step between (its frames are \`motifTransitions\`); ignored`);
+  if (kind === 'band' && e.motifTransitions !== undefined && e.motifTransitions !== null) warn.push(`${path}.motifTransitions: only a motif pair plays motif frames (a band pair's motif cross-fades with its stage); ignored`);
+  const transitions = kind === 'motif' ? parseTransitions(e.motifTransitions, base, `${path}.motifTransitions`, warn, stages.length, intact) : parseTransitions(e.transitions, base, `${path}.transitions`, warn, stages.length, intact);
   const stageMap = parseStageMap(e.stageMap, `${path}.stageMap`, warn);
   if (stageMap.length > stages.length) warn.push(`${path}.stageMap: ${stageMap.length} pair stages, ${stages.length} pictured; the later ones show the last stage`);
   const seen = new Set<string>();
   let halfBytes = 0;
-  for (const s of stages) {
-    if (seen.has(s.half!.src)) continue;
-    seen.add(s.half!.src);
-    halfBytes += s.half!.bytes ?? 0;
-  }
+  for (const s of stages)
+    for (const h of [s.half, s.motif]) {
+      if (!h || seen.has(h.src)) continue;
+      seen.add(h.src);
+      halfBytes += h.bytes ?? 0;
+    }
   if (halfBytes > MAX_PAIR_HALF_BYTES) warn.push(`${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared; their budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair (pictures kept)`);
   const frameBytes = (transitions?.steps ?? []).reduce((n, s) => n + (s.bytes ?? 0), 0);
   return {
@@ -221,6 +278,7 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
     right,
     dual: cleanText(e.dual, 60),
     shock: cleanText(e.shock, 60),
+    kind,
     stages,
     transitions,
     band: parseBand(e.band, `${path}.band`, warn),
@@ -252,7 +310,7 @@ export function validatePairs(raw: unknown, base: string): PairsResult {
     }
     pairs[p.key] = p;
   }
-  if (!Object.keys(pairs).length) return { pairs: null, errors: ['No pair has a usable stage picture.'], warnings };
+  if (!Object.keys(pairs).length) return { pairs: null, errors: ['No pair has a usable stage picture or motif.'], warnings };
   let spec: string | null = null;
   if (raw.spec !== undefined) {
     spec = typeof raw.spec === 'string' && /^1\.\d{1,2}$/.test(raw.spec) ? raw.spec : null;
@@ -362,7 +420,17 @@ export function pairBands(layout: readonly HalfSlotLayout[], pairs: PairsPack | 
   return out;
 }
 
-/** Spec 1.10: the seams (the index of the slot right of each) that have a pair band, so they draw no bridge (bridges.ts). */
+/** Spec 1.12: the bands that are panels of the half's row (band pairs); a motif pair's seam stays plain and its motif is drawn over it. */
+export function panelBands<T extends Pick<PairBandPlacement, 'pair'>>(bands: readonly T[]): T[] {
+  return bands.filter((b) => b.pair.kind !== 'motif');
+}
+
+/** Spec 1.12: the bands drawn as a motif over a plain seam. */
+export function motifBands<T extends Pick<PairBandPlacement, 'pair'>>(bands: readonly T[]): T[] {
+  return bands.filter((b) => b.pair.kind === 'motif');
+}
+
+/** Spec 1.10: the seams (the index of the slot right of each) that have a pair band, so they draw no bridge (bridges.ts). A motif pair's seam counts (1.12). */
 export function bandedSeams(bands: readonly Pick<PairBandPlacement, 'index'>[]): ReadonlySet<number> {
   return new Set(bands.map((b) => b.index));
 }
@@ -465,7 +533,7 @@ export function halfPanelSpan(
   const duals = opts.duals ?? {};
   const bands = pairBands(layout, pack?.pairs ?? null, duals);
   const seams = halfSeams(layout, pack, duals, bandedSeams(bands));
-  const items = halfRow(layout, seams, bands);
+  const items = halfRow(layout, seams, panelBands(bands));
   const at = items.findIndex((it) => it.kind === 'slot' && it.key === biome);
   if (at < 0) return 'none';
   const spans = rowSpans(items, width, opts.vw);
@@ -509,12 +577,14 @@ export function pairPictures(pairs: PairsPack | null | undefined, sides: readonl
         if (!found) continue;
         const stage = pairStageFor(found.pair.stageMap, Math.min(live[i]!.stage, live[j]!.stage));
         for (const st of [stage, stage + 1]) {
-          const h = st <= found.pair.stages.length ? pairHalfAt(found.pair, st) : null;
-          if (!h) continue;
-          const p = opts.phone && h.phone ? h.phone : h;
-          if (seen.has(p.src)) continue;
-          seen.add(p.src);
-          out.push({ src: p.src, src2x: p.src2x });
+          if (st > found.pair.stages.length) continue;
+          for (const h of [pairHalfAt(found.pair, st), pairMotifAt(found.pair, st)]) {
+            if (!h) continue;
+            const p = opts.phone && h.phone ? h.phone : h;
+            if (seen.has(p.src)) continue;
+            seen.add(p.src);
+            out.push({ src: p.src, src2x: p.src2x });
+          }
         }
       }
   }
