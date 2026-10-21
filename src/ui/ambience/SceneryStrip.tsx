@@ -47,8 +47,16 @@
  * stage steps play the pair's transition frames, or cross-fade. It opens once
  * its picture has loaded (until then, and without pairs, the seam is today's)
  * and fades in over the later biome's bloom; it fades out and gives its width
- * back when either biome loses its lands; at once with reduced motion. A
- * bridge on the same seam is drawn over the band.
+ * back when either biome loses its lands; at once with reduced motion. Since
+ * 1.10 a seam with a band draws no bridge.
+ *
+ * Motifs (spec 1.12): a motif pair (pairs.ts `PairKind`) takes no width: its
+ * seam stays the plain seam and the pair's motif, a transparent picture
+ * painted for the band's narrow full-height shape, is drawn over it, centred
+ * on the seam, `motifWidth` of the half wide, stretched to that box, mirrored
+ * as a band is; its stage steps play the pair's motif frames or cross-fade,
+ * and it arrives, leaves and loads as a band does. A band pair's motif is
+ * drawn over the band's own picture, in the band's box.
  *
  * `fill="half"` (spec 1.5, Settings → Fill each side): the same slots fill
  * the player's whole half of the board instead of a strip, split by land
@@ -66,7 +74,7 @@ import { nextStepFrames, transitionFrames, tweenAllowed, type TransitionShape } 
 import { pictureReady, warmPicture } from '../../ambience/pack.ts';
 import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt, type HalfSlotLayout } from '../../ambience/layout.ts';
 import { bridgePlacements, halfSeams, phoneHalf, seamCentreCss, type BridgePlacement } from '../../ambience/bridges.ts';
-import { bandedSeams, halfRow, pairBands, pairHalfAt, rowCentreCss, type PairBandPlacement, type RowItem } from '../../ambience/pairs.ts';
+import { bandedSeams, halfRow, motifBands, motifWidth, pairBands, pairHalfAt, pairMotifAt, panelBands, rowCentreCss, type PairBandPlacement, type PairMotif, type RowItem } from '../../ambience/pairs.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import { useFadeIn, useFadeStack } from './useFade.ts';
@@ -129,12 +137,12 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const pairsPack = half ? (pack?.pairs ?? null) : null;
   const bands = useMemo(() => (pairsPack ? pairBands(layout as HalfSlotLayout[], pairsPack, duals) : []), [pairsPack, layout, duals]);
   const bandLife = useBandLife(bands, layout as HalfSlotLayout[], pack, reduced);
-  const halfAspect = usePanelAspect(hostRef, (bridged && layout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone)) || bandLife.shown.some((b) => b.pair.stages.some((st) => !!st.half?.phone)));
+  const halfAspect = usePanelAspect(hostRef, (bridged && layout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone)) || bandLife.shown.some((b) => b.pair.stages.some((st) => !!st.half?.phone || !!st.motif?.phone)));
   // Spec 1.10: a seam with a band (wanted, or fading out) draws no bridge and keeps the base seam.
   const banded = useMemo(() => bandedSeams(bandLife.shown), [bandLife.shown]);
   const seams = useMemo(() => (half ? halfSeams(layout as HalfSlotLayout[], pack, duals, banded) : null), [half, layout, pack, duals, banded]);
   const placements = useMemo(() => (bridged ? bridgePlacements(layout as HalfSlotLayout[], pack, duals, { phone: phoneHalf(halfAspect), banded }) : []), [bridged, layout, pack, duals, halfAspect, banded]);
-  const row: RowItem[] | null = useMemo(() => (seams ? halfRow(layout as HalfSlotLayout[], seams, bandLife.shown, bandLife.isOpen) : null), [seams, layout, bandLife]);
+  const row: RowItem[] | null = useMemo(() => (seams ? halfRow(layout as HalfSlotLayout[], seams, panelBands(bandLife.shown), bandLife.isOpen) : null), [seams, layout, bandLife]);
   if (layout.length === 0 && !fx?.length) return null;
   const rotated = edge === 'top' && orient === 'rotated';
   const halfCfg = pack?.half ?? DEFAULT_HALF_LAYOUT;
@@ -175,6 +183,13 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
                     <Slot key={slot.biome} slot={slot} stage={stage} progress={progress} grow={grow} first={i === 0} pack={pack?.biomes[slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[slot.biome] ?? 0} half={half} />
                   ))}
               {row && bridged && <Bridges placements={placements} layout={layout as HalfSlotLayout[]} row={row} pack={pack} reduced={reduced} />}
+              {row &&
+                motifBands(bandLife.shown).map((b) => {
+                  const l = (layout as HalfSlotLayout[])[b.index - 1];
+                  const r = (layout as HalfSlotLayout[])[b.index];
+                  if (!l || !r) return null;
+                  return <MotifView key={`motif:${b.key}`} b={b} left={bridgeLeftCss(row, b.index)} width={motifWidth(b.width, l.share, r.share)} open={bandLife.isOpen(b.key)} leaving={bandLife.leaving.has(b.key)} ms={bandLife.msOf(b)} phone={phoneHalf(halfAspect)} growth={growth} reduced={reduced} onReady={bandLife.ready} />;
+                })}
             </div>
             {half && <div className="scn-mist" />}
           </Settled.Provider>
@@ -469,6 +484,7 @@ function useBandLife(bands: PairBandPlacement[], layout: readonly HalfSlotLayout
 function Band({ b, share, seam, open, leaving, ms, phone, growth, reduced, onReady }: { b: PairBandPlacement; share: number; seam?: string; open: boolean; leaving: boolean; ms: number; phone: boolean; growth: PackGrowth; reduced: boolean; onReady: (key: string) => void }) {
   const settled = useContext(Settled);
   const h = pairHalfAt(b.pair, b.stage);
+  const motif = motifPicOf(pairMotifAt(b.pair, b.stage), phone && !!h?.phone);
   const art = h ? halfArtOf(h, phone && h.phone ? h.phone.width / h.phone.height : null) : null;
   const shape: TransitionShape = art?.source === 'phone' ? 'phone' : 'desktop';
   const tweenCtx = useRef({ pair: b.pair, shape, reduced });
@@ -536,6 +552,120 @@ function Band({ b, share, seam, open, leaving, ms, phone, growth, reduced, onRea
             <Layer key="tween" z={-99} depth={0} fade={tween.fading ? 0 : 1} from={1} ms={tween.fading ? tween.fadeMs : 0} bloom={NO_BLOOM} order={0} reduced={reduced}>
               {tween.frames.map((f, i) => (
                 <HalfPictureView key={f.src} art={{ ...art!, picture: { ...art!.picture!, src: f.src, src2x: null } }} onFail={() => {}} hidden={i !== tween.index} />
+              ))}
+            </Layer>
+          )}
+          {motif && (
+            <FadeGroup
+              cur={{ key: motif.src, payload: motif }}
+              next={null}
+              fade={0}
+              ms={growthMs(growth, reduced)}
+              render={(e) => (
+                <Layer key={`motif:${e.key}`} z={-90} depth={0} fade={e.opacity} from={e.from} ms={growthMs(growth, reduced)} bloom={NO_BLOOM} order={0} reduced={reduced}>
+                  <MotifPicture pic={e.payload} />
+                </Layer>
+              )}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Spec 1.12: the motif picture a box shows (the phone one on a phone-shaped half), or null. */
+function motifPicOf(m: PairMotif | null, phone: boolean): { src: string; src2x: string | null } | null {
+  if (!m) return null;
+  return phone && m.phone ? m.phone : m;
+}
+
+/** Spec 1.12: a motif picture stretched to its box (painted for that shape; never cropped, so its soft edges stay whole). */
+function MotifPicture({ pic, onLoad, hidden = false }: { pic: { src: string; src2x: string | null }; onLoad?: (src: string) => void; hidden?: boolean }) {
+  const img = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const el = img.current;
+    if (onLoad && el?.complete && el.naturalWidth > 0) onLoad(pic.src);
+  }, [pic.src]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <img ref={img} className="scn-motif-img" style={hidden ? { opacity: 0 } : undefined} src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={onLoad ? () => onLoad(pic.src) : undefined} />;
+}
+
+/**
+ * Spec 1.12: a motif pair over its plain seam: the pair's motif at its stage,
+ * centred on the seam (`left`, in the half's container units), `width` of the
+ * half wide and the half's full height, mirrored when the board has the pair
+ * reversed; its stage steps play the pair's motif frames (1.7's rules) or
+ * cross-fade over `growth.seconds`. It reports when its picture has loaded
+ * (`onReady`) and is invisible until then; it fades out when it leaves.
+ */
+function MotifView({ b, left, width, open, leaving, ms, phone, growth, reduced, onReady }: { b: PairBandPlacement; left: string; width: number; open: boolean; leaving: boolean; ms: number; phone: boolean; growth: PackGrowth; reduced: boolean; onReady: (key: string) => void }) {
+  const settled = useContext(Settled);
+  const m = pairMotifAt(b.pair, b.stage);
+  const pic = motifPicOf(m, phone);
+  const shape: TransitionShape = phone && m?.phone ? 'phone' : 'desktop';
+  const tweenCtx = useRef({ pair: b.pair, shape, reduced });
+  tweenCtx.current = { pair: b.pair, shape, reduced };
+  const tween = useTween(
+    b.stage,
+    useCallback((from: number, to: number) => {
+      const c = tweenCtx.current;
+      if (!tweenAllowed(c.pair.transitions, c.reduced, from)) return null;
+      const frames = transitionFrames(c.pair, from, to, c.shape);
+      return frames && frames.every((f) => pictureReady(f.src)) ? frames : null;
+    }, []),
+    b.pair.transitions?.fadeMs ?? 0,
+  );
+  useEffect(() => {
+    if (reduced || !b.pair.transitions) return;
+    for (const src of nextStepFrames(b.pair, b.stage, shape)) warmPicture({ src, src2x: null });
+  }, [b.pair, b.stage, shape, reduced]);
+  const loaded = useCallback(
+    (src: string) => {
+      if (src !== pic?.src) return;
+      if (!settled.current) onReady(b.key);
+      else requestAnimationFrame(() => onReady(b.key));
+    },
+    [pic?.src, b.key, onReady, settled],
+  );
+  const groupMs = tween.frames ? 0 : growthMs(growth, reduced);
+  const shown = open && !leaving;
+  const style = {
+    left,
+    width: `${+(width * 100).toFixed(3)}cqw`,
+    opacity: shown ? 1 : 0,
+    transition: `width 900ms ease, left 900ms ease${ms > 0 ? `, opacity ${ms}ms ease` : ''}`,
+  } as CSSProperties;
+  return (
+    <div
+      className={['scn-motif', b.mirror && 'is-mirrored'].filter(Boolean).join(' ')}
+      style={style}
+      data-motif={b.key}
+      data-band={b.key}
+      data-band-width={b.width}
+      data-band-duals={b.duals || undefined}
+      data-band-stage={b.stage}
+      data-band-open={open ? 'yes' : 'no'}
+      data-band-dual={b.pair.dual ?? undefined}
+      data-art={shape}
+      data-tween={tween.frames ? `${tween.index + 1}/${tween.frames.length}${tween.fading ? ' fading' : ''}` : undefined}
+    >
+      {pic && (
+        <div className="scn-motif-art">
+          <FadeGroup
+            cur={{ key: pic.src, payload: pic }}
+            next={null}
+            fade={0}
+            ms={groupMs}
+            render={(e) => (
+              <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={groupMs} bloom={NO_BLOOM} order={0} reduced={reduced}>
+                <MotifPicture pic={e.payload} onLoad={e.role === 'cur' ? loaded : undefined} />
+              </Layer>
+            )}
+          />
+          {tween.frames && (
+            <Layer key="tween" z={-99} depth={0} fade={tween.fading ? 0 : 1} from={1} ms={tween.fading ? tween.fadeMs : 0} bloom={NO_BLOOM} order={0} reduced={reduced}>
+              {tween.frames.map((f, i) => (
+                <MotifPicture key={f.src} pic={{ src: f.src, src2x: null }} hidden={i !== tween.index} />
               ))}
             </Layer>
           )}

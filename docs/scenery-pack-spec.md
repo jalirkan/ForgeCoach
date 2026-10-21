@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.11)
+# Scenery pack spec (schema 1, version 1.12)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -27,6 +27,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.9 | **Pair bands** (§2, *Pair bands*): a second, optional manifest, **`pairs.json`**, fetched beside `scenery.json` from a pairs URL of its own (ForgeCoach's comes with ForgeCoach's pack; `?pairs=<url>` or `off` for any page): per biome pair, the pair's own place (named for its `dual` and `shock`), three `stages` of 1.5 `half` pictures and 1.7 `transitions`, a `band` width rule (`min`, `perDual`, `max`) and a `stageMap`. Where two biomes meet on one side of the half board, the seam opens into that place, wider with every land that is both colours. Lands that make two colours count ½ / ½ as the shocks do, the Thriving lands included (§1). No pairs, or a pair without an entry, keeps the 1.8 seam. |
 | 1.10 | **Calm seams** (§2, *Calm seams*), layout only, no new field: a half shows at most **three** panels (the rest fold into their nearest kept neighbour); a seam with a pair band draws **no bridge**; a half picture is never drawn half over its next stage; a full-area accent is drawn over **its own biome's panel** only; the seam mist lighter, none at a band. Every 1.0–1.9 pack and pairs manifest is read unchanged. |
 | 1.11 | **Land rules** (§2, *Land rules*), classification only, no new field: a land that makes **no coloured mana** (a fetch land, Ancient Tomb, the Landscapes, Mutavault, Urza's Saga, the basic Wastes), or **any colour** (City of Brass, Exotic Orchard), draws **no biome**, and so opens no `wastes` slot; a fixed **three-colour** land splits into thirds as a Triome does; a **Pathway** (any multi-face land) counts as the face in play only; a typeless land with **no card data** draws nothing until its data loads. No land claims `wastes` any more; a pack may still paint one. |
+| 1.12 | **Motifs** (§2, *Motifs*): a pair stage in `pairs.json` may carry a **`motif`**, a transparent picture painted for the band's own narrow, full-height shape (pairs-v3: the road, river or causeway both lands share, running up the seam to the horizon). A pair whose stages have a motif and **no `half`** is a *motif pair*: its seam stays the plain 1.10 seam and the motif is drawn **over** it, centred on the seam, `band` wide, so its own soft banks are the band's edges; its frames are `motifTransitions`. A band pair (1.9) may carry a motif too, drawn over its picture. Every 1.9–1.10 pairs manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -65,6 +66,7 @@ other game information.
 - **Bridges (1.8).** Where two biomes meet on one side of the half board, a pack may draw a **bridge** over their seam: a ground object that belongs to both (a river from the lagoon into the forest floor, a road from the plains up into the mountains). A two-colour land still counts ½ to each of its biomes, and also widens the seam between them a little, the bridge with it — the dual is the land that connects.
 - **Pair bands (1.9).** A second, optional manifest may give each pair a place of its own: where the two biomes meet on one side of the half board, the seam opens into a third panel, the pair's landscape (named for its dual land), which widens with every land that is both colours.
 - **Calm seams (1.10).** A half shows at most three biomes; a seam with a band has no bridge; a half picture changes only at a stage; a full-area accent stays over its own biome.
+- **Motifs (1.12).** A pair can be a road up the seam instead of a third picture: drawn over the plain seam, so nothing is cut.
 - **Hidden information.** Only the viewing seat's redacted battlefield is read, so the scenery never shows anything the board does not.
 
 ## 2. Manifest format
@@ -1344,6 +1346,144 @@ pack that paints one still validates, and `#ambience` no longer offers a
 Wastes or five-colour land.
 
 `src/ambience/model.test.ts` checks every row with the audit's own examples.
+### Motifs (1.12)
+
+1.10 calmed the seam, but a pair band (1.9) still shows a slice of a
+landscape painted 16 : 5: at 0.10–0.34 of the half it is a vertical strip
+with two hard sides, and those sides meet two other paintings. Justin chose
+the fix on 19 October 2026 ("go with the road"): paint the band **for the
+strip**, as a motif with its own outline, and let the seam underneath stay
+the plain seam. The motif is the thing both lands share, running from the
+foreground up the seam to the horizon: a turquoise river between jungle
+mounds (Breeding Pool), a mountain pass road (Plateau), a frozen road
+(Tundra), a boardwalk causeway over the bog (Bayou), a road cut through black
+rock with glowing cracks (Badlands). Its banks are the band's edges; there is
+no rectangle, so nothing is cut.
+
+**A motif is drawn over the band's picture, and a motif pair's picture is
+the plain seam.** Each stage of a pair may carry a **`motif`**: a
+transparent picture (`src`, `src2x`, `phone`, `width` / `height`, `bytes`,
+the fields of a 1.5 `half`). There are two kinds of pair:
+
+- **A motif pair**: no stage has a `half`. The panels give up no width: the
+  seam between the two biomes is drawn exactly as a plain 1.10 seam (the
+  base `seamRatio`, its gradient and its mist), the live blend of the two
+  neighbours as the board crops them right now, and the motif is drawn over
+  it. A baked blend would be a third picture again: the neighbours' crops move
+  with every land, and only the live seam always matches them.
+- **A band pair** (1.9): every stage has a `half`, the band is a panel as
+  before, and a stage's `motif`, if it has one, is drawn over the band's
+  picture, filling the band's box, cross-fading with its stage.
+
+A pair's kind is decided by its stages: any `half` makes it a band pair, and
+then a stage without a usable `half` is dropped (1.9's rule); with no `half`
+anywhere, a stage needs a usable `motif` or is dropped. One manifest may mix
+the two kinds.
+
+**Where a motif pair's motif is drawn.**
+- **Box.** Centred on the middle of the seam (where 1.8 centres a bridge),
+  from the top of the half to its bottom, `band` wide: `band.min` of the
+  half's width as soon as the side has both colours, `band.perDual` more per
+  land that is both colours, at most `band.max` (1.9's width rule), and never
+  wider than either neighbour's share (so it covers at most half of each panel
+  beside it). It follows the seam as the shares move (900 ms).
+- **Fit.** The picture is **stretched** to the box (`fill`), never cropped:
+  its soft edges are the motif's edges and must stay whole. Paint it at the
+  width it is drawn at most (pairs-v3: two duals' worth); a wider or narrower
+  box stretches it sideways, which for a road in perspective is a wider or
+  narrower road (its edges keep meeting at the vanishing point).
+- **Desktop or phone.** The `phone` picture where the half is phone-shaped
+  (narrower than about 1.6 : 1, as 1.8 and 1.9 choose), else the desktop one.
+- **Mirror, stage, captions.** As a band: mirrored when the board has the
+  pair the other way round from the key, `stageMap` on the lower neighbour's
+  stage, `dual` and `shock` for captions only.
+- **Z-order.** Over both panels, their seam and its mist; under the centre
+  line's mist band (it fades with the panels there), the full-area accent, the
+  card-row scrim and every card. The seam draws **no bridge** (1.10's rule:
+  the pair wins its seam).
+- **Arrival, departure, loading, reduced motion.** As a band: it fades in
+  over the later biome's bloom once its picture has loaded, fades out when
+  either biome loses its lands, and is there or gone at once with reduced
+  motion. The motifs the board may need next warm with the split's pictures.
+- **Stage steps.** A motif pair's frames are its **`motifTransitions`**, in
+  1.7's shape (`holdMs`, `fadeMs`, `steps[]` of `from` and `frames[]` of
+  `src` and `phone`), each frame a transparent in-between of the motif,
+  played with 1.7's rules; with none, the motif cross-fades over
+  `growth.seconds`. A motif pair's `transitions` and a band pair's
+  `motifTransitions` are ignored, with a warning.
+
+**Each stage, the new field** (beside 1.9's `half`):
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `motif` | a 1.5 `half` object | — | `src` (**required**; `.webp`, `.avif`, `.png` or `.jpg`, with alpha), `src2x`, `phone` (`src`, `src2x`), `width` / `height` (the 1x file's pixels: give them, the reader's default is a desktop half's 2048 × 640), `bytes`. `subjectBand`, `focal` and `safe` are read and not used (a motif is never cropped). A bad `motif` drops only the motif (and the stage too, in a motif pair). |
+
+**Each pair, the new field:**
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `motifTransitions` | 1.7's `transitions` | — | A motif pair's in-between motifs per stage step. |
+
+`bytes` on each `motif` counts toward 1.9's 4 MB of stage pictures per pair.
+
+**How to paint a motif** (pairs-v3, `~/scenery-packs/seams-v1/road/`):
+compose the pair's two neighbours as ForgeCoach draws a plain seam (equal
+shares, the 10% gradient), in the light of the stage the motif is shown
+beside (pair stage 1 over their stage 1, 2 over 3, 3 over 5); paint a guide
+in code, the road's wedge in perspective (centred on the seam, wide at the
+bottom, a point on the horizon) filled with its material; img2img with a
+strength map high over the road and its banks and falling away to the box's
+sides and above the horizon; then keep the box with **the strength map's own
+soft shape as the alpha**: 1 over the road and its near banks, 0 at the box's
+sides and above the horizon, never a line. Same seed and geometry at each
+stage, so the three are one road growing: a faint track at stage 1, a worn
+road at 2, the full road with its landmark at the vanishing point at 3. One
+entry serves both orders, so keep it mirror-safe (no lettering, no
+one-handed subject). There is no night variant: a stage-3 motif is painted
+in its neighbours' stage-5 light and also shown beside their stage 6, as a
+1.9 band's stage 3 is.
+
+<!-- example-motifs -->
+```json
+{
+  "schema": 1,
+  "spec": "1.12",
+  "name": "ForgeCoach pair scenery, a motif pair",
+  "pairs": {
+    "forest+island": {
+      "dual": "Tropical Island",
+      "shock": "Breeding Pool",
+      "band": {"min": 0.2, "perDual": 0.03, "max": 0.32},
+      "stageMap": [[1, 2], [3, 4], [5, 6]],
+      "stages": [
+        {"motif": {"src": "pairs/forest-island/s1-motif.webp", "src2x": "pairs/forest-island/s1-motif@2x.webp", "width": 532, "height": 640, "phone": {"src": "pairs/forest-island/s1-motif-phone.webp", "src2x": "pairs/forest-island/s1-motif-phone@2x.webp", "width": 266, "height": 1024}, "bytes": 200000}},
+        {"motif": {"src": "pairs/forest-island/s2-motif.webp", "src2x": "pairs/forest-island/s2-motif@2x.webp", "width": 532, "height": 640, "phone": {"src": "pairs/forest-island/s2-motif-phone.webp", "src2x": "pairs/forest-island/s2-motif-phone@2x.webp", "width": 266, "height": 1024}, "bytes": 200000}},
+        {"motif": {"src": "pairs/forest-island/s3-motif.webp", "src2x": "pairs/forest-island/s3-motif@2x.webp", "width": 532, "height": 640, "phone": {"src": "pairs/forest-island/s3-motif-phone.webp", "src2x": "pairs/forest-island/s3-motif-phone@2x.webp", "width": 266, "height": 1024}, "bytes": 200000}}
+      ],
+      "motifTransitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {"from": 1, "frames": [{"src": "pairs/forest-island/s1to2-f1-motif.webp", "phone": "pairs/forest-island/s1to2-f1-motif-phone.webp"}, {"src": "pairs/forest-island/s1to2-f2-motif.webp", "phone": "pairs/forest-island/s1to2-f2-motif-phone.webp"}], "bytes": 120000},
+          {"from": 2, "frames": [{"src": "pairs/forest-island/s2to3-f1-motif.webp", "phone": "pairs/forest-island/s2to3-f1-motif-phone.webp"}, {"src": "pairs/forest-island/s2to3-f2-motif.webp", "phone": "pairs/forest-island/s2to3-f2-motif-phone.webp"}], "bytes": 120000}
+        ]
+      }
+    }
+  }
+}
+```
+
+You play an Island, then a Forest: the seam between them is the plain seam
+(0.10 of the half), and the river is drawn over it, **mirrored** (the key has
+the forest on the left), **0.20** of the half wide: on a desktop half 1600 px
+wide, the seam's middle is at **800 px** and the motif spans **640–960 px**,
+top to bottom, its banks fading into the two panels. Both biomes at stage 1:
+pair stage 1, the faint trickle. Two more of each and two Breeding Pools:
+pair stage 2 (its two frames, then the fade), 0.20 + 2 × 0.03 = **0.26**
+(416 px); four more Breeding Pools take it to the 0.32 cap (512 px). Next to
+a panel at its 0.15 floor the motif is drawn 0.15 wide. The panels keep their
+whole shares throughout. `src/ambience/pairs.test.ts` validates this exact
+block and checks these numbers; `pairs-v3.test.ts` is the live manifest.
 
 ## 3. Files and budgets
 
