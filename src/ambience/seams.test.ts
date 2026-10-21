@@ -19,11 +19,12 @@ import { bandedSeams, halfPanelSpan, halfRow, pairBands, panelMaskCss, rowCentre
 import { nextStageFade, slotStageFade } from './growth.ts';
 import { dualsOf, sceneryFromLog, slotsOf, type Biome, type SlotState } from './model.ts';
 import { simLog, SIM_PLAYERS, type SimLandName } from './sim.ts';
-import { FORGECOACH_PACK_URL, FORGECOACH_PAIRS_URL } from './prefs.ts';
+import { FORGECOACH_PACK_URL } from './prefs.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
 const base = validateManifest(json('pack-v8.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!;
-const pairs = validatePairs(json('pairs-v2.pairs.json'), `${FORGECOACH_PAIRS_URL}pairs.json`).pairs!;
+/** pairs-v2's own tag: the 1.10 rules are checked on the band pairs they were written for (pairs-v3's motif pairs take no width: pairs-v3.test.ts). */
+const pairs = validatePairs(json('pairs-v2.pairs.json'), 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs.json').pairs!;
 const pack: ScenePack = { ...base, pairs };
 const slot = (b: Biome, index: number, weight: number, stage = weight > 0 ? Math.max(1, Math.floor(weight)) : 0): SlotState => ({ biome: b, index, weight, stage, peak: Math.max(1, stage) });
 

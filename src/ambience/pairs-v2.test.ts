@@ -2,8 +2,8 @@
  * ForgeCoach — ambience/pairs-v2.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * pairs-v2, the pair-band pack (spec 1.9) that FORGECOACH_PAIRS_URL points at:
- * a snapshot of its pairs.json, byte for byte what jsDelivr serves at
+ * pairs-v2, the pair-band pack (spec 1.9) FORGECOACH_PAIRS_URL pointed at
+ * until pairs-v3 (pairs-v3.test.ts): a snapshot of its pairs.json, byte for byte what jsDelivr serves at
  * https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs.json
  * (sha256 55c13cda03faa97d4949f102d9cc3c8fb1c3ab67089d592fd69c2ac7c6567800,
  * compared with `cmp` against two fetches of the CDN's copy on 2026-10-17;
@@ -23,7 +23,9 @@ import { halfLayout } from './layout.ts';
 import { MAX_TRANSITION_FRAMES } from './manifest.ts';
 import { pairKey, type Biome, type SlotState } from './model.ts';
 import { DEFAULT_PAIR_BAND, DEFAULT_STAGE_MAP, MAX_PAIRS_PACK_BYTES, pairBands, pairsBytes, validatePairs } from './pairs.ts';
-import { FORGECOACH_PAIRS_URL } from './prefs.ts';
+
+/** The tag this snapshot is from (FORGECOACH_PAIRS_URL now names pairs-v3); the tag stays up. */
+const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/';
 
 const FIVE: Biome[] = ['plains', 'island', 'swamp', 'mountain', 'forest'];
 const slot = (b: Biome, index: number): SlotState => ({ biome: b, index, weight: 2, stage: 2, peak: 2 });
@@ -35,8 +37,7 @@ describe('pairs-v2', () => {
   const r = validatePairs(raw, `${FORGECOACH_PAIRS_URL}pairs.json`);
   const pairs = r.pairs!;
 
-  it('is the pairs URL, and the snapshot is the file jsDelivr serves', () => {
-    expect(FORGECOACH_PAIRS_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/');
+  it('is the file jsDelivr serves at pairs-v2', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('55c13cda03faa97d4949f102d9cc3c8fb1c3ab67089d592fd69c2ac7c6567800');
   });
 
