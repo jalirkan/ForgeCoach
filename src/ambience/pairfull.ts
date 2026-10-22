@@ -47,7 +47,8 @@
  * `PairFullPanel`.
  */
 import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome } from './model.ts';
-import { cropAxis, cropAxisCss, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
+import { cropAxis, cropAxisCss, halfArtOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
+import type { PackHalf } from './manifest.ts';
 import { pairFor, pairHalfAt, pairStageFor, type PackPair, type PairsPack } from './pairs.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
@@ -159,6 +160,19 @@ export function pairFullPlan(
   if (!third) return [item];
   const slot: PairFullSlot = { kind: 'slot', index: third.i, biome: third.l.slot.biome, share: thirdShare };
   return third.i < a.i && third.i < b.i ? [slot, item] : [item, slot];
+}
+
+/**
+ * The picture a whole-half pair panel draws: the stage's 1.13 `panorama` when
+ * it has one, else its 1.9 `half`. A panorama with no phone picture gives way
+ * to the half wherever the half would draw its phone picture (a phone, or a
+ * phone-shaped panel), so a desktop-only panorama never lands on a phone.
+ */
+export function pairFullArt(half: PackHalf | null, panorama: PackHalf | null, panelAspect: number | null, narrow: boolean): HalfArt | null {
+  const fromHalf = half ? halfArtOf(half, panelAspect, { narrow }) : null;
+  if (!panorama) return fromHalf;
+  if (!panorama.phone && fromHalf?.source === 'phone') return fromHalf;
+  return halfArtOf(panorama, panelAspect, { narrow });
 }
 
 /** How much wider than the half the picture is drawn so its transition (`t`) can land at `split` ({@link PAIR_FULL_MAX_ZOOM} at most). */

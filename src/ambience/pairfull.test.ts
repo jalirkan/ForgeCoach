@@ -13,8 +13,8 @@
 import { describe, expect, it } from 'vitest';
 import { halfLayout } from './layout.ts';
 import type { Biome, SlotState } from './model.ts';
-import { validatePairs, type PairsPack } from './pairs.ts';
-import { PAIR_FULL_MAX_ZOOM, pairFullCaption, pairFullFrame, pairFullFrameCss, pairFullPlan, pairFullSplit, pairFullStage, pairFullZoom, type PairFullPair } from './pairfull.ts';
+import { pairHalfAt, pairPanoramaAt, validatePairs, type PairsPack } from './pairs.ts';
+import { PAIR_FULL_MAX_ZOOM, pairFullArt, pairFullCaption, pairFullFrame, pairFullFrameCss, pairFullPlan, pairFullSplit, pairFullStage, pairFullZoom, type PairFullPair } from './pairfull.ts';
 import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
 
 const BASE = 'http://127.0.0.1:8654/pairs-v2/';
@@ -215,5 +215,51 @@ describe('spec 1.13 draft: the flag', () => {
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(FORGECOACH_PAIRS_FULL_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1&pairs=http://127.0.0.1:8654/pairs-v2/', ''))).toBe('http://127.0.0.1:8654/pairs-v2/');
     expect(FORGECOACH_PAIRS_FULL_URL).toMatch(/@pairs-v2\/$/);
+  });
+});
+
+describe('spec 1.13 draft: the stage panorama (pairs-panorama)', () => {
+  const PANO = { src: 'pairs/island-plains/s3-panorama.webp', src2x: 'pairs/island-plains/s3-panorama@2x.webp', width: 3277, height: 640, subjectBand: [0.38, 0.72], focal: { x: 0.5, y: 0.52 }, safe: { x: 0.1875, y: 0.38, w: 0.625, h: 0.34 }, bytes: 1000 };
+  const withPano = () => {
+    const st = stages('island-plains') as Record<string, unknown>[];
+    st[2] = { ...st[2], panorama: PANO };
+    const r = validatePairs({ schema: 1, pairs: { 'island+plains': { dual: 'Tundra', stages: st } } }, BASE);
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([]);
+    return r.pairs!.pairs['island+plains']!;
+  };
+
+  it('reads a stage panorama as a half-shaped picture, on its own stage only', () => {
+    const pair = withPano();
+    const p = pairPanoramaAt(pair, 3)!;
+    expect(p.src).toBe(`${BASE}pairs/island-plains/s3-panorama.webp`);
+    expect(p.src2x).toBe(`${BASE}pairs/island-plains/s3-panorama@2x.webp`);
+    expect([p.width, p.height, p.focal.x]).toEqual([3277, 640, 0.5]);
+    expect(pairPanoramaAt(pair, 2)).toBeNull();
+    expect(pairPanoramaAt(pair, 9)).toBe(p); // past the end: the last stage's
+    expect(pair.bytes).toBeGreaterThanOrEqual(1000);
+  });
+
+  it('draws the panorama instead of the half on a desktop panel, the half wherever the half would go to its phone picture', () => {
+    const pair = withPano();
+    const half = pairHalfAt(pair, 3);
+    const pano = pairPanoramaAt(pair, 3);
+    const desk = pairFullArt(half, pano, 16 / 5, false)!;
+    expect(desk.picture!.src).toBe(pano!.src);
+    expect(desk.aspect).toBeCloseTo(3277 / 640, 4);
+    expect(pairFullArt(half, pano, 16 / 5, true)!.source).toBe('phone');
+    expect(pairFullArt(half, pano, 4 / 5, false)!.source).toBe('phone');
+    expect(pairFullArt(half, null, 16 / 5, false)!.picture!.src).toBe(half!.src);
+  });
+
+  it('pans a 1.6 panorama at every share: the whole width at 0.5 is its middle 62.5%, an end at 0.2 and 0.8', () => {
+    const art = pairFullArt(null, pairPanoramaAt(withPano(), 3), 16 / 5, false)!;
+    const box = { w: 1600, h: 500 };
+    for (const [split, left] of [[0.5, -0.3], [0.8, 0], [0.2, -0.6], [0.3, -0.5], [0.7, -0.1]] as const) {
+      const f = pairFullFrame(box, art, split);
+      expect(f.width).toBeCloseTo(1.6, 3);
+      expect(f.left).toBeCloseTo(left, 3);
+      expect(f.seamAt).toBeCloseTo(split, 3);
+    }
   });
 });

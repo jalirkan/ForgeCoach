@@ -74,12 +74,12 @@ import { nextStepFrames, transitionFrames, tweenAllowed, type TransitionShape } 
 import { pictureReady, warmPicture } from '../../ambience/pack.ts';
 import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, PHONE_VIEWPORT_MAX, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt, type HalfSlotLayout } from '../../ambience/layout.ts';
 import { bridgePlacements, halfSeams, phoneHalf, seamCentreCss, type BridgePlacement } from '../../ambience/bridges.ts';
-import { bandedSeams, halfRow, motifBands, motifWidth, pairBands, pairHalfAt, pairMotifAt, panelBands, rowCentreCss, type PairBandPlacement, type PairMotif, type RowItem } from '../../ambience/pairs.ts';
+import { bandedSeams, halfRow, motifBands, motifWidth, pairBands, pairHalfAt, pairMotifAt, pairPanoramaAt, panelBands, rowCentreCss, type PairBandPlacement, type PairMotif, type RowItem } from '../../ambience/pairs.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import { useFadeIn, useFadeStack } from './useFade.ts';
 import { useTween } from './useTween.ts';
-import { pairFullFrameCss, pairFullPlan, type PairFullPair } from '../../ambience/pairfull.ts';
+import { pairFullArt, pairFullFrameCss, pairFullPlan, type PairFullPair } from '../../ambience/pairfull.ts';
 import './scenery.css';
 
 export type { StripEffect } from './SceneryEffects.tsx';
@@ -624,9 +624,10 @@ function Band({ b, share, seam, open, leaving, ms, phone, growth, reduced, onRea
  */
 function PairFullPanel({ p, first, growth, reduced, narrow }: { p: PairFullPair; first: boolean; growth: PackGrowth; reduced: boolean; narrow: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  const h = pairHalfAt(p.pair, p.stage);
-  const panelAspect = usePanelAspect(ref, !!h?.phone);
-  const art = h ? halfArtOf(h, panelAspect, { narrow }) : null;
+  const half = pairHalfAt(p.pair, p.stage);
+  const pano = pairPanoramaAt(p.pair, p.stage);
+  const panelAspect = usePanelAspect(ref, !!half?.phone || !!pano?.phone);
+  const art = pairFullArt(half, pano, panelAspect, narrow);
   // The frame is computed in the picture's own order; the mirror flips it back.
   const split = p.mirror ? 1 - p.split : p.split;
   const ms = growthMs(growth, reduced);

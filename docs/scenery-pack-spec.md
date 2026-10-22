@@ -1626,6 +1626,39 @@ the two heaviest colours as ground and backdrop, the third as an element or
 light in that place (a river through it, fire in it, crystals, the sky's
 colour), never a third tile.
 
+**The `panorama` field (1.13, proposed; pairs-panorama draft, 22 October
+2026).** A pair stage may carry a **`panorama`** beside its `half`, in the
+shape of a 1.5 `half` (`src`, optional `src2x`, `width` and `height` of the 1x
+file, `subjectBand`, `focal`, `safe`, an optional `phone`, `bytes`):
+
+```json
+"stages": [ {...}, {...}, { "half": {...},
+  "panorama": { "src": "pairs/island-plains/s3-panorama.webp", "src2x": "pairs/island-plains/s3-panorama@2x.webp",
+                "width": 3277, "height": 640, "subjectBand": [0.38, 0.72],
+                "focal": { "x": 0.5, "y": 0.52 }, "safe": { "x": 0.1875, "y": 0.38, "w": 0.625, "h": 0.34 },
+                "bytes": 2650000 } } ]
+```
+
+- **What it is.** One picture of one place, 1.6 × the half's 16 : 5 (3277 ×
+  640 at 1x, 6554 × 1280 at @2x): the key's **first** biome is the ground at
+  the **left** end with the second behind it, the second is the ground at the
+  right end with the first behind it, and the transition (a real edge: a
+  shore, a waterline, the grass's end) crosses the middle third. `focal.x` is
+  where the transition is (the split lands there); `safe` is the even-share
+  window, for a reader that keeps one.
+- **Where it is read.** Only under `?pairfull=1`, by `pairfull.ts`
+  `pairFullArt`: the stage's `panorama` is drawn **instead of** its `half`,
+  through the same `pairFullFrame` pan. Its aspect is already the 1.6 the pan
+  needs, so the picture is drawn 1.6 × the half at every share and the share
+  only moves it (a 0.5 share shows the middle 62.5 %, 0.2 or 0.8 runs to an
+  end). A panorama with no `phone` gives way to the stage's `half` wherever the
+  half would draw its phone picture, so a desktop-only panorama never reaches
+  a phone. A stage's panorama is never borrowed by another stage.
+- **Everything else** (1.9's band, the stage map, the frames) reads the
+  `half` as before, so a manifest with panoramas is still a 1.9–1.12 manifest
+  for a reader that does not know the field; the panorama's bytes count in the
+  pair's stage-picture budget.
+
 ## 3. Files and budgets
 
 | What | Format | Size |
