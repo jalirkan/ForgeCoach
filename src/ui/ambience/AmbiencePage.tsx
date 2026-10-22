@@ -17,7 +17,7 @@
  * Everything here is made up in the page (ambience/sim.ts). It never opens a
  * socket to the engine.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { Card, GameStateBody } from '../../protocol.ts';
 import { BIOME_LABEL, dualsOf, sceneryFromLog, slotsOf, type Biome } from '../../ambience/model.ts';
 import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '../../ambience/effects.ts';
@@ -28,6 +28,8 @@ import { pairBands, pairsBytes, type PairsPack } from '../../ambience/pairs.ts';
 import { halfLayout } from '../../ambience/layout.ts';
 import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
 import { currentPrefs, loadSceneryPrefs, pairsUrlOf, saveSceneryPrefs } from '../../ambience/prefs.ts';
+import { gradeFor, type LightOutcome } from '../../ambience/light.ts';
+import { applyGrade } from './lightGrade.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
@@ -70,6 +72,11 @@ type PackState =
 export default function AmbiencePage() {
   const [plays, setPlays] = useState<SimPlay[]>([]);
   const [stage, setStage] = useState(0); // 0 = auto
+  // Spec 1.13's light pass, previewed: on here unless ?light=off; a game's turn, both lives and its end, set by hand.
+  const [light, setLight] = useState(() => !/[?&]light=(off|0)\b/.test(typeof location === 'undefined' ? '' : location.search + location.hash));
+  const [turn, setTurn] = useState(1);
+  const [lives, setLives] = useState<[number, number]>([20, 20]);
+  const [ending, setEnding] = useState<'none' | 'you' | 'them' | 'draw'>('none');
   const systemReduced = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [motion, setMotion] = useState<'system' | 'reduce' | 'full'>(() => loadSceneryPrefs().motion);
   const reduced = motion === 'reduce' || (motion === 'system' && systemReduced);
@@ -176,6 +183,15 @@ export default function AmbiencePage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const counts = (player: number) => slotsOf(scenery, player);
+
+  useLayoutEffect(() => {
+    SIM_PLAYERS.forEach((player, i) => {
+      const el = table.current?.querySelector<HTMLElement>(`.amb-bf[data-amb-player="${player}"]`);
+      if (!el) return;
+      const outcome: LightOutcome = ending === 'none' ? null : ending === 'draw' ? 'draw' : (ending === 'you') === (i === 0) ? 'won' : 'lost';
+      applyGrade(el, light ? gradeFor({ turn, life: lives[i]!, outcome }) : null);
+    });
+  });
 
   return (
     <div className="amb">
@@ -307,6 +323,40 @@ export default function AmbiencePage() {
           <LandCountCard plays={plays} setPlays={setPlays} side={countSide} setSide={setCountSide} scenery={scenery} />
 
           <EffectsCard pack={pack} reduced={reduced} onFire={fireEffect} />
+
+          <div className="amb-card" data-amb-light>
+            <h2>Light</h2>
+            <label className="amb-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <input type="checkbox" checked={light} onChange={(e) => setLight(e.target.checked)} data-amb-light-on />
+              <span>Light follows the game (spec 1.13, a preview: on the board it is Settings → Light follows the game)</span>
+            </label>
+            <label className="amb-field">
+              <span>
+                Turn <b>{turn}</b>
+              </span>
+              <input type="range" min={1} max={24} step={1} value={turn} onChange={(e) => setTurn(Number(e.target.value))} aria-label="Turn" data-amb-turn />
+              <span className="amb-hint">Cool and a little flat at first, warmer and richer by turn 16 (eight rounds).</span>
+            </label>
+            {(['Your life', "Opponent's life"] as const).map((label, i) => (
+              <label key={label} className="amb-field">
+                <span>
+                  {label} <b>{lives[i]}</b>
+                </span>
+                <input type="range" min={0} max={20} step={1} value={lives[i]} onChange={(e) => setLives((l) => (i === 0 ? [Number(e.target.value), l[1]] : [l[0], Number(e.target.value)]))} aria-label={label} data-amb-life={i} />
+              </label>
+            ))}
+            <span className="amb-hint">At 5 life or less a storm comes over that player's half.</span>
+            <div className="amb-field">
+              <span>The end</span>
+              <div className="amb-seg" role="radiogroup" aria-label="The end">
+                {(['none', 'you', 'them', 'draw'] as const).map((e) => (
+                  <button key={e} role="radio" aria-checked={ending === e} className={ending === e ? 'is-on' : ''} onClick={() => setEnding(e)} data-amb-end={e}>
+                    {e === 'none' ? 'Playing' : e === 'you' ? 'You win' : e === 'them' ? 'They win' : 'Draw'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
           <div className="amb-card">
             <h2>View</h2>

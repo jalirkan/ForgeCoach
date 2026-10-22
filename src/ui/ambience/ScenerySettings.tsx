@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * Settings → Board scenery: off, the built-in scenery,
- * ForgeCoach's own art pack (a pack at FORGECOACH_PACK_URL), or a pack URL; Fill each side (spec 1.5, on by default); board accents (spec 1.3, on by default with the scenery); and motion. Applies at once (its own storage key), so it needs no
+ * ForgeCoach's own art pack (a pack at FORGECOACH_PACK_URL), or a pack URL; Fill each side (spec 1.5, on by default); board accents (spec 1.3, on by default with the scenery); the light pass (spec 1.13, off by default); and motion. Applies at once (its own storage key), so it needs no
  * part in the dialog's Save. Checking a pack loads the validator lazily.
  */
 import { useState } from 'react';
@@ -96,6 +96,12 @@ export function ScenerySettings() {
         <label className="field-help" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input type="checkbox" checked={p.accents} onChange={(e) => set({ ...p, accents: e.target.checked })} />
           Board accents: vines, frost, ash and the like at the corners of each side, beneath the cards
+        </label>
+      )}
+      {p.mode !== 'off' && (
+        <label className="field-help" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input type="checkbox" checked={p.light} onChange={(e) => set({ ...p, light: e.target.checked })} data-scenery-light />
+          Light follows the game (preview): cool early, warmer later, a storm at 5 life or less, a glow or dusk when it ends
         </label>
       )}
       <label className="field-help" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

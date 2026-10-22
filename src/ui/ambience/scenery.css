@@ -1052,3 +1052,32 @@
   object-fit: fill;
   display: block;
 }
+
+/*
+ * Spec 1.13, the light pass (ambience/light.ts, lightGrade.ts): a host with
+ * `.scn-lit` grades its scenery and accents by the game -- a filter on each,
+ * and a soft-light tint over the scene, inside its fade mask. The cards are
+ * never touched: they sit above the scenery on the host.
+ */
+.scn-host.scn-lit .scn,
+.scn-host.scn-lit .scn-ovl {
+  filter: var(--scn-light-filter, none);
+  transition: filter 2.4s ease;
+}
+.scn-host.scn-lit .scn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background-color: var(--scn-light-tint, transparent);
+  opacity: var(--scn-light-alpha, 0);
+  mix-blend-mode: soft-light;
+  transition:
+    background-color 2.4s ease,
+    opacity 2.4s ease;
+}
+.scn-host.scn-lit .scn.is-reduced,
+.scn-host.scn-lit .scn.is-reduced::after {
+  transition: none;
+}

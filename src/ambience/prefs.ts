@@ -19,6 +19,9 @@
  * `?pairs=off` (or a URL) does the same for spec 1.9's pair bands: by default
  * they come from ForgeCoach's own pairs pack (`FORGECOACH_PAIRS_URL`), and only
  * with ForgeCoach's own scenery pack, whose pictures they were painted to meet.
+ * `?light=on` (or `off`) does the same for the light pass (spec 1.13,
+ * light.ts): each half graded by the game's arc, low life and game over. Off
+ * by default until Justin has judged it.
  */
 
 export type SceneryMode = 'off' | 'procedural' | 'pack';
@@ -32,6 +35,8 @@ export interface SceneryPrefs {
   accents: boolean;
   /** Spec 1.5: the scenery fills each player's whole half (true), or only the strip along their land row. */
   fill: boolean;
+  /** Spec 1.13: the light pass (light.ts) grades each half by the game; off by default. */
+  light: boolean;
   /**
    * Spec 1.9: where the pair bands come from for this page load (`?pairs=`): a
    * URL, or '' for none. Absent: {@link pairsUrlOf}'s default. Never stored.
@@ -62,7 +67,7 @@ export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgeco
  */
 export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3.1/';
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
-export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true };
+export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true, light: false };
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -86,6 +91,7 @@ export function loadSceneryPrefs(s?: Store | null): SceneryPrefs {
     if (v.motion === 'system' || v.motion === 'reduce' || v.motion === 'full') out.motion = v.motion;
     if (typeof v.accents === 'boolean') out.accents = v.accents;
     if (typeof v.fill === 'boolean') out.fill = v.fill;
+    if (typeof v.light === 'boolean') out.light = v.light;
   } catch {
     /* corrupt or blocked storage → defaults */
   }
@@ -126,13 +132,17 @@ function switchParam(search: string, hash: string, name: string): boolean | null
   return v === 'off' || v === '0' ? false : v === 'on' || v === '1' ? true : null;
 }
 
-/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=` and `?pairs=` applied. */
+/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=`, `?light=` and `?pairs=` applied. */
 export function effectivePrefs(stored: SceneryPrefs, search: string, hash: string): SceneryPrefs {
   const a = switchParam(search, hash, 'accents');
   const f = switchParam(search, hash, 'fill');
+  const l = switchParam(search, hash, 'light');
   const pr = sceneryParam(search, hash, 'pairs');
   const pairs = pr === null ? {} : { pairsUrl: pr === 'off' || pr === '0' ? '' : pr === 'forgecoach' || pr === 'on' ? FORGECOACH_PAIRS_URL : pr };
-  const withAccents = a === null && f === null && pr === null ? stored : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...pairs };
+  const withAccents =
+    a === null && f === null && l === null && pr === null
+      ? stored
+      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...pairs };
   const p = sceneryParam(search, hash);
   if (!p) return withAccents;
   if (p === 'off') return { ...withAccents, mode: 'off' };
@@ -159,6 +169,11 @@ export function currentPrefs(): SceneryPrefs {
 /** Does the scenery fill each player's half (spec 1.5)? Only with the scenery on and "Fill each side" on. */
 export function fillOn(p: SceneryPrefs): boolean {
   return p.mode !== 'off' && p.fill;
+}
+
+/** Does the light pass grade the halves (spec 1.13)? Only with the scenery on and "Light follows the game" on. */
+export function lightOn(p: SceneryPrefs): boolean {
+  return p.mode !== 'off' && p.light;
 }
 
 /** Stills only? `system` follows the OS's prefers-reduced-motion. */

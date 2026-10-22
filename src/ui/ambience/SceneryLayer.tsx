@@ -12,6 +12,9 @@
  * With Settings → Fill each side (spec 1.5, on by default), the strip grows
  * into the player's whole half of the board, and each card row gets a soft
  * dark scrim beneath it (HalfScrim), so the cards read as on the plain board.
+ * With Settings → Light follows the game (spec 1.13, off by default), each
+ * battlefield's scenery is graded by the game's arc, that player's life and
+ * the game's end (ambience/light.ts, lightGrade.ts).
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -26,7 +29,9 @@ import { sceneryEvents } from '../../ambience/events.ts';
 import { cachedMap, useCardsVersion } from '../cardData.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
-import { accentsOn, fillOn } from '../../ambience/prefs.ts';
+import { accentsOn, fillOn, lightOn } from '../../ambience/prefs.ts';
+import { gradeFor, lightInputOf } from '../../ambience/light.ts';
+import { applyGrade } from './lightGrade.ts';
 import { HalfScrim } from './HalfScrim.tsx';
 import { halfUrls } from '../../ambience/manifest.ts';
 import { effectGate } from '../../ambience/effects.ts';
@@ -181,6 +186,16 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     // Spec 1.9: and its pair band's pictures (the stage its lower neighbour maps to, and the next).
     if (fill) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
   }, [scenery, load?.pack, fill]);
+
+  // Spec 1.13: each battlefield graded by the game at the board's frame; off takes the grade away.
+  const light = lightOn(prefs) && !!load;
+  useLayoutEffect(() => {
+    for (const t of targets) {
+      const input = light ? lightInputOf(log, frameIndex, state, t.playerId) : null;
+      applyGrade(t.el, input ? gradeFor(input) : null);
+    }
+  }, [targets, light, log, frameIndex, state]);
+  useEffect(() => () => targets.forEach((t) => applyGrade(t.el, null)), [targets]);
 
   useLayoutEffect(() => {
     const next = findTargets(anchor.current, log, seat, state);
