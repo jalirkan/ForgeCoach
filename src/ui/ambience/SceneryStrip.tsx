@@ -72,7 +72,7 @@ import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, growthOf, halfAt, layersAt, type Pa
 import { growthMs, slotStageFade, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
 import { nextStepFrames, transitionFrames, tweenAllowed, type TransitionShape } from '../../ambience/transitions.ts';
 import { pictureReady, warmPicture } from '../../ambience/pack.ts';
-import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt, type HalfSlotLayout } from '../../ambience/layout.ts';
+import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, PHONE_VIEWPORT_MAX, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt, type HalfSlotLayout } from '../../ambience/layout.ts';
 import { bridgePlacements, halfSeams, phoneHalf, seamCentreCss, type BridgePlacement } from '../../ambience/bridges.ts';
 import { bandedSeams, halfRow, motifBands, motifWidth, pairBands, pairHalfAt, pairMotifAt, panelBands, rowCentreCss, type PairBandPlacement, type PairMotif, type RowItem } from '../../ambience/pairs.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
@@ -137,11 +137,12 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const pairsPack = half ? (pack?.pairs ?? null) : null;
   const bands = useMemo(() => (pairsPack ? pairBands(layout as HalfSlotLayout[], pairsPack, duals) : []), [pairsPack, layout, duals]);
   const bandLife = useBandLife(bands, layout as HalfSlotLayout[], pack, reduced);
+  const narrow = useNarrowScreen();
   const halfAspect = usePanelAspect(hostRef, (bridged && layout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone)) || bandLife.shown.some((b) => b.pair.stages.some((st) => !!st.half?.phone || !!st.motif?.phone)));
   // Spec 1.10: a seam with a band (wanted, or fading out) draws no bridge and keeps the base seam.
   const banded = useMemo(() => bandedSeams(bandLife.shown), [bandLife.shown]);
   const seams = useMemo(() => (half ? halfSeams(layout as HalfSlotLayout[], pack, duals, banded) : null), [half, layout, pack, duals, banded]);
-  const placements = useMemo(() => (bridged ? bridgePlacements(layout as HalfSlotLayout[], pack, duals, { phone: phoneHalf(halfAspect), banded }) : []), [bridged, layout, pack, duals, halfAspect, banded]);
+  const placements = useMemo(() => (bridged ? bridgePlacements(layout as HalfSlotLayout[], pack, duals, { phone: phoneHalf(halfAspect, { narrow }), banded }) : []), [bridged, layout, pack, duals, halfAspect, banded]);
   const row: RowItem[] | null = useMemo(() => (seams ? halfRow(layout as HalfSlotLayout[], seams, panelBands(bandLife.shown), bandLife.isOpen) : null), [seams, layout, bandLife]);
   if (layout.length === 0 && !fx?.length) return null;
   const rotated = edge === 'top' && orient === 'rotated';
@@ -174,7 +175,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
                     const seam = k > 0 && it.seam !== halfCfg.seamRatio ? `${+(it.seam * 100).toFixed(2)}cqw` : undefined;
                     if (it.kind === 'band') {
                       const b = it.band!;
-                      return <Band key={`band:${b.key}`} b={b} share={it.share} seam={seam} open={bandLife.isOpen(b.key)} leaving={bandLife.leaving.has(b.key)} ms={bandLife.msOf(b)} phone={phoneHalf(halfAspect)} growth={growth} reduced={reduced} onReady={bandLife.ready} />;
+                      return <Band key={`band:${b.key}`} b={b} share={it.share} seam={seam} open={bandLife.isOpen(b.key)} leaving={bandLife.leaving.has(b.key)} ms={bandLife.msOf(b)} phone={phoneHalf(halfAspect, { narrow })} growth={growth} reduced={reduced} onReady={bandLife.ready} />;
                     }
                     const l = (layout as HalfSlotLayout[])[it.index]!;
                     return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={it.share} first={k === 0} afterBand={row[k - 1]?.kind === 'band'} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} seam={seam} />;
@@ -188,7 +189,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
                   const l = (layout as HalfSlotLayout[])[b.index - 1];
                   const r = (layout as HalfSlotLayout[])[b.index];
                   if (!l || !r) return null;
-                  return <MotifView key={`motif:${b.key}`} b={b} left={bridgeLeftCss(row, b.index)} width={motifWidth(b.width, l.share, r.share)} open={bandLife.isOpen(b.key)} leaving={bandLife.leaving.has(b.key)} ms={bandLife.msOf(b)} phone={phoneHalf(halfAspect)} growth={growth} reduced={reduced} onReady={bandLife.ready} />;
+                  return <MotifView key={`motif:${b.key}`} b={b} left={bridgeLeftCss(row, b.index)} width={motifWidth(b.width, l.share, r.share)} open={bandLife.isOpen(b.key)} leaving={bandLife.leaving.has(b.key)} ms={bandLife.msOf(b)} phone={phoneHalf(halfAspect, { narrow })} growth={growth} reduced={reduced} onReady={bandLife.ready} />;
                 })}
             </div>
             {half && <div className="scn-mist" />}
@@ -206,6 +207,21 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
     </>
   );
 });
+
+/** Is the screen phone-width (layout.ts `PHONE_VIEWPORT_MAX`)? Its halves then take the phone pictures. Follows rotation and resizes. */
+function useNarrowScreen(): boolean {
+  const query = `(max-width: ${PHONE_VIEWPORT_MAX}px)`;
+  const [narrow, setNarrow] = useState(() => typeof matchMedia === 'function' && matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return;
+    const m = matchMedia(query);
+    const on = () => setNarrow(m.matches);
+    on();
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, [query]);
+  return narrow;
+}
 
 /** A panel's shape (width / height), measured only when a choice hangs on it (a stage with a phone picture); null otherwise. Rounded, so a flex transition re-renders rarely. */
 function usePanelAspect(ref: React.RefObject<HTMLDivElement | null>, on: boolean): number | null {
@@ -284,11 +300,12 @@ function Slot({
   const nextPicture: PackHalf | null = half && hasNextStage ? halfAt(pack, drawn + 1) : null;
   const ref = useRef<HTMLDivElement>(null);
   const panelAspect = usePanelAspect(ref, !!(picture?.phone || nextPicture?.phone));
-  const chosen = half ? halfArtOf(picture, panelAspect) : null;
+  const narrow = useNarrowScreen();
+  const chosen = half ? halfArtOf(picture, panelAspect, { narrow }) : null;
   const art: HalfArt | null = !chosen ? null : chosen.picture && failed.includes(chosen.picture.src) ? STRIP_ART : chosen;
   const pic = art?.picture ?? null;
   // Spec 1.6: the next stage's half picture, cross-faded over this one by the progress.
-  const nextChosen = pic && nextPicture ? halfArtOf(nextPicture, panelAspect) : null;
+  const nextChosen = pic && nextPicture ? halfArtOf(nextPicture, panelAspect, { narrow }) : null;
   const nextArt = nextChosen?.picture && nextChosen.picture.src !== pic!.src && !failed.includes(nextChosen.picture.src) ? nextChosen : null;
 
   // Spec 1.7: the in-between frames of a stage step, played over the half picture when they are warmed and decoded.
