@@ -21,7 +21,9 @@
  * with ForgeCoach's own scenery pack, whose pictures they were painted to meet.
  * `?light=on` (or `off`) does the same for the light pass (spec 1.13,
  * light.ts): each half graded by the game's arc, low life and game over. Off
- * by default until Justin has judged it.
+ * by default until Justin has judged it. `?horizon=on` (or `off`) does the
+ * same for spec 1.13's one horizon: every panel pins its picture's horizon at
+ * the same height (layout.ts `HORIZON_AT`); off by default too.
  */
 
 export type SceneryMode = 'off' | 'procedural' | 'pack';
@@ -37,6 +39,8 @@ export interface SceneryPrefs {
   fill: boolean;
   /** Spec 1.13: the light pass (light.ts) grades each half by the game; off by default. */
   light: boolean;
+  /** Spec 1.13: one horizon across every panel (layout.ts `HORIZON_AT`); off by default. */
+  horizon: boolean;
   /**
    * Spec 1.9: where the pair bands come from for this page load (`?pairs=`): a
    * URL, or '' for none. Absent: {@link pairsUrlOf}'s default. Never stored.
@@ -67,7 +71,7 @@ export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgeco
  */
 export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3.1/';
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
-export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true, light: false };
+export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true, light: false, horizon: false };
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -92,6 +96,7 @@ export function loadSceneryPrefs(s?: Store | null): SceneryPrefs {
     if (typeof v.accents === 'boolean') out.accents = v.accents;
     if (typeof v.fill === 'boolean') out.fill = v.fill;
     if (typeof v.light === 'boolean') out.light = v.light;
+    if (typeof v.horizon === 'boolean') out.horizon = v.horizon;
   } catch {
     /* corrupt or blocked storage → defaults */
   }
@@ -132,17 +137,18 @@ function switchParam(search: string, hash: string, name: string): boolean | null
   return v === 'off' || v === '0' ? false : v === 'on' || v === '1' ? true : null;
 }
 
-/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=`, `?light=` and `?pairs=` applied. */
+/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=`, `?light=`, `?horizon=` and `?pairs=` applied. */
 export function effectivePrefs(stored: SceneryPrefs, search: string, hash: string): SceneryPrefs {
   const a = switchParam(search, hash, 'accents');
   const f = switchParam(search, hash, 'fill');
   const l = switchParam(search, hash, 'light');
+  const hz = switchParam(search, hash, 'horizon');
   const pr = sceneryParam(search, hash, 'pairs');
   const pairs = pr === null ? {} : { pairsUrl: pr === 'off' || pr === '0' ? '' : pr === 'forgecoach' || pr === 'on' ? FORGECOACH_PAIRS_URL : pr };
   const withAccents =
-    a === null && f === null && l === null && pr === null
+    a === null && f === null && l === null && hz === null && pr === null
       ? stored
-      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...pairs };
+      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...(hz === null ? {} : { horizon: hz }), ...pairs };
   const p = sceneryParam(search, hash);
   if (!p) return withAccents;
   if (p === 'off') return { ...withAccents, mode: 'off' };
@@ -174,6 +180,11 @@ export function fillOn(p: SceneryPrefs): boolean {
 /** Does the light pass grade the halves (spec 1.13)? Only with the scenery on and "Light follows the game" on. */
 export function lightOn(p: SceneryPrefs): boolean {
   return p.mode !== 'off' && p.light;
+}
+
+/** One horizon across the panels (spec 1.13)? Only with the scenery on and "One horizon" on. */
+export function horizonOn(p: SceneryPrefs): boolean {
+  return p.mode !== 'off' && p.horizon;
 }
 
 /** Stills only? `system` follows the OS's prefers-reduced-motion. */
