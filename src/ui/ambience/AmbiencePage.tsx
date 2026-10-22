@@ -32,6 +32,7 @@ import { gradeFor, type LightOutcome } from '../../ambience/light.ts';
 import { applyGrade } from './lightGrade.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
+import { pairFullCaption, pairFullPlan } from '../../ambience/pairfull.ts';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
 import { HalfScrim } from './HalfScrim.tsx';
 import { ScenePieces } from './ScenePieces.tsx';
@@ -223,13 +224,14 @@ export default function AmbiencePage() {
             top
             slots={counts(SIM_PLAYERS[1])}
             creatures={creaturesOf(SIM_PLAYERS[1])}
-            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null) : null}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null, initial.pairFull === true) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[1]).length > 0}
             strip={
               <>
                 <SceneryStrip
                   slots={slotsOf(scenery, SIM_PLAYERS[1])}
                   duals={dualsOf(scenery, SIM_PLAYERS[1])}
+                  pairFull={!!initial.pairFull}
                   pack={pack}
                   edge="top"
                   orient={orient}
@@ -251,13 +253,14 @@ export default function AmbiencePage() {
             player={SIM_PLAYERS[0]}
             slots={counts(SIM_PLAYERS[0])}
             creatures={creaturesOf(SIM_PLAYERS[0])}
-            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null) : null}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null, initial.pairFull === true) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[0]).length > 0}
             strip={
               <>
                 <SceneryStrip
                   slots={slotsOf(scenery, SIM_PLAYERS[0])}
                   duals={dualsOf(scenery, SIM_PLAYERS[0])}
+                  pairFull={!!initial.pairFull}
                   pack={pack}
                   edge="bottom"
                   reduced={reduced}
@@ -537,7 +540,10 @@ function describe(e: SceneryEvent): string {
 }
 
 /** Spec 1.9: a side's pair bands in words (1.12: a motif pair says so), for the preview's caption (the dual and shock names are for this only). */
-function bandCaption(pack: ScenePack | null, slots: ReturnType<typeof slotsOf>, duals: Readonly<Record<string, number>>, stageOverride: number | null): string | null {
+function bandCaption(pack: ScenePack | null, slots: ReturnType<typeof slotsOf>, duals: Readonly<Record<string, number>>, stageOverride: number | null, pairFull = false): string | null {
+  // Spec 1.13 draft: under `?pairfull=1` a side drawn as its pair picture says so instead.
+  const full = pairFull && pack?.pairs ? pairFullCaption(pairFullPlan(halfLayout(slots, pack, stageOverride), pack.pairs, { thresholds: pack.stageThresholds, stageOverride })) : null;
+  if (full) return full;
   if (!pack?.pairs) return null;
   const bands = pairBands(halfLayout(slots, pack, stageOverride), pack.pairs, duals);
   if (!bands.length) return null;

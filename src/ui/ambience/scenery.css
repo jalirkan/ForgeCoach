@@ -1114,3 +1114,19 @@
 .scn-host.scn-lit .scn.is-reduced::after {
   transition: none;
 }
+
+/* Spec 1.15 (`?pairfull=1`, SceneryStrip `PairFullPanel`): the pair picture as the whole half, mirrored when the
+   board has the pair the other way round; its frame pans with the land share over the panels' 900 ms. */
+.scn-pairfull-art {
+  position: absolute;
+  inset: 0;
+}
+.scn-pairfull.is-mirrored .scn-pairfull-art {
+  transform: scaleX(-1);
+}
+.scn-pairfull-frame {
+  transition: left 900ms ease, top 900ms ease, width 900ms ease, height 900ms ease;
+}
+.scn.is-reduced .scn-pairfull-frame {
+  transition: none;
+}

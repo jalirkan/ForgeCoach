@@ -235,6 +235,7 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
                 fill={fill ? 'half' : 'strip'}
                 duals={dualsOf(scenery, t.playerId)}
                 horizon={horizonOn(prefs)}
+                pairFull={!!prefs.pairFull}
               />
               {pieces && <ScenePieces pack={load.pack} pieces={pieces} slots={slotsOf(scenery, t.playerId)} landNames={landNamesOf(state, t.playerId)} outcome={outcomeFor(t.playerId)} edge={t.top ? 'top' : 'bottom'} reduced={reduced} horizon={horizonOn(prefs)} />}
               {accents && <SceneryOverlay slots={slotsOf(scenery, t.playerId)} pack={load.pack} edge={t.top ? 'top' : 'bottom'} reduced={reduced} half={fill} duals={dualsOf(scenery, t.playerId)} />}
