@@ -250,6 +250,12 @@ describe('spec 1.5: the cover crop', () => {
     expect(pickHalfPicture(h, 1.5).phone).toBe(true);
     expect(pickHalfPicture(h, 0.5).phone).toBe(true);
     expect(pickHalfPicture(h, null).phone).toBe(false);
+    // A phone-width screen takes the phone picture whatever the half's shape (a 390 × 844 phone's half is ~2.1 : 1).
+    expect(pickHalfPicture(h, 2.14, { narrow: true }).phone).toBe(true);
+    expect(pickHalfPicture(h, null, { narrow: true }).phone).toBe(true);
+    expect(pickHalfPicture(h, 2.14, { narrow: false }).phone).toBe(false);
+    expect(pickHalfPicture({ ...h, phone: null }, 2.14, { narrow: true }).phone).toBe(false);
+    expect(halfArtOf(h, 2.14, { narrow: true })).toMatchObject({ aspect: 0.8, source: 'phone' });
     expect(halfArtOf(h, 1.1)).toMatchObject({ aspect: 0.8, source: 'phone', focal: { x: 0.5, y: 0.4875 } });
     // No phone picture: the desktop one, cropped, everywhere.
     const desk = validateManifest(packWith([{ half: half() }]), BASE).pack!.biomes.island!.stages[0]!.half!;

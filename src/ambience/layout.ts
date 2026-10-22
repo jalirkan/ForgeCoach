@@ -217,6 +217,9 @@ export interface HalfArt {
 /** Strip art (older packs, the built-in scenery) is 4:1 (the spec's 2048 × 512 backdrops), its horizon ~57% up: anchored there. */
 export const STRIP_ART: HalfArt = { aspect: 4, focal: { x: 0.5, y: 0.43 }, safe: null, source: 'strip', picture: null };
 
+/** A screen this wide (CSS px) or narrower is a phone: its halves take the phone pictures (see {@link pickHalfPicture}). */
+export const PHONE_VIEWPORT_MAX = 600;
+
 const shape = (p: HalfPicture) => Math.round((p.width / p.height) * 10000) / 10000;
 
 /**
@@ -224,17 +227,25 @@ const shape = (p: HalfPicture) => Math.round((p.width / p.height) * 10000) / 100
  * shows: the phone picture when the panel's shape is nearer the phone's than
  * the desktop's (on a log scale: 1:1 is as far from 4:1 as from 1:4), else
  * the desktop picture. Unknown shape: the desktop picture.
+ *
+ * On a phone-width screen (`narrow`, {@link PHONE_VIEWPORT_MAX}) the phone
+ * picture whatever the panel's shape: a phone's half of the board measures
+ * about 2.1 : 1 (376 × 176 at 390 × 844), nearer the desktop's 16:5 than the
+ * phone's 4:5, so the shape rule alone never showed the phone art on a phone.
+ * The phone picture is outpainted into sky and calm ground around its subject
+ * band precisely so that a wide crop of its middle still reads.
  */
-export function pickHalfPicture(h: PackHalf, panelAspect: number | null): { picture: HalfPicture; phone: boolean } {
+export function pickHalfPicture(h: PackHalf, panelAspect: number | null, opts?: { narrow?: boolean }): { picture: HalfPicture; phone: boolean } {
+  if (h.phone && opts?.narrow === true) return { picture: h.phone, phone: true };
   if (!h.phone || !(panelAspect !== null && panelAspect > 0)) return { picture: h, phone: false };
   const d = (p: HalfPicture) => Math.abs(Math.log(panelAspect / shape(p)));
   return d(h.phone) < d(h) ? { picture: h.phone, phone: true } : { picture: h, phone: false };
 }
 
 /** The frame for a picture of a stage's `half`, or the strip art's. */
-export function halfArtOf(h: PackHalf | null, panelAspect: number | null = null): HalfArt {
+export function halfArtOf(h: PackHalf | null, panelAspect: number | null = null, opts?: { narrow?: boolean }): HalfArt {
   if (!h) return STRIP_ART;
-  const { picture, phone } = pickHalfPicture(h, panelAspect);
+  const { picture, phone } = pickHalfPicture(h, panelAspect, opts);
   return { aspect: shape(picture), focal: picture.focal, safe: picture.safe, source: phone ? 'phone' : 'half', picture };
 }
 

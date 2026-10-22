@@ -221,7 +221,9 @@ describe('the seam and the anchor (spec 1.8)', () => {
   });
   it('takes the phone piece where the half is nearer 4:5 than 16:5', () => {
     expect(PHONE_HALF_ASPECT).toBeCloseTo(1.6, 6);
-    expect([null, 0, 0.9, 1.3, 1.59, 1.61, 3.2].map(phoneHalf)).toEqual([false, false, true, true, true, false, false]);
+    expect([null, 0, 0.9, 1.3, 1.59, 1.61, 3.2].map((a) => phoneHalf(a))).toEqual([false, false, true, true, true, false, false]);
+    // A phone-width screen: the phone pieces whatever the half's shape (a 390 × 844 phone's half is ~2.1 : 1).
+    expect([null, 2.14, 3.2].map((a) => phoneHalf(a, { narrow: true }))).toEqual([true, true, true]);
   });
   it('warms a side’s bridge with its split’s pictures, at the board’s shape, each file once', () => {
     const sides = [

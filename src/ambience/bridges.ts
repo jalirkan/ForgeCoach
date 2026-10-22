@@ -137,8 +137,9 @@ export function bridgePlacements(layout: readonly HalfSlotLayout[], pack: SceneP
   return out;
 }
 
-/** Does a half of this shape (width / height) take the phone pieces? Unknown shape: the desktop ones. */
-export function phoneHalf(halfAspect: number | null): boolean {
+/** Does a half of this shape (width / height) take the phone pieces? On a phone-width screen (`narrow`) always (layout.ts `pickHalfPicture`); else by shape, unknown shape: the desktop ones. */
+export function phoneHalf(halfAspect: number | null, opts?: { narrow?: boolean }): boolean {
+  if (opts?.narrow === true) return true;
   return halfAspect !== null && halfAspect > 0 && halfAspect < PHONE_HALF_ASPECT;
 }
 
