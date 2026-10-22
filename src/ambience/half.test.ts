@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_HALF_LAYOUT, halfAt, halfBytes, halfUrls, hasHalfArt, layersAt, MAX_HALF_BYTES, validateManifest } from './manifest.ts';
-import { halfArt, halfArtOf, halfFrame, pickHalfPicture, halfFrameCss, halfLayout, halfSpans, STRIP_ART, type HalfArt } from './layout.ts';
+import { DESKTOP_HORIZON, halfArt, halfArtOf, halfFrame, HORIZON_AT, horizonOf, pickHalfPicture, halfFrameCss, halfLayout, halfSpans, STRIP_ART, type HalfArt } from './layout.ts';
 import { contrast, hexRgb, over, scrimRects, SCRIM_EDGE_ALPHA, SCRIM_FEATHER_PX, SCRIM_PAD_PX, SCRIM_STRENGTH, type Rgb } from './scrim.ts';
 import { DEFAULT_PREFS, effectivePrefs, fillOn, loadSceneryPrefs } from './prefs.ts';
 import { halfGolden } from './testdata/halfGolden.ts';
@@ -417,3 +417,64 @@ describe('spec 1.5: golden half layouts', () => {
   it('the built-in scenery fills the half, as recorded', () => expect(now.builtin).toEqual(golden.builtin));
   it('the 1.5 example pack uses its half pictures, as recorded', () => expect(now.example).toEqual(golden.example));
 });
+
+describe('one horizon (spec 1.13)', () => {
+  const where = (box: { w: number; h: number }, art: HalfArt, hy: number) => {
+    const f = halfFrame(box, art);
+    return f.top + hy * f.height; // the horizon's height in the panel, 0 top
+  };
+  it("reads a picture's horizon from its subject band: the spec's 0.43 for the default band, 0.465 for a phone's", () => {
+    expect(horizonOf({ subjectBand: [0.35, 0.6] })).toBeCloseTo(DESKTOP_HORIZON, 4);
+    expect(horizonOf({ subjectBand: [0.425, 0.55] })).toBeCloseTo(0.465, 4);
+  });
+  it('puts every panel\'s horizon at the same height whatever its width and its band (phone pictures, cropped across)', () => {
+    // Three stages with the bands packs really use (pack-v9 has [0.33, 0.6] and [0.4, 0.58] beside the default).
+    const bands: [number, number][] = [[0.35, 0.6], [0.33, 0.6], [0.4, 0.58]];
+    const cases = bands.flatMap((band) => [{ w: 100, h: 100 }, { w: 214, h: 100 }].map((box) => ({ band, box })));
+    const at = (horizon: boolean) =>
+      cases.map(({ band, box }) => {
+        const h = validateManifest(packWith([{ half: half({ subjectBand: band, phone: { src: 'p.webp', subjectBand: [0.25 + band[0] / 2, 0.25 + band[1] / 2] } }) }]), BASE).pack!.biomes.island!.stages[0]!.half!;
+        const a = halfArtOf(h, box.w / box.h, { narrow: true, horizon });
+        return where(box, a, horizonOf(a.picture!));
+      });
+    const off = at(false);
+    const on = at(true);
+    expect(Math.max(...off) - Math.min(...off)).toBeGreaterThan(0.04);
+    for (const y of on) expect(y).toBeCloseTo(HORIZON_AT, 3);
+  });
+  it('a declared horizon wins over the estimate; a bad one is warned and estimated', () => {
+    const ok = validateManifest(packWith([{ half: half({ horizon: 0.52 }) }]), BASE).pack!.biomes.island!.stages[0]!.half!;
+    expect(horizonOf(ok)).toBe(0.52);
+    const bad = validateManifest(packWith([{ half: half({ horizon: 2 }) }]), BASE);
+    expect(bad.warnings.some((w) => /horizon/.test(w))).toBe(true);
+    expect(horizonOf(bad.pack!.biomes.island!.stages[0]!.half!)).toBeCloseTo(DESKTOP_HORIZON, 4);
+  });
+  it('desktop pictures in narrower panels were already level, and stay so', () => {
+    const d = validateManifest(packWith([{ half: half() }]), BASE).pack!.biomes.island!.stages[0]!.half!;
+    for (const w of [120, 300, 640]) {
+      const a = halfArtOf(d, w / 200, { horizon: true });
+      expect(where({ w, h: 200 }, a, horizonOf(a.picture!))).toBeCloseTo(HORIZON_AT, 3);
+    }
+  });
+  it('keeps the subject band whole when pinning would cut it (the crop allows only so much)', () => {
+    const h = validateManifest(packWith([{ half: half({ phone: { src: 'p.webp' } }) }]), BASE).pack!.biomes.island!.stages[0]!.half!;
+    const a = halfArtOf(h, 3, { narrow: true, horizon: true });
+    const f = halfFrame({ w: 300, h: 100 }, a);
+    const [b0, b1] = a.picture!.subjectBand;
+    expect(f.top + b0 * f.height).toBeGreaterThanOrEqual(-1e-6);
+    expect(f.top + b1 * f.height).toBeLessThanOrEqual(1 + 1e-6);
+  });
+  it('strip art is pinned the same way, and the CSS twin agrees with halfFrame', () => {
+    expect(halfArtOf(null, null, { horizon: true })).toMatchObject({ focal: STRIP_ART.focal, focalTo: HORIZON_AT });
+    expect(halfArtOf(null)).toBe(STRIP_ART);
+    const h = validateManifest(packWith([{ half: half({ phone: { src: 'p.webp' } }) }]), BASE).pack!.biomes.island!.stages[0]!.half!;
+    for (const [w, hh] of [[100, 100], [214, 100], [300, 100], [80, 200]] as const) {
+      const a = halfArtOf(h, w / hh, { narrow: true, horizon: true });
+      const n = halfFrame({ w, h: hh }, a);
+      const css = halfFrameCss(a);
+      expect(evalCss(css.top, w, hh) / hh, `${w}x${hh} top`).toBeCloseTo(n.top, 3);
+      expect(evalCss(css.left, w, hh) / w, `${w}x${hh} left`).toBeCloseTo(n.left, 3);
+    }
+  });
+});
+

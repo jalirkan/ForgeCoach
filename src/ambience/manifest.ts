@@ -132,6 +132,8 @@ export interface HalfPicture {
   focal: FocalPoint;
   /** Kept whole whenever the panel's shape allows (default: the subject band across the middle half). */
   safe: AreaRect;
+  /** Spec 1.13: the horizon's height, a fraction from the top, when the pack declares it (else layout.ts `horizonOf` estimates it from the band). */
+  horizon?: number;
 }
 
 /**
@@ -1123,7 +1125,14 @@ function parseHalfPicture(v: Obj, base: string, path: string, warn: string[], si
     else focal = { x: f.x, y: f.y };
   }
   const safe = parseSafe(v.safe, `${path}.safe`, warn) ?? { x: 0.25, y: band[0], w: 0.5, h: +(band[1] - band[0]).toFixed(4) };
-  return { src: src!, src2x, width, height, subjectBand: band, focal, safe };
+  // Spec 1.13: an optional declared horizon (0-1 from the top); one horizon pins it across panels.
+  let horizon: number | undefined;
+  if (v.horizon !== undefined && v.horizon !== null) {
+    const hz = num(v.horizon, 0.05, 0.95);
+    if (hz === null) warn.push(`${path}.horizon: the horizon's height, a fraction 0.05–0.95 of the picture from its top; estimating it from the subject band`);
+    else horizon = hz;
+  }
+  return { src: src!, src2x, width, height, subjectBand: band, focal, safe, ...(horizon === undefined ? {} : { horizon }) };
 }
 
 /**

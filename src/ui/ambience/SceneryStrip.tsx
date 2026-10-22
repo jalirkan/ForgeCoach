@@ -101,12 +101,16 @@ export interface SceneryStripProps {
   fill?: 'strip' | 'half';
   /** Spec 1.8: the player's dual lands per biome pair (model.ts `dualsOf`); they widen a bridged pair's seam. */
   duals?: Readonly<Record<string, number>>;
+  /** Spec 1.13, one horizon: every panel pins its picture's horizon at the same height (layout.ts `HORIZON_AT`). */
+  horizon?: boolean;
   className?: string;
   style?: CSSProperties;
 }
 
 /** Has the strip painted once? Layers mounted after that bloom in. */
 const Settled = createContext<{ current: boolean }>({ current: true });
+/** Spec 1.13: one horizon across the strip's panels (SceneryStripProps `horizon`). */
+const OneHorizon = createContext(false);
 
 export function usePageVisible(): boolean {
   const [v, setV] = useState(() => typeof document === 'undefined' || document.visibilityState !== 'hidden');
@@ -120,7 +124,7 @@ export function usePageVisible(): boolean {
 
 const NO_DUALS: Readonly<Record<string, number>> = {};
 
-export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, className, style }: SceneryStripProps) {
+export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, horizon = false, className, style }: SceneryStripProps) {
   const visible = usePageVisible();
   const settled = useRef(false);
   useEffect(() => {
@@ -168,6 +172,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
           aria-hidden="true"
           data-fill={fill}
         >
+          <OneHorizon.Provider value={horizon}>
           <Settled.Provider value={settled}>
             <div className="scn-row">
               {row
@@ -194,6 +199,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
             </div>
             {half && <div className="scn-mist" />}
           </Settled.Provider>
+          </OneHorizon.Provider>
         </div>
       )}
       {/* Effects: the strip's twin box, without its deep fade (an effect on the far strip would vanish in it); still behind the cards. */}
@@ -301,11 +307,12 @@ function Slot({
   const ref = useRef<HTMLDivElement>(null);
   const panelAspect = usePanelAspect(ref, !!(picture?.phone || nextPicture?.phone));
   const narrow = useNarrowScreen();
-  const chosen = half ? halfArtOf(picture, panelAspect, { narrow }) : null;
+  const horizon = useContext(OneHorizon);
+  const chosen = half ? halfArtOf(picture, panelAspect, { narrow, horizon }) : null;
   const art: HalfArt | null = !chosen ? null : chosen.picture && failed.includes(chosen.picture.src) ? STRIP_ART : chosen;
   const pic = art?.picture ?? null;
   // Spec 1.6: the next stage's half picture, cross-faded over this one by the progress.
-  const nextChosen = pic && nextPicture ? halfArtOf(nextPicture, panelAspect, { narrow }) : null;
+  const nextChosen = pic && nextPicture ? halfArtOf(nextPicture, panelAspect, { narrow, horizon }) : null;
   const nextArt = nextChosen?.picture && nextChosen.picture.src !== pic!.src && !failed.includes(nextChosen.picture.src) ? nextChosen : null;
 
   // Spec 1.7: the in-between frames of a stage step, played over the half picture when they are warmed and decoded.
@@ -502,7 +509,8 @@ function Band({ b, share, seam, open, leaving, ms, phone, growth, reduced, onRea
   const settled = useContext(Settled);
   const h = pairHalfAt(b.pair, b.stage);
   const motif = motifPicOf(pairMotifAt(b.pair, b.stage), phone && !!h?.phone);
-  const art = h ? halfArtOf(h, phone && h.phone ? h.phone.width / h.phone.height : null) : null;
+  const horizon = useContext(OneHorizon);
+  const art = h ? halfArtOf(h, phone && h.phone ? h.phone.width / h.phone.height : null, { horizon }) : null;
   const shape: TransitionShape = art?.source === 'phone' ? 'phone' : 'desktop';
   const tweenCtx = useRef({ pair: b.pair, shape, reduced });
   tweenCtx.current = { pair: b.pair, shape, reduced };

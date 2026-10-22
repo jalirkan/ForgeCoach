@@ -212,6 +212,33 @@ export interface HalfArt {
   source: 'half' | 'phone' | 'strip';
   /** The picture to draw (null for strip art: the stage's layers). */
   picture?: HalfPicture | null;
+  /**
+   * Spec 1.13, one horizon: where in the panel's height the focal point's y
+   * lands (0 top, 1 bottom; default 0.5, centred). With the horizon as the
+   * focal y and {@link HORIZON_AT} here, every panel puts its horizon at the
+   * same height whatever its width -- within what the crop allows.
+   */
+  focalTo?: number;
+}
+
+/** Where the spec puts a desktop half picture's horizon (§5: about 57% up), as a fraction from the top. */
+export const DESKTOP_HORIZON = 0.43;
+/** One horizon (spec 1.13): every panel puts its picture's horizon this far down. */
+export const HORIZON_AT = DESKTOP_HORIZON;
+
+/**
+ * A picture's horizon, as a fraction of its height from the top. Packs do not
+ * declare one, so it is read from the subject band: the default band [0.35,
+ * 0.60] holds the spec's horizon (0.43) 32% of the way down, and a picture's
+ * own band holds its horizon at the same place -- for a phone picture with the
+ * default band mapped in ([0.425, 0.55]) that is 0.465, the desktop horizon
+ * mapped the same way. A pack may declare a picture's `horizon` (spec 1.13),
+ * which then wins: the estimate is only as good as the band.
+ */
+export function horizonOf(p: Pick<HalfPicture, 'subjectBand' | 'horizon'>): number {
+  if (p.horizon !== undefined) return p.horizon;
+  const [a, b] = p.subjectBand;
+  return Math.round((a + ((DESKTOP_HORIZON - 0.35) / 0.25) * (b - a)) * 10000) / 10000;
 }
 
 /** Strip art (older packs, the built-in scenery) is 4:1 (the spec's 2048 × 512 backdrops), its horizon ~57% up: anchored there. */
@@ -243,10 +270,12 @@ export function pickHalfPicture(h: PackHalf, panelAspect: number | null, opts?: 
 }
 
 /** The frame for a picture of a stage's `half`, or the strip art's. */
-export function halfArtOf(h: PackHalf | null, panelAspect: number | null = null, opts?: { narrow?: boolean }): HalfArt {
-  if (!h) return STRIP_ART;
+export function halfArtOf(h: PackHalf | null, panelAspect: number | null = null, opts?: { narrow?: boolean; horizon?: boolean }): HalfArt {
+  if (!h) return opts?.horizon ? { ...STRIP_ART, focalTo: HORIZON_AT } : STRIP_ART;
   const { picture, phone } = pickHalfPicture(h, panelAspect, opts);
-  return { aspect: shape(picture), focal: picture.focal, safe: picture.safe, source: phone ? 'phone' : 'half', picture };
+  const art: HalfArt = { aspect: shape(picture), focal: picture.focal, safe: picture.safe, source: phone ? 'phone' : 'half', picture };
+  // Spec 1.13, one horizon: the crop pins the picture's horizon at HORIZON_AT down every panel.
+  return opts?.horizon ? { ...art, focal: { x: picture.focal.x, y: horizonOf(picture) }, focalTo: HORIZON_AT } : art;
 }
 
 /** The frame for a biome at a stage in a panel of `panelAspect`: its half picture when the pack has one (spec 1.5), else the strip art. */
@@ -257,11 +286,13 @@ export function halfArt(pack: ScenePack | null, biome: SlotState['biome'], stage
 /**
  * One axis of a cover crop: how far (in the drawn picture's units) the view
  * starts into it. The focal point as near the view's middle as the picture
- * allows; the safe span kept whole when it fits, else centred.
+ * allows; the safe span kept whole when it fits, else centred. `to`: where
+ * in the view the focal point goes (0.5, the middle, unless spec 1.13's one
+ * horizon says otherwise).
  */
-function cropAxis(shown: number, drawn: number, focal: number, safeStart: number | null, safeSize: number | null): number {
+function cropAxis(shown: number, drawn: number, focal: number, safeStart: number | null, safeSize: number | null, to = 0.5): number {
   const over = Math.max(0, drawn - shown);
-  const val = focal * drawn - shown / 2;
+  const val = focal * drawn - to * shown;
   let lo = 0;
   let hi = over;
   if (safeStart !== null && safeSize !== null) {
@@ -277,13 +308,13 @@ function cropAxis(shown: number, drawn: number, focal: number, safeStart: number
  * (fractions of the box, as {@link fitRect}; left / top ≤ 0). The same math as
  * {@link halfFrameCss}.
  */
-export function halfFrame(box: { w: number; h: number }, art: Pick<HalfArt, 'aspect' | 'focal' | 'safe'>): FrameRect {
+export function halfFrame(box: { w: number; h: number }, art: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo'>): FrameRect {
   if (!(box.w > 0 && box.h > 0 && art.aspect > 0)) return { left: 0, top: 0, width: 1, height: 1 };
   const dw = Math.max(box.w, box.h * art.aspect);
   const dh = dw / art.aspect;
   const s = art.safe;
   const ox = cropAxis(box.w, dw, art.focal.x, s ? s.x : null, s ? s.w : null);
-  const oy = cropAxis(box.h, dh, art.focal.y, s ? s.y : null, s ? s.h : null);
+  const oy = cropAxis(box.h, dh, art.focal.y, s ? s.y : null, s ? s.h : null, art.focalTo ?? 0.5);
   const r = (n: number) => Math.round(n * 10000) / 10000;
   return { left: r(-ox / box.w) || 0, top: r(-oy / box.h) || 0, width: r(dw / box.w), height: r(dh / box.h) };
 }
@@ -294,14 +325,14 @@ export function halfFrame(box: { w: number; h: number }, art: Pick<HalfArt, 'asp
  * as it grows with no script. CSS `clamp(lo, v, hi)` is `max(lo, min(v, hi))`,
  * the same as cropAxis with its bounds pre-ordered.
  */
-export function halfFrameCss(art: Pick<HalfArt, 'aspect' | 'focal' | 'safe'>): { left: string; top: string; width: string; height: string } {
+export function halfFrameCss(art: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo'>): { left: string; top: string; width: string; height: string } {
   const f = (n: number) => String(Math.round(n * 10000) / 10000);
   const a = f(art.aspect);
   const dw = `max(100cqw, ${a} * 100cqh)`;
   const dh = `(${dw} / ${a})`;
-  const axis = (shown: string, drawn: string, focal: number, start: number | null, size: number | null) => {
+  const axis = (shown: string, drawn: string, focal: number, start: number | null, size: number | null, to = 0.5) => {
     const over = `(${drawn} - ${shown})`;
-    const val = `(${f(focal)} * ${drawn} - ${shown} / 2)`;
+    const val = to === 0.5 ? `(${f(focal)} * ${drawn} - ${shown} / 2)` : `(${f(focal)} * ${drawn} - ${f(to)} * ${shown})`;
     if (start === null || size === null) return `clamp(0px, ${val}, ${over})`;
     const lo = `min(${over}, max(0px, ${f(start + size)} * ${drawn} - ${shown}))`;
     const hi = `min(${over}, ${f(start)} * ${drawn})`;
@@ -311,7 +342,7 @@ export function halfFrameCss(art: Pick<HalfArt, 'aspect' | 'focal' | 'safe'>): {
   const s = art.safe;
   return {
     left: `calc(-1 * ${axis('100cqw', dw, art.focal.x, s ? s.x : null, s ? s.w : null)})`,
-    top: `calc(-1 * ${axis('100cqh', dh, art.focal.y, s ? s.y : null, s ? s.h : null)})`,
+    top: `calc(-1 * ${axis('100cqh', dh, art.focal.y, s ? s.y : null, s ? s.h : null, art.focalTo ?? 0.5)})`,
     width: dw,
     height: `calc(${dh})`,
   };

@@ -104,6 +104,12 @@ export function ScenerySettings() {
           Light follows the game (preview): cool early, warmer later, a storm at 5 life or less, a glow or dusk when it ends
         </label>
       )}
+      {p.mode !== 'off' && (
+        <label className="field-help" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input type="checkbox" checked={p.horizon} onChange={(e) => set({ ...p, horizon: e.target.checked })} data-scenery-horizon />
+          One horizon (preview): every land's picture puts its horizon at the same height, so the side reads as one landscape
+        </label>
+      )}
       <label className="field-help" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         Motion
         <select value={p.motion} onChange={(e) => set({ ...p, motion: e.target.value as MotionPref })}>
