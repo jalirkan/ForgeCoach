@@ -28,15 +28,16 @@
  * Only the viewing seat's redacted battlefield is read (model.ts
  * `visibleCard`: a hidden or face-down card is never a landmark).
  *
- * Today's board gives a third colour its own panel (layout.ts `halfLayout`),
- * so the element is planned but not drawn: it belongs to the whole-half pair
- * picture (spec 1.15, pairfull.ts, behind `?pairfull=1`), whose
- * `pairFullView` / `pairFullElementRegion` give the region it stands in.
+ * The element is drawn only on the whole-half pair picture (spec 1.15,
+ * pairfull.ts, behind `?pairfull=1`): there the third colour is the pair's
+ * `element` and `pairFullView` / `pairFullElementRegion` give the region it
+ * stands in. Today's board (the flag off) gives a third colour its own panel
+ * (layout.ts `halfLayout`), so no element is drawn there.
  */
 import type { GameStateBody } from '../protocol.ts';
 import { hasType, visibleCard } from '../state.ts';
 import { halfFrame, halfArtOf, horizonOf, DESKTOP_HORIZON, type FrameRect, type HalfSlotLayout } from './layout.ts';
-import { halfAt, MAX_LANDMARKS_SHOWN, PIECE_COLOURS, type PackHalf, type PiecePlace, type PieceColour, type ScenePack, type VeilOutcome } from './manifest.ts';
+import { halfAt, MAX_LANDMARKS_SHOWN, PIECE_COLOURS, type PackHalf, type PackPieces, type PiecePlace, type PieceColour, type ScenePack, type VeilOutcome } from './manifest.ts';
 import type { Biome, SlotState } from './model.ts';
 import type { LightOutcome } from './light.ts';
 
@@ -119,6 +120,13 @@ export function heaviestPair(m: Makeup, prev: readonly PieceColour[] | null = nu
 export function pairStageOf(total: number): number {
   if (!(total > 0)) return 0;
   return total >= 5 - 1e-9 ? 3 : total >= 3 - 1e-9 ? 2 : 1;
+}
+
+/** The biomes a pack's pieces have an element for (pairfull.ts `pairFullPlan`'s `elements`), or null with none. */
+export function elementBiomes(pieces: Pick<PackPieces, 'elements'> | null | undefined): ReadonlySet<Biome> | null {
+  const out = new Set<Biome>();
+  for (const c of PIECE_COLOURS) if (pieces?.elements[c]) out.add(COLOUR_BIOME[c]);
+  return out.size ? out : null;
 }
 
 /** Visible lands on a player's battlefield, by name, in the battlefield's order (the engine's: earliest first). */

@@ -790,6 +790,10 @@
   inset: 0;
   container-type: size;
 }
+.scn-pc-element {
+  position: absolute;
+  inset: 0;
+}
 .scn-pc {
   position: absolute;
   display: block;
