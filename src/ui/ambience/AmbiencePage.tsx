@@ -23,10 +23,10 @@ import { BIOME_LABEL, dualsOf, sceneryFromLog, slotsOf, type Biome } from '../..
 import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '../../ambience/effects.ts';
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
 import { SIM_PLAYERS, simLandCount, simLog, simSetLandCount, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
-import { browserLoader, checkEffectFiles, fetchManifest, loadPairs, manifestUrlFor, preloadPack, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
+import { browserLoader, checkEffectFiles, fetchManifest, loadPairs, manifestUrlFor, preloadPack, warmPicture, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
 import { pairBands, pairsBytes, type PairsPack } from '../../ambience/pairs.ts';
 import { halfLayout } from '../../ambience/layout.ts';
-import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, type EffectEvent, type PackEffect, type ScenePack } from '../../ambience/manifest.ts';
+import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, pieceUrls, type EffectEvent, type PackEffect, type PackPieces, type ScenePack } from '../../ambience/manifest.ts';
 import { currentPrefs, loadSceneryPrefs, pairsUrlOf, saveSceneryPrefs } from '../../ambience/prefs.ts';
 import { gradeFor, type LightOutcome } from '../../ambience/light.ts';
 import { applyGrade } from './lightGrade.ts';
@@ -34,6 +34,8 @@ import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
 import { HalfScrim } from './HalfScrim.tsx';
+import { ScenePieces } from './ScenePieces.tsx';
+import { builtinPieces } from './piecesArt.ts';
 import { useSceneryFx, type PlaceCard } from './useScenery.ts';
 import './ambience-page.css';
 
@@ -92,6 +94,8 @@ export default function AmbiencePage() {
   // Spec 1.4: preview the built-in full-area placeholder where the pack gives none; and a pasted manifest previewed as is.
   const [areaPreview, setAreaPreview] = useState(false);
   const [pastedPack, setPastedPack] = useState<ScenePack | null>(null);
+  // Spec 1.14: the pieces previewed: the pack's, ForgeCoach's placeholders (preview only), or none.
+  const [piecesMode, setPiecesMode] = useState<'pack' | 'builtin' | 'off'>('pack');
   // Spec 1.6: which side the land-count sliders play for.
   const [countSide, setCountSide] = useState<number>(SIM_PLAYERS[0]);
 
@@ -184,6 +188,12 @@ export default function AmbiencePage() {
 
   const counts = (player: number) => slotsOf(scenery, player);
 
+  const outcomeOf = (i: number): LightOutcome => (ending === 'none' ? null : ending === 'draw' ? 'draw' : (ending === 'you') === (i === 0) ? 'won' : 'lost');
+  const previewPieces: PackPieces | null = piecesMode === 'builtin' ? builtinPieces() : piecesMode === 'pack' ? (pack?.pieces ?? null) : null;
+  useEffect(() => {
+    if (previewPieces) for (const src of pieceUrls(previewPieces, { phone: window.innerWidth < 700 })) warmPicture({ src, src2x: null });
+  }, [previewPieces]);
+
   useLayoutEffect(() => {
     SIM_PLAYERS.forEach((player, i) => {
       const el = table.current?.querySelector<HTMLElement>(`.amb-bf[data-amb-player="${player}"]`);
@@ -229,6 +239,7 @@ export default function AmbiencePage() {
                   stageOverride={stage || null}
                   fill={fill ? 'half' : 'strip'}
                 />
+                {previewPieces && fill && <ScenePieces pack={pack} pieces={previewPieces} slots={slotsOf(scenery, SIM_PLAYERS[1])} landNames={piecesMode === 'builtin' ? ['Seaside Citadel', 'Exotic Orchard'] : []} outcome={outcomeOf(1)} edge="top" reduced={reduced} />}
                 {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[1])} pack={pack} edge="top" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} half={fill} duals={dualsOf(scenery, SIM_PLAYERS[1])} />}
               </>
             }
@@ -255,6 +266,7 @@ export default function AmbiencePage() {
                   stageOverride={stage || null}
                   fill={fill ? 'half' : 'strip'}
                 />
+                {previewPieces && fill && <ScenePieces pack={pack} pieces={previewPieces} slots={slotsOf(scenery, SIM_PLAYERS[0])} landNames={piecesMode === 'builtin' ? ['City of Brass'] : []} outcome={outcomeOf(0)} edge="bottom" reduced={reduced} />}
                 {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[0])} pack={pack} edge="bottom" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} half={fill} duals={dualsOf(scenery, SIM_PLAYERS[0])} />}
               </>
             }
@@ -415,6 +427,20 @@ export default function AmbiencePage() {
               <span className="amb-hint">
                 Spec 1.4: one transparent picture scattered over the whole area, from stage 2, thicker each stage. <i>Built-in placeholder</i> adds ForgeCoach's own where the pack has none (preview only; the board never shows it). Hidden under {AREA_MIN_WIDTH_PX} px unless the piece sets <code>minWidthPx</code>.
                 {pack && hasAreaPieces(pack) ? ' This pack has full-area pieces.' : ''}
+              </span>
+            </div>
+            <div className="amb-field">
+              <span>Pieces</span>
+              <div className="amb-seg" role="radiogroup" aria-label="Pieces">
+                {(['pack', 'builtin', 'off'] as const).map((m) => (
+                  <button key={m} role="radio" aria-checked={piecesMode === m} className={piecesMode === m ? 'is-on' : ''} onClick={() => setPiecesMode(m)} data-pieces-toggle={m} disabled={!fill}>
+                    {m === 'pack' ? 'Pack only' : m === 'builtin' ? 'Placeholders' : 'Off'}
+                  </button>
+                ))}
+              </div>
+              <span className="amb-hint">
+                Spec 1.14 (whole half only): the empty table before a side's first colour, landmarks on the horizon (<i>Placeholders</i> stands City of Brass on your side, Seaside Citadel and Exotic Orchard on the opponent's), a colour's front when it arrives or leaves, and the end's veil (the Light card's <i>end</i>). Elements wait for the whole-half pair picture. <i>Placeholders</i> are ForgeCoach's own shapes, preview only; the board never shows them.
+                {pack?.pieces ? ' This pack has pieces.' : ''}
               </span>
             </div>
             <div className="amb-field">

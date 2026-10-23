@@ -14,7 +14,9 @@
  * dark scrim beneath it (HalfScrim), so the cards read as on the plain board.
  * With Settings → Light follows the game (spec 1.13, off by default), each
  * battlefield's scenery is graded by the game's arc, that player's life and
- * the game's end (ambience/light.ts, lightGrade.ts).
+ * the game's end (ambience/light.ts, lightGrade.ts). A pack with spec 1.14
+ * `pieces` gets them over each filled half (ScenePieces: the empty table,
+ * landmarks, the end's veil, a colour's front).
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -30,10 +32,12 @@ import { cachedMap, useCardsVersion } from '../cardData.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
 import { accentsOn, fillOn, horizonOn, lightOn } from '../../ambience/prefs.ts';
-import { gradeFor, lightInputOf } from '../../ambience/light.ts';
+import { gradeFor, lightInputOf, outcomeAt } from '../../ambience/light.ts';
+import { landNamesOf } from '../../ambience/pieces.ts';
+import { ScenePieces } from './ScenePieces.tsx';
 import { applyGrade } from './lightGrade.ts';
 import { HalfScrim } from './HalfScrim.tsx';
-import { halfUrls } from '../../ambience/manifest.ts';
+import { halfUrls, pieceUrls } from '../../ambience/manifest.ts';
 import { effectGate } from '../../ambience/effects.ts';
 import { browserLoader, growthPictures, preloadEffects, preloadOverlays, warmPicture } from '../../ambience/pack.ts';
 import { useReducedMotion, useSceneryFx, useSceneryLoad, useSceneryPrefs, type PlaceCard } from './useScenery.ts';
@@ -187,6 +191,16 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     if (fill) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
   }, [scenery, load?.pack, fill]);
 
+  // Spec 1.14: the pieces that can appear at once (fronts, veils, landmarks, the empty table) warm with the pack.
+  const pieces = fill ? (load?.pack?.pieces ?? null) : null;
+  useEffect(() => {
+    if (!pieces) return;
+    for (const src of pieceUrls(pieces, { phone: window.innerWidth < 700 })) warmPicture({ src, src2x: null });
+  }, [pieces]);
+  // The game's end at the board's frame, per player (one walk of the log per frame, and only with pieces).
+  const outcomes = useMemo(() => new Map((pieces ? (state?.players ?? []) : []).map((p) => [p.id, outcomeAt(log, frameIndex, p.id)])), [pieces, state, log, frameIndex, log.frames.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const outcomeFor = (playerId: number) => outcomes.get(playerId) ?? null;
+
   // Spec 1.13: each battlefield graded by the game at the board's frame; off takes the grade away.
   const light = lightOn(prefs) && !!load;
   useLayoutEffect(() => {
@@ -222,6 +236,7 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
                 duals={dualsOf(scenery, t.playerId)}
                 horizon={horizonOn(prefs)}
               />
+              {pieces && <ScenePieces pack={load.pack} pieces={pieces} slots={slotsOf(scenery, t.playerId)} landNames={landNamesOf(state, t.playerId)} outcome={outcomeFor(t.playerId)} edge={t.top ? 'top' : 'bottom'} reduced={reduced} horizon={horizonOn(prefs)} />}
               {accents && <SceneryOverlay slots={slotsOf(scenery, t.playerId)} pack={load.pack} edge={t.top ? 'top' : 'bottom'} reduced={reduced} half={fill} duals={dualsOf(scenery, t.playerId)} />}
             </>,
             t.el,

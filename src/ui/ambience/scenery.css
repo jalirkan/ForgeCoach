@@ -767,6 +767,38 @@
   background: linear-gradient(to top, var(--scn-mist-color), transparent);
 }
 
+/* Spec 1.14's pieces (ScenePieces.tsx): over the half's scenery, at its z-index (later in the DOM, so above it), beneath
+   the accents, the scrim and the cards; faded into the centre line's mist as the half is. */
+.scn-pieces {
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  pointer-events: none;
+  user-select: none;
+  overflow: hidden;
+  container-type: size;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--scn-mist, 16%));
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--scn-mist, 16%));
+}
+.scn-pieces.scn-fade-bottom {
+  -webkit-mask-image: linear-gradient(to top, transparent 0, #000 var(--scn-mist, 16%));
+  mask-image: linear-gradient(to top, transparent 0, #000 var(--scn-mist, 16%));
+}
+.scn-pc-empty,
+.scn-pc-front {
+  position: absolute;
+  inset: 0;
+  container-type: size;
+}
+.scn-pc {
+  position: absolute;
+  display: block;
+  object-fit: fill;
+}
+.scn-pc-in {
+  animation: scn-in-fade 1600ms ease both;
+}
+
 /* The card-row scrim (HalfScrim.tsx): a soft tint under each card row, no wider than its cards,
    at --scn-scrim-strength, feathered out over ~14 px, so the scenery shows through. */
 .scn-scrims {
@@ -1060,7 +1092,8 @@
  * never touched: they sit above the scenery on the host.
  */
 .scn-host.scn-lit .scn,
-.scn-host.scn-lit .scn-ovl {
+.scn-host.scn-lit .scn-ovl,
+.scn-host.scn-lit .scn-pieces {
   filter: var(--scn-light-filter, none);
   transition: filter 2.4s ease;
 }

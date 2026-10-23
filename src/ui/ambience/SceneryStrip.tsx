@@ -215,7 +215,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
 });
 
 /** Is the screen phone-width (layout.ts `PHONE_VIEWPORT_MAX`)? Its halves then take the phone pictures. Follows rotation and resizes. */
-function useNarrowScreen(): boolean {
+export function useNarrowScreen(): boolean {
   const query = `(max-width: ${PHONE_VIEWPORT_MAX}px)`;
   const [narrow, setNarrow] = useState(() => typeof matchMedia === 'function' && matchMedia(query).matches);
   useEffect(() => {
