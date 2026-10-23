@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.14)
+# Scenery pack spec (schema 1, version 1.15)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -30,6 +30,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.12 | **Motifs** (§2, *Motifs*): a pair stage in `pairs.json` may carry a **`motif`**, a transparent picture painted for the band's own narrow, full-height shape (pairs-v3: the road, river or causeway both lands share, running up the seam to the horizon). A pair whose stages have a motif and **no `half`** is a *motif pair*: its seam stays the plain 1.10 seam and the motif is drawn **over** it, centred on the seam, `band` wide, so its own soft banks are the band's edges; its frames are `motifTransitions`. A band pair (1.9) may carry a motif too, drawn over its picture. Every 1.9–1.10 pairs manifest is read unchanged. |
 | 1.13 | **Light and horizon** (§2, *The half board*): a stage's `half` picture (and its `phone`) may declare its **`horizon`**, and the stage its painted **`hour`** (0–24) and light **`key`** (`dawn` … `night`), so the two halves' horizons and light can be matched (ForgeCoach's pack: pack-v9.1, measured off each painting). A pack without them is read as before.
 | 1.14 | **Pieces** (§2, *Pieces*): an optional top-level **`pieces`** for the scenery system of pc-results `scenery/SYSTEM.md`: per colour an **element** (a third colour inside the heaviest pair's picture) and a **front** (the weather a colour arrives in: a few frames, hard cuts, then a fade; backwards when it leaves), per card name a **landmark** (standing on the horizon), the end's **veils** (`won`, `lost`) and the **empty table** (a half picture for a side with no colour yet); each piece a transparent picture with a `place` (`sit`: `fill`, `horizon` or `ground`; `x`, `w`, `lift`); their budget (§3). Drawn on the half board only. A pack without `pieces` is read and drawn as before.
+| 1.15 | **Whole-half pair panoramas** (§2, *Whole-half pair panoramas*), behind `?pairfull=1` only, default off: a pair stage in `pairs.json` may carry a **`panorama`**, one picture of one place 1.6 × the half's 16 : 5 (and a 1.28 : 1 `phone`), the key's first biome the ground at its left end and the second at its right. A half of exactly two colours with a pair picture shows it across the **whole half** (the panorama, else the 1.9 `half`), and the land share **pans** it (the transition sits at the share) instead of widening a band; its stage from the two colours' total lands. Three colours: the heaviest pair's picture beside the third's panel (a placeholder until 1.14's element is drawn). `pairFullView` exposes the transition, each colour's ground and the horizon for 1.14's pieces. ForgeCoach's pairs under the flag: pairs-v4. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -69,6 +70,7 @@ other game information.
 - **Pair bands (1.9).** A second, optional manifest may give each pair a place of its own: where the two biomes meet on one side of the half board, the seam opens into a third panel, the pair's landscape (named for its dual land), which widens with every land that is both colours.
 - **Calm seams (1.10).** A half shows at most three biomes; a seam with a band has no bridge; a half picture changes only at a stage; a full-area accent stays over its own biome.
 - **Motifs (1.12).** A pair can be a road up the seam instead of a third picture: drawn over the plain seam, so nothing is cut.
+- **Whole-half pair panoramas (1.15, `?pairfull=1` only).** A half of two colours shows one picture of their pair's place across the whole half, panned by the land share; off for players.
 - **Hidden information.** Only the viewing seat's redacted battlefield is read, so the scenery never shows anything the board does not.
 
 ## 2. Manifest format
@@ -1516,7 +1518,7 @@ a side has any colour. They come in one optional top-level object:
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `elements` | object keyed by colour (`W` `U` `B` `R` `G`) | A transparent piece per colour. With three or more colours the picture is the heaviest pair's, and the third colour (four or five fold to the three heaviest) is its element, on the heavier pair colour's side, faded in by its share (an equal third is fully in). *Planned, not drawn yet*: today's half gives a third colour a panel of its own, so elements wait for the whole-half pair picture. |
+| `elements` | object keyed by colour (`W` `U` `B` `R` `G`) | A transparent piece per colour. With three or more colours the picture is the heaviest pair's, and the third colour (four or five fold to the three heaviest) is its element, on the heavier pair colour's side, faded in by its share (an equal third is fully in). *Planned, not drawn yet*: today's half gives a third colour a panel of its own, so elements wait for the whole-half pair picture (1.15, *Whole-half pair panoramas*: `pairFullElementRegion` is the region an element stands in there). |
 | `landmarks` | object keyed by a card's exact name (≤ 80 characters; ≤ 24 names) | A transparent piece per landmark land. It goes over whatever the half shows, the empty table included; one per name (a second copy adds nothing), at most **two** a half, the earliest on the battlefield. Default place: `horizon`, `x` 0.5, `w` 0.25. |
 | `fronts` | object keyed by colour | `frames` (1–4, each a `src` at the desktop half's shape and an optional `phone`, each with an optional own `holdMs`), `holdMs` (40–1000, default 200), `fadeMs` (0–1000, default 180), `bytes`. Played over the whole half with hard cuts when the colour arrives (a new heaviest pair: the colour that joined it), then faded; backwards when it leaves. The empty table's first colour dissolves the table instead. A front and a stage step at once: only the front. None with reduced motion. |
 | `veils` | `{ "won", "lost" }` | A transparent piece over the winner's and the loser's half once the game is over (default place `fill`); faded in. A draw has none. |
@@ -1544,6 +1546,128 @@ mist as the half does. `src/ambience/pieces.ts` decides what a half shows
 SYSTEM.md's worked example) and places it (`piecePlacement`, `horizonAt`);
 `#ambience` → **Pieces → Placeholders** shows ForgeCoach's own dashed
 placeholders (preview only).
+
+### Whole-half pair panoramas (1.15)
+
+**Behind a flag.** Nothing here changes the board unless the page is opened
+with **`?pairfull=1`** (or `#ambience?pairfull=1`); off by default, and never
+stored. Turning it on for players is a later call, once 1.14's pieces are
+drawn on these pictures. A pairs manifest without `panorama` is read as
+before, and a reader that does not know the field reads a 1.15 manifest as a
+1.9–1.12 one.
+
+On 22 October 2026 Justin set the direction: not a seam band and not a road
+motif; "when two lands are on the board, the space of BOTH lands is the space
+we have to communicate (1) the type of land and (2) the transition between
+them; with three lands, that becomes the space to communicate how much of each
+and let them transition". And: look at the dual, shock and fetch lands' own
+art (one place where both colours belong, split in depth at a natural edge,
+one light over both, the minor colour as an element in the major one). He
+judged the first panoramas painted to that brief "really, really awesome",
+and on 23 October had them published: ForgeCoach's **pairs-v4**.
+
+**The `panorama` field.** A pair stage may carry a `panorama` beside its
+`half`, in the shape of a 1.5 `half` (`src`, optional `src2x`, `width` and
+`height` of the 1x file, `subjectBand`, `focal`, `safe`, 1.13's `horizon`,
+`hour` and `key`, an optional `phone`, `bytes`):
+
+```json
+"stages": [ {...}, {...}, {
+  "half": { "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s3-half.webp", ... },
+  "panorama": { "src": "pairs/island-plains/s3-panorama.webp", "width": 3277, "height": 640,
+                "subjectBand": [0.38, 0.72], "focal": { "x": 0.5, "y": 0.52 },
+                "safe": { "x": 0.1875, "y": 0.38, "w": 0.625, "h": 0.34 },
+                "horizon": 0.47, "hour": 21, "key": "night", "bytes": 276780,
+                "phone": { "src": "pairs/island-plains/s3-panorama-phone.webp", "width": 1638, "height": 1280,
+                           "subjectBand": [0.33, 0.68], "focal": { "x": 0.5, "y": 0.5 }, "horizon": 0.47 } } } ]
+```
+
+- **What it is.** One picture of one place, **1.6 × the half's 16 : 5**
+  (3277 × 640 at 1x): the key's **first** biome is the ground at the **left**
+  end with the second behind it, the second is the ground at the right end
+  with the first behind it, and the transition (a real edge: a shore, a
+  waterline, the grass's end) crosses the middle third. `focal.x` is where the
+  transition is (the split lands there); `safe` is the even-share window, for
+  a reader that keeps one. The phone picture is **1.28 : 1** (1638 × 1280: 1.6
+  × a 4 : 5 phone picture's width), so the same pan works on a phone. A URL
+  may be absolute: pairs-v4 names pairs-v2's halves and frames at their own
+  tag, so they cost its ref nothing.
+- **When.** On the half board, a half whose live biomes (lands on the
+  battlefield; a withered panel is left out) are **exactly two**, with a
+  `pairs.json` entry that is a band pair (1.9: stages with `half`). A motif
+  pair (1.12) has no picture to fill a half with, so its half is drawn as
+  today; so is a half of one colour, or of a pair with no entry, or with no
+  pairs at all. With the flag and ForgeCoach's own pack, the pairs default to
+  **pairs-v4** (`FORGECOACH_PAIRS_FULL_URL`); `?pairs=` still wins. Without
+  the flag the board keeps pairs-v3.1.
+- **The picture is the half.** The stage's `panorama` (else its `half`; the
+  phone picture on a phone, as 1.5 picks) fills the half edge to edge: no
+  panels, no seam, no band, no bridge, no motif. Mirrored when the board has
+  the pair the other way round from the key, as in 1.9. A panorama with no
+  `phone` gives way to the stage's `half` wherever the half would draw its
+  phone picture, so a desktop-only panorama never reaches a phone. A stage's
+  panorama is never borrowed by another stage.
+- **The share pans it.** `split` = the left biome's share of the two biomes'
+  land weight (board order; a dual ½ to each), clamped to **0.2–0.8** so the
+  lighter colour always keeps a fifth (1.14's `split` is the same number in
+  the key's order). The picture is drawn `max(1, split / t, (1 − split) / (1 − t))`
+  × the half's width (`t` = `focal.x`; at most **1.6**, or wider when its
+  height must cover) and panned so its transition lands at `split` across the
+  half. A panorama is already 1.6 wide, so it is drawn 1.6 × the half at every
+  share and the share only moves it: **0.5** shows its middle 62.5 %, **0.2**
+  and **0.8** run to an end, where the heavier colour fills four fifths of
+  the half. The horizontal safe rect gives way (the transition is what is
+  kept); the vertical crop is 1.5's (the subject band whole when it fits), or
+  1.13's one horizon when that is on. A land moves the frame over 900 ms, as
+  the panels move; at once with reduced motion.
+- **Stage.** From the two biomes' **total** land weight on the pack's
+  `stageThresholds` (the stage a one-colour half with as many lands would
+  show), through the pair's `stageMap`: on ForgeCoach's pack one or two lands
+  are pair stage 1, three or four stage 2, five or more stage 3 — 1.14's
+  `pairStage` exactly. Not 1.9's lower neighbour: with the picture as the
+  whole half, six Islands and a Plains are a seven-land half, and the lower
+  neighbour would hold it at pair stage 1 all game. Not the duals: a pair
+  without a dual on the battlefield still grows. A stage step cross-fades over
+  `growth.seconds`; the pair's 1.7 frames are pairs-v2's, painted for the
+  half, and are not played over a panorama.
+- **Three biomes (a placeholder).** The heaviest pair with a picture (the two
+  biomes' land weight; a tie, the earlier arrivals) takes the pair picture,
+  panned by its own two biomes' split; the third biome keeps **today's
+  panel**, at its own `halfLayout` share (at least `minShare`) and its own
+  stage, at its end of the row (the left when it arrived before both, else
+  the right), meeting the picture in a plain 1.10 seam. 1.14's element
+  replaces that panel once it is drawn. Four or more biomes fold to three
+  first (1.10).
+- **What the pieces stand on (1.14).** `pairFullView` gives, in the half's own
+  fractions and board order: the pair panel's span, **`seamAt`** (where the
+  transition lands), each colour's **`ground`** (the left biome from the
+  panel's left edge to `seamAt`, the right from `seamAt` to its right edge),
+  **`horizonY`** (the picture's declared or estimated horizon through the
+  crop: a `horizon` piece's foot) and the picture's frame. An **element**
+  stands in `pairFullElementRegion`: the heavier pair colour's ground
+  (1.14's `element.side`), stopping **0.05** of the half short of the
+  transition, sitting on the ground (`sit: "ground"`), and is **never
+  mirrored** with the picture. A front or a veil covers the whole half, as on
+  any half.
+- **Accents.** Unchanged: the full-area accent is still masked to the 1.10
+  panel spans, which do not match a whole-half picture.
+
+`src/ambience/pairfull.ts` is the rule (`pairFullPlan`, `pairFullSplit`,
+`pairFullStage`, `pairFullArt`, `pairFullZoom`, `pairFullFrame` and its CSS
+twin `pairFullFrameCss`, `pairFullView`, `pairFullElementRegion`);
+`pairfull.test.ts` checks it and `pairs-v4.test.ts` is the live manifest;
+SceneryStrip's `PairFullPanel` draws it.
+
+**Budget.** A panorama counts in its pair's stage pictures (1.9's ≤ 4 MB per
+pair, with the pair's halves), and the whole manifest in the pairs pack's
+≤ 45 MB, both as declared. pairs-v4's own ref holds 14.6 MB: desktop
+panoramas at q80 with no `src2x` (a 2x file adds nothing at the board's size:
+a 958-px half at DPR 2 draws it 3066 device pixels wide), phone
+panoramas at q80 with no `src2x`.
+
+**A triple** is still to paint: the two heaviest colours as ground and
+backdrop, the third as an element or light in that place (a river through
+it, fire in it, crystals, the sky's colour), never a third tile.
 
 ## 3. Files and budgets
 

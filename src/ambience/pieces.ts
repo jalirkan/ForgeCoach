@@ -30,7 +30,8 @@
  *
  * Today's board gives a third colour its own panel (layout.ts `halfLayout`),
  * so the element is planned but not drawn: it belongs to the whole-half pair
- * picture (the PC's `pc/scenery-whole-half`, pairfull.ts) when that lands.
+ * picture (spec 1.15, pairfull.ts, behind `?pairfull=1`), whose
+ * `pairFullView` / `pairFullElementRegion` give the region it stands in.
  */
 import type { GameStateBody } from '../protocol.ts';
 import { hasType, visibleCard } from '../state.ts';

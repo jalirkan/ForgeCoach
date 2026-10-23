@@ -11,8 +11,8 @@
  * ambience/pieces.ts's; nothing here decides what shows.
  *
  * Elements are planned but not drawn: today's half gives a third colour its
- * own panel, so they wait for the whole-half pair picture (the PC's
- * pc/scenery-whole-half, pairfull.ts).
+ * own panel, so they wait for the whole-half pair picture (spec 1.15,
+ * pairfull.ts `pairFullView` / `pairFullElementRegion`, behind `?pairfull=1`).
  *
  * A pack without `pieces` draws nothing (SceneryLayer does not mount this).
  * Reduced motion: no fronts, and the empty table, landmarks and veils appear

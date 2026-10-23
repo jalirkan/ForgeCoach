@@ -290,7 +290,7 @@ export function halfArt(pack: ScenePack | null, biome: SlotState['biome'], stage
  * in the view the focal point goes (0.5, the middle, unless spec 1.13's one
  * horizon says otherwise).
  */
-function cropAxis(shown: number, drawn: number, focal: number, safeStart: number | null, safeSize: number | null, to = 0.5): number {
+export function cropAxis(shown: number, drawn: number, focal: number, safeStart: number | null, safeSize: number | null, to = 0.5): number {
   const over = Math.max(0, drawn - shown);
   const val = focal * drawn - to * shown;
   let lo = 0;
@@ -319,6 +319,20 @@ export function halfFrame(box: { w: number; h: number }, art: Pick<HalfArt, 'asp
   return { left: r(-ox / box.w) || 0, top: r(-oy / box.h) || 0, width: r(dw / box.w), height: r(dh / box.h) };
 }
 
+const cssNum = (n: number) => String(Math.round(n * 10000) / 10000);
+
+/** {@link cropAxis} as a CSS length expression (`shown` and `drawn` CSS lengths), for the CSS twins of the crops. */
+export function cropAxisCss(shown: string, drawn: string, focal: number, start: number | null, size: number | null, to = 0.5): string {
+  const f = cssNum;
+  const over = `(${drawn} - ${shown})`;
+  const val = to === 0.5 ? `(${f(focal)} * ${drawn} - ${shown} / 2)` : `(${f(focal)} * ${drawn} - ${f(to)} * ${shown})`;
+  if (start === null || size === null) return `clamp(0px, ${val}, ${over})`;
+  const lo = `min(${over}, max(0px, ${f(start + size)} * ${drawn} - ${shown}))`;
+  const hi = `min(${over}, ${f(start)} * ${drawn})`;
+  const mid = `((${lo} + ${hi}) / 2)`;
+  return `clamp(min(${lo}, ${mid}), ${val}, max(${hi}, ${mid}))`;
+}
+
 /**
  * {@link halfFrame} as CSS for an element inside a size container (the slot):
  * `cqw` / `cqh` are the slot's width and height, so the crop follows the slot
@@ -326,19 +340,10 @@ export function halfFrame(box: { w: number; h: number }, art: Pick<HalfArt, 'asp
  * the same as cropAxis with its bounds pre-ordered.
  */
 export function halfFrameCss(art: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo'>): { left: string; top: string; width: string; height: string } {
-  const f = (n: number) => String(Math.round(n * 10000) / 10000);
-  const a = f(art.aspect);
+  const a = cssNum(art.aspect);
   const dw = `max(100cqw, ${a} * 100cqh)`;
   const dh = `(${dw} / ${a})`;
-  const axis = (shown: string, drawn: string, focal: number, start: number | null, size: number | null, to = 0.5) => {
-    const over = `(${drawn} - ${shown})`;
-    const val = to === 0.5 ? `(${f(focal)} * ${drawn} - ${shown} / 2)` : `(${f(focal)} * ${drawn} - ${f(to)} * ${shown})`;
-    if (start === null || size === null) return `clamp(0px, ${val}, ${over})`;
-    const lo = `min(${over}, max(0px, ${f(start + size)} * ${drawn} - ${shown}))`;
-    const hi = `min(${over}, ${f(start)} * ${drawn})`;
-    const mid = `((${lo} + ${hi}) / 2)`;
-    return `clamp(min(${lo}, ${mid}), ${val}, max(${hi}, ${mid}))`;
-  };
+  const axis = cropAxisCss;
   const s = art.safe;
   return {
     left: `calc(-1 * ${axis('100cqw', dw, art.focal.x, s ? s.x : null, s ? s.w : null)})`,

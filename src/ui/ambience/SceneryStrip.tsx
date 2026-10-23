@@ -74,11 +74,12 @@ import { nextStepFrames, transitionFrames, tweenAllowed, type TransitionShape } 
 import { pictureReady, warmPicture } from '../../ambience/pack.ts';
 import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, PHONE_VIEWPORT_MAX, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt, type HalfSlotLayout } from '../../ambience/layout.ts';
 import { bridgePlacements, halfSeams, phoneHalf, seamCentreCss, type BridgePlacement } from '../../ambience/bridges.ts';
-import { bandedSeams, halfRow, motifBands, motifWidth, pairBands, pairHalfAt, pairMotifAt, panelBands, rowCentreCss, type PairBandPlacement, type PairMotif, type RowItem } from '../../ambience/pairs.ts';
+import { bandedSeams, halfRow, motifBands, motifWidth, pairBands, pairHalfAt, pairMotifAt, pairPanoramaAt, panelBands, rowCentreCss, type PairBandPlacement, type PairMotif, type RowItem } from '../../ambience/pairs.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import { useFadeIn, useFadeStack } from './useFade.ts';
 import { useTween } from './useTween.ts';
+import { pairFullArt, pairFullFrameCss, pairFullPlan, type PairFullPair } from '../../ambience/pairfull.ts';
 import './scenery.css';
 
 export type { StripEffect } from './SceneryEffects.tsx';
@@ -103,6 +104,8 @@ export interface SceneryStripProps {
   duals?: Readonly<Record<string, number>>;
   /** Spec 1.13, one horizon: every panel pins its picture's horizon at the same height (layout.ts `HORIZON_AT`). */
   horizon?: boolean;
+  /** Spec 1.15 (`?pairfull=1`): a half of two colours with a pair picture shows it across the whole half (pairfull.ts). */
+  pairFull?: boolean;
   className?: string;
   style?: CSSProperties;
 }
@@ -124,7 +127,7 @@ export function usePageVisible(): boolean {
 
 const NO_DUALS: Readonly<Record<string, number>> = {};
 
-export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, horizon = false, className, style }: SceneryStripProps) {
+export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, horizon = false, pairFull = false, className, style }: SceneryStripProps) {
   const visible = usePageVisible();
   const settled = useRef(false);
   useEffect(() => {
@@ -141,6 +144,8 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const pairsPack = half ? (pack?.pairs ?? null) : null;
   const bands = useMemo(() => (pairsPack ? pairBands(layout as HalfSlotLayout[], pairsPack, duals) : []), [pairsPack, layout, duals]);
   const bandLife = useBandLife(bands, layout as HalfSlotLayout[], pack, reduced);
+  // Spec 1.15: the pair picture as the whole half (null: the half as today).
+  const fullPlan = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride]);
   const narrow = useNarrowScreen();
   const halfAspect = usePanelAspect(hostRef, (bridged && layout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone)) || bandLife.shown.some((b) => b.pair.stages.some((st) => !!st.half?.phone || !!st.motif?.phone)));
   // Spec 1.10: a seam with a band (wanted, or fading out) draws no bridge and keeps the base seam.
@@ -175,7 +180,13 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
           <OneHorizon.Provider value={horizon}>
           <Settled.Provider value={settled}>
             <div className="scn-row">
-              {row
+              {fullPlan
+                ? fullPlan.map((it, k) => {
+                    if (it.kind === 'pair') return <PairFullPanel key={`pairfull:${it.key}`} p={it} first={k === 0} growth={growth} reduced={reduced} narrow={narrow} />;
+                    const l = (layout as HalfSlotLayout[])[it.index]!;
+                    return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={it.share} first={k === 0} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} />;
+                  })
+                : row
                 ? row.map((it, k) => {
                     const seam = k > 0 && it.seam !== halfCfg.seamRatio ? `${+(it.seam * 100).toFixed(2)}cqw` : undefined;
                     if (it.kind === 'band') {
@@ -188,8 +199,9 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
                 : layout.map(({ slot, stage, progress, grow }, i) => (
                     <Slot key={slot.biome} slot={slot} stage={stage} progress={progress} grow={grow} first={i === 0} pack={pack?.biomes[slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[slot.biome] ?? 0} half={half} />
                   ))}
-              {row && bridged && <Bridges placements={placements} layout={layout as HalfSlotLayout[]} row={row} pack={pack} reduced={reduced} />}
-              {row &&
+              {!fullPlan && row && bridged && <Bridges placements={placements} layout={layout as HalfSlotLayout[]} row={row} pack={pack} reduced={reduced} />}
+              {!fullPlan &&
+                row &&
                 motifBands(bandLife.shown).map((b) => {
                   const l = (layout as HalfSlotLayout[])[b.index - 1];
                   const r = (layout as HalfSlotLayout[])[b.index];
@@ -595,6 +607,69 @@ function Band({ b, share, seam, open, leaving, ms, phone, growth, reduced, onRea
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Spec 1.15: the pair picture as the whole half (`?pairfull=1`)
+
+/**
+ * The pair picture across its panel (the whole half, or all of it but a third
+ * biome's panel): the stage's `panorama` (pairs-v4), else its `half` picture
+ * (the phone one on a phone or a phone-shaped panel; pairfull.ts
+ * `pairFullArt`), drawn pairfull.ts `pairFullFrameCss` wide and panned so
+ * the picture's transition sits at the land share; mirrored when the board has
+ * the pair the other way round. A land moves the frame over 900 ms, as the
+ * panels move; a stage step cross-fades over `growth.seconds`.
+ */
+function PairFullPanel({ p, first, growth, reduced, narrow }: { p: PairFullPair; first: boolean; growth: PackGrowth; reduced: boolean; narrow: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const half = pairHalfAt(p.pair, p.stage);
+  const pano = pairPanoramaAt(p.pair, p.stage);
+  const panelAspect = usePanelAspect(ref, !!half?.phone || !!pano?.phone);
+  const horizon = useContext(OneHorizon);
+  const art = pairFullArt(half, pano, panelAspect, narrow, horizon);
+  // The frame is computed in the picture's own order; the mirror flips it back.
+  const split = p.mirror ? 1 - p.split : p.split;
+  const ms = growthMs(growth, reduced);
+  const pic = art?.picture ?? null;
+  return (
+    <div
+      ref={ref}
+      className={['scn-slot', 'scn-pairfull', first && 'is-first', p.mirror && 'is-mirrored'].filter(Boolean).join(' ')}
+      style={{ flexGrow: p.share }}
+      data-pairfull={p.key}
+      data-pairfull-split={p.split}
+      data-pairfull-stage={p.stage}
+      data-pairfull-dual={p.pair.dual ?? undefined}
+      data-pairfull-panorama={pano && art?.picture && (art.picture.src === pano.src || art.picture.src === pano.phone?.src) ? 'yes' : undefined}
+      data-art={art?.source}
+    >
+      {pic && (
+        <div className="scn-pairfull-art">
+          <FadeGroup
+            cur={{ key: pic.src, payload: art! }}
+            next={null}
+            fade={0}
+            ms={ms}
+            render={(e) => (
+              <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
+                <PairFullPicture art={e.payload} split={split} />
+              </Layer>
+            )}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PairFullPicture({ art, split }: { art: HalfArt; split: number }) {
+  const pic = art.picture!;
+  return (
+    <div className="scn-frame scn-pairfull-frame" style={pairFullFrameCss(art, split)}>
+      <img className="scn-half-img" src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} />
     </div>
   );
 }

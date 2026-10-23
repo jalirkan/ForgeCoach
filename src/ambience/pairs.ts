@@ -42,8 +42,8 @@ import { halfSeams, SEAM_CAP_VW, widenedRatio } from './bridges.ts';
 
 /** The pair pack's manifest, at the root of the pairs URL. */
 export const PAIRS_MANIFEST_FILE = 'pairs.json';
-/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs). */
-export const PAIRS_SPEC = '1.12';
+/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs, 1.15 whole-half panoramas). */
+export const PAIRS_SPEC = '1.15';
 const MAX_PAIRS_MANIFEST_BYTES = 256 * 1024;
 
 /** How wide a pair's band is, as fractions of the half's width. */
@@ -79,6 +79,15 @@ export type PairMotif = PackHalf;
 /** A pair's stage: a 1.5 `half` (a band pair), a 1.12 `motif`, or both. */
 export interface PairStage extends PackStage {
   motif?: PairMotif;
+  /**
+   * Spec 1.15: the stage's whole-half panorama, in the shape of a 1.5
+   * `half` (`src`, `src2x`, `width` / `height` of the 1x file, `focal`,
+   * `safe`, optional `phone`, `bytes`): one place about 1.6 × the half's
+   * width, the first biome the ground at its left end and the second at its
+   * right, the transition at `focal.x`. Read only under `?pairfull=1`
+   * (pairfull.ts), where it is drawn instead of the stage's `half`.
+   */
+  panorama?: PackHalf;
 }
 
 /**
@@ -167,6 +176,12 @@ export function pairStageFor(map: readonly (readonly [number, number])[], lower:
   return lower > map[map.length - 1]![1] ? map.length : 1;
 }
 
+/** Spec 1.15: the panorama a pair's stage carries (the last stage past its end), or null: never borrowed from another stage. */
+export function pairPanoramaAt(pair: PackPair | null | undefined, stage: number): PackHalf | null {
+  if (!pair || stage <= 0 || !pair.stages.length) return null;
+  return pair.stages[Math.min(stage, pair.stages.length) - 1]?.panorama ?? null;
+}
+
 /** The half picture a pair shows at a pair stage (the last stage it has past its end), or null. */
 export function pairHalfAt(pair: PackPair | null | undefined, stage: number): PackHalf | null {
   if (!pair || stage <= 0 || !pair.stages.length) return null;
@@ -250,7 +265,8 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
     }
     const half = parseHalf(st.half, base, `${sp}.half`, warn);
     if (!half) return void warn.push(`${sp}: no usable half picture; stage dropped`);
-    stages.push(motif ? { layers: [], half, motif } : { layers: [], half });
+    const panorama = parseHalf(st.panorama, base, `${sp}.panorama`, warn);
+    stages.push({ layers: [], half, ...(motif ? { motif } : {}), ...(panorama ? { panorama } : {}) });
   });
   if (!stages.length) {
     warn.push(`${path}: no stage with a usable ${kind === 'motif' ? 'motif' : 'half picture'}; pair dropped`);
@@ -265,7 +281,7 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
   const seen = new Set<string>();
   let halfBytes = 0;
   for (const s of stages)
-    for (const h of [s.half, s.motif]) {
+    for (const h of [s.half, s.motif, s.panorama]) {
       if (!h || seen.has(h.src)) continue;
       seen.add(h.src);
       halfBytes += h.bytes ?? 0;

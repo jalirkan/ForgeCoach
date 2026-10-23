@@ -46,6 +46,12 @@ export interface SceneryPrefs {
    * URL, or '' for none. Absent: {@link pairsUrlOf}'s default. Never stored.
    */
   pairsUrl?: string;
+  /**
+   * Spec 1.15 (`?pairfull=1`, pairfull.ts): a half of exactly two
+   * colours shows their pair picture across the whole half, panned by the land
+   * share. Off unless the page asks; never stored.
+   */
+  pairFull?: boolean;
 }
 
 export const SCENERY_KEY = 'forgecoach.scenery';
@@ -70,6 +76,15 @@ export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgeco
  * up, but nothing points at them.
  */
 export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3.1/';
+/**
+ * Spec 1.15: the pairs `?pairfull=1` defaults to with ForgeCoach's own pack:
+ * `pairs-v4`, the whole-half panoramas Justin judged "really, really awesome"
+ * and had published on 2026-10-23 -- pairs-v2's ten band pairs (its halves and
+ * frames, referenced at `@pairs-v2`) with a 1.6 × 16:5 `panorama` and a
+ * 1.28:1 phone panorama on every stage (`pairs-v4.test.ts` is its manifest).
+ * `?pairs=` still wins. Without the flag the board keeps FORGECOACH_PAIRS_URL.
+ */
+export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/';
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true, light: false, horizon: false };
 
@@ -145,10 +160,11 @@ export function effectivePrefs(stored: SceneryPrefs, search: string, hash: strin
   const hz = switchParam(search, hash, 'horizon');
   const pr = sceneryParam(search, hash, 'pairs');
   const pairs = pr === null ? {} : { pairsUrl: pr === 'off' || pr === '0' ? '' : pr === 'forgecoach' || pr === 'on' ? FORGECOACH_PAIRS_URL : pr };
+  const pf = switchParam(search, hash, 'pairfull');
   const withAccents =
-    a === null && f === null && l === null && hz === null && pr === null
+    a === null && f === null && l === null && hz === null && pr === null && pf !== true
       ? stored
-      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...(hz === null ? {} : { horizon: hz }), ...pairs };
+      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...(hz === null ? {} : { horizon: hz }), ...pairs, ...(pf === true ? { pairFull: true } : {}) };
   const p = sceneryParam(search, hash);
   if (!p) return withAccents;
   if (p === 'off') return { ...withAccents, mode: 'off' };
@@ -201,5 +217,5 @@ export function reducedMotion(pref: MotionPref, systemReduces: boolean): boolean
 export function pairsUrlOf(p: SceneryPrefs): string | null {
   if (p.mode !== 'pack') return null;
   if (p.pairsUrl !== undefined) return p.pairsUrl.trim() || null;
-  return p.packUrl.trim() === FORGECOACH_PACK_URL ? FORGECOACH_PAIRS_URL : null;
+  return p.packUrl.trim() === FORGECOACH_PACK_URL ? (p.pairFull ? FORGECOACH_PAIRS_FULL_URL : FORGECOACH_PAIRS_URL) : null;
 }
