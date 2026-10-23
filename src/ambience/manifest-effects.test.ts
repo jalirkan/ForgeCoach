@@ -146,7 +146,7 @@ describe('spec 1.2 effects: bad fields', () => {
   });
 
   it('warns on a spec newer than this engine, and on a malformed one', () => {
-    expect(validateManifest({ ...withEffects(), spec: '1.12' }, BASE).warnings).toEqual(['spec: the pack is written for 1.12; this ForgeCoach reads 1.11, so newer fields are ignored']);
+    expect(validateManifest({ ...withEffects(), spec: '1.15' }, BASE).warnings).toEqual(['spec: the pack is written for 1.15; this ForgeCoach reads 1.14, so newer fields are ignored']);
     expect(validateManifest({ ...withEffects(), spec: '1.11' }, BASE).warnings).toEqual([]);
     expect(validateManifest({ ...withEffects(), spec: '1.10' }, BASE).warnings).toEqual([]);
     expect(validateManifest({ ...withEffects(), spec: '1.4' }, BASE).warnings).toEqual([]);

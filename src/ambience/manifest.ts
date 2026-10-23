@@ -21,7 +21,11 @@
  * across the seam where the two biomes meet on one side, placed by an anchor
  * on the seam, and how much each of the pair's dual lands widens that seam).
  * Spec 1.9's pair bands come in a second manifest of their own (pairs.ts);
- * a pack carries them as `pairs` once loaded. A 1.1–1.8 pack reads as before.
+ * a pack carries them as `pairs` once loaded. Spec 1.13 adds a half
+ * picture's `horizon` and a stage's `hour` / `key`; spec 1.14 the optional
+ * top-level `pieces` (pieces.ts: a third colour's element, landmarks, a
+ * colour's front, the end's veils, the empty table). A 1.1–1.13 pack reads as
+ * before.
  *
  * A pack is untrusted input, served from wherever the user pointed the page:
  * every string is cleaned and clipped, every number range-checked, every URL
@@ -37,7 +41,7 @@ import type { PairsPack } from './pairs.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
-export const SPEC_VERSION = '1.11';
+export const SPEC_VERSION = '1.14';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */
@@ -148,7 +152,15 @@ export interface PackHalf extends HalfPicture {
   phone: HalfPicture | null;
   /** Declared size of every file of this `half` (src, src2x, phone src and src2x), for the budget. */
   bytes: number | null;
+  /** Spec 1.13: the hour the stage is painted at, 0–24 (the light's time of day), when the pack declares it. */
+  hour?: number;
+  /** Spec 1.13: the stage's light key, when the pack declares it. */
+  key?: LightKey;
 }
+
+/** Spec 1.13: the time-of-day keys a stage's light is painted in. */
+export const LIGHT_KEYS = ['dawn', 'morning', 'noon', 'afternoon', 'dusk', 'night'] as const;
+export type LightKey = (typeof LIGHT_KEYS)[number];
 
 /** Spec 1.5 top-level `half`: how a player's half is shared between their biomes and meets the other half. */
 export interface PackHalfLayout {
@@ -941,6 +953,8 @@ export interface ScenePack {
    * null (every seam as in 1.8).
    */
   pairs?: PairsPack | null;
+  /** Spec 1.14: elements, landmarks, fronts, veils and the empty table, or undefined / null when the pack has none. */
+  pieces?: PackPieces | null;
 }
 
 export interface ManifestResult {
@@ -1163,7 +1177,19 @@ export function parseHalf(v: unknown, base: string, path: string, warn: string[]
     if (!isObj(v.phone)) warn.push(`${path}.phone: not an object { src, src2x }; ignored`);
     else phone = parseHalfPicture(v.phone, base, `${path}.phone`, warn, DEFAULT_PHONE_SIZE, phoneBand(desk));
   }
-  return { ...desk, phone, bytes: parseBytes(v, path, warn) };
+  // Spec 1.13: the painted hour and light key, for matching the two halves' light.
+  let hour: number | undefined;
+  if (v.hour !== undefined && v.hour !== null) {
+    const hr = num(v.hour, 0, 24);
+    if (hr === null) warn.push(`${path}.hour: the hour the stage is painted at, 0–24; ignored`);
+    else hour = hr;
+  }
+  let key: LightKey | undefined;
+  if (v.key !== undefined && v.key !== null) {
+    if ((LIGHT_KEYS as readonly unknown[]).includes(v.key)) key = v.key as LightKey;
+    else warn.push(`${path}.key: one of ${LIGHT_KEYS.join(', ')}; ignored`);
+  }
+  return { ...desk, phone, bytes: parseBytes(v, path, warn), ...(hour === undefined ? {} : { hour }), ...(key === undefined ? {} : { key }) };
 }
 
 /** Spec 1.5: the declared bytes of a biome's half pictures (each file once). */
@@ -1248,15 +1274,7 @@ export function parseTransitions(v: unknown, base: string, path: string, warn: s
     const rf = Array.isArray(st.frames) ? st.frames : [];
     if (!rf.length) return warn.push(`${sp}.frames: 1–${MAX_TRANSITION_FRAMES} frames; step dropped`);
     if (rf.length > MAX_TRANSITION_FRAMES) warn.push(`${sp}.frames: more than ${MAX_TRANSITION_FRAMES}; the rest ignored`);
-    const problems: string[] = [];
-    const frames: TransitionFrame[] = [];
-    rf.slice(0, MAX_TRANSITION_FRAMES).forEach((f, j) => {
-      const fp = `${sp}.frames[${j}]`;
-      if (!isObj(f)) return problems.push(`${fp}: not an object { src, phone }`);
-      const src = layerUrl(f.src, base, HALF_EXT, HALF_EXT_NAME, `${fp}.src`, problems, false);
-      const phone = layerUrl(f.phone, base, HALF_EXT, HALF_EXT_NAME, `${fp}.phone`, problems, true);
-      if (src) frames.push({ src, phone, holdMs: ranged(f.holdMs, 40, 1000, holdMs, `${fp}.holdMs`, warn, true) });
-    });
+    const { frames, problems } = parseFrameList(rf, base, sp, holdMs, warn);
     if (problems.length) return warn.push(...problems.map((p) => `${p}; step dropped`));
     steps.push({ from, frames, bytes: parseBytes(st, sp, warn) });
   });
@@ -1265,6 +1283,20 @@ export function parseTransitions(v: unknown, base: string, path: string, warn: s
   const bytes = steps.reduce((n, s) => n + (s.bytes ?? 0), 0);
   if (bytes > MAX_TRANSITION_BYTES) warn.push(`${path}: ${(bytes / 1048576).toFixed(1)} MB of transition frames declared; their budget is ${MAX_TRANSITION_BYTES / 1048576} MB per biome (frames kept)`);
   return { holdMs, fadeMs, steps };
+}
+
+/** Up to {@link MAX_TRANSITION_FRAMES} frames of `rf` (spec 1.7; also 1.14's fronts): what parsed, and why any frame did not. */
+function parseFrameList(rf: unknown[], base: string, sp: string, holdMs: number, warn: string[]): { frames: TransitionFrame[]; problems: string[] } {
+  const problems: string[] = [];
+  const frames: TransitionFrame[] = [];
+  rf.slice(0, MAX_TRANSITION_FRAMES).forEach((f, j) => {
+    const fp = `${sp}.frames[${j}]`;
+    if (!isObj(f)) return problems.push(`${fp}: not an object { src, phone }`);
+    const src = layerUrl(f.src, base, HALF_EXT, HALF_EXT_NAME, `${fp}.src`, problems, false);
+    const phone = layerUrl(f.phone, base, HALF_EXT, HALF_EXT_NAME, `${fp}.phone`, problems, true);
+    if (src) frames.push({ src, phone, holdMs: ranged(f.holdMs, 40, 1000, holdMs, `${fp}.holdMs`, warn, true) });
+  });
+  return { frames, problems };
 }
 
 /** A bridge picture's anchor (`fallback` for what it leaves out), or the fallback when it is not an object. */
@@ -1487,6 +1519,249 @@ function parseThresholds(v: unknown, warn: string[]): number[] | null {
   return (v as number[]).map(Number);
 }
 
+// ---------------------------------------------------------------------------
+// Pieces (spec 1.14): elements, landmarks, colour fronts, the end's veils and the empty table
+
+/** The five colours, as a land's mana symbol (pc-results scenery/SYSTEM.md's B5 elements and B7 fronts are keyed by them). */
+export const PIECE_COLOURS = ['W', 'U', 'B', 'R', 'G'] as const;
+export type PieceColour = (typeof PIECE_COLOURS)[number];
+/** How a piece stands in its region: over all of it (cover), its foot on the base picture's horizon, or its foot on the region's bottom. */
+export const PIECE_SITS = ['fill', 'horizon', 'ground'] as const;
+export type PieceSit = (typeof PIECE_SITS)[number];
+export const VEIL_OUTCOMES = ['won', 'lost'] as const;
+export type VeilOutcome = (typeof VEIL_OUTCOMES)[number];
+
+/** Where a piece goes in its region (an element: the heavier pair colour's side; a landmark or veil: the whole half). */
+export interface PiecePlace {
+  sit: PieceSit;
+  /** The piece's centre, a fraction of the region's width from its left. */
+  x: number;
+  /** The piece's width, a fraction of the region's width (`fill` covers the region whatever it says). */
+  w: number;
+  /** Raised by this fraction of the half's height (negative: lowered); `horizon` and `ground` only. */
+  lift: number;
+}
+
+/** One transparent picture of a piece, at one shape. */
+export interface PiecePicture {
+  src: string;
+  src2x: string | null;
+  /** The 1x file's pixels: only the shape is used, to place it before it loads. */
+  width: number;
+  height: number;
+}
+
+/** Spec 1.14: a transparent picture drawn over a half's scenery (an element, a landmark or a veil). */
+export interface PackPiece extends PiecePicture {
+  /** The picture for a phone-shaped half, or null (the desktop one is used). */
+  phone: PiecePicture | null;
+  place: PiecePlace;
+  bytes: number | null;
+}
+
+/** Spec 1.14: a colour's front, the weather it arrives in: a few frames played with hard cuts over the half, then faded. */
+export interface PackFront {
+  frames: TransitionFrame[];
+  holdMs: number;
+  fadeMs: number;
+  bytes: number | null;
+}
+
+/** Spec 1.14 top-level `pieces`. */
+export interface PackPieces {
+  /** A third colour's element in the heaviest pair's picture (B5), by colour. */
+  elements: Partial<Record<PieceColour, PackPiece>>;
+  /** A landmark land's landmark (B6), by its card's exact name. */
+  landmarks: Record<string, PackPiece>;
+  /** A colour's front when it arrives, played backwards when it leaves (B7). */
+  fronts: Partial<Record<PieceColour, PackFront>>;
+  /** The end (B9): over the winner's half and over the loser's. A draw dims both halves (no picture). */
+  veils: Partial<Record<VeilOutcome, PackPiece>>;
+  /** The empty table (B8): a 1.5 half picture for a half with no colour yet, or null. */
+  empty: PackHalf | null;
+}
+
+const PIECE_EXT = /\.(webp|avif|png)$/i;
+const PIECE_EXT_NAME = '.webp, .avif or .png (transparent)';
+/** Declared piece files (every element, landmark, front, veil and the empty table, both shapes) past this get a warning. */
+export const MAX_PIECES_BYTES = 6 * 1024 * 1024;
+/** More landmarks than this are not a few named places (the rest are ignored). */
+export const MAX_LANDMARKS = 24;
+/** At most this many landmarks stand on one half (SYSTEM.md A7: the earliest two). */
+export const MAX_LANDMARKS_SHOWN = 2;
+
+const PLACE_DEFAULTS: Record<'element' | 'landmark' | 'veil', PiecePlace> = {
+  element: { sit: 'ground', x: 0.5, w: 0.6, lift: 0 },
+  landmark: { sit: 'horizon', x: 0.5, w: 0.25, lift: 0 },
+  veil: { sit: 'fill', x: 0.5, w: 1, lift: 0 },
+};
+
+function parsePlace(v: unknown, dflt: PiecePlace, path: string, warn: string[]): PiecePlace {
+  if (v === undefined || v === null) return { ...dflt };
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object { sit, x, w, lift }; using the default place`);
+    return { ...dflt };
+  }
+  return {
+    sit: oneOf(v.sit, PIECE_SITS, dflt.sit, `${path}.sit`, warn),
+    x: ranged(v.x, 0, 1, dflt.x, `${path}.x`, warn),
+    w: ranged(v.w, 0.02, 1, dflt.w, `${path}.w`, warn),
+    lift: ranged(v.lift, -0.5, 0.5, dflt.lift, `${path}.lift`, warn),
+  };
+}
+
+function pieceSize(v: Obj, path: string, warn: string[], fallback: { width: number; height: number } | null): { width: number; height: number } | null {
+  if (fallback && v.width === undefined && v.height === undefined) return fallback;
+  const w = int(v.width, 8, 16384);
+  const h = int(v.height, 8, 16384);
+  if (w === null || h === null || w / h < 0.05 || w / h > 20) {
+    if (fallback) {
+      warn.push(`${path}: width and height are the 1x file's pixels (8–16384); using the desktop picture's shape`);
+      return fallback;
+    }
+    warn.push(`${path}: width and height (the 1x file's pixels, 8–16384) are required to place it; piece dropped`);
+    return null;
+  }
+  return { width: w, height: h };
+}
+
+function parsePiece(v: unknown, base: string, path: string, warn: string[], kind: keyof typeof PLACE_DEFAULTS): PackPiece | null {
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object; piece dropped`);
+    return null;
+  }
+  const problems: string[] = [];
+  const src = layerUrl(v.src, base, PIECE_EXT, PIECE_EXT_NAME, `${path}.src`, problems, false);
+  if (problems.length) {
+    warn.push(...problems.map((p) => `${p}; piece dropped`));
+    return null;
+  }
+  const size = pieceSize(v, path, warn, null);
+  if (!size) return null;
+  const opt: string[] = [];
+  const src2x = layerUrl(v.src2x, base, PIECE_EXT, PIECE_EXT_NAME, `${path}.src2x`, opt, true);
+  let phone: PiecePicture | null = null;
+  if (v.phone !== undefined && v.phone !== null) {
+    if (!isObj(v.phone)) warn.push(`${path}.phone: not an object { src, src2x }; ignored`);
+    else {
+      const pp: string[] = [];
+      const psrc = layerUrl(v.phone.src, base, PIECE_EXT, PIECE_EXT_NAME, `${path}.phone.src`, pp, false);
+      if (pp.length) warn.push(...pp.map((p) => `${p}; phone picture dropped`));
+      else {
+        const psize = pieceSize(v.phone, `${path}.phone`, warn, size)!;
+        phone = { src: psrc!, src2x: layerUrl(v.phone.src2x, base, PIECE_EXT, PIECE_EXT_NAME, `${path}.phone.src2x`, opt, true), ...psize };
+      }
+    }
+  }
+  for (const o of opt) warn.push(`${o}; ignored`);
+  return { src: src!, src2x, ...size, phone, place: parsePlace(v.place, PLACE_DEFAULTS[kind], `${path}.place`, warn), bytes: parseBytes(v, path, warn) };
+}
+
+function parseFront(v: unknown, base: string, path: string, warn: string[]): PackFront | null {
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object { frames, holdMs, fadeMs }; front dropped`);
+    return null;
+  }
+  const holdMs = ranged(v.holdMs, 40, 1000, DEFAULT_TRANSITION_HOLD_MS, `${path}.holdMs`, warn, true);
+  const fadeMs = ranged(v.fadeMs, 0, 1000, DEFAULT_TRANSITION_FADE_MS, `${path}.fadeMs`, warn, true);
+  const rf = Array.isArray(v.frames) ? v.frames : [];
+  if (!rf.length) {
+    warn.push(`${path}.frames: 1–${MAX_TRANSITION_FRAMES} frames; front dropped`);
+    return null;
+  }
+  if (rf.length > MAX_TRANSITION_FRAMES) warn.push(`${path}.frames: more than ${MAX_TRANSITION_FRAMES}; the rest ignored`);
+  const { frames, problems } = parseFrameList(rf, base, path, holdMs, warn);
+  if (problems.length) {
+    warn.push(...problems.map((p) => `${p}; front dropped`));
+    return null;
+  }
+  return { frames, holdMs, fadeMs, bytes: parseBytes(v, path, warn) };
+}
+
+/** A map of colour → entry: unknown keys warned, bad entries dropped. */
+function parseByColour<T>(v: unknown, path: string, warn: string[], one: (x: unknown, p: string) => T | null): Partial<Record<PieceColour, T>> {
+  const out: Partial<Record<PieceColour, T>> = {};
+  if (v === undefined || v === null) return out;
+  if (!isObj(v)) {
+    warn.push(`${path}: an object keyed by ${PIECE_COLOURS.join(', ')}; ignored`);
+    return out;
+  }
+  for (const k of Object.keys(v)) {
+    if (!(PIECE_COLOURS as readonly string[]).includes(k)) {
+      warn.push(`${path}.${cleanText(k, 30)}: not a colour (${PIECE_COLOURS.join(', ')}); ignored`);
+      continue;
+    }
+    const got = one(v[k], `${path}.${k}`);
+    if (got) out[k as PieceColour] = got;
+  }
+  return out;
+}
+
+/** Spec 1.14: the top-level `pieces`, or null when the pack has none (or none usable). */
+function parsePieces(v: unknown, base: string, warn: string[]): PackPieces | null {
+  if (v === undefined || v === null) return null;
+  if (!isObj(v)) {
+    warn.push('pieces: not an object; ignored');
+    return null;
+  }
+  const elements = parseByColour(v.elements, 'pieces.elements', warn, (x, p) => parsePiece(x, base, p, warn, 'element'));
+  const fronts = parseByColour(v.fronts, 'pieces.fronts', warn, (x, p) => parseFront(x, base, p, warn));
+  const landmarks: Record<string, PackPiece> = {};
+  if (v.landmarks !== undefined && v.landmarks !== null) {
+    if (!isObj(v.landmarks)) warn.push('pieces.landmarks: an object keyed by card name; ignored');
+    else {
+      const names = Object.keys(v.landmarks);
+      if (names.length > MAX_LANDMARKS) warn.push(`pieces.landmarks: more than ${MAX_LANDMARKS}; the rest ignored`);
+      for (const name of names.slice(0, MAX_LANDMARKS)) {
+        const clean = cleanText(name, 80);
+        if (!clean || clean !== name) {
+          warn.push(`pieces.landmarks.${clean ?? '?'}: a card's exact name (at most 80 characters, no control characters); ignored`);
+          continue;
+        }
+        const got = parsePiece(v.landmarks[name], base, `pieces.landmarks.${name}`, warn, 'landmark');
+        if (got) landmarks[name] = got;
+      }
+    }
+  }
+  const veils: Partial<Record<VeilOutcome, PackPiece>> = {};
+  if (v.veils !== undefined && v.veils !== null) {
+    if (!isObj(v.veils)) warn.push('pieces.veils: an object { won, lost }; ignored');
+    else
+      for (const k of Object.keys(v.veils)) {
+        if (!(VEIL_OUTCOMES as readonly string[]).includes(k)) {
+          warn.push(`pieces.veils.${cleanText(k, 30)}: not won or lost (a draw dims both halves); ignored`);
+          continue;
+        }
+        const got = parsePiece(v.veils[k], base, `pieces.veils.${k}`, warn, 'veil');
+        if (got) veils[k as VeilOutcome] = got;
+      }
+  }
+  const empty = parseHalf(v.empty, base, 'pieces.empty', warn);
+  const out: PackPieces = { elements, landmarks, fronts, veils, empty };
+  if (!Object.keys(elements).length && !Object.keys(landmarks).length && !Object.keys(fronts).length && !Object.keys(veils).length && !empty) return null;
+  const bytes = piecesBytes(out);
+  if (bytes > MAX_PIECES_BYTES) warn.push(`pieces: ${(bytes / 1048576).toFixed(1)} MB declared; their budget is ${MAX_PIECES_BYTES / 1048576} MB (pieces kept)`);
+  return out;
+}
+
+/** Spec 1.14: the declared bytes of a pack's pieces. */
+export function piecesBytes(p: PackPieces | null | undefined): number {
+  if (!p) return 0;
+  const all = [...Object.values(p.elements), ...Object.values(p.landmarks), ...Object.values(p.veils), ...Object.values(p.fronts)];
+  return all.reduce((n, x) => n + (x?.bytes ?? 0), 0) + (p.empty?.bytes ?? 0);
+}
+
+/** Spec 1.14: the piece files worth warming before they are needed (landmarks, veils, fronts, the empty table; not elements), at the half's shape. */
+export function pieceUrls(p: PackPieces | null | undefined, opts: { phone: boolean }): string[] {
+  if (!p) return [];
+  const out = new Set<string>();
+  const pick = (x: PackPiece) => (opts.phone && x.phone ? x.phone.src : x.src);
+  for (const x of [...Object.values(p.landmarks), ...Object.values(p.veils)]) if (x) out.add(pick(x));
+  for (const f of Object.values(p.fronts)) for (const fr of f?.frames ?? []) out.add(opts.phone && fr.phone ? fr.phone : fr.src);
+  if (p.empty) out.add(opts.phone && p.empty.phone ? p.empty.phone.src : p.empty.src);
+  return [...out];
+}
+
 /**
  * Validate a parsed manifest. `base` is the pack's base URL (see {@link packBase});
  * relative asset paths resolve against it.
@@ -1527,6 +1802,7 @@ export function validateManifest(raw: unknown, base: string): ManifestResult {
     else if (Number(spec.split('.')[1]) > Number(SPEC_VERSION.split('.')[1])) warnings.push(`spec: the pack is written for ${spec}; this ForgeCoach reads ${SPEC_VERSION}, so newer fields are ignored`);
   }
   const bridges = parseBridges(raw.bridges, b, warnings);
+  const pieces = parsePieces(raw.pieces, b, warnings);
   return {
     pack: {
       schema: 1,
@@ -1543,6 +1819,7 @@ export function validateManifest(raw: unknown, base: string): ManifestResult {
       half: parseHalfLayout(raw.half, warnings),
       growth: parseGrowth(raw.growth, warnings),
       ...(bridges ? { bridges } : {}),
+      ...(pieces ? { pieces } : {}),
     },
     errors,
     warnings,

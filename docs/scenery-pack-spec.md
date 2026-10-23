@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.12)
+# Scenery pack spec (schema 1, version 1.14)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -28,6 +28,8 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.10 | **Calm seams** (§2, *Calm seams*), layout only, no new field: a half shows at most **three** panels (the rest fold into their nearest kept neighbour); a seam with a pair band draws **no bridge**; a half picture is never drawn half over its next stage; a full-area accent is drawn over **its own biome's panel** only; the seam mist lighter, none at a band. Every 1.0–1.9 pack and pairs manifest is read unchanged. |
 | 1.11 | **Land rules** (§2, *Land rules*), classification only, no new field: a land that makes **no coloured mana** (a fetch land, Ancient Tomb, the Landscapes, Mutavault, Urza's Saga, the basic Wastes), or **any colour** (City of Brass, Exotic Orchard), draws **no biome**, and so opens no `wastes` slot; a fixed **three-colour** land splits into thirds as a Triome does; a **Pathway** (any multi-face land) counts as the face in play only; a typeless land with **no card data** draws nothing until its data loads. No land claims `wastes` any more; a pack may still paint one. |
 | 1.12 | **Motifs** (§2, *Motifs*): a pair stage in `pairs.json` may carry a **`motif`**, a transparent picture painted for the band's own narrow, full-height shape (pairs-v3: the road, river or causeway both lands share, running up the seam to the horizon). A pair whose stages have a motif and **no `half`** is a *motif pair*: its seam stays the plain 1.10 seam and the motif is drawn **over** it, centred on the seam, `band` wide, so its own soft banks are the band's edges; its frames are `motifTransitions`. A band pair (1.9) may carry a motif too, drawn over its picture. Every 1.9–1.10 pairs manifest is read unchanged. |
+| 1.13 | **Light and horizon** (§2, *The half board*): a stage's `half` picture (and its `phone`) may declare its **`horizon`**, and the stage its painted **`hour`** (0–24) and light **`key`** (`dawn` … `night`), so the two halves' horizons and light can be matched (ForgeCoach's pack: pack-v9.1, measured off each painting). A pack without them is read as before.
+| 1.14 | **Pieces** (§2, *Pieces*): an optional top-level **`pieces`** for the scenery system of pc-results `scenery/SYSTEM.md`: per colour an **element** (a third colour inside the heaviest pair's picture) and a **front** (the weather a colour arrives in: a few frames, hard cuts, then a fade; backwards when it leaves), per card name a **landmark** (standing on the horizon), the end's **veils** (`won`, `lost`) and the **empty table** (a half picture for a side with no colour yet); each piece a transparent picture with a `place` (`sit`: `fill`, `horizon` or `ground`; `x`, `w`, `lift`); their budget (§3). Drawn on the half board only. A pack without `pieces` is read and drawn as before.
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -92,6 +94,7 @@ and a key under `effects` that is not an effect event.
 | `half` | object | see *The half board* | 1.5. How each half is shared between biomes and meets the other half. |
 | `growth` | object | `{ "crossfade": true, "seconds": 1.2 }` | 1.6. The growth between stages: whether the next stage cross-fades in land by land, and how long one land's fade takes. See *Growth between stages*. |
 | `bridges` | object | — | 1.8. A ground piece per biome pair, drawn across the seam where the two meet, and how the pair's dual lands widen that seam. See *Bridges across the seam*. |
+| `pieces` | object | — | 1.14. Elements, landmarks, colour fronts, the end's veils and the empty table, drawn over a half. See *Pieces*. |
 
 1.9's pair bands are not a field here: they are a manifest of their own, `pairs.json` (*Pair bands*).
 
@@ -684,6 +687,8 @@ shows the desktop picture, cover-cropped about its middle.
 | `phone` | `{ "src", "src2x", … }` | — | The phone picture: `src` **required**, `src2x` optional; it may also carry its own `width`, `height`, `subjectBand`, `focal`, `safe` (below). A bad `phone.src` drops only the phone picture. |
 | `subjectBand` | `[top, bottom]`, 0–1, at least 0.05 apart | `[0.35, 0.60]` | §5's subject band: where the scene's subject lies, as fractions of the picture's height from the top. The crop keeps it whole whenever the panel's shape allows (across the middle half of the width), and centres on it. On `phone`, the default is the desktop band mapped into the phone picture as if it were outpainted evenly up and down (16 : 5 → 4 : 5: `y ↦ 0.25 + y / 2`, so `[0.425, 0.55]`); give `phone.subjectBand` when the outpainting is not even. |
 | `horizon` | 0.05–0.95 | from the band | *1.13.* The horizon's height, a fraction of the picture's height from the top. ForgeCoach's **one horizon** (Settings → One horizon, `?horizon=on`, off by default while it is judged) pins every panel's picture at its horizon, so a side reads as one landscape whatever each panel's width. Without it the horizon is estimated from `subjectBand` (the default band holds the spec's 0.43 a third of the way down; a phone picture's mapped band, 0.465), so a pack whose horizons sit elsewhere in the band should declare them. A bad value is warned and estimated. May also be given on `phone`. |
+| `hour` | 0–24 | — | *1.13.* The hour of day the stage is painted at (a sunset ~19, the afterglow ~20.5). Desktop field only; it holds for the phone picture too. For matching the two halves' light. A bad value is warned and ignored. |
+| `key` | `dawn` `morning` `noon` `afternoon` `dusk` `night` | — | *1.13.* The stage's light in one word (no `sunset`: a sunset is `dusk`). A bad value is warned and ignored. |
 | `width`, `height` | 64–16384 (whole), a shape between 1 : 4 and 8 : 1 | 2048 × 640 (desktop), 1024 × 1280 (`phone`) | The 1x file's pixel size. Only its shape is used, to crop before the file loads; give them when the files are not pack-v3's sizes. |
 | `focal` | `{ "x", "y" }`, 0–1 | the band's middle, centred | Optional, finer than the band: the point kept as near the panel's middle as the picture allows. |
 | `safe` | `{ "x", "y", "w", "h" }` | the band across the middle half: `{ x 0.25, y top, w 0.5, h bottom − top }` | Optional, finer than the band: the part kept whole whenever the panel's shape allows (as for full-area accents). |
@@ -1486,6 +1491,60 @@ a panel at its 0.15 floor the motif is drawn 0.15 wide. The panels keep their
 whole shares throughout. `src/ambience/pairs.test.ts` validates this exact
 block and checks these numbers; `pairs-v3.1.test.ts` is the live manifest (pairs-v3 with Tundra, Underground Sea, Godless Shrine's shrine and every phone motif repainted; `pairs-v3.test.ts` keeps pairs-v3).
 
+### Pieces (1.14)
+
+The scenery system (pc-results `scenery/SYSTEM.md`, Justin's, 2026-10-22) puts
+a few things **over** a half's land pictures: the third colour's element in
+the heaviest pair's picture, a landmark for a named land, a colour's front
+when the makeup changes, a veil at the game's end, and the empty table before
+a side has any colour. They come in one optional top-level object:
+
+```json
+"pieces": {
+  "elements":  { "R": { "src": "pieces/fire.webp", "width": 1200, "height": 400, "place": { "sit": "ground", "x": 0.5, "w": 0.6 } } },
+  "landmarks": { "City of Brass": { "src": "pieces/brass.webp", "width": 800, "height": 400,
+                                    "phone": { "src": "pieces/brass-phone.webp" },
+                                    "place": { "sit": "horizon", "x": 0.72, "w": 0.22 }, "bytes": 90000 } },
+  "fronts":    { "U": { "frames": [ { "src": "pieces/u-front-1.webp", "phone": "pieces/u-front-1-phone.webp" },
+                                    { "src": "pieces/u-front-2.webp" }, { "src": "pieces/u-front-3.webp" } ],
+                        "holdMs": 200, "fadeMs": 400 } },
+  "veils":     { "won": { "src": "pieces/win.webp", "width": 2048, "height": 640 },
+                 "lost": { "src": "pieces/loss.webp", "width": 2048, "height": 640 } },
+  "empty":     { "src": "pieces/empty-half.webp", "phone": { "src": "pieces/empty-phone.webp" }, "horizon": 0.43 }
+}
+```
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `elements` | object keyed by colour (`W` `U` `B` `R` `G`) | A transparent piece per colour. With three or more colours the picture is the heaviest pair's, and the third colour (four or five fold to the three heaviest) is its element, on the heavier pair colour's side, faded in by its share (an equal third is fully in). *Planned, not drawn yet*: today's half gives a third colour a panel of its own, so elements wait for the whole-half pair picture. |
+| `landmarks` | object keyed by a card's exact name (≤ 80 characters; ≤ 24 names) | A transparent piece per landmark land. It goes over whatever the half shows, the empty table included; one per name (a second copy adds nothing), at most **two** a half, the earliest on the battlefield. Default place: `horizon`, `x` 0.5, `w` 0.25. |
+| `fronts` | object keyed by colour | `frames` (1–4, each a `src` at the desktop half's shape and an optional `phone`, each with an optional own `holdMs`), `holdMs` (40–1000, default 200), `fadeMs` (0–1000, default 180), `bytes`. Played over the whole half with hard cuts when the colour arrives (a new heaviest pair: the colour that joined it), then faded; backwards when it leaves. The empty table's first colour dissolves the table instead. A front and a stage step at once: only the front. None with reduced motion. |
+| `veils` | `{ "won", "lost" }` | A transparent piece over the winner's and the loser's half once the game is over (default place `fill`); faded in. A draw has none. |
+| `empty` | a 1.5 `half` | The empty table: drawn over a half with no coloured land (the start, or only fetches and utility lands), cover-cropped as a half picture; it fades out when the first colour arrives. |
+
+**A piece** (element, landmark, veil):
+
+| Field | Type / range | Default | Notes |
+| --- | --- | --- | --- |
+| `src` | URL (`.webp` `.avif` `.png`) | — | **Required.** Transparent. |
+| `src2x` | URL | — | Its 2x file. |
+| `width`, `height` | 8–16384 (whole) | — | **Required**: the 1x file's pixels; the shape places the piece before it loads. |
+| `phone` | `{ "src", "src2x", "width", "height" }` | — | The picture for a phone-shaped half (`width` / `height` default to the desktop's). A bad `phone.src` drops only the phone picture. |
+| `place.sit` | `fill` `horizon` `ground` | by kind | `fill` covers its region (centred); `horizon` stands the piece's foot on the horizon drawn under it — the panel at `x`, its picture's declared (1.13) or estimated horizon through the crop, the one horizon when that is on; `ground` stands it on the half's bottom. |
+| `place.x` | 0–1 | 0.5 | The piece's centre, a fraction of its region's width (an element's region: the heavier pair colour's side; else the whole half). |
+| `place.w` | 0.02–1 | by kind | Its width, a fraction of the region's (`fill` ignores it). |
+| `place.lift` | −0.5–0.5 | 0 | Raised by this fraction of the half's height (`horizon`, `ground`). |
+| `bytes` | whole number | — | For the budget (§3). |
+
+A bad entry is warned with its path and dropped alone; an unknown colour,
+outcome or field is ignored. Pieces sit over the half's scenery, beneath the
+accents, the card-row scrim and the cards, and fade into the centre line's
+mist as the half does. `src/ambience/pieces.ts` decides what a half shows
+(`planHalf`, `frontFor`, SYSTEM.md section A steps 1–8; its tests play
+SYSTEM.md's worked example) and places it (`piecePlacement`, `horizonAt`);
+`#ambience` → **Pieces → Placeholders** shows ForgeCoach's own dashed
+placeholders (preview only).
+
 ## 3. Files and budgets
 
 | What | Format | Size |
@@ -1546,6 +1605,11 @@ Budgets for pair bands (1.9), in their own manifest and their own ref:
 - **≤ 45 MB for the pairs pack** (the validator warns past it): a jsDelivr ref holds at most 50 MB, so the pairs never share the main pack's ref.
 - The pictures at the `half` shapes: **2048 × 640** (`src2x` 4096 × 1280) and **1024 × 1280** (`src2x` 2048 × 2560); frames 1x only.
 - A device loads only the bands its sides show (the pair stage they map to and the next), never the set.
+
+Budgets for pieces (1.14), counted apart from everything above:
+- **≤ 6 MB for the pack's pieces** (every element, landmark, front, veil and the empty table, both shapes and 2x; declare `bytes`; the validator warns past it).
+- Elements, landmarks and veils: **transparent** WebP or AVIF (or PNG), mostly clear. Fronts: 1x only, at the `half` shapes (2048 × 640 and 1024 × 1280), as 1.7's frames. The empty table: a 1.5 `half`.
+- A device warms the landmarks, veils, fronts and the empty table at the shape it shows (they can appear at once); elements load when shown.
 
 The whole pack should stay ≤ 30 MB, effects and accents included (half pictures count apart: up to 40 MB more for five biomes).
 

@@ -8,7 +8,8 @@
  * streaks at stages 2–6) validates on this client: a snapshot of its
  * scenery.json, byte for byte what jsDelivr serves at the tag, taken when
  * FORGECOACH_PACK_URL moved to it. pack-v8 stays at its tag
- * (pack-v8.test.ts) as the fallback. Why: ~/scenery-packs/seams-v1/diag/DIAGNOSIS.md.
+ * (pack-v8.test.ts) as the fallback. (The default is pack-v9.1 now, the
+ * same pictures with their measured horizons and hours: pack-v9-1.test.ts.) Why: ~/scenery-packs/seams-v1/diag/DIAGNOSIS.md.
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -29,8 +30,7 @@ describe('pack-v9', () => {
   const v8 = json('pack-v8.scenery.json');
   const r = validateManifest(manifest, `${FORGECOACH_PACK_URL}scenery.json`);
   const pack = r.pack!;
-  it('is the default pack URL, and the snapshot is the file jsDelivr serves', () => {
-    expect(FORGECOACH_PACK_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v9/pack/');
+  it('the snapshot is the file jsDelivr serves', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('da512a3fa06433700f50f45d48ccab79e1cfdf9df9b2428903edb1cbc99fdbd1');
   });
   it('validates with no errors and exactly pack-v8’s warnings, written for spec 1.8', () => {
