@@ -33,6 +33,7 @@ import { applyGrade } from './lightGrade.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { pairFullCaption, pairFullPlan } from '../../ambience/pairfull.ts';
+import { elementBiomes } from '../../ambience/pieces.ts';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
 import { HalfScrim } from './HalfScrim.tsx';
 import { ScenePieces } from './ScenePieces.tsx';
@@ -66,6 +67,8 @@ const DEMO: SimPlay[] = [
 ];
 
 const DEFAULT_PACK_URL = 'http://127.0.0.1:8650/';
+/** Spec 1.14's element preview: SYSTEM.md's worked example at turn 8 on your side (W 1½, U 1, R ½: island+plains with red's element). */
+const THREE_COLOURS: SimPlay[] = (['Plateau', 'Plains', 'Island'] as const).map((name) => ({ kind: 'land', player: SIM_PLAYERS[0], name }));
 
 type PackState =
   | { status: 'none' }
@@ -191,6 +194,7 @@ export default function AmbiencePage() {
 
   const outcomeOf = (i: number): LightOutcome => (ending === 'none' ? null : ending === 'draw' ? 'draw' : (ending === 'you') === (i === 0) ? 'won' : 'lost');
   const previewPieces: PackPieces | null = piecesMode === 'builtin' ? builtinPieces() : piecesMode === 'pack' ? (pack?.pieces ?? null) : null;
+  const previewElements = useMemo(() => (initial.pairFull && fill ? elementBiomes(previewPieces) : null), [initial.pairFull, fill, previewPieces]);
   useEffect(() => {
     if (previewPieces) for (const src of pieceUrls(previewPieces, { phone: window.innerWidth < 700 })) warmPicture({ src, src2x: null });
   }, [previewPieces]);
@@ -224,7 +228,7 @@ export default function AmbiencePage() {
             top
             slots={counts(SIM_PLAYERS[1])}
             creatures={creaturesOf(SIM_PLAYERS[1])}
-            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null, initial.pairFull === true) : null}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null, initial.pairFull === true, previewElements) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[1]).length > 0}
             strip={
               <>
@@ -232,6 +236,7 @@ export default function AmbiencePage() {
                   slots={slotsOf(scenery, SIM_PLAYERS[1])}
                   duals={dualsOf(scenery, SIM_PLAYERS[1])}
                   pairFull={!!initial.pairFull}
+                  elements={previewElements}
                   pack={pack}
                   edge="top"
                   orient={orient}
@@ -241,7 +246,7 @@ export default function AmbiencePage() {
                   stageOverride={stage || null}
                   fill={fill ? 'half' : 'strip'}
                 />
-                {previewPieces && fill && <ScenePieces pack={pack} pieces={previewPieces} slots={slotsOf(scenery, SIM_PLAYERS[1])} landNames={piecesMode === 'builtin' ? ['Seaside Citadel', 'Exotic Orchard'] : []} outcome={outcomeOf(1)} edge="top" reduced={reduced} />}
+                {previewPieces && fill && <ScenePieces pack={pack} pieces={previewPieces} slots={slotsOf(scenery, SIM_PLAYERS[1])} landNames={piecesMode === 'builtin' ? ['Seaside Citadel', 'Exotic Orchard'] : []} outcome={outcomeOf(1)} edge="top" reduced={reduced} pairFull={!!initial.pairFull} />}
                 {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[1])} pack={pack} edge="top" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} half={fill} duals={dualsOf(scenery, SIM_PLAYERS[1])} />}
               </>
             }
@@ -253,7 +258,7 @@ export default function AmbiencePage() {
             player={SIM_PLAYERS[0]}
             slots={counts(SIM_PLAYERS[0])}
             creatures={creaturesOf(SIM_PLAYERS[0])}
-            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null, initial.pairFull === true) : null}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null, initial.pairFull === true, previewElements) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[0]).length > 0}
             strip={
               <>
@@ -261,6 +266,7 @@ export default function AmbiencePage() {
                   slots={slotsOf(scenery, SIM_PLAYERS[0])}
                   duals={dualsOf(scenery, SIM_PLAYERS[0])}
                   pairFull={!!initial.pairFull}
+                  elements={previewElements}
                   pack={pack}
                   edge="bottom"
                   reduced={reduced}
@@ -269,7 +275,7 @@ export default function AmbiencePage() {
                   stageOverride={stage || null}
                   fill={fill ? 'half' : 'strip'}
                 />
-                {previewPieces && fill && <ScenePieces pack={pack} pieces={previewPieces} slots={slotsOf(scenery, SIM_PLAYERS[0])} landNames={piecesMode === 'builtin' ? ['City of Brass'] : []} outcome={outcomeOf(0)} edge="bottom" reduced={reduced} />}
+                {previewPieces && fill && <ScenePieces pack={pack} pieces={previewPieces} slots={slotsOf(scenery, SIM_PLAYERS[0])} landNames={piecesMode === 'builtin' ? ['City of Brass'] : []} outcome={outcomeOf(0)} edge="bottom" reduced={reduced} pairFull={!!initial.pairFull} />}
                 {accents && <SceneryOverlay slots={slotsOf(scenery, SIM_PLAYERS[0])} pack={pack} edge="bottom" reduced={reduced} stageOverride={stage || null} builtinArea={areaPreview} half={fill} duals={dualsOf(scenery, SIM_PLAYERS[0])} />}
               </>
             }
@@ -440,9 +446,12 @@ export default function AmbiencePage() {
                     {m === 'pack' ? 'Pack only' : m === 'builtin' ? 'Placeholders' : 'Off'}
                   </button>
                 ))}
+                <button className="btn btn-quiet btn-sm" onClick={() => setPlays(() => THREE_COLOURS)} disabled={!fill} data-pieces-three title="Your side: Plateau, Plains, Island (SYSTEM.md's worked example at turn 8)">
+                  Three colours
+                </button>
               </div>
               <span className="amb-hint">
-                Spec 1.14 (whole half only): the empty table before a side's first colour, landmarks on the horizon (<i>Placeholders</i> stands City of Brass on your side, Seaside Citadel and Exotic Orchard on the opponent's), a colour's front when it arrives or leaves, and the end's veil (the Light card's <i>end</i>). Elements wait for the whole-half pair picture. <i>Placeholders</i> are ForgeCoach's own shapes, preview only; the board never shows them.
+                Spec 1.14 (whole half only): the empty table before a side's first colour, landmarks on the horizon (<i>Placeholders</i> stands City of Brass on your side, Seaside Citadel and Exotic Orchard on the opponent's), a colour's front when it arrives or leaves, and the end's veil (the Light card's <i>end</i>). A third colour's element is drawn only with <code>?pairfull=1</code>, inside the pair picture on the heavier colour's ground (<i>Three colours</i>: island+plains with red's element on the plains side). <i>Placeholders</i> are ForgeCoach's own shapes, preview only; the board never shows them.
                 {pack?.pieces ? ' This pack has pieces.' : ''}
               </span>
             </div>
@@ -540,9 +549,9 @@ function describe(e: SceneryEvent): string {
 }
 
 /** Spec 1.9: a side's pair bands in words (1.12: a motif pair says so), for the preview's caption (the dual and shock names are for this only). */
-function bandCaption(pack: ScenePack | null, slots: ReturnType<typeof slotsOf>, duals: Readonly<Record<string, number>>, stageOverride: number | null, pairFull = false): string | null {
+function bandCaption(pack: ScenePack | null, slots: ReturnType<typeof slotsOf>, duals: Readonly<Record<string, number>>, stageOverride: number | null, pairFull = false, elements: ReadonlySet<Biome> | null = null): string | null {
   // Spec 1.15: under `?pairfull=1` a side drawn as its pair picture says so instead.
-  const full = pairFull && pack?.pairs ? pairFullCaption(pairFullPlan(halfLayout(slots, pack, stageOverride), pack.pairs, { thresholds: pack.stageThresholds, stageOverride })) : null;
+  const full = pairFull && pack?.pairs ? pairFullCaption(pairFullPlan(halfLayout(slots, pack, stageOverride), pack.pairs, { thresholds: pack.stageThresholds, stageOverride, elements })) : null;
   if (full) return full;
   if (!pack?.pairs) return null;
   const bands = pairBands(halfLayout(slots, pack, stageOverride), pack.pairs, duals);

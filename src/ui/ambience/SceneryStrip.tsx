@@ -106,6 +106,8 @@ export interface SceneryStripProps {
   horizon?: boolean;
   /** Spec 1.15 (`?pairfull=1`): a half of two colours with a pair picture shows it across the whole half (pairfull.ts). */
   pairFull?: boolean;
+  /** Spec 1.14 under `pairFull`: the biomes the pieces have an element for; a third such biome is drawn as an element (ScenePieces), not a panel. */
+  elements?: ReadonlySet<Biome> | null;
   className?: string;
   style?: CSSProperties;
 }
@@ -127,7 +129,7 @@ export function usePageVisible(): boolean {
 
 const NO_DUALS: Readonly<Record<string, number>> = {};
 
-export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, horizon = false, pairFull = false, className, style }: SceneryStripProps) {
+export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, horizon = false, pairFull = false, elements = null, className, style }: SceneryStripProps) {
   const visible = usePageVisible();
   const settled = useRef(false);
   useEffect(() => {
@@ -145,7 +147,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const bands = useMemo(() => (pairsPack ? pairBands(layout as HalfSlotLayout[], pairsPack, duals) : []), [pairsPack, layout, duals]);
   const bandLife = useBandLife(bands, layout as HalfSlotLayout[], pack, reduced);
   // Spec 1.15: the pair picture as the whole half (null: the half as today).
-  const fullPlan = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride]);
+  const fullPlan = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride, elements }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride, elements]);
   const narrow = useNarrowScreen();
   const halfAspect = usePanelAspect(hostRef, (bridged && layout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone)) || bandLife.shown.some((b) => b.pair.stages.some((st) => !!st.half?.phone || !!st.motif?.phone)));
   // Spec 1.10: a seam with a band (wanted, or fading out) draws no bridge and keeps the base seam.

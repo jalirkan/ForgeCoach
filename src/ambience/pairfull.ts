@@ -35,12 +35,17 @@
  *   the lower neighbour would hold it at pair stage 1 all game. Not the dual
  *   count: a pair picture without a dual is allowed under the flag, and would
  *   never grow.
- * - Three biomes (a placeholder for a future triple composition): the
- *   heaviest pair with a picture (by the two biomes' land weight; a tie, the
- *   earlier arrivals) takes the pair picture, the third biome keeps today's
- *   panel at its own `halfLayout` share and stage, on its side of the row (the
- *   left when it arrived before both, else the right), meeting the picture in
- *   a plain 1.10 seam.
+ * - Three biomes: the pair is pieces.ts's heaviest pair (`rankColours`: the
+ *   two heaviest colours, a tie the earlier arrivals -- one rule for the
+ *   picture and spec 1.14's element), else the heaviest pictured pair. When
+ *   the pack has an element for the third colour (`opts.elements`), the pair
+ *   picture takes the whole half, its stage from every coloured land on the
+ *   half, and the third biome is the pair's `element`, drawn by ScenePieces
+ *   on the heavier colour's ground (SYSTEM.md A5). Without one (a placeholder
+ *   for a triple composition), the third biome keeps today's panel at its own
+ *   `halfLayout` share and stage, on its side of the row (the left when it
+ *   arrived before both, else the right), meeting the picture in a plain
+ *   1.10 seam.
  * - Anything else (one biome, a pair with no picture or a motif pair, no
  *   pairs pack): null, and the half is drawn exactly as today.
  *
@@ -57,6 +62,8 @@ import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf } from './manifest.ts';
 import { pairFor, pairHalfAt, pairStageFor, type PackPair, type PairsPack } from './pairs.ts';
+import { BIOME_COLOUR, COLOUR_BIOME, makeupOf, rankColours } from './pieces.ts';
+import type { PieceColour } from './manifest.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
 export const PAIR_FULL_SPLIT: readonly [number, number] = [0.2, 0.8];
@@ -81,6 +88,8 @@ export interface PairFullPair {
   share: number;
   /** The pair stage ({@link pairFullStage}), at most the pair's last pictured stage. */
   stage: number;
+  /** Spec 1.14: the third biome, drawn as an element over the whole-half picture (ScenePieces), when the pack has one for its colour. */
+  element?: Biome;
 }
 
 /** The third biome's panel (today's panel, a placeholder for a triple composition). */
@@ -129,7 +138,7 @@ function pictured(pair: PackPair): boolean {
 export function pairFullPlan(
   layout: readonly HalfSlotLayout[],
   pairs: PairsPack | null | undefined,
-  opts: { thresholds?: readonly number[] | null; stageOverride?: number | null } = {},
+  opts: { thresholds?: readonly number[] | null; stageOverride?: number | null; elements?: ReadonlySet<Biome> | null } = {},
 ): PairFullItem[] | null {
   if (!pairs) return null;
   const live = layout.map((l, i) => ({ l, i })).filter(({ l }) => l.stage > 0 && l.slot.weight > 0);
@@ -146,12 +155,18 @@ export function pairFullPlan(
     }
   if (!cands.length) return null;
   cands.sort((p, q) => q.w - p.w || p.arrival - q.arrival);
-  const { a, b } = cands[0]!;
+  const top = live.length === 3 ? heaviestBiomes(live.map((x) => x.l.slot)) : null;
+  const { a, b } = (top && cands.find((c) => top.includes(c.a.l.slot.biome) && top.includes(c.b.l.slot.biome))) || cands[0]!;
   const found = pairFor(pairs, a.l.slot.biome, b.l.slot.biome)!;
   const third = live.find((x) => x !== a && x !== b) ?? null;
-  const thirdShare = third ? r4(third.l.share / shareSum) : 0;
   const wa = a.l.slot.weight;
   const wb = b.l.slot.weight;
+  if (third && opts.elements?.has(third.l.slot.biome)) {
+    // Spec 1.14: the third colour is an element inside the pair picture, which takes the whole half and grows with every coloured land.
+    const stage = pairFullStage(found.pair, wa + wb + third.l.slot.weight, opts.thresholds ?? DEFAULT_STAGE_THRESHOLDS, opts.stageOverride ?? null);
+    return [{ kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: a.l.slot.biome, right: b.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, element: third.l.slot.biome }];
+  }
+  const thirdShare = third ? r4(third.l.share / shareSum) : 0;
   const item: PairFullPair = {
     kind: 'pair',
     key: found.pair.key,
@@ -167,6 +182,19 @@ export function pairFullPlan(
   if (!third) return [item];
   const slot: PairFullSlot = { kind: 'slot', index: third.i, biome: third.l.slot.biome, share: thirdShare };
   return third.i < a.i && third.i < b.i ? [slot, item] : [item, slot];
+}
+
+/** The two heaviest of three biomes by pieces.ts's rule (`rankColours`, no pair on screen), or null when one has no colour. */
+function heaviestBiomes(slots: readonly { biome: Biome; weight: number; index: number }[]): Biome[] | null {
+  const weights: Partial<Record<PieceColour, number>> = {};
+  const arrival: PieceColour[] = [];
+  for (const s of [...slots].sort((x, y) => x.index - y.index)) {
+    const c = BIOME_COLOUR[s.biome];
+    if (!c) return null;
+    weights[c] = s.weight;
+    arrival.push(c);
+  }
+  return rankColours(makeupOf(weights, arrival)).slice(0, 2).map((c) => COLOUR_BIOME[c]);
 }
 
 /**
@@ -292,11 +320,22 @@ export function pairFullElementRegion(view: PairFullView, side: 'left' | 'right'
   return side === 'left' ? { left: g.left, width } : { left: r4(g.left + g.width - width), width };
 }
 
+/**
+ * Which ground the heavier pair colour has, in board order: the heavier
+ * weight, a tie the biome that arrived first (`indexOf`: a biome's arrival
+ * index), as pieces.ts `rankColours` ranks them.
+ */
+export function pairFullHeavierSide(p: PairFullPair, indexOf: (b: Biome) => number): 'left' | 'right' {
+  const [wl, wr] = p.weights;
+  if (wl !== wr) return wl > wr ? 'left' : 'right';
+  return indexOf(p.left) <= indexOf(p.right) ? 'left' : 'right';
+}
+
 /** A caption for the preview page: "Tundra, whole half: island 80% | plains 20%, pair stage 2". */
 export function pairFullCaption(items: readonly PairFullItem[] | null): string | null {
   const p = items?.find((x): x is PairFullPair => x.kind === 'pair');
   if (!p) return null;
   const third = items!.find((x): x is PairFullSlot => x.kind === 'slot');
   const pct = (n: number) => `${Math.round(n * 100)}%`;
-  return `${p.pair.dual ?? p.key}${p.pair.shock ? ` (${p.pair.shock})` : ''}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, pair stage ${p.stage}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}`;
+  return `${p.pair.dual ?? p.key}${p.pair.shock ? ` (${p.pair.shock})` : ''}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, pair stage ${p.stage}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${p.element ? `; ${p.element} as an element` : ''}`;
 }
