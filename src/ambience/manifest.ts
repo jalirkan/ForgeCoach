@@ -37,7 +37,7 @@ import type { PairsPack } from './pairs.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
-export const SPEC_VERSION = '1.11';
+export const SPEC_VERSION = '1.13';
 /** The manifest file's name when the pack URL names a folder. */
 export const MANIFEST_FILE = 'scenery.json';
 /** Larger than any sensible manifest; refuse bigger bodies. */
@@ -148,7 +148,15 @@ export interface PackHalf extends HalfPicture {
   phone: HalfPicture | null;
   /** Declared size of every file of this `half` (src, src2x, phone src and src2x), for the budget. */
   bytes: number | null;
+  /** Spec 1.13: the hour the stage is painted at, 0–24 (the light's time of day), when the pack declares it. */
+  hour?: number;
+  /** Spec 1.13: the stage's light key, when the pack declares it. */
+  key?: LightKey;
 }
+
+/** Spec 1.13: the time-of-day keys a stage's light is painted in. */
+export const LIGHT_KEYS = ['dawn', 'morning', 'noon', 'afternoon', 'dusk', 'night'] as const;
+export type LightKey = (typeof LIGHT_KEYS)[number];
 
 /** Spec 1.5 top-level `half`: how a player's half is shared between their biomes and meets the other half. */
 export interface PackHalfLayout {
@@ -1163,7 +1171,19 @@ export function parseHalf(v: unknown, base: string, path: string, warn: string[]
     if (!isObj(v.phone)) warn.push(`${path}.phone: not an object { src, src2x }; ignored`);
     else phone = parseHalfPicture(v.phone, base, `${path}.phone`, warn, DEFAULT_PHONE_SIZE, phoneBand(desk));
   }
-  return { ...desk, phone, bytes: parseBytes(v, path, warn) };
+  // Spec 1.13: the painted hour and light key, for matching the two halves' light.
+  let hour: number | undefined;
+  if (v.hour !== undefined && v.hour !== null) {
+    const hr = num(v.hour, 0, 24);
+    if (hr === null) warn.push(`${path}.hour: the hour the stage is painted at, 0–24; ignored`);
+    else hour = hr;
+  }
+  let key: LightKey | undefined;
+  if (v.key !== undefined && v.key !== null) {
+    if ((LIGHT_KEYS as readonly unknown[]).includes(v.key)) key = v.key as LightKey;
+    else warn.push(`${path}.key: one of ${LIGHT_KEYS.join(', ')}; ignored`);
+  }
+  return { ...desk, phone, bytes: parseBytes(v, path, warn), ...(hour === undefined ? {} : { hour }), ...(key === undefined ? {} : { key }) };
 }
 
 /** Spec 1.5: the declared bytes of a biome's half pictures (each file once). */
