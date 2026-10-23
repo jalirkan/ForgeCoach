@@ -42,8 +42,8 @@ import { halfSeams, SEAM_CAP_VW, widenedRatio } from './bridges.ts';
 
 /** The pair pack's manifest, at the root of the pairs URL. */
 export const PAIRS_MANIFEST_FILE = 'pairs.json';
-/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs). */
-export const PAIRS_SPEC = '1.12';
+/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs, 1.15 whole-half panoramas). */
+export const PAIRS_SPEC = '1.15';
 const MAX_PAIRS_MANIFEST_BYTES = 256 * 1024;
 
 /** How wide a pair's band is, as fractions of the half's width. */
@@ -80,7 +80,7 @@ export type PairMotif = PackHalf;
 export interface PairStage extends PackStage {
   motif?: PairMotif;
   /**
-   * Spec 1.13 (draft): the stage's whole-half panorama, in the shape of a 1.5
+   * Spec 1.15: the stage's whole-half panorama, in the shape of a 1.5
    * `half` (`src`, `src2x`, `width` / `height` of the 1x file, `focal`,
    * `safe`, optional `phone`, `bytes`): one place about 1.6 × the half's
    * width, the first biome the ground at its left end and the second at its
@@ -176,7 +176,7 @@ export function pairStageFor(map: readonly (readonly [number, number])[], lower:
   return lower > map[map.length - 1]![1] ? map.length : 1;
 }
 
-/** Spec 1.13 (draft): the panorama a pair's stage carries (the last stage past its end), or null: never borrowed from another stage. */
+/** Spec 1.15: the panorama a pair's stage carries (the last stage past its end), or null: never borrowed from another stage. */
 export function pairPanoramaAt(pair: PackPair | null | undefined, stage: number): PackHalf | null {
   if (!pair || stage <= 0 || !pair.stages.length) return null;
   return pair.stages[Math.min(stage, pair.stages.length) - 1]?.panorama ?? null;

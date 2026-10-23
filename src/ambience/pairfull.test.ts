@@ -2,7 +2,7 @@
  * ForgeCoach — ambience/pairfull.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Spec 1.13 draft (`?pairfull=1`): when the half has exactly two live biomes
+ * Spec 1.15 (`?pairfull=1`): when the half has exactly two live biomes
  * and a pictured pair, the plan is the pair picture alone, its split the land
  * share and its stage from the total lands; three biomes put the heaviest
  * pictured pair beside the third's panel; anything else is null (the half as
@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 import { halfLayout } from './layout.ts';
 import type { Biome, SlotState } from './model.ts';
 import { pairHalfAt, pairPanoramaAt, validatePairs, type PairsPack } from './pairs.ts';
-import { PAIR_FULL_MAX_ZOOM, pairFullArt, pairFullCaption, pairFullFrame, pairFullFrameCss, pairFullPlan, pairFullSplit, pairFullStage, pairFullZoom, type PairFullPair } from './pairfull.ts';
+import { PAIR_FULL_ELEMENT_MARGIN, PAIR_FULL_MAX_ZOOM, pairFullArt, pairFullCaption, pairFullElementRegion, pairFullFrame, pairFullFrameCss, pairFullPlan, pairFullSplit, pairFullStage, pairFullView, pairFullZoom, type PairFullPair } from './pairfull.ts';
 import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
 
 const BASE = 'http://127.0.0.1:8654/pairs-v2/';
@@ -43,7 +43,7 @@ const T = [1, 2, 3, 4, 5, 6];
 const plan = (slots: SlotState[], opts: { stageOverride?: number | null } = {}) => pairFullPlan(halfLayout(slots, null), pairsPack(), { thresholds: T, ...opts });
 const pairOf = (items: ReturnType<typeof plan>) => items?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
 
-describe('spec 1.13 draft: the plan', () => {
+describe('spec 1.15: the plan', () => {
   it('draws the pair picture across the whole half for exactly two live biomes with a pictured pair', () => {
     const items = plan([slot('island', 0, 4, 4), slot('plains', 1, 1, 1)]);
     expect(items).toHaveLength(1);
@@ -141,7 +141,7 @@ function evalCss(expr: string, w: number, h: number): number {
   return new Function('CL', `return ${js};`)((lo: number, v: number, hi: number) => Math.max(lo, Math.min(v, hi)));
 }
 
-describe('spec 1.13 draft: the frame pans the transition to the land share', () => {
+describe('spec 1.15: the frame pans the transition to the land share', () => {
   const desktop = { aspect: 3.2, focal: { x: 0.5, y: 0.475 }, safe: { x: 0.25, y: 0.35, w: 0.5, h: 0.25 } };
   const phone = { aspect: 0.8, focal: { x: 0.5, y: 0.475 }, safe: { x: 0.25, y: 0.425, w: 0.5, h: 0.125 } };
 
@@ -188,7 +188,7 @@ describe('spec 1.13 draft: the frame pans the transition to the land share', () 
       [376, 176],
       [300, 300],
     ];
-    for (const art of [desktop, phone, { ...desktop, safe: null }, { ...desktop, focal: { x: 0.4, y: 0.5 } }])
+    for (const art of [desktop, phone, { ...desktop, safe: null }, { ...desktop, focal: { x: 0.4, y: 0.5 } }, { ...desktop, focal: { x: 0.5, y: 0.45 }, focalTo: 0.43 }])
       for (const split of [0.2, 0.35, 0.5, 0.65, 0.8])
         for (const [w, h] of boxes) {
           const css = pairFullFrameCss(art, split);
@@ -202,7 +202,7 @@ describe('spec 1.13 draft: the frame pans the transition to the land share', () 
   });
 });
 
-describe('spec 1.13 draft: the flag', () => {
+describe('spec 1.15: the flag', () => {
   it('is off unless the page asks, and never changes the stored prefs', () => {
     expect(effectivePrefs(DEFAULT_PREFS, '', '').pairFull).toBeUndefined();
     expect(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', '').pairFull).toBeUndefined();
@@ -214,11 +214,11 @@ describe('spec 1.13 draft: the flag', () => {
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(FORGECOACH_PAIRS_FULL_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1&pairs=http://127.0.0.1:8654/pairs-v2/', ''))).toBe('http://127.0.0.1:8654/pairs-v2/');
-    expect(FORGECOACH_PAIRS_FULL_URL).toMatch(/@pairs-v2\/$/);
+    expect(FORGECOACH_PAIRS_FULL_URL).toMatch(/@pairs-v4\/$/);
   });
 });
 
-describe('spec 1.13 draft: the stage panorama (pairs-panorama)', () => {
+describe('spec 1.15: the stage panorama (pairs-panorama)', () => {
   const PANO = { src: 'pairs/island-plains/s3-panorama.webp', src2x: 'pairs/island-plains/s3-panorama@2x.webp', width: 3277, height: 640, subjectBand: [0.38, 0.72], focal: { x: 0.5, y: 0.52 }, safe: { x: 0.1875, y: 0.38, w: 0.625, h: 0.34 }, bytes: 1000 };
   const withPano = () => {
     const st = stages('island-plains') as Record<string, unknown>[];
@@ -261,5 +261,48 @@ describe('spec 1.13 draft: the stage panorama (pairs-panorama)', () => {
       expect(f.left).toBeCloseTo(left, 3);
       expect(f.seamAt).toBeCloseTo(split, 3);
     }
+  });
+});
+
+describe('spec 1.15: the view the pieces (1.14) stand on', () => {
+  const art = { aspect: 3277 / 640, focal: { x: 0.5, y: 0.52 }, safe: { x: 0.1875, y: 0.38, w: 0.625, h: 0.34 }, picture: null };
+
+  it('is null without a pair, a box or an art', () => {
+    expect(pairFullView(null, { w: 1600, h: 500 }, art)).toBeNull();
+    const items = plan([slot('island', 0, 2, 2), slot('plains', 1, 2, 2)]);
+    expect(pairFullView(items, { w: 0, h: 500 }, art)).toBeNull();
+    expect(pairFullView(items, { w: 1600, h: 500 }, null)).toBeNull();
+  });
+
+  it('puts the transition at the board’s split, mirrored or not, and each colour’s ground on its side of it', () => {
+    for (const [slots, seam] of [
+      [[slot('island', 0, 3, 3), slot('plains', 1, 1, 1)], 0.75],
+      [[slot('plains', 0, 1, 1), slot('island', 1, 3, 3)], 0.25],
+    ] as const) {
+      const v = pairFullView(plan([...slots]), { w: 1600, h: 500 }, art)!;
+      expect(v.seamAt).toBeCloseTo(seam, 3);
+      expect(v.ground.left).toEqual({ left: 0, width: v.seamAt });
+      expect(v.ground.right.left + v.ground.right.width).toBeCloseTo(1, 4);
+      expect(v.frame.width).toBeCloseTo(1.6, 3);
+    }
+  });
+
+  it('with a third biome’s panel (the placeholder) on the left, measures in the whole half', () => {
+    const items = plan([slot('forest', 0, 1, 1), slot('island', 1, 3, 3), slot('plains', 2, 1, 1)])!;
+    expect(items.map((x) => x.kind)).toEqual(['slot', 'pair']);
+    const p = pairOf(items)!;
+    const v = pairFullView(items, { w: 1600, h: 500 }, art)!;
+    expect(v.panel.left).toBeCloseTo(1 - p.share, 4);
+    expect(v.panel.width).toBeCloseTo(p.share, 4);
+    expect(v.seamAt).toBeCloseTo(v.panel.left + p.split * p.share, 3);
+    expect(v.ground.left.left).toBe(v.panel.left);
+  });
+
+  it('an element’s region is the heavier colour’s ground, stopping the margin short of the transition, never negative', () => {
+    expect(PAIR_FULL_ELEMENT_MARGIN).toBe(0.05);
+    const v = pairFullView(plan([slot('island', 0, 4, 4), slot('plains', 1, 1, 1)]), { w: 1600, h: 500 }, art)!;
+    expect(pairFullElementRegion(v, 'left')).toEqual({ left: 0, width: 0.75 });
+    expect(pairFullElementRegion(v, 'right')).toEqual({ left: 0.85, width: 0.15 });
+    expect(pairFullElementRegion(v, 'right', 0.5).width).toBe(0);
   });
 });

@@ -144,7 +144,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const pairsPack = half ? (pack?.pairs ?? null) : null;
   const bands = useMemo(() => (pairsPack ? pairBands(layout as HalfSlotLayout[], pairsPack, duals) : []), [pairsPack, layout, duals]);
   const bandLife = useBandLife(bands, layout as HalfSlotLayout[], pack, reduced);
-  // Spec 1.13 draft: the pair picture as the whole half (null: the half as today).
+  // Spec 1.15: the pair picture as the whole half (null: the half as today).
   const fullPlan = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride]);
   const narrow = useNarrowScreen();
   const halfAspect = usePanelAspect(hostRef, (bridged && layout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone)) || bandLife.shown.some((b) => b.pair.stages.some((st) => !!st.half?.phone || !!st.motif?.phone)));
@@ -612,12 +612,13 @@ function Band({ b, share, seam, open, leaving, ms, phone, growth, reduced, onRea
 }
 
 // ---------------------------------------------------------------------------
-// Spec 1.13 draft: the pair picture as the whole half (`?pairfull=1`)
+// Spec 1.15: the pair picture as the whole half (`?pairfull=1`)
 
 /**
  * The pair picture across its panel (the whole half, or all of it but a third
- * biome's panel): the stage's `half` picture (the phone one on a phone or a
- * phone-shaped panel), drawn pairfull.ts `pairFullFrameCss` wide and panned so
+ * biome's panel): the stage's `panorama` (pairs-v4), else its `half` picture
+ * (the phone one on a phone or a phone-shaped panel; pairfull.ts
+ * `pairFullArt`), drawn pairfull.ts `pairFullFrameCss` wide and panned so
  * the picture's transition sits at the land share; mirrored when the board has
  * the pair the other way round. A land moves the frame over 900 ms, as the
  * panels move; a stage step cross-fades over `growth.seconds`.
@@ -627,7 +628,8 @@ function PairFullPanel({ p, first, growth, reduced, narrow }: { p: PairFullPair;
   const half = pairHalfAt(p.pair, p.stage);
   const pano = pairPanoramaAt(p.pair, p.stage);
   const panelAspect = usePanelAspect(ref, !!half?.phone || !!pano?.phone);
-  const art = pairFullArt(half, pano, panelAspect, narrow);
+  const horizon = useContext(OneHorizon);
+  const art = pairFullArt(half, pano, panelAspect, narrow, horizon);
   // The frame is computed in the picture's own order; the mirror flips it back.
   const split = p.mirror ? 1 - p.split : p.split;
   const ms = growthMs(growth, reduced);
@@ -641,6 +643,7 @@ function PairFullPanel({ p, first, growth, reduced, narrow }: { p: PairFullPair;
       data-pairfull-split={p.split}
       data-pairfull-stage={p.stage}
       data-pairfull-dual={p.pair.dual ?? undefined}
+      data-pairfull-panorama={pano && art?.picture && (art.picture.src === pano.src || art.picture.src === pano.phone?.src) ? 'yes' : undefined}
       data-art={art?.source}
     >
       {pic && (

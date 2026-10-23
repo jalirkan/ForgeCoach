@@ -541,7 +541,7 @@ function describe(e: SceneryEvent): string {
 
 /** Spec 1.9: a side's pair bands in words (1.12: a motif pair says so), for the preview's caption (the dual and shock names are for this only). */
 function bandCaption(pack: ScenePack | null, slots: ReturnType<typeof slotsOf>, duals: Readonly<Record<string, number>>, stageOverride: number | null, pairFull = false): string | null {
-  // Spec 1.13 draft: under `?pairfull=1` a side drawn as its pair picture says so instead.
+  // Spec 1.15: under `?pairfull=1` a side drawn as its pair picture says so instead.
   const full = pairFull && pack?.pairs ? pairFullCaption(pairFullPlan(halfLayout(slots, pack, stageOverride), pack.pairs, { thresholds: pack.stageThresholds, stageOverride })) : null;
   if (full) return full;
   if (!pack?.pairs) return null;

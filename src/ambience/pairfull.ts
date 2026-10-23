@@ -2,8 +2,9 @@
  * ForgeCoach — ambience/pairfull.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Spec 1.13 DRAFT, behind `?pairfull=1` (prefs.ts; default off, nothing
- * changes for players): the whole half is the pair picture.
+ * Spec 1.15, behind `?pairfull=1` (prefs.ts; default off, nothing changes
+ * for players until the flag's default is flipped): the whole half is the
+ * pair picture -- the stage's `panorama` (pairs-v4) where it has one.
  *
  * Justin, 2026-10-22: "the space doesn't need to be a sliver: when two lands
  * are on the board, the space of BOTH lands is the space we have to
@@ -43,11 +44,17 @@
  * - Anything else (one biome, a pair with no picture or a motif pair, no
  *   pairs pack): null, and the half is drawn exactly as today.
  *
+ * - For spec 1.14's pieces: {@link pairFullView} says where the transition
+ *   lands across the half, each colour's ground and the picture's horizon,
+ *   and {@link pairFullElementRegion} the region an element stands in (the
+ *   heavier colour's ground, stopping {@link PAIR_FULL_ELEMENT_MARGIN} short
+ *   of the transition; the piece is never mirrored with the picture).
+ *
  * Pure and DOM-free; the drawing is ui/ambience/SceneryStrip.tsx's
  * `PairFullPanel`.
  */
 import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome } from './model.ts';
-import { cropAxis, cropAxisCss, halfArtOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
+import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf } from './manifest.ts';
 import { pairFor, pairHalfAt, pairStageFor, type PackPair, type PairsPack } from './pairs.ts';
 
@@ -114,7 +121,7 @@ function pictured(pair: PackPair): boolean {
 }
 
 /**
- * The half's row under spec 1.13 (draft), or null when the half is drawn as
+ * The half's row under spec 1.15, or null when the half is drawn as
  * today: exactly two live biomes with a pictured pair → the pair picture
  * alone; three → the heaviest pictured pair and the third biome's panel on
  * its side. Withered panels are left out (the picture is the half).
@@ -163,16 +170,18 @@ export function pairFullPlan(
 }
 
 /**
- * The picture a whole-half pair panel draws: the stage's 1.13 `panorama` when
+ * The picture a whole-half pair panel draws: the stage's 1.15 `panorama` when
  * it has one, else its 1.9 `half`. A panorama with no phone picture gives way
  * to the half wherever the half would draw its phone picture (a phone, or a
  * phone-shaped panel), so a desktop-only panorama never lands on a phone.
+ * `horizon` (spec 1.13's one horizon): the crop pins the picture's horizon at
+ * layout.ts `HORIZON_AT`, as every other panel's.
  */
-export function pairFullArt(half: PackHalf | null, panorama: PackHalf | null, panelAspect: number | null, narrow: boolean): HalfArt | null {
-  const fromHalf = half ? halfArtOf(half, panelAspect, { narrow }) : null;
+export function pairFullArt(half: PackHalf | null, panorama: PackHalf | null, panelAspect: number | null, narrow: boolean, horizon = false): HalfArt | null {
+  const fromHalf = half ? halfArtOf(half, panelAspect, { narrow, horizon }) : null;
   if (!panorama) return fromHalf;
   if (!panorama.phone && fromHalf?.source === 'phone') return fromHalf;
-  return halfArtOf(panorama, panelAspect, { narrow });
+  return halfArtOf(panorama, panelAspect, { narrow, horizon });
 }
 
 /** How much wider than the half the picture is drawn so its transition (`t`) can land at `split` ({@link PAIR_FULL_MAX_ZOOM} at most). */
@@ -192,7 +201,7 @@ export function pairFullZoom(split: number, t: number): number {
  * whole when it fits). `seamAt` is where the transition lands, 0..1 across
  * the box. {@link pairFullFrameCss} is its CSS twin.
  */
-export function pairFullFrame(box: { w: number; h: number }, art: Pick<HalfArt, 'aspect' | 'focal' | 'safe'>, split: number): FrameRect & { seamAt: number } {
+export function pairFullFrame(box: { w: number; h: number }, art: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo'>, split: number): FrameRect & { seamAt: number } {
   if (!(box.w > 0 && box.h > 0 && art.aspect > 0)) return { left: 0, top: 0, width: 1, height: 1, seamAt: 0.5 };
   const s = clamp(split, PAIR_FULL_SPLIT[0], PAIR_FULL_SPLIT[1]);
   const t = art.focal.x;
@@ -201,12 +210,12 @@ export function pairFullFrame(box: { w: number; h: number }, art: Pick<HalfArt, 
   const dh = dw / art.aspect;
   const left = clamp(s * box.w - t * dw, box.w - dw, 0);
   const safe = art.safe;
-  const oy = cropAxis(box.h, dh, art.focal.y, safe ? safe.y : null, safe ? safe.h : null);
+  const oy = cropAxis(box.h, dh, art.focal.y, safe ? safe.y : null, safe ? safe.h : null, art.focalTo ?? 0.5);
   return { left: r4(left / box.w) || 0, top: r4(-oy / box.h) || 0, width: r4(dw / box.w), height: r4(dh / box.h), seamAt: r4((left + t * dw) / box.w) };
 }
 
 /** {@link pairFullFrame} as CSS for an element inside a size container (the panel: `cqw` / `cqh`), so the crop follows the panel as it grows. */
-export function pairFullFrameCss(art: Pick<HalfArt, 'aspect' | 'focal' | 'safe'>, split: number): { left: string; top: string; width: string; height: string } {
+export function pairFullFrameCss(art: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo'>, split: number): { left: string; top: string; width: string; height: string } {
   const f = (n: number) => String(r4(n));
   const s = clamp(split, PAIR_FULL_SPLIT[0], PAIR_FULL_SPLIT[1]);
   const t = art.focal.x;
@@ -215,10 +224,72 @@ export function pairFullFrameCss(art: Pick<HalfArt, 'aspect' | 'focal' | 'safe'>
   const safe = art.safe;
   return {
     left: `clamp(100cqw - ${dw}, ${f(s)} * 100cqw - ${f(t)} * ${dw}, 0px)`,
-    top: `calc(-1 * ${cropAxisCss('100cqh', dh, art.focal.y, safe ? safe.y : null, safe ? safe.h : null)})`,
+    top: `calc(-1 * ${cropAxisCss('100cqh', dh, art.focal.y, safe ? safe.y : null, safe ? safe.h : null, art.focalTo ?? 0.5)})`,
     width: dw,
     height: `calc(${dh})`,
   };
+}
+
+/** How far short of the transition an element's region stops (spec 1.14's elements on a whole-half picture). */
+export const PAIR_FULL_ELEMENT_MARGIN = 0.05;
+
+/** A span of the half's width, as fractions of it (pieces.ts `Region`'s shape). */
+export interface PairFullSpan {
+  left: number;
+  width: number;
+}
+
+/**
+ * Where a whole-half pair picture puts things, in the HALF's own fractions
+ * and board order (the mirror applied): what spec 1.14's pieces stand on.
+ */
+export interface PairFullView {
+  /** The pair panel: the whole half, or all of it but the third biome's panel (the placeholder). */
+  panel: PairFullSpan;
+  /** Where the transition lands across the half (board order: the left biome's ground ends here). */
+  seamAt: number;
+  /** Each biome's ground: the left biome from the panel's left edge to the transition, the right biome from there to the panel's right edge. */
+  ground: { left: PairFullSpan; right: PairFullSpan };
+  /** The picture's horizon, a fraction of the half's height from its top (declared, else estimated: layout.ts `horizonOf`), through the crop. */
+  horizonY: number;
+  /** The picture's frame in the pair panel (pairFullFrame, the picture's own order; the panel flips it when mirrored). */
+  frame: FrameRect;
+}
+
+/**
+ * {@link PairFullView} for a plan's pair in a half of `box` px drawing `art`
+ * (pairFullArt's). Null without a pair, a box or an art. The pair panel's
+ * pixel width is its share of the half (the seam between it and a third
+ * panel is ignored: a placeholder).
+ */
+export function pairFullView(items: readonly PairFullItem[] | null, box: { w: number; h: number }, art: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo' | 'picture'> | null): PairFullView | null {
+  const p = items?.find((x): x is PairFullPair => x.kind === 'pair');
+  if (!p || !art || !(box.w > 0 && box.h > 0)) return null;
+  const pairFirst = items![0] === p;
+  const panel = { left: r4(pairFirst ? 0 : 1 - p.share), width: r4(p.share) };
+  const frame = pairFullFrame({ w: box.w * p.share, h: box.h }, art, p.mirror ? 1 - p.split : p.split);
+  const seamInPanel = p.mirror ? 1 - frame.seamAt : frame.seamAt;
+  const seamAt = r4(panel.left + seamInPanel * panel.width);
+  const hz = art.picture ? horizonOf(art.picture) : art.focal.y;
+  return {
+    panel,
+    seamAt,
+    ground: { left: { left: panel.left, width: r4(seamAt - panel.left) }, right: { left: seamAt, width: r4(panel.left + panel.width - seamAt) } },
+    horizonY: r4(frame.top + hz * frame.height),
+    frame: { left: frame.left, top: frame.top, width: frame.width, height: frame.height },
+  };
+}
+
+/**
+ * The region spec 1.14's element stands in on a whole-half pair picture: the
+ * heavier pair colour's ground (`side`, pieces.ts `HalfPlan.element.side`),
+ * stopping {@link PAIR_FULL_ELEMENT_MARGIN} of the half short of the
+ * transition, so the element stays on its own ground. Never narrower than 0.
+ */
+export function pairFullElementRegion(view: PairFullView, side: 'left' | 'right', margin = PAIR_FULL_ELEMENT_MARGIN): PairFullSpan {
+  const g = view.ground[side];
+  const width = r4(Math.max(0, g.width - margin));
+  return side === 'left' ? { left: g.left, width } : { left: r4(g.left + g.width - width), width };
 }
 
 /** A caption for the preview page: "Tundra, whole half: island 80% | plains 20%, pair stage 2". */
