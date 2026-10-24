@@ -11,7 +11,10 @@
  * own pack defaults to the whole-half pairs.
  */
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { halfLayout } from './layout.ts';
+import type { MakeupShowing } from './makeup.ts';
+import { BIOME_COLOUR, makeupFromSlots, planHalf } from './pieces.ts';
 import type { Biome, SlotState } from './model.ts';
 import { pairHalfAt, pairPanoramaAt, validatePairs, type PairsPack } from './pairs.ts';
 import { PAIR_FULL_ELEMENT_MARGIN, PAIR_FULL_MAX_ZOOM, pairFullArt, pairFullCaption, pairFullElementRegion, pairFullFrame, pairFullFrameCss, pairFullPlan, pairFullSplit, pairFullStage, pairFullView, pairFullZoom, type PairFullPair } from './pairfull.ts';
@@ -113,18 +116,102 @@ describe('spec 1.15: the plan', () => {
     expect(c.map((x) => (x.kind === 'pair' ? x.key : x.biome))).toEqual(['forest', 'island+plains']);
   });
 
-  it('four biomes fold to three first (1.10), the folded weight counted in the pair', () => {
+  it('four biomes fold to three first, the dropped colour weighing nothing (1.16, SYSTEM.md A6)', () => {
     // Case 4's opponent: Bayou, Island, Tundra → swamp ½, forest ½, island 1½, plains ½ → three panels.
     const layout = halfLayout([slot('swamp', 0, 0.5, 1), slot('forest', 1, 0.5, 1), slot('island', 2, 1.5, 1), slot('plains', 3, 0.5, 1)], null);
-    expect(layout).toHaveLength(3);
+    expect(layout.map((l) => [l.slot.biome, l.slot.weight])).toEqual([
+      ['swamp', 0.5],
+      ['forest', 0.5],
+      ['island', 1.5],
+    ]);
     const items = pairFullPlan(layout, pairsPack(), { thresholds: T });
     expect(items).not.toBeNull();
     expect(items!.filter((x) => x.kind === 'pair')).toHaveLength(1);
   });
-
   it('captions the plan for the preview page', () => {
     expect(pairFullCaption(plan([slot('island', 0, 4, 4), slot('plains', 1, 1, 1)]))).toBe('Tundra (Hallowed Fountain), whole half: island 80% | plains 20%, pair stage 3');
     expect(pairFullCaption(null)).toBeNull();
+  });
+});
+
+/**
+ * Review fault 1 (2026-10-24): with four or five colours the strip panned the pair by a colour
+ * that was not on screen and picked a different pair from the pieces, so the element did not draw
+ * while the caption said it did. One rule now (makeup.ts): these play the strip (halfLayout →
+ * pairFullPlan), the caption and the pieces (planHalf) on pairs-v4, where every pair is pictured.
+ */
+describe('one makeup rule for the strip, the caption and the pieces', () => {
+  const v4 = validatePairs(JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs!;
+  const ALL: ReadonlySet<Biome> = new Set<Biome>(['plains', 'island', 'swamp', 'mountain', 'forest']);
+  const strip = (slots: SlotState[], showing: MakeupShowing | null = null) => {
+    const items = pairFullPlan(halfLayout(slots, null, null, showing), v4, { thresholds: T, elements: ALL, showing, slots })!;
+    expect(items).toHaveLength(1);
+    return items[0] as PairFullPair;
+  };
+  /** The strip's pair and element in colours, and the pieces' plan, for the same half. */
+  const both = (slots: SlotState[], showing: MakeupShowing | null = null) => {
+    const p = strip(slots, showing);
+    const plan = planHalf({ makeup: makeupFromSlots(slots), showing });
+    return { p, plan, stripPair: [BIOME_COLOUR[p.left], BIOME_COLOUR[p.right]].sort(), planPair: [...plan.pair!].sort(), stripElement: BIOME_COLOUR[p.element!] };
+  };
+
+  it('1 + 1 + 1 + 1: island+plains at 50/50, swamp the element (before: mountain folded into swamp and the pair moved)', () => {
+    const s = [slot('plains', 0, 1, 1), slot('island', 1, 1, 1), slot('swamp', 2, 1, 1), slot('mountain', 3, 1, 1)];
+    const { p, plan, stripPair, planPair, stripElement } = both(s);
+    expect([p.key, p.split, p.weights, p.element]).toEqual(['island+plains', 0.5, [1, 1], 'swamp']);
+    expect(stripPair).toEqual(planPair);
+    expect(plan.element).toMatchObject({ colour: 'B', opacity: 1 });
+    expect(stripElement).toBe(plan.element!.colour);
+    // The stage counts every coloured land, the dropped mountain's too (SYSTEM.md A5): four lands, pair stage 2.
+    expect([p.stage, plan.pairStage]).toEqual([2, 2]);
+    expect(plan.pick.total).toBe(4);
+    expect(pairFullCaption([p])).toBe('Tundra (Hallowed Fountain), whole half: plains 50% | island 50%, pair stage 2; swamp as an element');
+  });
+
+  it('four unequal colours: the lightest dropped, the pan by the pair’s own weights (before: 4 : 2, panned by the mountain)', () => {
+    const s = [slot('mountain', 0, 1, 1), slot('plains', 1, 3, 3), slot('island', 2, 2, 2), slot('swamp', 3, 1.5, 2)];
+    const { p, plan, stripPair, planPair, stripElement } = both(s);
+    expect([p.key, p.left, p.right, p.weights, p.split, p.element]).toEqual(['island+plains', 'plains', 'island', [3, 2], 0.6, 'swamp']);
+    expect(stripPair).toEqual(planPair);
+    expect(stripElement).toBe(plan.element!.colour);
+    expect(plan.element!.opacity).toBeCloseTo((3 * 1.5) / 6.5, 3);
+    // 7.5 coloured lands, the dropped mountain's included: pair stage 3.
+    expect([p.stage, plan.pairStage]).toEqual([3, 3]);
+  });
+
+  it('the stage counts every coloured land, a dropped colour’s too: it still grows the place (SYSTEM.md A5)', () => {
+    // Plains 1, island 1, swamp ½, mountain ½ and forest ½: three kept (W U, B the element, by arrival), 3.5 lands → pair stage 2.
+    // Counting only the kept three (2.5 lands) would hold it at stage 1.
+    const s = [slot('plains', 0, 1, 1), slot('island', 1, 1, 1), slot('swamp', 2, 0.5, 1), slot('mountain', 3, 0.5, 1), slot('forest', 4, 0.5, 1)];
+    const { p, plan } = both(s);
+    expect([p.key, p.element, p.stage, plan.pairStage]).toEqual(['island+plains', 'swamp', 2, 2]);
+    // The dropped colours still weigh nothing in the pan or the element's share.
+    expect([p.split, plan.element!.opacity]).toEqual([0.5, 0.6]);
+  });
+
+  it('five colours: the three heaviest, a tie for third to the earliest arrival; the other two nowhere', () => {
+    const s = [slot('forest', 0, 1, 1), slot('swamp', 1, 1, 1), slot('plains', 2, 2, 2), slot('island', 3, 2, 2), slot('mountain', 4, 1, 1)];
+    expect(halfLayout(s, null).map((l) => [l.slot.biome, l.slot.weight])).toEqual([
+      ['forest', 1],
+      ['plains', 2],
+      ['island', 2],
+    ]);
+    const { p, plan, stripPair, planPair, stripElement } = both(s);
+    expect([p.key, p.split, p.element]).toEqual(['island+plains', 0.5, 'forest']);
+    expect(stripPair).toEqual(planPair);
+    expect(stripElement).toBe(plan.element!.colour);
+  });
+
+  it('ties: the pair and the third already showing stay, in the strip and the pieces alike', () => {
+    const four = [slot('plains', 0, 2, 2), slot('island', 1, 2, 2), slot('swamp', 2, 1, 1), slot('mountain', 3, 1, 1)];
+    expect(both(four).stripElement).toBe('B');
+    const r = both(four, { kept: ['W', 'U', 'R'], pair: ['U', 'W'] });
+    expect([r.p.element, r.plan.element!.colour]).toEqual(['mountain', 'R']);
+    const three = [slot('plains', 0, 1, 1), slot('island', 1, 1, 1), slot('swamp', 2, 1, 1)];
+    expect(both(three).p.key).toBe('island+plains');
+    const shown = both(three, { kept: ['U', 'B', 'W'], pair: ['U', 'B'] });
+    expect([shown.p.key, shown.p.element]).toEqual(['island+swamp', 'plains']);
+    expect(shown.planPair).toEqual(shown.stripPair);
   });
 });
 

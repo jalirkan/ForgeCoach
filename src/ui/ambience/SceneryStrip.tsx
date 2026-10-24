@@ -58,6 +58,14 @@
  * and it arrives, leaves and loads as a band does. A band pair's motif is
  * drawn over the band's own picture, in the band's box.
  *
+  * Whole-half pair pictures (spec 1.15, `?pairfull=1`): the pair is
+ * makeup.ts's one rule (the pieces' too, with the same `showing`); the
+ * picture is drawn once one of its pictures has loaded -- the stage's
+ * painted-in element panorama (1.16), its panorama, its 1.9 half, best first
+  * (pairfull.ts `pairFullCandidates` / `pairFullChoice`). Until then the half
+ * holds what it drew last (`pairFullHold`, at most 8 s); with nothing drawn
+ * before, or if all fail, it is drawn as without the flag. Never blank.
+ *
  * `fill="half"` (spec 1.5, Settings → Fill each side): the same slots fill
  * the player's whole half of the board instead of a strip, split by land
  * count (layout.ts `halfLayout`), each slot's art in a frame of the art's
@@ -71,15 +79,17 @@ import type { Biome, SlotState } from '../../ambience/model.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, growthOf, halfAt, layersAt, type PackBiome, type PackGrowth, type PackHalf, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
 import { growthMs, slotStageFade, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
 import { nextStepFrames, transitionFrames, tweenAllowed, type TransitionShape } from '../../ambience/transitions.ts';
-import { pictureReady, warmPicture } from '../../ambience/pack.ts';
-import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, PHONE_VIEWPORT_MAX, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt, type HalfSlotLayout } from '../../ambience/layout.ts';
+import { markPicture, pictureReady, pictureStatus, warmPicture } from '../../ambience/pack.ts';
+import { frameAspect, halfArtOf, halfFrameCss, halfLayout, objectPosition, PHONE_VIEWPORT_MAX, slotLayout, spriteFrameCss, STRIP_ART, type HalfArt, type HalfSlotLayout, type SlotLayout } from '../../ambience/layout.ts';
 import { bridgePlacements, halfSeams, phoneHalf, seamCentreCss, type BridgePlacement } from '../../ambience/bridges.ts';
 import { bandedSeams, halfRow, motifBands, motifWidth, pairBands, pairHalfAt, pairMotifAt, pairPanoramaAt, panelBands, rowCentreCss, type PairBandPlacement, type PairMotif, type RowItem } from '../../ambience/pairs.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import { useFadeIn, useFadeStack } from './useFade.ts';
 import { useTween } from './useTween.ts';
-import { pairFullArt, pairFullFrameCss, pairFullPlan, type PairFullPair } from '../../ambience/pairfull.ts';
+import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullChoice, pairFullFrameCss, pairFullHold, pairFullPanelAspect, pairFullPlan, type PairFullCandidate, type PairFullHold, type PairFullPair } from '../../ambience/pairfull.ts';
+import type { MakeupShowing } from '../../ambience/makeup.ts';
+import { usePicturesVersion } from './usePictures.ts';
 import './scenery.css';
 
 export type { StripEffect } from './SceneryEffects.tsx';
@@ -108,6 +118,8 @@ export interface SceneryStripProps {
   pairFull?: boolean;
   /** Spec 1.14 under `pairFull`: the biomes the pieces have an element for; a third such biome is drawn as an element (ScenePieces), not a panel. */
   elements?: ReadonlySet<Biome> | null;
+  /** What was showing before (makeup.ts; SceneryLayer's previous pick): the tie rules, shared with the pieces. */
+  showing?: MakeupShowing | null;
   className?: string;
   style?: CSSProperties;
 }
@@ -129,7 +141,7 @@ export function usePageVisible(): boolean {
 
 const NO_DUALS: Readonly<Record<string, number>> = {};
 
-export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, horizon = false, pairFull = false, elements = null, className, style }: SceneryStripProps) {
+export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, horizon = false, pairFull = false, elements = null, showing = null, className, style }: SceneryStripProps) {
   const visible = usePageVisible();
   const settled = useRef(false);
   useEffect(() => {
@@ -138,24 +150,52 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   }, []);
   const strip: PackStrip = pack?.strip ?? DEFAULT_STRIP;
   const half = fill === 'half';
-  const layout = useMemo(() => (half ? halfLayout(slots, pack, stageOverride) : slotLayout(slots, pack, stageOverride)), [half, slots, pack, stageOverride]);
+  const layout = useMemo(() => (half ? halfLayout(slots, pack, stageOverride, showing) : slotLayout(slots, pack, stageOverride)), [half, slots, pack, stageOverride, showing]);
   // Spec 1.8: each seam's width (a bridged pair's widened by its duals), and the bridges, at the half's shape.
   const hostRef = useRef<HTMLDivElement>(null);
   const bridged = half && !!pack?.bridges;
-  // Spec 1.9: the pair bands between neighbouring biomes.
   const pairsPack = half ? (pack?.pairs ?? null) : null;
-  const bands = useMemo(() => (pairsPack ? pairBands(layout as HalfSlotLayout[], pairsPack, duals) : []), [pairsPack, layout, duals]);
-  const bandLife = useBandLife(bands, layout as HalfSlotLayout[], pack, reduced);
   // Spec 1.15: the pair picture as the whole half (null: the half as today).
-  const fullPlan = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride, elements }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride, elements]);
+  const plannedFull = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride, elements, showing, slots }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride, elements, showing, slots]);
   const narrow = useNarrowScreen();
-  const halfAspect = usePanelAspect(hostRef, (bridged && layout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone)) || bandLife.shown.some((b) => b.pair.stages.some((st) => !!st.half?.phone || !!st.motif?.phone)));
+  // Spec 1.15's load gate (review fault 4): the pair picture is drawn once a picture of it has loaded (1.16: a painted-in
+  // element first). Until then the half holds what it drew last (the review of #198: no panels-and-band flash on a cold
+  // cache), for PAIR_FULL_HOLD_MS at most; with nothing drawn before, or if every picture fails, its panels. Never blank.
+  const fullAspect = usePanelAspect(hostRef, !!plannedFull);
+  const pictures = usePicturesVersion(!!plannedFull);
+  const fullGate = useMemo(() => {
+    const p = plannedFull?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
+    if (!p) return null;
+    const cands = pairFullCandidates(p, pairFullPanelAspect(fullAspect, p.share), narrow, horizon);
+    return { p, ...pairFullChoice(cands, pictureStatus) };
+  }, [plannedFull, fullAspect, narrow, horizon, pictures]); // eslint-disable-line react-hooks/exhaustive-deps
+  const wantPic = fullGate?.want && fullGate.want !== fullGate.show ? fullGate.want.art.picture! : null;
+  useEffect(() => {
+    if (wantPic) warmPicture(wantPic);
+  }, [wantPic?.src]); // eslint-disable-line react-hooks/exhaustive-deps
+  const holdRef = useRef<PairFullHold<SlotLayout[]>>({ last: null, since: null });
+  const held = pairFullHold({ layout: layout as SlotLayout[], plan: plannedFull, choice: fullGate }, holdRef.current, Date.now());
+  holdRef.current = held.hold;
+  const [, setHoldTick] = useState(0);
+  useEffect(() => {
+    if (!held.holding || held.hold.since === null) return;
+    // Wake when the hold runs out, so a picture that never settles gives way to the panels.
+    const t = setTimeout(() => setHoldTick((n) => n + 1), Math.max(0, PAIR_FULL_HOLD_MS - (Date.now() - held.hold.since)) + 20);
+    return () => clearTimeout(t);
+  }, [held.holding, held.hold.since]);
+  const drawLayout = held.draw.layout;
+  const fullPlan = held.draw.plan;
+  const fullShown = held.draw.shown;
+  // Spec 1.9: the pair bands between neighbouring biomes (of the layout drawn: a held one while a pair picture loads).
+  const bands = useMemo(() => (pairsPack ? pairBands(drawLayout as HalfSlotLayout[], pairsPack, duals) : []), [pairsPack, drawLayout, duals]);
+  const bandLife = useBandLife(bands, drawLayout as HalfSlotLayout[], pack, reduced);
+  const halfAspect = usePanelAspect(hostRef, (bridged && drawLayout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone)) || bandLife.shown.some((b) => b.pair.stages.some((st) => !!st.half?.phone || !!st.motif?.phone)));
   // Spec 1.10: a seam with a band (wanted, or fading out) draws no bridge and keeps the base seam.
   const banded = useMemo(() => bandedSeams(bandLife.shown), [bandLife.shown]);
-  const seams = useMemo(() => (half ? halfSeams(layout as HalfSlotLayout[], pack, duals, banded) : null), [half, layout, pack, duals, banded]);
-  const placements = useMemo(() => (bridged ? bridgePlacements(layout as HalfSlotLayout[], pack, duals, { phone: phoneHalf(halfAspect, { narrow }), banded }) : []), [bridged, layout, pack, duals, halfAspect, banded]);
-  const row: RowItem[] | null = useMemo(() => (seams ? halfRow(layout as HalfSlotLayout[], seams, panelBands(bandLife.shown), bandLife.isOpen) : null), [seams, layout, bandLife]);
-  if (layout.length === 0 && !fx?.length) return null;
+  const seams = useMemo(() => (half ? halfSeams(drawLayout as HalfSlotLayout[], pack, duals, banded) : null), [half, drawLayout, pack, duals, banded]);
+  const placements = useMemo(() => (bridged ? bridgePlacements(drawLayout as HalfSlotLayout[], pack, duals, { phone: phoneHalf(halfAspect, { narrow }), banded }) : []), [bridged, drawLayout, pack, duals, halfAspect, banded]);
+  const row: RowItem[] | null = useMemo(() => (seams ? halfRow(drawLayout as HalfSlotLayout[], seams, panelBands(bandLife.shown), bandLife.isOpen) : null), [seams, drawLayout, bandLife]);
+  if (drawLayout.length === 0 && !fx?.length) return null;
   const rotated = edge === 'top' && orient === 'rotated';
   const halfCfg = pack?.half ?? DEFAULT_HALF_LAYOUT;
   const growth = growthOf(pack);
@@ -171,7 +211,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const fadeAt = edge === 'bottom' || rotated ? 'top' : 'bottom';
   return (
     <>
-      {layout.length > 0 && (
+      {drawLayout.length > 0 && (
         <div
           ref={hostRef}
           className={['scn', `scn-${edge}`, half && 'scn-half', half && `scn-fade-${fadeAt}`, rotated && 'scn-rotated', edge === 'top' && !rotated && !half && 'scn-upright', reduced && 'is-reduced', !visible && 'is-paused', className].filter(Boolean).join(' ')}
@@ -184,8 +224,8 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
             <div className="scn-row">
               {fullPlan
                 ? fullPlan.map((it, k) => {
-                    if (it.kind === 'pair') return <PairFullPanel key={`pairfull:${it.key}`} p={it} first={k === 0} growth={growth} reduced={reduced} narrow={narrow} />;
-                    const l = (layout as HalfSlotLayout[])[it.index]!;
+                    if (it.kind === 'pair') return <PairFullPanel key={`pairfull:${it.key}`} p={it} shown={fullShown!} first={k === 0} growth={growth} reduced={reduced} />;
+                    const l = (drawLayout as HalfSlotLayout[])[it.index]!;
                     return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={it.share} first={k === 0} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} />;
                   })
                 : row
@@ -195,18 +235,18 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
                       const b = it.band!;
                       return <Band key={`band:${b.key}`} b={b} share={it.share} seam={seam} open={bandLife.isOpen(b.key)} leaving={bandLife.leaving.has(b.key)} ms={bandLife.msOf(b)} phone={phoneHalf(halfAspect, { narrow })} growth={growth} reduced={reduced} onReady={bandLife.ready} />;
                     }
-                    const l = (layout as HalfSlotLayout[])[it.index]!;
+                    const l = (drawLayout as HalfSlotLayout[])[it.index]!;
                     return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={it.share} first={k === 0} afterBand={row[k - 1]?.kind === 'band'} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} seam={seam} />;
                   })
-                : layout.map(({ slot, stage, progress, grow }, i) => (
+                : drawLayout.map(({ slot, stage, progress, grow }, i) => (
                     <Slot key={slot.biome} slot={slot} stage={stage} progress={progress} grow={grow} first={i === 0} pack={pack?.biomes[slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[slot.biome] ?? 0} half={half} />
                   ))}
-              {!fullPlan && row && bridged && <Bridges placements={placements} layout={layout as HalfSlotLayout[]} row={row} pack={pack} reduced={reduced} />}
+              {!fullPlan && row && bridged && <Bridges placements={placements} layout={drawLayout as HalfSlotLayout[]} row={row} pack={pack} reduced={reduced} />}
               {!fullPlan &&
                 row &&
                 motifBands(bandLife.shown).map((b) => {
-                  const l = (layout as HalfSlotLayout[])[b.index - 1];
-                  const r = (layout as HalfSlotLayout[])[b.index];
+                  const l = (drawLayout as HalfSlotLayout[])[b.index - 1];
+                  const r = (drawLayout as HalfSlotLayout[])[b.index];
                   if (!l || !r) return null;
                   return <MotifView key={`motif:${b.key}`} b={b} left={bridgeLeftCss(row, b.index)} width={motifWidth(b.width, l.share, r.share)} open={bandLife.isOpen(b.key)} leaving={bandLife.leaving.has(b.key)} ms={bandLife.msOf(b)} phone={phoneHalf(halfAspect, { narrow })} growth={growth} reduced={reduced} onReady={bandLife.ready} />;
                 })}
@@ -625,44 +665,48 @@ function Band({ b, share, seam, open, leaving, ms, phone, growth, reduced, onRea
  * the pair the other way round. A land moves the frame over 900 ms, as the
  * panels move; a stage step cross-fades over `growth.seconds`.
  */
-function PairFullPanel({ p, first, growth, reduced, narrow }: { p: PairFullPair; first: boolean; growth: PackGrowth; reduced: boolean; narrow: boolean }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const half = pairHalfAt(p.pair, p.stage);
+/**
+ * Spec 1.15: the pair picture across the half (or all of it but the third
+ * biome's panel). `shown` is the load gate's choice (SceneryStrip,
+ * pairfull.ts `pairFullChoice`): a picture that has loaded -- the stage's
+ * painted-in element panorama (1.16), its panorama, or its 1.9 half -- so a
+ * change (a stage, a third colour's painted panorama) cross-fades from one
+ * loaded picture to the next. Its <img> reports its own load and error to the
+ * picture store, so a picture that fails while drawn gives way to the next.
+ */
+function PairFullPanel({ p, shown, first, growth, reduced }: { p: PairFullPair; shown: PairFullCandidate; first: boolean; growth: PackGrowth; reduced: boolean }) {
   const pano = pairPanoramaAt(p.pair, p.stage);
-  const panelAspect = usePanelAspect(ref, !!half?.phone || !!pano?.phone);
-  const horizon = useContext(OneHorizon);
-  const art = pairFullArt(half, pano, panelAspect, narrow, horizon);
+  const art = shown.art;
   // The frame is computed in the picture's own order; the mirror flips it back.
   const split = p.mirror ? 1 - p.split : p.split;
   const ms = growthMs(growth, reduced);
-  const pic = art?.picture ?? null;
+  const pic = art.picture!;
   return (
     <div
-      ref={ref}
       className={['scn-slot', 'scn-pairfull', first && 'is-first', p.mirror && 'is-mirrored'].filter(Boolean).join(' ')}
       style={{ flexGrow: p.share }}
       data-pairfull={p.key}
       data-pairfull-split={p.split}
       data-pairfull-stage={p.stage}
       data-pairfull-dual={p.pair.dual ?? undefined}
-      data-pairfull-panorama={pano && art?.picture && (art.picture.src === pano.src || art.picture.src === pano.phone?.src) ? 'yes' : undefined}
-      data-art={art?.source}
+      data-pairfull-panorama={pano && (pic.src === pano.src || pic.src === pano.phone?.src) ? 'yes' : undefined}
+      data-pairfull-element={p.element ?? undefined}
+      data-pairfull-painted={shown.painted ?? undefined}
+      data-art={art.source}
     >
-      {pic && (
-        <div className="scn-pairfull-art">
-          <FadeGroup
-            cur={{ key: pic.src, payload: art! }}
-            next={null}
-            fade={0}
-            ms={ms}
-            render={(e) => (
-              <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
-                <PairFullPicture art={e.payload} split={split} />
-              </Layer>
-            )}
-          />
-        </div>
-      )}
+      <div className="scn-pairfull-art">
+        <FadeGroup
+          cur={{ key: pic.src, payload: art }}
+          next={null}
+          fade={0}
+          ms={ms}
+          render={(e) => (
+            <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
+              <PairFullPicture art={e.payload} split={split} />
+            </Layer>
+          )}
+        />
+      </div>
     </div>
   );
 }
@@ -671,7 +715,7 @@ function PairFullPicture({ art, split }: { art: HalfArt; split: number }) {
   const pic = art.picture!;
   return (
     <div className="scn-frame scn-pairfull-frame" style={pairFullFrameCss(art, split)}>
-      <img className="scn-half-img" src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} />
+      <img className="scn-half-img" src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => markPicture(pic.src, true)} onError={() => markPicture(pic.src, false)} />
     </div>
   );
 }

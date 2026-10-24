@@ -24,6 +24,7 @@
  * units, so the crop follows the slot's size with no script).
  */
 import { growthLevel, type SlotState } from './model.ts';
+import { BIOME_COLOUR, keptBiomes, pickFromSlots, type MakeupShowing } from './makeup.ts';
 import { DEFAULT_HALF_LAYOUT, halfAt, type Anchor, type AreaRect, type Fit, type FocalPoint, type HalfPicture, type PackHalf, type ScenePack } from './manifest.ts';
 
 export interface SlotLayout {
@@ -143,9 +144,11 @@ export interface HalfSlotLayout extends SlotLayout {
  * land weight (5 Islands : 1 Mountain is 5 : 1), every live biome at least
  * `minShare` of the width, a withered one (its lands gone) half that. Same
  * order as the strip ({@link slotLayout}); each slot keeps its own stage.
+ * Four or five colours keep three panels ({@link foldPanels}); `showing` is
+ * what was on screen before (makeup.ts), for its tie rule.
  */
-export function halfLayout(slots: SlotState[], pack: ScenePack | null, stageOverride: number | null = null): HalfSlotLayout[] {
-  const layout = foldPanels(slotLayout(slots, pack, stageOverride));
+export function halfLayout(slots: SlotState[], pack: ScenePack | null, stageOverride: number | null = null, showing: MakeupShowing | null = null): HalfSlotLayout[] {
+  const layout = foldPanels(slotLayout(slots, pack, stageOverride), showing);
   if (!layout.length) return [];
   const min = (pack?.half ?? DEFAULT_HALF_LAYOUT).minShare;
   const floor = layout.map((l) => (l.stage > 0 && l.slot.weight > 0 ? min : min / 2));
@@ -172,35 +175,27 @@ export function halfLayout(slots: SlotState[], pack: ScenePack | null, stageOver
 export const MAX_HALF_PANELS = 3;
 
 /**
- * Spec 1.10: a half shows at most {@link MAX_HALF_PANELS} biomes — the
- * heaviest live ones (ties: the earlier arrival), then withered ones if there
- * is room. Each biome left out folds its land weight into the nearest kept
- * panel in the row (a tie: the heavier, then the left), so the panels still
- * share the half by every land; its own picture is not drawn, and the kept
- * panel keeps its own stage. Order is the row's. A fourth and fifth colour on
- * one side made seven panels and bands in a half (four biomes, three bands,
- * six seams), none wide enough to read.
+ * Spec 1.10 as SYSTEM.md A6 has it (spec 1.16's correction): a half shows at
+ * most {@link MAX_HALF_PANELS} biomes -- the colours makeup.ts `pickMakeup`
+ * keeps (the three heaviest by their own land weight; a tie: a colour already
+ * `showing`, then the earlier arrival), then a live biome with no colour,
+ * then withered ones if there is room. A biome left out shows nothing and
+ * weighs nothing: its land weight is NOT added to a kept panel (until 1.16 it
+ * folded into the nearest one, which panned the pair picture by a colour not
+ * on screen, review fault 1). Each kept panel keeps its own stage and weight.
+ * Order is the row's. A fourth and fifth colour on one side made seven
+ * panels and bands in a half (four biomes, three bands, six seams), none
+ * wide enough to read.
  */
-export function foldPanels<T extends SlotLayout>(layout: T[]): T[] {
+export function foldPanels<T extends SlotLayout>(layout: T[], showing: MakeupShowing | null = null): T[] {
   if (layout.length <= MAX_HALF_PANELS) return layout;
   const live = (l: SlotLayout) => l.stage > 0 && l.slot.weight > 0;
-  const rank = layout.map((l, i) => ({ l, i })).sort((a, b) => Number(live(b.l)) - Number(live(a.l)) || b.l.slot.weight - a.l.slot.weight || a.l.slot.index - b.l.slot.index);
-  const keep = new Set(rank.slice(0, MAX_HALF_PANELS).map((x) => x.i));
-  const extra = layout.map(() => 0);
-  layout.forEach((l, i) => {
-    if (keep.has(i) || !live(l)) return;
-    let best = -1;
-    for (const j of keep) {
-      if (best < 0) best = j;
-      const dj = Math.abs(j - i);
-      const db = Math.abs(best - i);
-      const wj = layout[j]!.slot.weight;
-      const wb = layout[best]!.slot.weight;
-      if (dj < db || (dj === db && (wj > wb || (wj === wb && j < best)))) best = j;
-    }
-    extra[best] = extra[best]! + l.slot.weight;
-  });
-  return layout.flatMap((l, i) => (keep.has(i) ? [extra[i] ? { ...l, slot: { ...l.slot, weight: l.slot.weight + extra[i]! } } : l] : []));
+  const kept = keptBiomes(pickFromSlots(layout.filter(live).map((l) => l.slot), showing));
+  const rank = (l: SlotLayout) => (kept.has(l.slot.biome) ? 0 : live(l) && !BIOME_COLOUR[l.slot.biome] ? 1 : live(l) ? 3 : 2);
+  const order = layout.map((l, i) => ({ l, i })).sort((a, b) => rank(a.l) - rank(b.l) || b.l.slot.weight - a.l.slot.weight || a.l.slot.index - b.l.slot.index);
+  // A dropped colour (rank 3) is never kept, even with room: it shows nothing.
+  const keep = new Set(order.filter((x) => rank(x.l) < 3).slice(0, MAX_HALF_PANELS).map((x) => x.i));
+  return layout.filter((_, i) => keep.has(i));
 }
 
 /** The art frame a slot shows on the half: the art's shape (width / height), its focal point and safe rect. */

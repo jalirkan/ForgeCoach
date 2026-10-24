@@ -35,17 +35,23 @@
  *   the lower neighbour would hold it at pair stage 1 all game. Not the dual
  *   count: a pair picture without a dual is allowed under the flag, and would
  *   never grow.
- * - Three biomes: the pair is pieces.ts's heaviest pair (`rankColours`: the
- *   two heaviest colours, a tie the earlier arrivals -- one rule for the
- *   picture and spec 1.14's element), else the heaviest pictured pair. When
- *   the pack has an element for the third colour (`opts.elements`), the pair
- *   picture takes the whole half, its stage from every coloured land on the
- *   half, and the third biome is the pair's `element`, drawn by ScenePieces
- *   on the heavier colour's ground (SYSTEM.md A5). Without one (a placeholder
- *   for a triple composition), the third biome keeps today's panel at its own
- *   `halfLayout` share and stage, on its side of the row (the left when it
- *   arrived before both, else the right), meeting the picture in a plain
- *   1.10 seam.
+ * - Three biomes: the pair is makeup.ts's (`pickMakeup`: the two heaviest
+ *   kept colours by their own weights, a tie the pair already showing, then
+ *   the earlier arrivals -- one rule for the strip, this picture and spec
+ *   1.14's element). When the pack has an element for the third colour
+ *   (`opts.elements`), or the pair's stage has that colour painted in (spec
+ *   1.16, pairs.ts `pairElementAt`), the pair picture takes the whole half,
+ *   its stage from every coloured land on the half, and the third biome is the pair's
+ *   `element` -- drawn into the picture (1.16) or by ScenePieces on the
+ *   heavier colour's ground (1.14, SYSTEM.md A5). Without either (a
+ *   placeholder for a triple composition), the third biome keeps today's
+ *   panel at its own `halfLayout` share and stage, on its side of the row
+ *   (the left when it arrived before both, else the right), meeting the
+ *   picture in a plain 1.10 seam. If makeup.ts's pair has no picture, the
+ *   heaviest pictured pair is drawn beside the third's panel, with no
+ *   element. Four or five colours reach here as three: layout.ts
+ *   `foldPanels` keeps makeup.ts's three, and the dropped colours weigh
+ *   nothing.
  * - Anything else (one biome, a pair with no picture or a motif pair, no
  *   pairs pack): null, and the half is drawn exactly as today.
  *
@@ -58,12 +64,11 @@
  * Pure and DOM-free; the drawing is ui/ambience/SceneryStrip.tsx's
  * `PairFullPanel`.
  */
-import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome } from './model.ts';
+import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome, type SlotState } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
-import type { PackHalf } from './manifest.ts';
-import { pairFor, pairHalfAt, pairStageFor, type PackPair, type PairsPack } from './pairs.ts';
-import { BIOME_COLOUR, COLOUR_BIOME, makeupOf, rankColours } from './pieces.ts';
-import type { PieceColour } from './manifest.ts';
+import type { PackHalf, PieceColour } from './manifest.ts';
+import { pairElementAt, pairFor, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairsPack } from './pairs.ts';
+import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
 export const PAIR_FULL_SPLIT: readonly [number, number] = [0.2, 0.8];
@@ -80,7 +85,7 @@ export interface PairFullPair {
   /** The two biomes as the board has them, left and right. */
   left: Biome;
   right: Biome;
-  /** Their land weights (a dual ½ to each; a folded biome's weight included, spec 1.10). */
+  /** Their own land weights (a dual ½ to each; a dropped fourth or fifth colour adds nothing, makeup.ts). */
   weights: [number, number];
   /** The left biome's share of the two, clamped to {@link PAIR_FULL_SPLIT}. */
   split: number;
@@ -132,19 +137,53 @@ function pictured(pair: PackPair): boolean {
 /**
  * The half's row under spec 1.15, or null when the half is drawn as
  * today: exactly two live biomes with a pictured pair → the pair picture
- * alone; three → the heaviest pictured pair and the third biome's panel on
- * its side. Withered panels are left out (the picture is the half).
+ * alone; three → makeup.ts's pair (the one rule the pieces use) across the
+ * whole half with the third as its element (`elements`, or a painted-in
+ * element at that stage, spec 1.16), else beside the third biome's panel.
+ * Withered panels are left out (the picture is the half). `layout` is
+ * layout.ts `halfLayout`'s, already down to the three kept biomes, whose
+ * weights are their own (a dropped fourth or fifth colour weighs nothing);
+ * `showing` is what was on screen before, for the tie rule.
  */
 export function pairFullPlan(
   layout: readonly HalfSlotLayout[],
   pairs: PairsPack | null | undefined,
-  opts: { thresholds?: readonly number[] | null; stageOverride?: number | null; elements?: ReadonlySet<Biome> | null } = {},
+  opts: {
+    thresholds?: readonly number[] | null;
+    stageOverride?: number | null;
+    elements?: ReadonlySet<Biome> | null;
+    showing?: MakeupShowing | null;
+    /** The half's own slots, before layout.ts dropped a fourth or fifth colour: the stage counts EVERY coloured land (SYSTEM.md A5). Without them, the layout's. */
+    slots?: readonly SlotState[] | null;
+  } = {},
 ): PairFullItem[] | null {
   if (!pairs) return null;
   const live = layout.map((l, i) => ({ l, i })).filter(({ l }) => l.stage > 0 && l.slot.weight > 0);
   if (live.length < 2 || live.length > 3) return null;
+  const thresholds = opts.thresholds ?? DEFAULT_STAGE_THRESHOLDS;
   const shareSum = live.reduce((n, x) => n + x.l.share, 0) || 1;
-  // Candidate pairs in row order (a, b with a before b); the heaviest pictured one wins, a tie the earlier arrivals.
+  const byBiome = (b: Biome) => live.find((x) => x.l.slot.biome === b) ?? null;
+  // The pair: makeup.ts's rule on the live biomes (every one has a colour since 1.11; one without takes the old path below).
+  const coloured = live.every((x) => !!BIOME_COLOUR[x.l.slot.biome]);
+  const pick = coloured ? pickFromSlots(opts.slots ?? live.map((x) => x.l.slot), opts.showing ?? null) : null;
+  const picked = pick?.pair ? pairFor(pairs, COLOUR_BIOME[pick.pair[0]], COLOUR_BIOME[pick.pair[1]]) : null;
+  if (pick?.pair && picked && pictured(picked.pair)) {
+    // The two in row order (the left one the board's left).
+    const [x, y] = [byBiome(COLOUR_BIOME[pick.pair[0]])!, byBiome(COLOUR_BIOME[pick.pair[1]])!].sort((p, q) => p.i - q.i) as [(typeof live)[number], (typeof live)[number]];
+    const found = pairFor(pairs, x.l.slot.biome, y.l.slot.biome)!;
+    const wa = x.l.slot.weight;
+    const wb = y.l.slot.weight;
+    const third = pick.third ? byBiome(COLOUR_BIOME[pick.third]) : null;
+    if (third) {
+      // Spec 1.14 / 1.16: the third colour inside the pair picture, which takes the whole half and grows with every coloured land.
+      const stage = pairFullStage(found.pair, pick.total, thresholds, opts.stageOverride ?? null);
+      const colour = pick.third!;
+      if (opts.elements?.has(third.l.slot.biome) || pairElementAt(found.pair, stage, colour))
+        return [{ kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, element: third.l.slot.biome }];
+    }
+    return withPanel(found, x, y, third, shareSum, thresholds, opts.stageOverride ?? null);
+  }
+  // No picture for makeup.ts's pair: the heaviest pictured pair (a tie, the earlier arrivals), the third as a panel; no element.
   const cands: { a: (typeof live)[number]; b: (typeof live)[number]; w: number; arrival: number }[] = [];
   for (let x = 0; x < live.length; x++)
     for (let y = x + 1; y < live.length; y++) {
@@ -155,17 +194,23 @@ export function pairFullPlan(
     }
   if (!cands.length) return null;
   cands.sort((p, q) => q.w - p.w || p.arrival - q.arrival);
-  const top = live.length === 3 ? heaviestBiomes(live.map((x) => x.l.slot)) : null;
-  const { a, b } = (top && cands.find((c) => top.includes(c.a.l.slot.biome) && top.includes(c.b.l.slot.biome))) || cands[0]!;
-  const found = pairFor(pairs, a.l.slot.biome, b.l.slot.biome)!;
+  const { a, b } = cands[0]!;
   const third = live.find((x) => x !== a && x !== b) ?? null;
+  return withPanel(pairFor(pairs, a.l.slot.biome, b.l.slot.biome)!, a, b, third, shareSum, thresholds, opts.stageOverride ?? null);
+}
+
+/** The pair picture beside the third biome's panel (its own `halfLayout` share and stage, at its end of the row), or alone. */
+function withPanel(
+  found: { pair: PackPair; mirror: boolean },
+  a: { l: HalfSlotLayout; i: number },
+  b: { l: HalfSlotLayout; i: number },
+  third: { l: HalfSlotLayout; i: number } | null,
+  shareSum: number,
+  thresholds: readonly number[],
+  stageOverride: number | null,
+): PairFullItem[] {
   const wa = a.l.slot.weight;
   const wb = b.l.slot.weight;
-  if (third && opts.elements?.has(third.l.slot.biome)) {
-    // Spec 1.14: the third colour is an element inside the pair picture, which takes the whole half and grows with every coloured land.
-    const stage = pairFullStage(found.pair, wa + wb + third.l.slot.weight, opts.thresholds ?? DEFAULT_STAGE_THRESHOLDS, opts.stageOverride ?? null);
-    return [{ kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: a.l.slot.biome, right: b.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, element: third.l.slot.biome }];
-  }
   const thirdShare = third ? r4(third.l.share / shareSum) : 0;
   const item: PairFullPair = {
     kind: 'pair',
@@ -177,24 +222,11 @@ export function pairFullPlan(
     weights: [wa, wb],
     split: pairFullSplit(wa, wb),
     share: r4(1 - thirdShare),
-    stage: pairFullStage(found.pair, wa + wb, opts.thresholds ?? DEFAULT_STAGE_THRESHOLDS, opts.stageOverride ?? null),
+    stage: pairFullStage(found.pair, wa + wb, thresholds, stageOverride),
   };
   if (!third) return [item];
   const slot: PairFullSlot = { kind: 'slot', index: third.i, biome: third.l.slot.biome, share: thirdShare };
   return third.i < a.i && third.i < b.i ? [slot, item] : [item, slot];
-}
-
-/** The two heaviest of three biomes by pieces.ts's rule (`rankColours`, no pair on screen), or null when one has no colour. */
-function heaviestBiomes(slots: readonly { biome: Biome; weight: number; index: number }[]): Biome[] | null {
-  const weights: Partial<Record<PieceColour, number>> = {};
-  const arrival: PieceColour[] = [];
-  for (const s of [...slots].sort((x, y) => x.index - y.index)) {
-    const c = BIOME_COLOUR[s.biome];
-    if (!c) return null;
-    weights[c] = s.weight;
-    arrival.push(c);
-  }
-  return rankColours(makeupOf(weights, arrival)).slice(0, 2).map((c) => COLOUR_BIOME[c]);
 }
 
 /**
@@ -210,6 +242,102 @@ export function pairFullArt(half: PackHalf | null, panorama: PackHalf | null, pa
   if (!panorama) return fromHalf;
   if (!panorama.phone && fromHalf?.source === 'phone') return fromHalf;
   return halfArtOf(panorama, panelAspect, { narrow, horizon });
+}
+
+/** One picture a whole-half pair panel can draw: its art, and the colour painted into it (spec 1.16), or null. */
+export interface PairFullCandidate {
+  art: HalfArt;
+  painted: PieceColour | null;
+}
+
+/**
+ * The pictures a whole-half pair panel can draw, best first, each once: the
+ * stage's painted-in element panorama for the pair's element colour (spec
+ * 1.16), the stage's panorama (1.15), the stage's 1.9 `half`. Each goes
+ * through {@link pairFullArt}, so a desktop-only panorama never reaches a
+ * phone-shaped panel. `panelAspect` is the pair panel's own shape.
+ */
+export function pairFullCandidates(p: PairFullPair, panelAspect: number | null, narrow: boolean, horizon = false): PairFullCandidate[] {
+  const half = pairHalfAt(p.pair, p.stage);
+  const pano = pairPanoramaAt(p.pair, p.stage);
+  const colour = p.element ? (BIOME_COLOUR[p.element] ?? null) : null;
+  const painted = colour ? pairElementAt(p.pair, p.stage, colour) : null;
+  const out: PairFullCandidate[] = [];
+  const add = (art: HalfArt | null, from: PackHalf | null, c: PieceColour | null) => {
+    const pic = art?.picture;
+    if (!art || !pic || out.some((x) => x.art.picture!.src === pic.src)) return;
+    // pairFullArt fell back to the half: not this candidate's own picture.
+    if (from && pic.src !== from.src && pic.src !== from.phone?.src) return;
+    out.push({ art, painted: c });
+  };
+  if (painted) add(pairFullArt(half, painted, panelAspect, narrow, horizon), painted, colour);
+  if (pano) add(pairFullArt(half, pano, panelAspect, narrow, horizon), pano, null);
+  add(pairFullArt(half, null, panelAspect, narrow, horizon), half, null);
+  return out;
+}
+
+/**
+ * The load gate (review fault 4): which candidate to draw now and which to
+ * wait for. `want` is the best candidate that has not failed; `show` is the
+ * best one that has loaded (so a stage change or a painted-in element keeps
+ * the picture on screen until its own is ready, then cross-fades). `show`
+ * null: nothing has loaded yet, or everything failed -- the half is drawn as
+ * without the flag (its panels and band), never blank, while `want` (if
+ * any) loads.
+ */
+export function pairFullChoice(cands: readonly PairFullCandidate[], status: (src: string) => 'ready' | 'failed' | 'pending'): { show: PairFullCandidate | null; want: PairFullCandidate | null } {
+  const want = cands.find((c) => status(c.art.picture!.src) !== 'failed') ?? null;
+  const show = cands.find((c) => status(c.art.picture!.src) === 'ready') ?? null;
+  return { show, want };
+}
+
+/** How long a half holds its previous picture while the pair picture it now wants loads, before it draws its panels instead. */
+export const PAIR_FULL_HOLD_MS = 8000;
+
+/** What a half draws: its layout, and the whole-half pair plan with the picture shown (null: the half as without the flag). */
+export interface PairFullDraw<L> {
+  layout: L;
+  plan: PairFullItem[] | null;
+  shown: PairFullCandidate | null;
+}
+
+/** {@link pairFullHold}'s memory: the last thing drawn, and since when the half has been waiting (null: not waiting). */
+export interface PairFullHold<L> {
+  last: PairFullDraw<L> | null;
+  since: number | null;
+}
+
+/**
+ * The load gate's hold (the review of #198: falling back to the panels while
+ * a cold panorama loaded was a layout jump -- one colour's panel, then two
+ * panels and a band, then the panorama). While the half wants a pair picture
+ * that has not loaded (and has not failed), it keeps drawing what it drew
+ * last -- the mono picture, or the previous stage's panorama -- for at most
+ * {@link PAIR_FULL_HOLD_MS}; then, or with nothing drawn before, or when
+ * every picture failed, its panels. Once a picture is ready it is drawn.
+ * Pure: `hold` in, the new memory out (SceneryStrip keeps it in a ref).
+ */
+export function pairFullHold<L>(
+  cur: { layout: L; plan: PairFullItem[] | null; choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null },
+  hold: PairFullHold<L>,
+  now: number,
+  holdMs = PAIR_FULL_HOLD_MS,
+): { draw: PairFullDraw<L>; hold: PairFullHold<L>; holding: boolean } {
+  const waiting = !!cur.plan && !!cur.choice && !cur.choice.show && !!cur.choice.want;
+  if (waiting) {
+    const since = hold.since ?? now;
+    if (hold.last && now - since < holdMs) return { draw: hold.last, hold: { last: hold.last, since }, holding: true };
+    return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
+  }
+  const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.choice?.show ? cur.plan : null, shown: cur.choice?.show ?? null };
+  const same = hold.last && hold.last.layout === draw.layout && hold.last.plan === draw.plan && hold.last.shown === draw.shown;
+  return { draw: same ? hold.last! : draw, hold: { last: same ? hold.last : draw, since: null }, holding: false };
+}
+
+/** A pair panel's shape from the half's (rounded as SceneryStrip measures it: to 0.05), or null when unknown. */
+export function pairFullPanelAspect(halfAspect: number | null, share: number): number | null {
+  if (!(halfAspect && halfAspect > 0 && share > 0)) return null;
+  return Math.round(halfAspect * share * 20) / 20;
 }
 
 /** How much wider than the half the picture is drawn so its transition (`t`) can land at `split` ({@link PAIR_FULL_MAX_ZOOM} at most). */

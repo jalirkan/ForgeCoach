@@ -669,7 +669,8 @@
 /* The half board (spec 1.5, Settings → Fill each side): the scenery fills the
    player's whole battlefield, at z-index -3 in the host's isolated context:
    beneath the full-area accent (-2), the corner and edge accents, the card-row
-   scrim and the effects (-1), and every card. Each slot is a size container;
+   scrim and the effects (-1), spec 1.14's pieces (-1 too, last in the DOM:
+   SceneryLayer's `HalfScenery`), and every card. Each slot is a size container;
    its art sits in a frame of the art's shape, cover-cropped (layout.ts
    halfFrameCss). Both halves upright, each fading into a mist band at the
    centre line (art direction §5). */
@@ -767,12 +768,16 @@
   background: linear-gradient(to top, var(--scn-mist-color), transparent);
 }
 
-/* Spec 1.14's pieces (ScenePieces.tsx): over the half's scenery, at its z-index (later in the DOM, so above it), beneath
-   the accents, the scrim and the cards; faded into the centre line's mist as the half is. */
+/* Spec 1.14's pieces (ScenePieces.tsx): over EVERY scenery layer -- the land pictures (-3), the full-area accent (-2), the
+   card-row scrim, the effects and the corner and edge accents (-1; the pieces come after them in the DOM, SceneryLayer's
+   `HalfScenery`) -- and beneath every card, label and control: a veil grades the whole scene and a front crosses the
+   whole land (the scenery review's fault 2: at -3 a lost veil darkened the land while the accents' plants stayed
+   bright). Faded into the centre line's mist as the half is, at the pack's own `half.mist` (ScenePieces sets
+   `--scn-mist` on this element; the strip's is on a sibling). sceneryDom.test.tsx checks the order. */
 .scn-pieces {
   position: absolute;
   inset: 0;
-  z-index: -3;
+  z-index: -1;
   pointer-events: none;
   user-select: none;
   overflow: hidden;
@@ -790,7 +795,8 @@
   inset: 0;
   container-type: size;
 }
-.scn-pc-element {
+.scn-pc-element,
+.scn-pc-veil-wrap {
   position: absolute;
   inset: 0;
 }

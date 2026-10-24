@@ -374,16 +374,65 @@ const warming = new Set<HTMLImageElement>();
 const warmedSrcs = new Set<string>();
 /** Pictures warmed that have loaded and decoded: a transition (spec 1.7) only cuts to pictures that are here. */
 const readySrcs = new Set<string>();
+/** Pictures that failed to load this page load (the panorama's load gate falls back past them). */
+const failedSrcs = new Set<string>();
+/** Called whenever a picture settles (ready or failed): the load gates re-render ({@link subscribePictures}). */
+const pictureListeners = new Set<() => void>();
 
 /** Has this picture been warmed, loaded and decoded this page load? */
 export function pictureReady(src: string): boolean {
   return readySrcs.has(src);
 }
 
+/** Did this picture fail to load this page load? */
+export function pictureFailed(src: string): boolean {
+  return failedSrcs.has(src);
+}
+
+/** A picture's state: `ready` (loaded and decoded), `failed`, or `pending` (not warmed yet, or loading). */
+export type PictureStatus = 'ready' | 'failed' | 'pending';
+
+export function pictureStatus(src: string): PictureStatus {
+  return readySrcs.has(src) ? 'ready' : failedSrcs.has(src) ? 'failed' : 'pending';
+}
+
+/**
+ * Record that a picture loaded (`ok`) or failed, from a warm or from the
+ * `<img>` drawing it (its onLoad / onError), and tell the load gates. A
+ * picture that loaded once stays ready (a later error on another element
+ * does not undo it); a failed one becomes ready if it loads after all.
+ */
+export function markPicture(src: string, ok: boolean): void {
+  if (ok) {
+    if (readySrcs.has(src)) return;
+    readySrcs.add(src);
+    failedSrcs.delete(src);
+  } else {
+    if (readySrcs.has(src) || failedSrcs.has(src)) return;
+    failedSrcs.add(src);
+  }
+  for (const f of [...pictureListeners]) f();
+}
+
+/** Be told when any picture settles; returns the unsubscribe. */
+export function subscribePictures(f: () => void): () => void {
+  pictureListeners.add(f);
+  return () => void pictureListeners.delete(f);
+}
+
+/** @internal Tests: forget every picture's state (and that it was warmed). */
+export function resetPictures(): void {
+  readySrcs.clear();
+  failedSrcs.clear();
+  warmedSrcs.clear();
+}
+
 /**
  * Warm a still picture in the browser's cache, through the same `srcset` the
  * renderer draws it with, so the file fetched is the one it will show. Each
- * picture once per page load; never waits, never throws.
+ * picture once per page load; never waits, never throws. When it has loaded
+ * and decoded it is {@link pictureReady}; when it fails, {@link pictureFailed};
+ * either way {@link subscribePictures}' listeners hear of it.
  */
 export function warmPicture(p: { src: string; src2x: string | null }): void {
   if (warmedSrcs.has(p.src) || typeof Image === 'undefined') return;
@@ -394,13 +443,16 @@ export function warmPicture(p: { src: string; src2x: string | null }): void {
   img.onload = () => {
     // Decoded ahead too, so a hard cut to it (spec 1.7) never shows a blank frame.
     const ok = () => {
-      readySrcs.add(p.src);
+      markPicture(p.src, true);
       done();
     };
     if (typeof img.decode === 'function') img.decode().then(ok, ok);
     else ok();
   };
-  img.onerror = done;
+  img.onerror = () => {
+    markPicture(p.src, false);
+    done();
+  };
   warming.add(img);
   if (p.src2x) img.srcset = `${p.src} 1x, ${p.src2x} 2x`;
   img.src = p.src;
