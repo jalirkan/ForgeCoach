@@ -102,7 +102,9 @@ describe('the strip, the caption and the pieces draw the same pair and element (
 
 describe('the panorama’s load gate (fault 4)', () => {
   const two = [slot('island', 0, 4), slot('plains', 1, 1)];
-  it('nothing loaded yet: the half is drawn as without the flag (its panels), never blank', () => {
+  // A half that drew something before HOLDS it while the pair picture loads (pairfull.ts `pairFullHold`, tested in
+  // pairs-elements.test.ts); react-dom/server draws every half for the first time, so this is the half with nothing before.
+  it('a first draw with nothing loaded: the half is drawn as without the flag (its panels), never blank', () => {
     const html = renderToStaticMarkup(<SceneryStrip slots={two} pack={pack} reduced={true} fill="half" pairFull={true} />);
     expect(attrs(html, 'data-pairfull')).toEqual([]);
     expect(html).toContain('island/s4-half.webp');

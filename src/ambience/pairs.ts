@@ -672,7 +672,11 @@ export function rowCentreCss(items: readonly Pick<RowItem, 'share' | 'seam'>[], 
  * panoramas of the side's other colours, at the stage the pair picture shows
  * (the pair's two biomes' total lands, and every live land for an element,
  * on `thresholds`) and the next one; the review's fault 4 found the
- * panorama never warmed, so a half waited on it cold.
+ * panorama never warmed, so a half waited on it cold. And, ahead of a
+ * second colour arriving (the review of #198), each live colour's pair
+ * panoramas at pair stage 1 with every colour it does not have yet -- at
+ * most four a colour -- so the first pair picture is usually there when its
+ * land is played.
  */
 export function pairPictures(
   pairs: PairsPack | null | undefined,
@@ -692,6 +696,13 @@ export function pairPictures(
   for (const slots of sides) {
     const live = slots.filter((s) => s.stage > 0);
     const sideTotal = live.reduce((n, s) => n + (s.weight ?? 0), 0);
+    if (opts.full)
+      for (const s of live)
+        for (const other of Object.keys(BIOME_COLOUR) as Biome[]) {
+          if (other === s.biome || !BIOME_COLOUR[s.biome] || live.some((x) => x.biome === other)) continue;
+          const found = pairFor(pairs, s.biome, other);
+          if (found) add(pairPanoramaAt(found.pair, 1));
+        }
     for (let i = 0; i < live.length; i++)
       for (let j = i + 1; j < live.length; j++) {
         const found = pairFor(pairs, live[i]!.biome, live[j]!.biome);

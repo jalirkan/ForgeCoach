@@ -1660,11 +1660,17 @@ and on 23 October had them published: ForgeCoach's **pairs-v4**.
   count in the **stage** (SYSTEM.md A5: "a growing third colour still grows
   the place"; the half's total is its number of coloured lands).
 - **Loading** (1.16). The pair picture is drawn once a picture of it has
-  loaded and decoded: until then, and if every one fails, the half is drawn as
-  without the flag (its panels and band), never blank. A stage change (or a
-  third colour's painted panorama, 1.16) keeps the picture on screen until
-  the new one has loaded, then cross-fades. Each side's current pair stage
-  and the next are warmed with the split's pictures, panoramas included.
+  loaded and decoded. Until then the half **holds what it drew last** -- the
+  one colour's picture when the second arrives, the previous stage's picture
+  on a stage change, the panorama when a third colour's painted one is coming
+  -- for at most 8 s, then cross-fades to the new one; it never flashes its
+  panels and a band in between. A half with nothing drawn before (a page
+  opened mid-game), one whose hold ran out, or one whose every picture failed
+  is drawn as without the flag (its panels and band): never blank. Each
+  side's current pair stage and the next are warmed with the split's
+  pictures, panoramas included, and each live colour's stage-1 panoramas
+  with every colour it does not have yet (at most four a colour), ahead of
+  a second colour's land.
 - **What the pieces stand on (1.14).** `pairFullView` gives, in the half's own
   fractions and board order: the pair panel's span, **`seamAt`** (where the
   transition lands), each colour's **`ground`** (the left biome from the

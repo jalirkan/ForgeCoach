@@ -15,7 +15,9 @@
 import { describe, expect, it } from 'vitest';
 import { halfLayout } from './layout.ts';
 import type { Biome, SlotState } from './model.ts';
-import { pairFullCandidates, pairFullChoice, pairFullPlan, type PairFullPair } from './pairfull.ts';
+import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullChoice, pairFullHold, pairFullPlan, type PairFullHold, type PairFullPair } from './pairfull.ts';
+import { FORGECOACH_PAIRS_FULL_URL } from './prefs.ts';
+import { readFileSync } from 'node:fs';
 import { MAX_PAIRS_PACK_BYTES, pairElementAt, pairPictures, pairsBytes, pairsRefBytes, validatePairs } from './pairs.ts';
 
 const BASE = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5/';
@@ -177,5 +179,63 @@ describe('spec 1.16: the reader', () => {
     expect(full.filter((s) => s.includes('panorama'))).toEqual(['pairs/island-plains/s1-panorama.webp', 'pairs/island-plains/s2-panorama.webp', 'pairs/island-plains/s2+R-panorama.webp', 'pairs/island-plains/s3+R-panorama.webp']);
     const phone = pairPictures(pairs, [side], { phone: true, full: { thresholds: T } }).map((x) => x.src.replace(BASE, ''));
     expect(phone).toContain('pairs/island-plains/s2+R-panorama-phone.webp');
+  });
+});
+
+/**
+ * The review of #198: on a cold cache the gate's fallback was a layout jump -- one colour's panel, then two panels and a
+ * band, then the panorama. A half now holds what it drew last while the pair picture it wants loads.
+ */
+describe('the load gate holds the previous picture (no band flash)', () => {
+  const pairs = fixture().pairs!;
+  const pairOf = (items: ReturnType<typeof pairFullPlan>) => items?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
+  const two = halfLayout([slot('plains', 0, 1), slot('island', 1, 1)], null);
+  const mono = halfLayout([slot('plains', 0, 1)], null);
+  const plan = pairFullPlan(two, pairs, { thresholds: T });
+  const cands = pairFullCandidates(pairOf(plan)!, 3.2, false);
+  const st = (m: Record<string, 'ready' | 'failed'>) => (src: string) => m[src] ?? 'pending';
+  const pano = cands[0]!.art.picture!.src;
+
+  it('a second colour arrives with its panorama cold: the mono picture stays, then the panorama, never the band', () => {
+    let hold: PairFullHold<typeof mono> = { last: null, since: null };
+    const step = (layout: typeof mono, p: typeof plan, status: ReturnType<typeof st>, now: number) => {
+      const r = pairFullHold({ layout, plan: p, choice: p ? pairFullChoice(cands, status) : null }, hold, now);
+      hold = r.hold;
+      return r;
+    };
+    expect(step(mono, null, st({}), 0).draw).toMatchObject({ layout: mono, plan: null });
+    const waiting = step(two, plan, st({}), 1000);
+    expect([waiting.holding, waiting.draw.layout === mono, waiting.draw.plan]).toEqual([true, true, null]);
+    expect(step(two, plan, st({}), 3000).draw.layout).toBe(mono);
+    const ready = step(two, plan, st({ [pano]: 'ready' }), 3500);
+    expect([ready.holding, ready.draw.layout === two, ready.draw.plan === plan, ready.draw.shown === cands[0]]).toEqual([false, true, true, true]);
+  });
+
+  it('a stage change with a cold panorama holds the previous stage’s picture', () => {
+    const shown = { layout: two, plan, shown: cands[0]! };
+    const three = halfLayout([slot('plains', 0, 2), slot('island', 1, 1)], null);
+    const next = pairFullPlan(three, pairs, { thresholds: T });
+    const c3 = pairFullCandidates(pairOf(next)!, 3.2, false);
+    const r = pairFullHold({ layout: three, plan: next, choice: pairFullChoice(c3, st({})) }, { last: shown, since: null }, 0);
+    expect(r.draw).toBe(shown);
+  });
+
+  it('no picture drawn before, the hold run out, or every picture failed: the panels', () => {
+    expect(pairFullHold({ layout: two, plan, choice: pairFullChoice(cands, st({})) }, { last: null, since: null }, 0).draw).toEqual({ layout: two, plan: null, shown: null });
+    const last = { layout: mono, plan: null, shown: null };
+    const timedOut = pairFullHold({ layout: two, plan, choice: pairFullChoice(cands, st({})) }, { last, since: 0 }, PAIR_FULL_HOLD_MS);
+    expect([timedOut.holding, timedOut.draw.layout === two, timedOut.draw.plan]).toEqual([false, true, null]);
+    const failed = Object.fromEntries(cands.map((c) => [c.art.picture!.src, 'failed' as const]));
+    expect(pairFullHold({ layout: two, plan, choice: pairFullChoice(cands, st(failed)) }, { last, since: null }, 0).draw).toEqual({ layout: two, plan: null, shown: null });
+  });
+
+  it('pre-warms, under the flag, each live colour’s stage-1 pair panoramas with the colours it lacks (at most four)', () => {
+    const v4 = validatePairs(JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs!;
+    const one = pairPictures(v4, [[{ biome: 'island', stage: 1, weight: 1 }]], { phone: false, full: { thresholds: T } }).map((x) => x.src.replace(FORGECOACH_PAIRS_FULL_URL, ''));
+    expect(one.sort()).toEqual(['pairs/forest-island/s1-panorama.webp', 'pairs/island-mountain/s1-panorama.webp', 'pairs/island-plains/s1-panorama.webp', 'pairs/island-swamp/s1-panorama.webp']);
+    expect(pairPictures(v4, [[{ biome: 'island', stage: 1, weight: 1 }]], { phone: false })).toEqual([]);
+    const phone = pairPictures(v4, [[{ biome: 'island', stage: 1, weight: 1 }]], { phone: true, full: { thresholds: T } });
+    expect(phone).toHaveLength(4);
+    expect(phone.every((x) => x.src.endsWith('-panorama-phone.webp'))).toBe(true);
   });
 });

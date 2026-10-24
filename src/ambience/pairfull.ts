@@ -291,6 +291,49 @@ export function pairFullChoice(cands: readonly PairFullCandidate[], status: (src
   return { show, want };
 }
 
+/** How long a half holds its previous picture while the pair picture it now wants loads, before it draws its panels instead. */
+export const PAIR_FULL_HOLD_MS = 8000;
+
+/** What a half draws: its layout, and the whole-half pair plan with the picture shown (null: the half as without the flag). */
+export interface PairFullDraw<L> {
+  layout: L;
+  plan: PairFullItem[] | null;
+  shown: PairFullCandidate | null;
+}
+
+/** {@link pairFullHold}'s memory: the last thing drawn, and since when the half has been waiting (null: not waiting). */
+export interface PairFullHold<L> {
+  last: PairFullDraw<L> | null;
+  since: number | null;
+}
+
+/**
+ * The load gate's hold (the review of #198: falling back to the panels while
+ * a cold panorama loaded was a layout jump -- one colour's panel, then two
+ * panels and a band, then the panorama). While the half wants a pair picture
+ * that has not loaded (and has not failed), it keeps drawing what it drew
+ * last -- the mono picture, or the previous stage's panorama -- for at most
+ * {@link PAIR_FULL_HOLD_MS}; then, or with nothing drawn before, or when
+ * every picture failed, its panels. Once a picture is ready it is drawn.
+ * Pure: `hold` in, the new memory out (SceneryStrip keeps it in a ref).
+ */
+export function pairFullHold<L>(
+  cur: { layout: L; plan: PairFullItem[] | null; choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null },
+  hold: PairFullHold<L>,
+  now: number,
+  holdMs = PAIR_FULL_HOLD_MS,
+): { draw: PairFullDraw<L>; hold: PairFullHold<L>; holding: boolean } {
+  const waiting = !!cur.plan && !!cur.choice && !cur.choice.show && !!cur.choice.want;
+  if (waiting) {
+    const since = hold.since ?? now;
+    if (hold.last && now - since < holdMs) return { draw: hold.last, hold: { last: hold.last, since }, holding: true };
+    return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
+  }
+  const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.choice?.show ? cur.plan : null, shown: cur.choice?.show ?? null };
+  const same = hold.last && hold.last.layout === draw.layout && hold.last.plan === draw.plan && hold.last.shown === draw.shown;
+  return { draw: same ? hold.last! : draw, hold: { last: same ? hold.last : draw, since: null }, holding: false };
+}
+
 /** A pair panel's shape from the half's (rounded as SceneryStrip measures it: to 0.05), or null when unknown. */
 export function pairFullPanelAspect(halfAspect: number | null, share: number): number | null {
   if (!(halfAspect && halfAspect > 0 && share > 0)) return null;
