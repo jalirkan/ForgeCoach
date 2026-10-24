@@ -4,7 +4,8 @@
  *
  * makeup.ts, the one rule for what a half's colours show (pc-results
  * scenery/SYSTEM.md A5–A6): four or five colours keep the three heaviest by
- * their own weights, the rest show nothing and weigh nothing; the pair is the
+ * their own weights, the rest show nothing and weigh nothing (the stage still
+ * counts every coloured land); the pair is the
  * two heaviest kept, its pan their own two weights; the third is the element;
  * ties keep what is showing, then the earlier arrival.
  */
@@ -28,7 +29,8 @@ describe('pickMakeup', () => {
     expect(pickSplit(p)).toBe(0.5);
     expect(p.third).toBe('B');
     expect(p.weights).toEqual({ W: 1, U: 1, B: 1 });
-    expect(p.total).toBe(3);
+    // The element's share is of the three kept; the stage counts all four lands (SYSTEM.md A5).
+    expect([p.keptTotal, p.total]).toEqual([3, 4]);
   });
 
   it('four unequal colours: the lightest dropped whatever it arrived, the pan by the pair alone', () => {
@@ -37,7 +39,7 @@ describe('pickMakeup', () => {
     expect(p.dropped).toEqual(['R']);
     expect(p.pair).toEqual(['U', 'W']);
     expect(pickSplit(p)).toBe(0.4);
-    expect(p.total).toBe(6.5);
+    expect([p.keptTotal, p.total]).toEqual([6.5, 7.5]);
   });
 
   it('five colours: three kept, a three-way tie for third to the earliest arrival', () => {

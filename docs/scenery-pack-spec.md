@@ -31,7 +31,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.13 | **Light and horizon** (§2, *The half board*): a stage's `half` picture (and its `phone`) may declare its **`horizon`**, and the stage its painted **`hour`** (0–24) and light **`key`** (`dawn` … `night`), so the two halves' horizons and light can be matched (ForgeCoach's pack: pack-v9.1, measured off each painting). A pack without them is read as before.
 | 1.14 | **Pieces** (§2, *Pieces*): an optional top-level **`pieces`** for the scenery system of pc-results `scenery/SYSTEM.md`: per colour an **element** (a third colour inside the heaviest pair's picture) and a **front** (the weather a colour arrives in: a few frames, hard cuts, then a fade; backwards when it leaves), per card name a **landmark** (standing on the horizon), the end's **veils** (`won`, `lost`) and the **empty table** (a half picture for a side with no colour yet); each piece a transparent picture with a `place` (`sit`: `fill`, `horizon` or `ground`; `x`, `w`, `lift`); their budget (§3). Drawn on the half board only. A pack without `pieces` is read and drawn as before.
 | 1.15 | **Whole-half pair panoramas** (§2, *Whole-half pair panoramas*), behind `?pairfull=1` only, default off: a pair stage in `pairs.json` may carry a **`panorama`**, one picture of one place 1.6 × the half's 16 : 5 (and a 1.28 : 1 `phone`), the key's first biome the ground at its left end and the second at its right. A half of exactly two colours with a pair picture shows it across the **whole half** (the panorama, else the 1.9 `half`), and the land share **pans** it (the transition sits at the share) instead of widening a band; its stage from the two colours' total lands. Three colours: the heaviest pair's picture beside the third's panel (a placeholder until 1.14's element is drawn). `pairFullView` exposes the transition, each colour's ground and the horizon for 1.14's pieces. ForgeCoach's pairs under the flag: pairs-v4. |
-| 1.16 | **Painted-in elements and one makeup rule** (§2, *Painted-in elements*), behind `?pairfull=1` for the pictures: a pair stage in `pairs.json` may carry **`elements`**, per colour that stage's panorama with the third colour's feature painted **into** the place; under the flag the half draws it instead of the panorama (a cross-fade, no cut-out on top), else the 1.14 cut-out element as before. And four corrections from the scenery review of 2026-10-24, reading the same manifests: **one makeup rule** for the panels, the pair picture and the pieces (four or five colours keep the three heaviest by their own weights; the colours dropped show nothing and **weigh nothing**, correcting 1.10's fold); **pieces above every scenery layer** (the land pictures, every accent, the card-row scrim and the effects), below every card, label and control (correcting 1.14); a **front plays once its frames have loaded**; and a **load gate** for the whole-half picture (its panels until a picture of it has loaded; never blank). The pairs pack's 45 MB warning counts only the files in its own ref. Every 1.0–1.15 pack and pairs manifest is read unchanged. |
+| 1.16 | **Painted-in elements and one makeup rule** (§2, *Painted-in elements*), behind `?pairfull=1` for the pictures: a pair stage in `pairs.json` may carry **`elements`**, per colour that stage's panorama with the third colour's feature painted **into** the place; under the flag the half draws it instead of the panorama (a cross-fade, no cut-out on top), else the 1.14 cut-out element as before. And four corrections from the scenery review of 2026-10-24, reading the same manifests: **one makeup rule** for the panels, the pair picture and the pieces (four or five colours keep the three heaviest by their own weights; the colours dropped show nothing and **weigh nothing** in the pan or the pair choice, correcting 1.10's fold, while the stage still counts every coloured land); **pieces above every scenery layer** (the land pictures, every accent, the card-row scrim and the effects), below every card, label and control (correcting 1.14); a **front plays once its frames have loaded**; and a **load gate** for the whole-half picture (its panels until a picture of it has loaded; never blank). The pairs pack's 45 MB warning counts only the files in its own ref. Every 1.0–1.15 pack and pairs manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -1648,14 +1648,17 @@ and on 23 October had them published: ForgeCoach's **pairs-v4**.
   showing, then the earlier arrivals), panned by its own two weights. With an
   element for the third colour (1.14's cut-out, or 1.16's painted-in
   panorama at that stage) the pair picture takes the whole half, its stage
-  counting every kept land; without one, the third biome keeps **today's
+  counting every coloured land on the half; without one, the third biome keeps **today's
   panel**, at its own `halfLayout` share (at least `minShare`) and its own
   stage, at its end of the row (the left when it arrived before both, else
   the right), meeting the picture in a plain 1.10 seam. If that pair has no
   picture, the heaviest pair with one is drawn beside the third's panel, with
   no element. **Four or five colours** keep the three heaviest by their own
   weights (a tie, a colour already showing, then the earlier arrival); the
-  others show nothing and weigh nothing -- not in the pan, not in the stage.
+  others show nothing and weigh nothing in what is shown -- not in the pair
+  choice, not in the pan, not in the element's share -- but their lands still
+  count in the **stage** (SYSTEM.md A5: "a growing third colour still grows
+  the place"; the half's total is its number of coloured lands).
 - **Loading** (1.16). The pair picture is drawn once a picture of it has
   loaded and decoded: until then, and if every one fails, the half is drawn as
   without the flag (its panels and band), never blank. A stage change (or a
@@ -1744,7 +1747,7 @@ with the third colour's feature in it.
   variants); an unknown colour or a bad entry is warned and dropped alone.
 - **When it is drawn.** On a half that 1.15 draws whole with a third colour
   (three colours, or four or five kept to three by the one makeup rule): if
-  the pair's stage **shown** (counting every kept land) has that colour in
+  the pair's stage **shown** (counting every coloured land on the half) has that colour in
   `elements`, the half draws that panorama **instead of** the base panorama,
   panned, mirrored and cropped exactly as the base one, and **no cut-out
   element** is drawn over it. The third colour then takes the whole half even

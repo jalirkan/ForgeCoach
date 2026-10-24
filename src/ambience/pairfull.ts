@@ -41,7 +41,7 @@
  *   1.14's element). When the pack has an element for the third colour
  *   (`opts.elements`), or the pair's stage has that colour painted in (spec
  *   1.16, pairs.ts `pairElementAt`), the pair picture takes the whole half,
- *   its stage from every kept land, and the third biome is the pair's
+ *   its stage from every coloured land on the half, and the third biome is the pair's
  *   `element` -- drawn into the picture (1.16) or by ScenePieces on the
  *   heavier colour's ground (1.14, SYSTEM.md A5). Without either (a
  *   placeholder for a triple composition), the third biome keeps today's
@@ -64,7 +64,7 @@
  * Pure and DOM-free; the drawing is ui/ambience/SceneryStrip.tsx's
  * `PairFullPanel`.
  */
-import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome } from './model.ts';
+import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome, type SlotState } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf, PieceColour } from './manifest.ts';
 import { pairElementAt, pairFor, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairsPack } from './pairs.ts';
@@ -148,7 +148,14 @@ function pictured(pair: PackPair): boolean {
 export function pairFullPlan(
   layout: readonly HalfSlotLayout[],
   pairs: PairsPack | null | undefined,
-  opts: { thresholds?: readonly number[] | null; stageOverride?: number | null; elements?: ReadonlySet<Biome> | null; showing?: MakeupShowing | null } = {},
+  opts: {
+    thresholds?: readonly number[] | null;
+    stageOverride?: number | null;
+    elements?: ReadonlySet<Biome> | null;
+    showing?: MakeupShowing | null;
+    /** The half's own slots, before layout.ts dropped a fourth or fifth colour: the stage counts EVERY coloured land (SYSTEM.md A5). Without them, the layout's. */
+    slots?: readonly SlotState[] | null;
+  } = {},
 ): PairFullItem[] | null {
   if (!pairs) return null;
   const live = layout.map((l, i) => ({ l, i })).filter(({ l }) => l.stage > 0 && l.slot.weight > 0);
@@ -158,7 +165,7 @@ export function pairFullPlan(
   const byBiome = (b: Biome) => live.find((x) => x.l.slot.biome === b) ?? null;
   // The pair: makeup.ts's rule on the live biomes (every one has a colour since 1.11; one without takes the old path below).
   const coloured = live.every((x) => !!BIOME_COLOUR[x.l.slot.biome]);
-  const pick = coloured ? pickFromSlots(live.map((x) => x.l.slot), opts.showing ?? null) : null;
+  const pick = coloured ? pickFromSlots(opts.slots ?? live.map((x) => x.l.slot), opts.showing ?? null) : null;
   const picked = pick?.pair ? pairFor(pairs, COLOUR_BIOME[pick.pair[0]], COLOUR_BIOME[pick.pair[1]]) : null;
   if (pick?.pair && picked && pictured(picked.pair)) {
     // The two in row order (the left one the board's left).
@@ -168,7 +175,7 @@ export function pairFullPlan(
     const wb = y.l.slot.weight;
     const third = pick.third ? byBiome(COLOUR_BIOME[pick.third]) : null;
     if (third) {
-      // Spec 1.14 / 1.16: the third colour inside the pair picture, which takes the whole half and grows with every kept land.
+      // Spec 1.14 / 1.16: the third colour inside the pair picture, which takes the whole half and grows with every coloured land.
       const stage = pairFullStage(found.pair, pick.total, thresholds, opts.stageOverride ?? null);
       const colour = pick.third!;
       if (opts.elements?.has(third.l.slot.biome) || pairElementAt(found.pair, stage, colour))

@@ -18,7 +18,8 @@
  *    the colours that arrived first) and the third colour's element, on the
  *    heavier pair colour's side, fading in with the third colour's share;
  *    four or five keep the three heaviest by their own weights, one element
- *    at a time, and the colours dropped show nothing and weigh nothing.
+ *    at a time; the colours dropped show nothing and weigh nothing in the
+ *    pair or the pan, but the pair stage counts every coloured land.
  *    Steps 5 and 6 are makeup.ts `pickMakeup`, the one rule the strip
  *    (layout.ts `foldPanels`) and the pair picture (pairfull.ts) use too.
  * 6. Landmarks (B6): a land whose exact name the pack has a landmark for, one
@@ -134,7 +135,7 @@ export function planHalf(i: PlanInput): HalfPlan {
     const third = pick.third;
     if (third) {
       // An equal third (⅓ of the three kept) is fully in; less fades it. A dropped fourth or fifth colour weighs nothing.
-      const opacity = r3(Math.min(1, Math.max(0, (3 * pick.weights[third]!) / pick.total)));
+      const opacity = r3(Math.min(1, Math.max(0, (3 * pick.weights[third]!) / pick.keptTotal)));
       const keyLeft = pick.heavier === a;
       element = { colour: third, opacity, side: keyLeft !== mirror ? 'left' : 'right' };
     }

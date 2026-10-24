@@ -19,12 +19,16 @@
  *    Triome ⅓ each, a fetch nothing), in the order the colours arrived.
  * 6. Four or five colours: keep the THREE heaviest by their own, unfolded
  *    weight (a tie: a colour already showing stays; else the earlier
- *    arrival). The colours dropped show NOTHING and add NO weight anywhere:
- *    not to a panel's width, not to the pair's pan, not to the stage.
+ *    arrival). The colours dropped show NOTHING and add NO weight to what is
+ *    shown: not to a panel's width, not to the pair's pan, not to the
+ *    element's share.
  * 5. The heaviest pair is chosen from the kept colours by their own weights
  *    (a tie: the pair already showing stays; else the earlier arrivals); the
  *    pan uses the pair's own two weights; the third kept colour is the
- *    element; the stage counts the kept colours' lands.
+ *    element. The stage counts EVERY coloured land on the half, dropped
+ *    colours included (A5: "a growing third colour still grows the place";
+ *    A1: a land's weight is the same in every row, so the half's total is
+ *    its number of coloured lands).
  *
  * "Already showing" is the previous pick ({@link MakeupShowing}); a caller
  * with no memory passes none, and every caller given the same slots and the
@@ -102,7 +106,7 @@ export interface MakeupPick extends MakeupShowing {
   makeup: Makeup;
   /** The kept colours (at most {@link MAX_SHOWN_COLOURS}), ranked for the pair: the heavier pair colour first, the element last. */
   kept: PieceColour[];
-  /** Colours past the third: they show nothing and weigh nothing. */
+  /** Colours past the third: they show nothing and weigh nothing in the pair, the pan or the element's share (their lands still count in `total`, the stage). */
   dropped: PieceColour[];
   /** The pair, in pair-key order, or null with fewer than two colours. */
   pair: [PieceColour, PieceColour] | null;
@@ -112,8 +116,10 @@ export interface MakeupPick extends MakeupShowing {
   third: PieceColour | null;
   /** The kept colours' own weights (the dropped ones absent). */
   weights: Partial<Record<PieceColour, number>>;
-  /** The kept colours' lands together: the pair stage counts these. */
+  /** Every coloured land on the half (the makeup's total, dropped colours included): the pair stage counts these. */
   total: number;
+  /** The kept colours' own weights together: the element's share of the three is its weight over this. */
+  keptTotal: number;
 }
 
 /** SYSTEM.md steps 5 and 6 for one half ({@link makeup.ts}'s header). */
@@ -124,7 +130,7 @@ export function pickMakeup(m: Makeup, showing: MakeupShowing | null = null): Mak
   const weights: Partial<Record<PieceColour, number>> = {};
   for (const c of kept) weights[c] = m.weights[c]!;
   const pair = kept.length >= 2 ? pairKeyOrder(kept[0]!, kept[1]!) : null;
-  return { makeup: m, kept, dropped, pair, heavier: kept[0] ?? null, third: kept[2] ?? null, weights, total: r3(kept.reduce((n, c) => n + weights[c]!, 0)) };
+  return { makeup: m, kept, dropped, pair, heavier: kept[0] ?? null, third: kept[2] ?? null, weights, total: m.total, keptTotal: r3(kept.reduce((n, c) => n + weights[c]!, 0)) };
 }
 
 /** {@link pickMakeup} on a half's slots (only the live ones weigh: a withered slot has no weight). */

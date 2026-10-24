@@ -129,7 +129,7 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
   const layout = useMemo(() => halfLayout(slots, pack, null, showing), [slots, pack, showing]);
   // Spec 1.14 on the whole-half pair picture: the same plan and the same load gate SceneryStrip draws.
   const elements = useMemo(() => (pairFull ? elementBiomes(pieces) : null), [pairFull, pieces]);
-  const full = useMemo(() => (pairFull && pack?.pairs ? pairFullPlan(layout, pack.pairs, { thresholds: pack.stageThresholds, elements, showing }) : null), [pairFull, pack, layout, elements, showing]);
+  const full = useMemo(() => (pairFull && pack?.pairs ? pairFullPlan(layout, pack.pairs, { thresholds: pack.stageThresholds, elements, showing, slots }) : null), [pairFull, pack, layout, elements, showing, slots]);
   const fullPair = full?.find((x): x is PairFullPair => x.kind === 'pair' && !!x.element) ?? null;
   const shown = useMemo(() => {
     if (!fullPair || !measured) return null;

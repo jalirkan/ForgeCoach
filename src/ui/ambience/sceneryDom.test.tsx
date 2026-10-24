@@ -60,7 +60,7 @@ afterEach(() => resetPictures());
 function drawHalf(slots: SlotState[]) {
   const strip = renderToStaticMarkup(<SceneryStrip slots={slots} pack={pack} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />);
   const pcs = renderToStaticMarkup(<ScenePieces pack={pack} pieces={pieces} slots={slots} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />);
-  const caption = pairFullCaption(pairFullPlan(halfLayout(slots, pack), pack.pairs, { thresholds: pack.stageThresholds, elements: ELEMENTS }));
+  const caption = pairFullCaption(pairFullPlan(halfLayout(slots, pack), pack.pairs, { thresholds: pack.stageThresholds, elements: ELEMENTS, slots }));
   return { strip, pcs, caption };
 }
 

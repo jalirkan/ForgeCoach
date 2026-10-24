@@ -144,7 +144,7 @@ describe('one makeup rule for the strip, the caption and the pieces', () => {
   const v4 = validatePairs(JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs!;
   const ALL: ReadonlySet<Biome> = new Set<Biome>(['plains', 'island', 'swamp', 'mountain', 'forest']);
   const strip = (slots: SlotState[], showing: MakeupShowing | null = null) => {
-    const items = pairFullPlan(halfLayout(slots, null, null, showing), v4, { thresholds: T, elements: ALL, showing })!;
+    const items = pairFullPlan(halfLayout(slots, null, null, showing), v4, { thresholds: T, elements: ALL, showing, slots })!;
     expect(items).toHaveLength(1);
     return items[0] as PairFullPair;
   };
@@ -162,8 +162,9 @@ describe('one makeup rule for the strip, the caption and the pieces', () => {
     expect(stripPair).toEqual(planPair);
     expect(plan.element).toMatchObject({ colour: 'B', opacity: 1 });
     expect(stripElement).toBe(plan.element!.colour);
-    // The stage counts the three kept lands: three lands, pair stage 2.
+    // The stage counts every coloured land, the dropped mountain's too (SYSTEM.md A5): four lands, pair stage 2.
     expect([p.stage, plan.pairStage]).toEqual([2, 2]);
+    expect(plan.pick.total).toBe(4);
     expect(pairFullCaption([p])).toBe('Tundra (Hallowed Fountain), whole half: plains 50% | island 50%, pair stage 2; swamp as an element');
   });
 
@@ -174,8 +175,18 @@ describe('one makeup rule for the strip, the caption and the pieces', () => {
     expect(stripPair).toEqual(planPair);
     expect(stripElement).toBe(plan.element!.colour);
     expect(plan.element!.opacity).toBeCloseTo((3 * 1.5) / 6.5, 3);
-    // 6.5 kept lands: pair stage 3.
+    // 7.5 coloured lands, the dropped mountain's included: pair stage 3.
     expect([p.stage, plan.pairStage]).toEqual([3, 3]);
+  });
+
+  it('the stage counts every coloured land, a dropped colour’s too: it still grows the place (SYSTEM.md A5)', () => {
+    // Plains 1, island 1, swamp ½, mountain ½ and forest ½: three kept (W U, B the element, by arrival), 3.5 lands → pair stage 2.
+    // Counting only the kept three (2.5 lands) would hold it at stage 1.
+    const s = [slot('plains', 0, 1, 1), slot('island', 1, 1, 1), slot('swamp', 2, 0.5, 1), slot('mountain', 3, 0.5, 1), slot('forest', 4, 0.5, 1)];
+    const { p, plan } = both(s);
+    expect([p.key, p.element, p.stage, plan.pairStage]).toEqual(['island+plains', 'swamp', 2, 2]);
+    // The dropped colours still weigh nothing in the pan or the element's share.
+    expect([p.split, plan.element!.opacity]).toEqual([0.5, 0.6]);
   });
 
   it('five colours: the three heaviest, a tie for third to the earliest arrival; the other two nowhere', () => {

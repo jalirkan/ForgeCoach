@@ -158,7 +158,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const bands = useMemo(() => (pairsPack ? pairBands(layout as HalfSlotLayout[], pairsPack, duals) : []), [pairsPack, layout, duals]);
   const bandLife = useBandLife(bands, layout as HalfSlotLayout[], pack, reduced);
   // Spec 1.15: the pair picture as the whole half (null: the half as today).
-  const plannedFull = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride, elements, showing }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride, elements, showing]);
+  const plannedFull = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride, elements, showing, slots }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride, elements, showing, slots]);
   const narrow = useNarrowScreen();
   const halfAspect = usePanelAspect(hostRef, !!plannedFull || (bridged && layout.length > 0 && Object.values(pack!.bridges!).some((b) => !!b?.phone)) || bandLife.shown.some((b) => b.pair.stages.some((st) => !!st.half?.phone || !!st.motif?.phone)));
   // Spec 1.15's load gate (review fault 4): the pair picture is drawn once a picture of it has loaded; until then, or if
