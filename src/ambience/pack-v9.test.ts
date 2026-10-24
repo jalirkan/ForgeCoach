@@ -8,8 +8,8 @@
  * streaks at stages 2–6) validates on this client: a snapshot of its
  * scenery.json, byte for byte what jsDelivr serves at the tag, taken when
  * FORGECOACH_PACK_URL moved to it. pack-v8 stays at its tag
- * (pack-v8.test.ts) as the fallback. (The default is pack-v9.1 now, the
- * same pictures with their measured horizons and hours: pack-v9-1.test.ts.) Why: ~/scenery-packs/seams-v1/diag/DIAGNOSIS.md.
+ * (pack-v8.test.ts) as the fallback. (pack-v9.1 followed, the
+ * same pictures with their measured horizons and hours: pack-v9-1.test.ts; the default is pack-v9.2, pack-v9-2.test.ts.) Why: ~/scenery-packs/seams-v1/diag/DIAGNOSIS.md.
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
