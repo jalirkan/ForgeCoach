@@ -17,7 +17,10 @@
  * 5. Three or more: the heaviest pair (a tie keeps the pair on screen, then
  *    the colours that arrived first) and the third colour's element, on the
  *    heavier pair colour's side, fading in with the third colour's share;
- *    four or five fold to the three heaviest, one element at a time.
+ *    four or five keep the three heaviest by their own weights, one element
+ *    at a time, and the colours dropped show nothing and weigh nothing.
+ *    Steps 5 and 6 are makeup.ts `pickMakeup`, the one rule the strip
+ *    (layout.ts `foldPanels`) and the pair picture (pairfull.ts) use too.
  * 6. Landmarks (B6): a land whose exact name the pack has a landmark for, one
  *    per name, at most two, the earliest on the battlefield.
  * 7. The veil (B9) once the game is over: won or lost (a draw: none).
@@ -38,20 +41,12 @@ import type { GameStateBody } from '../protocol.ts';
 import { hasType, visibleCard } from '../state.ts';
 import { halfFrame, halfArtOf, horizonOf, DESKTOP_HORIZON, type FrameRect, type HalfSlotLayout } from './layout.ts';
 import { halfAt, MAX_LANDMARKS_SHOWN, PIECE_COLOURS, type PackHalf, type PackPieces, type PiecePlace, type PieceColour, type ScenePack, type VeilOutcome } from './manifest.ts';
-import type { Biome, SlotState } from './model.ts';
+import type { Biome } from './model.ts';
 import type { LightOutcome } from './light.ts';
+import type { TweenFrame } from './transitions.ts';
+import { COLOUR_BIOME, pickMakeup, pickSplit, type Makeup, type MakeupPick, type MakeupShowing } from './makeup.ts';
 
-export const BIOME_COLOUR: Partial<Record<Biome, PieceColour>> = { plains: 'W', island: 'U', swamp: 'B', mountain: 'R', forest: 'G' };
-export const COLOUR_BIOME: Record<PieceColour, Biome> = { W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' };
-
-/** The colours a half's lands make, heaviest first is not implied: in the order they arrived. */
-export interface Makeup {
-  /** Colours with weight above zero, in arrival order. */
-  colours: PieceColour[];
-  weights: Partial<Record<PieceColour, number>>;
-  /** Every coloured land's weight together (= the number of coloured lands). */
-  total: number;
-}
+export { BIOME_COLOUR, COLOUR_BIOME, makeupFromSlots, makeupOf, pickMakeup, rankColours, type Makeup, type MakeupPick, type MakeupShowing } from './makeup.ts';
 
 /** One half's plan. */
 export interface HalfPlan {
@@ -71,49 +66,17 @@ export interface HalfPlan {
   /** Landmark card names to draw, earliest first, at most two. */
   landmarks: string[];
   veil: VeilOutcome | null;
+  /** makeup.ts's pick this plan is made from (the strip and the pair picture draw the same one). */
+  pick: MakeupPick;
 }
 
 export type Front = { colour: PieceColour; reverse: boolean } | { dissolve: true };
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 
-/** Step 1: a half's makeup from its weights and arrival order (colours missing from `arrival` go last, in WUBRG order). */
-export function makeupOf(weights: Partial<Record<PieceColour, number>>, arrival: readonly PieceColour[]): Makeup {
-  const order = [...arrival.filter((c, i) => arrival.indexOf(c) === i), ...PIECE_COLOURS.filter((c) => !arrival.includes(c))];
-  const colours = order.filter((c) => (weights[c] ?? 0) > 1e-9);
-  const w: Partial<Record<PieceColour, number>> = {};
-  for (const c of colours) w[c] = r3(weights[c]!);
-  return { colours, weights: w, total: r3(colours.reduce((n, c) => n + w[c]!, 0)) };
-}
-
-/** A half's makeup from its scenery slots (model.ts: a slot per biome, `index` = arrival, `weight` now). */
-export function makeupFromSlots(slots: readonly SlotState[]): Makeup {
-  const weights: Partial<Record<PieceColour, number>> = {};
-  const arrival: PieceColour[] = [];
-  for (const s of [...slots].sort((a, b) => a.index - b.index)) {
-    const c = BIOME_COLOUR[s.biome];
-    if (!c) continue;
-    weights[c] = (weights[c] ?? 0) + s.weight;
-    arrival.push(c);
-  }
-  return makeupOf(weights, arrival);
-}
-
-const pairKeyOrder = (a: PieceColour, b: PieceColour): [PieceColour, PieceColour] => (COLOUR_BIOME[a] < COLOUR_BIOME[b] ? [a, b] : [b, a]);
-
-/**
- * The colours ranked for the picture: heaviest first; a tie keeps a colour of
- * the pair on screen (`prev`) ahead, then the one that arrived first.
- */
-export function rankColours(m: Makeup, prev: readonly PieceColour[] | null = null): PieceColour[] {
-  const showing = (c: PieceColour) => (prev?.includes(c) ? 0 : 1);
-  return [...m.colours].sort((a, b) => m.weights[b]! - m.weights[a]! || showing(a) - showing(b) || m.colours.indexOf(a) - m.colours.indexOf(b));
-}
-
-/** Step 5's heaviest pair, in pair-key order, or null with fewer than two colours. */
+/** Step 5's heaviest pair, in pair-key order, or null with fewer than two colours (makeup.ts `pickMakeup`). */
 export function heaviestPair(m: Makeup, prev: readonly PieceColour[] | null = null): [PieceColour, PieceColour] | null {
-  const r = rankColours(m, prev);
-  return r.length >= 2 ? pairKeyOrder(r[0]!, r[1]!) : null;
+  return pickMakeup(m, prev ? { kept: prev, pair: prev } : null).pair;
 }
 
 /** The pair stage from the half's coloured lands (SYSTEM.md A4: 1–2 → 1, 3–4 → 2, 5+ → 3). */
@@ -147,32 +110,32 @@ export interface PlanInput {
   /** The names the pack has landmarks for. */
   landmarks?: Iterable<string>;
   outcome?: LightOutcome;
-  /** The pair on screen before this state, for the tie rule. */
+  /**
+   * What was showing before this state, for the tie rules (makeup.ts
+   * `MakeupShowing`: SceneryLayer's previous pick, the same one the strip
+   * gets). `prevPair` is the older form: the pair alone.
+   */
+  showing?: MakeupShowing | null;
   prevPair?: readonly PieceColour[] | null;
 }
 
-/** Steps 2–7 for one half. */
+/** Steps 2–7 for one half; steps 5–6 are makeup.ts `pickMakeup`, the rule the strip and the pair picture use too. */
 export function planHalf(i: PlanInput): HalfPlan {
   const m = i.makeup;
-  const ranked = rankColours(m, i.prevPair ?? null);
-  const pair = ranked.length >= 2 ? pairKeyOrder(ranked[0]!, ranked[1]!) : null;
-  let split = 0.5;
+  const pick = pickMakeup(m, i.showing ?? (i.prevPair ? { kept: i.prevPair, pair: i.prevPair } : null));
+  const pair = pick.pair;
+  const split = pickSplit(pick);
   let mirror = false;
   let element: HalfPlan['element'] = null;
   if (pair) {
     const [a, b] = pair;
-    const wa = m.weights[a]!;
-    const wb = m.weights[b]!;
-    split = r3(Math.min(0.8, Math.max(0.2, wa / (wa + wb))));
     // The half met b first: the board's order is the key's reversed.
     mirror = m.colours.indexOf(b) < m.colours.indexOf(a);
-    const third = ranked[2];
+    const third = pick.third;
     if (third) {
-      const three = ranked.slice(0, 3).reduce((n, c) => n + m.weights[c]!, 0);
-      // An equal third (⅓ of the three) is fully in; less fades it.
-      const opacity = r3(Math.min(1, Math.max(0, (3 * m.weights[third]!) / three)));
-      const heavier = ranked[0]!;
-      const keyLeft = heavier === a;
+      // An equal third (⅓ of the three kept) is fully in; less fades it. A dropped fourth or fifth colour weighs nothing.
+      const opacity = r3(Math.min(1, Math.max(0, (3 * pick.weights[third]!) / pick.total)));
+      const keyLeft = pick.heavier === a;
       element = { colour: third, opacity, side: keyLeft !== mirror ? 'left' : 'right' };
     }
   }
@@ -183,7 +146,7 @@ export function planHalf(i: PlanInput): HalfPlan {
     if (known.has(n) && !landmarks.includes(n)) landmarks.push(n);
   }
   const veil: VeilOutcome | null = i.outcome === 'won' || i.outcome === 'lost' ? i.outcome : null;
-  return { makeup: m, empty: m.colours.length === 0, pair, split, mirror, pairStage: pair ? pairStageOf(m.total) : 0, element, landmarks, veil };
+  return { makeup: m, empty: m.colours.length === 0, pair, split, mirror, pairStage: pair ? pairStageOf(pick.total) : 0, element, landmarks, veil, pick };
 }
 
 /** The colours the picture is made of: the pair (or the one colour) and the element's colour. */
@@ -214,6 +177,102 @@ export function frontFor(prev: HalfPlan | null, next: HalfPlan): Front | null {
     if (joined) return { colour: joined, reverse: false };
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Fronts and the pieces' shape (review fault 3)
+
+/**
+ * Does a half of `box` px take its pieces' phone pictures (a front's frames,
+ * a landmark's, a veil's, the empty table's)? On a phone-width screen always
+ * (layout.ts `PHONE_VIEWPORT_MAX`), else when the half is nearer the phone's
+ * 4 : 5 than the desktop's 16 : 5 on a log scale ({@link PIECES_PHONE_BELOW},
+ * layout.ts `pickHalfPicture`'s rule). The ONE rule: ScenePieces both warms
+ * ({@link pieceUrls}) and picks with it, from the half it measures -- before,
+ * warming read `innerWidth` and picking the box, so a tall desktop half warmed
+ * the desktop frames, picked the phone ones, and never played a front.
+ */
+export function piecesPhone(box: { w: number; h: number }, narrow: boolean): boolean {
+  return narrow || (box.w > 0 && box.h > 0 && box.w / box.h < PIECES_PHONE_BELOW);
+}
+
+/** The geometric middle of 16 : 5 and 4 : 5 (√(3.2 × 0.8)): a half narrower than this is phone-shaped. */
+export const PIECES_PHONE_BELOW = 1.6;
+
+/** A front's frames at a shape, in play order (backwards when the colour leaves), or null (no front, the dissolve, no frames for the colour). */
+export function frontFrameList(pieces: Pick<PackPieces, 'fronts'>, front: Front | null, phone: boolean): { frames: TweenFrame[]; fadeMs: number } | null {
+  if (!front || 'dissolve' in front) return null;
+  const f = pieces.fronts[front.colour];
+  if (!f || !f.frames.length) return null;
+  const frames = f.frames.map((x) => ({ src: phone && x.phone ? x.phone : x.src, holdMs: x.holdMs }));
+  return { frames: front.reverse ? frames.reverse() : frames, fadeMs: f.fadeMs };
+}
+
+/**
+ * The element pictures worth warming for a half (review fault 4: elements
+ * were never warmed, so one popped in after its fade): with three or more
+ * colours, each colour's element at the half's shape ({@link piecesPhone}),
+ * whichever of them the plan will make the element.
+ */
+export function elementUrls(pieces: Pick<PackPieces, 'elements'>, colours: readonly PieceColour[], phone: boolean): { src: string; src2x: string | null }[] {
+  if (colours.length < 3) return [];
+  const out: { src: string; src2x: string | null }[] = [];
+  for (const c of colours) {
+    const piece = pieces.elements[c];
+    if (!piece) continue;
+    const pic = phone && piece.phone ? piece.phone : piece;
+    out.push({ src: pic.src, src2x: pic.src2x });
+  }
+  return out;
+}
+
+/**
+ * The veil a half draws (review fault 10): the plan's, else -- on a replay
+ * scrub back past the game's end -- the one it drew last, `leaving` (faded
+ * out, then dropped by ScenePieces once the fade is over).
+ */
+export function veilState(now: VeilOutcome | null, last: VeilOutcome | null): { veil: VeilOutcome; leaving: boolean } | null {
+  if (now) return { veil: now, leaving: false };
+  return last ? { veil: last, leaving: true } : null;
+}
+
+/** How long a front may wait for its frames to decode before it is skipped: later than this, the change it marks is old news. */
+export const FRONT_WAIT_MS = 4000;
+
+/**
+ * Which front plays (review fault 3: a front played only if every frame was
+ * decoded at the very render of the change, so on a cold cache the first
+ * front of a colour never played). Each change of plan is a generation with
+ * its front; the front starts as soon as its frames are all decoded -- at
+ * once if they already are, else when the last arrives -- unless a newer
+ * change came first or {@link FRONT_WAIT_MS} passed; each generation plays
+ * at most once. {@link token} is what useTween keys on: it moves only when a
+ * front starts.
+ */
+export class FrontGate {
+  private gen = 0;
+  private at = 0;
+  private front: Front | null = null;
+  private played = 0;
+  /** A new plan whose change plays `front` (null: none), seen at `now` (ms). */
+  change(front: Front | null, now: number): void {
+    this.gen++;
+    this.front = front;
+    this.at = now;
+  }
+  /** The front waiting to start, or null (none, started, superseded or timed out at `now`). */
+  waiting(now: number): Front | null {
+    return this.front && this.played < this.gen && now - this.at <= FRONT_WAIT_MS ? this.front : null;
+  }
+  /** Asked on every render: start the waiting front if its frames are all decoded (`ready`), and return the newest started generation. */
+  token(ready: boolean, now: number): number {
+    if (ready && this.waiting(now)) this.played = this.gen;
+    return this.played;
+  }
+  /** The front a token plays: the current generation's, else null. */
+  frontOf(token: number): Front | null {
+    return token === this.gen ? this.front : null;
+  }
 }
 
 // ---------------------------------------------------------------------------
