@@ -10,7 +10,9 @@
  * ties keep what is showing, then the earlier arrival.
  */
 import { describe, expect, it } from 'vitest';
-import { makeupOf, pickMakeup, pickSplit } from './makeup.ts';
+import { MakeupMemory, makeupOf, pickFromSlots, pickMakeup, pickSplit } from './makeup.ts';
+import { SceneryTracker, slotsOf } from './model.ts';
+import { SIM_PLAYERS, simLog, type SimLandName } from './sim.ts';
 
 describe('pickMakeup', () => {
   it('one and two colours: no third, the pan by the two weights', () => {
@@ -69,5 +71,55 @@ describe('pickMakeup', () => {
     const m = makeupOf({ W: 1, U: 1, B: 1, R: 1, G: 1 }, ['G', 'R', 'B', 'U', 'W']);
     const once = pickMakeup(m, { kept: ['W', 'U', 'B'], pair: ['U', 'W'] });
     expect(pickMakeup(m, once)).toEqual(once);
+  });
+});
+
+/**
+ * The review of #198, LOW 4: the previous pick SceneryLayer remembered was the last one it RENDERED, so a replay scrub
+ * or a New Game could leave a stale tie-breaker. MakeupMemory folds the picks over the log's own state frames instead.
+ */
+describe('MakeupMemory: what each half showed, from the frames', () => {
+  const P = SIM_PLAYERS[0];
+  const log = (lands: SimLandName[]) => simLog(lands.map((name) => ({ kind: 'land' as const, player: P, name })));
+  // Island, Plains (U W), Swamp ×2 (B leads; U keeps second on arrival), Island (B U), Plains: a three-way 2 : 2 : 2 tie.
+  const g = log(['Island', 'Plains', 'Swamp', 'Swamp', 'Island', 'Plains']);
+  const last = g.frames.length - 1;
+  const follow = () => {
+    const memory = new MakeupMemory();
+    const tracker = new SceneryTracker();
+    tracker.observe(memory);
+    return { memory, tracker };
+  };
+
+  it('the tie keeps the pair showing (island+swamp), where no memory would pick the first arrivals (island+plains)', () => {
+    const { memory, tracker } = follow();
+    const sc = tracker.at(g, last);
+    expect([...memory.showing(P)!.pair!].sort()).toEqual(['B', 'U']);
+    expect([...pickFromSlots(slotsOf(sc, P), null).pair!].sort()).toEqual(['U', 'W']);
+  });
+
+  it('is the same whether the board stepped there frame by frame, jumped there, or scrubbed back there', () => {
+    const stepped = follow();
+    for (let i = 0; i <= last; i++) stepped.tracker.at(g, i);
+    const jumped = follow();
+    jumped.tracker.at(g, last);
+    expect(stepped.memory.showing(P)).toEqual(jumped.memory.showing(P));
+    // Scrub back to the frame after Island, Plains, Swamp, Swamp: the memory is that frame's, not the end's.
+    stepped.tracker.at(g, 4);
+    const fresh = follow();
+    fresh.tracker.at(g, 4);
+    expect(stepped.memory.showing(P)).toEqual(fresh.memory.showing(P));
+    expect([...stepped.memory.showing(P)!.pair!].sort()).toEqual(['B', 'U']);
+  });
+
+  it('starts empty on a new log (Reset, New Game), and forgets a half with no coloured land', () => {
+    const { memory, tracker } = follow();
+    tracker.at(g, last);
+    expect(memory.showing(P)).not.toBeNull();
+    const next = log(['Plains']);
+    tracker.at(next, 0);
+    expect(memory.showing(P)).toBeNull();
+    tracker.at(next, 1);
+    expect(memory.showing(P)!.kept).toEqual(['W']);
   });
 });

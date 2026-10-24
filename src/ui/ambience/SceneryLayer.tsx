@@ -39,7 +39,7 @@ import { SceneryOverlay } from './SceneryOverlay.tsx';
 import { accentsOn, fillOn, horizonOn, lightOn } from '../../ambience/prefs.ts';
 import { gradeFor, lightInputOf, outcomeAt } from '../../ambience/light.ts';
 import { elementBiomes, landNamesOf } from '../../ambience/pieces.ts';
-import { pickFromSlots, type MakeupPick } from '../../ambience/makeup.ts';
+import { MakeupMemory, type MakeupPick } from '../../ambience/makeup.ts';
 import { ScenePieces } from './ScenePieces.tsx';
 import { applyGrade } from './lightGrade.ts';
 import { HalfScrim } from './HalfScrim.tsx';
@@ -110,7 +110,14 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
   }, [log, frameIndex, log.frames.length]);
 
   // Card data sharpens nonbasic lands (a dual's colours); the tracker restarts when it arrives.
-  const tracker = useRef(new SceneryTracker());
+  // makeup.ts's previous pick per player (the tie rules), folded over the log's own state frames by the tracker.
+  const memory = useRef<MakeupMemory>(null as unknown as MakeupMemory);
+  const tracker = useRef<SceneryTracker>(null as unknown as SceneryTracker);
+  if (!tracker.current) {
+    memory.current = new MakeupMemory();
+    tracker.current = new SceneryTracker();
+    tracker.current.observe(memory.current);
+  }
   const landNames = useMemo(() => {
     const names = new Set<string>();
     for (const p of state?.players ?? []) for (const c of p.zones.battlefield?.cards ?? []) if (!isHidden(c) && /\bLand\b/.test((c as Card).types)) names.add((c as Card).name);
@@ -129,15 +136,10 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
   tracker.current.setChosen(chosen);
 
   const scenery = tracker.current.at(log, frameIndex);
-  // makeup.ts's one rule, per player, with what each half showed last (the tie rules): the strip, the pieces and the
-  // accents all get the same pick, so they cannot choose different colours (review fault 1).
-  const picks = useRef(new Map<number, MakeupPick>());
-  const showingOf = (playerId: number): MakeupPick => {
-    const pick = pickFromSlots(slotsOf(scenery, playerId), picks.current.get(playerId) ?? null);
-    const prev = picks.current.get(playerId);
-    if (!prev || prev.kept.join() !== pick.kept.join() || prev.pair?.join() !== pick.pair?.join()) picks.current.set(playerId, pick);
-    return picks.current.get(playerId)!;
-  };
+  // makeup.ts's one rule, per player, with what each half showed at this frame (the tie rules): the strip, the pieces and
+  // the accents all get the same pick, so they cannot choose different colours (review fault 1). It comes from the log's
+  // frames (MakeupMemory), so a scrub, a Reset or a New Game cannot leave a stale one behind.
+  const showingOf = (playerId: number): MakeupPick | null => memory.current.showing(playerId);
   const fx = useSceneryFx(load?.pack ?? null, reduced);
   const lastIndex = useRef(frameIndex);
   const lastLen = useRef(log.frames.length);

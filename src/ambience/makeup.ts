@@ -39,7 +39,7 @@
  * Pure and DOM-free.
  */
 import { PIECE_COLOURS, type PieceColour } from './manifest.ts';
-import type { Biome, SlotState } from './model.ts';
+import type { Biome, Scenery, SceneryObserver, SlotState } from './model.ts';
 
 export const BIOME_COLOUR: Partial<Record<Biome, PieceColour>> = { plains: 'W', island: 'U', swamp: 'B', mountain: 'R', forest: 'G' };
 export const COLOUR_BIOME: Record<PieceColour, Biome> = { W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' };
@@ -149,4 +149,35 @@ export function pickSplit(p: Pick<MakeupPick, 'pair' | 'weights'>): number {
   const wa = p.weights[p.pair[0]] ?? 0;
   const wb = p.weights[p.pair[1]] ?? 0;
   return wa + wb > 0 ? r3(Math.min(0.8, Math.max(0.2, wa / (wa + wb)))) : 0.5;
+}
+
+/**
+ * What each half showed last, for the tie rules (`showing`), folded over the
+ * game's state frames in order (a {@link SceneryObserver} on model.ts's
+ * `SceneryTracker`): a player's pick at a frame is `pickMakeup` of that
+ * frame's slots given the pick at the previous state frame. So it is the same
+ * whether the board stepped there or a replay scrubbed there (the tracker
+ * starts over on a jump back and folds again), it starts empty on a new log
+ * (Reset, New Game), and a half with no coloured land forgets (the review of
+ * #198, LOW 4: SceneryLayer kept the previous pick of whatever it had last
+ * rendered). A player's pick object changes only when its kept colours or its
+ * pair do, so a memoised strip is not re-rendered for nothing.
+ */
+export class MakeupMemory implements SceneryObserver {
+  private picks = new Map<number, MakeupPick>();
+  reset(): void {
+    this.picks.clear();
+  }
+  step(s: Scenery): void {
+    for (const p of s.players) {
+      const prev = this.picks.get(p.playerId) ?? null;
+      const pick = pickFromSlots(p.slots, prev);
+      if (!pick.kept.length) this.picks.delete(p.playerId);
+      else if (!prev || prev.kept.join() !== pick.kept.join() || prev.pair?.join() !== pick.pair?.join()) this.picks.set(p.playerId, pick);
+    }
+  }
+  /** The pick a player's half shows at the tracker's frame, or null (no coloured land yet). */
+  showing(playerId: number): MakeupPick | null {
+    return this.picks.get(playerId) ?? null;
+  }
 }

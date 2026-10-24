@@ -328,6 +328,18 @@ export interface SceneryStep {
 /** Steps kept from one `at` call (a live burst of frames, or a replay step). */
 export const MAX_TRACKED_STEPS = 16;
 
+/**
+ * Something that follows a {@link SceneryTracker}'s state frames in order
+ * (makeup.ts `MakeupMemory`): told when the tracker starts over (a new log,
+ * a jump back, new options) and after each state frame it steps, so what it
+ * keeps is a function of the frames up to the board's frame -- never of how
+ * the board got there.
+ */
+export interface SceneryObserver {
+  reset(): void;
+  step(scenery: Scenery): void;
+}
+
 export class SceneryTracker {
   /**
    * The log it follows, known by its frames rather than its object: a live session hands the board a new
@@ -342,7 +354,14 @@ export class SceneryTracker {
   private prevScenery: Scenery | null = null;
   private lastState: GameStateBody | null = null;
   private prevState: GameStateBody | null = null;
+  private observer: SceneryObserver | null = null;
   constructor(private opts: SceneryOptions = {}) {}
+
+  /** Follow the state frames with `o` (one observer); the next `at` starts over so it sees them all. */
+  observe(o: SceneryObserver | null) {
+    this.observer = o;
+    this.first = null;
+  }
 
   /** Change options (thresholds, card data); the next `at` starts over. */
   setOptions(opts: SceneryOptions) {
@@ -370,6 +389,7 @@ export class SceneryTracker {
       this.prevScenery = null;
       this.lastState = null;
       this.prevState = null;
+      this.observer?.reset();
     }
     const steps: SceneryStep[] = [];
     for (let i = this.upto + 1; i <= end; i++) {
@@ -380,6 +400,7 @@ export class SceneryTracker {
       this.prevState = this.lastState;
       this.scenery = stepScenery(this.scenery, st, this.opts);
       this.lastState = st;
+      this.observer?.step(this.scenery);
       steps.push({ frameIndex: i, prev: this.prevScenery, next: this.scenery, state: st });
       if (steps.length > MAX_TRACKED_STEPS) steps.shift();
     }
