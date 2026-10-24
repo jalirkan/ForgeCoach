@@ -22,6 +22,11 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { GameLog } from '../../log.ts';
 import type { Card, GameStateBody } from '../../protocol.ts';
+import type { Biome, SlotState } from '../../ambience/model.ts';
+import type { PackPieces, ScenePack } from '../../ambience/manifest.ts';
+import type { LightOutcome } from '../../ambience/light.ts';
+import type { MakeupShowing } from '../../ambience/makeup.ts';
+import type { StripEffect } from './SceneryStrip.tsx';
 import { isHidden } from '../../protocol.ts';
 import { chosenColorSource, chosenColors } from '../../state.ts';
 import { dualsOf, SceneryTracker, slotsOf } from '../../ambience/model.ts';
@@ -34,10 +39,11 @@ import { SceneryOverlay } from './SceneryOverlay.tsx';
 import { accentsOn, fillOn, horizonOn, lightOn } from '../../ambience/prefs.ts';
 import { gradeFor, lightInputOf, outcomeAt } from '../../ambience/light.ts';
 import { elementBiomes, landNamesOf } from '../../ambience/pieces.ts';
+import { pickFromSlots, type MakeupPick } from '../../ambience/makeup.ts';
 import { ScenePieces } from './ScenePieces.tsx';
 import { applyGrade } from './lightGrade.ts';
 import { HalfScrim } from './HalfScrim.tsx';
-import { halfUrls, pieceUrls } from '../../ambience/manifest.ts';
+import { halfUrls } from '../../ambience/manifest.ts';
 import { effectGate } from '../../ambience/effects.ts';
 import { browserLoader, growthPictures, preloadEffects, preloadOverlays, warmPicture } from '../../ambience/pack.ts';
 import { useReducedMotion, useSceneryFx, useSceneryLoad, useSceneryPrefs, type PlaceCard } from './useScenery.ts';
@@ -123,6 +129,15 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
   tracker.current.setChosen(chosen);
 
   const scenery = tracker.current.at(log, frameIndex);
+  // makeup.ts's one rule, per player, with what each half showed last (the tie rules): the strip, the pieces and the
+  // accents all get the same pick, so they cannot choose different colours (review fault 1).
+  const picks = useRef(new Map<number, MakeupPick>());
+  const showingOf = (playerId: number): MakeupPick => {
+    const pick = pickFromSlots(slotsOf(scenery, playerId), picks.current.get(playerId) ?? null);
+    const prev = picks.current.get(playerId);
+    if (!prev || prev.kept.join() !== pick.kept.join() || prev.pair?.join() !== pick.pair?.join()) picks.current.set(playerId, pick);
+    return picks.current.get(playerId)!;
+  };
   const fx = useSceneryFx(load?.pack ?? null, reduced);
   const lastIndex = useRef(frameIndex);
   const lastLen = useRef(log.frames.length);
@@ -187,16 +202,15 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     for (const w of growthPictures(load.pack, scenery.players.flatMap((p) => p.slots), { half: fill, phone })) warmPicture(w);
     // Spec 1.8: a side's bridge warms with its split's pictures (the half board only).
     if (fill) for (const w of bridgePictures(load.pack, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
-    // Spec 1.9: and its pair band's pictures (the stage its lower neighbour maps to, and the next).
-    if (fill) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
-  }, [scenery, load?.pack, fill]);
+    // Spec 1.9: and its pair band's pictures (the stage its lower neighbour maps to, and the next); under `?pairfull=1`
+    // the whole-half panoramas and 1.16's painted-in elements too (review fault 4: the panorama was never warmed).
+    const full = prefs.pairFull ? { thresholds: load.pack.stageThresholds } : null;
+    if (fill) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone, full })) warmPicture(w);
+  }, [scenery, load?.pack, fill, prefs.pairFull]);
 
-  // Spec 1.14: the pieces that can appear at once (fronts, veils, landmarks, the empty table) warm with the pack.
+  // Spec 1.14: the pieces that can appear at once (fronts, veils, landmarks, the empty table) warm in ScenePieces, at the
+  // shape of the half it measures (review fault 3: warming by the window's width picked the wrong frames for a tall half).
   const pieces = fill ? (load?.pack?.pieces ?? null) : null;
-  useEffect(() => {
-    if (!pieces) return;
-    for (const src of pieceUrls(pieces, { phone: window.innerWidth < 700 })) warmPicture({ src, src2x: null });
-  }, [pieces]);
   // Spec 1.14 under `?pairfull=1`: a third colour with an element is drawn inside the pair picture, not as a panel.
   const elements = useMemo(() => (prefs.pairFull ? elementBiomes(pieces) : null), [prefs.pairFull, pieces]);
   // The game's end at the board's frame, per player (one walk of the log per frame, and only with pieces).
@@ -223,31 +237,91 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     <>
       <span ref={anchor} hidden />
       {load &&
-        targets.map((t) =>
-          createPortal(
-            <>
-              {fill && slotsOf(scenery, t.playerId).length > 0 && <HalfScrim host={t.el} version={frameIndex} />}
-              <SceneryStrip
-                slots={slotsOf(scenery, t.playerId)}
-                pack={load.pack}
-                edge={t.top ? 'top' : 'bottom'}
-                reduced={reduced}
-                pulses={fx.pulses.get(t.playerId)}
-                fx={fx.fx.get(t.playerId)}
-                fill={fill ? 'half' : 'strip'}
-                duals={dualsOf(scenery, t.playerId)}
-                horizon={horizonOn(prefs)}
-                pairFull={!!prefs.pairFull}
-                elements={elements}
-              />
-              {pieces && <ScenePieces pack={load.pack} pieces={pieces} slots={slotsOf(scenery, t.playerId)} landNames={landNamesOf(state, t.playerId)} outcome={outcomeFor(t.playerId)} edge={t.top ? 'top' : 'bottom'} reduced={reduced} horizon={horizonOn(prefs)} pairFull={!!prefs.pairFull} />}
-              {accents && <SceneryOverlay slots={slotsOf(scenery, t.playerId)} pack={load.pack} edge={t.top ? 'top' : 'bottom'} reduced={reduced} half={fill} duals={dualsOf(scenery, t.playerId)} />}
-            </>,
+        targets.map((t) => {
+          const showing = showingOf(t.playerId);
+          return createPortal(
+            <HalfScenery
+              slots={slotsOf(scenery, t.playerId)}
+              pack={load.pack}
+              edge={t.top ? 'top' : 'bottom'}
+              reduced={reduced}
+              pulses={fx.pulses.get(t.playerId)}
+              fx={fx.fx.get(t.playerId)}
+              fill={fill}
+              duals={dualsOf(scenery, t.playerId)}
+              horizon={horizonOn(prefs)}
+              pairFull={!!prefs.pairFull}
+              elements={elements}
+              showing={showing}
+              scrimHost={t.el}
+              version={frameIndex}
+              pieces={pieces}
+              landNames={landNamesOf(state, t.playerId)}
+              outcome={outcomeFor(t.playerId)}
+              accents={accents}
+            />,
             t.el,
             `scn-${t.playerId}`,
-          ),
-        )}
+          );
+        })}
       {load?.note && import.meta.env.DEV && <span className="scn-devnote">{load.note}</span>}
+    </>
+  );
+}
+
+export interface HalfSceneryProps {
+  slots: SlotState[];
+  pack: ScenePack | null;
+  edge: 'top' | 'bottom';
+  reduced: boolean;
+  pulses?: Partial<Record<Biome, number>>;
+  fx?: readonly StripEffect[];
+  /** Settings → Fill each side (spec 1.5). */
+  fill: boolean;
+  duals: Readonly<Record<string, number>>;
+  horizon: boolean;
+  pairFull: boolean;
+  elements: ReadonlySet<Biome> | null;
+  showing: MakeupShowing | null;
+  /** The battlefield the card-row scrim measures (null: no scrim, as in a test). */
+  scrimHost: HTMLElement | null;
+  version: number;
+  pieces: PackPieces | null;
+  landNames: readonly string[];
+  outcome: LightOutcome;
+  /** Settings → Board accents. */
+  accents: boolean;
+  /** Tests (react-dom/server runs no layout effect): the area's width for the accents, and the half's box for the pieces. */
+  measured?: { w: number; h: number };
+}
+
+/**
+ * One player's scenery, in the order it paints (scenery.css): the card-row
+ * scrim, the strip (the land pictures at -3 and its effects at -1), spec
+ * 1.14's pieces and the accents -- the full-area one at -2, the corner and
+ * edge ones at -1 -- and LAST the pieces, at -1 too, so a veil or a front is
+ * over every scenery layer and still beneath every card (review fault 2).
+ */
+export function HalfScenery(p: HalfSceneryProps) {
+  return (
+    <>
+      {p.fill && p.scrimHost && p.slots.length > 0 && <HalfScrim host={p.scrimHost} version={p.version} />}
+      <SceneryStrip
+        slots={p.slots}
+        pack={p.pack}
+        edge={p.edge}
+        reduced={p.reduced}
+        pulses={p.pulses}
+        fx={p.fx}
+        fill={p.fill ? 'half' : 'strip'}
+        duals={p.duals}
+        horizon={p.horizon}
+        pairFull={p.pairFull}
+        elements={p.elements}
+        showing={p.showing}
+      />
+      {p.accents && <SceneryOverlay slots={p.slots} pack={p.pack} edge={p.edge} reduced={p.reduced} half={p.fill} duals={p.duals} showing={p.showing} widthPx={p.measured?.w} />}
+      {p.pieces && p.fill && <ScenePieces pack={p.pack} pieces={p.pieces} slots={p.slots} landNames={p.landNames} outcome={p.outcome} edge={p.edge} reduced={p.reduced} horizon={p.horizon} pairFull={p.pairFull} showing={p.showing} initialBox={p.measured} />}
     </>
   );
 }

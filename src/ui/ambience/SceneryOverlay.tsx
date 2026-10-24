@@ -33,11 +33,14 @@ import { areaPlacement, DEFAULT_AREA, overlayPieces, POSITION_CSS, type PlacedOv
 import { builtinAreaSrc, builtinOverlaySrc } from './overlayArt.ts';
 import { usePageVisible } from './SceneryStrip.tsx';
 import { halfPanelSpan, panelMaskCss } from '../../ambience/pairs.ts';
+import type { MakeupShowing } from '../../ambience/makeup.ts';
 import { useFadeIn, useFadeStack } from './useFade.ts';
 import './scenery.css';
 
 export interface SceneryOverlayProps {
   slots: SlotState[];
+  /** What was showing before (makeup.ts): the half's panels are the strip's, tie rules included. */
+  showing?: MakeupShowing | null;
   pack: ScenePack | null;
   /** The side: `bottom` is the viewer's area, `top` the opponent's (corner and edge pieces mirror there; a full-area piece stays upright). */
   edge: 'top' | 'bottom';
@@ -53,7 +56,7 @@ export interface SceneryOverlayProps {
   duals?: Readonly<Record<string, number>>;
 }
 
-export const SceneryOverlay = memo(function SceneryOverlay({ slots, pack, edge, reduced, stageOverride = null, widthPx, builtinArea = false, half = false, duals }: SceneryOverlayProps) {
+export const SceneryOverlay = memo(function SceneryOverlay({ slots, pack, edge, reduced, stageOverride = null, widthPx, builtinArea = false, half = false, duals, showing = null }: SceneryOverlayProps) {
   const root = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState<number | null>(null);
   const [heightPx, setHeightPx] = useState(0);
@@ -84,7 +87,7 @@ export const SceneryOverlay = memo(function SceneryOverlay({ slots, pack, edge, 
   // Spec 1.10: on a split half the full-area piece belongs to its biome's panel (the island's shells never over the volcano):
   // masked to that panel's span, eased out over the seams it shares; not drawn when its biome has no panel (folded away).
   const areaBiome = pieces.find((p) => p.anchor === 'area')?.biome ?? null;
-  const span = useMemo(() => (half && areaBiome && width ? halfPanelSpan(slots, pack, areaBiome, width, { duals, stageOverride, vw: typeof window === 'undefined' ? Infinity : window.innerWidth }) : null), [half, areaBiome, width, slots, pack, duals, stageOverride]);
+  const span = useMemo(() => (half && areaBiome && width ? halfPanelSpan(slots, pack, areaBiome, width, { duals, stageOverride, showing, vw: typeof window === 'undefined' ? Infinity : window.innerWidth }) : null), [half, areaBiome, width, slots, pack, duals, stageOverride, showing]);
   const areas = span === 'none' ? [] : pieces.filter((p) => p.anchor === 'area');
   const areaMask = span && span !== 'none' ? panelMaskCss(span) : undefined;
   const rest = areas.length ? pieces.filter((p) => p.anchor !== 'area') : pieces;
