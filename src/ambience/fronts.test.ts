@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { pieceUrls, validateManifest, type PackPieces } from './manifest.ts';
 import { markPicture, pictureFailed, pictureReady, pictureStatus, resetPictures, subscribePictures } from './pack.ts';
 import { elementUrls, FRONT_WAIT_MS, frontFrameList, FrontGate, piecesPhone, veilState } from './pieces.ts';
+import { tweenAt } from './transitions.ts';
 
 const BASE = 'https://example.org/pack/';
 const piece = (src: string, extra: Record<string, unknown> = {}) => ({ src, width: 400, height: 200, ...extra });
@@ -99,8 +100,50 @@ describe('a front plays when its frames are ready (fault 3)', () => {
     g.change({ colour: 'B', reverse: false }, 6000);
     const t = g.token(true, 6000);
     expect(g.frontOf(t)).toEqual({ colour: 'B', reverse: false });
+    // A newer change does not take the started front away from its token (it keeps playing, fade and all).
     g.change({ colour: 'G', reverse: false }, 6100);
-    expect(g.frontOf(t)).toBeNull();
+    expect(g.frontOf(t)).toEqual({ colour: 'B', reverse: false });
+    expect(g.frontOf(0)).toBeNull();
+  });
+
+  /**
+   * The review of #198: useTween restarts its timers whenever its key (the token) or its fade changes. A second
+   * makeup change while a front played turned frontOf(token) null, so the fade went to 0 and the front restarted
+   * with no fade. This plays useTween's contract render by render through two changes.
+   */
+  it('tweens through two changes: a change mid-front neither restarts it nor drops its fade; the next front starts when ready', () => {
+    const g = new FrontGate();
+    const u = { colour: 'U', reverse: false } as const;
+    const r = { colour: 'R', reverse: false } as const;
+    const withR: PackPieces = { ...pieces, fronts: { ...pieces.fronts, R: { frames: [{ src: 'r1', phone: null, holdMs: 100 }, { src: 'r2', phone: null, holdMs: 100 }], holdMs: 100, fadeMs: 250, bytes: null } } };
+    let key: { token: number; fadeMs: number } | null = null;
+    let startedAt = 0;
+    const restarts: { at: number; front: string | null; fadeMs: number }[] = [];
+    const render = (at: number, ready: boolean) => {
+      const token = g.token(ready, at);
+      const list = frontFrameList(withR, g.frontOf(token), false);
+      const now = { token, fadeMs: list?.fadeMs ?? 0 };
+      if (!key || key.token !== now.token || key.fadeMs !== now.fadeMs) {
+        if (key) restarts.push({ at, front: g.frontOf(token) && 'colour' in g.frontOf(token)! ? (g.frontOf(token) as typeof u).colour : null, fadeMs: now.fadeMs });
+        startedAt = at;
+      }
+      key = now;
+      return list ? tweenAt(list.frames, list.fadeMs, at - startedAt) : null;
+    };
+    render(0, false);
+    // Blue arrives, its frames decoded: the front starts (160 ms × 3 holds, then a 300 ms fade).
+    g.change(u, 10);
+    expect(render(10, true)).toEqual({ index: 0, fading: false, done: false });
+    // Red arrives 200 ms in, its frames still loading: blue plays on, same frames, same fade.
+    g.change(r, 210);
+    expect(render(210, false)).toEqual({ index: 1, fading: false, done: false });
+    expect(render(500, false)).toEqual({ index: 2, fading: true, done: false });
+    expect(restarts).toEqual([{ at: 10, front: 'U', fadeMs: 300 }]);
+    // Red's frames land at 600 ms (within FRONT_WAIT_MS): red starts then, with its own fade.
+    expect(render(600, true)).toEqual({ index: 0, fading: false, done: false });
+    expect(restarts.at(-1)).toEqual({ at: 600, front: 'R', fadeMs: 250 });
+    expect(render(805, true)).toEqual({ index: 1, fading: true, done: false });
+    expect(render(1060, true)!.done).toBe(true);
   });
 });
 

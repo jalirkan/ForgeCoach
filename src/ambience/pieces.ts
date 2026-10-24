@@ -248,13 +248,17 @@ export const FRONT_WAIT_MS = 4000;
  * once if they already are, else when the last arrives -- unless a newer
  * change came first or {@link FRONT_WAIT_MS} passed; each generation plays
  * at most once. {@link token} is what useTween keys on: it moves only when a
- * front starts.
+ * front starts. The front a token started is remembered with it, so a newer
+ * change while it plays neither restarts it nor drops its fade (the review
+ * of #198: useTween re-runs when its frames or fade change, and both went
+ * null with the generation); only a newer front that starts replaces it.
  */
 export class FrontGate {
   private gen = 0;
   private at = 0;
   private front: Front | null = null;
   private played = 0;
+  private playedFront: Front | null = null;
   /** A new plan whose change plays `front` (null: none), seen at `now` (ms). */
   change(front: Front | null, now: number): void {
     this.gen++;
@@ -267,12 +271,15 @@ export class FrontGate {
   }
   /** Asked on every render: start the waiting front if its frames are all decoded (`ready`), and return the newest started generation. */
   token(ready: boolean, now: number): number {
-    if (ready && this.waiting(now)) this.played = this.gen;
+    if (ready && this.waiting(now)) {
+      this.played = this.gen;
+      this.playedFront = this.front;
+    }
     return this.played;
   }
-  /** The front a token plays: the current generation's, else null. */
+  /** The front a token started (it keeps it through later changes), or null for a token that started none. */
   frontOf(token: number): Front | null {
-    return token === this.gen ? this.front : null;
+    return token > 0 && token === this.played ? this.playedFront : null;
   }
 }
 
