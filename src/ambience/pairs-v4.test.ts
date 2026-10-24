@@ -23,7 +23,7 @@ import { describe, expect, it } from 'vitest';
 import { halfLayout } from './layout.ts';
 import { pairKey, type Biome, type SlotState } from './model.ts';
 import { pairFullArt, pairFullElementRegion, pairFullFrame, pairFullPlan, pairFullView } from './pairfull.ts';
-import { DEFAULT_STAGE_MAP, MAX_PAIRS_PACK_BYTES, pairHalfAt, pairPanoramaAt, pairsBytes, validatePairs, PAIRS_SPEC } from './pairs.ts';
+import { DEFAULT_STAGE_MAP, MAX_PAIRS_PACK_BYTES, pairHalfAt, pairPanoramaAt, pairsBytes, pairsRefBytes, validatePairs, PAIRS_SPEC } from './pairs.ts';
 import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
 
 const FIVE: Biome[] = ['plains', 'island', 'swamp', 'mountain', 'forest'];
@@ -47,7 +47,8 @@ describe('pairs-v4', () => {
   it('validates with no errors, written for spec 1.15, and one budget warning: mountain+swamp’s stage pictures (its pairs-v2 halves counted)', () => {
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual(['pairs.mountain+swamp: 4.1 MB of stage pictures declared; their budget is 4 MB per pair (pictures kept)']);
-    expect(PAIRS_SPEC).toBe('1.15');
+    // The reader knows 1.16 (painted-in elements) since the scenery fixes; pairs-v4 is written for 1.15.
+    expect(PAIRS_SPEC).toBe('1.16');
     expect(pairs.spec).toBe('1.15');
     expect(pairs.name).toBe('ForgeCoach pair scenery, pairs-v4');
     expect(pairs.note).toBe(raw.note);
@@ -91,6 +92,8 @@ describe('pairs-v4', () => {
     expect(pairsBytes(pairs)).toBeLessThan(MAX_PAIRS_PACK_BYTES);
     const own = Object.values(raw.pairs as Record<string, { stages: { panorama: { bytes: number } }[] }>).reduce((n, p) => n + p.stages.reduce((m, s) => m + s.panorama.bytes, 0), 0);
     expect(own).toBe(14530662);
+    // The 45 MB warning counts only the tag's own files (review fault 7): pairs-v2's halves and frames, named at their own tag, cost it nothing.
+    expect(pairsRefBytes(pairs)).toBe(own);
   });
 
   it('draws the panorama across the whole half at every share, its transition landing at the share, the pair stage from the total lands', () => {

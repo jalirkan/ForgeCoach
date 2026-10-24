@@ -34,16 +34,17 @@
  * A pair with `half` pictures is a BAND pair as in 1.9, and a motif on one of
  * its stages is drawn over the band's picture, in the band's box.
  */
-import { BIOMES, MAX_STAGES, pairKey, type Biome, type SlotState } from './model.ts';
+import { BIOMES, DEFAULT_STAGE_THRESHOLDS, MAX_STAGES, pairKey, stageFor, type Biome, type SlotState } from './model.ts';
 import { cleanText, int } from '../lab/status.ts';
-import { isObj, packBase, parseBytes, parseHalf, parseTransitions, ranged, type PackHalf, type PackStage, type PackTransitions, type ScenePack } from './manifest.ts';
+import { isObj, packBase, parseBytes, parseHalf, parseTransitions, PIECE_COLOURS, ranged, type PackHalf, type PackStage, type PackTransitions, type PieceColour, type ScenePack } from './manifest.ts';
 import { halfLayout, type HalfSlotLayout } from './layout.ts';
+import { BIOME_COLOUR, type MakeupShowing } from './makeup.ts';
 import { halfSeams, SEAM_CAP_VW, widenedRatio } from './bridges.ts';
 
 /** The pair pack's manifest, at the root of the pairs URL. */
 export const PAIRS_MANIFEST_FILE = 'pairs.json';
-/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs, 1.15 whole-half panoramas). */
-export const PAIRS_SPEC = '1.15';
+/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs, 1.15 whole-half panoramas, 1.16 painted-in elements). */
+export const PAIRS_SPEC = '1.16';
 const MAX_PAIRS_MANIFEST_BYTES = 256 * 1024;
 
 /** How wide a pair's band is, as fractions of the half's width. */
@@ -88,6 +89,17 @@ export interface PairStage extends PackStage {
    * (pairfull.ts), where it is drawn instead of the stage's `half`.
    */
   panorama?: PackHalf;
+  /**
+   * Spec 1.16: painted-in elements. By colour (W U B R G), this stage's
+   * panorama with that third colour's feature painted INTO the place (a
+   * river through it, fire in it), in the panorama's own shape: an entry's
+   * missing `width`, `height`, `subjectBand`, `focal`, `safe`, `horizon`,
+   * `hour` and `key` (and its phone picture's) are the panorama's. Drawn
+   * under `?pairfull=1` instead of the panorama when the half's third colour
+   * has one at the stage shown ({@link pairElementAt}); the 1.14 cut-out
+   * element is then not drawn over it.
+   */
+  elements?: Partial<Record<PieceColour, PackHalf>>;
 }
 
 /**
@@ -115,8 +127,15 @@ export interface PackPair {
   band: PairBand;
   /** Index k (0-based) holds the neighbour stages [from, to] that show pair stage k + 1. */
   stageMap: [number, number][];
-  /** Declared bytes of the pair's stage pictures and motifs (each file once) and frames. */
+  /** Declared bytes of the pair's stage pictures, motifs, panoramas and painted-in elements (each file once) and frames. */
   bytes: number;
+  /**
+   * The part of {@link bytes} in the pairs manifest's own folder (its CDN
+   * ref): a file named by an absolute URL elsewhere (pairs-v4 names pairs-v2's
+   * halves and frames at their own tag) costs this ref nothing, so only these
+   * count toward {@link MAX_PAIRS_PACK_BYTES}.
+   */
+  refBytes: number;
 }
 
 /** Spec 1.12: the motif a pair shows at a pair stage (the last stage it has past its end), or null. */
@@ -180,6 +199,16 @@ export function pairStageFor(map: readonly (readonly [number, number])[], lower:
 export function pairPanoramaAt(pair: PackPair | null | undefined, stage: number): PackHalf | null {
   if (!pair || stage <= 0 || !pair.stages.length) return null;
   return pair.stages[Math.min(stage, pair.stages.length) - 1]?.panorama ?? null;
+}
+
+/**
+ * Spec 1.16: the painted-in element panorama for `colour` at a pair stage
+ * (the last stage past its end, as {@link pairPanoramaAt}), or null: never
+ * borrowed from another stage.
+ */
+export function pairElementAt(pair: PackPair | null | undefined, stage: number, colour: PieceColour | null | undefined): PackHalf | null {
+  if (!pair || !colour || stage <= 0 || !pair.stages.length) return null;
+  return pair.stages[Math.min(stage, pair.stages.length) - 1]?.elements?.[colour] ?? null;
 }
 
 /** The half picture a pair shows at a pair stage (the last stage it has past its end), or null. */
@@ -266,7 +295,8 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
     const half = parseHalf(st.half, base, `${sp}.half`, warn);
     if (!half) return void warn.push(`${sp}: no usable half picture; stage dropped`);
     const panorama = parseHalf(st.panorama, base, `${sp}.panorama`, warn);
-    stages.push({ layers: [], half, ...(motif ? { motif } : {}), ...(panorama ? { panorama } : {}) });
+    const elements = parseStageElements(st.elements, panorama ? st.panorama : null, base, `${sp}.elements`, warn);
+    stages.push({ layers: [], half, ...(motif ? { motif } : {}), ...(panorama ? { panorama } : {}), ...(elements ? { elements } : {}) });
   });
   if (!stages.length) {
     warn.push(`${path}: no stage with a usable ${kind === 'motif' ? 'motif' : 'half picture'}; pair dropped`);
@@ -280,14 +310,19 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
   if (stageMap.length > stages.length) warn.push(`${path}.stageMap: ${stageMap.length} pair stages, ${stages.length} pictured; the later ones show the last stage`);
   const seen = new Set<string>();
   let halfBytes = 0;
+  let refBytes = 0;
+  const inRef = (src: string) => src.startsWith(base);
   for (const s of stages)
-    for (const h of [s.half, s.motif, s.panorama]) {
+    for (const h of [s.half, s.motif, s.panorama, ...Object.values(s.elements ?? {})]) {
       if (!h || seen.has(h.src)) continue;
       seen.add(h.src);
       halfBytes += h.bytes ?? 0;
+      if (inRef(h.src)) refBytes += h.bytes ?? 0;
     }
   if (halfBytes > MAX_PAIR_HALF_BYTES) warn.push(`${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared; their budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair (pictures kept)`);
   const frameBytes = (transitions?.steps ?? []).reduce((n, s) => n + (s.bytes ?? 0), 0);
+  const frameRefBytes = (transitions?.steps ?? []).reduce((n, s) => n + (s.frames.every((f) => inRef(f.src)) ? (s.bytes ?? 0) : 0), 0);
+  const ownBytes = parseBytes(e, path, warn) ?? 0;
   return {
     key,
     left,
@@ -299,8 +334,58 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
     transitions,
     band: parseBand(e.band, `${path}.band`, warn),
     stageMap,
-    bytes: halfBytes + frameBytes + (parseBytes(e, path, warn) ?? 0),
+    bytes: halfBytes + frameBytes + ownBytes,
+    refBytes: refBytes + frameRefBytes + ownBytes,
   };
+}
+
+/** The fields a painted-in element (spec 1.16) takes from its stage's panorama when it does not give its own. */
+const PANORAMA_SHAPE = ['width', 'height', 'subjectBand', 'focal', 'safe', 'horizon', 'hour', 'key'] as const;
+const PANORAMA_PHONE_SHAPE = ['width', 'height', 'subjectBand', 'focal', 'safe', 'horizon'] as const;
+
+function shapeOf(raw: unknown, keys: readonly string[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (isObj(raw)) for (const k of keys) if (raw[k] !== undefined) out[k] = raw[k];
+  return out;
+}
+
+/**
+ * Spec 1.16: a stage's `elements`, `{ "<colour>": { src, phone?, bytes, horizon?, … } }`,
+ * each read as a 1.5 `half` in its stage panorama's shape (`rawPanorama`,
+ * the stage's raw `panorama`: its geometry fills what the entry leaves out;
+ * `phone` may be a URL or an object). Null when there are none. A stage with
+ * no usable panorama has none (they are its variants); a bad colour or entry
+ * is warned and dropped alone.
+ */
+function parseStageElements(v: unknown, rawPanorama: unknown, base: string, path: string, warn: string[]): Partial<Record<PieceColour, PackHalf>> | null {
+  if (v === undefined || v === null) return null;
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object keyed by colour (${PIECE_COLOURS.join(', ')}); ignored`);
+    return null;
+  }
+  if (!isObj(rawPanorama)) {
+    warn.push(`${path}: painted-in elements are variants of the stage's panorama, and this stage has none; ignored`);
+    return null;
+  }
+  const out: Partial<Record<PieceColour, PackHalf>> = {};
+  for (const k of Object.keys(v)) {
+    if (!(PIECE_COLOURS as readonly string[]).includes(k)) {
+      warn.push(`${path}.${cleanText(k, 30)}: not a colour (${PIECE_COLOURS.join(', ')}); ignored`);
+      continue;
+    }
+    const e = v[k];
+    if (!isObj(e)) {
+      warn.push(`${path}.${k}: not an object { src, phone, bytes }; ignored`);
+      continue;
+    }
+    const merged: Record<string, unknown> = { ...shapeOf(rawPanorama, PANORAMA_SHAPE), ...e };
+    const phoneShape = shapeOf(rawPanorama.phone, PANORAMA_PHONE_SHAPE);
+    if (typeof e.phone === 'string') merged.phone = { ...phoneShape, src: e.phone };
+    else if (isObj(e.phone)) merged.phone = { ...phoneShape, ...e.phone };
+    const h = parseHalf(merged, base, `${path}.${k}`, warn);
+    if (h) out[k as PieceColour] = h;
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 /**
@@ -333,8 +418,9 @@ export function validatePairs(raw: unknown, base: string): PairsResult {
     if (!spec) warnings.push(`spec: "${cleanText(raw.spec, 20) ?? typeof raw.spec}" is not a 1.x version; ignored`);
     else if (Number(spec.split('.')[1]) > Number(PAIRS_SPEC.split('.')[1])) warnings.push(`spec: the pairs are written for ${spec}; this ForgeCoach reads ${PAIRS_SPEC}, so newer fields are ignored`);
   }
-  const total = Object.values(pairs).reduce((n, p) => n + (p?.bytes ?? 0), 0);
-  if (total > MAX_PAIRS_PACK_BYTES) warnings.push(`pairs: ${(total / 1048576).toFixed(1)} MB declared; a jsDelivr ref holds at most 50 MB, so keep a pairs pack under ${MAX_PAIRS_PACK_BYTES / 1048576} MB`);
+  // Only the files in this manifest's own ref count: a file named at another tag's URL costs this ref nothing (review fault 7).
+  const total = Object.values(pairs).reduce((n, p) => n + (p?.refBytes ?? 0), 0);
+  if (total > MAX_PAIRS_PACK_BYTES) warnings.push(`pairs: ${(total / 1048576).toFixed(1)} MB declared in this pack's own folder; a jsDelivr ref holds at most 50 MB, so keep a pairs pack under ${MAX_PAIRS_PACK_BYTES / 1048576} MB (files named at another tag's URL are not counted)`);
   return {
     pairs: { schema: 1, spec, name: cleanText(raw.name, 80) ?? 'Untitled pairs', author: cleanText(raw.author, 80), license: cleanText(raw.license, 80), note: cleanText(raw.note, 400), base: b, pairs },
     errors: [],
@@ -542,9 +628,9 @@ export function halfPanelSpan(
   pack: ScenePack | null,
   biome: Biome,
   width: number,
-  opts: { duals?: Readonly<Record<string, number>>; stageOverride?: number | null; vw?: number } = {},
+  opts: { duals?: Readonly<Record<string, number>>; stageOverride?: number | null; vw?: number; showing?: MakeupShowing | null } = {},
 ): { left: number; right: number; fadeLeft: number; fadeRight: number } | 'none' | null {
-  const layout = halfLayout(slots, pack, opts.stageOverride ?? null);
+  const layout = halfLayout(slots, pack, opts.stageOverride ?? null, opts.showing ?? null);
   if (layout.length < 2 || !(width > 0)) return layout.some((l) => l.slot.biome === biome) || !layout.length ? null : 'none';
   const duals = opts.duals ?? {};
   const bands = pairBands(layout, pack?.pairs ?? null, duals);
@@ -580,13 +666,32 @@ export function rowCentreCss(items: readonly Pick<RowItem, 'share' | 'seam'>[], 
  * live biomes on a side with an entry, the pair's picture at the stage their
  * lower stage maps to, and the next pair stage's, at the shape the board
  * shows. Each file once.
+ *
+ * `full` (spec 1.15, `?pairfull=1`): the whole-half pictures too -- for each
+ * pair, its 1.15 `panorama` and, spec 1.16, the painted-in element
+ * panoramas of the side's other colours, at the stage the pair picture shows
+ * (the pair's two biomes' total lands, and every live land for an element,
+ * on `thresholds`) and the next one; the review's fault 4 found the
+ * panorama never warmed, so a half waited on it cold.
  */
-export function pairPictures(pairs: PairsPack | null | undefined, sides: readonly (readonly { biome: Biome; stage: number }[])[], opts: { phone: boolean }): { src: string; src2x: string | null }[] {
+export function pairPictures(
+  pairs: PairsPack | null | undefined,
+  sides: readonly (readonly { biome: Biome; stage: number; weight?: number }[])[],
+  opts: { phone: boolean; full?: { thresholds?: readonly number[] | null } | null },
+): { src: string; src2x: string | null }[] {
   if (!pairs) return [];
   const out: { src: string; src2x: string | null }[] = [];
   const seen = new Set<string>();
+  const add = (h: PackHalf | null) => {
+    if (!h) return;
+    const p = opts.phone && h.phone ? h.phone : h;
+    if (seen.has(p.src)) return;
+    seen.add(p.src);
+    out.push({ src: p.src, src2x: p.src2x });
+  };
   for (const slots of sides) {
     const live = slots.filter((s) => s.stage > 0);
+    const sideTotal = live.reduce((n, s) => n + (s.weight ?? 0), 0);
     for (let i = 0; i < live.length; i++)
       for (let j = i + 1; j < live.length; j++) {
         const found = pairFor(pairs, live[i]!.biome, live[j]!.biome);
@@ -594,17 +699,25 @@ export function pairPictures(pairs: PairsPack | null | undefined, sides: readonl
         const stage = pairStageFor(found.pair.stageMap, Math.min(live[i]!.stage, live[j]!.stage));
         for (const st of [stage, stage + 1]) {
           if (st > found.pair.stages.length) continue;
-          for (const h of [pairHalfAt(found.pair, st), pairMotifAt(found.pair, st)]) {
-            if (!h) continue;
-            const p = opts.phone && h.phone ? h.phone : h;
-            if (seen.has(p.src)) continue;
-            seen.add(p.src);
-            out.push({ src: p.src, src2x: p.src2x });
-          }
+          for (const h of [pairHalfAt(found.pair, st), pairMotifAt(found.pair, st)]) add(h);
         }
+        if (!opts.full) continue;
+        const thresholds = opts.full.thresholds ?? DEFAULT_STAGE_THRESHOLDS;
+        const fullStage = (total: number) => pairStageFor(found.pair.stageMap, stageFor(total, thresholds));
+        const own = fullStage((live[i]!.weight ?? 0) + (live[j]!.weight ?? 0));
+        for (const st of [own, own + 1]) if (st > 0 && st <= found.pair.stages.length) add(pairPanoramaAt(found.pair, st));
+        const others = live.filter((_, k) => k !== i && k !== j).map((s) => BIOME_COLOUR[s.biome]).filter((c): c is PieceColour => !!c);
+        if (!others.length) continue;
+        const withThird = fullStage(sideTotal);
+        for (const st of [withThird, withThird + 1]) if (st > 0 && st <= found.pair.stages.length) for (const c of others) add(pairElementAt(found.pair, st, c));
       }
   }
   return out;
+}
+
+/** Spec 1.9: the declared bytes of a pairs pack in its own folder (its CDN ref), the figure its 45 MB warning is about. */
+export function pairsRefBytes(pairs: PairsPack | null | undefined): number {
+  return Object.values(pairs?.pairs ?? {}).reduce((n, p) => n + (p?.refBytes ?? 0), 0);
 }
 
 /** Spec 1.9: the declared bytes of a pairs pack. */
