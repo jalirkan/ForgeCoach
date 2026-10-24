@@ -35,23 +35,26 @@ function side(lands: SimLandName[], player: number = SIM_PLAYERS[1]) {
 }
 
 describe('spec 1.10: at most three panels a half', () => {
-  it('folds a fourth biome into its nearest kept neighbour, its weight with it', () => {
+  it('drops a fourth biome: it shows nothing and its weight goes nowhere (1.16, SYSTEM.md A6)', () => {
     // Case 4: Bayou, Island, Tundra — swamp ½, forest ½, island 1½, plains ½ in arrival order.
     const { slots } = side(['Bayou', 'Island', 'Tundra']);
     expect(slots.map((s) => s.biome)).toEqual(['swamp', 'forest', 'island', 'plains']);
     const l = halfLayout(slots, pack);
     expect(l.map((x) => x.slot.biome)).toEqual(['swamp', 'forest', 'island']);
-    expect(l.map((x) => x.slot.weight)).toEqual([0.5, 0.5, 2]);
+    // Until 1.16 plains' ½ folded into the island (2); now each kept panel weighs its own lands.
+    expect(l.map((x) => x.slot.weight)).toEqual([0.5, 0.5, 1.5]);
     expect(l.map((x) => x.stage)).toEqual([1, 1, 1]);
     expect(l.reduce((n, x) => n + x.share, 0)).toBeCloseTo(1, 2);
     expect(l.length).toBeLessThanOrEqual(MAX_HALF_PANELS);
   });
-  it('keeps the heaviest three, ties to the earlier arrival, and drops withered panels first', () => {
+  it('keeps the heaviest three, ties to the colour showing then the earlier arrival, and drops withered panels first', () => {
     const five = [slot('forest', 0, 1), slot('island', 1, 3), slot('swamp', 2, 1), slot('mountain', 3, 2), slot('plains', 4, 1)];
     const f = foldPanels(slotLayout(five, null));
     expect(f.map((x) => x.slot.biome)).toEqual(['forest', 'island', 'mountain']);
-    // swamp (index 2) is as near island as mountain: the heavier (island) takes it; plains goes to mountain.
-    expect(f.map((x) => x.slot.weight)).toEqual([1, 4, 3]);
+    // swamp and plains are dropped: their weight is added to no panel (1.16).
+    expect(f.map((x) => x.slot.weight)).toEqual([1, 3, 2]);
+    // A tie for the third place keeps the colour already showing (makeup.ts), else the earlier arrival.
+    expect(foldPanels(slotLayout(five, null), { kept: ['U', 'R', 'W'], pair: ['U', 'R'] }).map((x) => x.slot.biome)).toEqual(['island', 'mountain', 'plains']);
     const withered = [slot('forest', 0, 0), slot('island', 1, 1), slot('swamp', 2, 1), slot('mountain', 3, 1)];
     expect(foldPanels(slotLayout(withered, null)).map((x) => x.slot.biome)).toEqual(['island', 'swamp', 'mountain']);
   });
