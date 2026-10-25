@@ -451,7 +451,7 @@ export default function AmbiencePage() {
                 </button>
               </div>
               <span className="amb-hint">
-                Spec 1.14 (whole half only): the empty table before a side's first colour, landmarks on the horizon (<i>Placeholders</i> stands City of Brass on your side, Seaside Citadel and Exotic Orchard on the opponent's), a colour's front when it arrives or leaves, and the end's veil (the Light card's <i>end</i>). A third colour's element is drawn only with <code>?pairfull=1</code>, inside the pair picture on the heavier colour's ground (<i>Three colours</i>: island+plains with red's element on the plains side). <i>Placeholders</i> are ForgeCoach's own shapes, preview only; the board never shows them.
+                Spec 1.14 (whole half only): the empty table before a side's first colour, landmarks on the horizon (<i>Placeholders</i> stands City of Brass on your side, Seaside Citadel and Exotic Orchard on the opponent's), a colour's front when it arrives or leaves, and the end's veil (the Light card's <i>end</i>). A third colour's element is drawn only with <code>?pairfull=1</code>, inside the pair picture on the heavier colour's ground (<i>Three colours</i>: island+plains with red on the plains side -- painted into the picture where the pairs have it at that stage, spec 1.16.1's sided pictures such as pairs-v5 with <code>?pairs=</code>, else the cut-out element). <i>Placeholders</i> are ForgeCoach's own shapes, preview only; the board never shows them.
                 {pack?.pieces ? ' This pack has pieces.' : ''}
               </span>
             </div>

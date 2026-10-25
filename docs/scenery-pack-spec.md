@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.16)
+# Scenery pack spec (schema 1, version 1.16.1)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -32,6 +32,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.14 | **Pieces** (§2, *Pieces*): an optional top-level **`pieces`** for the scenery system of pc-results `scenery/SYSTEM.md`: per colour an **element** (a third colour inside the heaviest pair's picture) and a **front** (the weather a colour arrives in: a few frames, hard cuts, then a fade; backwards when it leaves), per card name a **landmark** (standing on the horizon), the end's **veils** (`won`, `lost`) and the **empty table** (a half picture for a side with no colour yet); each piece a transparent picture with a `place` (`sit`: `fill`, `horizon` or `ground`; `x`, `w`, `lift`); their budget (§3). Drawn on the half board only. A pack without `pieces` is read and drawn as before.
 | 1.15 | **Whole-half pair panoramas** (§2, *Whole-half pair panoramas*), behind `?pairfull=1` only, default off: a pair stage in `pairs.json` may carry a **`panorama`**, one picture of one place 1.6 × the half's 16 : 5 (and a 1.28 : 1 `phone`), the key's first biome the ground at its left end and the second at its right. A half of exactly two colours with a pair picture shows it across the **whole half** (the panorama, else the 1.9 `half`), and the land share **pans** it (the transition sits at the share) instead of widening a band; its stage from the two colours' total lands. Three colours: the heaviest pair's picture beside the third's panel (a placeholder until 1.14's element is drawn). `pairFullView` exposes the transition, each colour's ground and the horizon for 1.14's pieces. ForgeCoach's pairs under the flag: pairs-v4. |
 | 1.16 | **Painted-in elements and one makeup rule** (§2, *Painted-in elements*), behind `?pairfull=1` for the pictures: a pair stage in `pairs.json` may carry **`elements`**, per colour that stage's panorama with the third colour's feature painted **into** the place; under the flag the half draws it instead of the panorama (a cross-fade, no cut-out on top), else the 1.14 cut-out element as before. And four corrections from the scenery review of 2026-10-24, reading the same manifests: **one makeup rule** for the panels, the pair picture and the pieces (four or five colours keep the three heaviest by their own weights; the colours dropped show nothing and **weigh nothing** in the pan or the pair choice, correcting 1.10's fold, while the stage still counts every coloured land); **pieces above every scenery layer** (the land pictures, every accent, the card-row scrim and the effects), below every card, label and control (correcting 1.14); a **front plays once its frames have loaded**; and a **load gate** for the whole-half picture (its panels until a picture of it has loaded; never blank). The pairs pack's 45 MB warning counts only the files in its own ref. Every 1.0–1.15 pack and pairs manifest is read unchanged. |
+| 1.16.1 | **Sided painted-in elements** (§2, *Painted-in elements*, amended): an `elements[<colour>]` entry may give **`left`** and **`right`**, one painted panorama per pair colour's ground (the painter's `s<k>+<C>L` and `s<k>+<C>R`), and the reader draws the **heavier** pair colour's side (SYSTEM.md A5), chosen on the key's colours before any mirroring; 1.16's unsided `src` entry still reads. A picture's `phone` object may declare its own **`bytes`**, so each shape counts in the ref its own file lies in. A pairs manifest's `spec` may carry a third number (`"1.16.1"`). ForgeCoach's **pairs-v5** is the first pack written to it. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -1768,9 +1769,77 @@ with the third colour's feature in it.
   panoramas as a stage change does (`growth.seconds`); the colour's 1.14
   front still plays over it. The base panorama stays on screen until the
   painted one has loaded; if it fails, the base panorama and the cut-out stay.
+  (Amended in 1.16.1: no cut-out while the painted one loads, and a painted
+  picture is held while the next painted one loads; see *Sided entries*.)
 - **Warming.** Under the flag each side warms its other colours' painted
   panoramas at the stage the pair picture shows with them and at the next,
   with the panoramas themselves.
+
+**Sided entries (1.16.1).** The painted set ForgeCoach published (pairs-v5,
+24 October 2026) is **sided**: SYSTEM.md's A5 puts the element on the
+**heavier** pair colour's ground, and a feature grown on the island's water
+is a different painting from the same feature grown on the plains' ice. So
+for a pair `a+b` at stage `k` and third colour `C` there are two pictures,
+`pairs/<a>-<b>/s<k>+<C>L-panorama.webp` (the feature on the key's **left**
+colour's ground, `a`'s) and `s<k>+<C>R-panorama.webp` (on the **right**'s,
+`b`'s), each with its `-phone.webp`, and the entry names them:
+
+```json
+"elements": {
+  "R": {
+    "left":  { "src": "pairs/island-plains/s2+RL-panorama.webp", "bytes": 179638,
+               "phone": { "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s2+RL-panorama-phone.webp", "bytes": 286098 } },
+    "right": { "src": "pairs/island-plains/s2+RR-panorama.webp", "bytes": 183486,
+               "phone": { "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s2+RR-panorama-phone.webp", "bytes": 283008 } }
+  } }
+```
+
+- **The shape.** `left` and `right` are each what a 1.16 entry is (`src`,
+  `phone` a URL or an object, `bytes`, optional `src2x`, `horizon`, `hour`,
+  `key`), and take what they leave out from the entry (an entry-level
+  `horizon` serves both sides), then from the stage's panorama. An entry may
+  give one side only, and may keep 1.16's own `src` beside its sides: the
+  unsided picture then serves the side it does not give. **Why this shape**
+  rather than replacing `src`: it only adds fields, so every 1.16 manifest
+  (and pairs-v4, which has no `elements`) reads exactly as before, and an
+  unsided painting -- a feature that belongs on neither ground, light or sky
+  -- still has a place to go. A 1.16 reader finds no `src` in a sided entry
+  and drops it with a warning, so it draws the base panorama and the cut-out.
+- **The pick.** The heavier of the pair's two colours by their own land
+  weights (a tie: the one that arrived first, the cut-out's rule): its side,
+  in the **key's** order -- `left` when the key's first colour is the heavier,
+  else `right`. When the board has the pair the other way round, the rule is
+  applied to the key's colours **before** mirroring, and the picture is then
+  mirrored with the panorama as in 1.9, so the feature always lands on the
+  heavier colour's ground. A land that turns the balance changes the side:
+  it cross-fades, as a stage change does. (`src/ambience/pairfull.ts`
+  `pairFullElementSide`; the plan's `elementSide`.)
+- **Stage 1 has none.** The painted set covers pair stages 2 and 3: three
+  colours on one or two lands (a dual or a Thriving land) is rare, and stage
+  1's places are bare. A third colour at stage 1, or a stage or side the
+  entry does not give, falls back as 1.16 says: the base panorama with the
+  1.14 cut-out element over it, or without a cut-out the third colour's
+  panel.
+- **Loading and the cut-out** (1.16.1, the review of #199). The 1.14 cut-out
+  is drawn only when the half has **no** painted picture for its third
+  colour at the stage shown: none on screen and none loading. While a painted
+  picture loads over the base panorama, the base panorama shows alone, with
+  no cut-out (no sticker for the length of a fetch); if the painted picture
+  fails, the cut-out stands in for it. While a painted picture is on screen
+  and another painted one is wanted (the side flipped, or the stage changed),
+  the one on screen is **held** until the new one has loaded (at most 8 s, as
+  1.16's load gate), then cross-fades: painted to painted, never the base
+  panorama in between. Each side warms **both** sides of its painted
+  pictures, at the stage the pair picture shows with them and at the next,
+  so a flip of the balance is usually warm.
+- **The caption** on `#ambience` says "R painted in, on plains's ground"
+  where the painted picture applies, "mountain as an element" where the
+  cut-out does.
+- **Bytes by shape.** A picture's `phone` object may declare its own
+  `bytes`; the picture's `bytes` is then its desktop file(s) alone, and each
+  counts toward the 45 MB in the ref its own file lies in. pairs-v5 needs it:
+  its desktop files are in one tag and its phone pictures in another (the two
+  shapes together are 50.1 MB, past one jsDelivr ref).
 
 **Budget.** Each painted panorama (both shapes, its `bytes`) counts in its
 pair's stage pictures, 1.9's **≤ 4 MB per pair**, and, when it lies in the
@@ -1779,7 +1848,11 @@ pair's three stages already declare 1.1–1.7 MB of panoramas on top of
 pairs-v2's halves, so pairs-v4's pairs sit at 2.9–4.1 MB; a **full set** --
 the three other colours at each of the three stages, nine panoramas at about
 0.45 MB a pair of shapes -- adds about 4 MB a pair, so every such pair is
-**warned** (the pictures are kept: the warning is advice, as in 1.9). Over
+**warned** (the pictures are kept: the warning is advice, as in 1.9). The
+warning says so: painted-in elements are **expected** to take a pair past
+4 MB, and a half loads only the picture it shows and the next stage's. A
+sided set (1.16.1) is twelve pictures a pair at stages 2 and 3, 3.7–5.8 MB a
+pair with both shapes; pairs-v5's pairs declare 7.0–9.8 MB of stage pictures. Over
 ten pairs that is about 40 MB more, so with pairs-v4's 14.6 MB of panoramas a
 full set does **not** fit one jsDelivr ref (≤ 50 MB): publish painted
 elements in a ref of their own, the manifest naming them by absolute URL (as
@@ -1787,11 +1860,22 @@ pairs-v4 names pairs-v2's halves), or the stages that matter most first. The
 board loads only the panorama a half shows and the next stage's, never the
 set.
 
+**pairs-v5** (the 1.16.1 set). pairs-v4's manifest with, on every pair's
+stages 2 and 3, the three other colours, sided: 120 desktop pictures (21.5
+MB) named relatively, beside pairs-v4's 30 desktop panoramas (6.5 MB), in the
+`@pairs-v5` tag (about 28 MB); their 120 phone pictures (28.6 MB) at a tag of
+their own, `@pairs-v5-phone`, by absolute URL; the base panoramas' phone
+pictures at `@pairs-v4` and the halves and frames at `@pairs-v2`, by absolute
+URL. Each picture's `bytes` is its desktop file and its `phone.bytes` its
+phone file. `pairs-v5.test.ts` is its manifest.
+
 `src/ambience/pairs.ts` reads it (`parseStageElements`, `pairElementAt`,
-`pairPictures` with `full`); `src/ambience/pairfull.ts` chooses it
-(`pairFullPlan`, `pairFullCandidates`, `pairFullChoice`); SceneryStrip's
-`PairFullPanel` draws it and ScenePieces leaves the cut-out out
-(`pairs-elements.test.ts`, `sceneryDom.test.tsx`).
+`pairElementEntryAt`, `pairPictures` with `full`, which warms the side the
+half would draw); `src/ambience/pairfull.ts` chooses it
+(`pairFullPlan`, `pairFullElementSide`, `pairFullCandidates`,
+`pairFullChoice`); SceneryStrip's `PairFullPanel` draws it and ScenePieces
+leaves the cut-out out (`pairs-elements.test.ts`, `pairs-v5.test.ts`,
+`sceneryDom.test.tsx`).
 
 ## 3. Files and budgets
 
@@ -1851,7 +1935,7 @@ Budgets for bridges (1.8), counted apart from everything above:
 Budgets for pair bands (1.9), in their own manifest and their own ref:
 - **≤ 4 MB per pair** of stage pictures, desktop and phone, 1x and 2x (declare `bytes` on each `half`; a picture repeated across stages counts once), and 1.7's **≤ 2 MB** of frames per pair. Three stages at about 380 KB each and two steps of two frames fit with room to spare.
 - **≤ 45 MB for the pairs pack** (the validator warns past it): a jsDelivr ref holds at most 50 MB, so the pairs never share the main pack's ref. Only the files in the pairs manifest's own folder count (1.16): a file named by an absolute URL at another tag costs this ref nothing.
-- 1.15's panoramas and 1.16's painted-in elements count in the pair's ≤ 4 MB with its halves (a full set of painted elements is about 4 MB a pair more: see *Painted-in elements*).
+- 1.15's panoramas and 1.16's painted-in elements count in the pair's ≤ 4 MB with its halves (a full set of painted elements is about 4 MB a pair more, a sided set about 5 MB, and the warning says painted elements are expected to exceed it: see *Painted-in elements*). A picture's `phone` may declare its own `bytes` (1.16.1), so a pack that splits its shapes across two refs counts each in its own.
 - The pictures at the `half` shapes: **2048 × 640** (`src2x` 4096 × 1280) and **1024 × 1280** (`src2x` 2048 × 2560); frames 1x only.
 - A device loads only the bands its sides show (the pair stage they map to and the next), never the set.
 

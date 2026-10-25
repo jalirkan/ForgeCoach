@@ -692,6 +692,7 @@ function PairFullPanel({ p, shown, first, growth, reduced }: { p: PairFullPair; 
       data-pairfull-panorama={pano && (pic.src === pano.src || pic.src === pano.phone?.src) ? 'yes' : undefined}
       data-pairfull-element={p.element ?? undefined}
       data-pairfull-painted={shown.painted ?? undefined}
+      data-pairfull-painted-side={shown.painted ? p.elementSide : undefined}
       data-art={art.source}
     >
       <div className="scn-pairfull-art">

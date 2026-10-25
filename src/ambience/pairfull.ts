@@ -42,7 +42,8 @@
  *   (`opts.elements`), or the pair's stage has that colour painted in (spec
  *   1.16, pairs.ts `pairElementAt`), the pair picture takes the whole half,
  *   its stage from every coloured land on the half, and the third biome is the pair's
- *   `element` -- drawn into the picture (1.16) or by ScenePieces on the
+ *   `element` -- drawn into the picture (1.16; 1.16.1's sided pictures, the
+ *   heavier colour's side, {@link pairFullElementSide}) or by ScenePieces on the
  *   heavier colour's ground (1.14, SYSTEM.md A5). Without either (a
  *   placeholder for a triple composition), the third biome keeps today's
  *   panel at its own `halfLayout` share and stage, on its side of the row
@@ -67,7 +68,7 @@
 import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome, type SlotState } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf, PieceColour } from './manifest.ts';
-import { pairElementAt, pairFor, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairsPack } from './pairs.ts';
+import { pairElementAt, pairFor, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairSide, type PairsPack } from './pairs.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
@@ -95,6 +96,12 @@ export interface PairFullPair {
   stage: number;
   /** Spec 1.14: the third biome, drawn as an element over the whole-half picture (ScenePieces), when the pack has one for its colour. */
   element?: Biome;
+  /**
+   * Spec 1.16.1: with an element, which painted-in picture the half draws, in
+   * the manifest KEY's order ({@link pairFullElementSide}: the heavier pair
+   * colour's ground, the key's colours before any mirroring).
+   */
+  elementSide?: PairSide;
 }
 
 /** The third biome's panel (today's panel, a placeholder for a triple composition). */
@@ -178,8 +185,10 @@ export function pairFullPlan(
       // Spec 1.14 / 1.16: the third colour inside the pair picture, which takes the whole half and grows with every coloured land.
       const stage = pairFullStage(found.pair, pick.total, thresholds, opts.stageOverride ?? null);
       const colour = pick.third!;
-      if (opts.elements?.has(third.l.slot.biome) || pairElementAt(found.pair, stage, colour))
-        return [{ kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, element: third.l.slot.biome }];
+      const item: PairFullPair = { kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, element: third.l.slot.biome };
+      // Spec 1.16.1: the painted picture is the heavier pair colour's side (the arrival order breaks a tie, as the cut-out's).
+      const side = pairFullElementSide(item, (b) => (b === x.l.slot.biome ? x.l.slot.index : y.l.slot.index));
+      if (opts.elements?.has(third.l.slot.biome) || pairElementAt(found.pair, stage, colour, side)) return [{ ...item, elementSide: side }];
     }
     return withPanel(found, x, y, third, shareSum, thresholds, opts.stageOverride ?? null);
   }
@@ -261,7 +270,8 @@ export function pairFullCandidates(p: PairFullPair, panelAspect: number | null, 
   const half = pairHalfAt(p.pair, p.stage);
   const pano = pairPanoramaAt(p.pair, p.stage);
   const colour = p.element ? (BIOME_COLOUR[p.element] ?? null) : null;
-  const painted = colour ? pairElementAt(p.pair, p.stage, colour) : null;
+  // Spec 1.16.1: the side the plan picked (the heavier pair colour's ground); a sided entry without it falls back to the base panorama.
+  const painted = colour ? pairElementAt(p.pair, p.stage, colour, p.elementSide) : null;
   const out: PairFullCandidate[] = [];
   const add = (art: HalfArt | null, from: PackHalf | null, c: PieceColour | null) => {
     const pic = art?.picture;
@@ -291,6 +301,17 @@ export function pairFullChoice(cands: readonly PairFullCandidate[], status: (src
   return { show, want };
 }
 
+/**
+ * Spec 1.16.1 (the review of #199): may the 1.14 cut-out element be drawn over
+ * the pair picture? Only when the half has no painted picture for its third
+ * colour at all: none shown, and none wanted (one still loading, or held by
+ * the strip). A painted picture that failed is not wanted, so the cut-out
+ * stands in for it.
+ */
+export function pairFullCutOutAllowed(choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+  return !!choice?.show && !choice.show.painted && !choice.want?.painted;
+}
+
 /** How long a half holds its previous picture while the pair picture it now wants loads, before it draws its panels instead. */
 export const PAIR_FULL_HOLD_MS = 8000;
 
@@ -315,6 +336,9 @@ export interface PairFullHold<L> {
  * last -- the mono picture, or the previous stage's panorama -- for at most
  * {@link PAIR_FULL_HOLD_MS}; then, or with nothing drawn before, or when
  * every picture failed, its panels. Once a picture is ready it is drawn.
+ * Spec 1.16.1: likewise while a painted picture is on screen and another
+ * painted one is wanted and still loading (a flipped side, a stage change):
+ * the painted one is held, never the base panorama in between.
  * Pure: `hold` in, the new memory out (SceneryStrip keeps it in a ref).
  */
 export function pairFullHold<L>(
@@ -323,11 +347,15 @@ export function pairFullHold<L>(
   now: number,
   holdMs = PAIR_FULL_HOLD_MS,
 ): { draw: PairFullDraw<L>; hold: PairFullHold<L>; holding: boolean } {
-  const waiting = !!cur.plan && !!cur.choice && !cur.choice.show && !!cur.choice.want;
-  if (waiting) {
+  const cold = !!cur.plan && !!cur.choice && !cur.choice.show && !!cur.choice.want;
+  // Spec 1.16.1 (the review of #199): a painted picture on screen and another painted one wanted but not loaded (the
+  // side flipped, or the stage changed): hold the painted one rather than drop to the base panorama for a fetch.
+  const paintedNext = !!cur.plan && !!cur.choice?.want?.painted && cur.choice.show !== cur.choice.want && !!hold.last?.shown?.painted;
+  if (cold || paintedNext) {
     const since = hold.since ?? now;
     if (hold.last && now - since < holdMs) return { draw: hold.last, hold: { last: hold.last, since }, holding: true };
-    return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
+    if (cold) return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
+    // The painted hold ran out: what has loaded (the base panorama), drawn below.
   }
   const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.choice?.show ? cur.plan : null, shown: cur.choice?.show ?? null };
   const same = hold.last && hold.last.layout === draw.layout && hold.last.plan === draw.plan && hold.last.shown === draw.shown;
@@ -459,11 +487,35 @@ export function pairFullHeavierSide(p: PairFullPair, indexOf: (b: Biome) => numb
   return indexOf(p.left) <= indexOf(p.right) ? 'left' : 'right';
 }
 
+/**
+ * Spec 1.16.1: which sided painted-in picture a pair with an element draws,
+ * in the manifest KEY's order: SYSTEM.md A5 puts the element on the HEAVIER
+ * pair colour's ground, so `left` (the painter's `s<k>+<C>L`, the feature on
+ * the key's first colour's ground) when that colour is the heavier, else
+ * `right`. The weights are the board's ({@link pairFullHeavierSide}, a tie the
+ * earlier arrival); when the board has the pair the other way round the rule
+ * is applied to the key's colours and the picture is then mirrored with the
+ * panorama, so the feature still lands on the heavier colour's ground.
+ */
+export function pairFullElementSide(p: PairFullPair, indexOf: (b: Biome) => number): PairSide {
+  const board = pairFullHeavierSide(p, indexOf);
+  if (!p.mirror) return board;
+  return board === 'left' ? 'right' : 'left';
+}
+
 /** A caption for the preview page: "Tundra, whole half: island 80% | plains 20%, pair stage 2". */
 export function pairFullCaption(items: readonly PairFullItem[] | null): string | null {
   const p = items?.find((x): x is PairFullPair => x.kind === 'pair');
   if (!p) return null;
   const third = items!.find((x): x is PairFullSlot => x.kind === 'slot');
   const pct = (n: number) => `${Math.round(n * 100)}%`;
-  return `${p.pair.dual ?? p.key}${p.pair.shock ? ` (${p.pair.shock})` : ''}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, pair stage ${p.stage}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${p.element ? `; ${p.element} as an element` : ''}`;
+  return `${p.pair.dual ?? p.key}${p.pair.shock ? ` (${p.pair.shock})` : ''}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, pair stage ${p.stage}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${p.element ? elementCaption(p) : ''}`;
+}
+
+/** The caption's element: "; R painted in, on plains's ground" (spec 1.16.1) or "; mountain as an element" (the 1.14 cut-out). */
+function elementCaption(p: PairFullPair): string {
+  const colour = BIOME_COLOUR[p.element!];
+  const side = p.elementSide;
+  if (colour && pairElementAt(p.pair, p.stage, colour, side)) return side ? `; ${colour} painted in, on ${side === 'left' ? p.pair.left : p.pair.right}'s ground` : `; ${colour} painted in`;
+  return `; ${p.element} as an element`;
 }

@@ -150,8 +150,15 @@ export interface HalfPicture {
 export interface PackHalf extends HalfPicture {
   /** The portrait picture for phones, or null (the desktop picture is cropped). */
   phone: HalfPicture | null;
-  /** Declared size of every file of this `half` (src, src2x, phone src and src2x), for the budget. */
+  /** Declared size of every file of this `half` (src, src2x, phone src and src2x), for the budget; with {@link phoneBytes}, of the desktop files only. */
   bytes: number | null;
+  /**
+   * Spec 1.16.1: the phone picture's own declared size (`phone.bytes`), when
+   * it gives one; then `bytes` is the desktop files' alone. Lets a pairs pack
+   * count each shape in the ref its file lies in (pairs-v5's phone pictures
+   * are at a tag of their own).
+   */
+  phoneBytes?: number;
   /** Spec 1.13: the hour the stage is painted at, 0–24 (the light's time of day), when the pack declares it. */
   hour?: number;
   /** Spec 1.13: the stage's light key, when the pack declares it. */
@@ -1173,9 +1180,13 @@ export function parseHalf(v: unknown, base: string, path: string, warn: string[]
   const desk = parseHalfPicture(v, base, path, warn, DEFAULT_HALF_SIZE, null);
   if (!desk) return null;
   let phone: HalfPicture | null = null;
+  let phoneBytes: number | null = null;
   if (v.phone !== undefined && v.phone !== null) {
     if (!isObj(v.phone)) warn.push(`${path}.phone: not an object { src, src2x }; ignored`);
-    else phone = parseHalfPicture(v.phone, base, `${path}.phone`, warn, DEFAULT_PHONE_SIZE, phoneBand(desk));
+    else {
+      phone = parseHalfPicture(v.phone, base, `${path}.phone`, warn, DEFAULT_PHONE_SIZE, phoneBand(desk));
+      if (phone) phoneBytes = parseBytes(v.phone, `${path}.phone`, warn);
+    }
   }
   // Spec 1.13: the painted hour and light key, for matching the two halves' light.
   let hour: number | undefined;
@@ -1189,7 +1200,7 @@ export function parseHalf(v: unknown, base: string, path: string, warn: string[]
     if ((LIGHT_KEYS as readonly unknown[]).includes(v.key)) key = v.key as LightKey;
     else warn.push(`${path}.key: one of ${LIGHT_KEYS.join(', ')}; ignored`);
   }
-  return { ...desk, phone, bytes: parseBytes(v, path, warn), ...(hour === undefined ? {} : { hour }), ...(key === undefined ? {} : { key }) };
+  return { ...desk, phone, bytes: parseBytes(v, path, warn), ...(phoneBytes === null ? {} : { phoneBytes }), ...(hour === undefined ? {} : { hour }), ...(key === undefined ? {} : { key }) };
 }
 
 /** Spec 1.5: the declared bytes of a biome's half pictures (each file once). */
@@ -1200,7 +1211,7 @@ export function halfBytes(b: PackBiome | undefined): number {
     const h = st.half;
     if (!h || seen.has(h.src)) continue;
     seen.add(h.src);
-    n += h.bytes ?? 0;
+    n += (h.bytes ?? 0) + (h.phoneBytes ?? 0);
   }
   return n;
 }
