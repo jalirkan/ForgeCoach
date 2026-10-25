@@ -237,13 +237,14 @@ export function pairPanoramaAt(pair: PackPair | null | undefined, stage: number)
  * Spec 1.16: the painted-in element panorama for `colour` at a pair stage
  * (the last stage past its end, as {@link pairPanoramaAt}), or null: never
  * borrowed from another stage. Spec 1.16.1: `side` (the KEY's order,
- * {@link PairSide}) picks a sided entry's picture, else its unsided one;
- * without `side`, the unsided picture (a sided-only entry: its left).
+ * {@link PairSide}) is explicit: a side picks a sided entry's picture, else
+ * its unsided one; `undefined` (no side decided) gives the unsided picture
+ * only, never a side's -- a caller that wants a side says which.
  */
-export function pairElementAt(pair: PackPair | null | undefined, stage: number, colour: PieceColour | null | undefined, side?: PairSide | null): PackHalf | null {
+export function pairElementAt(pair: PackPair | null | undefined, stage: number, colour: PieceColour | null | undefined, side: PairSide | undefined): PackHalf | null {
   const e = pairElementEntryAt(pair, stage, colour);
   if (!e) return null;
-  return side ? (e[side] ?? e.any) : (e.any ?? e.left ?? e.right);
+  return side ? (e[side] ?? e.any) : e.any;
 }
 
 /** Spec 1.16.1: a colour's whole painted-in entry at a pair stage (both sides), or null. */
@@ -770,7 +771,7 @@ export function rowCentreCss(items: readonly Pick<RowItem, 'share' | 'seam'>[], 
  */
 export function pairPictures(
   pairs: PairsPack | null | undefined,
-  sides: readonly (readonly { biome: Biome; stage: number; weight?: number; index?: number }[])[],
+  sides: readonly (readonly { biome: Biome; stage: number; weight?: number }[])[],
   opts: { phone: boolean; full?: { thresholds?: readonly number[] | null } | null },
 ): { src: string; src2x: string | null }[] {
   if (!pairs) return [];
@@ -810,14 +811,9 @@ export function pairPictures(
         const others = live.filter((_, k) => k !== i && k !== j).map((s) => BIOME_COLOUR[s.biome]).filter((c): c is PieceColour => !!c);
         if (!others.length) continue;
         const withThird = fullStage(sideTotal);
-        // Spec 1.16.1: the side the half would draw (the heavier pair colour's ground, in the key's order); a tie with no arrival order, both.
-        const a = live[i]!;
-        const b = live[j]!;
-        const [kl, kr] = a.biome === found.pair.left ? [a, b] : [b, a];
-        const wl = kl.weight ?? 0;
-        const wr = kr.weight ?? 0;
-        const sidesToWarm: PairSide[] = wl !== wr ? [wl > wr ? 'left' : 'right'] : kl.index !== undefined && kr.index !== undefined ? [kl.index <= kr.index ? 'left' : 'right'] : ['left', 'right'];
-        for (const st of [withThird, withThird + 1]) if (st > 0 && st <= found.pair.stages.length) for (const c of others) for (const sd of sidesToWarm) add(pairElementAt(found.pair, st, c, sd));
+        // Spec 1.16.1: BOTH sides (about 180 KB each on the desktop): a land that turns the pair's balance flips the side
+        // drawn, and a cold flip would fall back to the base panorama for a fetch (the review of #199).
+        for (const st of [withThird, withThird + 1]) if (st > 0 && st <= found.pair.stages.length) for (const c of others) for (const e of pairElementPictures(pairElementEntryAt(found.pair, st, c))) add(e);
       }
   }
   return out;

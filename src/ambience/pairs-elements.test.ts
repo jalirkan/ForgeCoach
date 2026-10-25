@@ -56,16 +56,16 @@ describe('spec 1.16: the manifest', () => {
     const r = fixture();
     expect(r.errors).toEqual([]);
     const pair = r.pairs!.pairs['island+plains']!;
-    const red = pairElementAt(pair, 2, 'R')!;
+    const red = pairElementAt(pair, 2, 'R', undefined)!;
     expect(red).toMatchObject({ src: `${BASE}pairs/island-plains/s2+R-panorama.webp`, width: 3277, height: 640, subjectBand: [0.38, 0.72], focal: { x: 0.5, y: 0.52 }, horizon: 0.47, hour: 9, key: 'morning', bytes: 420000 });
     expect(red.phone).toMatchObject({ src: `${BASE}pairs/island-plains/s2+R-panorama-phone.webp`, width: 1638, height: 1280, subjectBand: [0.33, 0.68], horizon: 0.47 });
     // Its own horizon wins over the panorama's, on both shapes.
-    const swamp = pairElementAt(pair, 2, 'B')!;
+    const swamp = pairElementAt(pair, 2, 'B', undefined)!;
     expect([swamp.horizon, swamp.phone!.horizon]).toEqual([0.49, 0.5]);
     // Never borrowed from another stage; past the last stage, the last.
-    expect(pairElementAt(pair, 1, 'B')).toBeNull();
-    expect(pairElementAt(pair, 5, 'R')!.src).toBe(`${BASE}pairs/island-plains/s3+R-panorama.webp`);
-    expect(pairElementAt(pair, 2, 'G')).toBeNull();
+    expect(pairElementAt(pair, 1, 'B', undefined)).toBeNull();
+    expect(pairElementAt(pair, 5, 'R', undefined)!.src).toBe(`${BASE}pairs/island-plains/s3+R-panorama.webp`);
+    expect(pairElementAt(pair, 2, 'G', undefined)).toBeNull();
   });
 
   it('counts the painted elements in the pair’s budget (each file once) and in the ref', () => {
@@ -101,8 +101,8 @@ describe('spec 1.16: the manifest', () => {
       'pairs.island+plains.stages[1].elements.G: not an object { src, phone, bytes } or { left, right }; ignored',
     ]);
     const pair = r.pairs!.pairs['island+plains']!;
-    expect(pairElementAt(pair, 1, 'R')).toBeNull();
-    expect(pairElementAt(pair, 2, 'R')!.width).toBe(3277);
+    expect(pairElementAt(pair, 1, 'R', undefined)).toBeNull();
+    expect(pairElementAt(pair, 2, 'R', undefined)!.width).toBe(3277);
   });
 
   it('the 45 MB warning counts only this ref’s files (fault 7): another tag’s halves cost it nothing', () => {
@@ -401,18 +401,16 @@ describe('spec 1.16.1: sided painted-in elements', () => {
     expect(a.art.picture!.src).not.toBe(b.art.picture!.src);
   });
 
-  it('pairPictures warms the side the half would draw (both on a tie with no arrival order)', () => {
-    const warm = (side: { biome: Biome; stage: number; weight: number; index?: number }[]) =>
+  it('pairPictures warms both sides at the stage shown with the third colour and the next (a flip of the balance is warm)', () => {
+    const warm = (side: { biome: Biome; stage: number; weight: number }[]) =>
       pairPictures(pairs, [side], { phone: false, full: { thresholds: T } })
         .map((x) => x.src.replace(BASE, ''))
         .filter((s) => s.includes('+'));
-    expect(warm([{ biome: 'mountain', stage: 1, weight: 0.5 }, { biome: 'island', stage: 1, weight: 1 }, { biome: 'plains', stage: 2, weight: 1.5 }])).toEqual(['pairs/island-plains/s2+RR-panorama.webp', 'pairs/island-plains/s3+RR-panorama.webp']);
-    expect(warm([{ biome: 'mountain', stage: 1, weight: 1 }, { biome: 'island', stage: 1, weight: 1 }, { biome: 'plains', stage: 1, weight: 1 }])).toEqual([
+    expect(warm([{ biome: 'mountain', stage: 1, weight: 0.5 }, { biome: 'island', stage: 1, weight: 1 }, { biome: 'plains', stage: 2, weight: 1.5 }])).toEqual([
       'pairs/island-plains/s2+RL-panorama.webp',
       'pairs/island-plains/s2+RR-panorama.webp',
       'pairs/island-plains/s3+RL-panorama.webp',
       'pairs/island-plains/s3+RR-panorama.webp',
     ]);
-    expect(warm([{ biome: 'mountain', stage: 1, weight: 1, index: 0 }, { biome: 'plains', stage: 1, weight: 1, index: 1 }, { biome: 'island', stage: 1, weight: 1, index: 2 }])).toEqual(['pairs/island-plains/s2+RR-panorama.webp', 'pairs/island-plains/s3+RR-panorama.webp']);
   });
 });

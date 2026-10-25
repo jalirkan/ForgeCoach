@@ -1769,6 +1769,8 @@ with the third colour's feature in it.
   panoramas as a stage change does (`growth.seconds`); the colour's 1.14
   front still plays over it. The base panorama stays on screen until the
   painted one has loaded; if it fails, the base panorama and the cut-out stay.
+  (Amended in 1.16.1: no cut-out while the painted one loads, and a painted
+  picture is held while the next painted one loads; see *Sided entries*.)
 - **Warming.** Under the flag each side warms its other colours' painted
   panoramas at the stage the pair picture shows with them and at the next,
   with the panoramas themselves.
@@ -1818,6 +1820,18 @@ colour's ground, `a`'s) and `s<k>+<C>R-panorama.webp` (on the **right**'s,
   entry does not give, falls back as 1.16 says: the base panorama with the
   1.14 cut-out element over it, or without a cut-out the third colour's
   panel.
+- **Loading and the cut-out** (1.16.1, the review of #199). The 1.14 cut-out
+  is drawn only when the half has **no** painted picture for its third
+  colour at the stage shown: none on screen and none loading. While a painted
+  picture loads over the base panorama, the base panorama shows alone, with
+  no cut-out (no sticker for the length of a fetch); if the painted picture
+  fails, the cut-out stands in for it. While a painted picture is on screen
+  and another painted one is wanted (the side flipped, or the stage changed),
+  the one on screen is **held** until the new one has loaded (at most 8 s, as
+  1.16's load gate), then cross-fades: painted to painted, never the base
+  panorama in between. Each side warms **both** sides of its painted
+  pictures, at the stage the pair picture shows with them and at the next,
+  so a flip of the balance is usually warm.
 - **The caption** on `#ambience` says "R painted in, on plains's ground"
   where the painted picture applies, "mountain as an element" where the
   cut-out does.

@@ -15,9 +15,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Biome, SlotState } from '../../ambience/model.ts';
 import { validateManifest, type PackPieces, type ScenePack } from '../../ambience/manifest.ts';
-import { markPicture, resetPictures } from '../../ambience/pack.ts';
-import { pairFullCaption, pairFullPlan } from '../../ambience/pairfull.ts';
-import { pairPanoramaAt, validatePairs, type PairsPack } from '../../ambience/pairs.ts';
+import { markPicture, pictureStatus, resetPictures } from '../../ambience/pack.ts';
+import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullCaption, pairFullChoice, pairFullHold, pairFullPlan, type PairFullHold, type PairFullPair } from '../../ambience/pairfull.ts';
+import { pairPanoramaAt, pairPictures, validatePairs, type PairsPack } from '../../ambience/pairs.ts';
 import { elementBiomes } from '../../ambience/pieces.ts';
 import { halfLayout } from '../../ambience/layout.ts';
 import { FORGECOACH_PAIRS_FULL_URL } from '../../ambience/prefs.ts';
@@ -151,10 +151,13 @@ describe('spec 1.16: a painted-in element replaces the cut-out', () => {
     expect(strip).toContain(painted.src);
     const pcs = renderToStaticMarkup(<ScenePieces pack={local} pieces={pieces} slots={slots} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />);
     expect(attrs(pcs, 'data-pc-colour')).toEqual([]);
-    // Not loaded yet: the base panorama and the cut-out element meanwhile.
+    // Not loaded yet: the base panorama, and no cut-out meanwhile (1.16.1, the review of #199: no sticker for a fetch).
     resetPictures();
     loadAll();
     expect(attrs(renderToStaticMarkup(<SceneryStrip slots={slots} pack={local} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />), 'data-pairfull-painted')).toEqual([]);
+    expect(attrs(renderToStaticMarkup(<ScenePieces pack={local} pieces={pieces} slots={slots} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />), 'data-pc-colour')).toEqual([]);
+    // The painted one failed: the cut-out stands in for it.
+    markPicture(painted.src, false);
     expect(attrs(renderToStaticMarkup(<ScenePieces pack={local} pieces={pieces} slots={slots} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />), 'data-pc-colour')).toEqual(['R']);
   });
 });
@@ -184,13 +187,141 @@ describe('spec 1.16.1: pairs-v5’s sided pictures on the worked example (#ambie
     expect(attrs(pcs(), 'data-pc')).not.toContain('element');
   });
 
-  it('until the painted picture has loaded: the base panorama and the cut-out meanwhile', () => {
+  it('until the painted picture has loaded: the base panorama and no cut-out; the cut-out only if it fails', () => {
     markPicture(base, true);
     markPicture(pieces.elements.R!.src, true);
     const html = strip();
     expect(attrs(html, 'data-pairfull-painted')).toEqual([]);
     expect(html).toContain(base);
+    expect(attrs(pcs(), 'data-pc')).not.toContain('element');
+    markPicture(painted, false);
     expect(attrs(pcs(), 'data-pc-colour')).toEqual(['R']);
+  });
+
+  /** One step of what SceneryStrip draws (its plan, candidates, gate and hold), with the hold carried between steps. */
+  const T6 = [1, 2, 3, 4, 5, 6];
+  function stripSteps() {
+    let hold: PairFullHold<unknown> = { last: null, since: null };
+    return (s: SlotState[], now: number) => {
+      const layout = halfLayout(s, local);
+      const plan = pairFullPlan(layout, pairsV5, { thresholds: T6, elements: ELEMENTS, slots: s });
+      const p = plan?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
+      const choice = p ? pairFullChoice(pairFullCandidates(p, 3.2, false), pictureStatus) : null;
+      const r = pairFullHold<unknown>({ layout, plan, choice }, hold, now);
+      hold = r.hold;
+      return { ...r, src: r.draw.shown?.art.picture?.src ?? null };
+    };
+  }
+  const piecesAt = (s: SlotState[], box = BOX) => renderToStaticMarkup(<ScenePieces pack={local} pieces={pieces} slots={s} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={box} />);
+  const loadCutOuts = () => {
+    for (const c of ['W', 'U', 'B', 'R', 'G'] as const) markPicture(pieces.elements[c]!.src, true);
+  };
+
+  it('the heavier colour flips (RR → RL): painted → painted, the RR picture held while RL loads, never the base panorama and a cut-out', () => {
+    loadCutOuts();
+    markPicture(base, true);
+    markPicture(painted, true);
+    const step = stripSteps();
+    // Plains heavier: RR (the key's right).
+    const plainsHeavy = [slot('mountain', 0, 0.5), slot('plains', 0, 1.5), slot('island', 2, 1)];
+    expect(step(plainsHeavy, 0).src).toBe(painted);
+    // Island turns heavier at the same pair stage (four lands): RL wanted, still loading; the base panorama has loaded.
+    const islandHeavy = [slot('mountain', 0, 0.5), slot('plains', 0, 1.5), slot('island', 2, 2)];
+    const rl = `${V5}pairs/island-plains/s2+RL-panorama.webp`;
+    const held = step(islandHeavy, 1000);
+    expect([held.holding, held.src]).toEqual([true, painted]);
+    // The pieces draw no cut-out while the painted picture is held (they would have drawn the sticker before the fix).
+    expect(attrs(piecesAt(islandHeavy), 'data-pc')).not.toContain('element');
+    // RL has loaded: drawn (the strip's FadeGroup cross-fades on the new src), still no cut-out.
+    markPicture(rl, true);
+    const flipped = step(islandHeavy, 1500);
+    expect([flipped.holding, flipped.src]).toEqual([false, rl]);
+    const html = renderToStaticMarkup(<SceneryStrip slots={islandHeavy} pack={local} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />);
+    expect([attrs(html, 'data-pairfull-painted'), attrs(html, 'data-pairfull-painted-side')]).toEqual([['R'], ['left']]);
+    expect(attrs(piecesAt(islandHeavy), 'data-pc')).not.toContain('element');
+  });
+
+  it('pairPictures warms both sides at the stage shown and the next, so a flip is usually warm', () => {
+    const warm = pairPictures(pairsV5, [[slot('mountain', 0, 0.5), slot('plains', 0, 1.5), slot('island', 2, 1)]], { phone: false, full: { thresholds: T6 } })
+      .map((x) => x.src.replace(V5, ''))
+      .filter((x) => x.includes('+'));
+    // Every pair of the three live colours (pairPictures' rule: the pair picked can change), each with the third: 3 × 2 stages × 2 sides.
+    expect(warm).toHaveLength(12);
+    expect(warm.filter((x) => x.includes('island-plains'))).toEqual(['pairs/island-plains/s2+RL-panorama.webp', 'pairs/island-plains/s2+RR-panorama.webp', 'pairs/island-plains/s3+RL-panorama.webp', 'pairs/island-plains/s3+RR-panorama.webp']);
+  });
+
+  it('a stage change between two painted pictures (s2+RR → s3+RR): the s2 picture held while s3’s loads, then s3 cross-fades in', () => {
+    loadCutOuts();
+    markPicture(base, true);
+    markPicture(painted, true);
+    markPicture(`${V5}pairs/island-plains/s3-panorama.webp`, true);
+    const step = stripSteps();
+    expect(step([slot('mountain', 0, 0.5), slot('plains', 0, 1.5), slot('island', 2, 1)], 0).src).toBe(painted);
+    // Five lands: pair stage 3, plains still heavier.
+    const five = [slot('mountain', 0, 0.5), slot('plains', 0, 2.5), slot('island', 2, 2)];
+    const s3 = `${V5}pairs/island-plains/s3+RR-panorama.webp`;
+    const held = step(five, 1000);
+    expect([held.holding, held.src]).toEqual([true, painted]);
+    expect(attrs(piecesAt(five), 'data-pc')).not.toContain('element');
+    markPicture(s3, true);
+    expect(step(five, 2000).src).toBe(s3);
+    const html = renderToStaticMarkup(<SceneryStrip slots={five} pack={local} reduced={false} fill="half" pairFull={true} elements={ELEMENTS} />);
+    expect([attrs(html, 'data-pairfull-stage'), attrs(html, 'data-pairfull-painted-side')]).toEqual([['3'], ['right']]);
+    expect(html).toContain(s3);
+    // The hold has a limit: a painted picture that never loads gives way to the base panorama after PAIR_FULL_HOLD_MS (still no cut-out while it is wanted).
+    const step2 = stripSteps();
+    resetPictures();
+    loadCutOuts();
+    markPicture(painted, true);
+    markPicture(`${V5}pairs/island-plains/s3-panorama.webp`, true);
+    step2([slot('mountain', 0, 0.5), slot('plains', 0, 1.5), slot('island', 2, 1)], 0);
+    expect(step2(five, 100).holding).toBe(true);
+    expect(step2(five, 100 + PAIR_FULL_HOLD_MS).src).toBe(`${V5}pairs/island-plains/s3-panorama.webp`);
+  });
+
+  it('four colours with a painted picture: makeup.ts keeps three (forest, swamp, island), and the side is the heavier kept pair colour’s', () => {
+    loadCutOuts();
+    // forest 2, swamp 1.5, island 1, plains ½ (dropped: weighs nothing); six lands → pair stage 3; forest (the key's left) heavier.
+    const four = [slot('forest', 0, 2), slot('swamp', 1, 1.5), slot('island', 2, 1), slot('plains', 3, 0.5)];
+    const ul = `${V5}pairs/forest-swamp/s3+UL-panorama.webp`;
+    markPicture(`${V5}pairs/forest-swamp/s3-panorama.webp`, true);
+    markPicture(ul, true);
+    const html = renderToStaticMarkup(<SceneryStrip slots={four} pack={local} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />);
+    expect([attrs(html, 'data-pairfull'), attrs(html, 'data-pairfull-stage'), attrs(html, 'data-pairfull-painted'), attrs(html, 'data-pairfull-painted-side')]).toEqual([['forest+swamp'], ['3'], ['U'], ['left']]);
+    expect(html).toContain(ul);
+    const p = piecesAt(four);
+    expect([attrs(p, 'data-pieces-pair'), attrs(p, 'data-pieces-element')]).toEqual([['GB'], ['U']]);
+    expect(attrs(p, 'data-pc')).not.toContain('element');
+    // Swamp overtakes forest: the right side (swamp's ground), never the left picture mirrored.
+    const swampHeavy = [slot('forest', 0, 2), slot('swamp', 1, 2.5), slot('island', 2, 1), slot('plains', 3, 0.5)];
+    markPicture(`${V5}pairs/forest-swamp/s3+UR-panorama.webp`, true);
+    expect(attrs(renderToStaticMarkup(<SceneryStrip slots={swampHeavy} pack={local} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />), 'data-pairfull-painted-side')).toEqual(['right']);
+  });
+
+  it('phone width: the sided phone picture (@pairs-v5-phone), and no cut-out over it or while it loads', () => {
+    loadCutOuts();
+    const s = [slot('mountain', 0, 0.5), slot('plains', 0, 1.5), slot('island', 2, 1)];
+    const p = pairFullPlan(halfLayout(s, local), pairsV5, { thresholds: T6, elements: ELEMENTS, slots: s })!.find((x): x is PairFullPair => x.kind === 'pair')!;
+    // A phone-width half (390 × 420 px, nearer 4:5 than 16:5).
+    const phone = pairFullCandidates(p, 0.95, true);
+    const phoneRR = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s2+RR-panorama-phone.webp';
+    expect(phone.map((c) => [c.art.picture!.src, c.painted])).toEqual([
+      [phoneRR, 'R'],
+      ['https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/island-plains/s2-panorama-phone.webp', null],
+      ['https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2-phone.webp', null],
+    ]);
+    const box = { w: 390, h: 420 };
+    markPicture(phone[1]!.art.picture!.src, true);
+    // Loading: the base phone panorama shows, no cut-out.
+    expect(attrs(piecesAt(s, box), 'data-pc')).not.toContain('element');
+    markPicture(phoneRR, true);
+    expect(attrs(piecesAt(s, box), 'data-pc')).not.toContain('element');
+    // Failed: the cut-out stands in.
+    resetPictures();
+    loadCutOuts();
+    markPicture(phone[1]!.art.picture!.src, true);
+    markPicture(phoneRR, false);
+    expect(attrs(piecesAt(s, box), 'data-pc-colour')).toEqual(['R']);
   });
 });
 

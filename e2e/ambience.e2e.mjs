@@ -151,7 +151,8 @@ async function main() {
     if (PAIRS_DIR) {
       const painted = server.pictures.filter((p) => p.includes('+'));
       log(`painted pictures fetched: ${painted.join(', ')}`);
-      check(!painted.includes('/pairs/island-plains/s2+RL-panorama.webp'), 'the left side was fetched for a right-side half');
+      // Both sides may be fetched (pairPictures warms both, so a flip of the balance is warm); the right one is what is drawn.
+      check(painted.includes('/pairs/island-plains/s2+RR-panorama.webp'), 'the right side was never fetched');
     }
     check(errors.length === 0, `page errors: ${errors.join('; ')}`);
     mkdirSync(OUT, { recursive: true });

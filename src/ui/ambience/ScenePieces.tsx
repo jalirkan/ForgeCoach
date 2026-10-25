@@ -17,8 +17,10 @@
  * the transition (`pairFullElementRegion`, never mirrored), placed by its
  * `place` on that picture's horizon or ground, at the plan's opacity, once
  * its picture has loaded (warmed with the half's colours). Not when the
- * picture drawn has the colour painted in (spec 1.16): the strip's load gate
- * (pairfull.ts `pairFullChoice`) is asked here too, so both draw the same.
+ * half has the colour painted in (spec 1.16): the strip's load gate
+ * (pairfull.ts `pairFullChoice`) is asked here too, and the cut-out is drawn
+ * only when no painted picture is shown or wanted (`pairFullCutOutAllowed`,
+ * spec 1.16.1: never a sticker for the moment a painted one loads).
  * With the flag off a third colour keeps its own panel and no element is
  * drawn. The pair and the element come from makeup.ts's one rule, with the
  * strip's `showing`, so the two can never pick different pairs.
@@ -38,7 +40,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { BIOME_COLOUR, elementBiomes, elementUrls, frontFor, frontFrameList, FrontGate, horizonAt, makeupFromSlots, piecePlacement, piecesPhone, planHalf, veilState, WHOLE, type HalfPlan } from '../../ambience/pieces.ts';
-import { pairFullCandidates, pairFullChoice, pairFullElementRegion, pairFullHeavierSide, pairFullPanelAspect, pairFullPlan, pairFullView, type PairFullPair } from '../../ambience/pairfull.ts';
+import { pairFullCandidates, pairFullChoice, pairFullCutOutAllowed, pairFullElementRegion, pairFullHeavierSide, pairFullPanelAspect, pairFullPlan, pairFullView, type PairFullPair } from '../../ambience/pairfull.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_HALF_SIZE, DEFAULT_PHONE_SIZE, pieceUrls, type PackPiece, type PackPieces, type ScenePack, type VeilOutcome } from '../../ambience/manifest.ts';
 import { halfArtOf, halfFrameCss, halfLayout, type FrameRect } from '../../ambience/layout.ts';
 import type { MakeupShowing } from '../../ambience/makeup.ts';
@@ -131,10 +133,13 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
   const elements = useMemo(() => (pairFull ? elementBiomes(pieces) : null), [pairFull, pieces]);
   const full = useMemo(() => (pairFull && pack?.pairs ? pairFullPlan(layout, pack.pairs, { thresholds: pack.stageThresholds, elements, showing, slots }) : null), [pairFull, pack, layout, elements, showing, slots]);
   const fullPair = full?.find((x): x is PairFullPair => x.kind === 'pair' && !!x.element) ?? null;
-  const shown = useMemo(() => {
+  const choice = useMemo(() => {
     if (!fullPair || !measured) return null;
-    return pairFullChoice(pairFullCandidates(fullPair, pairFullPanelAspect(Math.round((box.w / box.h) * 20) / 20, fullPair.share), narrow, horizon), pictureStatus).show;
+    return pairFullChoice(pairFullCandidates(fullPair, pairFullPanelAspect(Math.round((box.w / box.h) * 20) / 20, fullPair.share), narrow, horizon), pictureStatus);
   }, [fullPair, measured, box, narrow, horizon, pictures]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = choice?.show ?? null;
+  // Spec 1.16.1: no cut-out while a painted picture is shown, loading or held by the strip (the review of #199).
+  const cutOut = pairFullCutOutAllowed(choice);
   const at = (p: PackPiece) => (phone && p.phone ? p.phone : p);
   // Elements warm with the half's colours under the flag (review fault 4: they were never warmed and popped in late).
   useEffect(() => {
@@ -186,7 +191,7 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
           })()}
         </div>
       )}
-      {fullPair && shown && !shown.painted && measured && plan.element && (() => {
+      {fullPair && shown && cutOut && measured && plan.element && (() => {
         const p = fullPair;
         const colour = BIOME_COLOUR[p.element!];
         const piece = colour ? pieces.elements[colour] : undefined;

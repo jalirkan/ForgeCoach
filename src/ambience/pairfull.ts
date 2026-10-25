@@ -271,7 +271,7 @@ export function pairFullCandidates(p: PairFullPair, panelAspect: number | null, 
   const pano = pairPanoramaAt(p.pair, p.stage);
   const colour = p.element ? (BIOME_COLOUR[p.element] ?? null) : null;
   // Spec 1.16.1: the side the plan picked (the heavier pair colour's ground); a sided entry without it falls back to the base panorama.
-  const painted = colour ? pairElementAt(p.pair, p.stage, colour, p.elementSide ?? pairFullElementSide(p, () => 0)) : null;
+  const painted = colour ? pairElementAt(p.pair, p.stage, colour, p.elementSide) : null;
   const out: PairFullCandidate[] = [];
   const add = (art: HalfArt | null, from: PackHalf | null, c: PieceColour | null) => {
     const pic = art?.picture;
@@ -301,6 +301,17 @@ export function pairFullChoice(cands: readonly PairFullCandidate[], status: (src
   return { show, want };
 }
 
+/**
+ * Spec 1.16.1 (the review of #199): may the 1.14 cut-out element be drawn over
+ * the pair picture? Only when the half has no painted picture for its third
+ * colour at all: none shown, and none wanted (one still loading, or held by
+ * the strip). A painted picture that failed is not wanted, so the cut-out
+ * stands in for it.
+ */
+export function pairFullCutOutAllowed(choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+  return !!choice?.show && !choice.show.painted && !choice.want?.painted;
+}
+
 /** How long a half holds its previous picture while the pair picture it now wants loads, before it draws its panels instead. */
 export const PAIR_FULL_HOLD_MS = 8000;
 
@@ -325,6 +336,9 @@ export interface PairFullHold<L> {
  * last -- the mono picture, or the previous stage's panorama -- for at most
  * {@link PAIR_FULL_HOLD_MS}; then, or with nothing drawn before, or when
  * every picture failed, its panels. Once a picture is ready it is drawn.
+ * Spec 1.16.1: likewise while a painted picture is on screen and another
+ * painted one is wanted and still loading (a flipped side, a stage change):
+ * the painted one is held, never the base panorama in between.
  * Pure: `hold` in, the new memory out (SceneryStrip keeps it in a ref).
  */
 export function pairFullHold<L>(
@@ -333,11 +347,15 @@ export function pairFullHold<L>(
   now: number,
   holdMs = PAIR_FULL_HOLD_MS,
 ): { draw: PairFullDraw<L>; hold: PairFullHold<L>; holding: boolean } {
-  const waiting = !!cur.plan && !!cur.choice && !cur.choice.show && !!cur.choice.want;
-  if (waiting) {
+  const cold = !!cur.plan && !!cur.choice && !cur.choice.show && !!cur.choice.want;
+  // Spec 1.16.1 (the review of #199): a painted picture on screen and another painted one wanted but not loaded (the
+  // side flipped, or the stage changed): hold the painted one rather than drop to the base panorama for a fetch.
+  const paintedNext = !!cur.plan && !!cur.choice?.want?.painted && cur.choice.show !== cur.choice.want && !!hold.last?.shown?.painted;
+  if (cold || paintedNext) {
     const since = hold.since ?? now;
     if (hold.last && now - since < holdMs) return { draw: hold.last, hold: { last: hold.last, since }, holding: true };
-    return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
+    if (cold) return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
+    // The painted hold ran out: what has loaded (the base panorama), drawn below.
   }
   const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.choice?.show ? cur.plan : null, shown: cur.choice?.show ?? null };
   const same = hold.last && hold.last.layout === draw.layout && hold.last.plan === draw.plan && hold.last.shown === draw.shown;
@@ -497,7 +515,7 @@ export function pairFullCaption(items: readonly PairFullItem[] | null): string |
 /** The caption's element: "; R painted in, on plains's ground" (spec 1.16.1) or "; mountain as an element" (the 1.14 cut-out). */
 function elementCaption(p: PairFullPair): string {
   const colour = BIOME_COLOUR[p.element!];
-  const side = p.elementSide ?? pairFullElementSide(p, () => 0);
-  if (colour && pairElementAt(p.pair, p.stage, colour, side)) return `; ${colour} painted in, on ${side === 'left' ? p.pair.left : p.pair.right}'s ground`;
+  const side = p.elementSide;
+  if (colour && pairElementAt(p.pair, p.stage, colour, side)) return side ? `; ${colour} painted in, on ${side === 'left' ? p.pair.left : p.pair.right}'s ground` : `; ${colour} painted in`;
   return `; ${p.element} as an element`;
 }
