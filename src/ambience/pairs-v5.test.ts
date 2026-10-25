@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * pairs-v5, the first pack written to spec 1.16.1 (sided painted-in
- * elements): a snapshot of the DRAFT pairs.json, written by
+ * elements), and the pairs FORGECOACH_PAIRS_FULL_URL points at under
+ * `?pairfull=1` (pairs-v4 before it): a snapshot of its pairs.json, written by
  * ~/scenery-packs/panoramas-v1/tools/make_pairs_v5.py from pairs-v4's
- * manifest (the file at its tag) and the painter's 240 element files, to be
+ * manifest (the file at its tag) and the painter's 240 element files,
  * published as two jsDelivr refs:
  *
  * - `@pairs-v5`: this manifest, pairs-v4's 30 desktop panoramas (6,473,776
@@ -18,8 +19,9 @@
  * halves and frames at `@pairs-v2`, by absolute URL. For a pair a+b, stage k
  * (2 and 3 only) and each of the three other colours C: `left` is
  * `s<k>+<C>L` (the feature on a's ground), `right` is `s<k>+<C>R` (on b's).
- * When the tags are cut the file must stay byte for byte this one (the sha256
- * below), or this snapshot is retaken with it.
+ * The file jsDelivr serves at
+ * https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5/pairs.json
+ * is byte for byte this one (the sha256 below; compared on 2026-10-24).
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -31,6 +33,7 @@ import { pairFullCandidates, pairFullCaption, pairFullPlan, type PairFullPair } 
 import { MAX_PAIRS_PACK_BYTES, pairElementEntryAt, pairHalfAt, pairPanoramaAt, pairsRefBytes, validatePairs } from './pairs.ts';
 import { elementBiomes } from './pieces.ts';
 import type { PieceColour } from './manifest.ts';
+import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
 
 const FIVE: Biome[] = ['plains', 'island', 'swamp', 'mountain', 'forest'];
 const CDN = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery';
@@ -42,14 +45,21 @@ const T = [1, 2, 3, 4, 5, 6];
 const slot = (b: Biome, index: number, weight: number): SlotState => ({ biome: b, index, weight, stage: Math.min(6, Math.ceil(weight)), peak: Math.min(6, Math.ceil(weight)) });
 const MB50 = 50 * 1024 * 1024;
 
-describe('pairs-v5 (draft)', () => {
+describe('pairs-v5', () => {
   const bytes = readFileSync(new URL('./testdata/pairs-v5.pairs.json', import.meta.url));
   const raw = JSON.parse(bytes.toString('utf8'));
   const r = validatePairs(raw, `${V5}pairs.json`);
   const pairs = r.pairs!;
   const v4 = JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8'));
 
-  it('is the draft byte for byte, under the 256 KB a pairs manifest may be', () => {
+  it('is the flag’s pairs URL (the board without the flag keeps pairs-v3.1)', () => {
+    expect(FORGECOACH_PAIRS_FULL_URL).toBe(V5);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(V5);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
+    expect(FORGECOACH_PAIRS_URL).toMatch(/@pairs-v3\.1\/$/);
+  });
+
+  it('is the file jsDelivr serves byte for byte, under the 256 KB a pairs manifest may be', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('31450e7f09443c35101f90e0d8fb8652acb330893098cbebb59793c5b375f8ca');
     expect(bytes.length).toBeLessThan(256 * 1024);
   });

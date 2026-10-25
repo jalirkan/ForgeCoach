@@ -141,7 +141,7 @@ describe('spec 1.15: the plan', () => {
  * pairFullPlan), the caption and the pieces (planHalf) on pairs-v4, where every pair is pictured.
  */
 describe('one makeup rule for the strip, the caption and the pieces', () => {
-  const v4 = validatePairs(JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs!;
+  const v4 = validatePairs(JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs.json').pairs!;
   const ALL: ReadonlySet<Biome> = new Set<Biome>(['plains', 'island', 'swamp', 'mountain', 'forest']);
   const strip = (slots: SlotState[], showing: MakeupShowing | null = null) => {
     const items = pairFullPlan(halfLayout(slots, null, null, showing), v4, { thresholds: T, elements: ALL, showing, slots })!;
@@ -301,7 +301,7 @@ describe('spec 1.15: the flag', () => {
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(FORGECOACH_PAIRS_FULL_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1&pairs=http://127.0.0.1:8654/pairs-v2/', ''))).toBe('http://127.0.0.1:8654/pairs-v2/');
-    expect(FORGECOACH_PAIRS_FULL_URL).toMatch(/@pairs-v4\/$/);
+    expect(FORGECOACH_PAIRS_FULL_URL).toMatch(/@pairs-v5\/$/);
   });
 });
 
