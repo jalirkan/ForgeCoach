@@ -2021,15 +2021,16 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
 
 **Budget.** Every cell counts in its pair's stage pictures (1.9's
 **≤ 4 MB per pair**) and, when it lies in the pairs manifest's own folder,
-in the pack's **≤ 45 MB**. Sixteen cells at about 0.2 MB a desktop picture
-are about 3–3.5 MB a pair, so a pair with a grid is **warned** (its stages
-already declare 1.1–1.7 MB of panoramas, more with painted-in elements); the
-warning says a grid is expected to exceed it, and a half loads only the cell
-it shows and its two neighbours, never the set. pairs-v6-draft's own folder
-is pairs-v5's desktop files (28 MB) plus the three grids (about 10 MB). A
-full set -- ten pairs, desktop and phone -- does not fit one ref beside
-pairs-v5's painted elements: publish the grid in a ref of its own and name
-it by absolute URL, as pairs-v5 names its phone pictures.
+in the pack's **≤ 45 MB**. The painter's desktop cells (q80) are about
+70 KB each, so sixteen are about 1.1 MB a pair; on pairs-v5's pairs, whose
+stages already declare 7–10 MB with the painted-in elements, a pair with a
+grid is **warned** as before, and the warning says a grid is expected to
+exceed it: a half loads only the cell it shows and its two neighbours,
+never the set. pairs-v6-draft's own folder is pairs-v5's desktop files
+(28.0 MB) plus the three grids (3.4 MB for 48 cells). A full set -- ten
+pairs, 160 cells, desktop and phone -- is about 15–20 MB more: it fits
+beside the desktop files in one ref only just, so publish it in a ref of its
+own and name it by absolute URL, as pairs-v5 names its phone pictures.
 
 **pairs-v6-draft.** pairs-v5's manifest, spec `"1.17"`, with a `grid` on
 the pairs the painter has made (island+swamp, mountain+plains, forest+swamp:
