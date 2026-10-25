@@ -965,7 +965,8 @@ export function pairPictures(
         const fullStage = (total: number) => pairStageFor(found.pair.stageMap, stageFor(total, thresholds));
         const own = fullStage((live[i]!.weight ?? 0) + (live[j]!.weight ?? 0));
         for (const st of [own, own + 1]) if (st > 0 && st <= found.pair.stages.length) add(pairPanoramaAt(found.pair, st));
-        // Spec 1.17: the seam grid's cell for the two halves' own stages, and the cell either half's next land would show.
+        // Spec 1.17: the seam grid's cell for the two halves' own stages, and the cell either half's next land -- or its
+        // last one leaving -- would show (the review of #201: a cold cell held the old cell, so warm both directions).
         const g = found.pair.grid;
         if (g) {
           const si = live.find((x) => x.biome === g.left)?.stage ?? 0;
@@ -974,6 +975,8 @@ export function pairPictures(
             [si, sj],
             [si + 1, sj],
             [si, sj + 1],
+            [si - 1, sj],
+            [si, sj - 1],
           ] as const)
             add(pairGridPick(found.pair, Math.min(a, MAX_STAGES), Math.min(b, MAX_STAGES))?.picture ?? null);
         }

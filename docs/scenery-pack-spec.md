@@ -1907,9 +1907,9 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
 "island+swamp": {
   "stages": [ {...}, {...}, {...} ],
   "grid": {
-    "1x1": { "src": "seams/island-swamp/s1x1-panorama.webp", "width": 3277, "height": 640, "bytes": 181220,
+    "1x1": { "src": "seams/island-swamp/s1x1-panorama.webp", "width": 3277, "height": 640, "bytes": 64532,
              "horizon": 0.425, "hour": 6.5, "key": "dawn" },
-    "4x3": { "src": "seams/island-swamp/s4x3-panorama.webp", "width": 3277, "height": 640, "bytes": 190144,
+    "4x3": { "src": "seams/island-swamp/s4x3-panorama.webp", "width": 3277, "height": 640, "bytes": 69804,
              "horizon": 0.448, "hour": 19, "key": "dusk" },
     ...
   } }
@@ -2009,10 +2009,14 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
   a phone.
 - **Loading.** A cell is the first candidate of 1.16's load gate, before the
   stage's painted-in element, panorama and half: drawn once loaded, the
-  previous picture held meanwhile (at most 8 s); a cell that fails gives way
-  to the stage pictures. Each side warms the cell it shows and the cells
-  either colour's next land would show (`i + 1` and `j + 1`, through the
-  clamp), with the split's pictures.
+  previous picture held meanwhile (at most 8 s). **A cell on screen is held
+  while the next cell loads** (the review of #201): never the pair's old
+  whole-place panorama in between, though that is always warm and would
+  otherwise be the first picture ready -- whatever the step (a half up or
+  down, both halves in one frame, a step of two). After 8 s, what has loaded
+  is drawn; a cell that fails gives way to the stage pictures at once. Each
+  side warms the cell it shows and the cells one land either way would show
+  (`i ± 1` and `j ± 1`, through the clamp), with the split's pictures.
 - **The caption** on `#ambience` says the two halves and the cell, in the
   picture's (the geography's) order: "island s4 | swamp s3, seam 4x3"; a
   clamped half its own stage and the one shown: "island s6 | swamp s2→s5,
@@ -2027,7 +2031,7 @@ stages already declare 7–10 MB with the painted-in elements, a pair with a
 grid is **warned** as before, and the warning says a grid is expected to
 exceed it: a half loads only the cell it shows and its two neighbours,
 never the set. pairs-v6-draft's own folder is pairs-v5's desktop files
-(28.0 MB) plus the three grids (3.4 MB for 48 cells). A full set -- ten
+(28.0 MB) plus the three grids (about 3.3 MB, 3,321,344 bytes, for 48 cells). A full set -- ten
 pairs, 160 cells, desktop and phone -- is about 15–20 MB more: it fits
 beside the desktop files in one ref only just, so publish it in a ref of its
 own and name it by absolute URL, as pairs-v5 names its phone pictures.

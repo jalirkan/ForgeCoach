@@ -398,6 +398,11 @@ export interface PairFullHold<L> {
  * Spec 1.16.1: likewise while a painted picture is on screen and another
  * painted one is wanted and still loading (a flipped side, a stage change):
  * the painted one is held, never the base panorama in between.
+ * Spec 1.17 (the review of #201): likewise while a grid cell is on screen and
+ * another cell is wanted and still loading (a half stepping down, two halves
+ * in one frame, a step of two, a slow network): the cell is held, never the
+ * pair's old whole-place panorama in between (it is always warm, so the load
+ * gate's `show` would otherwise be it: cell → panorama → cell).
  * Pure: `hold` in, the new memory out (SceneryStrip keeps it in a ref).
  */
 export function pairFullHold<L>(
@@ -410,11 +415,13 @@ export function pairFullHold<L>(
   // Spec 1.16.1 (the review of #199): a painted picture on screen and another painted one wanted but not loaded (the
   // side flipped, or the stage changed): hold the painted one rather than drop to the base panorama for a fetch.
   const paintedNext = !!cur.plan && !!cur.choice?.want?.painted && cur.choice.show !== cur.choice.want && !!hold.last?.shown?.painted;
-  if (cold || paintedNext) {
+  // Spec 1.17 (the review of #201): a grid cell on screen and another cell wanted but not loaded: hold the cell.
+  const gridNext = !!cur.plan && !!cur.choice?.want?.cell && cur.choice.show !== cur.choice.want && !!hold.last?.shown?.cell;
+  if (cold || paintedNext || gridNext) {
     const since = hold.since ?? now;
     if (hold.last && now - since < holdMs) return { draw: hold.last, hold: { last: hold.last, since }, holding: true };
     if (cold) return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
-    // The painted hold ran out: what has loaded (the base panorama), drawn below.
+    // The painted (or grid) hold ran out: what has loaded (the base panorama), drawn below.
   }
   const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.choice?.show ? cur.plan : null, shown: cur.choice?.show ?? null };
   const same = hold.last && hold.last.layout === draw.layout && hold.last.plan === draw.plan && hold.last.shown === draw.shown;

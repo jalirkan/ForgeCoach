@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { halfLayout } from './layout.ts';
 import type { Biome, SlotState } from './model.ts';
-import { gridCaption, pairFullCandidates, pairFullCaption, pairFullGrid, pairFullPlan, pairFullView, type PairFullPair } from './pairfull.ts';
+import { gridCaption, PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullCaption, pairFullChoice, pairFullGrid, pairFullHold, pairFullPlan, pairFullView, type PairFullHold, type PairFullPair } from './pairfull.ts';
 import { GEOGRAPHY, geographyOrder, gridCellKey, pairGridPick, pairPictures, validatePairs } from './pairs.ts';
 
 const CDN = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery';
@@ -277,9 +277,68 @@ describe('spec 1.17: the seam grid', () => {
   it('warms the cell shown and the cell either half’s next land would show', () => {
     const side = [slot('island', 0, 4), slot('swamp', 1, 3)];
     const full = pairPictures(pairs, [side], { phone: false, full: { thresholds: T } }).map((x) => x.src.replace(BASE, ''));
-    // A fifth Island makes 5 : 3, which shows 5x4 (the heavier exact); a fourth Swamp 4x4.
-    expect(full.filter((x) => x.startsWith('seams/'))).toEqual(['seams/island-swamp/s4x3-panorama.webp', 'seams/island-swamp/s5x4-panorama.webp', 'seams/island-swamp/s4x4-panorama.webp']);
+    // A fifth Island makes 5 : 3, which shows 5x4 (the heavier exact); a fourth Swamp 4x4; an Island leaving 3x3; a Swamp
+    // leaving 4 : 2, which shows 4x3 again (the review of #201: both directions, so a step down is warm too).
+    expect(full.filter((x) => x.startsWith('seams/'))).toEqual(['seams/island-swamp/s4x3-panorama.webp', 'seams/island-swamp/s5x4-panorama.webp', 'seams/island-swamp/s4x4-panorama.webp', 'seams/island-swamp/s3x3-panorama.webp']);
     // Without the flag, no cell.
     expect(pairPictures(pairs, [side], { phone: false }).some((x) => x.src.includes('/seams/'))).toBe(false);
+  });
+
+  describe('the load gate holds a cell while the next cell loads (the review of #201)', () => {
+    const at = (i: number, j: number) => {
+      const layout = halfLayout([slot('island', 0, i), slot('swamp', 1, j)], null);
+      const items = pairFullPlan(layout, pairs, { thresholds: T })!;
+      return { layout, items, cands: pairFullCandidates(pairOf(items)!, 5, false) };
+    };
+    const st = (ready: readonly string[], failed: readonly string[] = []) => (src: string) => (failed.includes(src) ? 'failed' : ready.includes(src) ? 'ready' : 'pending');
+    const cellSrc = (c: string) => `${BASE}seams/island-swamp/s${c}-panorama.webp`;
+    const step = (from: ReturnType<typeof at>, to: ReturnType<typeof at>, toCell: string) => {
+      // The old cell on screen, and the stage panoramas warm (pairPictures warms them): only the new cell is cold.
+      const warm = [...from.cands, ...to.cands].filter((c) => !c.cell).map((c) => c.art.picture!.src);
+      const fromCell = from.cands[0]!.cell!;
+      let hold: PairFullHold<typeof from.layout> = { last: null, since: null };
+      const run = (cur: ReturnType<typeof at>, ready: readonly string[], now: number, failed: readonly string[] = []) => {
+        const r = pairFullHold({ layout: cur.layout, plan: cur.items, choice: pairFullChoice(cur.cands, st(ready, failed)) }, hold, now);
+        hold = r.hold;
+        return r;
+      };
+      const first = run(from, [...warm, cellSrc(fromCell)], 0);
+      expect(first.draw.shown?.cell).toBe(fromCell);
+      return { run, warm, fromCell, toCell, first };
+    };
+
+    for (const [name, a, b, c] of [
+      ['a half stepping up (3x3 → 4x3)', [3, 3], [4, 3], '4x3'],
+      ['a half stepping down (4x4 → 3x4)', [4, 4], [3, 4], '3x4'],
+      ['both halves in one frame (3x3 → 4x4)', [3, 3], [4, 4], '4x4'],
+    ] as const)
+      it(`${name}: the shown cell is held, never the old panorama, then the new cell once loaded`, () => {
+        const from = at(a[0], a[1]);
+        const to = at(b[0], b[1]);
+        expect(to.cands[0]!.cell).toBe(c);
+        const { run, warm, fromCell, first } = step(from, to, c);
+        const waiting = run(to, [...warm, cellSrc(fromCell)], 1000);
+        expect(waiting.holding).toBe(true);
+        expect(waiting.draw).toBe(first.draw);
+        expect(waiting.draw.shown?.cell).toBe(fromCell);
+        // Without the rule the load gate's `show` would be the warm stage panorama.
+        expect(pairFullChoice(to.cands, st([...warm, cellSrc(fromCell)])).show?.cell).toBeUndefined();
+        const loaded = run(to, [...warm, cellSrc(fromCell), cellSrc(c)], 2000);
+        expect([loaded.holding, loaded.draw.shown?.cell, loaded.draw.plan === to.items]).toEqual([false, c, true]);
+      });
+
+    it('the hold runs out after PAIR_FULL_HOLD_MS (what has loaded is drawn), and a failed cell gives way at once', () => {
+      const from = at(3, 3);
+      const to = at(4, 3);
+      const { run, warm, fromCell } = step(from, to, '4x3');
+      expect(run(to, [...warm, cellSrc(fromCell)], 1000).holding).toBe(true);
+      const late = run(to, [...warm, cellSrc(fromCell)], 1000 + PAIR_FULL_HOLD_MS);
+      expect(late.holding).toBe(false);
+      expect(late.draw.shown?.cell).toBeUndefined();
+      const again = step(from, to, '4x3');
+      const failed = again.run(to, [...again.warm, cellSrc(fromCell)], 500, [cellSrc('4x3')]);
+      expect(failed.holding).toBe(false);
+      expect(failed.draw.shown?.cell).toBeUndefined();
+    });
   });
 });
