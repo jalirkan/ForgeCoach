@@ -2,8 +2,9 @@
  * ForgeCoach — ambience/pairs-v4.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * pairs-v4, the whole-half panoramas (spec 1.15) that FORGECOACH_PAIRS_FULL_URL
- * points at under `?pairfull=1`: a snapshot of its pairs.json, byte for byte
+ * pairs-v4, the whole-half panoramas (spec 1.15) that PAIRS_V4
+ * pointed at under `?pairfull=1` until pairs-v5 (`pairs-v5.test.ts`) took its
+ * place; the tag stays up, and pairs-v5 is this manifest painted in: a snapshot of its pairs.json, byte for byte
  * what jsDelivr serves at
  * https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs.json
  * (sha256 67b27eb08b1d3ebbefd8455a18ef65d2fd4ecb148b1c49023fe6c116aff25c33,
@@ -24,23 +25,20 @@ import { halfLayout } from './layout.ts';
 import { pairKey, type Biome, type SlotState } from './model.ts';
 import { pairFullArt, pairFullElementRegion, pairFullFrame, pairFullPlan, pairFullView } from './pairfull.ts';
 import { DEFAULT_STAGE_MAP, MAX_PAIRS_PACK_BYTES, pairHalfAt, pairPanoramaAt, pairsBytes, pairsRefBytes, validatePairs, PAIRS_SPEC } from './pairs.ts';
-import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
 
 const FIVE: Biome[] = ['plains', 'island', 'swamp', 'mountain', 'forest'];
 const V2 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/';
+const PAIRS_V4 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/';
 const PACK_V9_THRESHOLDS = [1, 2, 3, 4, 5, 6];
 const slot = (b: Biome, index: number, weight: number): SlotState => ({ biome: b, index, weight, stage: Math.min(6, Math.ceil(weight)), peak: Math.min(6, Math.ceil(weight)) });
 
 describe('pairs-v4', () => {
   const bytes = readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url));
   const raw = JSON.parse(bytes.toString('utf8'));
-  const r = validatePairs(raw, `${FORGECOACH_PAIRS_FULL_URL}pairs.json`);
+  const r = validatePairs(raw, `${PAIRS_V4}pairs.json`);
   const pairs = r.pairs!;
 
-  it('is the flag’s pairs URL (the board without the flag keeps pairs-v3.1), and the snapshot is the file jsDelivr serves', () => {
-    expect(FORGECOACH_PAIRS_FULL_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/');
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(FORGECOACH_PAIRS_FULL_URL);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
+  it('is the file jsDelivr serves at its own tag', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('67b27eb08b1d3ebbefd8455a18ef65d2fd4ecb148b1c49023fe6c116aff25c33');
   });
 
@@ -64,7 +62,7 @@ describe('pairs-v4', () => {
       p!.stages.forEach((s, i) => {
         expect(pairHalfAt(p, i + 1)!.src).toBe(`${V2}pairs/${slug}/s${i + 1}-half.webp`);
         const pano = pairPanoramaAt(p, i + 1)!;
-        expect([pano.src, pano.src2x, pano.phone!.src]).toEqual([`${FORGECOACH_PAIRS_FULL_URL}pairs/${slug}/s${i + 1}-panorama.webp`, null, `${FORGECOACH_PAIRS_FULL_URL}pairs/${slug}/s${i + 1}-panorama-phone.webp`]);
+        expect([pano.src, pano.src2x, pano.phone!.src]).toEqual([`${PAIRS_V4}pairs/${slug}/s${i + 1}-panorama.webp`, null, `${PAIRS_V4}pairs/${slug}/s${i + 1}-panorama-phone.webp`]);
         expect([pano.width, pano.height, pano.phone!.width, pano.phone!.height]).toEqual([3277, 640, 1638, 1280]);
         expect(pano.focal.x).toBe(0.5);
         expect(pano.horizon).toBeGreaterThan(0.4);
@@ -112,7 +110,7 @@ describe('pairs-v4', () => {
       if (it0.kind !== 'pair') throw new Error('pair');
       expect([it0.key, it0.mirror, it0.stage]).toEqual(['island+plains', false, stage]);
       const art = pairFullArt(pairHalfAt(it0.pair, it0.stage), pairPanoramaAt(it0.pair, it0.stage), 16 / 5, false)!;
-      expect(art.picture!.src).toBe(`${FORGECOACH_PAIRS_FULL_URL}pairs/island-plains/s${stage}-panorama.webp`);
+      expect(art.picture!.src).toBe(`${PAIRS_V4}pairs/island-plains/s${stage}-panorama.webp`);
       const f = pairFullFrame({ w: 1600, h: 500 }, art, it0.split);
       expect(f.width).toBeCloseTo(1.6, 3);
       expect(f.seamAt).toBeCloseTo(it0.split, 3);
@@ -152,7 +150,7 @@ describe('pairs-v4', () => {
     if (p.kind !== 'pair') throw new Error('pair');
     const art = pairFullArt(pairHalfAt(p.pair, p.stage), pairPanoramaAt(p.pair, p.stage), 356 / 170, true)!;
     expect(art.source).toBe('phone');
-    expect(art.picture!.src).toBe(`${FORGECOACH_PAIRS_FULL_URL}pairs/forest-swamp/s2-panorama-phone.webp`);
+    expect(art.picture!.src).toBe(`${PAIRS_V4}pairs/forest-swamp/s2-panorama-phone.webp`);
     expect(pairFullFrame({ w: 356, h: 170 }, art, 0.5).seamAt).toBeCloseTo(0.5, 3);
   });
 });

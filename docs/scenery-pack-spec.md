@@ -1611,8 +1611,9 @@ and on 23 October had them published: ForgeCoach's **pairs-v4**.
   pair (1.12) has no picture to fill a half with, so its half is drawn as
   today; so is a half of one colour, or of a pair with no entry, or with no
   pairs at all. With the flag and ForgeCoach's own pack, the pairs default to
-  **pairs-v4** (`FORGECOACH_PAIRS_FULL_URL`); `?pairs=` still wins. Without
-  the flag the board keeps pairs-v3.1.
+  **pairs-v5** (`FORGECOACH_PAIRS_FULL_URL`; pairs-v4 until the painted-in
+  elements, 1.16.1, were published); `?pairs=` still wins. Without the flag
+  the board keeps pairs-v3.1.
 - **The picture is the half.** The stage's `panorama` (else its `half`; the
   phone picture on a phone, as 1.5 picks) fills the half edge to edge: no
   panels, no seam, no band, no bridge, no motif. Mirrored when the board has
@@ -1690,7 +1691,8 @@ and on 23 October had them published: ForgeCoach's **pairs-v4**.
 `pairFullStage`, `pairFullArt`, `pairFullZoom`, `pairFullFrame` and its CSS
 twin `pairFullFrameCss`, `pairFullView`, `pairFullElementRegion`, and 1.16's
 load gate `pairFullCandidates` / `pairFullChoice`);
-`pairfull.test.ts` checks it and `pairs-v4.test.ts` is the live manifest;
+`pairfull.test.ts` checks it and `pairs-v4.test.ts` is pairs-v4's manifest (the flag's
+pairs now are pairs-v5, `pairs-v5.test.ts`);
 SceneryStrip's `PairFullPanel` draws it.
 
 **Budget.** A panorama counts in its pair's stage pictures (1.9's ≤ 4 MB per
@@ -1867,7 +1869,8 @@ MB) named relatively, beside pairs-v4's 30 desktop panoramas (6.5 MB), in the
 their own, `@pairs-v5-phone`, by absolute URL; the base panoramas' phone
 pictures at `@pairs-v4` and the halves and frames at `@pairs-v2`, by absolute
 URL. Each picture's `bytes` is its desktop file and its `phone.bytes` its
-phone file. `pairs-v5.test.ts` is its manifest.
+phone file. `pairs-v5.test.ts` is its manifest; it is what `?pairfull=1`
+draws with ForgeCoach's own pack (`FORGECOACH_PAIRS_FULL_URL`).
 
 `src/ambience/pairs.ts` reads it (`parseStageElements`, `pairElementAt`,
 `pairElementEntryAt`, `pairPictures` with `full`, which warms the side the

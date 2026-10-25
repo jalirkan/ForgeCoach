@@ -10,8 +10,10 @@
  *      static server; with PAIRS_DIR, that folder too, at /pairs-pack/ (a
  *      pairs pack on disk, e.g. ~/scenery-packs/panoramas-v1/serve/pairs-v5
  *      before its tags are cut);
- *   2. opens `/?pairfull=1&pairs=<pairs>#ambience` at a desktop size, with
- *      ForgeCoach's own pack (from jsDelivr), Pieces → Placeholders (so a
+ *   2. opens `/?pairfull=1#ambience` at a desktop size (the flag's own
+ *      pairs, pairs-v5 on jsDelivr; `&pairs=<pairs>` only with PAIRS_DIR or
+ *      PAIRS_URL), with ForgeCoach's own pack (from jsDelivr), Pieces →
+ *      Placeholders (so a
  *      1.14 cut-out exists for every colour) and Pieces → Three colours
  *      (SYSTEM.md's worked example: Plateau, Plains, Island);
  *   3. checks that your half draws island+plains whole with red PAINTED IN on
@@ -19,9 +21,10 @@
  *      cut-out element is drawn over it, and that the caption says
  *      "R painted in".
  *
- * Environment: PAIRS_DIR (a local pairs pack), or PAIRS_URL (default the
- * pairs-v5 tag on jsDelivr); BUILD=0, HEADLESS=0, BROWSER_PATH. Needs the
- * network for ForgeCoach's pack (jsDelivr). Exit status: 0 pass, 1 a check
+ * Environment: PAIRS_DIR (a local pairs pack), or PAIRS_URL (a pairs pack by
+ * URL; with neither, no `?pairs=`: the flag's default, the pairs-v5 tag on
+ * jsDelivr); BUILD=0, HEADLESS=0, BROWSER_PATH. Needs the network for
+ * ForgeCoach's pack (jsDelivr). Exit status: 0 pass, 1 a check
  * failed, 2 could not start. A screenshot goes to e2e/out/ambience-three.png.
  */
 import { execFileSync } from 'node:child_process';
@@ -109,8 +112,9 @@ async function main() {
   const port = await freePort();
   const server = await startServer(port);
   const origin = `http://127.0.0.1:${port}`;
-  const pairs = PAIRS_DIR ? `${origin}/pairs-pack/` : (env.PAIRS_URL ?? 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5/');
-  log(`pairs: ${pairs}`);
+  // No ?pairs= by default: under ?pairfull=1 ForgeCoach's pack brings FORGECOACH_PAIRS_FULL_URL (pairs-v5).
+  const pairs = PAIRS_DIR ? `${origin}/pairs-pack/` : (env.PAIRS_URL || null);
+  log(`pairs: ${pairs ?? 'the flag’s default (no ?pairs=)'}`);
   const pw = await loadPlaywright();
   const browser = await launchBrowser(pw, { headless: HEADLESS });
   let failed = false;
@@ -118,7 +122,7 @@ async function main() {
     const page = await (await browser.newContext({ viewport: { width: 1600, height: 1000 } })).newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
-    await page.goto(`${origin}/?pairfull=1&pairs=${encodeURIComponent(pairs)}#ambience`);
+    await page.goto(`${origin}/?pairfull=1${pairs ? `&pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
     // The pack and its pairs: the pairs line names pairs-v5.
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     const pairsLine = await page.textContent('[data-amb-pairs]');

@@ -16,11 +16,11 @@ import { describe, expect, it } from 'vitest';
 import { halfLayout } from './layout.ts';
 import type { Biome, SlotState } from './model.ts';
 import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullCaption, pairFullChoice, pairFullElementSide, pairFullHeavierSide, pairFullHold, pairFullPlan, type PairFullHold, type PairFullPair } from './pairfull.ts';
-import { FORGECOACH_PAIRS_FULL_URL } from './prefs.ts';
 import { readFileSync } from 'node:fs';
 import { MAX_PAIRS_PACK_BYTES, pairElementAt, pairElementEntryAt, pairPictures, pairsBytes, pairsRefBytes, validatePairs } from './pairs.ts';
 
 const BASE = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5/';
+const PAIRS_V4 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/';
 const T = [1, 2, 3, 4, 5, 6];
 const slot = (biome: Biome, index: number, weight: number): SlotState => ({ biome, index, weight, stage: Math.min(6, Math.ceil(weight)), peak: Math.min(6, Math.ceil(weight)) });
 
@@ -230,8 +230,8 @@ describe('the load gate holds the previous picture (no band flash)', () => {
   });
 
   it('pre-warms, under the flag, each live colour’s stage-1 pair panoramas with the colours it lacks (at most four)', () => {
-    const v4 = validatePairs(JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs!;
-    const one = pairPictures(v4, [[{ biome: 'island', stage: 1, weight: 1 }]], { phone: false, full: { thresholds: T } }).map((x) => x.src.replace(FORGECOACH_PAIRS_FULL_URL, ''));
+    const v4 = validatePairs(JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), `${PAIRS_V4}pairs.json`).pairs!;
+    const one = pairPictures(v4, [[{ biome: 'island', stage: 1, weight: 1 }]], { phone: false, full: { thresholds: T } }).map((x) => x.src.replace(PAIRS_V4, ''));
     expect(one.sort()).toEqual(['pairs/forest-island/s1-panorama.webp', 'pairs/island-mountain/s1-panorama.webp', 'pairs/island-plains/s1-panorama.webp', 'pairs/island-swamp/s1-panorama.webp']);
     expect(pairPictures(v4, [[{ biome: 'island', stage: 1, weight: 1 }]], { phone: false })).toEqual([]);
     const phone = pairPictures(v4, [[{ biome: 'island', stage: 1, weight: 1 }]], { phone: true, full: { thresholds: T } });

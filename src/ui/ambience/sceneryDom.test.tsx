@@ -20,15 +20,15 @@ import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullCaption, pairFullChoice,
 import { pairPanoramaAt, pairPictures, validatePairs, type PairsPack } from '../../ambience/pairs.ts';
 import { elementBiomes } from '../../ambience/pieces.ts';
 import { halfLayout } from '../../ambience/layout.ts';
-import { FORGECOACH_PAIRS_FULL_URL } from '../../ambience/prefs.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { ScenePieces } from './ScenePieces.tsx';
 import { HalfScenery } from './SceneryLayer.tsx';
 
 const BASE = 'https://example.org/pack/';
+const PAIRS_V4 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/';
 const slot = (biome: Biome, index: number, weight: number): SlotState => ({ biome, index, weight, stage: Math.min(6, Math.ceil(weight)), peak: Math.min(6, Math.ceil(weight)) });
 const piece = (src: string) => ({ src, width: 600, height: 300 });
-const pairsV4: PairsPack = validatePairs(JSON.parse(readFileSync(new URL('../../ambience/testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs!;
+const pairsV4: PairsPack = validatePairs(JSON.parse(readFileSync(new URL('../../ambience/testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), `${PAIRS_V4}pairs.json`).pairs!;
 const biomeStages = (b: string) => [1, 2, 3, 4, 5, 6].map((k) => ({ layers: [], half: { src: `${b}/s${k}-half.webp` }, ...(k >= 2 ? { overlay: [{ id: `${b}-scatter`, anchor: 'area', src: `${b}/scatter.webp` }, { id: `${b}-vine`, anchor: 'bottom-left', src: `${b}/vine.webp` }] } : {}) }));
 const manifest = {
   schema: 1,
@@ -140,7 +140,7 @@ describe('spec 1.16: a painted-in element replaces the cut-out', () => {
   it('the strip draws the painted panorama and the pieces draw no cut-out over it', () => {
     const p = pairsV4.pairs['island+plains']!;
     // pairs-v4 has none yet: give stage 2 a painted red, as the batch being painted will.
-    const painted = { ...p.stages[1]!.panorama!, src: `${FORGECOACH_PAIRS_FULL_URL}pairs/island-plains/s2+R-panorama.webp` };
+    const painted = { ...p.stages[1]!.panorama!, src: `${PAIRS_V4}pairs/island-plains/s2+R-panorama.webp` };
     const withPainted: PairsPack = { ...pairsV4, pairs: { ...pairsV4.pairs, 'island+plains': { ...p, stages: p.stages.map((st, i) => (i === 1 ? { ...st, elements: { R: { left: null, right: null, any: painted } } } : st)) } } };
     const local: ScenePack = { ...pack, pairs: withPainted };
     loadAll();

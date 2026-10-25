@@ -16,11 +16,11 @@ import type { Biome, SlotState } from './model.ts';
 import { pairFullArt, pairFullElementRegion, pairFullHeavierSide, pairFullPlan, pairFullView, type PairFullPair } from './pairfull.ts';
 import { pairHalfAt, pairPanoramaAt, validatePairs } from './pairs.ts';
 import { BIOME_COLOUR, elementBiomes, makeupFromSlots, piecePlacement, planHalf } from './pieces.ts';
-import { FORGECOACH_PAIRS_FULL_URL } from './prefs.ts';
 
 const THRESHOLDS = [1, 2, 3, 4, 5, 6];
+const PAIRS_V4 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/';
 const slot = (b: Biome, index: number, weight: number): SlotState => ({ biome: b, index, weight, stage: Math.min(6, Math.ceil(weight)), peak: Math.min(6, Math.ceil(weight)) });
-const pairs = validatePairs(JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs!;
+const pairs = validatePairs(JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8')), `${PAIRS_V4}pairs.json`).pairs!;
 const ALL: ReadonlySet<Biome> = new Set<Biome>(['plains', 'island', 'swamp', 'mountain', 'forest']);
 const pairOf = (items: ReturnType<typeof pairFullPlan>): PairFullPair => {
   const p = items?.find((x): x is PairFullPair => x.kind === 'pair');

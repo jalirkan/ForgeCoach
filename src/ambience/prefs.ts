@@ -78,13 +78,15 @@ export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgeco
 export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3.1/';
 /**
  * Spec 1.15: the pairs `?pairfull=1` defaults to with ForgeCoach's own pack:
- * `pairs-v4`, the whole-half panoramas Justin judged "really, really awesome"
- * and had published on 2026-10-23 -- pairs-v2's ten band pairs (its halves and
- * frames, referenced at `@pairs-v2`) with a 1.6 × 16:5 `panorama` and a
- * 1.28:1 phone panorama on every stage (`pairs-v4.test.ts` is its manifest).
- * `?pairs=` still wins. Without the flag the board keeps FORGECOACH_PAIRS_URL.
+ * `pairs-v5` (spec 1.16.1), pairs-v4's whole-half panoramas -- the ones Justin
+ * judged "really, really awesome" and had published on 2026-10-23 -- with the
+ * third colour painted in, sided, on stages 2 and 3 (`pairs-v5.test.ts` is its
+ * manifest; its element phone pictures at `@pairs-v5-phone`, the base phone
+ * panoramas at `@pairs-v4`, the halves and frames at `@pairs-v2`). pairs-v4
+ * (`pairs-v4.test.ts`) stays up, but nothing points at it. `?pairs=` still
+ * wins. Without the flag the board keeps FORGECOACH_PAIRS_URL.
  */
-export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/';
+export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5/';
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true, light: false, horizon: false };
 
