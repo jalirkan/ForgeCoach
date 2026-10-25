@@ -33,6 +33,15 @@
  * wide and the half's full height, so its own soft banks are the band's edges.
  * A pair with `half` pictures is a BAND pair as in 1.9, and a motif on one of
  * its stages is drawn over the band's picture, in the band's box.
+ *
+ * The seam grid (spec 1.17, a draft behind `?pairfull=1`): a pair may carry a
+ * `grid` of seam pictures keyed `"<i>x<j>"` by the stage of each half -- the
+ * geography's LEFT colour's own mono stage `i` and the RIGHT colour's `j`
+ * ({@link GEOGRAPHY}, SYSTEM.md C4: Island → Swamp → Plains → Forest →
+ * Mountain, whatever the manifest key's order) -- so adding one land changes
+ * one half, never the other ({@link pairGridPick}: the exact cell, else the
+ * lighter half clamped to one stage of the heavier, else none and the pair's
+ * `stages` as in 1.15).
  */
 import { BIOMES, DEFAULT_STAGE_THRESHOLDS, MAX_STAGES, pairKey, stageFor, type Biome, type SlotState } from './model.ts';
 import { cleanText, int } from '../lab/status.ts';
@@ -43,8 +52,8 @@ import { halfSeams, SEAM_CAP_VW, widenedRatio } from './bridges.ts';
 
 /** The pair pack's manifest, at the root of the pairs URL. */
 export const PAIRS_MANIFEST_FILE = 'pairs.json';
-/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs, 1.15 whole-half panoramas, 1.16 painted-in elements, 1.16.1 sided ones). */
-export const PAIRS_SPEC = '1.16.1';
+/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs, 1.15 whole-half panoramas, 1.16 painted-in elements, 1.16.1 sided ones, 1.17 the seam grid). */
+export const PAIRS_SPEC = '1.17';
 
 /** Is version `a` (1.x or 1.x.y) newer than `b`? */
 function specNewer(a: string, b: string): boolean {
@@ -141,6 +150,76 @@ export interface PairElement {
  */
 export type PairKind = 'band' | 'motif';
 
+/**
+ * Spec 1.17 (draft): the one geography every seam picture is painted in
+ * (SYSTEM.md C4): the land rises from the sea to the mountains, left to
+ * right. In a pair the colour earlier here is the seam picture's LEFT half,
+ * whatever the manifest key's (alphabetical) order.
+ */
+export const GEOGRAPHY: readonly Biome[] = ['island', 'swamp', 'plains', 'forest', 'mountain'];
+
+/** Spec 1.17: two biomes in {@link GEOGRAPHY}'s order (left, right), or null when either is not on it (wastes). */
+export function geographyOrder(a: Biome, b: Biome): [Biome, Biome] | null {
+  const ia = GEOGRAPHY.indexOf(a);
+  const ib = GEOGRAPHY.indexOf(b);
+  if (ia < 0 || ib < 0 || ia === ib) return null;
+  return ia < ib ? [a, b] : [b, a];
+}
+
+/**
+ * Spec 1.17 (draft): a pair's seam grid. Each cell is one whole-half picture
+ * in 1.15's panorama shape: the {@link left} colour's mono picture at stage
+ * `i` as its left half, a painted seam, the {@link right} colour's mono
+ * picture at stage `j` as its right half. Keyed `"<i>x<j>"`, 1..6 each.
+ */
+export interface PairGrid {
+  /** The picture's left half: the pair's colour earlier in {@link GEOGRAPHY}. */
+  left: Biome;
+  right: Biome;
+  cells: Partial<Record<string, PackHalf>>;
+}
+
+/** Spec 1.17: a grid cell's key, `"4x3"`. */
+export function gridCellKey(i: number, j: number): string {
+  return `${i}x${j}`;
+}
+
+/** Spec 1.17: what {@link pairGridPick} chose for a pair at its two halves' stages. */
+export interface PairGridPick {
+  /** The cell shown, `"4x3"`, in the grid's (geography) order. */
+  cell: string;
+  /** The stages each half shows, left then right (geography order). */
+  shown: [number, number];
+  /** The two colours' own stages, left then right: what the board's lands say. */
+  stages: [number, number];
+  /** The lighter half was raised to one stage below the heavier (no cell for the true pair). */
+  clamped: boolean;
+  picture: PackHalf;
+}
+
+/**
+ * Spec 1.17 (draft): the seam picture for a pair whose geography-left colour
+ * is at mono stage `left` and right colour at `right` (each colour's OWN land
+ * count on the pack's mono thresholds; 0 = not on the half). The exact cell
+ * when the grid has it; else, the two more than one stage apart, the LIGHTER
+ * half (the lower stage) is raised to one stage below the heavier, which is
+ * always shown exactly -- the heavier colour fills most of the half (the pan,
+ * 1.15) and is what a land of it must visibly grow; else null (no grid, a
+ * missing cell, a colour not on the half): the pair's `stages`, as in 1.15.
+ */
+export function pairGridPick(pair: PackPair | null | undefined, left: number, right: number): PairGridPick | null {
+  const g = pair?.grid;
+  if (!g || !(left > 0) || !(right > 0)) return null;
+  const i0 = Math.min(Math.round(left), MAX_STAGES);
+  const j0 = Math.min(Math.round(right), MAX_STAGES);
+  const exact = g.cells[gridCellKey(i0, j0)];
+  if (exact) return { cell: gridCellKey(i0, j0), shown: [i0, j0], stages: [i0, j0], clamped: false, picture: exact };
+  if (Math.abs(i0 - j0) <= 1) return null;
+  const [i, j] = i0 > j0 ? [i0, i0 - 1] : [j0 - 1, j0];
+  const cell = g.cells[gridCellKey(i, j)];
+  return cell ? { cell: gridCellKey(i, j), shown: [i, j], stages: [i0, j0], clamped: true, picture: cell } : null;
+}
+
 export interface PackPair {
   /** {@link pairKey}: the two biomes in alphabetical order, `forest+island`. */
   key: string;
@@ -159,7 +238,12 @@ export interface PackPair {
   band: PairBand;
   /** Index k (0-based) holds the neighbour stages [from, to] that show pair stage k + 1. */
   stageMap: [number, number][];
-  /** Declared bytes of the pair's stage pictures, motifs, panoramas and painted-in elements (each file once) and frames. */
+  /**
+   * Spec 1.17 (draft): the seam grid, or null. Read only under `?pairfull=1`
+   * (pairfull.ts), where a cell is drawn instead of the stage's panorama.
+   */
+  grid?: PairGrid | null;
+  /** Declared bytes of the pair's stage pictures, motifs, panoramas, painted-in elements and grid cells (each file once) and frames. */
   bytes: number;
   /**
    * The part of {@link bytes} in the pairs manifest's own folder (its CDN
@@ -356,20 +440,23 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
   if (kind === 'band' && e.motifTransitions !== undefined && e.motifTransitions !== null) warn.push(`${path}.motifTransitions: only a motif pair plays motif frames (a band pair's motif cross-fades with its stage); ignored`);
   const transitions = kind === 'motif' ? parseTransitions(e.motifTransitions, base, `${path}.motifTransitions`, warn, stages.length, intact) : parseTransitions(e.transitions, base, `${path}.transitions`, warn, stages.length, intact);
   const stageMap = parseStageMap(e.stageMap, `${path}.stageMap`, warn);
+  const grid = parseGrid(e.grid, kind, rawStages, left, right, base, `${path}.grid`, warn);
   if (stageMap.length > stages.length) warn.push(`${path}.stageMap: ${stageMap.length} pair stages, ${stages.length} pictured; the later ones show the last stage`);
   const seen = new Set<string>();
   let halfBytes = 0;
   let refBytes = 0;
   let paintedBytes = 0;
+  let gridBytes = 0;
   const inRef = (src: string) => src.startsWith(base);
   // Spec 1.16.1: a picture whose phone declares its own `bytes` has its `bytes` for the desktop files alone, and each part
   // counts in this ref by where its own file is (pairs-v5's phone pictures are at a tag of their own).
-  const count = (h: PackHalf | null | undefined, painted: boolean) => {
+  const count = (h: PackHalf | null | undefined, painted: boolean, cell = false) => {
     if (!h || seen.has(h.src)) return;
     seen.add(h.src);
     const own = (h.bytes ?? 0) + (h.phoneBytes ?? 0);
     halfBytes += own;
     if (painted) paintedBytes += own;
+    if (cell) gridBytes += own;
     if (inRef(h.src)) refBytes += h.bytes ?? 0;
     if (h.phoneBytes !== undefined && h.phone && inRef(h.phone.src)) refBytes += h.phoneBytes;
   };
@@ -377,9 +464,13 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
     for (const h of [s.half, s.motif, s.panorama]) count(h, false);
     for (const e of Object.values(s.elements ?? {})) for (const h of pairElementPictures(e)) count(h, true);
   }
+  // Spec 1.17: a grid cell counts in the pair's stage pictures and, in this folder, in the ref's.
+  for (const h of Object.values(grid?.cells ?? {})) count(h, false, true);
   if (halfBytes > MAX_PAIR_HALF_BYTES)
     warn.push(
-      paintedBytes > 0
+      gridBytes > 0
+        ? `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared, ${(gridBytes / 1048576).toFixed(1)} MB of them the seam grid (1.17)${paintedBytes > 0 ? ` and ${(paintedBytes / 1048576).toFixed(1)} MB painted-in elements` : ''}; the budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair, and a grid is expected to exceed it: a half loads only the cell it shows and its two neighbours (pictures kept)`
+        : paintedBytes > 0
         ? `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared, ${(paintedBytes / 1048576).toFixed(1)} MB of them painted-in elements; the budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair, and a set of painted-in elements (1.16) is expected to exceed it: a half loads only the picture it shows and the next stage's (pictures kept)`
         : `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared; their budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair (pictures kept)`,
     );
@@ -397,9 +488,75 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
     transitions,
     band: parseBand(e.band, `${path}.band`, warn),
     stageMap,
+    ...(grid ? { grid } : {}),
     bytes: halfBytes + frameBytes + ownBytes,
     refBytes: refBytes + frameRefBytes + ownBytes,
   };
+}
+
+/** Spec 1.17: a grid cell's key. */
+const GRID_KEY = /^([1-9])x([1-9])$/;
+
+/**
+ * Spec 1.17 (draft): a pair's `grid`, `{ "<i>x<j>": { src, phone?, bytes, horizon?, … } }`,
+ * `i` the stage of the pair's {@link GEOGRAPHY}-left colour and `j` the
+ * right's, 1..6 each. A cell is read as a 1.5 `half` in the shape of the
+ * pair's first stage panorama (what a cell leaves out -- `width`, `height`,
+ * `subjectBand`, `focal`, `safe`, `horizon`, `hour`, `key` -- is that
+ * panorama's, as 1.16's painted-in elements take theirs), so a painter that
+ * keeps 1.15's canvas writes `src` and `bytes`. Null when there is none. Only
+ * a band pair has one (a motif pair has no whole-half picture); a bad key or
+ * cell is warned and dropped alone; a cell more than one stage apart is kept
+ * (it is shown for exactly those stages) with a note that the draft paints
+ * |i − j| ≤ 1.
+ */
+function parseGrid(v: unknown, kind: PairKind, rawStages: unknown[], keyLeft: Biome, keyRight: Biome, base: string, path: string, warn: string[]): PairGrid | null {
+  if (v === undefined || v === null) return null;
+  if (!isObj(v)) {
+    warn.push(`${path}: not an object keyed by the two halves' stages ("4x3"); ignored`);
+    return null;
+  }
+  if (kind !== 'band') {
+    warn.push(`${path}: a seam grid needs a band pair (stages with \`half\`), as a whole-half panorama does; ignored`);
+    return null;
+  }
+  const order = geographyOrder(keyLeft, keyRight);
+  if (!order) {
+    warn.push(`${path}: a seam grid is painted in the five colours' geography (${GEOGRAPHY.join(' → ')}), and this pair is not on it; ignored`);
+    return null;
+  }
+  const first = rawStages.find((st) => isObj(st) && isObj(st.panorama)) as Record<string, unknown> | undefined;
+  const shape = shapeOf(first?.panorama, PANORAMA_SHAPE);
+  const phoneShape = shapeOf(isObj(first?.panorama) ? (first!.panorama as Record<string, unknown>).phone : undefined, PANORAMA_PHONE_SHAPE);
+  const cells: Partial<Record<string, PackHalf>> = {};
+  let far = 0;
+  for (const k of Object.keys(v)) {
+    const m = GRID_KEY.exec(k);
+    const i = m ? Number(m[1]) : 0;
+    const j = m ? Number(m[2]) : 0;
+    if (!m || i > MAX_STAGES || j > MAX_STAGES) {
+      warn.push(`${path}.${cleanText(k, 20)}: not "<i>x<j>", the left half's stage and the right's, 1–${MAX_STAGES} ("4x3"); ignored`);
+      continue;
+    }
+    const e = v[k];
+    if (!isObj(e)) {
+      warn.push(`${path}.${k}: not an object { src, phone, bytes }; ignored`);
+      continue;
+    }
+    const merged: Record<string, unknown> = { ...shape, ...e };
+    if (typeof e.phone === 'string') merged.phone = { ...phoneShape, src: e.phone };
+    else if (isObj(e.phone)) merged.phone = { ...phoneShape, ...e.phone };
+    const cell = parseHalf(merged, base, `${path}.${k}`, warn);
+    if (!cell) continue;
+    if (Math.abs(i - j) > 1) far++;
+    cells[gridCellKey(i, j)] = cell;
+  }
+  if (far) warn.push(`${path}: ${far} cell${far === 1 ? '' : 's'} more than one stage apart (kept, shown for exactly those stages; the draft paints |i − j| ≤ 1 and clamps the lighter half)`);
+  if (!Object.keys(cells).length) {
+    warn.push(`${path}: no usable cell; ignored`);
+    return null;
+  }
+  return { left: order[0], right: order[1], cells };
 }
 
 /** The fields a painted-in element (spec 1.16) takes from its stage's panorama when it does not give its own. */
@@ -808,6 +965,21 @@ export function pairPictures(
         const fullStage = (total: number) => pairStageFor(found.pair.stageMap, stageFor(total, thresholds));
         const own = fullStage((live[i]!.weight ?? 0) + (live[j]!.weight ?? 0));
         for (const st of [own, own + 1]) if (st > 0 && st <= found.pair.stages.length) add(pairPanoramaAt(found.pair, st));
+        // Spec 1.17: the seam grid's cell for the two halves' own stages, and the cell either half's next land -- or its
+        // last one leaving -- would show (the review of #201: a cold cell held the old cell, so warm both directions).
+        const g = found.pair.grid;
+        if (g) {
+          const si = live.find((x) => x.biome === g.left)?.stage ?? 0;
+          const sj = live.find((x) => x.biome === g.right)?.stage ?? 0;
+          for (const [a, b] of [
+            [si, sj],
+            [si + 1, sj],
+            [si, sj + 1],
+            [si - 1, sj],
+            [si, sj - 1],
+          ] as const)
+            add(pairGridPick(found.pair, Math.min(a, MAX_STAGES), Math.min(b, MAX_STAGES))?.picture ?? null);
+        }
         const others = live.filter((_, k) => k !== i && k !== j).map((s) => BIOME_COLOUR[s.biome]).filter((c): c is PieceColour => !!c);
         if (!others.length) continue;
         const withThird = fullStage(sideTotal);

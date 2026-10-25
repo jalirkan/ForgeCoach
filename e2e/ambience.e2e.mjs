@@ -19,7 +19,15 @@
  *   3. checks that your half draws island+plains whole with red PAINTED IN on
  *      plains's ground -- the sided picture `s2+RR-panorama.webp` --, that no
  *      cut-out element is drawn over it, and that the caption says
- *      "R painted in".
+ *      "R painted in";
+ *   4. spec 1.17 (draft), only when the pairs manifest has a seam `grid`
+ *      (pairs-v6-draft, by PAIRS_DIR or PAIRS_URL): with the Lands sliders,
+ *      island 4 | swamp 3 draws the cell `4x3` unmirrored, a fourth Swamp
+ *      steps one half (`4x4`), island 6 | swamp 2 clamps the lighter half
+ *      (`6x5`), and forest 2 | swamp 3 draws swamp+forest's `3x2` MIRRORED
+ *      (the geography puts the swamp left); each checked on the panel, its
+ *      picture and the caption, a screenshot each (e2e/out/grid-*.png). A
+ *      cell the manifest does not have yet is skipped, and says so.
  *
  * Environment: PAIRS_DIR (a local pairs pack), or PAIRS_URL (a pairs pack by
  * URL; with neither, no `?pairs=`: the flag's default, the pairs-v5 tag on
@@ -127,7 +135,8 @@ async function main() {
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     const pairsLine = await page.textContent('[data-amb-pairs]');
     log(`pairs line: ${pairsLine?.slice(0, 120)}`);
-    check(/pairs-v5/.test(pairsLine ?? ''), `the pairs pack did not load as pairs-v5: ${pairsLine}`);
+    // pairs-v5 by default; a local or named pack (PAIRS_DIR / PAIRS_URL) may be a later one (pairs-v6-draft).
+    check((pairs ? /pairs-v\d/ : /pairs-v5/).test(pairsLine ?? ''), `the pairs pack did not load as ${pairs ? 'a pairs-vN pack' : 'pairs-v5'}: ${pairsLine}`);
     await page.click('[data-pieces-toggle="builtin"]');
     await page.click('[data-pieces-three]');
     // The load gate draws the painted picture once it has loaded.
@@ -164,6 +173,7 @@ async function main() {
     await page.waitForTimeout(3000);
     await page.screenshot({ path: path.join(OUT, 'ambience-three.png') });
     log('PASS: the worked example draws R painted in on plains’s ground (s2+RR), mirrored, with no cut-out');
+    if (pairs) await gridChecks(page, pairs, errors);
   } catch (e) {
     failed = true;
     if (e instanceof Fail) console.error(`[e2e ambience] FAIL: ${e.message}`);
@@ -173,6 +183,70 @@ async function main() {
     await server.stop();
   }
   process.exit(failed ? 1 : 0);
+}
+
+/** Sets one Lands slider of your side (React listens for `input`). */
+async function setLands(page, biome, n) {
+  await page.evaluate(
+    ({ biome, n }) => {
+      const side = document.querySelector('[data-count-side]')?.getAttribute('data-count-side');
+      const el = document.querySelector(`[data-count="${side}:${biome}"]`);
+      if (!el) throw new Error(`no slider for ${biome}`);
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, String(n));
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+    { biome, n },
+  );
+}
+
+/**
+ * Spec 1.17 (draft): the seam grid on your half, when the pairs manifest has one. `cases`: the lands in the order
+ * they are played (the board's order), the cell expected, whether it is clamped and mirrored, the caption's words.
+ */
+async function gridChecks(page, pairs, errors) {
+  const manifest = await (await fetch(new URL('pairs.json', pairs))).json();
+  const gridOf = (key) => manifest.pairs?.[key]?.grid ?? null;
+  if (!gridOf('island+swamp') && !gridOf('forest+swamp')) {
+    log('no seam grid in this pairs manifest: 1.17 checks skipped');
+    return;
+  }
+  const cases = [
+    { name: 'grid-4x3', key: 'island+swamp', lands: [['island', 4], ['swamp', 3]], cell: '4x3', dir: 'island-swamp', mirrored: false, caption: 'island s4 | swamp s3, seam 4x3' },
+    { name: 'grid-4x4', key: 'island+swamp', keep: true, lands: [['swamp', 4]], cell: '4x4', dir: 'island-swamp', mirrored: false, caption: 'island s4 | swamp s4, seam 4x4' },
+    { name: 'grid-6x5-clamped', key: 'island+swamp', lands: [['island', 6], ['swamp', 2]], cell: '6x5', dir: 'island-swamp', mirrored: false, clamped: true, caption: 'island s6 | swamp s2→s5, seam 6x5 (clamped)' },
+    { name: 'grid-3x2-mirrored', key: 'forest+swamp', lands: [['forest', 2], ['swamp', 3]], cell: '3x2', dir: 'swamp-forest', mirrored: true, caption: 'swamp s3 | forest s2, seam 3x2' },
+  ];
+  let ran = 0;
+  for (const c of cases) {
+    if (!gridOf(c.key)?.[c.cell]) {
+      log(`SKIP ${c.name}: ${c.key} has no cell ${c.cell} yet`);
+      continue;
+    }
+    if (!c.keep) {
+      const reset = await page.$('[data-amb-reset]:not([disabled])');
+      if (reset) await reset.click();
+    }
+    for (const [biome, n] of c.lands) await setLands(page, biome, n);
+    const sel = `[data-pairfull="${c.key}"][data-pairfull-cell="${c.cell}"]`;
+    const panel = await page.waitForSelector(sel, { timeout: TIMEOUT });
+    const want = new RegExp(`/seams/${c.dir}/s${c.cell}-panorama\\.webp$`);
+    // Settled: the previous picture has faded out.
+    await page.waitForFunction(({ sel, src }) => [...document.querySelectorAll(`${sel} img`)].every((i) => new RegExp(src).test(i.getAttribute('src') ?? '')), { sel, src: want.source }, { timeout: TIMEOUT });
+    const mirrored = await panel.evaluate((el) => el.classList.contains('is-mirrored') && !!el.querySelector('.scn-pairfull-flip.is-mirrored'));
+    const clamped = (await panel.getAttribute('data-pairfull-clamped')) === 'yes';
+    const width = await panel.$eval('img', (i) => i.complete && i.naturalWidth);
+    const caption = await page.textContent('[data-amb-bands="1"]');
+    log(`${c.name}: ${c.key} cell ${c.cell}, mirrored ${mirrored}, clamped ${clamped}, ${width} px; caption: ${caption}`);
+    check(mirrored === c.mirrored, `${c.name}: expected mirrored ${c.mirrored}`);
+    check(clamped === !!c.clamped, `${c.name}: expected clamped ${!!c.clamped}`);
+    check(width === 3277, `${c.name}: the cell did not load at 3277 px wide (${width})`);
+    check((caption ?? '').includes(c.caption), `${c.name}: the caption does not say "${c.caption}": ${caption}`);
+    check(errors.length === 0, `page errors: ${errors.join('; ')}`);
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: path.join(OUT, `${c.name}.png`) });
+    ran++;
+  }
+  log(`PASS: spec 1.17's seam grid, ${ran} of ${cases.length} cases (the rest skipped: cells not painted yet)`);
 }
 
 main().catch((e) => {

@@ -62,13 +62,26 @@
  *   heavier colour's ground, stopping {@link PAIR_FULL_ELEMENT_MARGIN} short
  *   of the transition; the piece is never mirrored with the picture).
  *
+ * - The seam grid (spec 1.17, a draft): when the pair has a `grid`
+ *   (pairs.ts), each half is its colour's mono picture at that colour's OWN
+ *   stage (Justin's one-world rule, SYSTEM.md C, Option A of 2026-10-25), so
+ *   the picture is the cell for the two colours' own stages in the
+ *   geography's order ({@link pairFullGrid}, pairs.ts `pairGridPick`: the
+ *   exact cell, else the lighter half clamped to one stage of the heavier),
+ *   drawn in the geography's orientation (mirrored when the board has the
+ *   pair the other way round from the GEOGRAPHY, not from the key), panned by
+ *   the share as 1.15. A third colour on a grid picture draws nothing in the
+ *   draft (no cut-out, no 1.16 painted picture: those are painted on the old
+ *   whole-place panoramas). A missing cell: the pair's `stages`, as 1.15 and
+ *   1.16.1 say.
+ *
  * Pure and DOM-free; the drawing is ui/ambience/SceneryStrip.tsx's
  * `PairFullPanel`.
  */
 import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome, type SlotState } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf, PieceColour } from './manifest.ts';
-import { pairElementAt, pairFor, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairSide, type PairsPack } from './pairs.ts';
+import { pairElementAt, pairFor, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
@@ -102,6 +115,23 @@ export interface PairFullPair {
    * colour's ground, the key's colours before any mirroring).
    */
   elementSide?: PairSide;
+  /**
+   * Spec 1.17 (draft): the seam grid's cell the half draws, when the pair has
+   * a grid with a cell for the two colours' own stages ({@link pairFullGrid}).
+   * Its orientation is the geography's, so it carries its own `mirror`;
+   * {@link mirror} above stays the key's, for the `stages` pictures it falls
+   * back to.
+   */
+  grid?: PairFullGrid;
+}
+
+/** Spec 1.17: the grid cell a whole-half pair draws, and how. */
+export interface PairFullGrid extends PairGridPick {
+  /** The picture's left and right halves' colours (pairs.ts `GEOGRAPHY`'s order). */
+  left: Biome;
+  right: Biome;
+  /** The board has the pair the other way round from the geography (the cell is drawn mirrored). */
+  mirror: boolean;
 }
 
 /** The third biome's panel (today's panel, a placeholder for a triple composition). */
@@ -134,6 +164,20 @@ export function pairFullSplit(left: number, right: number): number {
 export function pairFullStage(pair: PackPair, total: number, thresholds: readonly number[] = DEFAULT_STAGE_THRESHOLDS, stageOverride: number | null = null): number {
   const st = stageOverride !== null && stageOverride > 0 ? stageOverride : stageFor(total, thresholds);
   return Math.min(pairStageFor(pair.stageMap, st), pair.stages.length);
+}
+
+/**
+ * Spec 1.17 (draft): the seam grid's cell for a pair whose board-left biome
+ * is at mono stage `stageLeft` and board-right at `stageRight` (each
+ * colour's own stage: layout.ts's, the preview's slider when set), or
+ * undefined (no grid, or no cell even after the clamp: the `stages`).
+ */
+export function pairFullGrid(pair: PackPair, boardLeft: Biome, stageLeft: number, stageRight: number): PairFullGrid | undefined {
+  const g = pair.grid;
+  if (!g) return undefined;
+  const mirror = boardLeft !== g.left;
+  const pick = pairGridPick(pair, mirror ? stageRight : stageLeft, mirror ? stageLeft : stageRight);
+  return pick ? { ...pick, left: g.left, right: g.right, mirror } : undefined;
 }
 
 /** A pair with a whole-half picture: a 1.9 band pair (a motif pair has no `half`, 1.12). */
@@ -181,6 +225,12 @@ export function pairFullPlan(
     const wa = x.l.slot.weight;
     const wb = y.l.slot.weight;
     const third = pick.third ? byBiome(COLOUR_BIOME[pick.third]) : null;
+    // Spec 1.17 (draft): a cell for the two colours' own stages takes the whole half; a third colour shows nothing on it.
+    const grid = pairFullGrid(found.pair, x.l.slot.biome, x.l.stage, y.l.stage);
+    if (grid) {
+      const stage = pairFullStage(found.pair, third ? pick.total : wa + wb, thresholds, opts.stageOverride ?? null);
+      return [{ kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, grid }];
+    }
     if (third) {
       // Spec 1.14 / 1.16: the third colour inside the pair picture, which takes the whole half and grows with every coloured land.
       const stage = pairFullStage(found.pair, pick.total, thresholds, opts.stageOverride ?? null);
@@ -233,6 +283,8 @@ function withPanel(
     share: r4(1 - thirdShare),
     stage: pairFullStage(found.pair, wa + wb, thresholds, stageOverride),
   };
+  const grid = pairFullGrid(found.pair, a.l.slot.biome, a.l.stage, b.l.stage);
+  if (grid) item.grid = grid;
   if (!third) return [item];
   const slot: PairFullSlot = { kind: 'slot', index: third.i, biome: third.l.slot.biome, share: thirdShare };
   return third.i < a.i && third.i < b.i ? [slot, item] : [item, slot];
@@ -257,12 +309,17 @@ export function pairFullArt(half: PackHalf | null, panorama: PackHalf | null, pa
 export interface PairFullCandidate {
   art: HalfArt;
   painted: PieceColour | null;
+  /** Drawn mirrored: the board has the pair the other way round from this picture's own order (the key's; a grid cell's, the geography's). */
+  mirror: boolean;
+  /** Spec 1.17: the grid cell this picture is (`"4x3"`), when it is one. */
+  cell?: string;
 }
 
 /**
  * The pictures a whole-half pair panel can draw, best first, each once: the
- * stage's painted-in element panorama for the pair's element colour (spec
- * 1.16), the stage's panorama (1.15), the stage's 1.9 `half`. Each goes
+ * seam grid's cell (spec 1.17, in its own orientation), the stage's painted-in
+ * element panorama for the pair's element colour (spec 1.16), the stage's
+ * panorama (1.15), the stage's 1.9 `half`. Each goes
  * through {@link pairFullArt}, so a desktop-only panorama never reaches a
  * phone-shaped panel. `panelAspect` is the pair panel's own shape.
  */
@@ -273,13 +330,15 @@ export function pairFullCandidates(p: PairFullPair, panelAspect: number | null, 
   // Spec 1.16.1: the side the plan picked (the heavier pair colour's ground); a sided entry without it falls back to the base panorama.
   const painted = colour ? pairElementAt(p.pair, p.stage, colour, p.elementSide) : null;
   const out: PairFullCandidate[] = [];
-  const add = (art: HalfArt | null, from: PackHalf | null, c: PieceColour | null) => {
+  const add = (art: HalfArt | null, from: PackHalf | null, c: PieceColour | null, grid?: PairFullGrid) => {
     const pic = art?.picture;
     if (!art || !pic || out.some((x) => x.art.picture!.src === pic.src)) return;
     // pairFullArt fell back to the half: not this candidate's own picture.
     if (from && pic.src !== from.src && pic.src !== from.phone?.src) return;
-    out.push({ art, painted: c });
+    out.push({ art, painted: c, mirror: grid ? grid.mirror : p.mirror, ...(grid ? { cell: grid.cell } : {}) });
   };
+  // Spec 1.17: a cell with no phone picture gives way to the stage's pictures on a phone-shaped panel, as a panorama does.
+  if (p.grid) add(pairFullArt(half, p.grid.picture, panelAspect, narrow, horizon), p.grid.picture, null, p.grid);
   if (painted) add(pairFullArt(half, painted, panelAspect, narrow, horizon), painted, colour);
   if (pano) add(pairFullArt(half, pano, panelAspect, narrow, horizon), pano, null);
   add(pairFullArt(half, null, panelAspect, narrow, horizon), half, null);
@@ -339,6 +398,11 @@ export interface PairFullHold<L> {
  * Spec 1.16.1: likewise while a painted picture is on screen and another
  * painted one is wanted and still loading (a flipped side, a stage change):
  * the painted one is held, never the base panorama in between.
+ * Spec 1.17 (the review of #201): likewise while a grid cell is on screen and
+ * another cell is wanted and still loading (a half stepping down, two halves
+ * in one frame, a step of two, a slow network): the cell is held, never the
+ * pair's old whole-place panorama in between (it is always warm, so the load
+ * gate's `show` would otherwise be it: cell → panorama → cell).
  * Pure: `hold` in, the new memory out (SceneryStrip keeps it in a ref).
  */
 export function pairFullHold<L>(
@@ -351,11 +415,13 @@ export function pairFullHold<L>(
   // Spec 1.16.1 (the review of #199): a painted picture on screen and another painted one wanted but not loaded (the
   // side flipped, or the stage changed): hold the painted one rather than drop to the base panorama for a fetch.
   const paintedNext = !!cur.plan && !!cur.choice?.want?.painted && cur.choice.show !== cur.choice.want && !!hold.last?.shown?.painted;
-  if (cold || paintedNext) {
+  // Spec 1.17 (the review of #201): a grid cell on screen and another cell wanted but not loaded: hold the cell.
+  const gridNext = !!cur.plan && !!cur.choice?.want?.cell && cur.choice.show !== cur.choice.want && !!hold.last?.shown?.cell;
+  if (cold || paintedNext || gridNext) {
     const since = hold.since ?? now;
     if (hold.last && now - since < holdMs) return { draw: hold.last, hold: { last: hold.last, since }, holding: true };
     if (cold) return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
-    // The painted hold ran out: what has loaded (the base panorama), drawn below.
+    // The painted (or grid) hold ran out: what has loaded (the base panorama), drawn below.
   }
   const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.choice?.show ? cur.plan : null, shown: cur.choice?.show ?? null };
   const same = hold.last && hold.last.layout === draw.layout && hold.last.plan === draw.plan && hold.last.shown === draw.shown;
@@ -446,13 +512,15 @@ export interface PairFullView {
  * pixel width is its share of the half (the seam between it and a third
  * panel is ignored: a placeholder).
  */
-export function pairFullView(items: readonly PairFullItem[] | null, box: { w: number; h: number }, art: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo' | 'picture'> | null): PairFullView | null {
+export function pairFullView(items: readonly PairFullItem[] | null, box: { w: number; h: number }, art: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo' | 'picture'> | null, mirrored?: boolean): PairFullView | null {
   const p = items?.find((x): x is PairFullPair => x.kind === 'pair');
   if (!p || !art || !(box.w > 0 && box.h > 0)) return null;
+  // The picture's own orientation (pairFullCandidates' `mirror`: a grid cell's is the geography's), else the key's.
+  const mirror = mirrored ?? p.mirror;
   const pairFirst = items![0] === p;
   const panel = { left: r4(pairFirst ? 0 : 1 - p.share), width: r4(p.share) };
-  const frame = pairFullFrame({ w: box.w * p.share, h: box.h }, art, p.mirror ? 1 - p.split : p.split);
-  const seamInPanel = p.mirror ? 1 - frame.seamAt : frame.seamAt;
+  const frame = pairFullFrame({ w: box.w * p.share, h: box.h }, art, mirror ? 1 - p.split : p.split);
+  const seamInPanel = mirror ? 1 - frame.seamAt : frame.seamAt;
   const seamAt = r4(panel.left + seamInPanel * panel.width);
   const hz = art.picture ? horizonOf(art.picture) : art.focal.y;
   return {
@@ -509,7 +577,17 @@ export function pairFullCaption(items: readonly PairFullItem[] | null): string |
   if (!p) return null;
   const third = items!.find((x): x is PairFullSlot => x.kind === 'slot');
   const pct = (n: number) => `${Math.round(n * 100)}%`;
-  return `${p.pair.dual ?? p.key}${p.pair.shock ? ` (${p.pair.shock})` : ''}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, pair stage ${p.stage}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${p.element ? elementCaption(p) : ''}`;
+  return `${p.pair.dual ?? p.key}${p.pair.shock ? ` (${p.pair.shock})` : ''}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, ${p.grid ? gridCaption(p.grid) : `pair stage ${p.stage}`}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${p.element ? elementCaption(p) : ''}`;
+}
+
+/**
+ * Spec 1.17: "island s4 | swamp s3, seam 4x3", in the picture's (the
+ * geography's) order; a clamped half says its own stage and the one shown:
+ * "island s6 | swamp s2→s5, seam 6x5 (clamped)".
+ */
+export function gridCaption(g: PairFullGrid): string {
+  const half = (b: Biome, own: number, shown: number) => `${b} s${own}${own !== shown ? `→s${shown}` : ''}`;
+  return `${half(g.left, g.stages[0], g.shown[0])} | ${half(g.right, g.stages[1], g.shown[1])}, seam ${g.cell}${g.clamped ? ' (clamped)' : ''}`;
 }
 
 /** The caption's element: "; R painted in, on plains's ground" (spec 1.16.1) or "; mountain as an element" (the 1.14 cut-out). */
