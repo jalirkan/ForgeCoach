@@ -200,7 +200,7 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
         const pic = at(piece);
         // Drawn once loaded, so it fades in rather than popping in after the fade.
         if (pictureStatus(pic.src) !== 'ready') return null;
-        const view = pairFullView(full, box, shown.art);
+        const view = pairFullView(full, box, shown.art, shown.mirror);
         if (!view) return null;
         const indexOf = (b: string) => slots.find((x) => x.biome === b)?.index ?? 0;
         const side = pairFullHeavierSide(p, indexOf);

@@ -400,3 +400,36 @@ describe('stacking on the half board (fault 2)', () => {
     expect(html).toMatch(/class="scn-pieces[^"]*" style="--scn-mist:22%"/);
   });
 });
+
+describe('spec 1.17 (draft): a seam grid cell on the board', () => {
+  const V5 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5/';
+  const raw = JSON.parse(readFileSync(new URL('../../ambience/testdata/pairs-v5.pairs.json', import.meta.url), 'utf8'));
+  // forest+swamp: the key puts forest left, the geography swamp left.
+  raw.pairs['forest+swamp'].grid = { '3x2': { src: 'seams/swamp-forest/s3x2-panorama.webp', width: 3277, height: 640, bytes: 200000 } };
+  const local: ScenePack = { ...pack, pairs: validatePairs(raw, `${V5}pairs.json`).pairs! };
+  const cell = `${V5}seams/swamp-forest/s3x2-panorama.webp`;
+  const base = `${V5}pairs/forest-swamp/s3-panorama.webp`;
+  // Board forest | swamp: with the key, against the geography.
+  const slots = [slot('forest', 0, 2), slot('swamp', 1, 3)];
+  const strip = () => renderToStaticMarkup(<SceneryStrip slots={slots} pack={local} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />);
+
+  it('draws the cell, flipped as the geography says, and names it', () => {
+    markPicture(cell, true);
+    markPicture(base, true);
+    const html = strip();
+    expect(attrs(html, 'data-pairfull')).toEqual(['forest+swamp']);
+    expect(attrs(html, 'data-pairfull-cell')).toEqual(['3x2']);
+    expect(html).toContain(cell);
+    expect(html).toContain('scn-pairfull-flip is-mirrored');
+    expect(html).toMatch(/scn-pairfull[^"]*is-mirrored/);
+  });
+
+  it('the cell failed: the stage panorama in the key’s orientation (not flipped), no cell named', () => {
+    markPicture(cell, false);
+    markPicture(base, true);
+    const html = strip();
+    expect(attrs(html, 'data-pairfull-cell')).toEqual([]);
+    expect(html).toContain(base);
+    expect(html).not.toContain('is-mirrored');
+  });
+});

@@ -677,13 +677,13 @@ function Band({ b, share, seam, open, leaving, ms, phone, growth, reduced, onRea
 function PairFullPanel({ p, shown, first, growth, reduced }: { p: PairFullPair; shown: PairFullCandidate; first: boolean; growth: PackGrowth; reduced: boolean }) {
   const pano = pairPanoramaAt(p.pair, p.stage);
   const art = shown.art;
-  // The frame is computed in the picture's own order; the mirror flips it back.
-  const split = p.mirror ? 1 - p.split : p.split;
   const ms = growthMs(growth, reduced);
   const pic = art.picture!;
+  // Each picture carries its own orientation (spec 1.17: a grid cell's is the geography's, a stage picture's the key's),
+  // so a cross-fade between the two flips only the picture that needs it.
   return (
     <div
-      className={['scn-slot', 'scn-pairfull', first && 'is-first', p.mirror && 'is-mirrored'].filter(Boolean).join(' ')}
+      className={['scn-slot', 'scn-pairfull', first && 'is-first', shown.mirror && 'is-mirrored'].filter(Boolean).join(' ')}
       style={{ flexGrow: p.share }}
       data-pairfull={p.key}
       data-pairfull-split={p.split}
@@ -693,17 +693,19 @@ function PairFullPanel({ p, shown, first, growth, reduced }: { p: PairFullPair; 
       data-pairfull-element={p.element ?? undefined}
       data-pairfull-painted={shown.painted ?? undefined}
       data-pairfull-painted-side={shown.painted ? p.elementSide : undefined}
+      data-pairfull-cell={shown.cell}
+      data-pairfull-clamped={shown.cell && p.grid?.clamped ? 'yes' : undefined}
       data-art={art.source}
     >
       <div className="scn-pairfull-art">
         <FadeGroup
-          cur={{ key: pic.src, payload: art }}
+          cur={{ key: pic.src, payload: { art, mirror: shown.mirror } }}
           next={null}
           fade={0}
           ms={ms}
           render={(e) => (
             <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
-              <PairFullPicture art={e.payload} split={split} />
+              <PairFullPicture art={e.payload.art} split={e.payload.mirror ? 1 - p.split : p.split} mirror={e.payload.mirror} />
             </Layer>
           )}
         />
@@ -712,11 +714,14 @@ function PairFullPanel({ p, shown, first, growth, reduced }: { p: PairFullPair; 
   );
 }
 
-function PairFullPicture({ art, split }: { art: HalfArt; split: number }) {
+/** One pair picture, framed in its own order (`split` is the picture's left colour's share) and flipped back when `mirror`. */
+function PairFullPicture({ art, split, mirror }: { art: HalfArt; split: number; mirror: boolean }) {
   const pic = art.picture!;
   return (
-    <div className="scn-frame scn-pairfull-frame" style={pairFullFrameCss(art, split)}>
-      <img className="scn-half-img" src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => markPicture(pic.src, true)} onError={() => markPicture(pic.src, false)} />
+    <div className={['scn-pairfull-flip', mirror && 'is-mirrored'].filter(Boolean).join(' ')}>
+      <div className="scn-frame scn-pairfull-frame" style={pairFullFrameCss(art, split)}>
+        <img className="scn-half-img" src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => markPicture(pic.src, true)} onError={() => markPicture(pic.src, false)} />
+      </div>
     </div>
   );
 }

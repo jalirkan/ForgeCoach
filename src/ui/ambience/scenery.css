@@ -1126,12 +1126,14 @@
 }
 
 /* Spec 1.15 (`?pairfull=1`, SceneryStrip `PairFullPanel`): the pair picture as the whole half, mirrored when the
-   board has the pair the other way round; its frame pans with the land share over the panels' 900 ms. */
-.scn-pairfull-art {
+   board has the pair the other way round from the picture's own order (spec 1.17: each picture carries its own, a grid
+   cell's being the geography's, so the flip is per picture); its frame pans with the land share over the panels' 900 ms. */
+.scn-pairfull-art,
+.scn-pairfull-flip {
   position: absolute;
   inset: 0;
 }
-.scn-pairfull.is-mirrored .scn-pairfull-art {
+.scn-pairfull-flip.is-mirrored {
   transform: scaleX(-1);
 }
 .scn-pairfull-frame {

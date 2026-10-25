@@ -45,8 +45,8 @@ describe('pairs-v4', () => {
   it('validates with no errors, written for spec 1.15, and one budget warning: mountain+swamp’s stage pictures (its pairs-v2 halves counted)', () => {
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual(['pairs.mountain+swamp: 4.1 MB of stage pictures declared; their budget is 4 MB per pair (pictures kept)']);
-    // The reader knows 1.16 (painted-in elements) since the scenery fixes, 1.16.1 (sided ones) since pairs-v5; pairs-v4 is written for 1.15.
-    expect(PAIRS_SPEC).toBe('1.16.1');
+    // The reader knows 1.16 (painted-in elements) since the scenery fixes, 1.16.1 (sided ones) since pairs-v5, 1.17 (the seam grid, a draft) since the grid; pairs-v4 is written for 1.15.
+    expect(PAIRS_SPEC).toBe('1.17');
     expect(pairs.spec).toBe('1.15');
     expect(pairs.name).toBe('ForgeCoach pair scenery, pairs-v4');
     expect(pairs.note).toBe(raw.note);

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.16.1)
+# Scenery pack spec (schema 1, version 1.16.1; 1.17 in draft)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -33,6 +33,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.15 | **Whole-half pair panoramas** (§2, *Whole-half pair panoramas*), behind `?pairfull=1` only, default off: a pair stage in `pairs.json` may carry a **`panorama`**, one picture of one place 1.6 × the half's 16 : 5 (and a 1.28 : 1 `phone`), the key's first biome the ground at its left end and the second at its right. A half of exactly two colours with a pair picture shows it across the **whole half** (the panorama, else the 1.9 `half`), and the land share **pans** it (the transition sits at the share) instead of widening a band; its stage from the two colours' total lands. Three colours: the heaviest pair's picture beside the third's panel (a placeholder until 1.14's element is drawn). `pairFullView` exposes the transition, each colour's ground and the horizon for 1.14's pieces. ForgeCoach's pairs under the flag: pairs-v4. |
 | 1.16 | **Painted-in elements and one makeup rule** (§2, *Painted-in elements*), behind `?pairfull=1` for the pictures: a pair stage in `pairs.json` may carry **`elements`**, per colour that stage's panorama with the third colour's feature painted **into** the place; under the flag the half draws it instead of the panorama (a cross-fade, no cut-out on top), else the 1.14 cut-out element as before. And four corrections from the scenery review of 2026-10-24, reading the same manifests: **one makeup rule** for the panels, the pair picture and the pieces (four or five colours keep the three heaviest by their own weights; the colours dropped show nothing and **weigh nothing** in the pan or the pair choice, correcting 1.10's fold, while the stage still counts every coloured land); **pieces above every scenery layer** (the land pictures, every accent, the card-row scrim and the effects), below every card, label and control (correcting 1.14); a **front plays once its frames have loaded**; and a **load gate** for the whole-half picture (its panels until a picture of it has loaded; never blank). The pairs pack's 45 MB warning counts only the files in its own ref. Every 1.0–1.15 pack and pairs manifest is read unchanged. |
 | 1.16.1 | **Sided painted-in elements** (§2, *Painted-in elements*, amended): an `elements[<colour>]` entry may give **`left`** and **`right`**, one painted panorama per pair colour's ground (the painter's `s<k>+<C>L` and `s<k>+<C>R`), and the reader draws the **heavier** pair colour's side (SYSTEM.md A5), chosen on the key's colours before any mirroring; 1.16's unsided `src` entry still reads. A picture's `phone` object may declare its own **`bytes`**, so each shape counts in the ref its own file lies in. A pairs manifest's `spec` may carry a third number (`"1.16.1"`). ForgeCoach's **pairs-v5** is the first pack written to it. |
+| 1.17 (draft) | **The seam grid** (§2, *The seam grid*), behind `?pairfull=1` and a `?pairs=` that has one, for Justin's review; not the default: a pair in `pairs.json` may carry a **`grid`** of whole-half seam pictures keyed **`"<i>x<j>"`** by the two halves' own stages -- `i` the stage of the pair's colour earlier in the one geography (Island → Swamp → Plains → Forest → Mountain: the picture's left half), `j` the later one's -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), only the seam painted. Painted for \|i − j\| ≤ 1; further apart, the lighter half is raised to one stage below the heavier. A missing cell falls back to the pair's `stages`; a third colour on a grid picture draws nothing in the draft. Every 1.0–1.16.1 pack and pairs manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -1880,6 +1881,172 @@ half would draw); `src/ambience/pairfull.ts` chooses it
 leaves the cut-out out (`pairs-elements.test.ts`, `pairs-v5.test.ts`,
 `sceneryDom.test.tsx`).
 
+### The seam grid (1.17, draft)
+
+**A draft, behind the same flag.** Drawn only under **`?pairfull=1`** (1.15)
+with a pairs manifest that has a grid, which today means a `?pairs=` naming
+one (pairs-v6-draft); no published manifest has one, so the board, with or
+without the flag, is unchanged. A pairs manifest without `grid` is read as
+before, and a 1.16.1 reader ignores the field (it draws the stage panorama).
+It is written for Justin to judge on the live site; the shape may change
+after that.
+
+On 24 October 2026 Justin set the one-world rule (pc-results
+`scenery/SYSTEM.md` §C): "adding a single mana should not completely redraw
+the entire landscape. It should evolve it." Each colour's landscape is its
+**mono picture** (pack-v8's ladder) at that colour's own stage, never
+redrawn; a pair picture is the left colour's mono half, a painted **seam**,
+and the right colour's mono half, in one geography. On 25 October he chose
+**Option A**: each half at its **own** stage, so a pair picture is keyed by
+the two halves' stages, not by the pair's total.
+
+**The `grid` field.** On a pair, beside its `stages` (which stay: they are
+the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
+
+```json
+"island+swamp": {
+  "stages": [ {...}, {...}, {...} ],
+  "grid": {
+    "1x1": { "src": "seams/island-swamp/s1x1-panorama.webp", "width": 3277, "height": 640, "bytes": 181220,
+             "horizon": 0.425, "hour": 6.5, "key": "dawn" },
+    "4x3": { "src": "seams/island-swamp/s4x3-panorama.webp", "width": 3277, "height": 640, "bytes": 190144,
+             "horizon": 0.448, "hour": 19, "key": "dusk" },
+    ...
+  } }
+```
+
+- **The key, `"<i>x<j>"`.** `i` is the stage of the pair's colour that
+  comes **earlier in the geography** -- **Island → Swamp → Plains → Forest
+  → Mountain**, the land rising from the sea to the mountains (SYSTEM.md
+  C4) -- and `j` the later one's, 1–6 each. The geography, not the manifest
+  key: keys are alphabetical (`forest+swamp`), but in a seam picture the
+  swamp is the **left** half and the forest the right (the painter's folder
+  is `swamp-forest`). So for six of the ten pairs (`forest+island`,
+  `forest+plains`, `forest+swamp`, `mountain+plains`, `mountain+swamp`,
+  `plains+swamp`) the grid's left is the key's second biome. A pair with a
+  biome off the geography (`wastes`) has no grid.
+- **A cell** is one picture in 1.15's panorama shape (1.6 × 16 : 5,
+  **3277 × 640** at 1x): the left colour's mono picture at stage `i`, its
+  left edge on the canvas's left edge; the right colour's at stage `j`, its
+  right edge on the right; a painted seam between (the painter's core is
+  the middle 0.43–0.57 of the width, with a ring to 0.38 / 0.62), so
+  `focal.x` is 0.5. A cell is read as a 1.5 `half` (`src`, `src2x`, `width`,
+  `height`, `subjectBand`, `focal`, `safe`, 1.13's `horizon`, `hour`, `key`,
+  `phone`, `bytes`); **what it leaves out is the pair's first stage
+  panorama's**, as 1.16's painted-in elements take theirs, so a painter that
+  keeps 1.15's canvas writes `src` and `bytes`. The draft writes `width`,
+  `height`, `bytes` and, from the painter's notes, `horizon` (the mean of
+  the two halves' placed horizons), `hour` (the later half's, the seam's)
+  and `key`. **No `phone`** in the draft (below).
+- **Which cells.** The draft paints the 16 cells with **|i − j| ≤ 1**
+  (1x1, 1x2, 2x1, 2x2, 2x3, …, 6x5, 6x6) for three pairs: island+swamp,
+  plains+mountain and swamp+forest. A cell further apart may be given; it is
+  kept (with a note) and shown for exactly those stages.
+- **Validation.** A key that is not `<i>x<j>` with 1 ≤ i, j ≤ 6, a cell that
+  is not an object or has no usable picture, is warned and dropped alone; a
+  grid with no usable cell, on a motif pair (1.12: no whole-half picture), or
+  on a pair off the geography is warned and ignored.
+
+**The pick.** On a half that 1.15 draws whole, for the pair it draws
+(makeup.ts's one rule: the two heaviest kept colours):
+
+1. **Each colour's own stage.** `i` and `j` are the stages the two colours'
+   **own** land weights reach on the pack's mono `stageThresholds` -- the
+   stage each colour's panel shows without the flag, and the stage a
+   one-colour half with as many lands would show (on ForgeCoach's pack one
+   land is stage 1 … six or more stage 6; a dual is ½ to each, so a lone dual
+   is 1x1). Not the total, not the `stageMap`: those are the `stages`'.
+   The preview's stage slider sets both (`s`x`s`).
+2. **The exact cell**, `"<i>x<j>"`, when the grid has it.
+3. **Else, the clamp.** When the two are more than one stage apart (the
+   draft paints no such cell), **the heavier half is shown exactly and the
+   lighter half is raised to one stage below it**: `i > j + 1` shows
+   `i`x`(i − 1)`, `j > i + 1` shows `(j − 1)`x`j`. Why the heavier half is the
+   exact one: it is the colour with more lands, so the pan (below) gives it
+   most of the half (up to four fifths), and it is the colour whose next land
+   must visibly grow its own ground. Holding the heavier half down instead
+   would make a land of the main colour change nothing at all. The cost is on
+   the narrow side: six Islands and two Swamps show the swamp at stage 5
+   (`6x5`), and that swamp half steps with the Islands while the gap is
+   above one. The caption says so (below). The heavier is the higher stage:
+   stages rise with weight, so two colours of equal weight are at one stage
+   and never clamped.
+4. **Else, the `stages`.** No grid, no cell even after the clamp, or a colour
+   not on the half: the pair's `stages`, exactly as 1.15 and 1.16.1 say (the
+   stage from the total, the painted-in elements with a third colour).
+
+**Drawing.**
+
+- **The pan** is 1.15's: `split` is the board-left colour's share of the two
+  colours' land weight, clamped to 0.2–0.8, and the cell is drawn 1.6 × the
+  half and panned so its seam (`focal.x`) lands at `split`. At 0.8 the left
+  colour's mono half fills four fifths of the half, its left edge where the
+  mono board had it.
+- **The mirror** is the **geography's**: a cell is drawn mirrored when the
+  board has the pair the other way round from the geography (the board's
+  left colour is the later one), whatever the key's order. A stage picture
+  it falls back to keeps the key's mirror. Each picture carries its own
+  orientation, so a cross-fade between a cell and a stage picture flips only
+  the one that needs it.
+- **One half steps.** A land changes one colour's stage, so it changes one
+  index of the cell (`3x3` → `4x3`): the half **cross-fades** to the
+  neighbouring cell over `growth.seconds`, as a 1.15 stage step does, held
+  until the new cell has loaded (1.16's load gate). The other half is the
+  same picture in both cells, so only the stepping half and the seam change
+  on screen. Later, not now: the stepping half's own 1.7 frames (the mono
+  ladder's, pack-v7.3) could play in that half's region before the cut.
+- **A third colour** on a grid picture draws **nothing** in the draft: the
+  cell takes the whole half (no third panel), and neither 1.14's cut-out nor
+  1.16's painted-in picture is drawn -- both are painted for the old
+  whole-place panoramas, and a cut-out on a seam picture is the sticker the
+  1.16 review rejected. The third colour's lands do not move `i` or `j`
+  (each half is its own colour's). Painting the third colour into the new
+  bases is SYSTEM.md C7's next step, after the seams are judged. A third
+  colour on a pair with no grid, or at a missing cell, is 1.16.1 as before.
+- **Phone.** A cell with no `phone` gives way to the pair's stage pictures
+  wherever the half would draw its phone picture (a phone, or a phone-shaped
+  panel), as a desktop-only panorama does (1.15), so the draft never reaches
+  a phone.
+- **Loading.** A cell is the first candidate of 1.16's load gate, before the
+  stage's painted-in element, panorama and half: drawn once loaded, the
+  previous picture held meanwhile (at most 8 s); a cell that fails gives way
+  to the stage pictures. Each side warms the cell it shows and the cells
+  either colour's next land would show (`i + 1` and `j + 1`, through the
+  clamp), with the split's pictures.
+- **The caption** on `#ambience` says the two halves and the cell, in the
+  picture's (the geography's) order: "island s4 | swamp s3, seam 4x3"; a
+  clamped half its own stage and the one shown: "island s6 | swamp s2→s5,
+  seam 6x5 (clamped)". The panel carries `data-pairfull-cell` (and
+  `data-pairfull-clamped`).
+
+**Budget.** Every cell counts in its pair's stage pictures (1.9's
+**≤ 4 MB per pair**) and, when it lies in the pairs manifest's own folder,
+in the pack's **≤ 45 MB**. Sixteen cells at about 0.2 MB a desktop picture
+are about 3–3.5 MB a pair, so a pair with a grid is **warned** (its stages
+already declare 1.1–1.7 MB of panoramas, more with painted-in elements); the
+warning says a grid is expected to exceed it, and a half loads only the cell
+it shows and its two neighbours, never the set. pairs-v6-draft's own folder
+is pairs-v5's desktop files (28 MB) plus the three grids (about 10 MB). A
+full set -- ten pairs, desktop and phone -- does not fit one ref beside
+pairs-v5's painted elements: publish the grid in a ref of its own and name
+it by absolute URL, as pairs-v5 names its phone pictures.
+
+**pairs-v6-draft.** pairs-v5's manifest, spec `"1.17"`, with a `grid` on
+the pairs the painter has made (island+swamp, mountain+plains, forest+swamp:
+16 cells each), desktop only; the other seven pairs keep their `stages`
+only. Written by `~/scenery-packs/panoramas-v1/tools/make_pairs_v6_draft.py`
+from the painter's `work/seamA/<left>-<right>/s<i>x<j>-panorama.webp` and
+`work/seamA/meta.json` into `serve/pairs-v6-draft/` (pairs-v5's desktop
+files and the cells as symlinks, all named relatively); re-run it whenever
+cells are added or re-finished. Look at it with `?pairfull=1&pairs=<that
+folder, served>#ambience` (or on the board).
+
+`src/ambience/pairs.ts` reads it (`GEOGRAPHY`, `geographyOrder`, `parseGrid`,
+`pairGridPick`, `pairPictures`' warming); `src/ambience/pairfull.ts` chooses
+it (`pairFullGrid`, `pairFullPlan`, `pairFullCandidates` with each
+candidate's `mirror` and `cell`, `gridCaption`); SceneryStrip's
+`PairFullPanel` draws it (`pairs-grid.test.ts`, `sceneryDom.test.tsx`).
+
 ## 3. Files and budgets
 
 | What | Format | Size |
@@ -1938,7 +2105,7 @@ Budgets for bridges (1.8), counted apart from everything above:
 Budgets for pair bands (1.9), in their own manifest and their own ref:
 - **≤ 4 MB per pair** of stage pictures, desktop and phone, 1x and 2x (declare `bytes` on each `half`; a picture repeated across stages counts once), and 1.7's **≤ 2 MB** of frames per pair. Three stages at about 380 KB each and two steps of two frames fit with room to spare.
 - **≤ 45 MB for the pairs pack** (the validator warns past it): a jsDelivr ref holds at most 50 MB, so the pairs never share the main pack's ref. Only the files in the pairs manifest's own folder count (1.16): a file named by an absolute URL at another tag costs this ref nothing.
-- 1.15's panoramas and 1.16's painted-in elements count in the pair's ≤ 4 MB with its halves (a full set of painted elements is about 4 MB a pair more, a sided set about 5 MB, and the warning says painted elements are expected to exceed it: see *Painted-in elements*). A picture's `phone` may declare its own `bytes` (1.16.1), so a pack that splits its shapes across two refs counts each in its own.
+- 1.15's panoramas, 1.16's painted-in elements and 1.17's grid cells (draft) count in the pair's ≤ 4 MB with its halves (a full set of painted elements is about 4 MB a pair more, a sided set about 5 MB, and the warning says painted elements are expected to exceed it: see *Painted-in elements*). A picture's `phone` may declare its own `bytes` (1.16.1), so a pack that splits its shapes across two refs counts each in its own.
 - The pictures at the `half` shapes: **2048 × 640** (`src2x` 4096 × 1280) and **1024 × 1280** (`src2x` 2048 × 2560); frames 1x only.
 - A device loads only the bands its sides show (the pair stage they map to and the next), never the set.
 

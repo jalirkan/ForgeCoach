@@ -325,6 +325,7 @@ export default function AmbiencePage() {
                   setEventsLog([]);
                 }}
                 disabled={!plays.length}
+                data-amb-reset
               >
                 Reset
               </button>
