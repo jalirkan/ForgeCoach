@@ -15,10 +15,10 @@
 import { describe, expect, it } from 'vitest';
 import { halfLayout } from './layout.ts';
 import type { Biome, SlotState } from './model.ts';
-import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullChoice, pairFullHold, pairFullPlan, type PairFullHold, type PairFullPair } from './pairfull.ts';
+import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullCaption, pairFullChoice, pairFullElementSide, pairFullHeavierSide, pairFullHold, pairFullPlan, type PairFullHold, type PairFullPair } from './pairfull.ts';
 import { FORGECOACH_PAIRS_FULL_URL } from './prefs.ts';
 import { readFileSync } from 'node:fs';
-import { MAX_PAIRS_PACK_BYTES, pairElementAt, pairPictures, pairsBytes, pairsRefBytes, validatePairs } from './pairs.ts';
+import { MAX_PAIRS_PACK_BYTES, pairElementAt, pairElementEntryAt, pairPictures, pairsBytes, pairsRefBytes, validatePairs } from './pairs.ts';
 
 const BASE = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5/';
 const T = [1, 2, 3, 4, 5, 6];
@@ -98,7 +98,7 @@ describe('spec 1.16: the manifest', () => {
     expect(r.warnings.filter((w) => w.includes('.elements'))).toEqual([
       "pairs.island+plains.stages[0].elements: painted-in elements are variants of the stage's panorama, and this stage has none; ignored",
       'pairs.island+plains.stages[1].elements.X: not a colour (W, U, B, R, G); ignored',
-      'pairs.island+plains.stages[1].elements.G: not an object { src, phone, bytes }; ignored',
+      'pairs.island+plains.stages[1].elements.G: not an object { src, phone, bytes } or { left, right }; ignored',
     ]);
     const pair = r.pairs!.pairs['island+plains']!;
     expect(pairElementAt(pair, 1, 'R')).toBeNull();
@@ -237,5 +237,182 @@ describe('the load gate holds the previous picture (no band flash)', () => {
     const phone = pairPictures(v4, [[{ biome: 'island', stage: 1, weight: 1 }]], { phone: true, full: { thresholds: T } });
     expect(phone).toHaveLength(4);
     expect(phone.every((x) => x.src.endsWith('-panorama-phone.webp'))).toBe(true);
+  });
+});
+
+/**
+ * Spec 1.16.1: sided entries. The painter's set is one picture per pair colour's ground -- `s<k>+<C>L` (the feature on the
+ * key's left colour's ground) and `s<k>+<C>R` -- and SYSTEM.md A5 puts the element on the heavier pair colour's ground.
+ */
+describe('spec 1.16.1: sided painted-in elements', () => {
+  const P5 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/';
+  const sideOf = (key: string, k: number, c: string, s: 'L' | 'R') => ({
+    src: `pairs/${key}/s${k}+${c}${s}-panorama.webp`,
+    bytes: 180000,
+    phone: { src: `${P5}pairs/${key}/s${k}+${c}${s}-panorama-phone.webp`, bytes: 280000 },
+  });
+  /** island+plains (the key's left: island, its right: plains); red sided at stages 2 and 3, swamp at stage 2 with its left only and an unsided src. */
+  function sided(extra: Record<string, unknown> = {}) {
+    const key = 'island-plains';
+    const stages = [1, 2, 3].map((k) => ({
+      half: { src: `https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/${key}/s${k}-half.webp`, bytes: 300000 },
+      panorama: { ...panorama(key, k), bytes: 150000, phone: { ...panorama(key, k).phone, src: `https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/${key}/s${k}-panorama-phone.webp`, bytes: 250000 } },
+      ...(k >= 2
+        ? {
+            elements: {
+              R: { left: sideOf(key, k, 'R', 'L'), right: sideOf(key, k, 'R', 'R'), horizon: 0.48 },
+              ...(k === 2 ? { B: { src: `pairs/${key}/s2+B-panorama.webp`, phone: `pairs/${key}/s2+B-panorama-phone.webp`, bytes: 400000, left: { ...sideOf(key, 2, 'B', 'L'), horizon: 0.5 } } } : {}),
+            },
+          }
+        : {}),
+    }));
+    return validatePairs({ schema: 1, spec: '1.16.1', pairs: { 'island+plains': { dual: 'Tundra', stages }, ...extra } }, `${BASE}pairs.json`);
+  }
+  const pairs = sided().pairs!;
+  const pair = pairs.pairs['island+plains']!;
+  const plan = (slots: SlotState[], elements: ReadonlySet<Biome> | null = null) => pairFullPlan(halfLayout(slots, null), pairs, { thresholds: T, elements });
+  const pairOf = (items: ReturnType<typeof plan>) => items?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
+  const first = (p: PairFullPair) => pairFullCandidates(p, 3.2, false)[0]!;
+
+  it('reads both sides in the panorama’s shape, the entry’s own fields between the panorama’s and the side’s', () => {
+    const r = sided();
+    expect(r.errors).toEqual([]);
+    expect(r.pairs!.spec).toBe('1.16.1');
+    const red = pairElementEntryAt(pair, 2, 'R')!;
+    expect(red.any).toBeNull();
+    expect(red.left).toMatchObject({ src: `${BASE}pairs/island-plains/s2+RL-panorama.webp`, width: 3277, height: 640, focal: { x: 0.5, y: 0.52 }, horizon: 0.48, hour: 9, bytes: 180000, phoneBytes: 280000 });
+    expect(red.right!.phone).toMatchObject({ src: `${P5}pairs/island-plains/s2+RR-panorama-phone.webp`, width: 1638, height: 1280, horizon: 0.47 });
+    expect(pairElementAt(pair, 2, 'R', 'left')!.src).toBe(`${BASE}pairs/island-plains/s2+RL-panorama.webp`);
+    expect(pairElementAt(pair, 3, 'R', 'right')!.src).toBe(`${BASE}pairs/island-plains/s3+RR-panorama.webp`);
+    // Swamp gives its left side and an unsided src: the right side falls back to the unsided picture.
+    expect(pairElementAt(pair, 2, 'B', 'left')!.horizon).toBe(0.5);
+    expect(pairElementAt(pair, 2, 'B', 'right')!.src).toBe(`${BASE}pairs/island-plains/s2+B-panorama.webp`);
+    // Stage 1 has none.
+    expect(pairElementEntryAt(pair, 1, 'R')).toBeNull();
+  });
+
+  it('a 1.16 unsided entry still reads as before, both sides its one picture', () => {
+    const one = fixture().pairs!.pairs['island+plains']!;
+    for (const s of ['left', 'right'] as const) expect(pairElementAt(one, 2, 'R', s)!.src).toBe(`${BASE}pairs/island-plains/s2+R-panorama.webp`);
+  });
+
+  it('warns and drops a bad side, and an entry with no usable side', () => {
+    const r = validatePairs(
+      {
+        schema: 1,
+        pairs: {
+          'island+plains': {
+            stages: [
+              { half: { src: 'pairs/a/s1-half.webp' } },
+              { half: { src: 'pairs/a/s2-half.webp' }, panorama: panorama('a', 2), elements: { R: { left: 'nope', right: { src: 'pairs/a/s2+RR-panorama.webp' } }, G: { left: { bytes: 1 } } } },
+            ],
+          },
+        },
+      },
+      `${BASE}pairs.json`,
+    );
+    expect(r.warnings.filter((w) => w.includes('.elements'))).toEqual([
+      'pairs.island+plains.stages[1].elements.R.left: not an object { src, phone, bytes }; ignored',
+      expect.stringContaining('pairs.island+plains.stages[1].elements.G.left.src'),
+      'pairs.island+plains.stages[1].elements.G: no usable side (left or right); ignored',
+    ]);
+    const p = r.pairs!.pairs['island+plains']!;
+    expect(pairElementAt(p, 2, 'R', 'left')).toBeNull();
+    expect(pairElementAt(p, 2, 'R', 'right')!.src).toBe(`${BASE}pairs/a/s2+RR-panorama.webp`);
+    expect(pairElementEntryAt(p, 2, 'G')).toBeNull();
+  });
+
+  it('counts each shape in the ref its own file lies in (phone.bytes), and says painted elements are expected past 4 MB', () => {
+    // halves 3 × 300 kB (pairs-v2's tag), panoramas 3 × (150 + 250) kB (phone at pairs-v4's), red 4 × (180 + 280) kB (phone at pairs-v5-phone),
+    // swamp's unsided 400 kB and its left (180 + 280) kB.
+    expect(pair.bytes).toBe(3 * 300000 + 3 * 400000 + 4 * 460000 + 400000 + 460000);
+    expect(pair.refBytes).toBe(3 * 150000 + 4 * 180000 + 400000 + 180000);
+    // Past 4 MB with 2.6 MB of painted pictures: the warning says painted elements are expected to take a pair past it.
+    expect(sided().warnings).toEqual([
+      "pairs.island+plains: 4.6 MB of stage pictures declared, 2.6 MB of them painted-in elements; the budget is 4 MB per pair, and a set of painted-in elements (1.16) is expected to exceed it: a half loads only the picture it shows and the next stage's (pictures kept)",
+    ]);
+    // A full sided set (three colours, two sides, three stages):
+    const stages = [1, 2, 3].map((k) => ({ half: { src: `pairs/x/s${k}-half.webp`, bytes: 300000 }, panorama: panorama('x', k), elements: Object.fromEntries(['R', 'B', 'G'].map((c) => [c, { left: sideOf('x', k, c, 'L'), right: sideOf('x', k, c, 'R') }])) }));
+    const w = validatePairs({ schema: 1, pairs: { 'island+plains': { stages } } }, `${BASE}pairs.json`).warnings;
+    expect(w).toEqual([
+      'pairs.island+plains: 9.9 MB of stage pictures declared, 7.9 MB of them painted-in elements; the budget is 4 MB per pair, and a set of painted-in elements (1.16) is expected to exceed it: a half loads only the picture it shows and the next stage\'s (pictures kept)',
+    ]);
+  });
+
+  it('the pick: the heavier pair colour’s side, in the key’s order', () => {
+    // Plateau, Plains, Island (SYSTEM.md's worked example): plains 1.5 > island 1. The key's right colour is plains: R.
+    const heavyRight = pairOf(plan([slot('mountain', 0, 0.5), slot('island', 1, 1), slot('plains', 2, 1.5)]))!;
+    expect([heavyRight.mirror, heavyRight.elementSide, first(heavyRight).art.picture!.src]).toEqual([false, 'right', `${BASE}pairs/island-plains/s2+RR-panorama.webp`]);
+    expect(pairFullElementSide(heavyRight, () => 0)).toBe('right');
+    // Island the heavier: L.
+    const heavyLeft = pairOf(plan([slot('mountain', 0, 0.5), slot('island', 1, 1.5), slot('plains', 2, 1)]))!;
+    expect([heavyLeft.elementSide, first(heavyLeft).art.picture!.src.replace(BASE, '')]).toEqual(['left', 'pairs/island-plains/s2+RL-panorama.webp']);
+  });
+
+  it('mirrored: the rule on the key’s colours before mirroring, so the feature still lands on the heavier ground', () => {
+    // Plains arrived first, so the board has plains | island: the art is mirrored. Plains heavier → the key's right (R),
+    // drawn mirrored onto the board's left, where plains is.
+    const p = pairOf(plan([slot('plains', 0, 1.5), slot('island', 1, 1), slot('mountain', 2, 0.5)]))!;
+    expect([p.left, p.right, p.mirror]).toEqual(['plains', 'island', true]);
+    expect(pairFullHeavierSide(p, () => 0)).toBe('left');
+    expect(p.elementSide).toBe('right');
+    expect(first(p).art.picture!.src.replace(BASE, '')).toBe('pairs/island-plains/s2+RR-panorama.webp');
+    // Island heavier on the same board: the key's left (L).
+    const q = pairOf(plan([slot('plains', 0, 1), slot('island', 1, 1.5), slot('mountain', 2, 0.5)]))!;
+    expect([q.mirror, q.elementSide]).toEqual([true, 'left']);
+  });
+
+  it('a tie: the colour that arrived first, as the cut-out’s side', () => {
+    const p = pairOf(plan([slot('plains', 0, 1), slot('island', 1, 1), slot('mountain', 2, 1)]))!;
+    // Board plains | island (mirrored), tied: plains arrived first, its ground: the key's right.
+    expect([p.mirror, p.elementSide]).toEqual([true, 'right']);
+    const q = pairOf(plan([slot('island', 0, 1), slot('plains', 1, 1), slot('mountain', 2, 1)]))!;
+    expect([q.mirror, q.elementSide]).toEqual([false, 'left']);
+  });
+
+  it('the fallback: no picture on the side picked → the base panorama with the 1.14 cut-out, or the third colour’s panel', () => {
+    // Swamp at stage 2 has its left and an unsided src: plains heavier (right) takes the unsided picture.
+    const s2 = [slot('swamp', 0, 0.5), slot('island', 1, 1), slot('plains', 2, 1.5)];
+    expect(first(pairOf(plan(s2))!).art.picture!.src.replace(BASE, '')).toBe('pairs/island-plains/s2+B-panorama.webp');
+    // A pack with sides only: the right side absent → no painted picture; the cut-out stands in, or the panel.
+    const leftOnly = validatePairs(
+      { schema: 1, pairs: { 'island+plains': { stages: [1, 2].map((k) => ({ half: { src: `pairs/ip/s${k}-half.webp` }, panorama: panorama('ip', k), ...(k === 2 ? { elements: { R: { left: sideOf('ip', 2, 'R', 'L') } } } : {}) })) } } },
+      `${BASE}pairs.json`,
+    ).pairs!;
+    const lay = halfLayout([slot('mountain', 0, 0.5), slot('island', 1, 1), slot('plains', 2, 1.5)], null);
+    expect(pairFullPlan(lay, leftOnly, { thresholds: T })!.map((x) => x.kind)).toEqual(['slot', 'pair']);
+    const cut = pairOf(pairFullPlan(lay, leftOnly, { thresholds: T, elements: new Set<Biome>(['mountain']) }))!;
+    expect([cut.element, cut.elementSide]).toEqual(['mountain', 'right']);
+    expect(pairFullCandidates(cut, 3.2, false).map((x) => [x.art.picture!.src.replace(BASE, ''), x.painted])).toEqual([['pairs/ip/s2-panorama.webp', null], ['pairs/ip/s2-half.webp', null]]);
+    // Island heavier: its left side is painted.
+    const left = pairOf(pairFullPlan(halfLayout([slot('mountain', 0, 0.5), slot('island', 1, 1.5), slot('plains', 2, 1)], null), leftOnly, { thresholds: T }))!;
+    expect(first(left).painted).toBe('R');
+  });
+
+  it('the caption says the colour is painted in, and on whose ground', () => {
+    expect(pairFullCaption(plan([slot('mountain', 0, 0.5), slot('island', 1, 1), slot('plains', 2, 1.5)]))).toContain('; R painted in, on plains\'s ground');
+    expect(pairFullCaption(plan([slot('plains', 0, 2.5), slot('island', 1, 2), slot('swamp', 2, 0.5)], new Set<Biome>(['swamp'])))).toContain('; swamp as an element');
+  });
+
+  it('a land that turns the balance changes the picture (the strip cross-fades on a new src)', () => {
+    const a = first(pairOf(plan([slot('mountain', 0, 0.5), slot('island', 1, 1), slot('plains', 2, 1.5)]))!);
+    const b = first(pairOf(plan([slot('mountain', 0, 0.5), slot('island', 1, 2), slot('plains', 2, 1.5)]))!);
+    expect([a.painted, b.painted]).toEqual(['R', 'R']);
+    expect(a.art.picture!.src).not.toBe(b.art.picture!.src);
+  });
+
+  it('pairPictures warms the side the half would draw (both on a tie with no arrival order)', () => {
+    const warm = (side: { biome: Biome; stage: number; weight: number; index?: number }[]) =>
+      pairPictures(pairs, [side], { phone: false, full: { thresholds: T } })
+        .map((x) => x.src.replace(BASE, ''))
+        .filter((s) => s.includes('+'));
+    expect(warm([{ biome: 'mountain', stage: 1, weight: 0.5 }, { biome: 'island', stage: 1, weight: 1 }, { biome: 'plains', stage: 2, weight: 1.5 }])).toEqual(['pairs/island-plains/s2+RR-panorama.webp', 'pairs/island-plains/s3+RR-panorama.webp']);
+    expect(warm([{ biome: 'mountain', stage: 1, weight: 1 }, { biome: 'island', stage: 1, weight: 1 }, { biome: 'plains', stage: 1, weight: 1 }])).toEqual([
+      'pairs/island-plains/s2+RL-panorama.webp',
+      'pairs/island-plains/s2+RR-panorama.webp',
+      'pairs/island-plains/s3+RL-panorama.webp',
+      'pairs/island-plains/s3+RR-panorama.webp',
+    ]);
+    expect(warm([{ biome: 'mountain', stage: 1, weight: 1, index: 0 }, { biome: 'plains', stage: 1, weight: 1, index: 1 }, { biome: 'island', stage: 1, weight: 1, index: 2 }])).toEqual(['pairs/island-plains/s2+RR-panorama.webp', 'pairs/island-plains/s3+RR-panorama.webp']);
   });
 });

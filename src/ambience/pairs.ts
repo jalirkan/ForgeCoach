@@ -43,8 +43,16 @@ import { halfSeams, SEAM_CAP_VW, widenedRatio } from './bridges.ts';
 
 /** The pair pack's manifest, at the root of the pairs URL. */
 export const PAIRS_MANIFEST_FILE = 'pairs.json';
-/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs, 1.15 whole-half panoramas, 1.16 painted-in elements). */
-export const PAIRS_SPEC = '1.16';
+/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs, 1.15 whole-half panoramas, 1.16 painted-in elements, 1.16.1 sided ones). */
+export const PAIRS_SPEC = '1.16.1';
+
+/** Is version `a` (1.x or 1.x.y) newer than `b`? */
+function specNewer(a: string, b: string): boolean {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 1; i < 3; i++) if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) > (pb[i] ?? 0);
+  return false;
+}
 const MAX_PAIRS_MANIFEST_BYTES = 256 * 1024;
 
 /** How wide a pair's band is, as fractions of the half's width. */
@@ -97,9 +105,33 @@ export interface PairStage extends PackStage {
    * `hour` and `key` (and its phone picture's) are the panorama's. Drawn
    * under `?pairfull=1` instead of the panorama when the half's third colour
    * has one at the stage shown ({@link pairElementAt}); the 1.14 cut-out
-   * element is then not drawn over it.
+   * element is then not drawn over it. Spec 1.16.1: an entry may be SIDED
+   * ({@link PairElement}), one picture with the feature on each pair
+   * colour's ground.
    */
-  elements?: Partial<Record<PieceColour, PackHalf>>;
+  elements?: Partial<Record<PieceColour, PairElement>>;
+}
+
+/**
+ * Spec 1.16.1: which pair colour's ground, in the manifest KEY's order:
+ * `left` the key's first biome (the ground at the panorama's left end),
+ * `right` its second. The painter's `s<k>+<C>L` / `s<k>+<C>R` files.
+ */
+export type PairSide = 'left' | 'right';
+
+/**
+ * Spec 1.16 / 1.16.1: one colour's painted-in element at a stage. 1.16's
+ * unsided entry (`{ src, phone, bytes }`) is `any`; 1.16.1's sided entry
+ * (`{ left: {...}, right: {...} }`) gives one picture per ground, the
+ * feature grown on the key's left colour's ground or on its right's (SYSTEM.md
+ * A5: the element sits on the HEAVIER pair colour's ground, so the reader
+ * draws the heavier colour's side). A side the entry does not give falls back
+ * to `any`; with neither, the colour is not painted in on that side.
+ */
+export interface PairElement {
+  left: PackHalf | null;
+  right: PackHalf | null;
+  any: PackHalf | null;
 }
 
 /**
@@ -204,11 +236,27 @@ export function pairPanoramaAt(pair: PackPair | null | undefined, stage: number)
 /**
  * Spec 1.16: the painted-in element panorama for `colour` at a pair stage
  * (the last stage past its end, as {@link pairPanoramaAt}), or null: never
- * borrowed from another stage.
+ * borrowed from another stage. Spec 1.16.1: `side` (the KEY's order,
+ * {@link PairSide}) picks a sided entry's picture, else its unsided one;
+ * without `side`, the unsided picture (a sided-only entry: its left).
  */
-export function pairElementAt(pair: PackPair | null | undefined, stage: number, colour: PieceColour | null | undefined): PackHalf | null {
+export function pairElementAt(pair: PackPair | null | undefined, stage: number, colour: PieceColour | null | undefined, side?: PairSide | null): PackHalf | null {
+  const e = pairElementEntryAt(pair, stage, colour);
+  if (!e) return null;
+  return side ? (e[side] ?? e.any) : (e.any ?? e.left ?? e.right);
+}
+
+/** Spec 1.16.1: a colour's whole painted-in entry at a pair stage (both sides), or null. */
+export function pairElementEntryAt(pair: PackPair | null | undefined, stage: number, colour: PieceColour | null | undefined): PairElement | null {
   if (!pair || !colour || stage <= 0 || !pair.stages.length) return null;
   return pair.stages[Math.min(stage, pair.stages.length) - 1]?.elements?.[colour] ?? null;
+}
+
+/** Spec 1.16.1: every picture of a painted-in entry, each once (for the budget and warming). */
+export function pairElementPictures(e: PairElement | null | undefined): PackHalf[] {
+  const out: PackHalf[] = [];
+  for (const h of [e?.any, e?.left, e?.right]) if (h && !out.some((x) => x.src === h.src)) out.push(h);
+  return out;
 }
 
 /** The half picture a pair shows at a pair stage (the last stage it has past its end), or null. */
@@ -311,15 +359,29 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
   const seen = new Set<string>();
   let halfBytes = 0;
   let refBytes = 0;
+  let paintedBytes = 0;
   const inRef = (src: string) => src.startsWith(base);
-  for (const s of stages)
-    for (const h of [s.half, s.motif, s.panorama, ...Object.values(s.elements ?? {})]) {
-      if (!h || seen.has(h.src)) continue;
-      seen.add(h.src);
-      halfBytes += h.bytes ?? 0;
-      if (inRef(h.src)) refBytes += h.bytes ?? 0;
-    }
-  if (halfBytes > MAX_PAIR_HALF_BYTES) warn.push(`${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared; their budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair (pictures kept)`);
+  // Spec 1.16.1: a picture whose phone declares its own `bytes` has its `bytes` for the desktop files alone, and each part
+  // counts in this ref by where its own file is (pairs-v5's phone pictures are at a tag of their own).
+  const count = (h: PackHalf | null | undefined, painted: boolean) => {
+    if (!h || seen.has(h.src)) return;
+    seen.add(h.src);
+    const own = (h.bytes ?? 0) + (h.phoneBytes ?? 0);
+    halfBytes += own;
+    if (painted) paintedBytes += own;
+    if (inRef(h.src)) refBytes += h.bytes ?? 0;
+    if (h.phoneBytes !== undefined && h.phone && inRef(h.phone.src)) refBytes += h.phoneBytes;
+  };
+  for (const s of stages) {
+    for (const h of [s.half, s.motif, s.panorama]) count(h, false);
+    for (const e of Object.values(s.elements ?? {})) for (const h of pairElementPictures(e)) count(h, true);
+  }
+  if (halfBytes > MAX_PAIR_HALF_BYTES)
+    warn.push(
+      paintedBytes > 0
+        ? `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared, ${(paintedBytes / 1048576).toFixed(1)} MB of them painted-in elements; the budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair, and a set of painted-in elements (1.16) is expected to exceed it: a half loads only the picture it shows and the next stage's (pictures kept)`
+        : `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared; their budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair (pictures kept)`,
+    );
   const frameBytes = (transitions?.steps ?? []).reduce((n, s) => n + (s.bytes ?? 0), 0);
   const frameRefBytes = (transitions?.steps ?? []).reduce((n, s) => n + (s.frames.every((f) => inRef(f.src)) ? (s.bytes ?? 0) : 0), 0);
   const ownBytes = parseBytes(e, path, warn) ?? 0;
@@ -353,11 +415,14 @@ function shapeOf(raw: unknown, keys: readonly string[]): Record<string, unknown>
  * Spec 1.16: a stage's `elements`, `{ "<colour>": { src, phone?, bytes, horizon?, … } }`,
  * each read as a 1.5 `half` in its stage panorama's shape (`rawPanorama`,
  * the stage's raw `panorama`: its geometry fills what the entry leaves out;
- * `phone` may be a URL or an object). Null when there are none. A stage with
- * no usable panorama has none (they are its variants); a bad colour or entry
- * is warned and dropped alone.
+ * `phone` may be a URL or an object). Spec 1.16.1: an entry may instead (or
+ * as well) give `left` and `right`, each `{ src, phone, bytes, … }` read the
+ * same way, the entry's own shape fields (`horizon`, …) between the
+ * panorama's and the side's. Null when there are none. A stage with no
+ * usable panorama has none (they are its variants); a bad colour, entry or
+ * side is warned and dropped alone.
  */
-function parseStageElements(v: unknown, rawPanorama: unknown, base: string, path: string, warn: string[]): Partial<Record<PieceColour, PackHalf>> | null {
+function parseStageElements(v: unknown, rawPanorama: unknown, base: string, path: string, warn: string[]): Partial<Record<PieceColour, PairElement>> | null {
   if (v === undefined || v === null) return null;
   if (!isObj(v)) {
     warn.push(`${path}: not an object keyed by colour (${PIECE_COLOURS.join(', ')}); ignored`);
@@ -367,7 +432,16 @@ function parseStageElements(v: unknown, rawPanorama: unknown, base: string, path
     warn.push(`${path}: painted-in elements are variants of the stage's panorama, and this stage has none; ignored`);
     return null;
   }
-  const out: Partial<Record<PieceColour, PackHalf>> = {};
+  const panoShape = shapeOf(rawPanorama, PANORAMA_SHAPE);
+  const panoPhone = shapeOf(rawPanorama.phone, PANORAMA_PHONE_SHAPE);
+  // One picture: `e` over `shape` (the panorama's, then the entry's), its phone over the panorama phone's shape.
+  const picture = (e: Record<string, unknown>, shape: Record<string, unknown>, phoneShape: Record<string, unknown>, p: string): PackHalf | null => {
+    const merged: Record<string, unknown> = { ...shape, ...e };
+    if (typeof e.phone === 'string') merged.phone = { ...phoneShape, src: e.phone };
+    else if (isObj(e.phone)) merged.phone = { ...phoneShape, ...e.phone };
+    return parseHalf(merged, base, p, warn);
+  };
+  const out: Partial<Record<PieceColour, PairElement>> = {};
   for (const k of Object.keys(v)) {
     if (!(PIECE_COLOURS as readonly string[]).includes(k)) {
       warn.push(`${path}.${cleanText(k, 30)}: not a colour (${PIECE_COLOURS.join(', ')}); ignored`);
@@ -375,15 +449,30 @@ function parseStageElements(v: unknown, rawPanorama: unknown, base: string, path
     }
     const e = v[k];
     if (!isObj(e)) {
-      warn.push(`${path}.${k}: not an object { src, phone, bytes }; ignored`);
+      warn.push(`${path}.${k}: not an object { src, phone, bytes } or { left, right }; ignored`);
       continue;
     }
-    const merged: Record<string, unknown> = { ...shapeOf(rawPanorama, PANORAMA_SHAPE), ...e };
-    const phoneShape = shapeOf(rawPanorama.phone, PANORAMA_PHONE_SHAPE);
-    if (typeof e.phone === 'string') merged.phone = { ...phoneShape, src: e.phone };
-    else if (isObj(e.phone)) merged.phone = { ...phoneShape, ...e.phone };
-    const h = parseHalf(merged, base, `${path}.${k}`, warn);
-    if (h) out[k as PieceColour] = h;
+    const sided = e.left !== undefined || e.right !== undefined;
+    const entryShape = { ...panoShape, ...shapeOf(e, PANORAMA_SHAPE) };
+    const entryPhone = { ...panoPhone, ...(isObj(e.phone) ? shapeOf(e.phone, PANORAMA_PHONE_SHAPE) : {}) };
+    const side = (s: PairSide): PackHalf | null => {
+      const raw = e[s];
+      if (raw === undefined || raw === null) return null;
+      if (!isObj(raw)) {
+        warn.push(`${path}.${k}.${s}: not an object { src, phone, bytes }; ignored`);
+        return null;
+      }
+      return picture(raw, entryShape, entryPhone, `${path}.${k}.${s}`);
+    };
+    const left = side('left');
+    const right = side('right');
+    // 1.16's unsided picture: an entry's own `src` (a sided entry may keep one for a side it leaves out).
+    const any = !sided || e.src !== undefined ? picture(sided ? Object.fromEntries(Object.entries(e).filter(([x]) => x !== 'left' && x !== 'right')) : e, panoShape, panoPhone, `${path}.${k}`) : null;
+    if (!left && !right && !any) {
+      if (sided) warn.push(`${path}.${k}: no usable side (left or right); ignored`);
+      continue;
+    }
+    out[k as PieceColour] = { left, right, any };
   }
   return Object.keys(out).length ? out : null;
 }
@@ -414,9 +503,10 @@ export function validatePairs(raw: unknown, base: string): PairsResult {
   if (!Object.keys(pairs).length) return { pairs: null, errors: ['No pair has a usable stage picture or motif.'], warnings };
   let spec: string | null = null;
   if (raw.spec !== undefined) {
-    spec = typeof raw.spec === 'string' && /^1\.\d{1,2}$/.test(raw.spec) ? raw.spec : null;
+    // Spec 1.16.1: an amendment may carry a third number (1.16.1); a newer version is compared number by number.
+    spec = typeof raw.spec === 'string' && /^1\.\d{1,2}(\.\d{1,2})?$/.test(raw.spec) ? raw.spec : null;
     if (!spec) warnings.push(`spec: "${cleanText(raw.spec, 20) ?? typeof raw.spec}" is not a 1.x version; ignored`);
-    else if (Number(spec.split('.')[1]) > Number(PAIRS_SPEC.split('.')[1])) warnings.push(`spec: the pairs are written for ${spec}; this ForgeCoach reads ${PAIRS_SPEC}, so newer fields are ignored`);
+    else if (specNewer(spec, PAIRS_SPEC)) warnings.push(`spec: the pairs are written for ${spec}; this ForgeCoach reads ${PAIRS_SPEC}, so newer fields are ignored`);
   }
   // Only the files in this manifest's own ref count: a file named at another tag's URL costs this ref nothing (review fault 7).
   const total = Object.values(pairs).reduce((n, p) => n + (p?.refBytes ?? 0), 0);
@@ -680,7 +770,7 @@ export function rowCentreCss(items: readonly Pick<RowItem, 'share' | 'seam'>[], 
  */
 export function pairPictures(
   pairs: PairsPack | null | undefined,
-  sides: readonly (readonly { biome: Biome; stage: number; weight?: number }[])[],
+  sides: readonly (readonly { biome: Biome; stage: number; weight?: number; index?: number }[])[],
   opts: { phone: boolean; full?: { thresholds?: readonly number[] | null } | null },
 ): { src: string; src2x: string | null }[] {
   if (!pairs) return [];
@@ -720,7 +810,14 @@ export function pairPictures(
         const others = live.filter((_, k) => k !== i && k !== j).map((s) => BIOME_COLOUR[s.biome]).filter((c): c is PieceColour => !!c);
         if (!others.length) continue;
         const withThird = fullStage(sideTotal);
-        for (const st of [withThird, withThird + 1]) if (st > 0 && st <= found.pair.stages.length) for (const c of others) add(pairElementAt(found.pair, st, c));
+        // Spec 1.16.1: the side the half would draw (the heavier pair colour's ground, in the key's order); a tie with no arrival order, both.
+        const a = live[i]!;
+        const b = live[j]!;
+        const [kl, kr] = a.biome === found.pair.left ? [a, b] : [b, a];
+        const wl = kl.weight ?? 0;
+        const wr = kr.weight ?? 0;
+        const sidesToWarm: PairSide[] = wl !== wr ? [wl > wr ? 'left' : 'right'] : kl.index !== undefined && kr.index !== undefined ? [kl.index <= kr.index ? 'left' : 'right'] : ['left', 'right'];
+        for (const st of [withThird, withThird + 1]) if (st > 0 && st <= found.pair.stages.length) for (const c of others) for (const sd of sidesToWarm) add(pairElementAt(found.pair, st, c, sd));
       }
   }
   return out;

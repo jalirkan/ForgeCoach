@@ -141,7 +141,7 @@ describe('spec 1.16: a painted-in element replaces the cut-out', () => {
     const p = pairsV4.pairs['island+plains']!;
     // pairs-v4 has none yet: give stage 2 a painted red, as the batch being painted will.
     const painted = { ...p.stages[1]!.panorama!, src: `${FORGECOACH_PAIRS_FULL_URL}pairs/island-plains/s2+R-panorama.webp` };
-    const withPainted: PairsPack = { ...pairsV4, pairs: { ...pairsV4.pairs, 'island+plains': { ...p, stages: p.stages.map((st, i) => (i === 1 ? { ...st, elements: { R: painted } } : st)) } } };
+    const withPainted: PairsPack = { ...pairsV4, pairs: { ...pairsV4.pairs, 'island+plains': { ...p, stages: p.stages.map((st, i) => (i === 1 ? { ...st, elements: { R: { left: null, right: null, any: painted } } } : st)) } } };
     const local: ScenePack = { ...pack, pairs: withPainted };
     loadAll();
     markPicture(painted.src, true);
@@ -156,6 +156,41 @@ describe('spec 1.16: a painted-in element replaces the cut-out', () => {
     loadAll();
     expect(attrs(renderToStaticMarkup(<SceneryStrip slots={slots} pack={local} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />), 'data-pairfull-painted')).toEqual([]);
     expect(attrs(renderToStaticMarkup(<ScenePieces pack={local} pieces={pieces} slots={slots} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />), 'data-pc-colour')).toEqual(['R']);
+  });
+});
+
+describe('spec 1.16.1: pairs-v5’s sided pictures on the worked example (#ambience → Three colours)', () => {
+  const V5 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5/';
+  const pairsV5: PairsPack = validatePairs(JSON.parse(readFileSync(new URL('../../ambience/testdata/pairs-v5.pairs.json', import.meta.url), 'utf8')), `${V5}pairs.json`).pairs!;
+  const local: ScenePack = { ...pack, pairs: pairsV5 };
+  // Plateau, Plains, Island: plains 1.5 (the board's left), island 1, mountain ½ -- island+plains at stage 2, mirrored.
+  const slots = [slot('mountain', 0, 0.5), slot('plains', 0, 1.5), slot('island', 2, 1)];
+  const strip = () => renderToStaticMarkup(<SceneryStrip slots={slots} pack={local} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />);
+  const pcs = () => renderToStaticMarkup(<ScenePieces pack={local} pieces={pieces} slots={slots} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />);
+  const base = `${V5}pairs/island-plains/s2-panorama.webp`;
+  const painted = `${V5}pairs/island-plains/s2+RR-panorama.webp`;
+
+  it('draws the heavier colour’s painted picture (R: on plains’s ground), mirrored with the panorama, and no cut-out', () => {
+    markPicture(base, true);
+    markPicture(painted, true);
+    for (const c of ['W', 'U', 'B', 'R', 'G'] as const) markPicture(pieces.elements[c]!.src, true);
+    const html = strip();
+    expect(attrs(html, 'data-pairfull')).toEqual(['island+plains']);
+    expect(attrs(html, 'data-pairfull-painted')).toEqual(['R']);
+    expect(attrs(html, 'data-pairfull-painted-side')).toEqual(['right']);
+    expect(html).toContain('is-mirrored');
+    expect(html).toContain(painted);
+    expect(html).not.toContain(`${V5}pairs/island-plains/s2+RL-panorama.webp`);
+    expect(attrs(pcs(), 'data-pc')).not.toContain('element');
+  });
+
+  it('until the painted picture has loaded: the base panorama and the cut-out meanwhile', () => {
+    markPicture(base, true);
+    markPicture(pieces.elements.R!.src, true);
+    const html = strip();
+    expect(attrs(html, 'data-pairfull-painted')).toEqual([]);
+    expect(html).toContain(base);
+    expect(attrs(pcs(), 'data-pc-colour')).toEqual(['R']);
   });
 });
 
