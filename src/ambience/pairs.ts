@@ -483,7 +483,7 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
   if (halfBytes > MAX_PAIR_HALF_BYTES)
     warn.push(
       gridBytes > 0
-        ? `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared, ${(gridBytes / 1048576).toFixed(1)} MB of them the seam grid (1.17)${paintedBytes > 0 ? ` and ${(paintedBytes / 1048576).toFixed(1)} MB painted-in elements` : ''}; the budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair, and a grid is expected to exceed it: a half loads only the cell it shows and its two neighbours (pictures kept)`
+        ? `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared, ${(gridBytes / 1048576).toFixed(1)} MB of them the seam grid (1.17)${paintedBytes > 0 ? ` and ${(paintedBytes / 1048576).toFixed(1)} MB painted-in elements` : ''}; the budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair, and a grid is expected to exceed it: a half loads only the cell it shows, its neighbours and, on a mono side, each other colour's first cell (pictures kept)`
         : paintedBytes > 0
         ? `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared, ${(paintedBytes / 1048576).toFixed(1)} MB of them painted-in elements; the budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair, and a set of painted-in elements (1.16) is expected to exceed it: a half loads only the picture it shows and the next stage's (pictures kept)`
         : `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared; their budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair (pictures kept)`,
@@ -970,7 +970,9 @@ export function pairPictures(
   for (const slots of sides) {
     const live = slots.filter((s) => s.stage > 0);
     const sideTotal = live.reduce((n, s) => n + (s.weight ?? 0), 0);
-    if (opts.full)
+    // A mono side only (#202's review): with two or more colours the heaviest pair keeps the grid and a third colour's
+    // first cell is almost never drawn, so warming one for every live colour spent about 400 KB a side for nothing.
+    if (opts.full && live.length === 1)
       for (const s of live)
         for (const other of Object.keys(BIOME_COLOUR) as Biome[]) {
           if (other === s.biome || !BIOME_COLOUR[s.biome] || live.some((x) => x.biome === other)) continue;

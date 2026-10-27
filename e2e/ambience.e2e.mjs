@@ -21,7 +21,7 @@
  *      cut-out element is drawn over it, and that the caption says
  *      "R painted in";
  *   4. spec 1.17 (draft), only when the pairs manifest has a seam `grid`
- *      (pairs-v6-draft, by PAIRS_DIR or PAIRS_URL): with the Lands sliders,
+ *      (pairs-v6 by default, or a grid pack by PAIRS_DIR or PAIRS_URL): with the Lands sliders,
  *      island 4 | swamp 3 draws the cell `4x3` unmirrored, a fourth Swamp
  *      steps one half (`4x4`), island 6 | swamp 2 clamps the lighter half
  *      (`6x5`), and forest 2 | swamp 3 draws swamp+forest's `3x2` MIRRORED
@@ -55,6 +55,8 @@ const OUT = path.join(ROOT, 'e2e', 'out');
 const env = process.env;
 const HEADLESS = !/^(0|false|no)$/i.test(env.HEADLESS ?? '1');
 const PAIRS_DIR = env.PAIRS_DIR ? path.resolve(env.PAIRS_DIR) : null;
+/** What `?pairfull=1` loads with no `?pairs=`: src/ambience/prefs.ts's FORGECOACH_PAIRS_FULL_URL (an .mjs cannot import it). */
+const DEFAULT_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6/';
 const TIMEOUT = 30_000;
 
 class Fail extends Error {}
@@ -129,7 +131,10 @@ async function main() {
   const origin = `http://127.0.0.1:${port}`;
   // No ?pairs= by default: under ?pairfull=1 ForgeCoach's pack brings FORGECOACH_PAIRS_FULL_URL (pairs-v6).
   const pairs = PAIRS_DIR ? `${origin}/pairs-pack/` : (env.PAIRS_URL || null);
-  log(`pairs: ${pairs ?? 'the flag’s default (no ?pairs=)'}`);
+  // The manifest the page really loads: a pairs= of yours, or the flag's default (prefs.ts's FORGECOACH_PAIRS_FULL_URL,
+  // whose value is kept here by hand), so a default run checks the grid, the pair forming and the phone on pairs-v6 too.
+  const manifestPairs = pairs ?? DEFAULT_PAIRS_FULL_URL;
+  log(`pairs: ${pairs ?? `the flag’s default (no ?pairs=; ${DEFAULT_PAIRS_FULL_URL})`}`);
   const pw = await loadPlaywright();
   const browser = await launchBrowser(pw, { headless: HEADLESS });
   let failed = false;
@@ -180,10 +185,8 @@ async function main() {
     await page.waitForTimeout(3000);
     await page.screenshot({ path: path.join(OUT, 'ambience-three.png') });
     log('PASS: the worked example draws R painted in on plains’s ground (s2+RR), mirrored, with no cut-out');
-    if (pairs) {
-      const ran = await gridChecks(page, pairs, errors);
-      if (ran) await phoneCheck(browser, origin, pairs);
-    }
+    const ran = await gridChecks(page, manifestPairs, errors);
+    if (ran) await phoneCheck(browser, origin, pairs);
   } catch (e) {
     failed = true;
     if (e instanceof Fail) console.error(`[e2e ambience] FAIL: ${e.message}`);
@@ -311,7 +314,7 @@ async function phoneCheck(browser, origin, pairs) {
     if (r.url().includes('/seams/')) seams.push(r.url());
   });
   try {
-    await page.goto(`${origin}/?pairfull=1&pairs=${encodeURIComponent(pairs)}#ambience`);
+    await page.goto(`${origin}/?pairfull=1${pairs ? `&pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     await setLands(page, 'island', 4);
     await setLands(page, 'swamp', 3);
