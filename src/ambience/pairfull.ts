@@ -81,7 +81,7 @@
 import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome, type SlotState } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf, PieceColour } from './manifest.ts';
-import { pairElementAt, pairFor, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
+import { pairElementAt, pairFor, pairGridGivesWay, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
@@ -171,13 +171,16 @@ export function pairFullStage(pair: PackPair, total: number, thresholds: readonl
  * is at mono stage `stageLeft` and board-right at `stageRight` (each
  * colour's own stage: layout.ts's, the preview's slider when set), or
  * undefined (no grid, or no cell even after the clamp: the `stages`).
+ * `narrow` (a phone-width screen): undefined too for a cell that gives way
+ * there (pairs.ts `pairGridGivesWay`).
  */
-export function pairFullGrid(pair: PackPair, boardLeft: Biome, stageLeft: number, stageRight: number): PairFullGrid | undefined {
+export function pairFullGrid(pair: PackPair, boardLeft: Biome, stageLeft: number, stageRight: number, narrow = false): PairFullGrid | undefined {
   const g = pair.grid;
   if (!g) return undefined;
   const mirror = boardLeft !== g.left;
   const pick = pairGridPick(pair, mirror ? stageRight : stageLeft, mirror ? stageLeft : stageRight);
-  return pick ? { ...pick, left: g.left, right: g.right, mirror } : undefined;
+  if (!pick || (narrow && pairGridGivesWay(pair, pick.picture))) return undefined;
+  return { ...pick, left: g.left, right: g.right, mirror };
 }
 
 /** A pair with a whole-half picture: a 1.9 band pair (a motif pair has no `half`, 1.12). */
@@ -206,6 +209,12 @@ export function pairFullPlan(
     showing?: MakeupShowing | null;
     /** The half's own slots, before layout.ts dropped a fourth or fifth colour: the stage counts EVERY coloured land (SYSTEM.md A5). Without them, the layout's. */
     slots?: readonly SlotState[] | null;
+    /**
+     * A phone-width screen (layout.ts `PHONE_VIEWPORT_MAX`, SceneryStrip's
+     * `useNarrowScreen`): a seam grid cell with no phone picture is not
+     * planned (pairs.ts `pairGridGivesWay`); the half is the pair's `stages`.
+     */
+    narrow?: boolean;
   } = {},
 ): PairFullItem[] | null {
   if (!pairs) return null;
@@ -226,7 +235,7 @@ export function pairFullPlan(
     const wb = y.l.slot.weight;
     const third = pick.third ? byBiome(COLOUR_BIOME[pick.third]) : null;
     // Spec 1.17 (draft): a cell for the two colours' own stages takes the whole half; a third colour shows nothing on it.
-    const grid = pairFullGrid(found.pair, x.l.slot.biome, x.l.stage, y.l.stage);
+    const grid = pairFullGrid(found.pair, x.l.slot.biome, x.l.stage, y.l.stage, opts.narrow ?? false);
     if (grid) {
       const stage = pairFullStage(found.pair, third ? pick.total : wa + wb, thresholds, opts.stageOverride ?? null);
       return [{ kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, grid }];
@@ -240,7 +249,7 @@ export function pairFullPlan(
       const side = pairFullElementSide(item, (b) => (b === x.l.slot.biome ? x.l.slot.index : y.l.slot.index));
       if (opts.elements?.has(third.l.slot.biome) || pairElementAt(found.pair, stage, colour, side)) return [{ ...item, elementSide: side }];
     }
-    return withPanel(found, x, y, third, shareSum, thresholds, opts.stageOverride ?? null);
+    return withPanel(found, x, y, third, shareSum, thresholds, opts.stageOverride ?? null, opts.narrow ?? false);
   }
   // No picture for makeup.ts's pair: the heaviest pictured pair (a tie, the earlier arrivals), the third as a panel; no element.
   const cands: { a: (typeof live)[number]; b: (typeof live)[number]; w: number; arrival: number }[] = [];
@@ -255,7 +264,7 @@ export function pairFullPlan(
   cands.sort((p, q) => q.w - p.w || p.arrival - q.arrival);
   const { a, b } = cands[0]!;
   const third = live.find((x) => x !== a && x !== b) ?? null;
-  return withPanel(pairFor(pairs, a.l.slot.biome, b.l.slot.biome)!, a, b, third, shareSum, thresholds, opts.stageOverride ?? null);
+  return withPanel(pairFor(pairs, a.l.slot.biome, b.l.slot.biome)!, a, b, third, shareSum, thresholds, opts.stageOverride ?? null, opts.narrow ?? false);
 }
 
 /** The pair picture beside the third biome's panel (its own `halfLayout` share and stage, at its end of the row), or alone. */
@@ -267,6 +276,7 @@ function withPanel(
   shareSum: number,
   thresholds: readonly number[],
   stageOverride: number | null,
+  narrow: boolean,
 ): PairFullItem[] {
   const wa = a.l.slot.weight;
   const wb = b.l.slot.weight;
@@ -283,7 +293,7 @@ function withPanel(
     share: r4(1 - thirdShare),
     stage: pairFullStage(found.pair, wa + wb, thresholds, stageOverride),
   };
-  const grid = pairFullGrid(found.pair, a.l.slot.biome, a.l.stage, b.l.stage);
+  const grid = pairFullGrid(found.pair, a.l.slot.biome, a.l.stage, b.l.stage, narrow);
   if (grid) item.grid = grid;
   if (!third) return [item];
   const slot: PairFullSlot = { kind: 'slot', index: third.i, biome: third.l.slot.biome, share: thirdShare };
@@ -403,6 +413,11 @@ export interface PairFullHold<L> {
  * in one frame, a step of two, a slow network): the cell is held, never the
  * pair's old whole-place panorama in between (it is always warm, so the load
  * gate's `show` would otherwise be it: cell → panorama → cell).
+ * And when a pair FORMS (one colour, then a second: the half drew its
+ * panels, no pair picture) and its first cell is wanted and still loading:
+ * the panels are held, never the warm whole-place panorama for a moment
+ * before the cell (the #201 follow-up; `pairPictures` warms the first cells
+ * ahead, so this is the slow-network case).
  * Pure: `hold` in, the new memory out (SceneryStrip keeps it in a ref).
  */
 export function pairFullHold<L>(
@@ -417,7 +432,9 @@ export function pairFullHold<L>(
   const paintedNext = !!cur.plan && !!cur.choice?.want?.painted && cur.choice.show !== cur.choice.want && !!hold.last?.shown?.painted;
   // Spec 1.17 (the review of #201): a grid cell on screen and another cell wanted but not loaded: hold the cell.
   const gridNext = !!cur.plan && !!cur.choice?.want?.cell && cur.choice.show !== cur.choice.want && !!hold.last?.shown?.cell;
-  if (cold || paintedNext || gridNext) {
+  // The pair forming (the #201 follow-up): the half drew no pair picture before and wants its first cell, not loaded yet.
+  const gridFirst = !!cur.plan && !!cur.choice?.want?.cell && cur.choice.show !== cur.choice.want && !!hold.last && !hold.last.plan;
+  if (cold || paintedNext || gridNext || gridFirst) {
     const since = hold.since ?? now;
     if (hold.last && now - since < holdMs) return { draw: hold.last, hold: { last: hold.last, since }, holding: true };
     if (cold) return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };

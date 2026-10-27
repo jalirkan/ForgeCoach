@@ -156,8 +156,9 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const bridged = half && !!pack?.bridges;
   const pairsPack = half ? (pack?.pairs ?? null) : null;
   // Spec 1.15: the pair picture as the whole half (null: the half as today).
-  const plannedFull = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride, elements, showing, slots }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride, elements, showing, slots]);
   const narrow = useNarrowScreen();
+  // Spec 1.17: on a phone-width screen a desktop-only seam grid cell is not planned; the half is the pair's stages.
+  const plannedFull = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride, elements, showing, slots, narrow }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride, elements, showing, slots, narrow]);
   // Spec 1.15's load gate (review fault 4): the pair picture is drawn once a picture of it has loaded (1.16: a painted-in
   // element first). Until then the half holds what it drew last (the review of #198: no panels-and-band flash on a cold
   // cache), for PAIR_FULL_HOLD_MS at most; with nothing drawn before, or if every picture fails, its panels. Never blank.

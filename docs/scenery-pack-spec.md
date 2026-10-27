@@ -33,7 +33,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.15 | **Whole-half pair panoramas** (§2, *Whole-half pair panoramas*), behind `?pairfull=1` only, default off: a pair stage in `pairs.json` may carry a **`panorama`**, one picture of one place 1.6 × the half's 16 : 5 (and a 1.28 : 1 `phone`), the key's first biome the ground at its left end and the second at its right. A half of exactly two colours with a pair picture shows it across the **whole half** (the panorama, else the 1.9 `half`), and the land share **pans** it (the transition sits at the share) instead of widening a band; its stage from the two colours' total lands. Three colours: the heaviest pair's picture beside the third's panel (a placeholder until 1.14's element is drawn). `pairFullView` exposes the transition, each colour's ground and the horizon for 1.14's pieces. ForgeCoach's pairs under the flag: pairs-v4. |
 | 1.16 | **Painted-in elements and one makeup rule** (§2, *Painted-in elements*), behind `?pairfull=1` for the pictures: a pair stage in `pairs.json` may carry **`elements`**, per colour that stage's panorama with the third colour's feature painted **into** the place; under the flag the half draws it instead of the panorama (a cross-fade, no cut-out on top), else the 1.14 cut-out element as before. And four corrections from the scenery review of 2026-10-24, reading the same manifests: **one makeup rule** for the panels, the pair picture and the pieces (four or five colours keep the three heaviest by their own weights; the colours dropped show nothing and **weigh nothing** in the pan or the pair choice, correcting 1.10's fold, while the stage still counts every coloured land); **pieces above every scenery layer** (the land pictures, every accent, the card-row scrim and the effects), below every card, label and control (correcting 1.14); a **front plays once its frames have loaded**; and a **load gate** for the whole-half picture (its panels until a picture of it has loaded; never blank). The pairs pack's 45 MB warning counts only the files in its own ref. Every 1.0–1.15 pack and pairs manifest is read unchanged. |
 | 1.16.1 | **Sided painted-in elements** (§2, *Painted-in elements*, amended): an `elements[<colour>]` entry may give **`left`** and **`right`**, one painted panorama per pair colour's ground (the painter's `s<k>+<C>L` and `s<k>+<C>R`), and the reader draws the **heavier** pair colour's side (SYSTEM.md A5), chosen on the key's colours before any mirroring; 1.16's unsided `src` entry still reads. A picture's `phone` object may declare its own **`bytes`**, so each shape counts in the ref its own file lies in. A pairs manifest's `spec` may carry a third number (`"1.16.1"`). ForgeCoach's **pairs-v5** is the first pack written to it. |
-| 1.17 (draft) | **The seam grid** (§2, *The seam grid*), behind `?pairfull=1` and a `?pairs=` that has one, for Justin's review; not the default: a pair in `pairs.json` may carry a **`grid`** of whole-half seam pictures keyed **`"<i>x<j>"`** by the two halves' own stages -- `i` the stage of the pair's colour earlier in the one geography (Island → Swamp → Plains → Forest → Mountain: the picture's left half), `j` the later one's -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), only the seam painted. Painted for \|i − j\| ≤ 1; further apart, the lighter half is raised to one stage below the heavier. A missing cell falls back to the pair's `stages`; a third colour on a grid picture draws nothing in the draft. Every 1.0–1.16.1 pack and pairs manifest is read unchanged. |
+| 1.17 (draft) | **The seam grid** (§2, *The seam grid*), behind `?pairfull=1`, whose default pairs are pairs-v6 (a grid on all ten pairs; the board without the flag keeps pairs-v3.1), for Justin's review on the live board: a pair in `pairs.json` may carry a **`grid`** of whole-half seam pictures keyed **`"<i>x<j>"`** by the two halves' own stages -- `i` the stage of the pair's colour earlier in the one geography (Island → Swamp → Plains → Forest → Mountain: the picture's left half), `j` the later one's -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), only the seam painted. Painted for \|i − j\| ≤ 1; further apart, the lighter half is raised to one stage below the heavier. A missing cell falls back to the pair's `stages`; a third colour on a grid picture draws nothing in the draft. Every 1.0–1.16.1 pack and pairs manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -1884,12 +1884,13 @@ leaves the cut-out out (`pairs-elements.test.ts`, `pairs-v5.test.ts`,
 ### The seam grid (1.17, draft)
 
 **A draft, behind the same flag.** Drawn only under **`?pairfull=1`** (1.15)
-with a pairs manifest that has a grid, which today means a `?pairs=` naming
-one (pairs-v6-draft); no published manifest has one, so the board, with or
-without the flag, is unchanged. A pairs manifest without `grid` is read as
-before, and a 1.16.1 reader ignores the field (it draws the stage panorama).
-It is written for Justin to judge on the live site; the shape may change
-after that.
+with a pairs manifest that has a grid: the flag's default pairs,
+**pairs-v6** (a grid on all ten pairs), or a `?pairs=` naming one
+(pairs-v6-draft, three pairs). The board without the flag is unchanged
+(pairs-v3.1). A pairs manifest without `grid` is read as before, and a
+1.16.1 reader ignores the field (it draws the stage panorama). It is
+written for Justin to judge on the live board, with free land play; the
+shape may change after that.
 
 On 24 October 2026 Justin set the one-world rule (pc-results
 `scenery/SYSTEM.md` §C): "adding a single mana should not completely redraw
@@ -2006,7 +2007,13 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
 - **Phone.** A cell with no `phone` gives way to the pair's stage pictures
   wherever the half would draw its phone picture (a phone, or a phone-shaped
   panel), as a desktop-only panorama does (1.15), so the draft never reaches
-  a phone.
+  a phone: a 5 : 1 cell cover-cropped into a phone's half would show little
+  but the seam. On a **phone-width screen** (≤ 600 px) the reader does not
+  plan the cell at all, so that half is exactly the stages' -- the stage
+  panorama's phone picture and, with a third colour, 1.16.1's painted-in
+  picture or the cut-out -- the caption names no seam ("whole half: … pair
+  stage 3"), and no cell is warmed there. (A phone-shaped panel on a wide
+  screen still gives way at the load gate.)
 - **Loading.** A cell is the first candidate of 1.16's load gate, before the
   stage's painted-in element, panorama and half: drawn once loaded, the
   previous picture held meanwhile (at most 8 s). **A cell on screen is held
@@ -2017,6 +2024,13 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
   is drawn; a cell that fails gives way to the stage pictures at once. Each
   side warms the cell it shows and the cells one land either way would show
   (`i ± 1` and `j ± 1`, through the clamp), with the split's pictures.
+  **A pair forming** (one colour, then a second) has no cell on screen to
+  hold, so each live colour warms the first cell of every grid pair it could
+  form -- the arriving colour at stage 1, the live one at its own stage
+  (`ix1` / `1xj`, through the clamp), and at the stage a dual of the two
+  would give it -- beside the stage-1 panoramas it warmed already; and while
+  that first cell is still loading, the half keeps the panels it drew (at
+  most 8 s), never the warm whole-place panorama for a moment first.
 - **The caption** on `#ambience` says the two halves and the cell, in the
   picture's (the geography's) order: "island s4 | swamp s3, seam 4x3"; a
   clamped half its own stage and the one shown: "island s6 | swamp s2→s5,
@@ -2046,11 +2060,24 @@ files and the cells as symlinks, all named relatively); re-run it whenever
 cells are added or re-finished. Look at it with `?pairfull=1&pairs=<that
 folder, served>#ambience` (or on the board).
 
+**pairs-v6.** The flag's default pairs (prefs.ts `FORGECOACH_PAIRS_FULL_URL`,
+`@pairs-v6`): pairs-v6-draft's shape with a grid on **all ten** pairs.
+`pairs-v6.test.ts` writes down what the reader needs of it: schema 1, spec
+`"1.17"`; every pair pairs-v5's entry untouched apart from its `grid` (the
+stages, band, stageMap, transitions, the painted-in elements and their
+phone pictures by absolute URL: a phone and a missing cell draw them); and
+on each pair the sixteen cells |i − j| ≤ 1 keyed in the geography's order,
+`src` `seams/<left>-<right>/s<i>x<j>-panorama.webp` relative to the
+manifest, `width` 3277, `height` 640 and `bytes`. pairs-v5's desktop files
+(28.0 MB) and 160 cells at about 70 KB are about 39 MB in one ref, under
+the 45 MB warning.
+
 `src/ambience/pairs.ts` reads it (`GEOGRAPHY`, `geographyOrder`, `parseGrid`,
-`pairGridPick`, `pairPictures`' warming); `src/ambience/pairfull.ts` chooses
+`pairGridPick`, `pairGridGivesWay`, `pairPictures`' warming); `src/ambience/pairfull.ts` chooses
 it (`pairFullGrid`, `pairFullPlan`, `pairFullCandidates` with each
 candidate's `mirror` and `cell`, `gridCaption`); SceneryStrip's
-`PairFullPanel` draws it (`pairs-grid.test.ts`, `sceneryDom.test.tsx`).
+`PairFullPanel` draws it (`pairs-grid.test.ts`, `pairs-v6.test.ts`,
+`sceneryDom.test.tsx`).
 
 ## 3. Files and budgets
 
