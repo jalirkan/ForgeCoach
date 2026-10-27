@@ -1,0 +1,5239 @@
+{
+  "schema": 1,
+  "spec": "1.17",
+  "name": "ForgeCoach pair scenery, pairs-v6 (seam grid, sketch)",
+  "author": "jalirkan",
+  "license": "CC BY 4.0",
+  "note": "pairs-v6 (spec 1.17, the ?pairfull=1 default, for Justin's review on the live board): pairs-v5 with a seam grid on all ten pairs -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), keyed <i>x<j> by the stage of the geography's left colour (Island -> Swamp -> Plains -> Forest -> Mountain) and the right's; painted for |i - j| <= 1 at sketch quality, desktop only; a phone draws the stages. Keys a+b alphabetical.",
+  "pairs": {
+    "forest+island": {
+      "dual": "Tropical Island",
+      "shock": "Breeding Pool",
+      "place": "jungle mounds standing in a turquoise primordial lagoon",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 1005606
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 315982,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-island/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 388708
+            },
+            "horizon": 0.46,
+            "hour": 8,
+            "key": "morning",
+            "skyline": 0.33,
+            "src": "pairs/forest-island/s1-panorama.webp"
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 529150
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 276202,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-island/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 355968
+            },
+            "horizon": 0.46,
+            "hour": 16,
+            "key": "afternoon",
+            "skyline": 0.33,
+            "src": "pairs/forest-island/s2-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/forest-island/s2+WL-panorama.webp",
+                "bytes": 273896,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s2+WL-panorama-phone.webp",
+                  "bytes": 365734
+                }
+              },
+              "right": {
+                "src": "pairs/forest-island/s2+WR-panorama.webp",
+                "bytes": 280992,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s2+WR-panorama-phone.webp",
+                  "bytes": 362334
+                }
+              }
+            },
+            "B": {
+              "left": {
+                "src": "pairs/forest-island/s2+BL-panorama.webp",
+                "bytes": 279334,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s2+BL-panorama-phone.webp",
+                  "bytes": 356722
+                }
+              },
+              "right": {
+                "src": "pairs/forest-island/s2+BR-panorama.webp",
+                "bytes": 281208,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s2+BR-panorama-phone.webp",
+                  "bytes": 364730
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/forest-island/s2+RL-panorama.webp",
+                "bytes": 278754,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s2+RL-panorama-phone.webp",
+                  "bytes": 372580
+                }
+              },
+              "right": {
+                "src": "pairs/forest-island/s2+RR-panorama.webp",
+                "bytes": 275438,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s2+RR-panorama-phone.webp",
+                  "bytes": 370810
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s3-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s3-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s3-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s3-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 927084
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 137040,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-island/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 245984
+            },
+            "horizon": 0.46,
+            "hour": 20,
+            "key": "dusk",
+            "skyline": 0.33,
+            "src": "pairs/forest-island/s3-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/forest-island/s3+WL-panorama.webp",
+                "bytes": 135090,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s3+WL-panorama-phone.webp",
+                  "bytes": 237216
+                }
+              },
+              "right": {
+                "src": "pairs/forest-island/s3+WR-panorama.webp",
+                "bytes": 134398,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s3+WR-panorama-phone.webp",
+                  "bytes": 240360
+                }
+              }
+            },
+            "B": {
+              "left": {
+                "src": "pairs/forest-island/s3+BL-panorama.webp",
+                "bytes": 135500,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s3+BL-panorama-phone.webp",
+                  "bytes": 232756
+                }
+              },
+              "right": {
+                "src": "pairs/forest-island/s3+BR-panorama.webp",
+                "bytes": 136632,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s3+BR-panorama-phone.webp",
+                  "bytes": 239990
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/forest-island/s3+RL-panorama.webp",
+                "bytes": 135646,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s3+RL-panorama-phone.webp",
+                  "bytes": 241850
+                }
+              },
+              "right": {
+                "src": "pairs/forest-island/s3+RR-panorama.webp",
+                "bytes": 134490,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-island/s3+RR-panorama-phone.webp",
+                  "bytes": 241908
+                }
+              }
+            }
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1to2-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1to2-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1to2-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1to2-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1to2-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1to2-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s1to2-f4-phone.webp"
+              }
+            ],
+            "bytes": 576772
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2to3-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2to3-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2to3-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2to3-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2to3-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2to3-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-island/s2to3-f4-phone.webp"
+              }
+            ],
+            "bytes": 542668
+          }
+        ]
+      },
+      "grid": {
+        "1x1": {
+          "src": "seams/island-forest/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 60476,
+          "horizon": 0.443,
+          "hour": 6.5,
+          "key": "dawn"
+        },
+        "1x2": {
+          "src": "seams/island-forest/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 80372,
+          "horizon": 0.43,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/island-forest/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 72710,
+          "horizon": 0.437,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/island-forest/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 89476,
+          "horizon": 0.425,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/island-forest/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 78312,
+          "horizon": 0.433,
+          "hour": 17,
+          "key": "afternoon"
+        },
+        "3x2": {
+          "src": "seams/island-forest/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 81994,
+          "horizon": 0.43,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x3": {
+          "src": "seams/island-forest/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 74206,
+          "horizon": 0.44,
+          "hour": 17,
+          "key": "afternoon"
+        },
+        "3x4": {
+          "src": "seams/island-forest/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 71216,
+          "horizon": 0.448,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x3": {
+          "src": "seams/island-forest/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 84334,
+          "horizon": 0.44,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x4": {
+          "src": "seams/island-forest/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 82506,
+          "horizon": 0.448,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x5": {
+          "src": "seams/island-forest/s4x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 73216,
+          "horizon": 0.448,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x4": {
+          "src": "seams/island-forest/s5x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 80326,
+          "horizon": 0.442,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x5": {
+          "src": "seams/island-forest/s5x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 71138,
+          "horizon": 0.442,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x6": {
+          "src": "seams/island-forest/s5x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 74806,
+          "horizon": 0.442,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x5": {
+          "src": "seams/island-forest/s6x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 90728,
+          "horizon": 0.431,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x6": {
+          "src": "seams/island-forest/s6x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 98336,
+          "horizon": 0.431,
+          "hour": 23,
+          "key": "night"
+        }
+      }
+    },
+    "forest+mountain": {
+      "dual": "Taiga",
+      "shock": "Stomping Ground",
+      "place": "tall dark conifers climbing red volcanic slopes",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s1-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s1-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s1-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s1-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 864364
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 296672,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-mountain/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.46,
+              "bytes": 308390
+            },
+            "horizon": 0.45,
+            "hour": 7,
+            "key": "dawn",
+            "skyline": 0.25,
+            "src": "pairs/forest-mountain/s1-panorama.webp"
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 449968
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 249428,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-mountain/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.46,
+              "bytes": 278022
+            },
+            "horizon": 0.45,
+            "hour": 15,
+            "key": "afternoon",
+            "skyline": 0.25,
+            "src": "pairs/forest-mountain/s2-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/forest-mountain/s2+WL-panorama.webp",
+                "bytes": 249742,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s2+WL-panorama-phone.webp",
+                  "bytes": 280414
+                }
+              },
+              "right": {
+                "src": "pairs/forest-mountain/s2+WR-panorama.webp",
+                "bytes": 245032,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s2+WR-panorama-phone.webp",
+                  "bytes": 283426
+                }
+              }
+            },
+            "U": {
+              "left": {
+                "src": "pairs/forest-mountain/s2+UL-panorama.webp",
+                "bytes": 246002,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s2+UL-panorama-phone.webp",
+                  "bytes": 294952
+                }
+              },
+              "right": {
+                "src": "pairs/forest-mountain/s2+UR-panorama.webp",
+                "bytes": 243398,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s2+UR-panorama-phone.webp",
+                  "bytes": 272700
+                }
+              }
+            },
+            "B": {
+              "left": {
+                "src": "pairs/forest-mountain/s2+BL-panorama.webp",
+                "bytes": 246894,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s2+BL-panorama-phone.webp",
+                  "bytes": 279112
+                }
+              },
+              "right": {
+                "src": "pairs/forest-mountain/s2+BR-panorama.webp",
+                "bytes": 244838,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s2+BR-panorama-phone.webp",
+                  "bytes": 277410
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s3-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s3-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s3-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s3-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 866048
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 99070,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-mountain/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.46,
+              "bytes": 145708
+            },
+            "horizon": 0.45,
+            "hour": 19.5,
+            "key": "dusk",
+            "skyline": 0.25,
+            "src": "pairs/forest-mountain/s3-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/forest-mountain/s3+WL-panorama.webp",
+                "bytes": 98984,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s3+WL-panorama-phone.webp",
+                  "bytes": 140278
+                }
+              },
+              "right": {
+                "src": "pairs/forest-mountain/s3+WR-panorama.webp",
+                "bytes": 98454,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s3+WR-panorama-phone.webp",
+                  "bytes": 141030
+                }
+              }
+            },
+            "U": {
+              "left": {
+                "src": "pairs/forest-mountain/s3+UL-panorama.webp",
+                "bytes": 100148,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s3+UL-panorama-phone.webp",
+                  "bytes": 140466
+                }
+              },
+              "right": {
+                "src": "pairs/forest-mountain/s3+UR-panorama.webp",
+                "bytes": 100170,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s3+UR-panorama-phone.webp",
+                  "bytes": 141766
+                }
+              }
+            },
+            "B": {
+              "left": {
+                "src": "pairs/forest-mountain/s3+BL-panorama.webp",
+                "bytes": 98632,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s3+BL-panorama-phone.webp",
+                  "bytes": 141140
+                }
+              },
+              "right": {
+                "src": "pairs/forest-mountain/s3+BR-panorama.webp",
+                "bytes": 99314,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-mountain/s3+BR-panorama-phone.webp",
+                  "bytes": 139908
+                }
+              }
+            }
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s1to2-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s1to2-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s1to2-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s1to2-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s1to2-f3-phone.webp"
+              }
+            ],
+            "bytes": 407712
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2to3-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2to3-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2to3-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2to3-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2to3-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2to3-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-mountain/s2to3-f4-phone.webp"
+              }
+            ],
+            "bytes": 552632
+          }
+        ]
+      },
+      "grid": {
+        "1x1": {
+          "src": "seams/forest-mountain/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 55646,
+          "horizon": 0.479,
+          "hour": 6,
+          "key": "dawn"
+        },
+        "1x2": {
+          "src": "seams/forest-mountain/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 66382,
+          "horizon": 0.505,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/forest-mountain/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 81656,
+          "horizon": 0.463,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/forest-mountain/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 81282,
+          "horizon": 0.489,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/forest-mountain/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 75210,
+          "horizon": 0.463,
+          "hour": 16,
+          "key": "afternoon"
+        },
+        "3x2": {
+          "src": "seams/forest-mountain/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 75144,
+          "horizon": 0.5,
+          "hour": 17,
+          "key": "afternoon"
+        },
+        "3x3": {
+          "src": "seams/forest-mountain/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 65076,
+          "horizon": 0.473,
+          "hour": 17,
+          "key": "afternoon"
+        },
+        "3x4": {
+          "src": "seams/forest-mountain/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63722,
+          "horizon": 0.464,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x3": {
+          "src": "seams/forest-mountain/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 62858,
+          "horizon": 0.485,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x4": {
+          "src": "seams/forest-mountain/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 64980,
+          "horizon": 0.475,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x5": {
+          "src": "seams/forest-mountain/s4x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63638,
+          "horizon": 0.47,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x4": {
+          "src": "seams/forest-mountain/s5x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 56274,
+          "horizon": 0.475,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x5": {
+          "src": "seams/forest-mountain/s5x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 56074,
+          "horizon": 0.47,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x6": {
+          "src": "seams/forest-mountain/s5x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 55204,
+          "horizon": 0.46,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x5": {
+          "src": "seams/forest-mountain/s6x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 60366,
+          "horizon": 0.47,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x6": {
+          "src": "seams/forest-mountain/s6x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63856,
+          "horizon": 0.46,
+          "hour": 23,
+          "key": "night"
+        }
+      }
+    },
+    "forest+plains": {
+      "dual": "Savannah",
+      "shock": "Temple Garden",
+      "place": "golden grass with scattered broad trees and a bright horizon",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 857534
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 340460,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-plains/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 327944
+            },
+            "horizon": 0.45,
+            "hour": 7,
+            "key": "dawn",
+            "src": "pairs/forest-plains/s1-panorama.webp"
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 481840
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 280764,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-plains/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 293974
+            },
+            "horizon": 0.45,
+            "hour": 15,
+            "key": "afternoon",
+            "src": "pairs/forest-plains/s2-panorama.webp"
+          },
+          "elements": {
+            "U": {
+              "left": {
+                "src": "pairs/forest-plains/s2+UL-panorama.webp",
+                "bytes": 277510,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s2+UL-panorama-phone.webp",
+                  "bytes": 297644
+                }
+              },
+              "right": {
+                "src": "pairs/forest-plains/s2+UR-panorama.webp",
+                "bytes": 274480,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s2+UR-panorama-phone.webp",
+                  "bytes": 292058
+                }
+              }
+            },
+            "B": {
+              "left": {
+                "src": "pairs/forest-plains/s2+BL-panorama.webp",
+                "bytes": 277976,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s2+BL-panorama-phone.webp",
+                  "bytes": 299288
+                }
+              },
+              "right": {
+                "src": "pairs/forest-plains/s2+BR-panorama.webp",
+                "bytes": 277178,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s2+BR-panorama-phone.webp",
+                  "bytes": 294120
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/forest-plains/s2+RL-panorama.webp",
+                "bytes": 276416,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s2+RL-panorama-phone.webp",
+                  "bytes": 307138
+                }
+              },
+              "right": {
+                "src": "pairs/forest-plains/s2+RR-panorama.webp",
+                "bytes": 280620,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s2+RR-panorama-phone.webp",
+                  "bytes": 295472
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s3-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s3-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s3-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s3-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 946150
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 121758,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-plains/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 137902
+            },
+            "horizon": 0.45,
+            "hour": 19,
+            "key": "dusk",
+            "src": "pairs/forest-plains/s3-panorama.webp"
+          },
+          "elements": {
+            "U": {
+              "left": {
+                "src": "pairs/forest-plains/s3+UL-panorama.webp",
+                "bytes": 121876,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s3+UL-panorama-phone.webp",
+                  "bytes": 136480
+                }
+              },
+              "right": {
+                "src": "pairs/forest-plains/s3+UR-panorama.webp",
+                "bytes": 120058,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s3+UR-panorama-phone.webp",
+                  "bytes": 136624
+                }
+              }
+            },
+            "B": {
+              "left": {
+                "src": "pairs/forest-plains/s3+BL-panorama.webp",
+                "bytes": 121602,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s3+BL-panorama-phone.webp",
+                  "bytes": 134118
+                }
+              },
+              "right": {
+                "src": "pairs/forest-plains/s3+BR-panorama.webp",
+                "bytes": 124148,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s3+BR-panorama-phone.webp",
+                  "bytes": 136262
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/forest-plains/s3+RL-panorama.webp",
+                "bytes": 121716,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s3+RL-panorama-phone.webp",
+                  "bytes": 131726
+                }
+              },
+              "right": {
+                "src": "pairs/forest-plains/s3+RR-panorama.webp",
+                "bytes": 119950,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-plains/s3+RR-panorama-phone.webp",
+                  "bytes": 132688
+                }
+              }
+            }
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1to2-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1to2-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1to2-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1to2-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1to2-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1to2-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s1to2-f4-phone.webp"
+              }
+            ],
+            "bytes": 525098
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2to3-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2to3-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2to3-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2to3-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2to3-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2to3-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-plains/s2to3-f4-phone.webp"
+              }
+            ],
+            "bytes": 543506
+          }
+        ]
+      },
+      "grid": {
+        "1x1": {
+          "src": "seams/plains-forest/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 85006,
+          "horizon": 0.437,
+          "hour": 6,
+          "key": "dawn"
+        },
+        "1x2": {
+          "src": "seams/plains-forest/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 102064,
+          "horizon": 0.425,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/plains-forest/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 89500,
+          "horizon": 0.437,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/plains-forest/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 111262,
+          "horizon": 0.425,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/plains-forest/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 100932,
+          "horizon": 0.433,
+          "hour": 17,
+          "key": "afternoon"
+        },
+        "3x2": {
+          "src": "seams/plains-forest/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 79154,
+          "horizon": 0.44,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x3": {
+          "src": "seams/plains-forest/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 66926,
+          "horizon": 0.45,
+          "hour": 17,
+          "key": "afternoon"
+        },
+        "3x4": {
+          "src": "seams/plains-forest/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 66584,
+          "horizon": 0.46,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x3": {
+          "src": "seams/plains-forest/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 66148,
+          "horizon": 0.45,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x4": {
+          "src": "seams/plains-forest/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 71308,
+          "horizon": 0.46,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x5": {
+          "src": "seams/plains-forest/s4x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 59564,
+          "horizon": 0.46,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x4": {
+          "src": "seams/plains-forest/s5x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 60064,
+          "horizon": 0.454,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x5": {
+          "src": "seams/plains-forest/s5x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 56876,
+          "horizon": 0.454,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x6": {
+          "src": "seams/plains-forest/s5x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 56846,
+          "horizon": 0.454,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x5": {
+          "src": "seams/plains-forest/s6x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 65118,
+          "horizon": 0.46,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x6": {
+          "src": "seams/plains-forest/s6x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 69472,
+          "horizon": 0.46,
+          "hour": 23,
+          "key": "night"
+        }
+      }
+    },
+    "forest+swamp": {
+      "dual": "Bayou",
+      "shock": "Overgrown Tomb",
+      "place": "flooded cypress swamp, green water, hanging moss",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 789232
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 374314,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-swamp/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.48,
+              "bytes": 406866
+            },
+            "horizon": 0.5,
+            "hour": 8,
+            "key": "morning",
+            "src": "pairs/forest-swamp/s1-panorama.webp"
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 409086
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 287154,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-swamp/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.48,
+              "bytes": 342822
+            },
+            "horizon": 0.5,
+            "hour": 15,
+            "key": "afternoon",
+            "src": "pairs/forest-swamp/s2-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/forest-swamp/s2+WL-panorama.webp",
+                "bytes": 285238,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s2+WL-panorama-phone.webp",
+                  "bytes": 356214
+                }
+              },
+              "right": {
+                "src": "pairs/forest-swamp/s2+WR-panorama.webp",
+                "bytes": 277546,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s2+WR-panorama-phone.webp",
+                  "bytes": 352908
+                }
+              }
+            },
+            "U": {
+              "left": {
+                "src": "pairs/forest-swamp/s2+UL-panorama.webp",
+                "bytes": 276360,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s2+UL-panorama-phone.webp",
+                  "bytes": 347670
+                }
+              },
+              "right": {
+                "src": "pairs/forest-swamp/s2+UR-panorama.webp",
+                "bytes": 284428,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s2+UR-panorama-phone.webp",
+                  "bytes": 341278
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/forest-swamp/s2+RL-panorama.webp",
+                "bytes": 284456,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s2+RL-panorama-phone.webp",
+                  "bytes": 364736
+                }
+              },
+              "right": {
+                "src": "pairs/forest-swamp/s2+RR-panorama.webp",
+                "bytes": 284392,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s2+RR-panorama-phone.webp",
+                  "bytes": 367792
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s3-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s3-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s3-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s3-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 761610
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 151190,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/forest-swamp/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.48,
+              "bytes": 218336
+            },
+            "horizon": 0.5,
+            "hour": 21,
+            "key": "night",
+            "src": "pairs/forest-swamp/s3-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/forest-swamp/s3+WL-panorama.webp",
+                "bytes": 146744,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s3+WL-panorama-phone.webp",
+                  "bytes": 214240
+                }
+              },
+              "right": {
+                "src": "pairs/forest-swamp/s3+WR-panorama.webp",
+                "bytes": 144472,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s3+WR-panorama-phone.webp",
+                  "bytes": 215144
+                }
+              }
+            },
+            "U": {
+              "left": {
+                "src": "pairs/forest-swamp/s3+UL-panorama.webp",
+                "bytes": 143406,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s3+UL-panorama-phone.webp",
+                  "bytes": 212200
+                }
+              },
+              "right": {
+                "src": "pairs/forest-swamp/s3+UR-panorama.webp",
+                "bytes": 144914,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s3+UR-panorama-phone.webp",
+                  "bytes": 216000
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/forest-swamp/s3+RL-panorama.webp",
+                "bytes": 148432,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s3+RL-panorama-phone.webp",
+                  "bytes": 214904
+                }
+              },
+              "right": {
+                "src": "pairs/forest-swamp/s3+RR-panorama.webp",
+                "bytes": 144500,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/forest-swamp/s3+RR-panorama-phone.webp",
+                  "bytes": 218946
+                }
+              }
+            }
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1to2-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1to2-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1to2-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1to2-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1to2-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1to2-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s1to2-f4-phone.webp"
+              }
+            ],
+            "bytes": 496276
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2to3-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2to3-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2to3-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2to3-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2to3-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2to3-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/forest-swamp/s2to3-f4-phone.webp"
+              }
+            ],
+            "bytes": 464468
+          }
+        ]
+      },
+      "grid": {
+        "1x1": {
+          "src": "seams/swamp-forest/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 57030,
+          "horizon": 0.437,
+          "hour": 6,
+          "key": "dawn"
+        },
+        "1x2": {
+          "src": "seams/swamp-forest/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 73654,
+          "horizon": 0.425,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/swamp-forest/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63232,
+          "horizon": 0.443,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/swamp-forest/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 77572,
+          "horizon": 0.43,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/swamp-forest/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 71702,
+          "horizon": 0.44,
+          "hour": 17,
+          "key": "afternoon"
+        },
+        "3x2": {
+          "src": "seams/swamp-forest/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 72164,
+          "horizon": 0.448,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x3": {
+          "src": "seams/swamp-forest/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 68082,
+          "horizon": 0.46,
+          "hour": 17,
+          "key": "afternoon"
+        },
+        "3x4": {
+          "src": "seams/swamp-forest/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 68030,
+          "horizon": 0.47,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x3": {
+          "src": "seams/swamp-forest/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 69528,
+          "horizon": 0.45,
+          "hour": 19.5,
+          "key": "dusk"
+        },
+        "4x4": {
+          "src": "seams/swamp-forest/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 68356,
+          "horizon": 0.46,
+          "hour": 19.5,
+          "key": "dusk"
+        },
+        "4x5": {
+          "src": "seams/swamp-forest/s4x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63420,
+          "horizon": 0.46,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x4": {
+          "src": "seams/swamp-forest/s5x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 64142,
+          "horizon": 0.485,
+          "hour": 22,
+          "key": "night"
+        },
+        "5x5": {
+          "src": "seams/swamp-forest/s5x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 58364,
+          "horizon": 0.485,
+          "hour": 22,
+          "key": "night"
+        },
+        "5x6": {
+          "src": "seams/swamp-forest/s5x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 62644,
+          "horizon": 0.485,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x5": {
+          "src": "seams/swamp-forest/s6x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 62680,
+          "horizon": 0.485,
+          "hour": 23.5,
+          "key": "night"
+        },
+        "6x6": {
+          "src": "seams/swamp-forest/s6x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 66604,
+          "horizon": 0.485,
+          "hour": 23.5,
+          "key": "night"
+        }
+      }
+    },
+    "island+mountain": {
+      "dual": "Volcanic Island",
+      "shock": "Steam Vents",
+      "place": "a black volcanic island in a turquoise sea, lava meeting water in steam",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 916208
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 250156,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/island-mountain/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.48,
+              "bytes": 305718
+            },
+            "horizon": 0.47,
+            "hour": 7,
+            "key": "dawn",
+            "skyline": 0.21,
+            "src": "pairs/island-mountain/s1-panorama.webp"
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 498122
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 231734,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/island-mountain/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.48,
+              "bytes": 294534
+            },
+            "horizon": 0.47,
+            "hour": 16,
+            "key": "afternoon",
+            "skyline": 0.21,
+            "src": "pairs/island-mountain/s2-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/island-mountain/s2+WL-panorama.webp",
+                "bytes": 226478,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s2+WL-panorama-phone.webp",
+                  "bytes": 298304
+                }
+              },
+              "right": {
+                "src": "pairs/island-mountain/s2+WR-panorama.webp",
+                "bytes": 226708,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s2+WR-panorama-phone.webp",
+                  "bytes": 294860
+                }
+              }
+            },
+            "B": {
+              "left": {
+                "src": "pairs/island-mountain/s2+BL-panorama.webp",
+                "bytes": 230620,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s2+BL-panorama-phone.webp",
+                  "bytes": 301936
+                }
+              },
+              "right": {
+                "src": "pairs/island-mountain/s2+BR-panorama.webp",
+                "bytes": 225912,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s2+BR-panorama-phone.webp",
+                  "bytes": 294558
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/island-mountain/s2+GL-panorama.webp",
+                "bytes": 227522,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s2+GL-panorama-phone.webp",
+                  "bytes": 297154
+                }
+              },
+              "right": {
+                "src": "pairs/island-mountain/s2+GR-panorama.webp",
+                "bytes": 230676,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s2+GR-panorama-phone.webp",
+                  "bytes": 295790
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s3-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s3-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s3-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s3-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 890244
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 115510,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/island-mountain/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.48,
+              "bytes": 196212
+            },
+            "horizon": 0.47,
+            "hour": 21.5,
+            "key": "night",
+            "skyline": 0.21,
+            "src": "pairs/island-mountain/s3-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/island-mountain/s3+WL-panorama.webp",
+                "bytes": 114642,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s3+WL-panorama-phone.webp",
+                  "bytes": 193722
+                }
+              },
+              "right": {
+                "src": "pairs/island-mountain/s3+WR-panorama.webp",
+                "bytes": 118130,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s3+WR-panorama-phone.webp",
+                  "bytes": 191260
+                }
+              }
+            },
+            "B": {
+              "left": {
+                "src": "pairs/island-mountain/s3+BL-panorama.webp",
+                "bytes": 120000,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s3+BL-panorama-phone.webp",
+                  "bytes": 193848
+                }
+              },
+              "right": {
+                "src": "pairs/island-mountain/s3+BR-panorama.webp",
+                "bytes": 118906,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s3+BR-panorama-phone.webp",
+                  "bytes": 191932
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/island-mountain/s3+GL-panorama.webp",
+                "bytes": 120528,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s3+GL-panorama-phone.webp",
+                  "bytes": 191642
+                }
+              },
+              "right": {
+                "src": "pairs/island-mountain/s3+GR-panorama.webp",
+                "bytes": 116004,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-mountain/s3+GR-panorama-phone.webp",
+                  "bytes": 193202
+                }
+              }
+            }
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1to2-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1to2-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1to2-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1to2-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1to2-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1to2-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s1to2-f4-phone.webp"
+              }
+            ],
+            "bytes": 549456
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2to3-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2to3-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2to3-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2to3-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2to3-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2to3-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-mountain/s2to3-f4-phone.webp"
+              }
+            ],
+            "bytes": 494400
+          }
+        ]
+      },
+      "grid": {
+        "1x1": {
+          "src": "seams/island-mountain/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 56032,
+          "horizon": 0.463,
+          "hour": 6.5,
+          "key": "dawn"
+        },
+        "1x2": {
+          "src": "seams/island-mountain/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 62886,
+          "horizon": 0.489,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/island-mountain/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 64150,
+          "horizon": 0.457,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/island-mountain/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70932,
+          "horizon": 0.484,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/island-mountain/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 64570,
+          "horizon": 0.457,
+          "hour": 16,
+          "key": "afternoon"
+        },
+        "3x2": {
+          "src": "seams/island-mountain/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 65042,
+          "horizon": 0.489,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x3": {
+          "src": "seams/island-mountain/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 56690,
+          "horizon": 0.463,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x4": {
+          "src": "seams/island-mountain/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 62194,
+          "horizon": 0.452,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x3": {
+          "src": "seams/island-mountain/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 65918,
+          "horizon": 0.463,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x4": {
+          "src": "seams/island-mountain/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 65780,
+          "horizon": 0.452,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x5": {
+          "src": "seams/island-mountain/s4x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 64968,
+          "horizon": 0.448,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x4": {
+          "src": "seams/island-mountain/s5x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63108,
+          "horizon": 0.447,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x5": {
+          "src": "seams/island-mountain/s5x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 67036,
+          "horizon": 0.442,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x6": {
+          "src": "seams/island-mountain/s5x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 69898,
+          "horizon": 0.433,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x5": {
+          "src": "seams/island-mountain/s6x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 88064,
+          "horizon": 0.431,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x6": {
+          "src": "seams/island-mountain/s6x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 90614,
+          "horizon": 0.42,
+          "hour": 23,
+          "key": "night"
+        }
+      }
+    },
+    "island+plains": {
+      "dual": "Tundra",
+      "shock": "Hallowed Fountain",
+      "place": "a frozen white plain meeting a cold blue sea, ice shelf and pale sky",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 700784
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 168122,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/island-plains/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 261816
+            },
+            "horizon": 0.47,
+            "hour": 8,
+            "key": "morning",
+            "src": "pairs/island-plains/s1-panorama.webp"
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 371748
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 180668,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/island-plains/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 285508
+            },
+            "horizon": 0.47,
+            "hour": 15,
+            "key": "afternoon",
+            "src": "pairs/island-plains/s2-panorama.webp"
+          },
+          "elements": {
+            "B": {
+              "left": {
+                "src": "pairs/island-plains/s2+BL-panorama.webp",
+                "bytes": 181280,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s2+BL-panorama-phone.webp",
+                  "bytes": 288756
+                }
+              },
+              "right": {
+                "src": "pairs/island-plains/s2+BR-panorama.webp",
+                "bytes": 179670,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s2+BR-panorama-phone.webp",
+                  "bytes": 280288
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/island-plains/s2+RL-panorama.webp",
+                "bytes": 179638,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s2+RL-panorama-phone.webp",
+                  "bytes": 286098
+                }
+              },
+              "right": {
+                "src": "pairs/island-plains/s2+RR-panorama.webp",
+                "bytes": 183486,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s2+RR-panorama-phone.webp",
+                  "bytes": 283008
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/island-plains/s2+GL-panorama.webp",
+                "bytes": 181892,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s2+GL-panorama-phone.webp",
+                  "bytes": 283670
+                }
+              },
+              "right": {
+                "src": "pairs/island-plains/s2+GR-panorama.webp",
+                "bytes": 184500,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s2+GR-panorama-phone.webp",
+                  "bytes": 283946
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s3-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s3-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s3-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s3-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 822948
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 92720,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/island-plains/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 184060
+            },
+            "horizon": 0.47,
+            "hour": 21,
+            "key": "night",
+            "src": "pairs/island-plains/s3-panorama.webp"
+          },
+          "elements": {
+            "B": {
+              "left": {
+                "src": "pairs/island-plains/s3+BL-panorama.webp",
+                "bytes": 93380,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s3+BL-panorama-phone.webp",
+                  "bytes": 173242
+                }
+              },
+              "right": {
+                "src": "pairs/island-plains/s3+BR-panorama.webp",
+                "bytes": 94382,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s3+BR-panorama-phone.webp",
+                  "bytes": 180252
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/island-plains/s3+RL-panorama.webp",
+                "bytes": 91934,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s3+RL-panorama-phone.webp",
+                  "bytes": 177598
+                }
+              },
+              "right": {
+                "src": "pairs/island-plains/s3+RR-panorama.webp",
+                "bytes": 94534,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s3+RR-panorama-phone.webp",
+                  "bytes": 168394
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/island-plains/s3+GL-panorama.webp",
+                "bytes": 91430,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s3+GL-panorama-phone.webp",
+                  "bytes": 174656
+                }
+              },
+              "right": {
+                "src": "pairs/island-plains/s3+GR-panorama.webp",
+                "bytes": 97388,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-plains/s3+GR-panorama-phone.webp",
+                  "bytes": 178378
+                }
+              }
+            }
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1to2-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1to2-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1to2-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1to2-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1to2-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1to2-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s1to2-f4-phone.webp"
+              }
+            ],
+            "bytes": 365870
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2to3-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2to3-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2to3-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2to3-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2to3-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2to3-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-plains/s2to3-f4-phone.webp"
+              }
+            ],
+            "bytes": 413656
+          }
+        ]
+      },
+      "grid": {
+        "1x1": {
+          "src": "seams/island-plains/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 85166,
+          "horizon": 0.425,
+          "hour": 6.5,
+          "key": "dawn"
+        },
+        "1x2": {
+          "src": "seams/island-plains/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 95458,
+          "horizon": 0.425,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/island-plains/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 95432,
+          "horizon": 0.42,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/island-plains/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 100964,
+          "horizon": 0.42,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/island-plains/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 69768,
+          "horizon": 0.433,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x2": {
+          "src": "seams/island-plains/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 96564,
+          "horizon": 0.425,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x3": {
+          "src": "seams/island-plains/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63716,
+          "horizon": 0.44,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x4": {
+          "src": "seams/island-plains/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63112,
+          "horizon": 0.44,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x3": {
+          "src": "seams/island-plains/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 71388,
+          "horizon": 0.44,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x4": {
+          "src": "seams/island-plains/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 68008,
+          "horizon": 0.44,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x5": {
+          "src": "seams/island-plains/s4x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 62320,
+          "horizon": 0.435,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x4": {
+          "src": "seams/island-plains/s5x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 69600,
+          "horizon": 0.433,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x5": {
+          "src": "seams/island-plains/s5x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 66672,
+          "horizon": 0.43,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x6": {
+          "src": "seams/island-plains/s5x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 76758,
+          "horizon": 0.433,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x5": {
+          "src": "seams/island-plains/s6x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 86854,
+          "horizon": 0.416,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x6": {
+          "src": "seams/island-plains/s6x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 94020,
+          "horizon": 0.42,
+          "hour": 23,
+          "key": "night"
+        }
+      }
+    },
+    "island+swamp": {
+      "dual": "Underground Sea",
+      "shock": "Watery Grave",
+      "place": "a black cavern sea under a vaulted rock ceiling, bioluminescent water",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s1-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s1-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s1-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s1-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 861104
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 250772,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/island-swamp/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.52,
+              "bytes": 303480
+            },
+            "horizon": 0.5,
+            "hour": 9,
+            "key": "morning",
+            "src": "pairs/island-swamp/s1-panorama.webp"
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s2-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s2-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s2-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s2-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 411108
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 213878,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/island-swamp/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.52,
+              "bytes": 261142
+            },
+            "horizon": 0.5,
+            "hour": 16,
+            "key": "afternoon",
+            "src": "pairs/island-swamp/s2-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/island-swamp/s2+WL-panorama.webp",
+                "bytes": 213150,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s2+WL-panorama-phone.webp",
+                  "bytes": 265592
+                }
+              },
+              "right": {
+                "src": "pairs/island-swamp/s2+WR-panorama.webp",
+                "bytes": 211660,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s2+WR-panorama-phone.webp",
+                  "bytes": 272672
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/island-swamp/s2+RL-panorama.webp",
+                "bytes": 212080,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s2+RL-panorama-phone.webp",
+                  "bytes": 263516
+                }
+              },
+              "right": {
+                "src": "pairs/island-swamp/s2+RR-panorama.webp",
+                "bytes": 212196,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s2+RR-panorama-phone.webp",
+                  "bytes": 263128
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/island-swamp/s2+GL-panorama.webp",
+                "bytes": 214916,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s2+GL-panorama-phone.webp",
+                  "bytes": 262626
+                }
+              },
+              "right": {
+                "src": "pairs/island-swamp/s2+GR-panorama.webp",
+                "bytes": 211946,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s2+GR-panorama-phone.webp",
+                  "bytes": 260144
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s3-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s3-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s3-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s3-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 798486
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 115606,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/island-swamp/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.52,
+              "bytes": 153012
+            },
+            "horizon": 0.5,
+            "hour": 21,
+            "key": "night",
+            "src": "pairs/island-swamp/s3-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/island-swamp/s3+WL-panorama.webp",
+                "bytes": 114354,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s3+WL-panorama-phone.webp",
+                  "bytes": 154492
+                }
+              },
+              "right": {
+                "src": "pairs/island-swamp/s3+WR-panorama.webp",
+                "bytes": 114008,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s3+WR-panorama-phone.webp",
+                  "bytes": 150100
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/island-swamp/s3+RL-panorama.webp",
+                "bytes": 115206,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s3+RL-panorama-phone.webp",
+                  "bytes": 154390
+                }
+              },
+              "right": {
+                "src": "pairs/island-swamp/s3+RR-panorama.webp",
+                "bytes": 113406,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s3+RR-panorama-phone.webp",
+                  "bytes": 150126
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/island-swamp/s3+GL-panorama.webp",
+                "bytes": 116990,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s3+GL-panorama-phone.webp",
+                  "bytes": 154774
+                }
+              },
+              "right": {
+                "src": "pairs/island-swamp/s3+GR-panorama.webp",
+                "bytes": 120606,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/island-swamp/s3+GR-panorama-phone.webp",
+                  "bytes": 154872
+                }
+              }
+            }
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s1to2-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s1to2-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s1to2-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s1to2-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s1to2-f3-phone.webp"
+              }
+            ],
+            "bytes": 447332
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s2to3-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s2to3-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/island-swamp/s2to3-f2-phone.webp"
+              }
+            ],
+            "bytes": 260904
+          }
+        ]
+      },
+      "grid": {
+        "1x1": {
+          "src": "seams/island-swamp/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 67198,
+          "horizon": 0.425,
+          "hour": 6.5,
+          "key": "dawn"
+        },
+        "1x2": {
+          "src": "seams/island-swamp/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 68794,
+          "horizon": 0.43,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/island-swamp/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 78570,
+          "horizon": 0.42,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/island-swamp/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 75336,
+          "horizon": 0.425,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/island-swamp/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 65892,
+          "horizon": 0.442,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x2": {
+          "src": "seams/island-swamp/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 68438,
+          "horizon": 0.43,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x3": {
+          "src": "seams/island-swamp/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 67328,
+          "horizon": 0.448,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x4": {
+          "src": "seams/island-swamp/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 66016,
+          "horizon": 0.44,
+          "hour": 19.5,
+          "key": "dusk"
+        },
+        "4x3": {
+          "src": "seams/island-swamp/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 69522,
+          "horizon": 0.448,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x4": {
+          "src": "seams/island-swamp/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 72098,
+          "horizon": 0.44,
+          "hour": 19.5,
+          "key": "dusk"
+        },
+        "4x5": {
+          "src": "seams/island-swamp/s4x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 65088,
+          "horizon": 0.463,
+          "hour": 22,
+          "key": "night"
+        },
+        "5x4": {
+          "src": "seams/island-swamp/s5x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 72894,
+          "horizon": 0.433,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x5": {
+          "src": "seams/island-swamp/s5x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 65472,
+          "horizon": 0.457,
+          "hour": 22,
+          "key": "night"
+        },
+        "5x6": {
+          "src": "seams/island-swamp/s5x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 71228,
+          "horizon": 0.457,
+          "hour": 23.5,
+          "key": "night"
+        },
+        "6x5": {
+          "src": "seams/island-swamp/s6x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 91660,
+          "horizon": 0.447,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x6": {
+          "src": "seams/island-swamp/s6x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 96434,
+          "horizon": 0.447,
+          "hour": 23.5,
+          "key": "night"
+        }
+      }
+    },
+    "mountain+plains": {
+      "dual": "Plateau",
+      "shock": "Sacred Foundry",
+      "place": "a high red-rock mesa under a wide bright sky, pale grass on top",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 897696
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 327188,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/mountain-plains/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 359394
+            },
+            "horizon": 0.47,
+            "hour": 8,
+            "key": "morning",
+            "skyline": 0.38,
+            "src": "pairs/mountain-plains/s1-panorama.webp"
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 450008
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 282774,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/mountain-plains/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 329304
+            },
+            "horizon": 0.47,
+            "hour": 16,
+            "key": "afternoon",
+            "skyline": 0.38,
+            "src": "pairs/mountain-plains/s2-panorama.webp"
+          },
+          "elements": {
+            "U": {
+              "left": {
+                "src": "pairs/mountain-plains/s2+UL-panorama.webp",
+                "bytes": 277304,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s2+UL-panorama-phone.webp",
+                  "bytes": 333556
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-plains/s2+UR-panorama.webp",
+                "bytes": 275920,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s2+UR-panorama-phone.webp",
+                  "bytes": 336604
+                }
+              }
+            },
+            "B": {
+              "left": {
+                "src": "pairs/mountain-plains/s2+BL-panorama.webp",
+                "bytes": 277934,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s2+BL-panorama-phone.webp",
+                  "bytes": 325420
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-plains/s2+BR-panorama.webp",
+                "bytes": 274584,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s2+BR-panorama-phone.webp",
+                  "bytes": 332642
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/mountain-plains/s2+GL-panorama.webp",
+                "bytes": 281660,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s2+GL-panorama-phone.webp",
+                  "bytes": 329852
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-plains/s2+GR-panorama.webp",
+                "bytes": 277982,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s2+GR-panorama-phone.webp",
+                  "bytes": 334788
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s3-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s3-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s3-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s3-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 898192
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 151162,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/mountain-plains/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 229240
+            },
+            "horizon": 0.47,
+            "hour": 19,
+            "key": "dusk",
+            "skyline": 0.38,
+            "src": "pairs/mountain-plains/s3-panorama.webp"
+          },
+          "elements": {
+            "U": {
+              "left": {
+                "src": "pairs/mountain-plains/s3+UL-panorama.webp",
+                "bytes": 149410,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s3+UL-panorama-phone.webp",
+                  "bytes": 221044
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-plains/s3+UR-panorama.webp",
+                "bytes": 144582,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s3+UR-panorama-phone.webp",
+                  "bytes": 224104
+                }
+              }
+            },
+            "B": {
+              "left": {
+                "src": "pairs/mountain-plains/s3+BL-panorama.webp",
+                "bytes": 151766,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s3+BL-panorama-phone.webp",
+                  "bytes": 224454
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-plains/s3+BR-panorama.webp",
+                "bytes": 146248,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s3+BR-panorama-phone.webp",
+                  "bytes": 224480
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/mountain-plains/s3+GL-panorama.webp",
+                "bytes": 153522,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s3+GL-panorama-phone.webp",
+                  "bytes": 226944
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-plains/s3+GR-panorama.webp",
+                "bytes": 147074,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-plains/s3+GR-panorama-phone.webp",
+                  "bytes": 230740
+                }
+              }
+            }
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1to2-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1to2-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1to2-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1to2-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1to2-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1to2-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s1to2-f4-phone.webp"
+              }
+            ],
+            "bytes": 488980
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2to3-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2to3-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2to3-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2to3-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2to3-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2to3-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-plains/s2to3-f4-phone.webp"
+              }
+            ],
+            "bytes": 473688
+          }
+        ]
+      },
+      "grid": {
+        "1x1": {
+          "src": "seams/plains-mountain/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 80030,
+          "horizon": 0.457,
+          "hour": 6,
+          "key": "dawn"
+        },
+        "1x2": {
+          "src": "seams/plains-mountain/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 86122,
+          "horizon": 0.484,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/plains-mountain/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 92440,
+          "horizon": 0.457,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/plains-mountain/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 96822,
+          "horizon": 0.484,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/plains-mountain/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 89736,
+          "horizon": 0.457,
+          "hour": 16,
+          "key": "afternoon"
+        },
+        "3x2": {
+          "src": "seams/plains-mountain/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63030,
+          "horizon": 0.5,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x3": {
+          "src": "seams/plains-mountain/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 60428,
+          "horizon": 0.473,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x4": {
+          "src": "seams/plains-mountain/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 60648,
+          "horizon": 0.464,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x3": {
+          "src": "seams/plains-mountain/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 58266,
+          "horizon": 0.473,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x4": {
+          "src": "seams/plains-mountain/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 57756,
+          "horizon": 0.464,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x5": {
+          "src": "seams/plains-mountain/s4x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 58470,
+          "horizon": 0.46,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x4": {
+          "src": "seams/plains-mountain/s5x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 51434,
+          "horizon": 0.458,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x5": {
+          "src": "seams/plains-mountain/s5x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 53904,
+          "horizon": 0.454,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x6": {
+          "src": "seams/plains-mountain/s5x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 56832,
+          "horizon": 0.445,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x5": {
+          "src": "seams/plains-mountain/s6x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 61976,
+          "horizon": 0.46,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x6": {
+          "src": "seams/plains-mountain/s6x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 64278,
+          "horizon": 0.45,
+          "hour": 23,
+          "key": "night"
+        }
+      }
+    },
+    "mountain+swamp": {
+      "dual": "Badlands",
+      "shock": "Blood Crypt",
+      "place": "cracked black earth and red rock, a dry scorched gorge with embers",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 1028560
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 302556,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/mountain-swamp/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 347068
+            },
+            "horizon": 0.47,
+            "hour": 7,
+            "key": "dawn",
+            "skyline": 0.37,
+            "src": "pairs/mountain-swamp/s1-panorama.webp"
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 721328
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 252816,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/mountain-swamp/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 299348
+            },
+            "horizon": 0.47,
+            "hour": 16,
+            "key": "afternoon",
+            "skyline": 0.37,
+            "src": "pairs/mountain-swamp/s2-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/mountain-swamp/s2+WL-panorama.webp",
+                "bytes": 253568,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s2+WL-panorama-phone.webp",
+                  "bytes": 316276
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-swamp/s2+WR-panorama.webp",
+                "bytes": 247594,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s2+WR-panorama-phone.webp",
+                  "bytes": 299178
+                }
+              }
+            },
+            "U": {
+              "left": {
+                "src": "pairs/mountain-swamp/s2+UL-panorama.webp",
+                "bytes": 247946,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s2+UL-panorama-phone.webp",
+                  "bytes": 314390
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-swamp/s2+UR-panorama.webp",
+                "bytes": 249222,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s2+UR-panorama-phone.webp",
+                  "bytes": 301376
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/mountain-swamp/s2+GL-panorama.webp",
+                "bytes": 250698,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s2+GL-panorama-phone.webp",
+                  "bytes": 303090
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-swamp/s2+GR-panorama.webp",
+                "bytes": 250376,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s2+GR-panorama-phone.webp",
+                  "bytes": 299816
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s3-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s3-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s3-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s3-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 1080650
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 107022,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/mountain-swamp/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.47,
+              "bytes": 136724
+            },
+            "horizon": 0.47,
+            "hour": 21.5,
+            "key": "night",
+            "skyline": 0.37,
+            "src": "pairs/mountain-swamp/s3-panorama.webp"
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "pairs/mountain-swamp/s3+WL-panorama.webp",
+                "bytes": 107136,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s3+WL-panorama-phone.webp",
+                  "bytes": 134388
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-swamp/s3+WR-panorama.webp",
+                "bytes": 107894,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s3+WR-panorama-phone.webp",
+                  "bytes": 133730
+                }
+              }
+            },
+            "U": {
+              "left": {
+                "src": "pairs/mountain-swamp/s3+UL-panorama.webp",
+                "bytes": 107378,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s3+UL-panorama-phone.webp",
+                  "bytes": 134224
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-swamp/s3+UR-panorama.webp",
+                "bytes": 107834,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s3+UR-panorama-phone.webp",
+                  "bytes": 138696
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/mountain-swamp/s3+GL-panorama.webp",
+                "bytes": 107558,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s3+GL-panorama-phone.webp",
+                  "bytes": 135306
+                }
+              },
+              "right": {
+                "src": "pairs/mountain-swamp/s3+GR-panorama.webp",
+                "bytes": 108130,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/mountain-swamp/s3+GR-panorama-phone.webp",
+                  "bytes": 133976
+                }
+              }
+            }
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1to2-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1to2-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1to2-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1to2-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1to2-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1to2-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s1to2-f4-phone.webp"
+              }
+            ],
+            "bytes": 663560
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2to3-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2to3-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2to3-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2to3-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2to3-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2to3-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/mountain-swamp/s2to3-f4-phone.webp"
+              }
+            ],
+            "bytes": 692134
+          }
+        ]
+      },
+      "grid": {
+        "1x1": {
+          "src": "seams/swamp-mountain/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 51866,
+          "horizon": 0.457,
+          "hour": 6,
+          "key": "dawn"
+        },
+        "1x2": {
+          "src": "seams/swamp-mountain/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63480,
+          "horizon": 0.484,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/swamp-mountain/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 53312,
+          "horizon": 0.463,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/swamp-mountain/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 63272,
+          "horizon": 0.489,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/swamp-mountain/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 54078,
+          "horizon": 0.463,
+          "hour": 16,
+          "key": "afternoon"
+        },
+        "3x2": {
+          "src": "seams/swamp-mountain/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 59138,
+          "horizon": 0.51,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x3": {
+          "src": "seams/swamp-mountain/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 51386,
+          "horizon": 0.485,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x4": {
+          "src": "seams/swamp-mountain/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 47866,
+          "horizon": 0.475,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x3": {
+          "src": "seams/swamp-mountain/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 52260,
+          "horizon": 0.473,
+          "hour": 19.5,
+          "key": "dusk"
+        },
+        "4x4": {
+          "src": "seams/swamp-mountain/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 50534,
+          "horizon": 0.464,
+          "hour": 19.5,
+          "key": "dusk"
+        },
+        "4x5": {
+          "src": "seams/swamp-mountain/s4x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 52138,
+          "horizon": 0.46,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x4": {
+          "src": "seams/swamp-mountain/s5x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 46256,
+          "horizon": 0.49,
+          "hour": 22,
+          "key": "night"
+        },
+        "5x5": {
+          "src": "seams/swamp-mountain/s5x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 48328,
+          "horizon": 0.485,
+          "hour": 22,
+          "key": "night"
+        },
+        "5x6": {
+          "src": "seams/swamp-mountain/s5x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 51548,
+          "horizon": 0.473,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x5": {
+          "src": "seams/swamp-mountain/s6x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 52784,
+          "horizon": 0.485,
+          "hour": 23.5,
+          "key": "night"
+        },
+        "6x6": {
+          "src": "seams/swamp-mountain/s6x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 56426,
+          "horizon": 0.473,
+          "hour": 23.5,
+          "key": "night"
+        }
+      }
+    },
+    "plains+swamp": {
+      "dual": "Scrubland",
+      "shock": "Godless Shrine",
+      "place": "one broken pale shrine among the bleached stones on the dark peat moor",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 878168
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 231244,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/plains-swamp/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.49,
+              "bytes": 286560
+            },
+            "horizon": 0.52,
+            "hour": 9,
+            "key": "morning",
+            "src": "pairs/plains-swamp/s1-panorama.webp"
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 510952
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 180964,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/plains-swamp/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.49,
+              "bytes": 241096
+            },
+            "horizon": 0.52,
+            "hour": 18,
+            "key": "dusk",
+            "src": "pairs/plains-swamp/s2-panorama.webp"
+          },
+          "elements": {
+            "U": {
+              "left": {
+                "src": "pairs/plains-swamp/s2+UL-panorama.webp",
+                "bytes": 178120,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s2+UL-panorama-phone.webp",
+                  "bytes": 238476
+                }
+              },
+              "right": {
+                "src": "pairs/plains-swamp/s2+UR-panorama.webp",
+                "bytes": 179316,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s2+UR-panorama-phone.webp",
+                  "bytes": 243030
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/plains-swamp/s2+RL-panorama.webp",
+                "bytes": 179170,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s2+RL-panorama-phone.webp",
+                  "bytes": 241282
+                }
+              },
+              "right": {
+                "src": "pairs/plains-swamp/s2+RR-panorama.webp",
+                "bytes": 181446,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s2+RR-panorama-phone.webp",
+                  "bytes": 241466
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/plains-swamp/s2+GL-panorama.webp",
+                "bytes": 181718,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s2+GL-panorama-phone.webp",
+                  "bytes": 241192
+                }
+              },
+              "right": {
+                "src": "pairs/plains-swamp/s2+GR-panorama.webp",
+                "bytes": 183560,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s2+GR-panorama-phone.webp",
+                  "bytes": 241726
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s3-half.webp",
+            "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s3-half@2x.webp",
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s3-phone.webp",
+              "src2x": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s3-phone@2x.webp",
+              "subjectBand": [
+                0.416,
+                0.514
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 898970
+          },
+          "panorama": {
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "bytes": 88850,
+            "phone": {
+              "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v4/pairs/plains-swamp/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.49,
+              "bytes": 132046
+            },
+            "horizon": 0.52,
+            "hour": 22,
+            "key": "night",
+            "src": "pairs/plains-swamp/s3-panorama.webp"
+          },
+          "elements": {
+            "U": {
+              "left": {
+                "src": "pairs/plains-swamp/s3+UL-panorama.webp",
+                "bytes": 91216,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s3+UL-panorama-phone.webp",
+                  "bytes": 126790
+                }
+              },
+              "right": {
+                "src": "pairs/plains-swamp/s3+UR-panorama.webp",
+                "bytes": 91430,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s3+UR-panorama-phone.webp",
+                  "bytes": 130604
+                }
+              }
+            },
+            "R": {
+              "left": {
+                "src": "pairs/plains-swamp/s3+RL-panorama.webp",
+                "bytes": 87594,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s3+RL-panorama-phone.webp",
+                  "bytes": 127152
+                }
+              },
+              "right": {
+                "src": "pairs/plains-swamp/s3+RR-panorama.webp",
+                "bytes": 89870,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s3+RR-panorama-phone.webp",
+                  "bytes": 129618
+                }
+              }
+            },
+            "G": {
+              "left": {
+                "src": "pairs/plains-swamp/s3+GL-panorama.webp",
+                "bytes": 93798,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s3+GL-panorama-phone.webp",
+                  "bytes": 129282
+                }
+              },
+              "right": {
+                "src": "pairs/plains-swamp/s3+GR-panorama.webp",
+                "bytes": 95110,
+                "phone": {
+                  "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v5-phone/pairs/plains-swamp/s3+GR-panorama-phone.webp",
+                  "bytes": 128978
+                }
+              }
+            }
+          }
+        }
+      ],
+      "transitions": {
+        "holdMs": 200,
+        "fadeMs": 180,
+        "steps": [
+          {
+            "from": 1,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1to2-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1to2-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1to2-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1to2-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1to2-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1to2-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1to2-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s1to2-f4-phone.webp"
+              }
+            ],
+            "bytes": 553330
+          },
+          {
+            "from": 2,
+            "frames": [
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2to3-f1-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2to3-f1-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2to3-f2-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2to3-f2-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2to3-f3-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2to3-f3-phone.webp"
+              },
+              {
+                "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2to3-f4-half.webp",
+                "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v2/pairs/plains-swamp/s2to3-f4-phone.webp"
+              }
+            ],
+            "bytes": 528434
+          }
+        ]
+      },
+      "grid": {
+        "1x1": {
+          "src": "seams/swamp-plains/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 84630,
+          "horizon": 0.42,
+          "hour": 6,
+          "key": "dawn"
+        },
+        "1x2": {
+          "src": "seams/swamp-plains/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 94822,
+          "horizon": 0.42,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/swamp-plains/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 87296,
+          "horizon": 0.425,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/swamp-plains/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 98056,
+          "horizon": 0.425,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/swamp-plains/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 65116,
+          "horizon": 0.44,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x2": {
+          "src": "seams/swamp-plains/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 86474,
+          "horizon": 0.442,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x3": {
+          "src": "seams/swamp-plains/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 66758,
+          "horizon": 0.46,
+          "hour": 16.5,
+          "key": "afternoon"
+        },
+        "3x4": {
+          "src": "seams/swamp-plains/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 61326,
+          "horizon": 0.46,
+          "hour": 19,
+          "key": "dusk"
+        },
+        "4x3": {
+          "src": "seams/swamp-plains/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 66184,
+          "horizon": 0.45,
+          "hour": 19.5,
+          "key": "dusk"
+        },
+        "4x4": {
+          "src": "seams/swamp-plains/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 65558,
+          "horizon": 0.45,
+          "hour": 19.5,
+          "key": "dusk"
+        },
+        "4x5": {
+          "src": "seams/swamp-plains/s4x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 66130,
+          "horizon": 0.445,
+          "hour": 20.5,
+          "key": "dusk"
+        },
+        "5x4": {
+          "src": "seams/swamp-plains/s5x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 59568,
+          "horizon": 0.473,
+          "hour": 22,
+          "key": "night"
+        },
+        "5x5": {
+          "src": "seams/swamp-plains/s5x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 55798,
+          "horizon": 0.468,
+          "hour": 22,
+          "key": "night"
+        },
+        "5x6": {
+          "src": "seams/swamp-plains/s5x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 58734,
+          "horizon": 0.473,
+          "hour": 23,
+          "key": "night"
+        },
+        "6x5": {
+          "src": "seams/swamp-plains/s6x5-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 59986,
+          "horizon": 0.468,
+          "hour": 23.5,
+          "key": "night"
+        },
+        "6x6": {
+          "src": "seams/swamp-plains/s6x6-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 64558,
+          "horizon": 0.473,
+          "hour": 23.5,
+          "key": "night"
+        }
+      }
+    }
+  }
+}

@@ -4,16 +4,16 @@
  *
  * pairs-v6 (spec 1.17): the pairs FORGECOACH_PAIRS_FULL_URL points at under
  * `?pairfull=1` -- pairs-v5's manifest with a seam `grid` on all ten pairs,
- * written by ~/scenery-packs/panoramas-v1/tools/make_pairs_v6_draft.py's
- * successor once the painter's cells are in. Until that tag is cut, its shape
- * is the `pairs-v6-draft` tag's (three grids: island+swamp, forest+swamp,
- * mountain+plains): `testdata/pairs-v6-draft.pairs.json` is that file byte
- * for byte, as jsDelivr served it on 2026-10-26 (the sha256 below):
- * https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6-draft/pairs.json
+ * written by ~/scenery-packs/panoramas-v1/tools/make_pairs_v6_draft.py
+ * (--out serve/pairs-v6) from the painter's 160 cells and tagged 2026-10-27:
+ * `testdata/pairs-v6.pairs.json` is that file byte for byte (the sha256
+ * below), https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6/pairs.json.
+ * `testdata/pairs-v6-draft.pairs.json` is the 2026-10-25 draft it grew from
+ * (three grids: island+swamp, forest+swamp, mountain+plains), as jsDelivr
+ * served it on 2026-10-26, kept for the shape's history.
  *
- * {@link v6Problems} is what the reader needs of the published manifest; on
- * the draft it finds exactly the seven pairs still to paint. When pairs-v6 is
- * published, its snapshot goes beside this one and must give none.
+ * {@link v6Problems} is what the reader needs of the published manifest: on
+ * the draft it finds exactly the seven pairs still to paint, on pairs-v6 none.
  *
  * Also here, on the real cells: the pair forming (its first cell warmed
  * ahead, and held for while it loads -- the #201 follow-up) and the phone
@@ -110,6 +110,38 @@ describe('pairs-v6-draft: the shape pairs-v6 is written to', () => {
     expect(v6Problems(raw, v5)).toEqual(Object.keys(v5.pairs).filter((k) => !['forest+swamp', 'island+swamp', 'mountain+plains'].includes(k)).map((k) => `${k}: no grid`));
     // Each painted grid: the sixteen cells |i − j| ≤ 1, desktop only, in the geography's order.
     for (const k of ['forest+swamp', 'island+swamp', 'mountain+plains']) {
+      const g = pairs.pairs[k]!.grid!;
+      expect(Object.keys(g.cells)).toHaveLength(16);
+      expect(Object.values(g.cells).every((c) => c!.phone === null)).toBe(true);
+      expect(`${g.left}-${g.right}`).toBe(geographySlug(k));
+    }
+  });
+});
+
+describe('pairs-v6: the published manifest, the flag’s default', () => {
+  const bytes = readFileSync(new URL('./testdata/pairs-v6.pairs.json', import.meta.url));
+  const raw = JSON.parse(bytes.toString('utf8'));
+  const v5 = JSON.parse(readFileSync(new URL('./testdata/pairs-v5.pairs.json', import.meta.url), 'utf8'));
+  const r = validatePairs(raw, `${V6}pairs.json`);
+  const pairs = r.pairs!;
+
+  it('is the file jsDelivr serves byte for byte (the pairs-v6 tag, 2026-10-27), under the 256 KB a pairs manifest may be', () => {
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe('f53f658f10a95ac0d00b349b796e14e5d895ecf8f6139072115726e1805ae80d');
+    expect(bytes.length).toBeLessThan(256 * 1024);
+  });
+
+  it('validates with no errors, written for 1.17; one budget warning a pair, every one naming its grid; the ref under 45 MB', () => {
+    expect(r.errors).toEqual([]);
+    expect(pairs.spec).toBe('1.17');
+    expect(r.warnings).toHaveLength(10);
+    expect(r.warnings.filter((w) => /of them the seam grid \(1\.17\)/.test(w)).map((w) => w.split(':')[0]).sort()).toEqual(Object.keys(v5.pairs).map((k) => `pairs.${k}`).sort());
+    expect(r.warnings.some((w) => w.startsWith('pairs: '))).toBe(false);
+    expect(pairsRefBytes(pairs)).toBeLessThan(MAX_PAIRS_PACK_BYTES);
+  });
+
+  it('is pairs-v5 with a grid on all ten pairs: nothing left for the reader to want', () => {
+    expect(v6Problems(raw, v5)).toEqual([]);
+    for (const k of Object.keys(v5.pairs)) {
       const g = pairs.pairs[k]!.grid!;
       expect(Object.keys(g.cells)).toHaveLength(16);
       expect(Object.values(g.cells).every((c) => c!.phone === null)).toBe(true);
