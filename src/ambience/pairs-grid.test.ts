@@ -279,7 +279,9 @@ describe('spec 1.17: the seam grid', () => {
     const full = pairPictures(pairs, [side], { phone: false, full: { thresholds: T } }).map((x) => x.src.replace(BASE, ''));
     // A fifth Island makes 5 : 3, which shows 5x4 (the heavier exact); a fourth Swamp 4x4; an Island leaving 3x3; a Swamp
     // leaving 4 : 2, which shows 4x3 again (the review of #201: both directions, so a step down is warm too).
-    expect(full.filter((x) => x.startsWith('seams/'))).toEqual(['seams/island-swamp/s4x3-panorama.webp', 'seams/island-swamp/s5x4-panorama.webp', 'seams/island-swamp/s4x4-panorama.webp', 'seams/island-swamp/s3x3-panorama.webp']);
+    expect(full.filter((x) => x.startsWith('seams/island-swamp/'))).toEqual(['seams/island-swamp/s4x3-panorama.webp', 'seams/island-swamp/s5x4-panorama.webp', 'seams/island-swamp/s4x4-panorama.webp', 'seams/island-swamp/s3x3-panorama.webp']);
+    // And the first cell of a pair the side does not have yet (pairs-v6.test.ts): a Forest's first land beside swamp s3.
+    expect(full.filter((x) => x.startsWith('seams/') && !x.startsWith('seams/island-swamp/'))).toEqual(['seams/swamp-forest/s3x2-panorama.webp']);
     // Without the flag, no cell.
     expect(pairPictures(pairs, [side], { phone: false }).some((x) => x.src.includes('/seams/'))).toBe(false);
   });

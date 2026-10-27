@@ -220,6 +220,20 @@ export function pairGridPick(pair: PackPair | null | undefined, left: number, ri
   return cell ? { cell: gridCellKey(i, j), shown: [i, j], stages: [i0, j0], clamped: true, picture: cell } : null;
 }
 
+/**
+ * Spec 1.17 on a phone-width screen (layout.ts `PHONE_VIEWPORT_MAX`): does a
+ * grid cell give way to the pair's `stages`? When it has no phone picture and
+ * the stage pictures have one -- pairfull.ts `pairFullArt`'s rule for a desktop-only
+ * panorama: the cells are 5:1 desktop panoramas, and a cover crop of one in a
+ * phone's half would show little but the seam. The half then is the stage
+ * panorama, as before the grid (1.15 / 1.16.1, a third colour's element
+ * included), and the plan carries no `grid`, so nothing names a seam the
+ * phone is not shown (the review of #201, finding 3).
+ */
+export function pairGridGivesWay(pair: PackPair, cell: PackHalf): boolean {
+  return !cell.phone && pair.stages.some((st) => !!st.half?.phone);
+}
+
 export interface PackPair {
   /** {@link pairKey}: the two biomes in alphabetical order, `forest+island`. */
   key: string;
@@ -924,12 +938,19 @@ export function rowCentreCss(items: readonly Pick<RowItem, 'share' | 'seam'>[], 
  * second colour arriving (the review of #198), each live colour's pair
  * panoramas at pair stage 1 with every colour it does not have yet -- at
  * most four a colour -- so the first pair picture is usually there when its
- * land is played.
+ * land is played. Spec 1.17 likewise: the seam grid's FIRST cell with each
+ * colour the side does not have yet -- that colour at stage 1 and the live
+ * one at its own stage (`1xj` / `ix1`, clamped as `pairGridPick` clamps),
+ * and at the stage a dual of the two would give it -- so the pair's first
+ * frame is its cell, not the whole-place panorama for a moment (the #201
+ * follow-up). `full.narrow` (a phone-width screen): a cell with no phone
+ * picture is never drawn there ({@link pairGridGivesWay}), so
+ * none is warmed (the #201 review: desktop cells were fetched on a phone).
  */
 export function pairPictures(
   pairs: PairsPack | null | undefined,
   sides: readonly (readonly { biome: Biome; stage: number; weight?: number }[])[],
-  opts: { phone: boolean; full?: { thresholds?: readonly number[] | null } | null },
+  opts: { phone: boolean; full?: { thresholds?: readonly number[] | null; narrow?: boolean } | null },
 ): { src: string; src2x: string | null }[] {
   if (!pairs) return [];
   const out: { src: string; src2x: string | null }[] = [];
@@ -941,6 +962,11 @@ export function pairPictures(
     seen.add(p.src);
     out.push({ src: p.src, src2x: p.src2x });
   };
+  // Spec 1.17: a grid cell, unless a phone-width screen would never draw it.
+  const addCell = (pair: PackPair, left: number, right: number) => {
+    const pick = pairGridPick(pair, Math.min(left, MAX_STAGES), Math.min(right, MAX_STAGES));
+    if (pick && !(opts.full?.narrow && pairGridGivesWay(pair, pick.picture))) add(pick.picture);
+  };
   for (const slots of sides) {
     const live = slots.filter((s) => s.stage > 0);
     const sideTotal = live.reduce((n, s) => n + (s.weight ?? 0), 0);
@@ -949,7 +975,15 @@ export function pairPictures(
         for (const other of Object.keys(BIOME_COLOUR) as Biome[]) {
           if (other === s.biome || !BIOME_COLOUR[s.biome] || live.some((x) => x.biome === other)) continue;
           const found = pairFor(pairs, s.biome, other);
-          if (found) add(pairPanoramaAt(found.pair, 1));
+          if (!found) continue;
+          add(pairPanoramaAt(found.pair, 1));
+          // The first cell: the arriving colour at stage 1, the live one at its own stage -- and at the stage a dual of
+          // the two (½ to each) would give it, when that is a step up.
+          const g = found.pair.grid;
+          if (!g) continue;
+          const thresholds = opts.full.thresholds ?? DEFAULT_STAGE_THRESHOLDS;
+          const withDual = s.weight !== undefined ? Math.max(s.stage, stageFor(s.weight + 0.5, thresholds)) : s.stage;
+          for (const own of new Set([s.stage, withDual])) addCell(found.pair, g.left === s.biome ? own : 1, g.left === s.biome ? 1 : own);
         }
     for (let i = 0; i < live.length; i++)
       for (let j = i + 1; j < live.length; j++) {
@@ -978,7 +1012,7 @@ export function pairPictures(
             [si - 1, sj],
             [si, sj - 1],
           ] as const)
-            add(pairGridPick(found.pair, Math.min(a, MAX_STAGES), Math.min(b, MAX_STAGES))?.picture ?? null);
+            addCell(found.pair, a, b);
         }
         const others = live.filter((_, k) => k !== i && k !== j).map((s) => BIOME_COLOUR[s.biome]).filter((c): c is PieceColour => !!c);
         if (!others.length) continue;

@@ -24,14 +24,14 @@ import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '..
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
 import { SIM_PLAYERS, simLandCount, simLog, simSetLandCount, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
 import { browserLoader, checkEffectFiles, fetchManifest, loadPairs, manifestUrlFor, preloadPack, warmPicture, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
-import { pairBands, pairsBytes, type PairsPack } from '../../ambience/pairs.ts';
-import { halfLayout } from '../../ambience/layout.ts';
+import { pairBands, pairPictures, pairsBytes, type PairsPack } from '../../ambience/pairs.ts';
+import { halfLayout, PHONE_VIEWPORT_MAX } from '../../ambience/layout.ts';
 import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, pieceUrls, type EffectEvent, type PackEffect, type PackPieces, type ScenePack } from '../../ambience/manifest.ts';
 import { currentPrefs, loadSceneryPrefs, pairsUrlOf, saveSceneryPrefs } from '../../ambience/prefs.ts';
 import { gradeFor, type LightOutcome } from '../../ambience/light.ts';
 import { applyGrade } from './lightGrade.ts';
 import { useMediaQuery } from '../hooks.ts';
-import { SceneryStrip } from './SceneryStrip.tsx';
+import { SceneryStrip, useNarrowScreen } from './SceneryStrip.tsx';
 import { pairFullCaption, pairFullPlan } from '../../ambience/pairfull.ts';
 import { elementBiomes } from '../../ambience/pieces.ts';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
@@ -195,9 +195,18 @@ export default function AmbiencePage() {
   const outcomeOf = (i: number): LightOutcome => (ending === 'none' ? null : ending === 'draw' ? 'draw' : (ending === 'you') === (i === 0) ? 'won' : 'lost');
   const previewPieces: PackPieces | null = piecesMode === 'builtin' ? builtinPieces() : piecesMode === 'pack' ? (pack?.pieces ?? null) : null;
   const previewElements = useMemo(() => (initial.pairFull && fill ? elementBiomes(previewPieces) : null), [initial.pairFull, fill, previewPieces]);
+  // Spec 1.17: the caption plans as the strip does, so a phone-width screen (no seam cell drawn) is not told of a seam.
+  const narrow = useNarrowScreen();
   useEffect(() => {
     if (previewPieces) for (const src of pieceUrls(previewPieces, { phone: window.innerWidth < 700 })) warmPicture({ src, src2x: null });
   }, [previewPieces]);
+  // The pair pictures the board warms as its lands change (SceneryLayer), so a Lands step here plays as on the board
+  // (spec 1.17: a pair's first seam cell is warm before its second colour arrives).
+  useEffect(() => {
+    if (!fill || !pack?.pairs) return;
+    const full = initial.pairFull ? { thresholds: pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
+    for (const w of pairPictures(pack.pairs, SIM_PLAYERS.map((p) => slotsOf(scenery, p)), { phone: window.innerWidth < 700, full })) warmPicture(w);
+  }, [scenery, pack, fill, initial.pairFull]);
 
   useLayoutEffect(() => {
     SIM_PLAYERS.forEach((player, i) => {
@@ -228,7 +237,7 @@ export default function AmbiencePage() {
             top
             slots={counts(SIM_PLAYERS[1])}
             creatures={creaturesOf(SIM_PLAYERS[1])}
-            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null, initial.pairFull === true, previewElements) : null}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null, initial.pairFull === true, previewElements, narrow) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[1]).length > 0}
             strip={
               <>
@@ -258,7 +267,7 @@ export default function AmbiencePage() {
             player={SIM_PLAYERS[0]}
             slots={counts(SIM_PLAYERS[0])}
             creatures={creaturesOf(SIM_PLAYERS[0])}
-            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null, initial.pairFull === true, previewElements) : null}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null, initial.pairFull === true, previewElements, narrow) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[0]).length > 0}
             strip={
               <>
@@ -550,9 +559,9 @@ function describe(e: SceneryEvent): string {
 }
 
 /** Spec 1.9: a side's pair bands in words (1.12: a motif pair says so), for the preview's caption (the dual and shock names are for this only). */
-function bandCaption(pack: ScenePack | null, slots: ReturnType<typeof slotsOf>, duals: Readonly<Record<string, number>>, stageOverride: number | null, pairFull = false, elements: ReadonlySet<Biome> | null = null): string | null {
-  // Spec 1.15: under `?pairfull=1` a side drawn as its pair picture says so instead.
-  const full = pairFull && pack?.pairs ? pairFullCaption(pairFullPlan(halfLayout(slots, pack, stageOverride), pack.pairs, { thresholds: pack.stageThresholds, stageOverride, elements, slots })) : null;
+function bandCaption(pack: ScenePack | null, slots: ReturnType<typeof slotsOf>, duals: Readonly<Record<string, number>>, stageOverride: number | null, pairFull = false, elements: ReadonlySet<Biome> | null = null, narrow = false): string | null {
+  // Spec 1.15: under `?pairfull=1` a side drawn as its pair picture says so instead (1.17: "seam 4x3" only where a cell is drawn).
+  const full = pairFull && pack?.pairs ? pairFullCaption(pairFullPlan(halfLayout(slots, pack, stageOverride), pack.pairs, { thresholds: pack.stageThresholds, stageOverride, elements, slots, narrow })) : null;
   if (full) return full;
   if (!pack?.pairs) return null;
   const bands = pairBands(halfLayout(slots, pack, stageOverride), pack.pairs, duals);

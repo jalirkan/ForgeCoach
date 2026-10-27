@@ -301,7 +301,7 @@ describe('spec 1.15: the flag', () => {
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(FORGECOACH_PAIRS_FULL_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1&pairs=http://127.0.0.1:8654/pairs-v2/', ''))).toBe('http://127.0.0.1:8654/pairs-v2/');
-    expect(FORGECOACH_PAIRS_FULL_URL).toMatch(/@pairs-v5\/$/);
+    expect(FORGECOACH_PAIRS_FULL_URL).toMatch(/@pairs-v6\/$/);
   });
 });
 

@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * pairs-v5, the first pack written to spec 1.16.1 (sided painted-in
- * elements), and the pairs FORGECOACH_PAIRS_FULL_URL points at under
- * `?pairfull=1` (pairs-v4 before it): a snapshot of its pairs.json, written by
+ * elements), and the pairs FORGECOACH_PAIRS_FULL_URL pointed at under
+ * `?pairfull=1` until pairs-v6 (pairs-v4 before it; the tag stays up, and
+ * pairs-v6 carries its stages): a snapshot of its pairs.json, written by
  * ~/scenery-packs/panoramas-v1/tools/make_pairs_v5.py from pairs-v4's
  * manifest (the file at its tag) and the painter's 240 element files,
  * published as two jsDelivr refs:
@@ -52,9 +53,9 @@ describe('pairs-v5', () => {
   const pairs = r.pairs!;
   const v4 = JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8'));
 
-  it('is the flag’s pairs URL (the board without the flag keeps pairs-v3.1)', () => {
-    expect(FORGECOACH_PAIRS_FULL_URL).toBe(V5);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(V5);
+  it('is no longer the flag’s pairs URL (pairs-v6 is, with this manifest’s stages); still reachable with ?pairs=', () => {
+    expect(FORGECOACH_PAIRS_FULL_URL).not.toBe(V5);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${V5}`, ''))).toBe(V5);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(FORGECOACH_PAIRS_URL).toMatch(/@pairs-v3\.1\/$/);
   });

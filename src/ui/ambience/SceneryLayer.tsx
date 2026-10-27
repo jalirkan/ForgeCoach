@@ -32,6 +32,7 @@ import { chosenColorSource, chosenColors } from '../../state.ts';
 import { dualsOf, SceneryTracker, slotsOf } from '../../ambience/model.ts';
 import { bridgePictures } from '../../ambience/bridges.ts';
 import { pairPictures } from '../../ambience/pairs.ts';
+import { PHONE_VIEWPORT_MAX } from '../../ambience/layout.ts';
 import { sceneryEvents } from '../../ambience/events.ts';
 import { cachedMap, useCardsVersion } from '../cardData.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
@@ -206,7 +207,8 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     if (fill) for (const w of bridgePictures(load.pack, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
     // Spec 1.9: and its pair band's pictures (the stage its lower neighbour maps to, and the next); under `?pairfull=1`
     // the whole-half panoramas and 1.16's painted-in elements too (review fault 4: the panorama was never warmed).
-    const full = prefs.pairFull ? { thresholds: load.pack.stageThresholds } : null;
+    // Spec 1.17: a phone-width screen draws no desktop-only seam cell, so none is fetched there.
+    const full = prefs.pairFull ? { thresholds: load.pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
     if (fill) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone, full })) warmPicture(w);
   }, [scenery, load?.pack, fill, prefs.pairFull]);
 

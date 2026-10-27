@@ -424,6 +424,27 @@ describe('spec 1.17 (draft): a seam grid cell on the board', () => {
     expect(html).toMatch(/scn-pairfull[^"]*is-mirrored/);
   });
 
+  it('a phone-width screen: the stage panorama’s phone picture, no cell drawn, warmed or named', () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('max-width'), media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
+    try {
+      markPicture(cell, true);
+      markPicture(base, true);
+      const p = pairFullPlan(halfLayout(slots, local), local.pairs, { thresholds: local.stageThresholds, elements: ELEMENTS, slots, narrow: true })!;
+      const phonePano = pairPanoramaAt(p.find((x): x is PairFullPair => x.kind === 'pair')!.pair, 3)!.phone!.src;
+      expect(phonePano).toMatch(/@pairs-v4\/pairs\/forest-swamp\/s3-panorama-phone\.webp$/);
+      markPicture(phonePano, true);
+      const html = strip();
+      expect(attrs(html, 'data-pairfull')).toEqual(['forest+swamp']);
+      expect(attrs(html, 'data-pairfull-cell')).toEqual([]);
+      expect(html).toContain(phonePano);
+      expect(html).not.toContain('/seams/');
+      expect(pairFullCaption(p)).toMatch(/whole half: forest 40% \| swamp 60%, pair stage 3$/);
+      expect(pairPictures(local.pairs, [slots], { phone: true, full: { thresholds: local.stageThresholds, narrow: true } }).some((w) => w.src.includes('/seams/'))).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('the cell failed: the stage panorama in the key’s orientation (not flipped), no cell named', () => {
     markPicture(cell, false);
     markPicture(base, true);
