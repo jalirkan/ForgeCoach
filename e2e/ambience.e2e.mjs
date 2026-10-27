@@ -151,40 +151,19 @@ async function main() {
     check((pairs ? /pairs-v\d/ : /pairs-v6/).test(pairsLine ?? ''), `the pairs pack did not load as ${pairs ? 'a pairs-vN pack' : 'pairs-v6'}: ${pairsLine}`);
     await page.click('[data-pieces-toggle="builtin"]');
     await page.click('[data-pieces-three]');
-    // The load gate draws the painted picture once it has loaded.
-    const panel = await page.waitForSelector('[data-pairfull-painted="R"]', { timeout: TIMEOUT });
-    const side = await panel.getAttribute('data-pairfull-painted-side');
-    const key = await panel.getAttribute('data-pairfull');
-    const stage = await panel.getAttribute('data-pairfull-stage');
-    const mirrored = await panel.evaluate((el) => el.classList.contains('is-mirrored'));
-    const srcs = await panel.$$eval('img', (imgs) => imgs.map((i) => i.getAttribute('src')));
-    log(`panel: ${key}, stage ${stage}, side ${side}, mirrored ${mirrored}, img ${srcs.join(' ')}`);
-    check(key === 'island+plains' && stage === '2', `expected island+plains at pair stage 2, got ${key} at ${stage}`);
-    check(side === 'right', `expected the right (plains) side, got ${side}`);
-    check(mirrored, 'the board has plains | island: the picture should be mirrored');
-    // Settled: the base panorama has faded out (reduced motion off: the cross-fade runs over growth.seconds).
-    await page.waitForFunction(() => [...document.querySelectorAll('[data-pairfull-painted="R"] img')].every((i) => /s2\+RR-panorama\.webp$/.test(i.getAttribute('src') ?? '')), null, { timeout: TIMEOUT });
-    const img = await page.$('[data-pairfull-painted="R"] img');
-    const loaded = await img.evaluate((i) => i.complete && i.naturalWidth);
-    check(loaded === 3277, `the painted picture did not load at 3277 px wide (naturalWidth ${loaded})`);
-    // No cut-out element over a painted picture, on either half.
-    const cutOuts = await page.$$eval('[data-pc="element"]', (els) => els.length);
-    check(cutOuts === 0, `${cutOuts} cut-out element(s) drawn over the painted picture`);
-    const caption = await page.textContent('[data-amb-bands="1"]');
-    log(`caption: ${caption}`);
-    check(/R painted in, on plains's ground/.test(caption ?? ''), `the caption does not say red is painted in: ${caption}`);
-    if (PAIRS_DIR) {
-      const painted = server.pictures.filter((p) => p.includes('+'));
-      log(`painted pictures fetched: ${painted.join(', ')}`);
-      // Both sides may be fetched (pairPictures warms both, so a flip of the balance is warm); the right one is what is drawn.
-      check(painted.includes('/pairs/island-plains/s2+RR-panorama.webp'), 'the right side was never fetched');
+    // Spec 1.17: on a pair with a seam grid the worked example draws the grid cell, and its third colour nothing
+    // (pairs-v6, the default); the painted-in picture (1.16) is what a pair without a grid draws (pairs-v5, the draft).
+    const manifest = await (await fetch(new URL('pairs.json', manifestPairs.endsWith('/') ? manifestPairs : `${manifestPairs}/`))).json();
+    if (manifest.pairs?.['island+plains']?.grid) {
+      await workedExampleOnGrid(page);
+    } else {
+      await workedExamplePainted(page, pairs, server);
     }
     check(errors.length === 0, `page errors: ${errors.join('; ')}`);
     mkdirSync(OUT, { recursive: true });
     // Let the empty table's dissolve and the fades settle before the picture is taken.
     await page.waitForTimeout(3000);
     await page.screenshot({ path: path.join(OUT, 'ambience-three.png') });
-    log('PASS: the worked example draws R painted in on plains’s ground (s2+RR), mirrored, with no cut-out');
     const ran = await gridChecks(page, manifestPairs, errors);
     if (ran) await phoneCheck(browser, origin, pairs);
   } catch (e) {
@@ -196,6 +175,60 @@ async function main() {
     await server.stop();
   }
   process.exit(failed ? 1 : 0);
+}
+
+/** The worked example on a pair with a seam grid (1.17): island+plains' cell, no painted-in picture, no cut-out. */
+async function workedExampleOnGrid(page) {
+  const panel = await page.waitForSelector('[data-pairfull="island+plains"][data-pairfull-cell]', { timeout: TIMEOUT });
+  const cell = await panel.getAttribute('data-pairfull-cell');
+  const mirrored = await panel.evaluate((el) => el.classList.contains('is-mirrored'));
+  check(/^[1-6]x[1-6]$/.test(cell ?? ''), `expected a grid cell on island+plains, got ${cell}`);
+  check(mirrored, 'the board has plains | island and the geography puts the island left: the cell should be mirrored');
+  await page.waitForFunction((c) => [...document.querySelectorAll('[data-pairfull="island+plains"] img')].every((i) => new RegExp(`seams/island-plains/s${c}-panorama\\.webp$`).test(i.getAttribute('src') ?? '')), cell, { timeout: TIMEOUT });
+  const img = await page.$('[data-pairfull="island+plains"] img');
+  const loaded = await img.evaluate((i) => i.complete && i.naturalWidth);
+  check(loaded === 3277, `the cell did not load at 3277 px wide (naturalWidth ${loaded})`);
+  const painted = await page.$$eval('[data-pairfull-painted]', (els) => els.length);
+  check(painted === 0, `${painted} painted-in picture(s) drawn on a grid pair`);
+  const cutOuts = await page.$$eval('[data-pc="element"]', (els) => els.length);
+  check(cutOuts === 0, `${cutOuts} cut-out element(s) drawn over the grid cell`);
+  const caption = await page.textContent('[data-amb-bands="1"]');
+  log(`panel: island+plains cell ${cell}, mirrored ${mirrored}; caption: ${caption}`);
+  check(/seam \d x?\d|seam [1-6]x[1-6]/.test(caption ?? '') && !/painted in/.test(caption ?? ''), `the caption should name the seam and no painted-in colour: ${caption}`);
+  log(`PASS: the worked example on a grid pair draws island+plains' cell ${cell}, mirrored, nothing painted in, no cut-out`);
+}
+
+/** The worked example on a pair without a grid (1.16): R painted in on plains's ground, s2+RR, mirrored, no cut-out. */
+async function workedExamplePainted(page, pairs, server) {
+  // The load gate draws the painted picture once it has loaded.
+  const panel = await page.waitForSelector('[data-pairfull-painted="R"]', { timeout: TIMEOUT });
+  const side = await panel.getAttribute('data-pairfull-painted-side');
+  const key = await panel.getAttribute('data-pairfull');
+  const stage = await panel.getAttribute('data-pairfull-stage');
+  const mirrored = await panel.evaluate((el) => el.classList.contains('is-mirrored'));
+  const srcs = await panel.$$eval('img', (imgs) => imgs.map((i) => i.getAttribute('src')));
+  log(`panel: ${key}, stage ${stage}, side ${side}, mirrored ${mirrored}, img ${srcs.join(' ')}`);
+  check(key === 'island+plains' && stage === '2', `expected island+plains at pair stage 2, got ${key} at ${stage}`);
+  check(side === 'right', `expected the right (plains) side, got ${side}`);
+  check(mirrored, 'the board has plains | island: the picture should be mirrored');
+  // Settled: the base panorama has faded out (reduced motion off: the cross-fade runs over growth.seconds).
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-pairfull-painted="R"] img')].every((i) => /s2\+RR-panorama\.webp$/.test(i.getAttribute('src') ?? '')), null, { timeout: TIMEOUT });
+  const img = await page.$('[data-pairfull-painted="R"] img');
+  const loaded = await img.evaluate((i) => i.complete && i.naturalWidth);
+  check(loaded === 3277, `the painted picture did not load at 3277 px wide (naturalWidth ${loaded})`);
+  // No cut-out element over a painted picture, on either half.
+  const cutOuts = await page.$$eval('[data-pc="element"]', (els) => els.length);
+  check(cutOuts === 0, `${cutOuts} cut-out element(s) drawn over the painted picture`);
+  const caption = await page.textContent('[data-amb-bands="1"]');
+  log(`caption: ${caption}`);
+  check(/R painted in, on plains's ground/.test(caption ?? ''), `the caption does not say red is painted in: ${caption}`);
+  if (PAIRS_DIR && pairs) {
+    // With a local pack the server saw the fetches: the right side's painted picture is among them (both sides may be warmed).
+    const painted = server.pictures.filter((p) => p.includes('+'));
+    log(`painted pictures fetched: ${painted.join(', ')}`);
+    check(painted.includes('/pairs/island-plains/s2+RR-panorama.webp'), 'the right side was never fetched');
+  }
+  log('PASS: the worked example draws R painted in on plains’s ground (s2+RR), mirrored, with no cut-out');
 }
 
 /** Sets one Lands slider of your side (React listens for `input`). */
