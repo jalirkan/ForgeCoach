@@ -1,0 +1,814 @@
+{
+  "schema": 1,
+  "spec": "1.18",
+  "name": "pairs-v7 (HAND-MADE test fixture, spec 1.18)",
+  "author": "ForgeCoach tests",
+  "license": "CC BY 4.0",
+  "note": "HAND-MADE for src/ambience/pairs-grid-phone.test.ts until the painters' fragments exist (work/phoneseam/phone-cells.json: a cell's `phone`; work/pinG/cells.json: a cell's painted-in `elements`) and make_pairs_v6_draft.py --phone-fragment / --pin-fragment merges them into a tagged pack; no file it names exists. Two pairs on a small grid: island+swamp (the key's order is the geography's) and forest+swamp (the geography puts the swamp left, so the cell is mirrored against the key). Cells with and without `phone`, painted-in cells sided in the cell's own order, some with a phone picture. Stage pictures in pairs-v5's shapes.",
+  "pairs": {
+    "island+swamp": {
+      "dual": "Underground Sea",
+      "shock": "Watery Grave",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/island-swamp/s1-half.webp",
+            "phone": {
+              "src": "pairs/island-swamp/s1-phone.webp",
+              "subjectBand": [
+                0.4,
+                0.52
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 300000
+          },
+          "panorama": {
+            "src": "pairs/island-swamp/s1-panorama.webp",
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "horizon": 0.5,
+            "hour": 16,
+            "key": "afternoon",
+            "bytes": 210000,
+            "phone": {
+              "src": "pairs/island-swamp/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.52,
+              "bytes": 260000
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/island-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.4,
+                0.52
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 300000
+          },
+          "panorama": {
+            "src": "pairs/island-swamp/s2-panorama.webp",
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "horizon": 0.5,
+            "hour": 16,
+            "key": "afternoon",
+            "bytes": 210000,
+            "phone": {
+              "src": "pairs/island-swamp/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.52,
+              "bytes": 260000
+            }
+          },
+          "elements": {
+            "R": {
+              "left": {
+                "src": "pairs/island-swamp/s2+RL-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/island-swamp/s2+RL-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              },
+              "right": {
+                "src": "pairs/island-swamp/s2+RR-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/island-swamp/s2+RR-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/island-swamp/s3-half.webp",
+            "phone": {
+              "src": "pairs/island-swamp/s3-phone.webp",
+              "subjectBand": [
+                0.4,
+                0.52
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 300000
+          },
+          "panorama": {
+            "src": "pairs/island-swamp/s3-panorama.webp",
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "horizon": 0.5,
+            "hour": 16,
+            "key": "afternoon",
+            "bytes": 210000,
+            "phone": {
+              "src": "pairs/island-swamp/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.52,
+              "bytes": 260000
+            }
+          },
+          "elements": {
+            "R": {
+              "left": {
+                "src": "pairs/island-swamp/s3+RL-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/island-swamp/s3+RL-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              },
+              "right": {
+                "src": "pairs/island-swamp/s3+RR-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/island-swamp/s3+RR-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              }
+            },
+            "W": {
+              "left": {
+                "src": "pairs/island-swamp/s3+WL-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/island-swamp/s3+WL-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              },
+              "right": {
+                "src": "pairs/island-swamp/s3+WR-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/island-swamp/s3+WR-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              }
+            }
+          }
+        }
+      ],
+      "grid": {
+        "1x1": {
+          "src": "seams/island-swamp/s1x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon"
+        },
+        "1x2": {
+          "src": "seams/island-swamp/s1x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x1": {
+          "src": "seams/island-swamp/s2x1-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x2": {
+          "src": "seams/island-swamp/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon",
+          "phone": {
+            "src": "seams/island-swamp/s2x2-panorama-phone.webp",
+            "width": 1638,
+            "height": 1280,
+            "bytes": 120000,
+            "subjectBand": [
+              0.33,
+              0.68
+            ]
+          },
+          "elements": {
+            "R": {
+              "left": {
+                "src": "seams/island-swamp/s2x2+RL-panorama.webp",
+                "bytes": 75000
+              },
+              "right": {
+                "src": "seams/island-swamp/s2x2+RR-panorama.webp",
+                "bytes": 75000
+              }
+            }
+          }
+        },
+        "2x3": {
+          "src": "seams/island-swamp/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon",
+          "elements": {
+            "R": {
+              "right": {
+                "src": "seams/island-swamp/s2x3+RR-panorama.webp",
+                "bytes": 75000
+              }
+            }
+          }
+        },
+        "3x2": {
+          "src": "seams/island-swamp/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon",
+          "phone": {
+            "src": "seams/island-swamp/s3x2-panorama-phone.webp",
+            "width": 1638,
+            "height": 1280,
+            "bytes": 120000,
+            "subjectBand": [
+              0.33,
+              0.68
+            ]
+          },
+          "elements": {
+            "R": {
+              "left": {
+                "src": "seams/island-swamp/s3x2+RL-panorama.webp",
+                "bytes": 75000
+              }
+            }
+          }
+        },
+        "3x3": {
+          "src": "seams/island-swamp/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon",
+          "phone": {
+            "src": "seams/island-swamp/s3x3-panorama-phone.webp",
+            "width": 1638,
+            "height": 1280,
+            "bytes": 120000,
+            "subjectBand": [
+              0.33,
+              0.68
+            ]
+          },
+          "elements": {
+            "R": {
+              "left": {
+                "src": "seams/island-swamp/s3x3+RL-panorama.webp",
+                "bytes": 75000,
+                "phone": {
+                  "src": "seams/island-swamp/s3x3+RL-panorama-phone.webp",
+                  "bytes": 125000
+                }
+              },
+              "right": {
+                "src": "seams/island-swamp/s3x3+RR-panorama.webp",
+                "bytes": 75000
+              }
+            }
+          }
+        },
+        "3x4": {
+          "src": "seams/island-swamp/s3x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon"
+        },
+        "4x3": {
+          "src": "seams/island-swamp/s4x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon",
+          "phone": {
+            "src": "seams/island-swamp/s4x3-panorama-phone.webp",
+            "width": 1638,
+            "height": 1280,
+            "bytes": 120000,
+            "subjectBand": [
+              0.33,
+              0.68
+            ]
+          },
+          "elements": {
+            "R": {
+              "left": {
+                "src": "seams/island-swamp/s4x3+RL-panorama.webp",
+                "bytes": 75000
+              }
+            },
+            "W": {
+              "left": {
+                "src": "seams/island-swamp/s4x3+WL-panorama.webp",
+                "bytes": 75000,
+                "phone": {
+                  "src": "seams/island-swamp/s4x3+WL-panorama-phone.webp",
+                  "bytes": 125000
+                }
+              }
+            }
+          }
+        },
+        "4x4": {
+          "src": "seams/island-swamp/s4x4-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon"
+        }
+      }
+    },
+    "forest+swamp": {
+      "dual": "Bayou",
+      "shock": "Overgrown Tomb",
+      "band": {
+        "min": 0.1,
+        "perDual": 0.04,
+        "max": 0.34
+      },
+      "stageMap": [
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          5,
+          6
+        ]
+      ],
+      "stages": [
+        {
+          "half": {
+            "src": "pairs/forest-swamp/s1-half.webp",
+            "phone": {
+              "src": "pairs/forest-swamp/s1-phone.webp",
+              "subjectBand": [
+                0.4,
+                0.52
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 300000
+          },
+          "panorama": {
+            "src": "pairs/forest-swamp/s1-panorama.webp",
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "horizon": 0.5,
+            "hour": 16,
+            "key": "afternoon",
+            "bytes": 210000,
+            "phone": {
+              "src": "pairs/forest-swamp/s1-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.52,
+              "bytes": 260000
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-swamp/s2-half.webp",
+            "phone": {
+              "src": "pairs/forest-swamp/s2-phone.webp",
+              "subjectBand": [
+                0.4,
+                0.52
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 300000
+          },
+          "panorama": {
+            "src": "pairs/forest-swamp/s2-panorama.webp",
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "horizon": 0.5,
+            "hour": 16,
+            "key": "afternoon",
+            "bytes": 210000,
+            "phone": {
+              "src": "pairs/forest-swamp/s2-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.52,
+              "bytes": 260000
+            }
+          },
+          "elements": {
+            "R": {
+              "left": {
+                "src": "pairs/forest-swamp/s2+RL-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/forest-swamp/s2+RL-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              },
+              "right": {
+                "src": "pairs/forest-swamp/s2+RR-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/forest-swamp/s2+RR-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              }
+            }
+          }
+        },
+        {
+          "half": {
+            "src": "pairs/forest-swamp/s3-half.webp",
+            "phone": {
+              "src": "pairs/forest-swamp/s3-phone.webp",
+              "subjectBand": [
+                0.4,
+                0.52
+              ]
+            },
+            "subjectBand": [
+              0.35,
+              0.6
+            ],
+            "bytes": 300000
+          },
+          "panorama": {
+            "src": "pairs/forest-swamp/s3-panorama.webp",
+            "width": 3277,
+            "height": 640,
+            "subjectBand": [
+              0.38,
+              0.72
+            ],
+            "focal": {
+              "x": 0.5,
+              "y": 0.52
+            },
+            "safe": {
+              "x": 0.1875,
+              "y": 0.38,
+              "w": 0.625,
+              "h": 0.34
+            },
+            "horizon": 0.5,
+            "hour": 16,
+            "key": "afternoon",
+            "bytes": 210000,
+            "phone": {
+              "src": "pairs/forest-swamp/s3-panorama-phone.webp",
+              "width": 1638,
+              "height": 1280,
+              "subjectBand": [
+                0.33,
+                0.68
+              ],
+              "focal": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "safe": {
+                "x": 0.1875,
+                "y": 0.33,
+                "w": 0.625,
+                "h": 0.35
+              },
+              "horizon": 0.52,
+              "bytes": 260000
+            }
+          },
+          "elements": {
+            "R": {
+              "left": {
+                "src": "pairs/forest-swamp/s3+RL-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/forest-swamp/s3+RL-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              },
+              "right": {
+                "src": "pairs/forest-swamp/s3+RR-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/forest-swamp/s3+RR-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              }
+            },
+            "W": {
+              "left": {
+                "src": "pairs/forest-swamp/s3+WL-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/forest-swamp/s3+WL-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              },
+              "right": {
+                "src": "pairs/forest-swamp/s3+WR-panorama.webp",
+                "bytes": 210000,
+                "phone": {
+                  "src": "pairs/forest-swamp/s3+WR-panorama-phone.webp",
+                  "bytes": 270000
+                }
+              }
+            }
+          }
+        }
+      ],
+      "grid": {
+        "2x2": {
+          "src": "seams/swamp-forest/s2x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon"
+        },
+        "2x3": {
+          "src": "seams/swamp-forest/s2x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon",
+          "elements": {
+            "W": {
+              "right": {
+                "src": "seams/swamp-forest/s2x3+WR-panorama.webp",
+                "bytes": 75000
+              }
+            }
+          }
+        },
+        "3x2": {
+          "src": "seams/swamp-forest/s3x2-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon",
+          "phone": {
+            "src": "seams/swamp-forest/s3x2-panorama-phone.webp",
+            "width": 1638,
+            "height": 1280,
+            "bytes": 120000,
+            "subjectBand": [
+              0.33,
+              0.68
+            ]
+          },
+          "elements": {
+            "W": {
+              "left": {
+                "src": "seams/swamp-forest/s3x2+WL-panorama.webp",
+                "bytes": 75000,
+                "phone": {
+                  "src": "seams/swamp-forest/s3x2+WL-panorama-phone.webp",
+                  "bytes": 125000
+                }
+              }
+            }
+          }
+        },
+        "3x3": {
+          "src": "seams/swamp-forest/s3x3-panorama.webp",
+          "width": 3277,
+          "height": 640,
+          "bytes": 70000,
+          "horizon": 0.44,
+          "hour": 12,
+          "key": "noon",
+          "phone": {
+            "src": "seams/swamp-forest/s3x3-panorama-phone.webp",
+            "width": 1638,
+            "height": 1280,
+            "bytes": 120000,
+            "subjectBand": [
+              0.33,
+              0.68
+            ]
+          }
+        }
+      }
+    }
+  }
+}

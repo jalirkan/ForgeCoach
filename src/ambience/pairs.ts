@@ -42,6 +42,12 @@
  * one half, never the other ({@link pairGridPick}: the exact cell, else the
  * lighter half clamped to one stage of the heavier, else none and the pair's
  * `stages` as in 1.15).
+ *
+ * Spec 1.18 (draft): a cell may carry a `phone` picture (a phone-shaped board
+ * then draws the cell too, {@link pairGridGivesWay}) and painted-in
+ * `elements` in a stage's 1.16.1 shape, sided in the CELL's own (geography)
+ * order: the third colour painted into the seam picture on the heavier half's
+ * ground ({@link pairGridPaintedAt}).
  */
 import { BIOMES, DEFAULT_STAGE_THRESHOLDS, MAX_STAGES, pairKey, stageFor, type Biome, type SlotState } from './model.ts';
 import { cleanText, int } from '../lab/status.ts';
@@ -52,8 +58,8 @@ import { halfSeams, SEAM_CAP_VW, widenedRatio } from './bridges.ts';
 
 /** The pair pack's manifest, at the root of the pairs URL. */
 export const PAIRS_MANIFEST_FILE = 'pairs.json';
-/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs, 1.15 whole-half panoramas, 1.16 painted-in elements, 1.16.1 sided ones, 1.17 the seam grid). */
-export const PAIRS_SPEC = '1.17';
+/** The newest spec version this reader knows (1.9 added pair bands, 1.12 motifs, 1.15 whole-half panoramas, 1.16 painted-in elements, 1.16.1 sided ones, 1.17 the seam grid, 1.18 its phone and painted-in cells). */
+export const PAIRS_SPEC = '1.18';
 
 /** Is version `a` (1.x or 1.x.y) newer than `b`? */
 function specNewer(a: string, b: string): boolean {
@@ -176,8 +182,18 @@ export interface PairGrid {
   /** The picture's left half: the pair's colour earlier in {@link GEOGRAPHY}. */
   left: Biome;
   right: Biome;
-  cells: Partial<Record<string, PackHalf>>;
+  cells: Partial<Record<string, PairGridCell>>;
 }
+
+/**
+ * Spec 1.17 / 1.18: one grid cell, a 1.5 `half` in 1.15's panorama shape
+ * (1.18: with an optional `phone`, 1638 × 1280 as a stage panorama's) and,
+ * 1.18, optional painted-in `elements` in a stage's 1.16.1 shape, keyed by the
+ * third colour. A sided entry's `left` / `right` are in the CELL's order (the
+ * geography's: `left` the feature on the picture's left half, the painter's
+ * `s<i>x<j>+<C>L`), not the manifest key's as a stage's are.
+ */
+export type PairGridCell = PackHalf & { elements?: Partial<Record<PieceColour, PairElement>> };
 
 /** Spec 1.17: a grid cell's key, `"4x3"`. */
 export function gridCellKey(i: number, j: number): string {
@@ -194,7 +210,7 @@ export interface PairGridPick {
   stages: [number, number];
   /** The lighter half was raised to one stage below the heavier (no cell for the true pair). */
   clamped: boolean;
-  picture: PackHalf;
+  picture: PairGridCell;
 }
 
 /**
@@ -232,6 +248,24 @@ export function pairGridPick(pair: PackPair | null | undefined, left: number, ri
  */
 export function pairGridGivesWay(pair: PackPair, cell: PackHalf): boolean {
   return !cell.phone && pair.stages.some((st) => !!st.half?.phone);
+}
+
+/**
+ * Spec 1.18 (draft): the cell's painted-in picture for third colour `colour`
+ * on `side` -- the heavier pair colour's half, in the CELL's (geography)
+ * order --, or null: the cell then draws its third colour as nothing, 1.17's
+ * rule. A sided entry's side, else its unsided `src` (1.16.1's shape). Never
+ * another cell's, a stage's, or the other side's: a feature on the lighter
+ * half's ground is the wrong painting (SYSTEM.md A5). `narrow` (a phone-width
+ * screen): a picture with no `phone` gives way to the plain cell there, as a
+ * desktop-only cell gives way to the stages, so a phone is never told of a
+ * colour it is not shown.
+ */
+export function pairGridPaintedAt(cell: PairGridCell | null | undefined, colour: PieceColour | null | undefined, side: PairSide, narrow = false): PackHalf | null {
+  const e = colour ? cell?.elements?.[colour] : undefined;
+  const pic = e ? (e[side] ?? e.any) : null;
+  if (!pic || (narrow && !pic.phone)) return null;
+  return pic;
 }
 
 export interface PackPair {
@@ -478,12 +512,16 @@ function parsePair(rawKey: string, e: unknown, base: string, warn: string[]): Pa
     for (const h of [s.half, s.motif, s.panorama]) count(h, false);
     for (const e of Object.values(s.elements ?? {})) for (const h of pairElementPictures(e)) count(h, true);
   }
-  // Spec 1.17: a grid cell counts in the pair's stage pictures and, in this folder, in the ref's.
-  for (const h of Object.values(grid?.cells ?? {})) count(h, false, true);
+  // Spec 1.17: a grid cell counts in the pair's stage pictures and, in this folder, in the ref's; 1.18, its phone picture
+  // (by its own `phone.bytes`) and its painted-in pictures with it.
+  for (const h of Object.values(grid?.cells ?? {})) {
+    count(h, false, true);
+    for (const e of Object.values(h?.elements ?? {})) for (const x of pairElementPictures(e)) count(x, false, true);
+  }
   if (halfBytes > MAX_PAIR_HALF_BYTES)
     warn.push(
       gridBytes > 0
-        ? `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared, ${(gridBytes / 1048576).toFixed(1)} MB of them the seam grid (1.17)${paintedBytes > 0 ? ` and ${(paintedBytes / 1048576).toFixed(1)} MB painted-in elements` : ''}; the budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair, and a grid is expected to exceed it: a half loads only the cell it shows, its neighbours and, on a mono side, each other colour's first cell (pictures kept)`
+        ? `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared, ${(gridBytes / 1048576).toFixed(1)} MB of them the seam grid (1.17)${paintedBytes > 0 ? ` and ${(paintedBytes / 1048576).toFixed(1)} MB painted-in elements` : ''}; the budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair, and a grid is expected to exceed it: a half loads only the cell it shows, its neighbours, the shown cell's painted-in picture for a third colour (1.18) and, on a mono side, each other colour's first cell (pictures kept)`
         : paintedBytes > 0
         ? `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared, ${(paintedBytes / 1048576).toFixed(1)} MB of them painted-in elements; the budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair, and a set of painted-in elements (1.16) is expected to exceed it: a half loads only the picture it shows and the next stage's (pictures kept)`
         : `${path}: ${(halfBytes / 1048576).toFixed(1)} MB of stage pictures declared; their budget is ${MAX_PAIR_HALF_BYTES / 1048576} MB per pair (pictures kept)`,
@@ -542,7 +580,7 @@ function parseGrid(v: unknown, kind: PairKind, rawStages: unknown[], keyLeft: Bi
   const first = rawStages.find((st) => isObj(st) && isObj(st.panorama)) as Record<string, unknown> | undefined;
   const shape = shapeOf(first?.panorama, PANORAMA_SHAPE);
   const phoneShape = shapeOf(isObj(first?.panorama) ? (first!.panorama as Record<string, unknown>).phone : undefined, PANORAMA_PHONE_SHAPE);
-  const cells: Partial<Record<string, PackHalf>> = {};
+  const cells: Partial<Record<string, PairGridCell>> = {};
   let far = 0;
   for (const k of Object.keys(v)) {
     const m = GRID_KEY.exec(k);
@@ -557,13 +595,17 @@ function parseGrid(v: unknown, kind: PairKind, rawStages: unknown[], keyLeft: Bi
       warn.push(`${path}.${k}: not an object { src, phone, bytes }; ignored`);
       continue;
     }
-    const merged: Record<string, unknown> = { ...shape, ...e };
+    const { elements: rawElements, ...own } = e;
+    const merged: Record<string, unknown> = { ...shape, ...own };
     if (typeof e.phone === 'string') merged.phone = { ...phoneShape, src: e.phone };
     else if (isObj(e.phone)) merged.phone = { ...phoneShape, ...e.phone };
     const cell = parseHalf(merged, base, `${path}.${k}`, warn);
     if (!cell) continue;
     if (Math.abs(i - j) > 1) far++;
-    cells[gridCellKey(i, j)] = cell;
+    // Spec 1.18: the third colour painted into the cell, each picture in the cell's own shape (as a stage's are in its
+    // panorama's), sided in the cell's order; a side that is never the heavier half's is warned and dropped alone.
+    const elements = parseCellElements(rawElements, merged, i, j, keyLeft, keyRight, base, `${path}.${k}.elements`, warn);
+    cells[gridCellKey(i, j)] = elements ? { ...cell, elements } : cell;
   }
   if (far) warn.push(`${path}: ${far} cell${far === 1 ? '' : 's'} more than one stage apart (kept, shown for exactly those stages; the draft paints |i − j| ≤ 1 and clamps the lighter half)`);
   if (!Object.keys(cells).length) {
@@ -571,6 +613,39 @@ function parseGrid(v: unknown, kind: PairKind, rawStages: unknown[], keyLeft: Bi
     return null;
   }
   return { left: order[0], right: order[1], cells };
+}
+
+/**
+ * Spec 1.18: a grid cell's painted-in `elements`, read as a stage's are
+ * ({@link parseStageElements}, over the cell's own merged shape), then
+ * checked against the cell: a colour that is one of the pair's own is
+ * dropped, and so is a side that is never the heavier half's -- `left` on a
+ * cell whose right half is the higher stage (i < j), `right` on i > j -- since
+ * the reader only ever draws the heavier half's side (both at i = j). The
+ * clamp keeps the heavier half exact, so this holds on a clamped cell too.
+ */
+function parseCellElements(v: unknown, cellRaw: Record<string, unknown>, i: number, j: number, keyLeft: Biome, keyRight: Biome, base: string, path: string, warn: string[]): Partial<Record<PieceColour, PairElement>> | null {
+  const els = parseStageElements(v, cellRaw, base, path, warn);
+  if (!els) return null;
+  const own = new Set([BIOME_COLOUR[keyLeft], BIOME_COLOUR[keyRight]]);
+  const out: Partial<Record<PieceColour, PairElement>> = {};
+  for (const [c, e] of Object.entries(els) as [PieceColour, PairElement][]) {
+    if (own.has(c)) {
+      warn.push(`${path}.${c}: ${c} is one of the pair's own colours, not a third; ignored`);
+      continue;
+    }
+    let { left, right } = e;
+    if (left && i < j) {
+      warn.push(`${path}.${c}.left: the cell's right half is the heavier (${i}x${j}), so its left side is never drawn; ignored`);
+      left = null;
+    }
+    if (right && i > j) {
+      warn.push(`${path}.${c}.right: the cell's left half is the heavier (${i}x${j}), so its right side is never drawn; ignored`);
+      right = null;
+    }
+    if (left || right || e.any) out[c] = { left, right, any: e.any };
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 /** The fields a painted-in element (spec 1.16) takes from its stage's panorama when it does not give its own. */
@@ -945,7 +1020,14 @@ export function rowCentreCss(items: readonly Pick<RowItem, 'share' | 'seam'>[], 
  * frame is its cell, not the whole-place panorama for a moment (the #201
  * follow-up). `full.narrow` (a phone-width screen): a cell with no phone
  * picture is never drawn there ({@link pairGridGivesWay}), so
- * none is warmed (the #201 review: desktop cells were fetched on a phone).
+ * none is warmed (the #201 review: desktop cells were fetched on a phone);
+ * spec 1.18: a cell WITH one is, at the phone shape, by the same rules.
+ * Spec 1.18 too: the painted-in pictures of the cell a pair shows now (its
+ * two halves' own stages, through the clamp), for each other colour on the
+ * side not heavier than both of the pair's -- the cell's own pictures only,
+ * never a neighbour's or a first cell's (a full painted set is about 660
+ * pictures), and on a phone-width screen only one with a `phone` picture
+ * ({@link pairGridPaintedAt}).
  */
 export function pairPictures(
   pairs: PairsPack | null | undefined,
@@ -1015,6 +1097,14 @@ export function pairPictures(
             [si, sj - 1],
           ] as const)
             addCell(found.pair, a, b);
+          // Spec 1.18: the shown cell's painted-in pictures for a third colour -- when the pair is the one drawn (no other
+          // colour heavier than either of its two) -- both of the cell's sides at i = j, as 1.16.1 warms both.
+          const pick = pairGridPick(found.pair, Math.min(si, MAX_STAGES), Math.min(sj, MAX_STAGES));
+          const lighter = Math.min(live[i]!.weight ?? 0, live[j]!.weight ?? 0);
+          if (pick && !(opts.full.narrow && pairGridGivesWay(found.pair, pick.picture)))
+            for (const s of live)
+              if (s !== live[i] && s !== live[j] && (s.weight ?? 0) <= lighter)
+                for (const side of ['left', 'right'] as const) add(pairGridPaintedAt(pick.picture, BIOME_COLOUR[s.biome], side, opts.full.narrow));
         }
         const others = live.filter((_, k) => k !== i && k !== j).map((s) => BIOME_COLOUR[s.biome]).filter((c): c is PieceColour => !!c);
         if (!others.length) continue;
