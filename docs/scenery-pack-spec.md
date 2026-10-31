@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.16.1; 1.17 in draft)
+# Scenery pack spec (schema 1, version 1.16.1; 1.17 and 1.18 in draft)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -34,6 +34,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.16 | **Painted-in elements and one makeup rule** (§2, *Painted-in elements*), behind `?pairfull=1` for the pictures: a pair stage in `pairs.json` may carry **`elements`**, per colour that stage's panorama with the third colour's feature painted **into** the place; under the flag the half draws it instead of the panorama (a cross-fade, no cut-out on top), else the 1.14 cut-out element as before. And four corrections from the scenery review of 2026-10-24, reading the same manifests: **one makeup rule** for the panels, the pair picture and the pieces (four or five colours keep the three heaviest by their own weights; the colours dropped show nothing and **weigh nothing** in the pan or the pair choice, correcting 1.10's fold, while the stage still counts every coloured land); **pieces above every scenery layer** (the land pictures, every accent, the card-row scrim and the effects), below every card, label and control (correcting 1.14); a **front plays once its frames have loaded**; and a **load gate** for the whole-half picture (its panels until a picture of it has loaded; never blank). The pairs pack's 45 MB warning counts only the files in its own ref. Every 1.0–1.15 pack and pairs manifest is read unchanged. |
 | 1.16.1 | **Sided painted-in elements** (§2, *Painted-in elements*, amended): an `elements[<colour>]` entry may give **`left`** and **`right`**, one painted panorama per pair colour's ground (the painter's `s<k>+<C>L` and `s<k>+<C>R`), and the reader draws the **heavier** pair colour's side (SYSTEM.md A5), chosen on the key's colours before any mirroring; 1.16's unsided `src` entry still reads. A picture's `phone` object may declare its own **`bytes`**, so each shape counts in the ref its own file lies in. A pairs manifest's `spec` may carry a third number (`"1.16.1"`). ForgeCoach's **pairs-v5** is the first pack written to it. |
 | 1.17 (draft) | **The seam grid** (§2, *The seam grid*), behind `?pairfull=1`, whose default pairs are pairs-v6 (a grid on all ten pairs; the board without the flag keeps pairs-v3.1), for Justin's review on the live board: a pair in `pairs.json` may carry a **`grid`** of whole-half seam pictures keyed **`"<i>x<j>"`** by the two halves' own stages -- `i` the stage of the pair's colour earlier in the one geography (Island → Swamp → Plains → Forest → Mountain: the picture's left half), `j` the later one's -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), only the seam painted. Painted for \|i − j\| ≤ 1; further apart, the lighter half is raised to one stage below the heavier. A missing cell falls back to the pair's `stages`; a third colour on a grid picture draws nothing in the draft. Every 1.0–1.16.1 pack and pairs manifest is read unchanged. |
+| 1.18 (draft) | **Phone cells and painted-in cells** (§2, *Phone cells and painted-in cells*), behind `?pairfull=1`, a draft amendment to 1.17 for the two painter lanes of 31 October 2026: a grid cell may carry a **`phone`** picture (a stage panorama's `phone` shape, 1638 × 1280) and painted-in **`elements`** (a stage's 1.16.1 sided shape, the sides in the **cell's** geography order). On a phone-shaped board a grid pair draws the cell the desktop would (the same pick) when that cell has a `phone`, and gives way to the `stages` exactly as 1.17 when it has not; a third colour on a cell draws the cell's painted-in picture on the heavier half when it has one, and nothing when it has not (1.17's rule). Warming adds the phone cells by 1.17's rules and the shown cell's painted-in pictures only. Every 1.0–1.17 pack and pairs manifest (pairs-v6 included) is read and drawn unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -2004,6 +2005,9 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
   (each half is its own colour's). Painting the third colour into the new
   bases is SYSTEM.md C7's next step, after the seams are judged. A third
   colour on a pair with no grid, or at a missing cell, is 1.16.1 as before.
+  (Amended in 1.18: a cell may carry the third colour painted in, drawn on
+  the heavier half; without one, nothing, as here. See *Phone cells and
+  painted-in cells*.)
 - **Phone.** A cell with no `phone` gives way to the pair's stage pictures
   wherever the half would draw its phone picture (a phone, or a phone-shaped
   panel), as a desktop-only panorama does (1.15), so the draft never reaches
@@ -2013,7 +2017,10 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
   panorama's phone picture and, with a third colour, 1.16.1's painted-in
   picture or the cut-out -- the caption names no seam ("whole half: … pair
   stage 3"), and no cell is warmed there. (A phone-shaped panel on a wide
-  screen still gives way at the load gate.)
+  screen still gives way at the load gate.) (Amended in 1.18: a cell WITH a
+  `phone` picture is planned, drawn and warmed on a phone like any cell; the
+  rule above is for a cell without one. See *Phone cells and painted-in
+  cells*.)
 - **Loading.** A cell is the first candidate of 1.16's load gate, before the
   stage's painted-in element, panorama and half: drawn once loaded, the
   previous picture held meanwhile (at most 8 s). **A cell on screen is held
@@ -2079,6 +2086,160 @@ candidate's `mirror` and `cell`, `gridCaption`); SceneryStrip's
 `PairFullPanel` draws it (`pairs-grid.test.ts`, `pairs-v6.test.ts`,
 `sceneryDom.test.tsx`).
 
+### Phone cells and painted-in cells (1.18, draft)
+
+**A draft amendment to 1.17, behind the same flag.** On 31 October 2026 two
+painter lanes began painting the seam grid's missing pieces: a **phone**
+picture for each cell, and the **third colour painted into** a cell (SYSTEM.md
+C7's next step). 1.18 says where those pictures go in `pairs.json` and when
+the reader draws them, so they draw the day a tagged pack carries them. Both
+are optional fields on a 1.17 cell; a pairs manifest without them -- pairs-v6,
+whose cells have neither -- is read and drawn exactly as 1.17 says. A 1.17
+reader already reads a cell's `phone` (it reads a cell as a 1.5 `half`) and
+ignores `elements`, so it draws phone cells and, for a third colour, nothing.
+
+**`phone` on a cell.** A cell may carry `phone`, an object in a stage
+panorama's `phone` shape: `src` (required), `width` and `height` (the 1.15
+phone canvas, **1638 × 1280**, 1.28 : 1), `bytes` (the phone file's own,
+1.16.1, so it counts in the ref its file lies in), `subjectBand`, and
+optionally `src2x`, `focal`, `safe`, `horizon`. What it leaves out is the
+pair's first stage panorama's phone picture's, as the cell's desktop fields
+are that panorama's. A string `phone` is its `src`. The painter's file:
+`seams/<left>-<right>/s<i>x<j>-panorama-phone.webp`, the cell's place composed
+for the phone canvas, its seam at `focal.x` 0.5.
+
+```json
+"4x3": { "src": "seams/island-swamp/s4x3-panorama.webp", "width": 3277, "height": 640, "bytes": 69804,
+         "horizon": 0.448, "hour": 19, "key": "dusk",
+         "phone": { "src": "seams/island-swamp/s4x3-panorama-phone.webp", "width": 1638, "height": 1280,
+                    "bytes": 118000, "subjectBand": [0.33, 0.68], "horizon": 0.5 },
+         "elements": {
+           "R": { "left": { "src": "seams/island-swamp/s4x3+RL-panorama.webp", "bytes": 74000 } },
+           "W": { "left": { "src": "seams/island-swamp/s4x3+WL-panorama.webp", "bytes": 73000,
+                            "phone": { "src": "seams/island-swamp/s4x3+WL-panorama-phone.webp", "bytes": 120000 } } } } }
+```
+
+**`elements` on a cell.** A cell may carry `elements`, keyed by the third
+colour (`W` `U` `B` `R` `G`, never one of the pair's own), each entry in a
+stage's 1.16.1 **sided** shape: `left` and/or `right`, each `{ src, bytes,
+phone? }` and optionally `src2x`, `horizon`, `hour`, `key`; 1.16's unsided
+`src` also reads and serves a side the entry does not give. What a picture
+leaves out is the **cell's** (`width`, `height`, `subjectBand`, `focal`,
+`safe`, `horizon`, `hour`, `key`; a phone picture's geometry the cell phone's).
+
+- **The sides are the cell's order, not the key's.** A cell is painted in the
+  geography's order, so `left` is the feature on the picture's **left** half
+  -- the colour earlier in Island → Swamp → Plains → Forest → Mountain --, the
+  painter's `s<i>x<j>+<C>L`, and `right` on its right half, `+<C>R`. (A
+  stage's `left` / `right` are the manifest key's, 1.16.1; on six pairs the
+  two differ.) Files `seams/<left>-<right>/s<i>x<j>+<C><L|R>-panorama.webp`,
+  and `-panorama-phone.webp` where a phone picture is painted.
+- **Which sides.** The reader only ever draws the heavier half's side, so the
+  painter paints `left` where `i > j`, `right` where `i < j`, and both where
+  `i = j`. A side that can never be the heavier half's (`left` on `i < j`,
+  `right` on `i > j`) is warned and dropped alone, and so is a colour that is
+  one of the pair's own. The clamp keeps the heavier half exact, so a clamped
+  cell's heavier side is the same one.
+
+**On a phone-shaped board.** On a phone-width screen (≤ 600 px), and on a
+phone-shaped panel on a wide one, the cell is chosen **exactly as on a
+desktop** (1.17's pick: the exact cell, else the heavier half exact and the
+lighter raised to one below it).
+
+- **The chosen cell has `phone`:** the half draws its phone picture, panned
+  by the share and mirrored by the geography as the desktop cell is; the
+  plan names the cell, the caption names the seam ("island s4 | swamp s3,
+  seam 4x3"), and the cell is held and warmed by 1.17's rules at the phone
+  shape.
+- **It has none:** the half gives way to the pair's `stages` exactly as 1.17
+  says (the stage panorama's phone picture, with a third colour 1.16.1's
+  painted picture or the cut-out, no seam in the caption, no cell warmed) --
+  never a neighbouring cell that has a phone picture: a land would then
+  redraw a half the board did not change, and a phone and a desktop would
+  disagree about the board.
+
+**A third colour on a cell.** On a half that 1.17 draws as a cell with a
+third colour (makeup.ts's one rule: the two heaviest kept colours are the
+pair, the third the element):
+
+1. **The side.** The heavier of the pair's two colours by their own land
+   weights (a tie, the one that arrived first: 1.16.1's rule), found in board
+   order and turned into the cell's order (flipped when the board has the
+   pair against the geography).
+2. **The cell has that colour painted on that side:** the half draws it
+   **instead of** the plain cell, panned, mirrored and cropped exactly as the
+   cell, and the caption adds "; R painted in, on island's ground".
+3. **It has not** (no entry for the colour, or only the other side): the
+   third colour draws **nothing** on the cell, 1.17's rule -- never the other
+   side (the feature on the lighter colour's ground is the wrong painting,
+   SYSTEM.md A5), another cell's picture, the stage's 1.16.1 painted picture,
+   or the 1.14 cut-out. The third colour's lands still move neither `i` nor
+   `j`.
+4. **On a phone,** the painted picture is drawn only if it carries its own
+   `phone`; else the cell's phone picture is drawn and the third colour draws
+   nothing, and the caption says nothing of it. (A phone-shaped panel on a
+   wide screen likewise skips a painted picture with no phone for the plain
+   cell's phone picture.)
+5. **Loading.** The painted cell is the load gate's first candidate, before
+   the plain cell. While it loads, the picture on screen (the plain cell) is
+   held, 1.17's cell hold, at most 8 s; if it fails, the plain cell. A
+   cut-out is never drawn on a cell, loading, failed or otherwise: the plan
+   carries no 1.14 `element` on a cell.
+
+**Captions and notes stay honest.** A caption or a note says what this
+board, at this shape, draws: the seam on a phone only where the cell has a
+phone picture, a colour painted in only where that picture is drawn. The
+pairs pack's `note` says "a phone draws the stages" only when its cells have
+no phone picture; with some, it says how many have one (the manifest writer
+below writes it so).
+
+**Warming.** 1.17's warm rules extend to the phone cells and to **the shown
+cell's** painted-in pictures, and to nothing else:
+
+- **Phone cells.** Wherever 1.17 warms a cell (the cell shown, the cells one
+  land either way would show, and on a mono side each other colour's first
+  cell), a phone-width screen warms that cell's **phone** picture when it has
+  one, and nothing for a cell without one (as 1.17).
+- **Painted-in cells.** For the cell a pair shows now (its two halves' own
+  stages, through the clamp), its painted pictures for each other colour on
+  the side that is not heavier than either pair colour (so this pair is the
+  one drawn): both of the cell's sides at `i = j` (a land that turns the
+  balance flips the side, as 1.16.1 warms both), its one side otherwise; on a
+  phone-width screen only those with a phone picture, at that shape. Never a
+  neighbour's, a first cell's or an absent colour's: a full painted set is
+  about **660 pictures** (ten pairs × three colours × 22 sides: six cells
+  with `i = j` at two sides, ten at one), and a half needs at most two.
+
+**Budget.** A cell's phone picture and its painted-in pictures count in its
+pair's stage pictures (1.9's ≤ 4 MB per pair, warned; a grid is expected to
+exceed it) and, each by its own `bytes` and where its own file lies, in the
+ref's ≤ 45 MB. At the desktop cells' ~70 KB, 160 phone cells are about 11 MB
+and 660 painted cells about 46 MB; pairs-v6's ref already holds 37.4 MB, so
+the painted set (and, at a finer quality, the phone set) goes in a ref of its
+own, named by absolute URL, as pairs-v5 names its phone pictures.
+
+**The manifest writer.** `~/scenery-packs/panoramas-v1/tools/make_pairs_v6_draft.py`
+merges the painters' fragments into the grid: `--phone-fragment
+work/phoneseam/phone-cells.json` (`{ "<pair>": { "<i>x<j>": { src, width,
+height, bytes, subjectBand, … } } }`, each a cell's `phone`) and
+`--pin-fragment work/pinG/cells.json` (`{ "<pair>": { "<i>x<j>": {
+"<C><L|R>": { src, bytes, phone?, … } } } }`, each a painted side), `<pair>`
+the manifest key or the painter's `<left>-<right>` folder. It checks every
+entry (an unknown pair or key, a cell absent from the grid, a bad value, a
+misnamed or missing file, a side never drawn, a pair colour: an error, and
+nothing is written), measures `width`, `height` and `bytes` from the files,
+writes spec `"1.18"`, and links the pictures into `--out`, or with
+`--phone-base` / `--pin-base` names them by absolute URL at a tag of their
+own and links them into `<out>-phone-ref/` / `<out>-pin-ref/` to publish
+there.
+
+`src/ambience/pairs.ts` reads it (`PairGridCell`, `parseGrid`'s
+`parseCellElements`, `pairGridPaintedAt`, `pairGridGivesWay`, `pairPictures`'
+warming); `src/ambience/pairfull.ts` chooses it (`pairFullPlan`'s
+`grid.painted`, `pairFullCandidates`, `gridCaption`); SceneryStrip's
+`PairFullPanel` draws it (`pairs-grid-phone.test.ts` on the hand-made
+`testdata/pairs-v7.pairs.json`, `sceneryDom.test.tsx`).
+
 ## 3. Files and budgets
 
 | What | Format | Size |
@@ -2137,7 +2298,7 @@ Budgets for bridges (1.8), counted apart from everything above:
 Budgets for pair bands (1.9), in their own manifest and their own ref:
 - **≤ 4 MB per pair** of stage pictures, desktop and phone, 1x and 2x (declare `bytes` on each `half`; a picture repeated across stages counts once), and 1.7's **≤ 2 MB** of frames per pair. Three stages at about 380 KB each and two steps of two frames fit with room to spare.
 - **≤ 45 MB for the pairs pack** (the validator warns past it): a jsDelivr ref holds at most 50 MB, so the pairs never share the main pack's ref. Only the files in the pairs manifest's own folder count (1.16): a file named by an absolute URL at another tag costs this ref nothing.
-- 1.15's panoramas, 1.16's painted-in elements and 1.17's grid cells (draft) count in the pair's ≤ 4 MB with its halves (a full set of painted elements is about 4 MB a pair more, a sided set about 5 MB, and the warning says painted elements are expected to exceed it: see *Painted-in elements*). A picture's `phone` may declare its own `bytes` (1.16.1), so a pack that splits its shapes across two refs counts each in its own.
+- 1.15's panoramas, 1.16's painted-in elements and 1.17's grid cells (draft; 1.18 their phone and painted-in pictures) count in the pair's ≤ 4 MB with its halves (a full set of painted elements is about 4 MB a pair more, a sided set about 5 MB, and the warning says painted elements are expected to exceed it: see *Painted-in elements*). A picture's `phone` may declare its own `bytes` (1.16.1), so a pack that splits its shapes across two refs counts each in its own.
 - The pictures at the `half` shapes: **2048 × 640** (`src2x` 4096 × 1280) and **1024 × 1280** (`src2x` 2048 × 2560); frames 1x only.
 - A device loads only the bands its sides show (the pair stage they map to and the next), never the set.
 
