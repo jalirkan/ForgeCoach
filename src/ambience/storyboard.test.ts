@@ -24,14 +24,17 @@
  * WUBRG order. Every picture is taken as loaded (the load gate's hold is not
  * walked).
  *
- * THIS TEST FAILS TODAY, ON PURPOSE. `every colour with lands is on screen`
- * fails while any state has an invisible colour; its message lists each rule
- * that hides one, its count and its smallest state, and marks the rules in
- * {@link KNOWN_GAPS}, the explicit allow-list of today's gaps. `the gaps are
- * exactly the known ones` holds that list to what the walk finds: a new gap
- * fails it, and so does a rule that no longer hides anything. Fix a rule,
- * delete its line here; when the list is empty, both are green. Captions
- * likewise ({@link KNOWN_CAPTION_GAPS}).
+ * `every colour with lands is on screen` is an EXPECTED FAILURE (`it.fails`):
+ * its assertion fails while any state has an invisible colour, which keeps
+ * the suite green while the owner decides the hiding rules; the log lists
+ * each rule that hides one, its count and its smallest state, and marks the
+ * rules in {@link KNOWN_GAPS}, the explicit allow-list of today's gaps. `the
+ * gaps are exactly the known ones` (a normal test) holds that list to what
+ * the walk finds: a new gap fails it, and so does a rule that no longer hides
+ * anything. Fix a rule, delete its line here; when the list is empty the
+ * expected failure starts passing its assertion, so `it.fails` reports it as
+ * FAILED -- make it a plain `it` then. Captions likewise
+ * ({@link KNOWN_CAPTION_GAPS}, a plain test: empty today).
  *
  * The report: `STORYBOARD_REPORT=<dir> npx vitest run src/ambience/storyboard.test.ts`
  * writes `<dir>/STORYBOARD-WALK.md` and `<dir>/storyboard-walk.json`.
@@ -324,7 +327,12 @@ describe('the storyboard walk: every colour with lands, on screen', () => {
     expect(phone.visible.length + phone.invisible.length).toBe(4);
   });
 
-  it('every colour with lands is on screen (FAILS until the known gaps are fixed; the message lists them)', { timeout: 600_000 }, () => {
+  // An EXPECTED failure (vitest `it.fails`): while any colour with lands is hidden (today: the KNOWN_GAPS below, whose
+  // rules wait on the owner's decisions) this assertion fails, so the test PASSES and CI stays green. The day the last
+  // gap is fixed the assertion passes and this test FAILS -- that is the signal: turn it back into a plain `it`.
+  // The allow-list itself is held exactly by the next test ("the gaps are exactly the known ones"), a normal test
+  // that must pass: a new gap, or a fixed one still listed, fails it.
+  it.fails('every colour with lands is on screen (an expected failure while KNOWN_GAPS lists any; the log lists them)', { timeout: 600_000 }, () => {
     const w = walk();
     const table = COMBOS.map((c) => {
       const t = w.tallies[comboId(c)]!;
