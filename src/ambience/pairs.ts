@@ -71,7 +71,7 @@ function specNewer(a: string, b: string): boolean {
 /**
  * A pairs manifest longer than this is refused unread (the pack manifest's own cap, manifest.ts
  * `MAX_MANIFEST_BYTES`, stays 256 KB). 1 MB since spec 1.18: a manifest that names every grid cell's
- * phone picture and its 660 painted-in pictures by absolute URL is about 0.5 MB (pairs-v7: 493,232
+ * phone picture and its 660 painted-in pictures by absolute URL is about 0.5 MB (pairs-v7.1: 493,264
  * bytes, ~27 KB gzipped from jsDelivr), past the 256 KB 1.9–1.17 inherited from the pack manifest.
  */
 export const MAX_PAIRS_MANIFEST_BYTES = 1024 * 1024;

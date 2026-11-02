@@ -53,7 +53,7 @@ describe('pairs-v5', () => {
   const pairs = r.pairs!;
   const v4 = JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8'));
 
-  it('is no longer the flag’s pairs URL (pairs-v6 was, then pairs-v7, both with this manifest’s stages); still reachable with ?pairs=', () => {
+  it('is no longer the flag’s pairs URL (pairs-v6 was, then pairs-v7.1, both with this manifest’s stages); still reachable with ?pairs=', () => {
     expect(FORGECOACH_PAIRS_FULL_URL).not.toBe(V5);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${V5}`, ''))).toBe(V5);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);

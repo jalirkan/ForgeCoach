@@ -1,25 +1,29 @@
 /*
- * ForgeCoach — ambience/pairs-v7.test.ts
+ * ForgeCoach — ambience/pairs-v7.1.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * pairs-v7 (spec 1.18): the pairs FORGECOACH_PAIRS_FULL_URL points at under
+ * pairs-v7.1 (spec 1.18): the pairs FORGECOACH_PAIRS_FULL_URL points at under
  * `?pairfull=1` -- pairs-v6's manifest and desktop pictures with every one of
  * its 160 grid cells given a `phone` picture and the third colour painted in,
  * merged by ~/scenery-packs/panoramas-v1/tools/make_pairs_v6_draft.py
  * (--phone-fragment / --pin-fragment, --phone-base / --pin-base) from the two
- * painters' fragments and tagged 2026-11-02, three jsDelivr refs:
+ * painters' fragments, tagged 2026-11-02, three jsDelivr refs:
  *
- * - `@pairs-v7`: this manifest and pairs-v6's desktop files, named relatively;
+ * - `@pairs-v7.1`: this manifest and pairs-v6's desktop files, named relatively;
  * - `@pairs-v7-phone`: the 160 cells' phone pictures (13.6 MB), by absolute URL;
  * - `@pairs-v7-pin`: the 660 painted-in cell pictures (48.3 MB), by absolute URL.
  *
- * `testdata/pairs-v7.tag.pairs.json` is the tagged manifest byte for byte
- * (493,232 bytes, the sha256 below),
- * https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7/pairs.json:
+ * `@pairs-v7`, tagged earlier the same day, is the same tree with the
+ * manifest mislabelled "pairs-v6 draft" in its `name` and `note` (493,232
+ * bytes, sha256 90060ba7080881557bf3cf13b0f756ca0502090c3c2baf79bc5b14694a77e559);
+ * pairs-v7.1 supersedes it, its `name` and `note` written after its tag, and
+ * nothing points at pairs-v7.
+ *
+ * `testdata/pairs-v7.1.tag.pairs.json` is the tagged manifest byte for byte
+ * (493,264 bytes, the sha256 below),
+ * https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7.1/pairs.json:
  * past the 256 KB a pairs manifest could be until 1.18, under the 1 MB it may
- * be now (pairs.ts MAX_PAIRS_MANIFEST_BYTES). Its `name` and `note` are the
- * writer's draft wording ("pairs-v6 draft"); the tag is fixed, so the pack is
- * known by its URL, not by its name (e2e/ambience.e2e.mjs checks the URL).
+ * be now (pairs.ts MAX_PAIRS_MANIFEST_BYTES).
  * `testdata/pairs-v7.pairs.json` is NOT this file: it is the HAND-MADE 1.18
  * fixture `pairs-grid-phone.test.ts` reads (two pairs on a small grid, no file
  * it names exists), written before the painters' fragments, and kept as it is.
@@ -42,6 +46,7 @@ import { fetchPairs, geographyOrder, MAX_PAIRS_MANIFEST_BYTES, MAX_PAIRS_PACK_BY
 import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
 
 const CDN = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery';
+const V71 = `${CDN}@pairs-v7.1/`;
 const V7 = `${CDN}@pairs-v7/`;
 const V7_PHONE = `${CDN}@pairs-v7-phone/`;
 const V7_PIN = `${CDN}@pairs-v7-pin/`;
@@ -54,15 +59,15 @@ const slot = (biome: Biome, index: number, weight: number): SlotState => ({ biom
 
 /** A pair key's seam folder: its two colours in the geography's order (island → swamp → plains → forest → mountain). */
 const geographySlug = (key: string) => geographyOrder(...(key.split('+') as [Biome, Biome]))!.join('-');
-const cell = (slug: string, c: string) => `${V7}seams/${slug}/s${c}-panorama.webp`;
+const cell = (slug: string, c: string) => `${V71}seams/${slug}/s${c}-panorama.webp`;
 const phoneCell = (slug: string, c: string) => `${V7_PHONE}seams/${slug}/s${c}-panorama-phone.webp`;
 const pin = (slug: string, c: string, colour: string, side: 'L' | 'R') => `${V7_PIN}seams/${slug}/s${c}+${colour}${side}-panorama.webp`;
 
-const bytes = readFileSync(new URL('./testdata/pairs-v7.tag.pairs.json', import.meta.url));
+const bytes = readFileSync(new URL('./testdata/pairs-v7.1.tag.pairs.json', import.meta.url));
 const raw = JSON.parse(bytes.toString('utf8'));
 const v6 = JSON.parse(readFileSync(new URL('./testdata/pairs-v6.pairs.json', import.meta.url), 'utf8'));
 
-/** What the reader needs of pairs-v7, one line per problem (none: it is ready to be the flag's default). */
+/** What the reader needs of pairs-v7.1, one line per problem (none: it is ready to be the flag's default). */
 function v7Problems(m: Record<string, any>, prev: Record<string, any>): string[] {
   const out: string[] = [];
   if (m.schema !== 1) out.push('schema: 1');
@@ -107,11 +112,12 @@ function v7Problems(m: Record<string, any>, prev: Record<string, any>): string[]
   return out;
 }
 
-describe('pairs-v7: the flag’s default', () => {
-  it('?pairfull=1 with no ?pairs= is pairs-v7; the board without the flag stays on pairs-v3.1; ?pairs= wins', () => {
-    expect(FORGECOACH_PAIRS_FULL_URL).toBe(V7);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(V7);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', '#ambience?pairfull=on'))).toBe(V7);
+describe('pairs-v7.1: the flag’s default', () => {
+  it('?pairfull=1 with no ?pairs= is pairs-v7.1 (never the mislabelled pairs-v7); the board without the flag stays on pairs-v3.1; ?pairs= wins', () => {
+    expect(FORGECOACH_PAIRS_FULL_URL).toBe(V71);
+    expect(FORGECOACH_PAIRS_FULL_URL).not.toBe(V7);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(V71);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', '#ambience?pairfull=on'))).toBe(V71);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(FORGECOACH_PAIRS_URL).toBe(`${CDN}@pairs-v3.1/`);
@@ -122,13 +128,13 @@ describe('pairs-v7: the flag’s default', () => {
   });
 });
 
-describe('pairs-v7: the published manifest', () => {
-  const r = validatePairs(raw, `${V7}pairs.json`);
+describe('pairs-v7.1: the published manifest', () => {
+  const r = validatePairs(raw, `${V71}pairs.json`);
   const pairs = r.pairs!;
 
-  it('is the file jsDelivr serves byte for byte (the pairs-v7 tag, 2026-11-02): past 256 KB, under the 1 MB a pairs manifest may be', () => {
-    expect(createHash('sha256').update(bytes).digest('hex')).toBe('90060ba7080881557bf3cf13b0f756ca0502090c3c2baf79bc5b14694a77e559');
-    expect(bytes.length).toBe(493_232);
+  it('is the file jsDelivr serves byte for byte (the pairs-v7.1 tag, 2026-11-02): past 256 KB, under the 1 MB a pairs manifest may be', () => {
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe('b59cf90776d7c0a419f4442661f02d7c4761128680f29535d1f72b91c06cd125');
+    expect(bytes.length).toBe(493_264);
     expect(bytes.length).toBeGreaterThan(256 * 1024);
     expect(MAX_PAIRS_MANIFEST_BYTES).toBe(1024 * 1024);
     expect(bytes.length).toBeLessThan(MAX_PAIRS_MANIFEST_BYTES);
@@ -136,11 +142,11 @@ describe('pairs-v7: the published manifest', () => {
 
   it('fetchPairs reads it (refused before 1.18 as over 256 KB); a manifest past 1 MB is still refused unread', async () => {
     const serve = (text: string) => async () => ({ ok: true, status: 200, text: async () => text });
-    const ok = await fetchPairs(V7, { fetch: serve(bytes.toString('utf8')) });
-    expect(ok.manifestUrl).toBe(`${V7}pairs.json`);
+    const ok = await fetchPairs(V71, { fetch: serve(bytes.toString('utf8')) });
+    expect(ok.manifestUrl).toBe(`${V71}pairs.json`);
     expect(ok.errors).toEqual([]);
     expect(ok.pairs?.spec).toBe('1.18');
-    const big = await fetchPairs(V7, { fetch: serve(' '.repeat(MAX_PAIRS_MANIFEST_BYTES + 1)) });
+    const big = await fetchPairs(V71, { fetch: serve(' '.repeat(MAX_PAIRS_MANIFEST_BYTES + 1)) });
     expect(big.pairs).toBeNull();
     expect(big.errors).toEqual(['The pairs manifest is over 1 MB.']);
   });
@@ -200,15 +206,18 @@ describe('pairs-v7: the published manifest', () => {
     expect(paintedBytes).toBeLessThan(MB50);
   });
 
-  it('its note says the cells have phone pictures, never “a phone draws the stages” (1.18’s honest note)', () => {
+  it('names itself after its tag (pairs-v7 said “pairs-v6 draft”); its note says the cells have phone pictures, never “a phone draws the stages”', () => {
+    expect(raw.name).toBe('ForgeCoach pair scenery, pairs-v7.1 (seam grid, phone cells and painted-in cells, sketch)');
+    expect(raw.note).toMatch(/^pairs-v7\.1 \(spec 1\.18, /);
+    expect(`${raw.name} ${raw.note}`).not.toMatch(/pairs-v6/);
     expect(raw.note).toMatch(/each with a phone picture/);
     expect(raw.note).toMatch(/painted into 160 cells \(660 pictures\)/);
     expect(raw.note).not.toMatch(/a phone draws the stages/);
   });
 });
 
-describe('pairs-v7 on the board', () => {
-  const pairs = validatePairs(raw, `${V7}pairs.json`).pairs!;
+describe('pairs-v7.1 on the board', () => {
+  const pairs = validatePairs(raw, `${V71}pairs.json`).pairs!;
   const at = (slots: SlotState[], narrow = false) => {
     const layout = halfLayout(slots, null);
     const items = pairFullPlan(layout, pairs, { thresholds: T, slots, narrow });
@@ -250,7 +259,7 @@ describe('pairs-v7 on the board', () => {
     });
   });
 
-  describe('a phone: the desktop’s cell, drawn from its phone picture (every pairs-v7 cell has one)', () => {
+  describe('a phone: the desktop’s cell, drawn from its phone picture (every pairs-v7.1 cell has one)', () => {
     it('plans the cell the desktop plans, at the phone shape, and the caption names the seam', () => {
       const desk = at([slot('island', 0, 4), slot('swamp', 1, 3)]);
       const phone = at([slot('island', 0, 4), slot('swamp', 1, 3)], true);
@@ -280,7 +289,7 @@ describe('pairs-v7 on the board', () => {
       expect(two.every((s) => s.startsWith(V7_PHONE) && s.endsWith('-panorama-phone.webp'))).toBe(true);
       expect(seams(warm([slot('island', 0, 3)], true)).sort()).toEqual(['island-swamp', 'island-plains', 'island-forest', 'island-mountain'].map((s) => phoneCell(s, '3x2')).sort());
       // The desktop warms the desktop cells.
-      expect(seams(warm([slot('island', 0, 4), slot('swamp', 1, 3)])).every((s) => s.startsWith(`${V7}seams/`) && !s.includes('-phone'))).toBe(true);
+      expect(seams(warm([slot('island', 0, 4), slot('swamp', 1, 3)])).every((s) => s.startsWith(`${V71}seams/`) && !s.includes('-phone'))).toBe(true);
     });
   });
 

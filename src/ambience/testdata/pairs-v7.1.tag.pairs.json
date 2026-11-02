@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "spec": "1.18",
-  "name": "ForgeCoach pair scenery, pairs-v6 draft (seam grid)",
+  "name": "ForgeCoach pair scenery, pairs-v7.1 (seam grid, phone cells and painted-in cells, sketch)",
   "author": "jalirkan",
   "license": "CC BY 4.0",
-  "note": "pairs-v6-draft (spec 1.18, a DRAFT for Justin's review behind ?pairfull=1 and ?pairs=): pairs-v5 with a seam grid on the pairs the painter has made -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), keyed <i>x<j> by the stage of the geography's left colour (Island -> Swamp -> Plains -> Forest -> Mountain) and the right's; painted for |i - j| <= 1, each with a phone picture. The third colour is painted into 160 cells (660 pictures), on the heavier half's ground; a third colour on a cell without one draws nothing. The other pairs keep their stages. Keys a+b alphabetical.",
+  "note": "pairs-v7.1 (spec 1.18, for Justin's review on the live board behind ?pairfull=1): pairs-v5 with a seam grid on the pairs the painter has made -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), keyed <i>x<j> by the stage of the geography's left colour (Island -> Swamp -> Plains -> Forest -> Mountain) and the right's; painted for |i - j| <= 1, each with a phone picture. The third colour is painted into 160 cells (660 pictures), on the heavier half's ground; a third colour on a cell without one draws nothing. The other pairs keep their stages. Keys a+b alphabetical.",
   "pairs": {
     "forest+island": {
       "dual": "Tropical Island",

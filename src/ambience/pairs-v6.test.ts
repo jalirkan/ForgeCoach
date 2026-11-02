@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * pairs-v6 (spec 1.17): the pairs FORGECOACH_PAIRS_FULL_URL pointed at under
- * `?pairfull=1` from 2026-10-27 until pairs-v7 (spec 1.18, `pairs-v7.test.ts`,
+ * `?pairfull=1` from 2026-10-27 until pairs-v7.1 (spec 1.18, `pairs-v7.1.test.ts`,
  * this manifest's stages and grid with each cell's phone and painted-in
  * pictures; the tag stays up) -- pairs-v5's manifest with a seam `grid` on all ten pairs,
  * written by ~/scenery-packs/panoramas-v1/tools/make_pairs_v6_draft.py
@@ -70,8 +70,8 @@ function v6Problems(raw: Record<string, any>, v5: Record<string, any>): string[]
   return out;
 }
 
-describe('pairs-v6: the flag’s default until pairs-v7', () => {
-  it('is no longer the flag’s pairs URL (pairs-v7 is, with this manifest’s stages and grid); still reachable with ?pairs=', () => {
+describe('pairs-v6: the flag’s default until pairs-v7.1', () => {
+  it('is no longer the flag’s pairs URL (pairs-v7.1 is, with this manifest’s stages and grid); still reachable with ?pairs=', () => {
     expect(FORGECOACH_PAIRS_FULL_URL).not.toBe(V6);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${encodeURIComponent(V6)}`, ''))).toBe(V6);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${encodeURIComponent(DRAFT)}`, ''))).toBe(DRAFT);
@@ -115,7 +115,7 @@ describe('pairs-v6-draft: the shape pairs-v6 is written to', () => {
   });
 });
 
-describe('pairs-v6: the published manifest, the flag’s default until pairs-v7', () => {
+describe('pairs-v6: the published manifest, the flag’s default until pairs-v7.1', () => {
   const bytes = readFileSync(new URL('./testdata/pairs-v6.pairs.json', import.meta.url));
   const raw = JSON.parse(bytes.toString('utf8'));
   const v5 = JSON.parse(readFileSync(new URL('./testdata/pairs-v5.pairs.json', import.meta.url), 'utf8'));
