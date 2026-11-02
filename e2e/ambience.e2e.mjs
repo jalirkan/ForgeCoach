@@ -12,24 +12,26 @@
  *      before its tags are cut);
  *   2. opens `/?pairfull=1#ambience` at a desktop size (the flag's own
  *      pairs, pairs-v7.1 on jsDelivr; `&pairs=<pairs>` only with PAIRS_DIR or
- *      PAIRS_URL), with ForgeCoach's own pack (from jsDelivr), Pieces →
- *      Placeholders (so a
+ *      PAIRS_URL), with ForgeCoach's own pack (pack-v9.2 from jsDelivr, spec
+ *      1.19 d), Pieces → Placeholders (so a
  *      1.14 cut-out exists for every colour) and Pieces → Three colours
  *      (SYSTEM.md's worked example: Plateau, Plains, Island);
- *   3. checks that your half draws island+plains whole with red PAINTED IN on
- *      plains's ground -- the sided picture `s2+RR-panorama.webp` --, that no
- *      cut-out element is drawn over it, and that the caption says
- *      "R painted in";
+ *   3. checks that your half draws mountain+plains whole (spec 1.19 b: the
+ *      pair showing stays the base, so the Island no longer re-keys it to
+ *      island+plains) with blue PAINTED IN on plains's ground -- the sided
+ *      picture --, that no cut-out element is drawn over it, and that the
+ *      caption says "U painted in";
  *   4. spec 1.17 (draft), only when the pairs manifest has a seam `grid`
  *      (pairs-v7.1 by default, or a grid pack by PAIRS_DIR or PAIRS_URL): with the Lands sliders,
  *      island 4 | swamp 3 draws the cell `4x3` unmirrored, a fourth Swamp
- *      steps one half (`4x4`), island 6 | swamp 2 clamps the lighter half
- *      (`6x5`), and forest 2 | swamp 3 draws swamp+forest's `3x2` MIRRORED
+ *      steps one half (`4x4`), island 6 | swamp 2 -- no cell `6x2` -- is the
+ *      two mono pictures apart (spec 1.19 c: no clamp; "no seam cell"), and
+ *      forest 2 | swamp 3 draws swamp+forest's `3x2` MIRRORED
  *      (the geography puts the swamp left); each checked on the panel, its
  *      picture and the caption, a screenshot each (e2e/out/grid-*.png). A
  *      cell the manifest does not have yet is skipped, and says so. Then the
- *      pair FORMING: island 3 alone, then a first Swamp -- the half's first
- *      pair picture is the cell `3x2` (warmed ahead), never the whole-place
+ *      pair FORMING: island 2 alone, then a first Swamp -- the half's first
+ *      pair picture is the cell `2x1` (warmed ahead), never the whole-place
  *      panorama for a moment before it (the #201 follow-up);
  *   5. with a grid, a PHONE (390 × 844): island 4 | swamp 3 draws the stage
  *      panorama's phone picture, names no cell, fetches no seam picture, and
@@ -38,16 +40,21 @@
  *      phone draws that cell's phone picture, names the cell, fetches no
  *      desktop seam picture, and the caption names the seam; then (spec
  *      1.18.1) the worked example on the phone, with Placeholders (their
- *      elements have phone pieces): red's cut-out -- its phone piece -- on
- *      the plains' ground over island+plains' plain phone cell, captioned
- *      "mountain as an element", where the cell's red painted picture has no
+ *      elements have phone pieces): blue's cut-out -- its phone piece -- on
+ *      the plains' ground over mountain+plains' plain phone cell, captioned
+ *      "island as an element", where the cell's blue painted picture has no
  *      phone picture (pairs-v7.1's); the painted phone picture and no cut-out
  *      where it has one (e2e/out/grid-phone-three.png).
  *
- *   6. SYSTEM.md A5's tie rule (the storyboard of 2026-11-02, sheet 5): Island, Swamp, Mountain, Mountain,
- *      Island, Swamp keeps island+mountain at the sixth land (all three tie; the pair showing stays), and the
- *      caption names the pair by its colours ("island + mountain"), never a dual nobody played. On the phone
- *      (5), the caption is at most two lines.
+ *   6. Spec 1.19 a and b (the owner's rules after the storyboard of 2026-11-02), with the pack's own pieces
+ *      (pack-v9.2), on the desktop and on the phone, land by land: Island, Swamp, Mountain, Mountain, Island,
+ *      Swamp, Forest ×3 (the storyboard's sequence 5) keeps island+swamp from the second land to the last -- the
+ *      pair showing stays the base while both its colours are among the three heaviest; the old rule went to
+ *      island+mountain at the second Mountain and to island+forest at the third Forest -- and W U B R G ×2, Forest,
+ *      Island (sequence 6, the five-colour soup) keeps island+plains; at every land every colour with lands is on
+ *      screen (the pair picture, a colour painted in, or a cut-out that has loaded) and named in the caption, which
+ *      names no dual nobody played. On the phone (5), the caption is at most two lines
+ *      (e2e/out/seq-*.png).
  *
  *   Spec 1.18 likewise on the worked example: on a grid pair whose cell has
  *   red painted in (`elements.R`), the cell's painted picture is drawn and
@@ -203,7 +210,7 @@ async function main() {
     await page.waitForTimeout(3000);
     await page.screenshot({ path: path.join(OUT, 'ambience-three.png') });
     const ran = await gridChecks(page, manifestPairs, errors);
-    await tieCheck(page, errors);
+    for (const seq of SEQUENCES) await sequenceCheck(page, seq, errors, 'desktop');
     if (ran) await phoneCheck(browser, origin, pairs, manifest);
   } catch (e) {
     failed = true;
@@ -217,63 +224,67 @@ async function main() {
 }
 
 /**
- * The worked example on a pair with a seam grid (1.17): island+plains' cell, no painted-in picture, no cut-out.
- * Spec 1.18: when the cell carries red painted in, that picture instead (still no cut-out).
+ * The worked example on a pair with a seam grid (1.17): Plateau, Plains, Island. Spec 1.19 b: the pair showing
+ * (mountain+plains, from the Plateau) stays the base -- the Island is its third colour, no longer a re-key to
+ * island+plains. The cell is mountain+plains' (the board has mountain | plains, the geography plains | mountain:
+ * mirrored). Spec 1.18: with blue painted into the cell, that picture and no cut-out; without (pairs-v6), spec 1.19 a:
+ * blue's cut-out over the plain cell (1.17 drew nothing).
  */
 async function workedExampleOnGrid(page, manifest) {
-  const panel = await page.waitForSelector('[data-pairfull="island+plains"][data-pairfull-cell]', { timeout: TIMEOUT });
+  const panel = await page.waitForSelector('[data-pairfull="mountain+plains"][data-pairfull-cell]', { timeout: TIMEOUT });
   const cell = await panel.getAttribute('data-pairfull-cell');
-  if (manifest.pairs['island+plains'].grid[cell]?.elements?.R) return workedExampleOnPaintedCell(page, cell);
+  if (manifest.pairs['mountain+plains'].grid[cell]?.elements?.U) return workedExampleOnPaintedCell(page, cell);
   const mirrored = await panel.evaluate((el) => el.classList.contains('is-mirrored'));
-  check(/^[1-6]x[1-6]$/.test(cell ?? ''), `expected a grid cell on island+plains, got ${cell}`);
-  check(mirrored, 'the board has plains | island and the geography puts the island left: the cell should be mirrored');
-  await page.waitForFunction((c) => [...document.querySelectorAll('[data-pairfull="island+plains"] img')].every((i) => new RegExp(`seams/island-plains/s${c}-panorama\\.webp$`).test(i.getAttribute('src') ?? '')), cell, { timeout: TIMEOUT });
-  const img = await page.$('[data-pairfull="island+plains"] img');
+  check(/^[1-6]x[1-6]$/.test(cell ?? ''), `expected a grid cell on mountain+plains, got ${cell}`);
+  check(mirrored, 'the board has mountain | plains and the geography puts the plains left: the cell should be mirrored');
+  await page.waitForFunction((c) => [...document.querySelectorAll('[data-pairfull="mountain+plains"] img')].every((i) => new RegExp(`seams/plains-mountain/s${c}-panorama\\.webp$`).test(i.getAttribute('src') ?? '')), cell, { timeout: TIMEOUT });
+  const img = await page.$('[data-pairfull="mountain+plains"] img');
   const loaded = await img.evaluate((i) => i.complete && i.naturalWidth);
   check(loaded === 3277, `the cell did not load at 3277 px wide (naturalWidth ${loaded})`);
   const painted = await page.$$eval('[data-pairfull-painted]', (els) => els.length);
   check(painted === 0, `${painted} painted-in picture(s) drawn on a grid pair`);
-  const cutOuts = await page.$$eval('[data-pc="element"]', (els) => els.length);
-  check(cutOuts === 0, `${cutOuts} cut-out element(s) drawn over the grid cell`);
+  const el = await page.waitForSelector('[data-amb-player="1"] [data-pc="element"][data-pc-colour="U"]', { timeout: TIMEOUT });
+  check(!!el, 'spec 1.19 a: no cut-out of blue over a cell with nothing painted');
   const caption = await page.textContent('[data-amb-bands="1"]');
-  log(`panel: island+plains cell ${cell}, mirrored ${mirrored}; caption: ${caption}`);
-  check(/seam \d x?\d|seam [1-6]x[1-6]/.test(caption ?? '') && !/painted in/.test(caption ?? ''), `the caption should name the seam and no painted-in colour: ${caption}`);
-  log(`PASS: the worked example on a grid pair draws island+plains' cell ${cell}, mirrored, nothing painted in, no cut-out`);
+  log(`panel: mountain+plains cell ${cell}, mirrored ${mirrored}; caption: ${caption}`);
+  check(new RegExp(`seam ${cell}; island as an element`).test(caption ?? '') && !/painted in/.test(caption ?? ''), `the caption should name the seam and the island as an element: ${caption}`);
+  log(`PASS: the worked example on a grid pair draws mountain+plains' cell ${cell}, mirrored, the island its cut-out (spec 1.19 a)`);
 }
 
-/** Spec 1.18: the worked example on a cell with red painted in: the heavier half's picture, mirrored, captioned, no cut-out. */
+/** Spec 1.18: the worked example on a cell with blue painted in: the heavier half's picture, mirrored, captioned, no cut-out. */
 async function workedExampleOnPaintedCell(page, cell) {
-  const panel = await page.waitForSelector(`[data-pairfull="island+plains"][data-pairfull-cell="${cell}"][data-pairfull-painted="R"]`, { timeout: TIMEOUT });
+  const panel = await page.waitForSelector(`[data-pairfull="mountain+plains"][data-pairfull-cell="${cell}"][data-pairfull-painted="U"]`, { timeout: TIMEOUT });
   const side = await panel.getAttribute('data-pairfull-painted-side');
   const mirrored = await panel.evaluate((el) => el.classList.contains('is-mirrored'));
-  check(side === 'left' || side === 'right', `no painted side named: ${side}`);
-  check(mirrored, 'the board has plains | island and the geography puts the island left: the cell should be mirrored');
-  const want = `seams/island-plains/s${cell}\\+R${side === 'left' ? 'L' : 'R'}-panorama\\.webp$`;
-  await page.waitForFunction((src) => [...document.querySelectorAll('[data-pairfull="island+plains"] img')].every((i) => new RegExp(src).test(i.getAttribute('src') ?? '')), want, { timeout: TIMEOUT });
+  // The plains (heavier, 1.5 to the mountain's ½) is the geography's left: the cell's left side.
+  check(side === 'left', `blue should be painted on the plains' side, the cell's left: ${side}`);
+  check(mirrored, 'the board has mountain | plains and the geography puts the plains left: the cell should be mirrored');
+  const want = `seams/plains-mountain/s${cell}\\+UL-panorama\\.webp$`;
+  await page.waitForFunction((src) => [...document.querySelectorAll('[data-pairfull="mountain+plains"] img')].every((i) => new RegExp(src).test(i.getAttribute('src') ?? '')), want, { timeout: TIMEOUT });
   const cutOuts = await page.$$eval('[data-pc="element"]', (els) => els.length);
   check(cutOuts === 0, `${cutOuts} cut-out element(s) drawn over the painted cell`);
   const caption = await page.textContent('[data-amb-bands="1"]');
-  log(`panel: island+plains cell ${cell}, R painted on the cell's ${side}, mirrored ${mirrored}; caption: ${caption}`);
-  check(new RegExp(`seam ${cell}; R painted in, on (island|plains)'s ground`).test(caption ?? ''), `the caption should name the cell and red painted in: ${caption}`);
-  log(`PASS: the worked example on a grid pair draws island+plains' cell ${cell} with R painted in (spec 1.18), no cut-out`);
+  log(`panel: mountain+plains cell ${cell}, U painted on the cell's ${side}, mirrored ${mirrored}; caption: ${caption}`);
+  check(new RegExp(`seam ${cell}; U painted in, on plains's ground`).test(caption ?? ''), `the caption should name the cell and blue painted in: ${caption}`);
+  log(`PASS: the worked example on a grid pair draws mountain+plains' cell ${cell} with U painted in (spec 1.18), no cut-out`);
 }
 
-/** The worked example on a pair without a grid (1.16): R painted in on plains's ground, s2+RR, mirrored, no cut-out. */
+/** The worked example on a pair without a grid (1.16), spec 1.19 b's pair: U painted in on plains's ground, s2+UR, no cut-out. */
 async function workedExamplePainted(page, pairs, server) {
   // The load gate draws the painted picture once it has loaded.
-  const panel = await page.waitForSelector('[data-pairfull-painted="R"]', { timeout: TIMEOUT });
+  const panel = await page.waitForSelector('[data-pairfull-painted="U"]', { timeout: TIMEOUT });
   const side = await panel.getAttribute('data-pairfull-painted-side');
   const key = await panel.getAttribute('data-pairfull');
   const stage = await panel.getAttribute('data-pairfull-stage');
   const mirrored = await panel.evaluate((el) => el.classList.contains('is-mirrored'));
   const srcs = await panel.$$eval('img', (imgs) => imgs.map((i) => i.getAttribute('src')));
   log(`panel: ${key}, stage ${stage}, side ${side}, mirrored ${mirrored}, img ${srcs.join(' ')}`);
-  check(key === 'island+plains' && stage === '2', `expected island+plains at pair stage 2, got ${key} at ${stage}`);
+  check(key === 'mountain+plains' && stage === '2', `expected mountain+plains at pair stage 2, got ${key} at ${stage}`);
   check(side === 'right', `expected the right (plains) side, got ${side}`);
-  check(mirrored, 'the board has plains | island: the picture should be mirrored');
+  check(!mirrored, 'the board has mountain | plains, the key\'s order: the picture should not be mirrored');
   // Settled: the base panorama has faded out (reduced motion off: the cross-fade runs over growth.seconds).
-  await page.waitForFunction(() => [...document.querySelectorAll('[data-pairfull-painted="R"] img')].every((i) => /s2\+RR-panorama\.webp$/.test(i.getAttribute('src') ?? '')), null, { timeout: TIMEOUT });
-  const img = await page.$('[data-pairfull-painted="R"] img');
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-pairfull-painted="U"] img')].every((i) => /s2\+UR-panorama\.webp$/.test(i.getAttribute('src') ?? '')), null, { timeout: TIMEOUT });
+  const img = await page.$('[data-pairfull-painted="U"] img');
   const loaded = await img.evaluate((i) => i.complete && i.naturalWidth);
   check(loaded === 3277, `the painted picture did not load at 3277 px wide (naturalWidth ${loaded})`);
   // No cut-out element over a painted picture, on either half.
@@ -281,35 +292,119 @@ async function workedExamplePainted(page, pairs, server) {
   check(cutOuts === 0, `${cutOuts} cut-out element(s) drawn over the painted picture`);
   const caption = await page.textContent('[data-amb-bands="1"]');
   log(`caption: ${caption}`);
-  check(/R painted in, on plains's ground/.test(caption ?? ''), `the caption does not say red is painted in: ${caption}`);
+  check(/U painted in, on plains's ground/.test(caption ?? ''), `the caption does not say blue is painted in: ${caption}`);
   if (PAIRS_DIR && pairs) {
     // With a local pack the server saw the fetches: the right side's painted picture is among them (both sides may be warmed).
     const painted = server.pictures.filter((p) => p.includes('+'));
     log(`painted pictures fetched: ${painted.join(', ')}`);
-    check(painted.includes('/pairs/island-plains/s2+RR-panorama.webp'), 'the right side was never fetched');
+    check(painted.includes('/pairs/mountain-plains/s2+UR-panorama.webp'), 'the right side was never fetched');
   }
-  log('PASS: the worked example draws R painted in on plains’s ground (s2+RR), mirrored, with no cut-out');
+  log('PASS: the worked example draws U painted in on plains’s ground (s2+UR), with no cut-out');
+}
+
+/** The storyboard's sequences (pc-results scenery/STORYBOARD.md): the lands in play order, and the pair spec 1.19 b keeps. */
+const SEQUENCES = [
+  // Sequence 5, Justin's four. The old rule: island+mountain at the second Mountain, island+swamp again at the second
+  // Swamp (a tie), island+forest at the third Forest. 1.19 b: island+swamp throughout -- a pair colour never leaves the
+  // three heaviest (U2 B2 R2 G3 at the end: one colour, the forest, outweighs them).
+  { name: 'seq-5-justin-four', lands: 'I S M M I S F F F', key: 'island+swamp' },
+  // Sequence 6, the five-colour soup: W U B R G twice, then Forest, Island. 1.19 b: island+plains throughout (the old
+  // rule went to plains+forest at the third Forest and to island+forest at the third Island).
+  { name: 'seq-6-five-soup', lands: 'P I S M F P I S M F F I', key: 'island+plains' },
+];
+const BIOME_OF = { I: 'island', S: 'swamp', P: 'plains', F: 'forest', M: 'mountain' };
+const COLOUR_OF = { island: 'U', swamp: 'B', plains: 'W', forest: 'G', mountain: 'R' };
+
+/** The colours your half has on screen: the pair picture's (or a pair apart's), a colour painted in, a panel, a cut-out that has loaded. */
+async function shownColours(page) {
+  return page.evaluate((B) => {
+    const root = document.querySelector('[data-amb-player="1"]');
+    const out = new Set();
+    const pairs = [];
+    for (const el of root.querySelectorAll('[data-pairfull]')) {
+      pairs.push(el.getAttribute('data-pairfull'));
+      for (const b of el.getAttribute('data-pairfull').split('+')) out.add(B[b]);
+      const p = el.getAttribute('data-pairfull-painted');
+      if (p) out.add(p);
+    }
+    for (const el of root.querySelectorAll('.scn-slot[data-biome]')) {
+      if (el.classList.contains('is-withered')) continue;
+      out.add(B[el.getAttribute('data-biome')]);
+      if (el.getAttribute('data-apart')) pairs.push(el.getAttribute('data-apart'));
+    }
+    const cuts = [];
+    for (const img of root.querySelectorAll('[data-pc="element"] img')) {
+      if (!(img.complete && img.naturalWidth > 0)) continue;
+      const host = img.closest('[data-pc="element"]');
+      cuts.push(`${host.getAttribute('data-pc-colour')}:${host.getAttribute('data-pc-ground')} ${host.getAttribute('data-pc-slot')}`);
+      out.add(host.getAttribute('data-pc-colour'));
+    }
+    return { colours: [...out].sort(), pairs: [...new Set(pairs)], cuts };
+  }, COLOUR_OF);
 }
 
 /**
- * SYSTEM.md A5: "on a tie, the pair already showing stays". I S M M I S (the Lands sliders append each land, so this
- * is the play order): island+swamp, then island+mountain at the second Mountain, kept through U2 B2 R2. The caption
- * names the pair by its colours and no dual (none was played).
+ * Spec 1.19 a and b, land by land, with the pack's own pieces (pack-v9.2's elements, their phone pieces on a phone):
+ * after each land, once the half has settled, the pair is the one kept and every colour with lands is on screen and
+ * named in the caption (by its biome, or "<C> painted in"), which names no dual (none was played).
  */
-async function tieCheck(page, errors) {
+async function sequenceCheck(page, seq, errors, shape) {
+  await page.click('[data-pieces-toggle="pack"]');
   const reset = await page.$('[data-amb-reset]:not([disabled])');
   if (reset) await reset.click();
-  for (const [biome, n] of [['island', 1], ['swamp', 1], ['mountain', 2], ['island', 2], ['swamp', 2]]) await setLands(page, biome, n);
-  await page.waitForSelector('[data-amb-player="1"] [data-pairfull]', { timeout: TIMEOUT });
-  await page.waitForTimeout(500);
-  const keys = await page.$$eval('[data-amb-player="1"] [data-pairfull]', (els) => els.map((e) => e.getAttribute('data-pairfull')));
-  const caption = (await page.textContent('[data-amb-bands="1"]')) ?? '';
-  log(`the tie: I S M M I S draws ${keys.join(', ')}; caption: ${caption}`);
-  check(keys.length > 0 && keys.every((k) => k === 'island+mountain'), `on a tie the pair showing (island+mountain) should stay: ${keys.join(', ')}`);
-  check(/^Pair band · island \+ mountain, /.test(caption), `the caption should name the pair by its colours: ${caption}`);
-  check(!/Volcanic Island|Steam Vents|Underground Sea|Watery Grave/.test(caption), `the caption names a dual nobody played: ${caption}`);
+  const counts = {};
+  const lands = seq.lands.split(' ');
+  for (let i = 0; i < lands.length; i++) {
+    const biome = BIOME_OF[lands[i]];
+    counts[biome] = (counts[biome] ?? 0) + 1;
+    await setLands(page, biome, counts[biome]);
+    const want = Object.keys(counts).map((b) => COLOUR_OF[b]).sort();
+    const key = i === 0 ? null : seq.key;
+    try {
+      await page.waitForFunction(
+        ({ want, key, B }) => {
+          const root = document.querySelector('[data-amb-player="1"]');
+          const out = new Set();
+          const pairs = new Set();
+          for (const el of root.querySelectorAll('[data-pairfull]')) {
+            pairs.add(el.getAttribute('data-pairfull'));
+            for (const b of el.getAttribute('data-pairfull').split('+')) out.add(B[b]);
+            const p = el.getAttribute('data-pairfull-painted');
+            if (p) out.add(p);
+          }
+          for (const el of root.querySelectorAll('.scn-slot[data-biome]')) {
+            if (el.classList.contains('is-withered')) continue;
+            out.add(B[el.getAttribute('data-biome')]);
+            if (el.getAttribute('data-apart')) pairs.add(el.getAttribute('data-apart'));
+          }
+          for (const img of root.querySelectorAll('[data-pc="element"] img')) if (img.complete && img.naturalWidth > 0) out.add(img.closest('[data-pc="element"]').getAttribute('data-pc-colour'));
+          const okPair = key ? pairs.size === 1 && pairs.has(key) : pairs.size === 0;
+          return okPair && want.every((c) => out.has(c));
+        },
+        { want, key, B: COLOUR_OF },
+        { timeout: TIMEOUT },
+      );
+    } catch {
+      const s = await shownColours(page);
+      throw new Fail(`${shape} ${seq.name}, land ${i + 1} (${lands.slice(0, i + 1).join(' ')}): expected the pair ${key ?? 'none'} and ${want.join('')} on screen, saw the pair ${s.pairs.join(', ') || 'none'} and ${s.colours.join('')} (cut-outs ${s.cuts.join(', ') || 'none'})`);
+    }
+    const s = await shownColours(page);
+    // A side of one colour has no caption.
+    const caption = (await page.$('[data-amb-bands="1"]')) ? ((await page.textContent('[data-amb-bands="1"]')) ?? '') : '';
+    log(`${shape} ${seq.name} ${i + 1}: ${lands.slice(0, i + 1).join(' ')} -> ${s.pairs.join(', ') || 'mono'}; on screen ${s.colours.join('')}; cut-outs ${s.cuts.join(', ') || 'none'}; caption: ${caption}`);
+    if (key) {
+      const named = new Set([...caption.matchAll(/\b(island|swamp|plains|forest|mountain)\b/g)].map((m) => COLOUR_OF[m[1]]));
+      for (const m of caption.matchAll(/\b([WUBRG]) painted in\b/g)) named.add(m[1]);
+      const missing = want.filter((c) => !named.has(c));
+      check(missing.length === 0, `${shape} ${seq.name}, land ${i + 1}: the caption does not name ${missing.join('')}: ${caption}`);
+      check(!/Tundra|Hallowed Fountain|Underground Sea|Watery Grave|Volcanic Island|Steam Vents|Tropical Island|Breeding Pool|Bayou|Overgrown Tomb|Badlands|Blood Crypt|Plateau|Sacred Foundry|Savannah|Temple Garden|Scrubland|Godless Shrine|Taiga|Stomping Ground/.test(caption), `${shape} ${seq.name}: the caption names a dual nobody played: ${caption}`);
+    }
+  }
   check(errors.length === 0, `page errors: ${errors.join('; ')}`);
-  log('PASS: the tie keeps the pair showing (island+mountain), captioned by its colours');
+  if (shape === 'phone') await captionLines(page);
+  await page.waitForTimeout(1000);
+  await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `${seq.name}-${shape}.png`) });
+  log(`PASS: ${shape} ${seq.name}: ${seq.key} kept from the second land to the last, every colour on screen and named at every land (spec 1.19 a, b)`);
 }
 
 /** The caption under a side's header on a phone: at most two lines (the storyboard's sheet 9); logs whether the clamp cut it. */
@@ -335,7 +430,7 @@ async function setLands(page, biome, n) {
 
 /**
  * Spec 1.17 (draft): the seam grid on your half, when the pairs manifest has one. `cases`: the lands in the order
- * they are played (the board's order), the cell expected, whether it is clamped and mirrored, the caption's words.
+ * they are played (the board's order), the cell expected (or, spec 1.19 c, `apart`: no cell), whether it is mirrored, the caption's words.
  */
 async function gridChecks(page, pairs, errors) {
   const manifest = await (await fetch(new URL('pairs.json', pairs.endsWith('/') ? pairs : `${pairs}/`))).json();
@@ -347,13 +442,13 @@ async function gridChecks(page, pairs, errors) {
   const cases = [
     { name: 'grid-4x3', key: 'island+swamp', lands: [['island', 4], ['swamp', 3]], cell: '4x3', dir: 'island-swamp', mirrored: false, caption: 'island s4 | swamp s3, seam 4x3' },
     { name: 'grid-4x4', key: 'island+swamp', keep: true, lands: [['swamp', 4]], cell: '4x4', dir: 'island-swamp', mirrored: false, caption: 'island s4 | swamp s4, seam 4x4' },
-    { name: 'grid-6x5-clamped', key: 'island+swamp', lands: [['island', 6], ['swamp', 2]], cell: '6x5', dir: 'island-swamp', mirrored: false, clamped: true, caption: 'island s6 | swamp s2→s5, seam 6x5 (clamped)' },
+    { name: 'grid-6x2-apart', key: 'island+swamp', lands: [['island', 6], ['swamp', 2]], cell: '6x2', apart: true, caption: 'island s6 | swamp s2, no seam cell' },
     { name: 'grid-3x2-mirrored', key: 'forest+swamp', lands: [['forest', 2], ['swamp', 3]], cell: '3x2', dir: 'swamp-forest', mirrored: true, caption: 'swamp s3 | forest s2, seam 3x2' },
   ];
   let ran = 0;
   for (const c of cases) {
-    if (!gridOf(c.key)?.[c.cell]) {
-      log(`SKIP ${c.name}: ${c.key} has no cell ${c.cell} yet`);
+    if (c.apart ? gridOf(c.key)?.[c.cell] : !gridOf(c.key)?.[c.cell]) {
+      log(`SKIP ${c.name}: ${c.key} ${c.apart ? 'has a cell' : 'has no cell'} ${c.cell}`);
       continue;
     }
     if (!c.keep) {
@@ -361,18 +456,21 @@ async function gridChecks(page, pairs, errors) {
       if (reset) await reset.click();
     }
     for (const [biome, n] of c.lands) await setLands(page, biome, n);
+    if (c.apart) {
+      await apartCheck(page, c, errors);
+      ran++;
+      continue;
+    }
     const sel = `[data-pairfull="${c.key}"][data-pairfull-cell="${c.cell}"]`;
     const panel = await page.waitForSelector(sel, { timeout: TIMEOUT });
     const want = new RegExp(`/seams/${c.dir}/s${c.cell}-panorama\\.webp$`);
     // Settled: the previous picture has faded out.
     await page.waitForFunction(({ sel, src }) => [...document.querySelectorAll(`${sel} img`)].every((i) => new RegExp(src).test(i.getAttribute('src') ?? '')), { sel, src: want.source }, { timeout: TIMEOUT });
     const mirrored = await panel.evaluate((el) => el.classList.contains('is-mirrored') && !!el.querySelector('.scn-pairfull-flip.is-mirrored'));
-    const clamped = (await panel.getAttribute('data-pairfull-clamped')) === 'yes';
     const width = await panel.$eval('img', (i) => i.complete && i.naturalWidth);
     const caption = await page.textContent('[data-amb-bands="1"]');
-    log(`${c.name}: ${c.key} cell ${c.cell}, mirrored ${mirrored}, clamped ${clamped}, ${width} px; caption: ${caption}`);
+    log(`${c.name}: ${c.key} cell ${c.cell}, mirrored ${mirrored}, ${width} px; caption: ${caption}`);
     check(mirrored === c.mirrored, `${c.name}: expected mirrored ${c.mirrored}`);
-    check(clamped === !!c.clamped, `${c.name}: expected clamped ${!!c.clamped}`);
     check(width === 3277, `${c.name}: the cell did not load at 3277 px wide (${width})`);
     check((caption ?? '').includes(c.caption), `${c.name}: the caption does not say "${c.caption}": ${caption}`);
     check(errors.length === 0, `page errors: ${errors.join('; ')}`);
@@ -381,22 +479,45 @@ async function gridChecks(page, pairs, errors) {
     ran++;
   }
   log(`PASS: spec 1.17's seam grid, ${ran} of ${cases.length} cases (the rest skipped: cells not painted yet)`);
-  if (gridOf('island+swamp')?.['3x2']) await formingCheck(page, errors);
-  else log('SKIP the pair forming: island+swamp has no cell 3x2 yet');
+  if (gridOf('island+swamp')?.['2x1']) await formingCheck(page, errors);
+  else log('SKIP the pair forming: island+swamp has no cell 2x1 yet');
   return !!gridOf('island+swamp')?.['4x3'];
 }
 
 /**
- * The pair forming (the #201 follow-up): island 3 alone, then a first Swamp. Every picture the pair panel draws is
- * recorded from before the Swamp arrives; the first is the cell 3x2 (island s3 | swamp s1, clamped), and the
- * whole-place panorama (`pairs/island-swamp/s<k>-panorama.webp`) is never among them.
+ * Spec 1.19 c: island 6 | swamp 2 has no cell 6x2 (pairs-v7.1 paints |i − j| ≤ 1), and there is no clamp: your half is
+ * the island's own stage-6 picture and the swamp's own stage-2 picture side by side at the split (the island 75%), the
+ * plain 1.10 seam between them -- no pair picture, no band -- and the caption says "no seam cell".
+ */
+async function apartCheck(page, c, errors) {
+  await page.waitForSelector(`[data-amb-player="1"] [data-apart="${c.key}"][data-apart-cell="${c.cell}"]`, { timeout: TIMEOUT });
+  const slots = await page.$$eval('[data-amb-player="1"] .scn-slot', (els) => els.map((e) => ({ biome: e.getAttribute('data-biome'), stage: e.getAttribute('data-stage'), apart: e.getAttribute('data-apart'), grow: e.style.flexGrow, afterBand: e.classList.contains('is-after-band') })));
+  const pairPictures = await page.$$eval('[data-amb-player="1"] [data-pairfull], [data-amb-player="1"] [data-band]', (els) => els.length);
+  const caption = (await page.textContent('[data-amb-bands="1"]')) ?? '';
+  log(`${c.name}: panels ${slots.map((s) => `${s.biome} s${s.stage} (${s.grow})`).join(' | ')}; caption: ${caption}`);
+  check(slots.length === 2 && slots.every((s) => s.apart === c.key), `${c.name}: expected the two colours' own panels, apart: ${JSON.stringify(slots)}`);
+  check(slots[0].biome === 'island' && slots[0].stage === '6' && slots[1].biome === 'swamp' && slots[1].stage === '2', `${c.name}: expected island s6 | swamp s2, each its own stage: ${JSON.stringify(slots)}`);
+  check(Math.abs(Number(slots[0].grow) - 0.75) < 0.01, `${c.name}: the island should take the split, 75%: ${slots[0].grow}`);
+  check(!slots[1].afterBand, `${c.name}: the seam should be the plain mist, not a band's`);
+  check(pairPictures === 0, `${c.name}: ${pairPictures} pair picture(s) or band(s) drawn on a pair apart`);
+  check(caption.includes(c.caption), `${c.name}: the caption does not say "${c.caption}": ${caption}`);
+  check(errors.length === 0, `page errors: ${errors.join('; ')}`);
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(OUT, `${c.name}.png`) });
+}
+
+/**
+ * The pair forming (the #201 follow-up): island 2 alone, then a first Swamp. Every picture the pair panel draws is
+ * recorded from before the Swamp arrives; the first is the cell 2x1 (island s2 | swamp s1), and the whole-place
+ * panorama (`pairs/island-swamp/s<k>-panorama.webp`) is never among them. (Island 3, the case before spec 1.19 c, has no
+ * cell 3x1: the pair forms apart.)
  */
 async function formingCheck(page, errors) {
   const reset = await page.$('[data-amb-reset]:not([disabled])');
   if (reset) await reset.click();
-  await setLands(page, 'island', 3);
+  await setLands(page, 'island', 2);
   // The cell is warmed while the half is one colour (pairPictures), before its second colour arrives.
-  await page.waitForFunction(() => performance.getEntriesByType('resource').some((e) => e.name.endsWith('/seams/island-swamp/s3x2-panorama.webp')), null, { timeout: TIMEOUT });
+  await page.waitForFunction(() => performance.getEntriesByType('resource').some((e) => e.name.endsWith('/seams/island-swamp/s2x1-panorama.webp')), null, { timeout: TIMEOUT });
   await page.waitForTimeout(500);
   await page.evaluate(() => {
     const seen = (window.__pairSrcs = []);
@@ -410,15 +531,15 @@ async function formingCheck(page, errors) {
     new MutationObserver(note).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['src'] });
   });
   await setLands(page, 'swamp', 1);
-  await page.waitForSelector('[data-pairfull="island+swamp"][data-pairfull-cell="3x2"]', { timeout: TIMEOUT });
+  await page.waitForSelector('[data-pairfull="island+swamp"][data-pairfull-cell="2x1"]', { timeout: TIMEOUT });
   await page.waitForTimeout(1500);
   const seen = await page.evaluate(() => window.__pairSrcs);
   log(`the pair forming: pictures drawn ${seen.map((s) => s.replace(/^.*\/(seams|pairs)\//, '$1/')).join(' → ')}`);
-  check(seen.length > 0 && /\/seams\/island-swamp\/s3x2-panorama\.webp$/.test(seen[0]), `the pair's first picture is not its cell 3x2: ${seen[0]}`);
+  check(seen.length > 0 && /\/seams\/island-swamp\/s2x1-panorama\.webp$/.test(seen[0]), `the pair's first picture is not its cell 2x1: ${seen[0]}`);
   check(!seen.some((s) => /\/pairs\/island-swamp\/s\d-panorama\.webp$/.test(s)), `the whole-place panorama was drawn while the pair formed: ${seen.join(', ')}`);
   check(errors.length === 0, `page errors: ${errors.join('; ')}`);
   await page.screenshot({ path: path.join(OUT, 'grid-forming.png') });
-  log('PASS: the pair forming draws its first cell (3x2) first, no whole-place panorama between');
+  log('PASS: the pair forming draws its first cell (2x1) first, no whole-place panorama between');
 }
 
 /**
@@ -500,48 +621,51 @@ async function phoneCellCheck(browser, origin, pairs, manifest) {
 }
 
 /**
- * Spec 1.18.1: the worked example (Plateau, Plains, Island) on the phone. island+plains' cell has red painted in on the
- * plains' half (the cell's right: the geography puts the island left). A painted picture with its own phone picture is
- * drawn as 1.18 says, with no cut-out; one without (pairs-v7.1's, all 660) gives way to the red cut-out -- the element's
- * PHONE piece -- on the plain cell's phone picture, on the plains' ground, and the caption says "mountain as an element".
+ * Spec 1.18.1: the worked example (Plateau, Plains, Island) on the phone -- spec 1.19 b's pair, mountain+plains (the
+ * Plateau's), with the island its third colour. mountain+plains' cell has blue painted in on the plains' half (the
+ * cell's left: the geography puts the plains left). A painted picture with its own phone picture is drawn as 1.18 says,
+ * with no cut-out; one without (pairs-v7.1's, all 660) gives way to the blue cut-out -- the element's PHONE piece -- on
+ * the plain cell's phone picture, on the plains' ground (the board's right: it has mountain | plains), and the caption
+ * says "island as an element". Then the storyboard's sequences on the phone (spec 1.19 a and b).
  */
 async function phoneThirdCheck(page, manifest, errors) {
   await page.click('[data-pieces-toggle="builtin"]');
   await page.click('[data-pieces-three]');
-  const panel = await page.waitForSelector('[data-amb-player="1"] [data-pairfull="island+plains"][data-pairfull-cell]', { timeout: TIMEOUT });
+  const panel = await page.waitForSelector('[data-amb-player="1"] [data-pairfull="mountain+plains"][data-pairfull-cell]', { timeout: TIMEOUT });
   const cell = await panel.getAttribute('data-pairfull-cell');
-  const entry = manifest.pairs['island+plains'].grid[cell]?.elements?.R;
-  const pic = entry ? (entry.right ?? entry.src ?? null) : null;
+  const entry = manifest.pairs['mountain+plains'].grid[cell]?.elements?.U;
+  const pic = entry ? (entry.left ?? entry.src ?? null) : null;
   const picture = pic && typeof pic === 'object' ? pic : pic ? { src: pic } : null;
   if (picture?.phone) {
-    await page.waitForSelector(`[data-amb-player="1"] [data-pairfull="island+plains"][data-pairfull-cell="${cell}"][data-pairfull-painted="R"]`, { timeout: TIMEOUT });
-    await page.waitForFunction((c) => [...document.querySelectorAll('[data-amb-player="1"] [data-pairfull] img')].every((i) => new RegExp(`s${c}\\+RR-panorama-phone\\.webp$`).test(i.getAttribute('src') ?? '')), cell, { timeout: TIMEOUT });
+    await page.waitForSelector(`[data-amb-player="1"] [data-pairfull="mountain+plains"][data-pairfull-cell="${cell}"][data-pairfull-painted="U"]`, { timeout: TIMEOUT });
+    await page.waitForFunction((c) => [...document.querySelectorAll('[data-amb-player="1"] [data-pairfull] img')].every((i) => new RegExp(`s${c}\\+UL-panorama-phone\\.webp$`).test(i.getAttribute('src') ?? '')), cell, { timeout: TIMEOUT });
     await page.waitForTimeout(1500);
     const cutOuts = await page.$$eval('[data-amb-player="1"] [data-pc="element"]', (els) => els.length);
     check(cutOuts === 0, `phone: ${cutOuts} cut-out(s) drawn over the cell ${cell}'s painted phone picture`);
-    log(`PASS: a phone draws the cell ${cell} with red painted in from its own phone picture (spec 1.18), no cut-out`);
-    return;
+    log(`PASS: a phone draws the cell ${cell} with blue painted in from its own phone picture (spec 1.18), no cut-out`);
+  } else {
+    check(!!picture, `phone: mountain+plains' cell ${cell} has no blue painted on the plains' side: the worked example has no third colour to show`);
+    // 1.18.1: the plain cell's phone picture, the cut-out over it.
+    await page.waitForFunction((c) => [...document.querySelectorAll('[data-amb-player="1"] [data-pairfull] img')].every((i) => new RegExp(`/seams/plains-mountain/s${c}-panorama-phone\\.webp$`).test(i.getAttribute('src') ?? '')), cell, { timeout: TIMEOUT });
+    const el = await page.waitForSelector('[data-amb-player="1"] [data-pc="element"][data-pc-colour="U"] img', { timeout: TIMEOUT });
+    const src = decodeURIComponent((await el.getAttribute('src')) ?? '');
+    const side = await page.getAttribute('[data-amb-player="1"] [data-pc="element"]', 'data-pc-side');
+    const element = await page.getAttribute('[data-amb-player="1"] [data-pairfull="mountain+plains"]', 'data-pairfull-element');
+    const painted = await page.$$eval('[data-amb-player="1"] [data-pairfull-painted]', (els) => els.length);
+    const caption = (await page.textContent('[data-amb-bands="1"]')) ?? '';
+    log(`phone, three colours: cell ${cell}, element ${element}, cut-out on the ${side} (${/phone/.test(src) ? 'its phone piece' : 'NOT its phone piece'}), painted ${painted}; caption: ${caption}`);
+    check(/U element placeholder/.test(src) && /phone/.test(src), `phone: the cut-out is not blue's phone piece: ${src.slice(0, 120)}`);
+    check(side === 'right', `phone: the board has mountain | plains, so the plains' (heavier) ground is the right; the cut-out is on the ${side}`);
+    check(element === 'island', `phone: the pair panel names no element (${element})`);
+    check(painted === 0, `phone: ${painted} painted picture(s) drawn with no phone picture of their own`);
+    check(new RegExp(`seam ${cell}; island as an element`).test(caption) && !/painted in/.test(caption), `phone: the caption does not say "island as an element": ${caption}`);
+    check(errors.length === 0, `phone: page errors: ${errors.join('; ')}`);
+    await page.waitForTimeout(1500);
+    // Your half, scrolled into view (the Pieces buttons clicked above sit far below it on a phone).
+    await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, 'grid-phone-three.png') });
+    log(`PASS: a phone draws blue's cut-out (its phone piece) on mountain+plains' cell ${cell} where the painted picture has no phone picture (spec 1.18.1)`);
   }
-  check(!!picture, `phone: island+plains' cell ${cell} has no red painted on the plains' side: the worked example has no third colour to show`);
-  // 1.18.1: the plain cell's phone picture, the cut-out over it.
-  await page.waitForFunction((c) => [...document.querySelectorAll('[data-amb-player="1"] [data-pairfull] img')].every((i) => new RegExp(`/seams/island-plains/s${c}-panorama-phone\\.webp$`).test(i.getAttribute('src') ?? '')), cell, { timeout: TIMEOUT });
-  const el = await page.waitForSelector('[data-amb-player="1"] [data-pc="element"][data-pc-colour="R"] img', { timeout: TIMEOUT });
-  const src = decodeURIComponent((await el.getAttribute('src')) ?? '');
-  const side = await page.getAttribute('[data-amb-player="1"] [data-pc="element"]', 'data-pc-side');
-  const element = await page.getAttribute('[data-amb-player="1"] [data-pairfull="island+plains"]', 'data-pairfull-element');
-  const painted = await page.$$eval('[data-amb-player="1"] [data-pairfull-painted]', (els) => els.length);
-  const caption = (await page.textContent('[data-amb-bands="1"]')) ?? '';
-  log(`phone, three colours: cell ${cell}, element ${element}, cut-out on the ${side} (${/phone/.test(src) ? 'its phone piece' : 'NOT its phone piece'}), painted ${painted}; caption: ${caption}`);
-  check(/R element placeholder/.test(src) && /phone/.test(src), `phone: the cut-out is not red's phone piece: ${src.slice(0, 120)}`);
-  check(side === 'left', `phone: the board has plains | island, so the plains' (heavier) ground is the left; the cut-out is on the ${side}`);
-  check(element === 'mountain', `phone: the pair panel names no element (${element})`);
-  check(painted === 0, `phone: ${painted} painted picture(s) drawn with no phone picture of their own`);
-  check(new RegExp(`seam ${cell}; mountain as an element`).test(caption) && !/painted in/.test(caption), `phone: the caption does not say "mountain as an element": ${caption}`);
-  check(errors.length === 0, `phone: page errors: ${errors.join('; ')}`);
-  await page.waitForTimeout(1500);
-  // Your half, scrolled into view (the Pieces buttons clicked above sit far below it on a phone).
-  await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, 'grid-phone-three.png') });
-  log(`PASS: a phone draws red's cut-out (its phone piece) on island+plains' cell ${cell} where the painted picture has no phone picture (spec 1.18.1)`);
+  for (const seq of SEQUENCES) await sequenceCheck(page, seq, errors, 'phone');
 }
 
 main().catch((e) => {

@@ -61,13 +61,15 @@ describe('elements on the whole-half pair picture', () => {
     expect(view.seamAt).toBeCloseTo(0.6, 3);
     const region = pairFullElementRegion(view, 'left');
     expect(region.left).toBe(0);
-    expect(region.width).toBeCloseTo(0.55, 3);
+    // Spec 1.19 a: it stops at the seam core (0.07 of the picture's drawn width either side of the transition).
+    expect(view.core.left).toBeCloseTo(0.6 - 0.07 * view.frame.width, 3);
+    expect(region.width).toBeCloseTo(view.core.left, 3);
     // A 600 × 300 piece, the default ground sit (x 0.5, w 0.6): centred in the region, its foot on the bottom.
     const f = piecePlacement({ sit: 'ground', x: 0.5, w: 0.6, lift: 0 }, 2, region, box, view.horizonY);
-    expect(f.left).toBeCloseTo(0.55 * 0.2, 3);
-    expect(f.width).toBeCloseTo(0.55 * 0.6, 3);
+    expect(f.left).toBeCloseTo(region.width * 0.2, 3);
+    expect(f.width).toBeCloseTo(region.width * 0.6, 3);
     expect(f.top + f.height).toBeCloseTo(1, 4);
-    expect(f.left + f.width).toBeLessThanOrEqual(view.seamAt - 0.05 + 1e-9);
+    expect(f.left + f.width).toBeLessThanOrEqual(view.core.left + 1e-9);
     // A horizon sit stands on the panorama's horizon through the crop.
     const h = piecePlacement({ sit: 'horizon', x: 0.5, w: 0.4, lift: 0 }, 2, region, box, view.horizonY);
     expect(h.top + h.height).toBeCloseTo(view.horizonY, 4);
@@ -81,7 +83,8 @@ describe('elements on the whole-half pair picture', () => {
     expect(pairFullHeavierSide(p, (b) => s.find((x) => x.biome === b)!.index)).toBe('right');
     const view = pairFullView(items, { w: 1600, h: 500 }, pairFullArt(pairHalfAt(p.pair, p.stage), pairPanoramaAt(p.pair, p.stage), 3.2, false))!;
     const r = pairFullElementRegion(view, 'right');
-    expect(r.left).toBeCloseTo(view.seamAt + 0.05, 4);
+    expect(r.left).toBeCloseTo(view.core.right, 4);
+    expect(view.core.right - view.seamAt).toBeGreaterThanOrEqual(0.07);
     expect(r.left + r.width).toBeCloseTo(1, 4);
     expect(planHalf({ makeup: makeupFromSlots(s) }).element?.side).toBe('right');
   });

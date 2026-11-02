@@ -74,7 +74,7 @@
  * built-in scenery). Both halves upright; each fades into a mist band along
  * the centre line. The effects keep their strip-sized box at the outer edge.
  */
-import { createContext, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, Fragment, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Biome, SlotState } from '../../ambience/model.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, growthOf, halfAt, layersAt, type PackBiome, type PackGrowth, type PackHalf, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
 import { growthMs, slotStageFade, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
@@ -228,6 +228,22 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
             <div className="scn-row">
               {fullPlan
                 ? fullPlan.map((it, k) => {
+                    if (it.kind === 'pair' && it.apart) {
+                      // Spec 1.19 c: no cell for the two stages: each colour's own mono panel at its own stage, side by side at
+                      // the split in board order (where the cell's halves would be), joined by the plain 1.10 seam.
+                      const sides = [
+                        { biome: it.left, grow: it.share * it.split },
+                        { biome: it.right, grow: it.share * (1 - it.split) },
+                      ];
+                      return (
+                        <Fragment key={`apart:${it.key}`}>
+                          {sides.map(({ biome, grow }, j) => {
+                            const l = (drawLayout as HalfSlotLayout[]).find((x) => x.slot.biome === biome)!;
+                            return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={Math.round(grow * 1000) / 1000} first={k === 0 && j === 0} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} apart={{ key: it.key, cell: it.apart!.cell }} />;
+                          })}
+                        </Fragment>
+                      );
+                    }
                     if (it.kind === 'pair') return <PairFullPanel key={`pairfull:${it.key}`} p={it} shown={fullShown!} first={k === 0} growth={growth} reduced={reduced} />;
                     const l = (drawLayout as HalfSlotLayout[])[it.index]!;
                     return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={it.share} first={k === 0} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} />;
@@ -332,6 +348,7 @@ function Slot({
   half = false,
   seam,
   afterBand = false,
+  apart,
 }: {
   slot: SlotState;
   stage: number;
@@ -348,6 +365,8 @@ function Slot({
   seam?: string;
   /** Spec 1.10: the item left of it is a pair band (no seam mist here: the band is the transition). */
   afterBand?: boolean;
+  /** Spec 1.19 c: this panel is one half of a pair drawn apart (the grid has no cell for its stages): the pair key and the missing cell. */
+  apart?: { key: string; cell: string };
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const settled = useContext(Settled);
@@ -481,6 +500,8 @@ function Slot({
       data-fade={fade || undefined}
       data-art={art?.source}
       data-tween={tween.frames ? `${tween.index + 1}/${tween.frames.length}${tween.fading ? ' fading' : ''}` : undefined}
+      data-apart={apart?.key}
+      data-apart-cell={apart?.cell}
     >
       {pic ? (
         <>
@@ -698,7 +719,7 @@ function PairFullPanel({ p, shown, first, growth, reduced }: { p: PairFullPair; 
       data-pairfull-painted={shown.painted ?? undefined}
       data-pairfull-painted-side={shown.painted ? (shown.cell ? p.grid?.painted?.side : p.elementSide) : undefined}
       data-pairfull-cell={shown.cell}
-      data-pairfull-clamped={shown.cell && p.grid?.clamped ? 'yes' : undefined}
+      data-pairfull-extras={p.extras?.join(' ') || undefined}
       data-art={art.source}
     >
       <div className="scn-pairfull-art">

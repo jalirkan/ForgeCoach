@@ -39,9 +39,9 @@
  * geography's LEFT colour's own mono stage `i` and the RIGHT colour's `j`
  * ({@link GEOGRAPHY}, SYSTEM.md C4: Island → Swamp → Plains → Forest →
  * Mountain, whatever the manifest key's order) -- so adding one land changes
- * one half, never the other ({@link pairGridPick}: the exact cell, else the
- * lighter half clamped to one stage of the heavier, else none and the pair's
- * `stages` as in 1.15).
+ * one half, never the other ({@link pairGridPick}: the exact cell, else none
+ * -- spec 1.19 c: no clamp, the two colours' mono pictures apart,
+ * pairfull.ts `pairFullApart`).
  *
  * Spec 1.18 (draft): a cell may carry a `phone` picture (a phone-shaped board
  * then draws the cell too, {@link pairGridGivesWay}) and painted-in
@@ -210,36 +210,30 @@ export function gridCellKey(i: number, j: number): string {
 export interface PairGridPick {
   /** The cell shown, `"4x3"`, in the grid's (geography) order. */
   cell: string;
-  /** The stages each half shows, left then right (geography order). */
-  shown: [number, number];
-  /** The two colours' own stages, left then right: what the board's lands say. */
+  /** The two colours' own stages, left then right (geography order): what the board's lands say, and the cell's key. */
   stages: [number, number];
-  /** The lighter half was raised to one stage below the heavier (no cell for the true pair). */
-  clamped: boolean;
   picture: PairGridCell;
 }
 
 /**
  * Spec 1.17 (draft): the seam picture for a pair whose geography-left colour
  * is at mono stage `left` and right colour at `right` (each colour's OWN land
- * count on the pack's mono thresholds; 0 = not on the half). The exact cell
- * when the grid has it; else, the two more than one stage apart, the LIGHTER
- * half (the lower stage) is raised to one stage below the heavier, which is
- * always shown exactly -- the heavier colour fills most of the half (the pan,
- * 1.15) and is what a land of it must visibly grow; else null (no grid, a
- * missing cell, a colour not on the half): the pair's `stages`, as in 1.15.
+ * count on the pack's mono thresholds; 0 = not on the half): the exact cell
+ * when the grid has it, else null. Spec 1.19 c (the owner's rule of
+ * 2026-11-02) took the clamp away: 1.17 raised the lighter half to one stage
+ * below the heavier, so a lone Island beside five Forests was drawn at stage
+ * 4 and grew with every Forest (the storyboard's gap 4). A missing cell is
+ * now pairfull.ts `pairFullApart` (each colour's own mono picture) on a pair
+ * with a grid, the pair's `stages` (1.15) on one without; a cell painted later
+ * is drawn with no code change.
  */
 export function pairGridPick(pair: PackPair | null | undefined, left: number, right: number): PairGridPick | null {
   const g = pair?.grid;
   if (!g || !(left > 0) || !(right > 0)) return null;
-  const i0 = Math.min(Math.round(left), MAX_STAGES);
-  const j0 = Math.min(Math.round(right), MAX_STAGES);
-  const exact = g.cells[gridCellKey(i0, j0)];
-  if (exact) return { cell: gridCellKey(i0, j0), shown: [i0, j0], stages: [i0, j0], clamped: false, picture: exact };
-  if (Math.abs(i0 - j0) <= 1) return null;
-  const [i, j] = i0 > j0 ? [i0, i0 - 1] : [j0 - 1, j0];
-  const cell = g.cells[gridCellKey(i, j)];
-  return cell ? { cell: gridCellKey(i, j), shown: [i, j], stages: [i0, j0], clamped: true, picture: cell } : null;
+  const i = Math.min(Math.round(left), MAX_STAGES);
+  const j = Math.min(Math.round(right), MAX_STAGES);
+  const exact = g.cells[gridCellKey(i, j)];
+  return exact ? { cell: gridCellKey(i, j), stages: [i, j], picture: exact } : null;
 }
 
 /**
@@ -626,7 +620,7 @@ function parseGrid(v: unknown, kind: PairKind, rawStages: unknown[], keyLeft: Bi
     const elements = parseCellElements(rawElements, merged, i, j, keyLeft, keyRight, base, `${path}.${k}.elements`, warn);
     cells[gridCellKey(i, j)] = elements ? { ...cell, elements } : cell;
   }
-  if (far) warn.push(`${path}: ${far} cell${far === 1 ? '' : 's'} more than one stage apart (kept, shown for exactly those stages; the draft paints |i − j| ≤ 1 and clamps the lighter half)`);
+  if (far) warn.push(`${path}: ${far} cell${far === 1 ? '' : 's'} more than one stage apart (kept, shown for exactly those stages; the draft paints |i − j| ≤ 1, and a pair further apart is drawn as its two mono pictures, spec 1.19 c)`);
   if (!Object.keys(cells).length) {
     warn.push(`${path}: no usable cell; ignored`);
     return null;
@@ -640,8 +634,7 @@ function parseGrid(v: unknown, kind: PairKind, rawStages: unknown[], keyLeft: Bi
  * checked against the cell: a colour that is one of the pair's own is
  * dropped, and so is a side that is never the heavier half's -- `left` on a
  * cell whose right half is the higher stage (i < j), `right` on i > j -- since
- * the reader only ever draws the heavier half's side (both at i = j). The
- * clamp keeps the heavier half exact, so this holds on a clamped cell too.
+ * the reader only ever draws the heavier half's side (both at i = j).
  */
 function parseCellElements(v: unknown, cellRaw: Record<string, unknown>, i: number, j: number, keyLeft: Biome, keyRight: Biome, base: string, path: string, warn: string[]): Partial<Record<PieceColour, PairElement>> | null {
   const els = parseStageElements(v, cellRaw, base, path, warn);
@@ -1034,7 +1027,7 @@ export function rowCentreCss(items: readonly Pick<RowItem, 'share' | 'seam'>[], 
  * most four a colour -- so the first pair picture is usually there when its
  * land is played. Spec 1.17 likewise: the seam grid's FIRST cell with each
  * colour the side does not have yet -- that colour at stage 1 and the live
- * one at its own stage (`1xj` / `ix1`, clamped as `pairGridPick` clamps),
+ * one at its own stage (`1xj` / `ix1`; spec 1.19 c: the exact cell only),
  * and at the stage a dual of the two would give it -- so the pair's first
  * frame is its cell, not the whole-place panorama for a moment (the #201
  * follow-up). `full.narrow` (a phone-width screen): a cell with no phone
@@ -1042,7 +1035,7 @@ export function rowCentreCss(items: readonly Pick<RowItem, 'share' | 'seam'>[], 
  * none is warmed (the #201 review: desktop cells were fetched on a phone);
  * spec 1.18: a cell WITH one is, at the phone shape, by the same rules.
  * Spec 1.18 too: the painted-in pictures of the cell a pair shows now (its
- * two halves' own stages, through the clamp), for each other colour on the
+ * two halves' own stages), for each other colour on the
  * side not heavier than both of the pair's -- the cell's own pictures only,
  * never a neighbour's or a first cell's (a full painted set is about 660
  * pictures), and on a phone-width screen only one with a `phone` picture

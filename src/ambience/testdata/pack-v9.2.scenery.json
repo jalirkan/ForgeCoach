@@ -1,0 +1,2605 @@
+{
+ "schema": 1,
+ "spec": "1.14",
+ "name": "ForgeCoach scenery, pack v9.2 (pack v9.1 + the batch-3 pieces at @pieces-v1, spec 1.14)",
+ "author": "jalirkan",
+ "license": "CC BY 4.0",
+ "strip": {
+  "heightRatio": 0.46,
+  "minHeightPx": 64,
+  "maxHeightPx": 280,
+  "seamPx": 120,
+  "fadeRatio": 0.38,
+  "order": "arrival"
+ },
+ "stageThresholds": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6
+ ],
+ "biomes": {
+  "island": {
+   "label": "Moonlit cove",
+   "slot": {
+    "prefer": "left",
+    "weight": 1
+   },
+   "bloom": {
+    "kind": "fade",
+    "durationMs": 1400,
+    "staggerMs": 120
+   },
+   "idle": {
+    "kind": "drift",
+    "periodMs": 9000,
+    "amplitude": 0.3
+   },
+   "stages": [
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "island/s1-sky.webp",
+       "src2x": "island/s1-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [],
+     "half": {
+      "src": "island/s1-half.webp",
+      "src2x": "island/s1-half@2x.webp",
+      "phone": {
+       "src": "island/s1-phone.webp",
+       "src2x": "island/s1-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.47
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.43,
+      "bytes": 265046,
+      "hour": 6.5,
+      "key": "dawn"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "island/s2-sky.webp",
+       "src2x": "island/s2-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "island/front-s2.webp",
+       "src2x": "island/front-s2@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 29048
+      }
+     ],
+     "half": {
+      "src": "island/s2-half.webp",
+      "src2x": "island/s2-half@2x.webp",
+      "phone": {
+       "src": "island/s2-phone.webp",
+       "src2x": "island/s2-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.47
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.42,
+      "bytes": 415586,
+      "hour": 12,
+      "key": "noon"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "island/s3-sky.webp",
+       "src2x": "island/s3-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "island/front-s3.webp",
+       "src2x": "island/front-s3@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 136608
+      }
+     ],
+     "half": {
+      "src": "island/s3-half.webp",
+      "src2x": "island/s3-half@2x.webp",
+      "phone": {
+       "src": "island/s3-phone.webp",
+       "src2x": "island/s3-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.48
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.43,
+      "bytes": 309478,
+      "hour": 16.5,
+      "key": "afternoon"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "island/s4-sky.webp",
+       "src2x": "island/s4-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "island/front-s4.webp",
+       "src2x": "island/front-s4@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 203628
+      }
+     ],
+     "half": {
+      "src": "island/s4-half.webp",
+      "src2x": "island/s4-half@2x.webp",
+      "phone": {
+       "src": "island/s4-phone.webp",
+       "src2x": "island/s4-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.48
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.43,
+      "bytes": 404338,
+      "hour": 19,
+      "key": "dusk"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "island/s5-sky.webp",
+       "src2x": "island/s5-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "island/front-s5.webp",
+       "src2x": "island/front-s5@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 202226
+      }
+     ],
+     "half": {
+      "src": "island/s5-half.webp",
+      "src2x": "island/s5-half@2x.webp",
+      "phone": {
+       "src": "island/s5-phone.webp",
+       "src2x": "island/s5-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.47
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.42,
+      "bytes": 417176,
+      "hour": 20.5,
+      "key": "dusk"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "island/s6-sky.webp",
+       "src2x": "island/s6-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      },
+      {
+       "id": "motes",
+       "kind": "video",
+       "src": "island/s6-motes.webm",
+       "fallback": "island/s6-motes.mp4",
+       "poster": "island/s6-motes-poster.webp",
+       "blend": "screen",
+       "depth": 0.4,
+       "z": 10,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "island/front-s6.webp",
+       "src2x": "island/front-s6@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 216538
+      }
+     ],
+     "half": {
+      "src": "island/s6-half.webp",
+      "src2x": "island/s6-half@2x.webp",
+      "phone": {
+       "src": "island/s6-phone.webp",
+       "src2x": "island/s6-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.47
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.4,
+      "bytes": 626992,
+      "hour": 23,
+      "key": "night"
+     }
+    }
+   ],
+   "effects": {
+    "landfall": {
+     "kind": "sprite",
+     "src": "island/fx-landfall-sheet.webp",
+     "frames": 18,
+     "cols": 6,
+     "rows": 3,
+     "fps": 16,
+     "poster": "island/fx-landfall.webp",
+     "reduced": "poster",
+     "bytes": 171612,
+     "scale": 1.0,
+     "aspect": 1.25,
+     "blend": "screen"
+    },
+    "stageUp": {
+     "kind": "sprite",
+     "src": "island/fx-stageup-sheet.webp",
+     "frames": 24,
+     "cols": 4,
+     "rows": 6,
+     "fps": 12,
+     "poster": "island/fx-stageup.webp",
+     "reduced": "poster",
+     "bytes": 245190,
+     "scale": 1.2,
+     "aspect": 3.2,
+     "blend": "screen"
+    },
+    "creatureEnter": {
+     "kind": "sprite",
+     "src": "island/fx-creatureenter-sheet.webp",
+     "frames": 18,
+     "cols": 6,
+     "rows": 3,
+     "fps": 20,
+     "poster": "island/fx-creatureenter.webp",
+     "reduced": "poster",
+     "bytes": 177526,
+     "scale": 1.0,
+     "aspect": 0.8,
+     "blend": "screen"
+    },
+    "attack": {
+     "kind": "particles",
+     "preset": "sweep",
+     "color": "#8fdcff"
+    },
+    "damagePlayer": {
+     "kind": "particles",
+     "preset": "flash",
+     "scale": 0.7,
+     "aspect": 4,
+     "y": 0.05,
+     "color": "#8fdcff"
+    },
+    "damageCreature": {
+     "kind": "particles",
+     "preset": "crack",
+     "color": "#8fdcff"
+    }
+   },
+   "transitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "island/s1to2-f1-half-v4.webp",
+        "phone": "island/s1to2-f1-phone-v4.webp"
+       },
+       {
+        "src": "island/s1to2-f2-half-v4.webp",
+        "phone": "island/s1to2-f2-phone-v4.webp"
+       },
+       {
+        "src": "island/s1to2-f3-half-v4.webp",
+        "phone": "island/s1to2-f3-phone-v4.webp"
+       }
+      ],
+      "bytes": 223218
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "island/s2to3-f1-half-v4.webp",
+        "phone": "island/s2to3-f1-phone-v4.webp"
+       },
+       {
+        "src": "island/s2to3-f2-half-v4.webp",
+        "phone": "island/s2to3-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 155782
+     },
+     {
+      "from": 3,
+      "frames": [
+       {
+        "src": "island/s3to4-f1-half-v4.webp",
+        "phone": "island/s3to4-f1-phone-v4.webp"
+       },
+       {
+        "src": "island/s3to4-f2-half-v4.webp",
+        "phone": "island/s3to4-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 167602
+     },
+     {
+      "from": 4,
+      "frames": [
+       {
+        "src": "island/s4to5-f1-half-v4.webp",
+        "phone": "island/s4to5-f1-phone-v4.webp"
+       },
+       {
+        "src": "island/s4to5-f2-half-v4.webp",
+        "phone": "island/s4to5-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 184530
+     },
+     {
+      "from": 5,
+      "frames": [
+       {
+        "src": "island/s5to6-f1-half-v4.webp",
+        "phone": "island/s5to6-f1-phone-v4.webp"
+       },
+       {
+        "src": "island/s5to6-f2-half-v4.webp",
+        "phone": "island/s5to6-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 263298
+     }
+    ]
+   }
+  },
+  "mountain": {
+   "label": "Three peaks",
+   "slot": {
+    "prefer": "right",
+    "weight": 1
+   },
+   "bloom": {
+    "kind": "fade",
+    "durationMs": 1400,
+    "staggerMs": 120
+   },
+   "idle": {
+    "kind": "drift",
+    "periodMs": 9000,
+    "amplitude": 0.3
+   },
+   "stages": [
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "mountain/s1-sky.webp",
+       "src2x": "mountain/s1-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [],
+     "half": {
+      "src": "mountain/s1-half.webp",
+      "src2x": "mountain/s1-half@2x.webp",
+      "phone": {
+       "src": "mountain/s1-phone.webp",
+       "src2x": "mountain/s1-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.52
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.5,
+      "bytes": 264030,
+      "hour": 6,
+      "key": "dawn"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "mountain/s2-sky.webp",
+       "src2x": "mountain/s2-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "mountain/front-s2.webp",
+       "src2x": "mountain/front-s2@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 321768
+      }
+     ],
+     "half": {
+      "src": "mountain/s2-half.webp",
+      "src2x": "mountain/s2-half@2x.webp",
+      "phone": {
+       "src": "mountain/s2-phone.webp",
+       "src2x": "mountain/s2-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.53
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.55,
+      "bytes": 369886,
+      "hour": 12,
+      "key": "noon"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "mountain/s3-sky.webp",
+       "src2x": "mountain/s3-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "mountain/front-s3.webp",
+       "src2x": "mountain/front-s3@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 342424
+      }
+     ],
+     "half": {
+      "src": "mountain/s3-half.webp",
+      "src2x": "mountain/s3-half@2x.webp",
+      "phone": {
+       "src": "mountain/s3-phone.webp",
+       "src2x": "mountain/s3-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.52
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.5,
+      "bytes": 281912,
+      "hour": 16,
+      "key": "afternoon"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "mountain/s4-sky.webp",
+       "src2x": "mountain/s4-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "mountain/front-s4.webp",
+       "src2x": "mountain/front-s4@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 346854
+      }
+     ],
+     "half": {
+      "src": "mountain/s4-half.webp",
+      "src2x": "mountain/s4-half@2x.webp",
+      "phone": {
+       "src": "mountain/s4-phone.webp",
+       "src2x": "mountain/s4-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.5
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.48,
+      "bytes": 289624,
+      "hour": 19,
+      "key": "dusk"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "mountain/s5-sky.webp",
+       "src2x": "mountain/s5-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "mountain/front-s5.webp",
+       "src2x": "mountain/front-s5@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 399294
+      }
+     ],
+     "half": {
+      "src": "mountain/s5-half.webp",
+      "src2x": "mountain/s5-half@2x.webp",
+      "phone": {
+       "src": "mountain/s5-phone.webp",
+       "src2x": "mountain/s5-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.5
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.47,
+      "bytes": 286096,
+      "hour": 20.5,
+      "key": "dusk"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "mountain/s6-sky.webp",
+       "src2x": "mountain/s6-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      },
+      {
+       "id": "embers",
+       "kind": "video",
+       "src": "mountain/s6-embers.webm",
+       "fallback": "mountain/s6-embers.mp4",
+       "poster": "mountain/s6-embers-poster.webp",
+       "blend": "screen",
+       "depth": 0.4,
+       "z": 10,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "mountain/front-s6.webp",
+       "src2x": "mountain/front-s6@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 421906
+      }
+     ],
+     "half": {
+      "src": "mountain/s6-half.webp",
+      "src2x": "mountain/s6-half@2x.webp",
+      "phone": {
+       "src": "mountain/s6-phone.webp",
+       "src2x": "mountain/s6-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.48
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.45,
+      "bytes": 328808,
+      "hour": 23,
+      "key": "night"
+     }
+    }
+   ],
+   "effects": {
+    "landfall": {
+     "kind": "sprite",
+     "src": "mountain/fx-landfall-sheet.webp",
+     "frames": 18,
+     "cols": 6,
+     "rows": 3,
+     "fps": 16,
+     "poster": "mountain/fx-landfall.webp",
+     "reduced": "poster",
+     "bytes": 189058,
+     "scale": 1.0,
+     "aspect": 1.25,
+     "blend": "screen"
+    },
+    "stageUp": {
+     "kind": "sprite",
+     "src": "mountain/fx-stageup-sheet.webp",
+     "frames": 24,
+     "cols": 4,
+     "rows": 6,
+     "fps": 12,
+     "poster": "mountain/fx-stageup.webp",
+     "reduced": "poster",
+     "bytes": 246370,
+     "scale": 1.2,
+     "aspect": 3.2,
+     "blend": "screen"
+    },
+    "creatureEnter": {
+     "kind": "sprite",
+     "src": "mountain/fx-creatureenter-sheet.webp",
+     "frames": 18,
+     "cols": 6,
+     "rows": 3,
+     "fps": 20,
+     "poster": "mountain/fx-creatureenter.webp",
+     "reduced": "poster",
+     "bytes": 176034,
+     "scale": 1.0,
+     "aspect": 0.8,
+     "blend": "screen"
+    },
+    "attack": {
+     "kind": "particles",
+     "preset": "sweep",
+     "color": "#ff8a3d"
+    },
+    "damagePlayer": {
+     "kind": "particles",
+     "preset": "flash",
+     "scale": 0.7,
+     "aspect": 4,
+     "y": 0.05,
+     "color": "#ff8a3d"
+    },
+    "damageCreature": {
+     "kind": "particles",
+     "preset": "crack",
+     "color": "#ff8a3d"
+    }
+   },
+   "transitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "mountain/s1to2-f1-half-v4.webp",
+        "phone": "mountain/s1to2-f1-phone-v4.webp"
+       },
+       {
+        "src": "mountain/s1to2-f2-half-v4.webp",
+        "phone": "mountain/s1to2-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 155172
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "mountain/s2to3-f1-half-v4.webp",
+        "phone": "mountain/s2to3-f1-phone-v4.webp"
+       },
+       {
+        "src": "mountain/s2to3-f2-half-v4.webp",
+        "phone": "mountain/s2to3-f2-phone-v4.webp"
+       },
+       {
+        "src": "mountain/s2to3-f3-half-v4.webp",
+        "phone": "mountain/s2to3-f3-phone-v4.webp"
+       }
+      ],
+      "bytes": 238764
+     },
+     {
+      "from": 3,
+      "frames": [
+       {
+        "src": "mountain/s3to4-f1-half-v4.webp",
+        "phone": "mountain/s3to4-f1-phone-v4.webp"
+       },
+       {
+        "src": "mountain/s3to4-f2-half-v4.webp",
+        "phone": "mountain/s3to4-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 128072
+     },
+     {
+      "from": 4,
+      "frames": [
+       {
+        "src": "mountain/s4to5-f1-half-v4.webp",
+        "phone": "mountain/s4to5-f1-phone-v4.webp"
+       },
+       {
+        "src": "mountain/s4to5-f2-half-v4.webp",
+        "phone": "mountain/s4to5-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 127684
+     },
+     {
+      "from": 5,
+      "frames": [
+       {
+        "src": "mountain/s5to6-f1-half-v4.webp",
+        "phone": "mountain/s5to6-f1-phone-v4.webp"
+       },
+       {
+        "src": "mountain/s5to6-f2-half-v4.webp",
+        "phone": "mountain/s5to6-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 136580
+     }
+    ]
+   }
+  },
+  "swamp": {
+   "label": "Drowned fen",
+   "slot": {
+    "prefer": "any",
+    "weight": 1
+   },
+   "bloom": {
+    "kind": "fade",
+    "durationMs": 1400,
+    "staggerMs": 120
+   },
+   "idle": {
+    "kind": "drift",
+    "periodMs": 9000,
+    "amplitude": 0.3
+   },
+   "stages": [
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "swamp/s1-sky.webp",
+       "src2x": "swamp/s1-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [],
+     "half": {
+      "src": "swamp/s1-half.webp",
+      "src2x": "swamp/s1-half@2x.webp",
+      "phone": {
+       "src": "swamp/s1-phone.webp",
+       "src2x": "swamp/s1-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.48
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.42,
+      "bytes": 260818,
+      "hour": 6,
+      "key": "dawn"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "swamp/s2-sky.webp",
+       "src2x": "swamp/s2-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "swamp/front-s2.webp",
+       "src2x": "swamp/front-s2@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 464978
+      }
+     ],
+     "half": {
+      "src": "swamp/s2-half.webp",
+      "src2x": "swamp/s2-half@2x.webp",
+      "phone": {
+       "src": "swamp/s2-phone.webp",
+       "src2x": "swamp/s2-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.48
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.43,
+      "bytes": 332350,
+      "hour": 12,
+      "key": "noon"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "swamp/s3-sky.webp",
+       "src2x": "swamp/s3-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "swamp/front-s3.webp",
+       "src2x": "swamp/front-s3@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 676286
+      }
+     ],
+     "half": {
+      "src": "swamp/s3-half.webp",
+      "src2x": "swamp/s3-half@2x.webp",
+      "phone": {
+       "src": "swamp/s3-phone.webp",
+       "src2x": "swamp/s3-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.5
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.47,
+      "bytes": 256132,
+      "hour": 16.5,
+      "key": "afternoon"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "swamp/s4-sky.webp",
+       "src2x": "swamp/s4-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "swamp/front-s4.webp",
+       "src2x": "swamp/front-s4@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 920138
+      }
+     ],
+     "half": {
+      "src": "swamp/s4-half.webp",
+      "src2x": "swamp/s4-half@2x.webp",
+      "phone": {
+       "src": "swamp/s4-phone.webp",
+       "src2x": "swamp/s4-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.5
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.45,
+      "bytes": 366456,
+      "hour": 19.5,
+      "key": "dusk"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "swamp/s5-sky.webp",
+       "src2x": "swamp/s5-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "swamp/front-s5.webp",
+       "src2x": "swamp/front-s5@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 1005570
+      }
+     ],
+     "half": {
+      "src": "swamp/s5-half.webp",
+      "src2x": "swamp/s5-half@2x.webp",
+      "phone": {
+       "src": "swamp/s5-phone.webp",
+       "src2x": "swamp/s5-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.52
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.5,
+      "bytes": 266620,
+      "hour": 22,
+      "key": "night"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "swamp/s6-sky.webp",
+       "src2x": "swamp/s6-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      },
+      {
+       "id": "wisps",
+       "kind": "video",
+       "src": "swamp/s6-wisps.webm",
+       "fallback": "swamp/s6-wisps.mp4",
+       "poster": "swamp/s6-wisps-poster.webp",
+       "blend": "screen",
+       "depth": 0.4,
+       "z": 10,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "swamp/front-s6.webp",
+       "src2x": "swamp/front-s6@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 1108582
+      }
+     ],
+     "half": {
+      "src": "swamp/s6-half.webp",
+      "src2x": "swamp/s6-half@2x.webp",
+      "phone": {
+       "src": "swamp/s6-phone.webp",
+       "src2x": "swamp/s6-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.53
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.5,
+      "bytes": 358838,
+      "hour": 23.5,
+      "key": "night"
+     }
+    }
+   ],
+   "effects": {
+    "landfall": {
+     "kind": "sprite",
+     "src": "swamp/fx-landfall-sheet.webp",
+     "frames": 18,
+     "cols": 6,
+     "rows": 3,
+     "fps": 16,
+     "poster": "swamp/fx-landfall.webp",
+     "reduced": "poster",
+     "bytes": 210320,
+     "scale": 1.0,
+     "aspect": 1.25,
+     "blend": "screen"
+    },
+    "stageUp": {
+     "kind": "sprite",
+     "src": "swamp/fx-stageup-sheet.webp",
+     "frames": 24,
+     "cols": 4,
+     "rows": 6,
+     "fps": 12,
+     "poster": "swamp/fx-stageup.webp",
+     "reduced": "poster",
+     "bytes": 238910,
+     "scale": 1.2,
+     "aspect": 3.2,
+     "blend": "screen"
+    },
+    "creatureEnter": {
+     "kind": "sprite",
+     "src": "swamp/fx-creatureenter-sheet.webp",
+     "frames": 18,
+     "cols": 6,
+     "rows": 3,
+     "fps": 20,
+     "poster": "swamp/fx-creatureenter.webp",
+     "reduced": "poster",
+     "bytes": 187984,
+     "scale": 1.0,
+     "aspect": 0.8,
+     "blend": "screen"
+    },
+    "attack": {
+     "kind": "particles",
+     "preset": "sweep",
+     "color": "#a3e88a"
+    },
+    "damagePlayer": {
+     "kind": "particles",
+     "preset": "flash",
+     "scale": 0.7,
+     "aspect": 4,
+     "y": 0.05,
+     "color": "#a3e88a"
+    },
+    "damageCreature": {
+     "kind": "particles",
+     "preset": "crack",
+     "color": "#a3e88a"
+    }
+   },
+   "transitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "swamp/s1to2-f1-half-v4.webp",
+        "phone": "swamp/s1to2-f1-phone-v4.webp"
+       },
+       {
+        "src": "swamp/s1to2-f2-half-v4.webp",
+        "phone": "swamp/s1to2-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 144738
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "swamp/s2to3-f1-half-v4.webp",
+        "phone": "swamp/s2to3-f1-phone-v4.webp"
+       },
+       {
+        "src": "swamp/s2to3-f2-half-v4.webp",
+        "phone": "swamp/s2to3-f2-phone-v4.webp"
+       },
+       {
+        "src": "swamp/s2to3-f3-half-v4.webp",
+        "phone": "swamp/s2to3-f3-phone-v4.webp"
+       }
+      ],
+      "bytes": 204660
+     },
+     {
+      "from": 3,
+      "frames": [
+       {
+        "src": "swamp/s3to4-f1-half-v4.webp",
+        "phone": "swamp/s3to4-f1-phone-v4.webp"
+       },
+       {
+        "src": "swamp/s3to4-f2-half-v4.webp",
+        "phone": "swamp/s3to4-f2-phone-v4.webp"
+       },
+       {
+        "src": "swamp/s3to4-f3-half-v4.webp",
+        "phone": "swamp/s3to4-f3-phone-v4.webp"
+       }
+      ],
+      "bytes": 217268
+     },
+     {
+      "from": 4,
+      "frames": [
+       {
+        "src": "swamp/s4to5-f1-half-v4.webp",
+        "phone": "swamp/s4to5-f1-phone-v4.webp"
+       },
+       {
+        "src": "swamp/s4to5-f2-half-v4.webp",
+        "phone": "swamp/s4to5-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 149750
+     },
+     {
+      "from": 5,
+      "frames": [
+       {
+        "src": "swamp/s5to6-f1-half-v4.webp",
+        "phone": "swamp/s5to6-f1-phone-v4.webp"
+       },
+       {
+        "src": "swamp/s5to6-f2-half-v4.webp",
+        "phone": "swamp/s5to6-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 149150
+     }
+    ]
+   }
+  },
+  "plains": {
+   "label": "Plain of light",
+   "slot": {
+    "prefer": "any",
+    "weight": 1
+   },
+   "bloom": {
+    "kind": "fade",
+    "durationMs": 1400,
+    "staggerMs": 120
+   },
+   "idle": {
+    "kind": "drift",
+    "periodMs": 9000,
+    "amplitude": 0.3
+   },
+   "stages": [
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "plains/s1-sky.webp",
+       "src2x": "plains/s1-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [],
+     "half": {
+      "src": "plains/s1-half.webp",
+      "src2x": "plains/s1-half@2x.webp",
+      "phone": {
+       "src": "plains/s1-phone.webp",
+       "src2x": "plains/s1-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.48
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.42,
+      "bytes": 589794,
+      "hour": 6,
+      "key": "dawn"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "plains/s2-sky.webp",
+       "src2x": "plains/s2-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "plains/front-s2.webp",
+       "src2x": "plains/front-s2@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 37124
+      }
+     ],
+     "half": {
+      "src": "plains/s2-half.webp",
+      "src2x": "plains/s2-half@2x.webp",
+      "phone": {
+       "src": "plains/s2-phone.webp",
+       "src2x": "plains/s2-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.49
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.42,
+      "bytes": 780464,
+      "hour": 12,
+      "key": "noon"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "plains/s3-sky.webp",
+       "src2x": "plains/s3-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "plains/front-s3.webp",
+       "src2x": "plains/front-s3@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 114980
+      }
+     ],
+     "half": {
+      "src": "plains/s3-half.webp",
+      "src2x": "plains/s3-half@2x.webp",
+      "phone": {
+       "src": "plains/s3-phone.webp",
+       "src2x": "plains/s3-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.5
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.45,
+      "bytes": 355248,
+      "hour": 16.5,
+      "key": "afternoon"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "plains/s4-sky.webp",
+       "src2x": "plains/s4-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "plains/front-s4.webp",
+       "src2x": "plains/front-s4@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 141328
+      }
+     ],
+     "half": {
+      "src": "plains/s4-half.webp",
+      "src2x": "plains/s4-half@2x.webp",
+      "phone": {
+       "src": "plains/s4-phone.webp",
+       "src2x": "plains/s4-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.5
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.45,
+      "bytes": 351604,
+      "hour": 19,
+      "key": "dusk"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "plains/s5-sky.webp",
+       "src2x": "plains/s5-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "plains/front-s5.webp",
+       "src2x": "plains/front-s5@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 163950
+      }
+     ],
+     "half": {
+      "src": "plains/s5-half.webp",
+      "src2x": "plains/s5-half@2x.webp",
+      "phone": {
+       "src": "plains/s5-phone.webp",
+       "src2x": "plains/s5-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.5
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.44,
+      "bytes": 269562,
+      "hour": 20.5,
+      "key": "dusk"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "plains/s6-sky.webp",
+       "src2x": "plains/s6-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      },
+      {
+       "id": "motes",
+       "kind": "video",
+       "src": "plains/s6-motes.webm",
+       "fallback": "plains/s6-motes.mp4",
+       "poster": "plains/s6-motes-poster.webp",
+       "blend": "screen",
+       "depth": 0.4,
+       "z": 10,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "plains/front-s6.webp",
+       "src2x": "plains/front-s6@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 174140
+      }
+     ],
+     "half": {
+      "src": "plains/s6-half.webp",
+      "src2x": "plains/s6-half@2x.webp",
+      "phone": {
+       "src": "plains/s6-phone.webp",
+       "src2x": "plains/s6-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.49
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.45,
+      "bytes": 385156,
+      "hour": 23,
+      "key": "night"
+     }
+    }
+   ],
+   "effects": {
+    "landfall": {
+     "kind": "sprite",
+     "src": "plains/fx-landfall-sheet.webp",
+     "frames": 18,
+     "cols": 6,
+     "rows": 3,
+     "fps": 16,
+     "poster": "plains/fx-landfall.webp",
+     "reduced": "poster",
+     "bytes": 204246,
+     "scale": 1.0,
+     "aspect": 1.25,
+     "blend": "screen"
+    },
+    "stageUp": {
+     "kind": "sprite",
+     "src": "plains/fx-stageup-sheet.webp",
+     "frames": 24,
+     "cols": 4,
+     "rows": 6,
+     "fps": 12,
+     "poster": "plains/fx-stageup.webp",
+     "reduced": "poster",
+     "bytes": 253944,
+     "scale": 1.2,
+     "aspect": 3.2,
+     "blend": "screen"
+    },
+    "creatureEnter": {
+     "kind": "sprite",
+     "src": "plains/fx-creatureenter-sheet.webp",
+     "frames": 18,
+     "cols": 6,
+     "rows": 3,
+     "fps": 20,
+     "poster": "plains/fx-creatureenter.webp",
+     "reduced": "poster",
+     "bytes": 173580,
+     "scale": 1.0,
+     "aspect": 0.8,
+     "blend": "screen"
+    },
+    "attack": {
+     "kind": "particles",
+     "preset": "sweep",
+     "color": "#ffd98c"
+    },
+    "damagePlayer": {
+     "kind": "particles",
+     "preset": "flash",
+     "scale": 0.7,
+     "aspect": 4,
+     "y": 0.05,
+     "color": "#ffd98c"
+    },
+    "damageCreature": {
+     "kind": "particles",
+     "preset": "crack",
+     "color": "#ffd98c"
+    }
+   },
+   "transitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "plains/s1to2-f1-half-v4.webp",
+        "phone": "plains/s1to2-f1-phone-v4.webp"
+       },
+       {
+        "src": "plains/s1to2-f2-half-v4.webp",
+        "phone": "plains/s1to2-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 219552
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "plains/s2to3-f1-half-v4.webp",
+        "phone": "plains/s2to3-f1-phone-v4.webp"
+       },
+       {
+        "src": "plains/s2to3-f2-half-v4.webp",
+        "phone": "plains/s2to3-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 210582
+     },
+     {
+      "from": 3,
+      "frames": [
+       {
+        "src": "plains/s3to4-f1-half-v4.webp",
+        "phone": "plains/s3to4-f1-phone-v4.webp"
+       },
+       {
+        "src": "plains/s3to4-f2-half-v4.webp",
+        "phone": "plains/s3to4-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 133668
+     },
+     {
+      "from": 4,
+      "frames": [
+       {
+        "src": "plains/s4to5-f1-half-v4.webp",
+        "phone": "plains/s4to5-f1-phone-v4.webp"
+       },
+       {
+        "src": "plains/s4to5-f2-half-v4.webp",
+        "phone": "plains/s4to5-f2-phone-v4.webp"
+       },
+       {
+        "src": "plains/s4to5-f3-half-v4.webp",
+        "phone": "plains/s4to5-f3-phone-v4.webp"
+       }
+      ],
+      "bytes": 176770
+     },
+     {
+      "from": 5,
+      "frames": [
+       {
+        "src": "plains/s5to6-f1-half-v4.webp",
+        "phone": "plains/s5to6-f1-phone-v4.webp"
+       },
+       {
+        "src": "plains/s5to6-f2-half-v4.webp",
+        "phone": "plains/s5to6-f2-phone-v4.webp"
+       },
+       {
+        "src": "plains/s5to6-f3-half-v4.webp",
+        "phone": "plains/s5to6-f3-phone-v4.webp"
+       }
+      ],
+      "bytes": 194520
+     }
+    ]
+   }
+  },
+  "forest": {
+   "label": "Living wood",
+   "slot": {
+    "prefer": "any",
+    "weight": 1
+   },
+   "bloom": {
+    "kind": "fade",
+    "durationMs": 1400,
+    "staggerMs": 120
+   },
+   "idle": {
+    "kind": "drift",
+    "periodMs": 9000,
+    "amplitude": 0.3
+   },
+   "stages": [
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "forest/s1-sky.webp",
+       "src2x": "forest/s1-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [],
+     "half": {
+      "src": "forest/s1-half.webp",
+      "src2x": "forest/s1-half@2x.webp",
+      "phone": {
+       "src": "forest/s1-phone.webp",
+       "src2x": "forest/s1-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.5
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.46,
+      "bytes": 326558,
+      "hour": 6,
+      "key": "dawn"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "forest/s2-sky.webp",
+       "src2x": "forest/s2-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "forest/front-s2.webp",
+       "src2x": "forest/front-s2@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 163044
+      }
+     ],
+     "half": {
+      "src": "forest/s2-half.webp",
+      "src2x": "forest/s2-half@2x.webp",
+      "phone": {
+       "src": "forest/s2-phone.webp",
+       "src2x": "forest/s2-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.48
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.43,
+      "bytes": 528242,
+      "hour": 12,
+      "key": "noon"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "forest/s3-sky.webp",
+       "src2x": "forest/s3-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "forest/front-s3.webp",
+       "src2x": "forest/front-s3@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 242018
+      }
+     ],
+     "half": {
+      "src": "forest/s3-half.webp",
+      "src2x": "forest/s3-half@2x.webp",
+      "phone": {
+       "src": "forest/s3-phone.webp",
+       "src2x": "forest/s3-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.5
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.45,
+      "bytes": 437274,
+      "hour": 17,
+      "key": "afternoon"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "forest/s4-sky.webp",
+       "src2x": "forest/s4-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "forest/front-s4.webp",
+       "src2x": "forest/front-s4@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 299660
+      }
+     ],
+     "half": {
+      "src": "forest/s4-half.webp",
+      "src2x": "forest/s4-half@2x.webp",
+      "phone": {
+       "src": "forest/s4-phone.webp",
+       "src2x": "forest/s4-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.55
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.47,
+      "bytes": 416788,
+      "hour": 19,
+      "key": "dusk"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "forest/s5-sky.webp",
+       "src2x": "forest/s5-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "forest/front-s5.webp",
+       "src2x": "forest/front-s5@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 275982
+      }
+     ],
+     "half": {
+      "src": "forest/s5-half.webp",
+      "src2x": "forest/s5-half@2x.webp",
+      "phone": {
+       "src": "forest/s5-phone.webp",
+       "src2x": "forest/s5-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.5
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.47,
+      "bytes": 339594,
+      "hour": 20.5,
+      "key": "dusk"
+     }
+    },
+    {
+     "layers": [
+      {
+       "id": "sky",
+       "kind": "image",
+       "src": "forest/s6-sky.webp",
+       "src2x": "forest/s6-sky@2x.webp",
+       "depth": 0,
+       "z": 0,
+       "idle": false
+      },
+      {
+       "id": "fireflies",
+       "kind": "video",
+       "src": "forest/s6-fireflies.webm",
+       "fallback": "forest/s6-fireflies.mp4",
+       "poster": "forest/s6-fireflies-poster.webp",
+       "blend": "screen",
+       "depth": 0.4,
+       "z": 10,
+       "idle": false
+      }
+     ],
+     "overlay": [
+      {
+       "id": "front",
+       "anchor": "area",
+       "src": "forest/front-s6.webp",
+       "src2x": "forest/front-s6@2x.webp",
+       "fit": "cover",
+       "minWidthPx": 300,
+       "bytes": 307974
+      }
+     ],
+     "half": {
+      "src": "forest/s6-half.webp",
+      "src2x": "forest/s6-half@2x.webp",
+      "phone": {
+       "src": "forest/s6-phone.webp",
+       "src2x": "forest/s6-phone@2x.webp",
+       "subjectBand": [
+        0.45,
+        0.56
+       ],
+       "horizon": 0.53
+      },
+      "subjectBand": [
+       0.35,
+       0.6
+      ],
+      "horizon": 0.47,
+      "bytes": 351554,
+      "hour": 23,
+      "key": "night"
+     }
+    }
+   ],
+   "effects": {
+    "landfall": {
+     "kind": "sprite",
+     "src": "forest/fx-landfall-sheet.webp",
+     "frames": 18,
+     "cols": 6,
+     "rows": 3,
+     "fps": 16,
+     "poster": "forest/fx-landfall.webp",
+     "reduced": "poster",
+     "bytes": 205142,
+     "scale": 1.0,
+     "aspect": 1.25,
+     "blend": "screen"
+    },
+    "stageUp": {
+     "kind": "sprite",
+     "src": "forest/fx-stageup-sheet.webp",
+     "frames": 24,
+     "cols": 4,
+     "rows": 6,
+     "fps": 12,
+     "poster": "forest/fx-stageup.webp",
+     "reduced": "poster",
+     "bytes": 240334,
+     "scale": 1.2,
+     "aspect": 3.2,
+     "blend": "screen"
+    },
+    "creatureEnter": {
+     "kind": "sprite",
+     "src": "forest/fx-creatureenter-sheet.webp",
+     "frames": 18,
+     "cols": 6,
+     "rows": 3,
+     "fps": 20,
+     "poster": "forest/fx-creatureenter.webp",
+     "reduced": "poster",
+     "bytes": 173582,
+     "scale": 1.0,
+     "aspect": 0.8,
+     "blend": "screen"
+    },
+    "attack": {
+     "kind": "particles",
+     "preset": "sweep",
+     "color": "#9be36a"
+    },
+    "damagePlayer": {
+     "kind": "particles",
+     "preset": "flash",
+     "scale": 0.7,
+     "aspect": 4,
+     "y": 0.05,
+     "color": "#9be36a"
+    },
+    "damageCreature": {
+     "kind": "particles",
+     "preset": "crack",
+     "color": "#9be36a"
+    }
+   },
+   "transitions": {
+    "holdMs": 200,
+    "fadeMs": 180,
+    "steps": [
+     {
+      "from": 1,
+      "frames": [
+       {
+        "src": "forest/s1to2-f1-half-v4.webp",
+        "phone": "forest/s1to2-f1-phone-v4.webp"
+       },
+       {
+        "src": "forest/s1to2-f2-half-v4.webp",
+        "phone": "forest/s1to2-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 206328
+     },
+     {
+      "from": 2,
+      "frames": [
+       {
+        "src": "forest/s2to3-f1-half-v4.webp",
+        "phone": "forest/s2to3-f1-phone-v4.webp"
+       },
+       {
+        "src": "forest/s2to3-f2-half-v4.webp",
+        "phone": "forest/s2to3-f2-phone-v4.webp"
+       },
+       {
+        "src": "forest/s2to3-f3-half-v4.webp",
+        "phone": "forest/s2to3-f3-phone-v4.webp"
+       }
+      ],
+      "bytes": 340368
+     },
+     {
+      "from": 3,
+      "frames": [
+       {
+        "src": "forest/s3to4-f1-half-v4.webp",
+        "phone": "forest/s3to4-f1-phone-v4.webp"
+       },
+       {
+        "src": "forest/s3to4-f2-half-v4.webp",
+        "phone": "forest/s3to4-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 183708
+     },
+     {
+      "from": 4,
+      "frames": [
+       {
+        "src": "forest/s4to5-f1-half-v4.webp",
+        "phone": "forest/s4to5-f1-phone-v4.webp"
+       },
+       {
+        "src": "forest/s4to5-f2-half-v4.webp",
+        "phone": "forest/s4to5-f2-phone-v4.webp"
+       }
+      ],
+      "bytes": 171862
+     },
+     {
+      "from": 5,
+      "frames": [
+       {
+        "src": "forest/s5to6-f1-half-v4.webp",
+        "phone": "forest/s5to6-f1-phone-v4.webp"
+       },
+       {
+        "src": "forest/s5to6-f2-half-v4.webp",
+        "phone": "forest/s5to6-f2-phone-v4.webp"
+       },
+       {
+        "src": "forest/s5to6-f3-half-v4.webp",
+        "phone": "forest/s5to6-f3-phone-v4.webp"
+       }
+      ],
+      "bytes": 254308
+     }
+    ]
+   }
+  }
+ },
+ "half": {
+  "seamRatio": 0.1,
+  "minShare": 0.15,
+  "mist": 0.16
+ },
+ "growth": {
+  "crossfade": true,
+  "seconds": 1.2
+ },
+ "bridges": {
+  "forest+island": {
+   "src": "bridges/forest-island.webp",
+   "phone": {
+    "src": "bridges/forest-island-phone.webp",
+    "anchor": {
+     "y": 0.725,
+     "width": 0.6
+    }
+   },
+   "anchor": {
+    "y": 0.725,
+    "width": 0.4
+   },
+   "dualsWiden": 0.02,
+   "maxSeamRatio": 0.18,
+   "bytes": 45098
+  },
+  "forest+mountain": {
+   "src": "bridges/forest-mountain.webp",
+   "phone": {
+    "src": "bridges/forest-mountain-phone.webp",
+    "anchor": {
+     "y": 0.725,
+     "width": 0.6
+    }
+   },
+   "anchor": {
+    "y": 0.725,
+    "width": 0.4
+   },
+   "dualsWiden": 0.02,
+   "maxSeamRatio": 0.18,
+   "bytes": 39544
+  },
+  "forest+plains": {
+   "src": "bridges/forest-plains.webp",
+   "phone": {
+    "src": "bridges/forest-plains-phone.webp",
+    "anchor": {
+     "y": 0.725,
+     "width": 0.6
+    }
+   },
+   "anchor": {
+    "y": 0.725,
+    "width": 0.4
+   },
+   "dualsWiden": 0.02,
+   "maxSeamRatio": 0.18,
+   "bytes": 39994
+  },
+  "forest+swamp": {
+   "src": "bridges/forest-swamp.webp",
+   "phone": {
+    "src": "bridges/forest-swamp-phone.webp",
+    "anchor": {
+     "y": 0.725,
+     "width": 0.6
+    }
+   },
+   "anchor": {
+    "y": 0.725,
+    "width": 0.4
+   },
+   "dualsWiden": 0.02,
+   "maxSeamRatio": 0.18,
+   "bytes": 38868
+  },
+  "island+mountain": {
+   "src": "bridges/island-mountain.webp",
+   "phone": {
+    "src": "bridges/island-mountain-phone.webp",
+    "anchor": {
+     "y": 0.725,
+     "width": 0.6
+    }
+   },
+   "anchor": {
+    "y": 0.725,
+    "width": 0.4
+   },
+   "dualsWiden": 0.02,
+   "maxSeamRatio": 0.18,
+   "bytes": 39060
+  },
+  "island+plains": {
+   "src": "bridges/island-plains.webp",
+   "phone": {
+    "src": "bridges/island-plains-phone.webp",
+    "anchor": {
+     "y": 0.725,
+     "width": 0.6
+    }
+   },
+   "anchor": {
+    "y": 0.725,
+    "width": 0.4
+   },
+   "dualsWiden": 0.02,
+   "maxSeamRatio": 0.18,
+   "bytes": 41620
+  },
+  "island+swamp": {
+   "src": "bridges/island-swamp.webp",
+   "phone": {
+    "src": "bridges/island-swamp-phone.webp",
+    "anchor": {
+     "y": 0.725,
+     "width": 0.6
+    }
+   },
+   "anchor": {
+    "y": 0.725,
+    "width": 0.4
+   },
+   "dualsWiden": 0.02,
+   "maxSeamRatio": 0.18,
+   "bytes": 37870
+  },
+  "mountain+plains": {
+   "src": "bridges/mountain-plains.webp",
+   "phone": {
+    "src": "bridges/mountain-plains-phone.webp",
+    "anchor": {
+     "y": 0.725,
+     "width": 0.6
+    }
+   },
+   "anchor": {
+    "y": 0.725,
+    "width": 0.4
+   },
+   "dualsWiden": 0.02,
+   "maxSeamRatio": 0.18,
+   "bytes": 41030
+  },
+  "mountain+swamp": {
+   "src": "bridges/mountain-swamp.webp",
+   "phone": {
+    "src": "bridges/mountain-swamp-phone.webp",
+    "anchor": {
+     "y": 0.725,
+     "width": 0.6
+    }
+   },
+   "anchor": {
+    "y": 0.725,
+    "width": 0.4
+   },
+   "dualsWiden": 0.02,
+   "maxSeamRatio": 0.18,
+   "bytes": 35034
+  },
+  "plains+swamp": {
+   "src": "bridges/plains-swamp.webp",
+   "phone": {
+    "src": "bridges/plains-swamp-phone.webp",
+    "anchor": {
+     "y": 0.725,
+     "width": 0.6
+    }
+   },
+   "anchor": {
+    "y": 0.725,
+    "width": 0.4
+   },
+   "dualsWiden": 0.02,
+   "maxSeamRatio": 0.18,
+   "bytes": 39318
+  }
+ },
+ "pieces": {
+  "elements": {
+   "W": {
+    "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/element-W.webp",
+    "width": 954,
+    "height": 896,
+    "place": {
+     "sit": "ground",
+     "x": 0.5,
+     "w": 0.512
+    },
+    "phone": {
+     "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/element-W-phone.webp",
+     "width": 511,
+     "height": 1920
+    },
+    "bytes": 297422
+   },
+   "U": {
+    "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/element-U.webp",
+    "width": 1061,
+    "height": 573,
+    "place": {
+     "sit": "ground",
+     "x": 0.5,
+     "w": 0.569
+    },
+    "phone": {
+     "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/element-U-phone.webp",
+     "width": 569,
+     "height": 1214
+    },
+    "bytes": 153410
+   },
+   "B": {
+    "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/element-B.webp",
+    "width": 1034,
+    "height": 621,
+    "place": {
+     "sit": "ground",
+     "x": 0.5,
+     "w": 0.555
+    },
+    "phone": {
+     "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/element-B-phone.webp",
+     "width": 554,
+     "height": 957
+    },
+    "bytes": 83628
+   },
+   "R": {
+    "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/element-R.webp",
+    "width": 500,
+    "height": 896,
+    "place": {
+     "sit": "ground",
+     "x": 0.5,
+     "w": 0.268
+    },
+    "phone": {
+     "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/element-R-phone.webp",
+     "width": 268,
+     "height": 1920
+    },
+    "bytes": 108310
+   },
+   "G": {
+    "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/element-G.webp",
+    "width": 1201,
+    "height": 751,
+    "place": {
+     "sit": "ground",
+     "x": 0.5,
+     "w": 0.644
+    },
+    "phone": {
+     "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/element-G-phone.webp",
+     "width": 644,
+     "height": 827
+    },
+    "bytes": 113624
+   }
+  },
+  "fronts": {
+   "U": {
+    "frames": [
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-U-1.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-U-1-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-U-2.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-U-2-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-U-3.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-U-3-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-U-4.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-U-4-phone.webp"
+     }
+    ],
+    "holdMs": 200,
+    "fadeMs": 400,
+    "bytes": 465614
+   },
+   "W": {
+    "frames": [
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-W-1.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-W-1-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-W-2.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-W-2-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-W-3.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-W-3-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-W-4.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-W-4-phone.webp"
+     }
+    ],
+    "holdMs": 200,
+    "fadeMs": 400,
+    "bytes": 419174
+   },
+   "B": {
+    "frames": [
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-B-1.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-B-1-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-B-2.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-B-2-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-B-3.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-B-3-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-B-4.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-B-4-phone.webp"
+     }
+    ],
+    "holdMs": 200,
+    "fadeMs": 400,
+    "bytes": 243206
+   },
+   "G": {
+    "frames": [
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-G-1.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-G-1-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-G-2.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-G-2-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-G-3.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-G-3-phone.webp"
+     },
+     {
+      "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-G-4.webp",
+      "phone": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/front-G-4-phone.webp"
+     }
+    ],
+    "holdMs": 200,
+    "fadeMs": 400,
+    "bytes": 562124
+   }
+  },
+  "veils": {
+   "won": {
+    "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/veil-won.webp",
+    "width": 2048,
+    "height": 640,
+    "phone": {
+     "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/veil-won-phone.webp",
+     "width": 1024,
+     "height": 1280
+    },
+    "place": {
+     "sit": "fill"
+    },
+    "bytes": 44708
+   },
+   "lost": {
+    "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/veil-lost.webp",
+    "width": 2048,
+    "height": 640,
+    "phone": {
+     "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/veil-lost-phone.webp",
+     "width": 1024,
+     "height": 1280
+    },
+    "place": {
+     "sit": "fill"
+    },
+    "bytes": 57274
+   }
+  },
+  "empty": {
+   "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/empty-half.webp",
+   "phone": {
+    "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pieces-v1/pieces/empty-phone.webp",
+    "subjectBand": [
+     0.42,
+     0.62
+    ],
+    "horizon": 0.52
+   },
+   "subjectBand": [
+    0.38,
+    0.68
+   ],
+   "horizon": 0.55,
+   "hour": 6,
+   "key": "dawn",
+   "bytes": 111820
+  }
+ }
+}

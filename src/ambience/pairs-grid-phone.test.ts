@@ -128,7 +128,7 @@ describe('spec 1.18: phone cells and painted-in cells', () => {
     it('plans the cell, drawn from its phone picture, and the caption names the seam', () => {
       const desk = at([slot('island', 0, 4), slot('swamp', 1, 3)]);
       const phone = at([slot('island', 0, 4), slot('swamp', 1, 3)], true);
-      expect(phone.p!.grid).toMatchObject({ cell: '4x3', clamped: false, mirror: false });
+      expect(phone.p!.grid).toMatchObject({ cell: '4x3', stages: [4, 3], mirror: false });
       expect(phone.p!.grid!.cell).toBe(desk.p!.grid!.cell);
       expect(phone.cands[0]).toMatchObject({ cell: '4x3', painted: null, mirror: false });
       expect(phone.cands[0]!.art).toMatchObject({ source: 'phone' });
@@ -137,12 +137,14 @@ describe('spec 1.18: phone cells and painted-in cells', () => {
       expect(phone.caption).toMatch(/island s4 \| swamp s3, seam 4x3$/);
     });
 
-    it('the same choice as the desktop through the clamp: the heavier half exact', () => {
-      // island 4 | swamp 2: no 4x2, so 4x3 (the swamp raised to one below), which has a phone picture.
+    it('the same choice as the desktop: no cell for the stages is the pair apart on both shapes (spec 1.19 c, no clamp)', () => {
+      // island 4 | swamp 2: no 4x2 -- each colour's own mono picture, on the phone as on the desktop.
       const phone = at([slot('island', 0, 4), slot('swamp', 1, 2)], true);
-      expect(phone.p!.grid).toMatchObject({ cell: '4x3', stages: [4, 2], shown: [4, 3], clamped: true });
-      expect(phone.cands[0]!.art.picture!.src).toBe(seam('island-swamp', '4x3-panorama-phone'));
-      expect(phone.caption).toMatch(/island s4 \| swamp s2→s3, seam 4x3 \(clamped\)$/);
+      const desk = at([slot('island', 0, 4), slot('swamp', 1, 2)]);
+      expect([phone.p!.grid, phone.p!.apart]).toEqual([undefined, { cell: '4x2', left: 'island', right: 'swamp', stages: [4, 2] }]);
+      expect(desk.p!.apart).toEqual(phone.p!.apart);
+      expect(phone.cands).toEqual([]);
+      expect(phone.caption).toMatch(/island s4 \| swamp s2, no seam cell$/);
       // forest+swamp mirrored: forest 2 | swamp 3 on the board is the cell 3x2, which has one.
       const m = at([slot('forest', 0, 2), slot('swamp', 1, 3)], true);
       expect(m.p!.grid).toMatchObject({ cell: '3x2', mirror: true });
@@ -293,10 +295,12 @@ describe('spec 1.18: phone cells and painted-in cells', () => {
   describe('the warm set: the phone cell by 1.17’s rules, and the shown cell’s painted pictures only', () => {
     it('a phone warms a cell with a phone picture at that shape (shown, neighbours, the first cell), never a desktop cell', () => {
       const two = warm([slot('island', 0, 3), slot('swamp', 1, 2)], true).filter((s) => s.includes('/seams/'));
-      // Shown 3x2; neighbours 4x2→4x3, 3x3, 2x2, 3x1→3x2: the ones with a phone picture, at the phone shape.
-      expect(two.sort()).toEqual([seam('island-swamp', '2x2-panorama-phone'), seam('island-swamp', '3x2-panorama-phone'), seam('island-swamp', '3x3-panorama-phone'), seam('island-swamp', '4x3-panorama-phone')].sort());
-      // A mono side: the first cell with a swamp (island 3 | swamp 1 → 3x2) at the phone shape; forest+swamp has no 3x1/2x1… cell.
-      expect(warm([slot('island', 0, 3)], true).filter((s) => s.includes('/seams/'))).toEqual([seam('island-swamp', '3x2-panorama-phone')]);
+      // Shown 3x2; neighbours 4x2 and 3x1 (not painted: apart, spec 1.19 c), 3x3, 2x2: the ones with a phone picture.
+      expect(two.sort()).toEqual([seam('island-swamp', '2x2-panorama-phone'), seam('island-swamp', '3x2-panorama-phone'), seam('island-swamp', '3x3-panorama-phone')].sort());
+      // A mono side: the first cell with a swamp at the phone shape -- island 2 | swamp 1 is 2x1, which has no phone picture
+      // in this fixture, and island 3 | swamp 1 has no cell (spec 1.19 c: no clamp to 3x2), so neither is warmed.
+      expect(warm([slot('island', 0, 2)], true).filter((s) => s.includes('/seams/'))).toEqual([]);
+      expect(warm([slot('island', 0, 3)], true).filter((s) => s.includes('/seams/'))).toEqual([]);
       // The desktop warms the desktop cells.
       expect(warm([slot('island', 0, 3), slot('swamp', 1, 2)]).filter((s) => s.includes('/seams/')).every((s) => !s.includes('-phone'))).toBe(true);
     });

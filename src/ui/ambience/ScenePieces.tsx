@@ -27,8 +27,17 @@
  * (`phoneElements`), and the cut-out waits for the cell itself
  * (`pairFullCutOutAllowed`: never over a picture the strip is not showing).
  * With the flag off a third colour keeps its own panel and no element is
- * drawn. The pair and the element come from makeup.ts's one rule, with the
- * strip's `showing`, so the two can never pick different pairs.
+ * drawn for it. The pair and the element come from makeup.ts's one rule, with
+ * the strip's `showing`, so the two can never pick different pairs.
+ *
+ * Spec 1.19 a (every colour visible): every colour past the third is a
+ * cut-out too, with the flag and without, stacked on the pair's grounds --
+ * the heavier pair colour's takes two, the lighter's the rest, side by side,
+ * each faded by its share, never on the seam core (pieces.ts `halfCutOuts`,
+ * `stackRegion`; pairfull.ts `pairFullElementRegion`; on the panels,
+ * pieces.ts `panelGround`); a phone draws only the phone pieces. Spec 1.19 c:
+ * over an apart pair (two mono panels, no cell) the third colour is a cut-out
+ * too (`pairFullApartView`).
  *
  * Fronts (review fault 3): the frames are warmed and picked at one shape,
  * pieces.ts `piecesPhone` on the half this measures; a front plays as soon as
@@ -44,8 +53,8 @@
  * line's mist by the pack's own `half.mist`.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { BIOME_COLOUR, elementBiomes, elementUrls, phoneElementBiomes, frontFor, frontFrameList, FrontGate, horizonAt, makeupFromSlots, piecePlacement, piecesPhone, planHalf, veilState, WHOLE, type HalfPlan } from '../../ambience/pieces.ts';
-import { pairFullCandidates, pairFullChoice, pairFullCutOutAllowed, pairFullElementRegion, pairFullHeavierSide, pairFullPanelAspect, pairFullPlan, pairFullView, type PairFullPair } from '../../ambience/pairfull.ts';
+import { COLOUR_BIOME, elementBiomes, elementUrls, phoneElementBiomes, frontFor, frontFrameList, FrontGate, halfCutOuts, horizonAt, makeupFromSlots, panelGround, piecePlacement, piecesPhone, planHalf, stackRegion, veilState, WHOLE, type HalfPlan, type Region } from '../../ambience/pieces.ts';
+import { pairFullApartView, pairFullCandidates, pairFullChoice, pairFullElementRegion, pairFullHeavierSide, pairFullPanelAspect, pairFullPlan, pairFullView, type PairFullPair } from '../../ambience/pairfull.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_HALF_SIZE, DEFAULT_PHONE_SIZE, pieceUrls, type PackPiece, type PackPieces, type ScenePack, type VeilOutcome } from '../../ambience/manifest.ts';
 import { halfArtOf, halfFrameCss, halfLayout, type FrameRect } from '../../ambience/layout.ts';
 import type { MakeupShowing } from '../../ambience/makeup.ts';
@@ -122,7 +131,7 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
   // A front plays once its frames have all decoded (warmed above; a cold one warms now and plays when it lands).
   const waiting = gate.waiting(now());
   // Woken when a picture settles only while something here waits on one: a front's frames, or (the flag on) an element.
-  const pictures = usePicturesVersion(!!waiting || (pairFull && makeup.colours.length >= 3));
+  const pictures = usePicturesVersion(!!waiting || makeup.colours.length >= 3);
   const waitingFrames = waiting ? frontFrameList(pieces, waiting, phone) : null;
   const framesReady = !!waitingFrames && waitingFrames.frames.every((f) => pictureStatus(f.src) === 'ready');
   useEffect(() => {
@@ -138,20 +147,49 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
   const elements = useMemo(() => (pairFull ? elementBiomes(pieces) : null), [pairFull, pieces]);
   const phoneElements = useMemo(() => (pairFull ? phoneElementBiomes(pieces) : null), [pairFull, pieces]);
   const full = useMemo(() => (pairFull && pack?.pairs ? pairFullPlan(layout, pack.pairs, { thresholds: pack.stageThresholds, elements, phoneElements, showing, slots, narrow }) : null), [pairFull, pack, layout, elements, phoneElements, showing, slots, narrow]);
-  const fullPair = full?.find((x): x is PairFullPair => x.kind === 'pair' && !!x.element) ?? null;
+  const fullPair = full?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
   const choice = useMemo(() => {
     if (!fullPair || !measured) return null;
     return pairFullChoice(pairFullCandidates(fullPair, pairFullPanelAspect(Math.round((box.w / box.h) * 20) / 20, fullPair.share), narrow, horizon), pictureStatus);
   }, [fullPair, measured, box, narrow, horizon, pictures]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = choice?.show ?? null;
-  // Spec 1.16.1: no cut-out while a painted picture is shown, loading or held by the strip (the review of #199).
-  const cutOut = pairFullCutOutAllowed(choice);
+  // Spec 1.19 a: every cut-out the half stands on its pair's grounds (the third where it is cut out, every colour past
+  // it), the one rule the storyboard walk counts too; spec 1.16.1: no third cut-out while a painted picture is shown,
+  // loading or held by the strip (the review of #199).
+  const cuts = useMemo(() => (measured ? halfCutOuts({ plan, pieces, phone, narrow, full, choice }) : []), [measured, plan, pieces, phone, narrow, full, choice]);
   const at = (p: PackPiece) => (phone && p.phone ? p.phone : p);
-  // Elements warm with the half's colours under the flag (review fault 4: they were never warmed and popped in late).
+  // Elements warm with the half's colours (review fault 4: they were never warmed and popped in late).
   useEffect(() => {
-    if (!pairFull || !measured) return;
+    if (!measured) return;
     for (const w of elementUrls(pieces, makeup.colours, phone)) warmPicture(w);
-  }, [pairFull, measured, makeup, pieces, phone]);
+  }, [measured, makeup, pieces, phone]);
+  const seamRatio = (pack?.half ?? DEFAULT_HALF_LAYOUT).seamRatio;
+  /** Where a cut-out on the pair's `ground` stands: the region of its slot, and the horizon under it. */
+  const regionOf = (ground: 'heavier' | 'lighter', slot: number, of: number): { region: Region; horizonY: number; side: 'left' | 'right' } | null => {
+    const heavier = plan.pick.heavier;
+    const lighter = plan.pair?.find((c) => c !== heavier) ?? null;
+    if (!heavier || !lighter) return null;
+    if (fullPair && (fullPair.apart || shown)) {
+      const indexOf = (b: string) => slots.find((x) => x.biome === b)?.index ?? 0;
+      const hs = pairFullHeavierSide(fullPair, indexOf);
+      const side: 'left' | 'right' = ground === 'heavier' ? hs : hs === 'left' ? 'right' : 'left';
+      // Spec 1.19 c: an apart pair's horizon is its own panel's, read through the two panels at the split.
+      const apartLayout = fullPair.apart
+        ? layout.filter((l) => l.slot.biome === fullPair.left || l.slot.biome === fullPair.right).sort((a, b) => (a.slot.biome === fullPair.left ? -1 : b.slot.biome === fullPair.left ? 1 : 0)).map((l) => ({ ...l, share: l.slot.biome === fullPair.left ? fullPair.split : 1 - fullPair.split }))
+        : null;
+      const hzAt = (x: number) => horizonAt(pack, apartLayout ?? layout, x, box, { narrow, horizon });
+      const view = fullPair.apart ? pairFullApartView(full, seamRatio, hzAt(side === 'left' ? fullPair.split / 2 : (1 + fullPair.split) / 2)) : pairFullView(full, box, shown!.art, shown!.mirror);
+      if (!view) return null;
+      const region = stackRegion(pairFullElementRegion(view, side), { side, slot, of });
+      return { region, horizonY: fullPair.apart ? hzAt(region.left + region.width / 2) : view.horizonY, side };
+    }
+    // The panels (the board without the flag, or the flag's panels): the pair colour's own panel, less its seams.
+    const g = panelGround(layout, COLOUR_BIOME[ground === 'heavier' ? heavier : lighter], seamRatio);
+    if (!g) return null;
+    const side: 'left' | 'right' = g.left + g.width / 2 < 0.5 ? 'left' : 'right';
+    const region = stackRegion(g, { side, slot, of });
+    return { region, horizonY: horizonAt(pack, layout, region.left + region.width / 2, box, { narrow, horizon }), side };
+  };
 
   // The veil fades out on a scrub back rather than vanishing (review fault 10).
   const ms = reduced ? 0 : 1600;
@@ -197,29 +235,20 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
           })()}
         </div>
       )}
-      {fullPair && shown && cutOut && measured && plan.element && (() => {
-        const p = fullPair;
-        const colour = BIOME_COLOUR[p.element!];
-        const piece = colour ? pieces.elements[colour] : undefined;
-        // One rule (makeup.ts) for the plan and the picture; a guard all the same: never the wrong colour.
-        if (!piece || plan.element.colour !== colour) return null;
-        // Spec 1.18.1: on a seam cell (a phone) only the element's phone piece, else nothing.
-        if (p.grid && !piece.phone) return null;
-        const pic = p.grid ? piece.phone! : at(piece);
-        // Drawn once loaded, so it fades in rather than popping in after the fade.
-        if (pictureStatus(pic.src) !== 'ready') return null;
-        const view = pairFullView(full, box, shown.art, shown.mirror);
-        if (!view) return null;
-        const indexOf = (b: string) => slots.find((x) => x.biome === b)?.index ?? 0;
-        const side = pairFullHeavierSide(p, indexOf);
-        const region = pairFullElementRegion(view, side);
-        const f = piecePlacement(piece.place, pic.width / pic.height, region, box, view.horizonY);
-        return (
-          <div key={`element:${colour}`} className="scn-pc-element" style={{ opacity: plan.element.opacity, transition: `opacity ${ms}ms ease` }} data-pc="element" data-pc-colour={colour} data-pc-side={side}>
-            <img className={`scn-pc${reduced ? '' : ' scn-pc-in'}`} style={rectCss(f)} src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} />
-          </div>
-        );
-      })()}
+      {measured &&
+        cuts.map((e) => {
+          const pic = e.picture;
+          // Drawn once loaded, so it fades in rather than popping in after the fade; a painted third only keeps its place.
+          if (!e.cut || !pic || pictureStatus(pic.src) !== 'ready') return null;
+          const where = regionOf(e.ground, e.slot, e.of);
+          if (!where) return null;
+          const f = piecePlacement(e.place, pic.width / pic.height, where.region, box, where.horizonY);
+          return (
+            <div key={`element:${e.colour}`} className="scn-pc-element" style={{ opacity: e.opacity, transition: `opacity ${ms}ms ease` }} data-pc="element" data-pc-colour={e.colour} data-pc-side={where.side} data-pc-ground={e.ground} data-pc-slot={`${e.slot + 1}/${e.of}`}>
+              <img className={`scn-pc${reduced ? '' : ' scn-pc-in'}`} style={rectCss(f)} src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} />
+            </div>
+          );
+        })}
       {measured &&
         plan.landmarks.map((name) => {
           const p = pieces.landmarks[name]!;

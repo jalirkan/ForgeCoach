@@ -4,8 +4,9 @@
  *
  * Spec 1.14's planner (pc-results scenery/SYSTEM.md, section A) and the
  * pieces' placement: the worked example (Evan's half in the friend game of
- * 2026-10-17), the tie rule, folding, landmarks, veils, fronts, and a
- * landmark standing on pack-v9.1's measured horizon.
+ * 2026-10-17, as spec 1.19 b amends it: the pair is kept as the base), the
+ * tie rule, the stack of every further colour (spec 1.19 a), landmarks,
+ * veils, fronts, and a landmark standing on pack-v9.1's measured horizon.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -14,7 +15,7 @@ import { validateManifest } from './manifest.ts';
 import { halfLayout, HORIZON_AT } from './layout.ts';
 import { stepScenery, slotsOf, type SlotState } from './model.ts';
 import { FORGECOACH_PACK_URL } from './prefs.ts';
-import { frontFor, heaviestPair, horizonAt, landNamesOf, makeupFromSlots, makeupOf, pairStageOf, piecePlacement, planHalf, WHOLE, type HalfPlan } from './pieces.ts';
+import { frontFor, heaviestPair, horizonAt, landNamesOf, makeupFromSlots, makeupOf, pairStageOf, panelGround, piecePlacement, planHalf, stackElements, stackRegion, WHOLE, type HalfPlan } from './pieces.ts';
 
 let nextId = 1;
 const land = (name: string, types: string) => ({ id: String(nextId++), name, types, tapped: false, abilities: [] });
@@ -66,23 +67,65 @@ describe('the worked example: Evan’s half, 2026-10-17', () => {
     expect(plans.T4).toMatchObject({ pair: ['R', 'W'], split: 0.25, pairStage: 1 });
     expect(fronts.T4).toBeNull();
   });
-  it('T8: an Island re-keys to island+plains at stage 2, red becomes the element, blue’s front plays', () => {
-    expect(plans.T8).toMatchObject({ pair: ['U', 'W'], split: 0.4, pairStage: 2, mirror: true });
-    expect(plans.T8!.element).toEqual({ colour: 'R', opacity: 0.5, side: 'left' });
+  // Spec 1.19 b (2026-11-02): SYSTEM.md's table re-keyed to island+plains here (2.5 outweighs 2.0); the pair showing
+  // now stays the base while both its colours are among the three heaviest, so the Island joins as the element.
+  it('T8: an Island joins mountain+plains as its element at stage 2 (spec 1.19 b: no re-key), blue’s front plays', () => {
+    expect(plans.T8).toMatchObject({ pair: ['R', 'W'], split: 0.25, pairStage: 2 });
+    expect(plans.T8!.element).toMatchObject({ colour: 'U', opacity: 1 });
+    expect(plans.T8!.extras).toEqual([]);
     expect(fronts.T8).toEqual({ colour: 'U', reverse: false });
   });
-  it('T10: Tundra eases the pan toward the island (plains 0.60 → 0.57), no front', () => {
-    expect(plans.T10).toMatchObject({ pair: ['U', 'W'], split: 0.429, pairStage: 2 });
+  it('T10: Tundra pans further to the plains (mountain 0.25 → 0.2), the island fully in, no front', () => {
+    expect(plans.T10).toMatchObject({ pair: ['R', 'W'], split: 0.2, pairStage: 2 });
+    expect(plans.T10!.element).toMatchObject({ colour: 'U', opacity: 1 });
     expect(fronts.T10).toBeNull();
   });
 });
 
-describe('folding, landmarks, veils and fronts', () => {
-  it('four colours fold to the three heaviest, one element', () => {
+describe('every colour visible (spec 1.19 a), landmarks, veils and fronts', () => {
+  it('four colours: the pair, the third the element, the fourth a cut-out, each faded by its share', () => {
     const p = planHalf({ makeup: makeupOf({ W: 3, U: 2, B: 1, G: 0.5 }, ['W', 'U', 'B', 'G']) });
     expect(p.pair).toEqual(['U', 'W']);
-    expect(p.element?.colour).toBe('B');
-    expect(p.element?.opacity).toBe(0.5);
+    // 4 × 1 / 6.5 and 4 × 0.5 / 6.5.
+    expect(p.element).toMatchObject({ colour: 'B', opacity: 0.615 });
+    expect(p.extras).toEqual([{ colour: 'G', opacity: 0.308 }]);
+  });
+  it('the stack: the heavier pair colour’s ground holds two (the third and the fourth), the lighter’s the fifth; the heaviest at the outer edge', () => {
+    // W heavier (left: it arrived first), U lighter (right); B third, R and G extras.
+    const p = planHalf({ makeup: makeupOf({ W: 3, U: 2, B: 1.5, R: 1, G: 0.5 }, ['W', 'U', 'B', 'R', 'G']) });
+    expect([p.pair, p.element?.side, p.lighterSide]).toEqual([['U', 'W'], 'left', 'right']);
+    const cut = stackElements(p, 'cut', () => true);
+    expect(cut.map((e) => [e.colour, e.ground, e.side, e.slot, e.of, e.opacity])).toEqual([
+      ['B', 'heavier', 'left', 0, 2, 0.938],
+      ['R', 'heavier', 'left', 1, 2, 0.625],
+      ['G', 'lighter', 'right', 0, 1, 0.313],
+    ]);
+    // A painted third keeps its place (no cut-out drawn); a third with its own panel is not on a ground at all.
+    expect(stackElements(p, 'painted', () => true).map((e) => [e.colour, e.cut, e.ground, e.slot])).toEqual([
+      ['B', false, 'heavier', 0],
+      ['R', true, 'heavier', 1],
+      ['G', true, 'lighter', 0],
+    ]);
+    expect(stackElements(p, null, () => true).map((e) => [e.colour, e.ground, e.slot, e.of])).toEqual([
+      ['R', 'heavier', 0, 2],
+      ['G', 'heavier', 1, 2],
+    ]);
+    // A colour the pack has no cut-out for at this shape takes no place.
+    expect(stackElements(p, 'cut', (c) => c !== 'R').map((e) => e.colour)).toEqual(['B', 'G']);
+    // Side by side on the ground, the first at the half's outer edge.
+    expect(stackRegion({ left: 0, width: 0.4 }, { side: 'left', slot: 0, of: 2 })).toEqual({ left: 0, width: 0.2 });
+    expect(stackRegion({ left: 0, width: 0.4 }, { side: 'left', slot: 1, of: 2 })).toEqual({ left: 0.2, width: 0.2 });
+    expect(stackRegion({ left: 0.6, width: 0.4 }, { side: 'right', slot: 0, of: 2 })).toEqual({ left: 0.8, width: 0.2 });
+  });
+  it('a panel as a ground (the board without the flag): its span less the seam where it meets another panel', () => {
+    const slot = (biome: SlotState['biome'], index: number, weight: number): SlotState => ({ biome, index, weight, stage: 1, progress: 0, peak: 1 });
+    const layout = halfLayout([slot('plains', 0, 2), slot('island', 1, 1), slot('swamp', 2, 1)], null);
+    expect(layout.map((l) => l.share)).toEqual([0.5, 0.25, 0.25]);
+    // Row of 1 + 2 × 0.1 split 0.5 : 0.25 : 0.25, seams overlapping: plains 0–0.6, island 0.5–0.8, swamp 0.7–1.
+    expect(panelGround(layout, 'plains', 0.1)).toEqual({ left: 0, width: 0.5 });
+    expect(panelGround(layout, 'island', 0.1)).toEqual({ left: 0.6, width: 0.1 });
+    expect(panelGround(layout, 'swamp', 0.1)).toEqual({ left: 0.8, width: 0.2 });
+    expect(panelGround(layout, 'forest', 0.1)).toBeNull();
   });
   it('landmarks: only names the pack has, one per name, the earliest two', () => {
     const p = planHalf({ makeup: makeupOf({}, []), landNames: ['City of Brass', 'Island', 'City of Brass', 'Exotic Orchard', 'Seaside Citadel'], landmarks: ['Seaside Citadel', 'Exotic Orchard', 'City of Brass'] });
@@ -101,10 +144,15 @@ describe('folding, landmarks, veils and fronts', () => {
     const a = planHalf({ makeup: makeupOf({ W: 2, U: 1 }, ['W', 'U']) });
     const b = planHalf({ makeup: makeupOf({ W: 2 }, ['W']) });
     expect(frontFor(a, b)).toEqual({ colour: 'U', reverse: true });
-    const c = planHalf({ makeup: makeupOf({ W: 2, U: 1, R: 0.5 }, ['W', 'U', 'R']) });
-    const d = planHalf({ makeup: makeupOf({ W: 2, U: 1, R: 1.5 }, ['W', 'U', 'R']), prevPair: c.pair });
+    // Spec 1.19 b: a re-key only when a pair colour leaves the top three -- here the island, outweighed by three.
+    const c = planHalf({ makeup: makeupOf({ W: 2, U: 1, R: 1, G: 0.5 }, ['W', 'U', 'R', 'G']) });
+    const d = planHalf({ makeup: makeupOf({ W: 2, U: 1, R: 1.5, G: 1.5 }, ['W', 'U', 'R', 'G']), showing: c.pick });
+    expect([c.pair, d.pair]).toEqual([['U', 'W'], ['R', 'W']]);
     expect(frontFor(c, d)).toEqual({ colour: 'R', reverse: false });
     expect(frontFor(null, d)).toBeNull();
+    // A fourth colour arriving is on screen now (a cut-out): its front plays.
+    const e = planHalf({ makeup: makeupOf({ W: 2, U: 1, R: 1, G: 0.5, B: 0.5 }, ['W', 'U', 'R', 'G', 'B']), showing: c.pick });
+    expect(frontFor(c, e)).toEqual({ colour: 'B', reverse: false });
   });
 });
 

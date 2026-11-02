@@ -160,28 +160,31 @@ describe('pairs-v6-draft on the board', () => {
   const warm = (slots: SlotState[], narrow = false) => pairPictures(pairs, [slots], { phone: narrow, full: { thresholds: T, narrow } }).map((w) => w.src);
 
   describe('the pair forming: its first cell is warm before the second colour arrives (the #201 follow-up)', () => {
-    it('one colour on the half warms each grid pair’s first cell: the arriving colour at stage 1, clamped as the pick clamps', () => {
-      // Island at stage 3: Swamp's first land shows island s3 | swamp s1 → 3x2 (the lighter half one below the heavier).
-      const cells = warm([slot('island', 0, 3)]).filter((s) => s.includes('/seams/'));
-      expect(cells).toEqual([cell('island-swamp', '3x2')]);
+    it('one colour on the half warms each grid pair’s first cell: the arriving colour at stage 1, the exact cell only (spec 1.19 c)', () => {
+      // Island at stage 2: Swamp's first land shows island s2 | swamp s1 → 2x1.
+      expect(warm([slot('island', 0, 2)]).filter((s) => s.includes('/seams/'))).toEqual([cell('island-swamp', '2x1')]);
+      // Island at stage 3: island s3 | swamp s1 has no cell (3x1 is not painted) -- drawn apart, nothing to warm.
+      expect(warm([slot('island', 0, 3)]).filter((s) => s.includes('/seams/'))).toEqual([]);
       // Swamp at stage 1: an Island first is 1x1, a Forest first 1x1 of swamp+forest (swamp left).
       expect(warm([slot('swamp', 0, 1)]).filter((s) => s.includes('/seams/'))).toEqual([cell('island-swamp', '1x1'), cell('swamp-forest', '1x1')]);
-      // Forest at stage 4: swamp's first land is swamp s1 | forest s4 → 3x4.
-      expect(warm([slot('forest', 0, 4)]).filter((s) => s.includes('/seams/'))).toEqual([cell('swamp-forest', '3x4')]);
+      // Forest at stage 4: swamp's first land is swamp s1 | forest s4, 1x4: none.
+      expect(warm([slot('forest', 0, 4)]).filter((s) => s.includes('/seams/'))).toEqual([]);
       // The stage-1 panoramas are still warmed: the fallback, should the cell fail.
       expect(warm([slot('island', 0, 3)])).toContain(`${DRAFT}pairs/island-swamp/s1-panorama.webp`);
     });
 
     it('and the cell a dual of the two would show, when its half land steps the live colour up', () => {
-      // Island 2.5 (stage 2): Watery Grave makes island 3 | swamp ½ → 3x2, beside a Swamp's 2x1.
-      expect(warm([slot('island', 0, 2.5)]).filter((s) => s.includes('/seams/'))).toEqual([cell('island-swamp', '2x1'), cell('island-swamp', '3x2')]);
+      // Island 1.5 (stage 1): Watery Grave makes island 2 | swamp ½ → 2x1, beside a Swamp's 1x1.
+      expect(warm([slot('island', 0, 1.5)]).filter((s) => s.includes('/seams/'))).toEqual([cell('island-swamp', '1x1'), cell('island-swamp', '2x1')]);
+      // Island 2.5 (stage 2): a Swamp's 2x1; the dual's island 3 | swamp ½ is 3x1, not painted (spec 1.19 c: no clamp).
+      expect(warm([slot('island', 0, 2.5)]).filter((s) => s.includes('/seams/'))).toEqual([cell('island-swamp', '2x1')]);
     });
 
     it('so the pair’s first frame is its cell: the panels, then the cell -- never the whole-place panorama between', () => {
-      const before = at([slot('island', 0, 3)]);
+      const before = at([slot('island', 0, 2)]);
       expect(before.items).toBeNull();
-      const after = at([slot('island', 0, 3), slot('swamp', 1, 1)]);
-      expect(after.cands[0]).toMatchObject({ cell: '3x2', mirror: false });
+      const after = at([slot('island', 0, 2), slot('swamp', 1, 1)]);
+      expect(after.cands[0]).toMatchObject({ cell: '2x1', mirror: false });
       const pano = after.cands.find((c) => !c.cell)!.art.picture!.src;
       const status = (ready: readonly string[]) => (src: string) => (ready.includes(src) ? 'ready' : 'pending');
       const run = (ready: readonly string[], now: number, hold: PairFullHold<typeof before.layout>) => {
@@ -189,10 +192,10 @@ describe('pairs-v6-draft on the board', () => {
         return { mono, next: pairFullHold({ layout: after.layout, plan: after.items, choice: pairFullChoice(after.cands, status(ready)) }, mono.hold, now + 100) };
       };
       // Warmed ahead (pairPictures above): the first frame of the pair is the cell.
-      const warmed = warm([slot('island', 0, 3)]);
+      const warmed = warm([slot('island', 0, 2)]);
       expect(warmed).toContain(after.cands[0]!.art.picture!.src);
       const w = run(warmed, 0, { last: null, since: null });
-      expect([w.next.holding, w.next.draw.shown?.cell]).toEqual([false, '3x2']);
+      expect([w.next.holding, w.next.draw.shown?.cell]).toEqual([false, '2x1']);
       // Cold (a slow network): the half keeps its panels while the cell loads, though the panorama is warm...
       const c = run([pano], 0, { last: null, since: null });
       expect(pairFullChoice(after.cands, status([pano])).show?.cell).toBeUndefined();
@@ -201,7 +204,7 @@ describe('pairs-v6-draft on the board', () => {
       expect(c.next.draw.plan).toBeNull();
       // ...then the cell, once loaded.
       const ready = pairFullHold({ layout: after.layout, plan: after.items, choice: pairFullChoice(after.cands, status([pano, after.cands[0]!.art.picture!.src])) }, c.next.hold, 600);
-      expect([ready.holding, ready.draw.shown?.cell]).toEqual([false, '3x2']);
+      expect([ready.holding, ready.draw.shown?.cell]).toEqual([false, '2x1']);
       // The hold is the 8 s one: past it, what has loaded (the panorama), never blank.
       const late = pairFullHold({ layout: after.layout, plan: after.items, choice: pairFullChoice(after.cands, status([pano])) }, c.next.hold, 100 + PAIR_FULL_HOLD_MS);
       expect([late.holding, late.draw.shown?.art.picture!.src]).toEqual([false, pano]);

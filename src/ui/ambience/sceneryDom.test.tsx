@@ -16,7 +16,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Biome, SlotState } from '../../ambience/model.ts';
 import { validateManifest, type PackPieces, type ScenePack } from '../../ambience/manifest.ts';
 import { markPicture, pictureStatus, resetPictures } from '../../ambience/pack.ts';
-import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullCaption, pairFullChoice, pairFullHold, pairFullPlan, type PairFullHold, type PairFullPair } from '../../ambience/pairfull.ts';
+import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullCaption, pairFullChoice, pairFullHold, pairFullPlan, pairFullView, type PairFullHold, type PairFullPair } from '../../ambience/pairfull.ts';
 import { pairPanoramaAt, pairPictures, validatePairs, type PairsPack } from '../../ambience/pairs.ts';
 import { elementBiomes, phoneElementBiomes } from '../../ambience/pieces.ts';
 import { halfLayout } from '../../ambience/layout.ts';
@@ -71,23 +71,26 @@ function loadAll() {
 }
 
 describe('the strip, the caption and the pieces draw the same pair and element (fault 1)', () => {
-  const cases: [string, SlotState[], string, string][] = [
-    // name, slots, the pair, the element's biome
-    ['1 + 1 + 1 + 1', [slot('plains', 0, 1), slot('island', 1, 1), slot('swamp', 2, 1), slot('mountain', 3, 1)], 'island+plains', 'swamp'],
-    ['one Mountain and one Swamp beside a heavy pair (the live case: 33/67)', [slot('island', 0, 2), slot('plains', 1, 2), slot('mountain', 2, 1), slot('swamp', 3, 1)], 'island+plains', 'mountain'],
-    ['four unequal', [slot('mountain', 0, 1), slot('plains', 1, 3), slot('island', 2, 2), slot('swamp', 3, 1.5)], 'island+plains', 'swamp'],
-    ['five', [slot('forest', 0, 1), slot('swamp', 1, 1), slot('plains', 2, 2), slot('island', 3, 2), slot('mountain', 4, 1)], 'island+plains', 'forest'],
+  // Spec 1.19 a: every colour past the third is a cut-out too (the extras), stacked after the third, named in the caption.
+  const cases: [string, SlotState[], string, string, string[], string][] = [
+    // name, slots, the pair, the element's biome, every cut-out's colour in stack order, the caption's elements
+    ['1 + 1 + 1 + 1', [slot('plains', 0, 1), slot('island', 1, 1), slot('swamp', 2, 1), slot('mountain', 3, 1)], 'island+plains', 'swamp', ['B', 'R'], '; swamp and mountain as elements'],
+    ['one Mountain and one Swamp beside a heavy pair (the live case: 33/67)', [slot('island', 0, 2), slot('plains', 1, 2), slot('mountain', 2, 1), slot('swamp', 3, 1)], 'island+plains', 'mountain', ['R', 'B'], '; mountain and swamp as elements'],
+    ['four unequal', [slot('mountain', 0, 1), slot('plains', 1, 3), slot('island', 2, 2), slot('swamp', 3, 1.5)], 'island+plains', 'swamp', ['B', 'R'], '; swamp and mountain as elements'],
+    ['five', [slot('forest', 0, 1), slot('swamp', 1, 1), slot('plains', 2, 2), slot('island', 3, 2), slot('mountain', 4, 1)], 'island+plains', 'forest', ['G', 'B', 'R'], '; forest, swamp and mountain as elements'],
   ];
-  for (const [name, slots, pair, element] of cases)
+  for (const [name, slots, pair, element, cuts, words] of cases)
     it(name, () => {
       loadAll();
       const { strip, pcs, caption } = drawHalf(slots);
       expect(attrs(strip, 'data-pairfull')).toEqual([pair]);
       expect(attrs(strip, 'data-pairfull-element')).toEqual([element]);
-      // The pair is panned by its own two weights: 50/50 here whatever the dropped colours weigh.
-      expect(caption).toContain(`; ${element} as an element`);
+      // The pair is panned by its own two weights: 50/50 here whatever the further colours weigh.
+      expect(caption!.endsWith(words)).toBe(true);
       const colour = { plains: 'W', island: 'U', swamp: 'B', mountain: 'R', forest: 'G' }[element];
-      expect(attrs(pcs, 'data-pc-colour')).toEqual([colour]);
+      expect(attrs(pcs, 'data-pc-colour')).toEqual(cuts);
+      // The heavier pair colour's ground holds the first two, the lighter's the rest.
+      expect(attrs(pcs, 'data-pc-ground')).toEqual(cuts.map((_, i) => (i < 2 ? 'heavier' : 'lighter')));
       expect(attrs(pcs, 'data-pieces-element')).toEqual([colour]);
       expect(attrs(pcs, 'data-pieces-pair')[0]!.split('').sort().join('')).toBe(pair.split('+').map((b) => ({ plains: 'W', island: 'U', swamp: 'B', mountain: 'R', forest: 'G' })[b as 'plains']).sort().join(''));
     });
@@ -281,7 +284,7 @@ describe('spec 1.16.1: pairs-v5’s sided pictures on the worked example (#ambie
 
   it('four colours with a painted picture: makeup.ts keeps three (forest, swamp, island), and the side is the heavier kept pair colour’s', () => {
     loadCutOuts();
-    // forest 2, swamp 1.5, island 1, plains ½ (dropped: weighs nothing); six lands → pair stage 3; forest (the key's left) heavier.
+    // forest 2, swamp 1.5, island 1, plains ½ (past the third: weighs nothing); six lands → pair stage 3; forest (the key's left) heavier.
     const four = [slot('forest', 0, 2), slot('swamp', 1, 1.5), slot('island', 2, 1), slot('plains', 3, 0.5)];
     const ul = `${V5}pairs/forest-swamp/s3+UL-panorama.webp`;
     markPicture(`${V5}pairs/forest-swamp/s3-panorama.webp`, true);
@@ -291,7 +294,10 @@ describe('spec 1.16.1: pairs-v5’s sided pictures on the worked example (#ambie
     expect(html).toContain(ul);
     const p = piecesAt(four);
     expect([attrs(p, 'data-pieces-pair'), attrs(p, 'data-pieces-element')]).toEqual([['GB'], ['U']]);
-    expect(attrs(p, 'data-pc')).not.toContain('element');
+    // No cut-out of the island (painted in); spec 1.19 a: the plains, past the third, is one -- the second on the
+    // forest's ground, beside the painted island's place.
+    expect(attrs(p, 'data-pc-colour')).toEqual(['W']);
+    expect([attrs(p, 'data-pc-ground'), attrs(p, 'data-pc-slot')]).toEqual([['heavier'], ['2/2']]);
     // Swamp overtakes forest: the right side (swamp's ground), never the left picture mirrored.
     const swampHeavy = [slot('forest', 0, 2), slot('swamp', 1, 2.5), slot('island', 2, 1), slot('plains', 3, 0.5)];
     markPicture(`${V5}pairs/forest-swamp/s3+UR-panorama.webp`, true);
@@ -568,3 +574,121 @@ describe('spec 1.18.1: on a phone, a painted cell with no phone picture of the t
     expect(attrs(html, 'data-pc')).not.toContain('element');
   });
 });
+
+/**
+ * Spec 1.19 on the real packs (pack-v9.2, the default since 1.19 d, and the tagged pairs-v7.1): every colour past the
+ * third is a cut-out (a), stacked on the pair's grounds -- the heavier pair colour's holds two, side by side, the
+ * heaviest at the half's outer edge; the lighter's the rest -- each faded by its share and clear of the seam core; and a
+ * pair whose cell is not painted is its two mono pictures apart with a plain seam (c).
+ */
+describe('spec 1.19 on pack-v9.2 and pairs-v7.1: the stacked cut-outs, and a pair apart', () => {
+  const V71 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7.1/';
+  const testdata = (f: string) => JSON.parse(readFileSync(new URL(`../../ambience/testdata/${f}`, import.meta.url), 'utf8'));
+  const v92 = validateManifest(testdata('pack-v9.2.scenery.json'), 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v9.2/pack/scenery.json').pack!;
+  const real: ScenePack = { ...v92, pairs: validatePairs(testdata('pairs-v7.1.tag.pairs.json'), `${V71}pairs.json`).pairs! };
+  const realPieces = real.pieces!;
+  const EL = elementBiomes(realPieces);
+  const PHONE_EL = phoneElementBiomes(realPieces);
+  const loadCuts = () => {
+    for (const c of ['W', 'U', 'B', 'R', 'G'] as const) {
+      markPicture(realPieces.elements[c]!.src, true);
+      markPicture(realPieces.elements[c]!.phone!.src, true);
+    }
+  };
+  /** Mark every picture the half's plan can draw loaded (its candidates at both shapes). */
+  const loadPlan = (slots: SlotState[], narrow: boolean) => {
+    const items = pairFullPlan(halfLayout(slots, real), real.pairs, { thresholds: real.stageThresholds, elements: EL, phoneElements: PHONE_EL, slots, narrow })!;
+    const p = items.find((x): x is PairFullPair => x.kind === 'pair')!;
+    for (const c of [...pairFullCandidates(p, 3.2, narrow), ...pairFullCandidates(p, 0.95, narrow)]) markPicture(c.art.picture!.src, true);
+    return { items, p };
+  };
+  /** Each drawn cut-out's colour, ground, slot and horizontal span (fractions of the half). */
+  const cutOuts = (html: string) =>
+    [...html.matchAll(/data-pc="element" data-pc-colour="(\w)" data-pc-side="(\w+)" data-pc-ground="(\w+)" data-pc-slot="([\d/]+)"><img[^>]*style="left:(-?[\d.]+)%;top:[^;]+;width:([\d.]+)%/g)].map((m) => ({ colour: m[1]!, side: m[2]!, ground: m[3]!, slot: m[4]!, left: Number(m[5]) / 100, right: (Number(m[5]) + Number(m[6])) / 100 }));
+  const five = [slot('plains', 0, 1), slot('island', 1, 1), slot('swamp', 2, 1), slot('mountain', 3, 1), slot('forest', 4, 1)];
+
+  it('desktop, five even colours: the swamp painted into island+plains’ cell 1x1, the mountain beside its place on the plains’ ground, the forest on the island’s -- none on the seam core', () => {
+    loadCuts();
+    const { items } = loadPlan(five, false);
+    const strip = renderToStaticMarkup(<SceneryStrip slots={five} pack={real} reduced={true} fill="half" pairFull={true} elements={EL} phoneElements={PHONE_EL} />);
+    expect([attrs(strip, 'data-pairfull-cell'), attrs(strip, 'data-pairfull-painted'), attrs(strip, 'data-pairfull-extras')]).toEqual([['1x1'], ['B'], ['mountain forest']]);
+    const html = renderToStaticMarkup(<ScenePieces pack={real} pieces={realPieces} slots={five} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />);
+    const cuts = cutOuts(html);
+    expect(cuts.map((c) => [c.colour, c.side, c.ground, c.slot])).toEqual([
+      ['R', 'left', 'heavier', '2/2'],
+      ['G', 'right', 'lighter', '1/1'],
+    ]);
+    // Faded by its share: five colours, five lands, each fully in.
+    expect([...html.matchAll(/class="scn-pc-element" style="opacity:([\d.]+)/g)].map((m) => m[1])).toEqual(['1', '1']);
+    // Clear of the seam core (0.07 of the cell's drawn width either side of the transition at 0.5).
+    const p = items.find((x): x is PairFullPair => x.kind === 'pair')!;
+    const shown = pairFullChoice(pairFullCandidates(p, 3.2, false), pictureStatus).show!;
+    const core = 0.07 * pairFullFrameOf(items, shown);
+    for (const c of cuts) expect(c.right <= 0.5 - core + 1e-3 || c.left >= 0.5 + core - 1e-3, `${c.colour} ${c.left}–${c.right}`).toBe(true);
+    // The mountain is in the inner half of the plains' ground (the swamp's painted place is the outer).
+    expect(cuts[0]!.left).toBeGreaterThanOrEqual((0.5 - core) / 2 - 1e-3);
+  });
+
+  it('phone, five even colours: the painted swamp has no phone picture, so three phone cut-outs -- swamp and mountain on the plains’ ground, the forest on the island’s', () => {
+    const narrowScreen = () => vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('max-width'), media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
+    narrowScreen();
+    try {
+      loadCuts();
+      loadPlan(five, true);
+      const html = renderToStaticMarkup(<ScenePieces pack={real} pieces={realPieces} slots={five} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={{ w: 375, h: 178 }} />);
+      expect(cutOuts(html).map((c) => [c.colour, c.side, c.ground, c.slot])).toEqual([
+        ['B', 'left', 'heavier', '1/2'],
+        ['R', 'left', 'heavier', '2/2'],
+        ['G', 'right', 'lighter', '1/1'],
+      ]);
+      // The phone pieces only.
+      for (const c of ['B', 'R', 'G'] as const) expect(html).toContain(realPieces.elements[c]!.phone!.src);
+      expect(html).not.toContain(`${realPieces.elements.R!.src}"`);
+      // Side by side, never overlapping, the swamp outermost.
+      const [b, r] = cutOuts(html);
+      expect(b!.left).toBeLessThan(r!.left);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('the board without the flag: four colours keep three panels, the fourth a cut-out on the heavier pair colour’s panel', () => {
+    loadCuts();
+    const four = [slot('island', 0, 2), slot('swamp', 1, 2), slot('mountain', 2, 2), slot('forest', 3, 2)];
+    const strip = renderToStaticMarkup(<SceneryStrip slots={four} pack={{ ...real, pairs: null }} reduced={true} fill="half" />);
+    expect(attrs(strip, 'data-biome')).toEqual(['island', 'swamp', 'mountain']);
+    const html = renderToStaticMarkup(<ScenePieces pack={{ ...real, pairs: null }} pieces={realPieces} slots={four} landNames={[]} outcome={null} edge="bottom" reduced={true} initialBox={BOX} />);
+    const cuts = cutOuts(html);
+    expect(cuts.map((c) => [c.colour, c.ground, c.slot])).toEqual([['G', 'heavier', '1/1']]);
+    // On the island's panel (the first third of the row), clear of its seam.
+    expect(cuts[0]!.left).toBeGreaterThanOrEqual(0);
+    expect(cuts[0]!.right).toBeLessThan(1 / 3);
+  });
+
+  it('a pair apart (no cell for forest 5 | island 1): the two mono panels, a plain seam and no band; the swamp’s cut-out on the forest’s ground', () => {
+    loadCuts();
+    const s = [slot('forest', 0, 5), slot('island', 1, 1), slot('swamp', 2, 1)];
+    const strip = renderToStaticMarkup(<SceneryStrip slots={s} pack={real} reduced={true} fill="half" pairFull={true} elements={EL} phoneElements={PHONE_EL} />);
+    expect(attrs(strip, 'data-pairfull')).toEqual([]);
+    expect(attrs(strip, 'data-band')).toEqual([]);
+    expect(attrs(strip, 'data-apart')).toEqual(['forest+island', 'forest+island']);
+    expect(attrs(strip, 'data-apart-cell')).toEqual(['1x5', '1x5']);
+    // Each colour's own picture at its own stage, board order, the plain 1.10 seam between (no band, no lighter mist).
+    expect([attrs(strip, 'data-biome'), attrs(strip, 'data-stage')]).toEqual([['forest', 'island'], ['5', '1']]);
+    expect(strip).toContain('forest/s5');
+    expect(strip).toContain('island/s1');
+    expect(strip).not.toContain('is-after-band');
+    expect([...strip.matchAll(/flex-grow:([\d.]+)/g)].map((m) => Number(m[1]))).toEqual([0.8, 0.2]);
+    const html = renderToStaticMarkup(<ScenePieces pack={real} pieces={realPieces} slots={s} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />);
+    const cuts = cutOuts(html);
+    expect(cuts.map((c) => [c.colour, c.side, c.ground])).toEqual([['B', 'left', 'heavier']]);
+    // Within the forest's panel, short of the seam (0.8, half the 0.1 seam either side).
+    expect(cuts[0]!.right).toBeLessThanOrEqual(0.75 + 1e-3);
+    expect(pairFullCaption(pairFullPlan(halfLayout(s, real), real.pairs, { thresholds: real.stageThresholds, elements: EL, slots: s }))).toMatch(/island s1 \| forest s5, no seam cell; swamp as an element$/);
+  });
+});
+
+/** The pair picture's drawn width as a fraction of the half (pairfull.ts `pairFullView`'s frame). */
+function pairFullFrameOf(items: ReturnType<typeof pairFullPlan>, shown: { art: Parameters<typeof pairFullView>[2]; mirror: boolean }): number {
+  return pairFullView(items, BOX, shown.art, shown.mirror)!.frame.width;
+}

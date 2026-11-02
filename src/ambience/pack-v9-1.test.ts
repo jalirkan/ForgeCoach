@@ -9,6 +9,7 @@
  * band was off by more than 0.03 on 57 of 124 pictures). A snapshot of its
  * scenery.json, byte for byte what jsDelivr serves at the tag, taken when
  * FORGECOACH_PACK_URL moved to it. pack-v9 stays at its tag (pack-v9.test.ts).
+ * (The default is pack-v9.2 now, pack-v9.1 plus the 1.14 pieces: pack-v9-2.test.ts.)
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -28,8 +29,7 @@ describe('pack-v9.1', () => {
   const r = validateManifest(manifest, `${FORGECOACH_PACK_URL}scenery.json`);
   const pack = r.pack!;
 
-  it('is the default pack URL, and the snapshot is the file jsDelivr serves', () => {
-    expect(FORGECOACH_PACK_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v9.1/pack/');
+  it('the snapshot is the file jsDelivr serves', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('8e5f051b53211a5bcdb07710f14e99866f73ef85c5a34821978bfe099375fa38');
   });
 

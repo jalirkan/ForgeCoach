@@ -17,18 +17,27 @@
  *
  * 1. The makeup: each colour's land weight (model.ts's rules: a dual ½ / ½, a
  *    Triome ⅓ each, a fetch nothing), in the order the colours arrived.
- * 6. Four or five colours: keep the THREE heaviest by their own, unfolded
- *    weight (a tie: a colour already showing stays; else the earlier
- *    arrival). The colours dropped show NOTHING and add NO weight to what is
- *    shown: not to a panel's width, not to the pair's pan, not to the
- *    element's share.
- * 5. The heaviest pair is chosen from the kept colours by their own weights
- *    (a tie: the pair already showing stays; else the earlier arrivals); the
- *    pan uses the pair's own two weights; the third kept colour is the
- *    element. The stage counts EVERY coloured land on the half, dropped
- *    colours included (A5: "a growing third colour still grows the place";
- *    A1: a land's weight is the same in every row, so the half's total is
- *    its number of coloured lands).
+ * 5. The pair is the base (spec 1.19 b, the owner's rule of 2026-11-02): the
+ *    pair showing STAYS while both its colours are among the three heaviest
+ *    by weight (fewer than three colours strictly outweigh each), whatever
+ *    else grows; it changes only when one of its colours leaves the top
+ *    three, and then the heaviest pair among the top three (a tie: a colour
+ *    of the pair showing, then the earlier arrivals). With nothing showing,
+ *    the two heaviest. Before 1.19 every land re-chose the heaviest pair, so
+ *    a second Mountain beside an Island and a Swamp redrew the whole half
+ *    (the storyboard of 2026-11-02, gap 3). The pan uses the pair's own two
+ *    weights. The third colour (the heaviest other one; a tie: the one
+ *    showing, then the earlier arrival) is the element, painted in or cut
+ *    out; it may outweigh the pair now.
+ * 6. Every colour is shown (spec 1.19 a: the fold to three is gone): the
+ *    pair and the third are the {@link MakeupPick.kept} colours (a panel or
+ *    the pair picture and its element), and every further colour, the
+ *    {@link MakeupPick.extras}, draws as its 1.14 cut-out element (pieces.ts
+ *    `stackElements`). The extras weigh nothing in the pair, the pan or a
+ *    panel's width. The stage counts EVERY coloured land on the half (A5:
+ *    "a growing third colour still grows the place"; A1: a land's weight is
+ *    the same in every row, so the half's total is its number of coloured
+ *    lands).
  *
  * "Already showing" is the previous pick ({@link MakeupShowing}); a caller
  * with no memory passes none, and every caller given the same slots and the
@@ -45,8 +54,8 @@ import type { GameLog } from '../log.ts';
 export const BIOME_COLOUR: Partial<Record<Biome, PieceColour>> = { plains: 'W', island: 'U', swamp: 'B', mountain: 'R', forest: 'G' };
 export const COLOUR_BIOME: Record<PieceColour, Biome> = { W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' };
 
-/** The most colours a half shows at once (SYSTEM.md A6: a pair and one element). */
-export const MAX_SHOWN_COLOURS = 3;
+/** The colours a half keeps as its picture: the pair and the third (a panel, or the element painted in or cut out); spec 1.19 a draws the rest as cut-outs. */
+export const MAX_KEPT_COLOURS = 3;
 
 /** The colours a half's lands make, in the order they arrived (heaviest first is not implied). */
 export interface Makeup {
@@ -105,17 +114,21 @@ export interface MakeupShowing {
 export interface MakeupPick extends MakeupShowing {
   /** The whole makeup, unfolded. */
   makeup: Makeup;
-  /** The kept colours (at most {@link MAX_SHOWN_COLOURS}), ranked for the pair: the heavier pair colour first, the element last. */
+  /** The kept colours (at most {@link MAX_KEPT_COLOURS}), ranked for the pair: the heavier pair colour first, the element last. */
   kept: PieceColour[];
-  /** Colours past the third: they show nothing and weigh nothing in the pair, the pan or the element's share (their lands still count in `total`, the stage). */
-  dropped: PieceColour[];
+  /**
+   * Spec 1.19 a: the colours past the third, heaviest first (a tie: the earlier arrival). Each draws as its 1.14
+   * cut-out element (pieces.ts `stackElements`); they weigh nothing in the pair, the pan or a panel (their lands count
+   * in `total`, the stage, and their own share fades their cut-out). Until 1.19 they were dropped and showed nothing.
+   */
+  extras: PieceColour[];
   /** The pair, in pair-key order, or null with fewer than two colours. */
   pair: [PieceColour, PieceColour] | null;
   /** The heavier pair colour (a tie: the one showing, then the earlier arrival), or the one colour, or null. */
   heavier: PieceColour | null;
   /** The third kept colour (the element), or null. */
   third: PieceColour | null;
-  /** The kept colours' own weights (the dropped ones absent). */
+  /** Every colour's own weight (the makeup's). */
   weights: Partial<Record<PieceColour, number>>;
   /** Every coloured land on the half (the makeup's total, dropped colours included): the pair stage counts these. */
   total: number;
@@ -123,15 +136,43 @@ export interface MakeupPick extends MakeupShowing {
   keptTotal: number;
 }
 
-/** SYSTEM.md steps 5 and 6 for one half ({@link makeup.ts}'s header). */
+const EPS = 1e-9;
+
+/** Spec 1.19 b: is `c` among the three heaviest colours (fewer than three colours strictly outweigh it)? */
+function inTopThree(m: Makeup, c: PieceColour): boolean {
+  const w = m.weights[c] ?? 0;
+  return w > EPS && m.colours.filter((x) => (m.weights[x] ?? 0) > w + EPS).length < MAX_KEPT_COLOURS;
+}
+
+/** SYSTEM.md steps 5 and 6 for one half, as spec 1.19 a and b amend them ({@link makeup.ts}'s header). */
 export function pickMakeup(m: Makeup, showing: MakeupShowing | null = null): MakeupPick {
-  const keptSet = rankColours(m, showing?.kept ?? showing?.pair ?? null).slice(0, MAX_SHOWN_COLOURS);
-  const kept = rankColours(m, showing?.pair ?? null, keptSet);
-  const dropped = m.colours.filter((c) => !kept.includes(c));
-  const weights: Partial<Record<PieceColour, number>> = {};
-  for (const c of kept) weights[c] = m.weights[c]!;
+  const prev = showing?.pair && showing.pair.length === 2 ? showing.pair : null;
+  let pairCols: PieceColour[];
+  if (prev && prev.every((c) => inTopThree(m, c))) {
+    // Rule b: the pair showing is the base while both its colours stay among the three heaviest.
+    pairCols = rankColours(m, prev, prev);
+  } else {
+    // A colour of the pair left the top three (or none showed): the heaviest pair among the top three.
+    const top = rankColours(m, showing?.kept ?? showing?.pair ?? null).slice(0, MAX_KEPT_COLOURS);
+    pairCols = rankColours(m, showing?.pair ?? null, top).slice(0, 2);
+  }
+  // The rest, heaviest first; a tie keeps the colour already showing (the third), then the earlier arrival.
+  const rest = rankColours(m, showing?.kept ?? null, m.colours.filter((c) => !pairCols.includes(c)));
+  const kept = pairCols.length === 2 ? [...pairCols, ...rest.slice(0, 1)] : pairCols;
+  const extras = pairCols.length === 2 ? rest.slice(1) : [];
+  const weights: Partial<Record<PieceColour, number>> = { ...m.weights };
   const pair = kept.length >= 2 ? pairKeyOrder(kept[0]!, kept[1]!) : null;
-  return { makeup: m, kept, dropped, pair, heavier: kept[0] ?? null, third: kept[2] ?? null, weights, total: m.total, keptTotal: r3(kept.reduce((n, c) => n + weights[c]!, 0)) };
+  return { makeup: m, kept, extras, pair, heavier: kept[0] ?? null, third: kept[2] ?? null, weights, total: m.total, keptTotal: r3(kept.reduce((n, c) => n + weights[c]!, 0)) };
+}
+
+/**
+ * Spec 1.19 a: how faded a colour's element is, by its share of the half: n × its weight over every coloured land,
+ * at most 1, with n the colours on the half -- an equal share is fully in. With three colours this is 1.14's rule (an
+ * equal third fully in); a one-land fifth colour beside four three-land ones is at 5 / 13.
+ */
+export function elementOpacity(p: Pick<MakeupPick, 'makeup' | 'weights' | 'total'>, c: PieceColour): number {
+  const n = p.makeup.colours.length;
+  return p.total > 0 ? r3(Math.min(1, Math.max(0, (n * (p.weights[c] ?? 0)) / p.total))) : 0;
 }
 
 /** {@link pickMakeup} on a half's slots (only the live ones weigh: a withered slot has no weight). */
@@ -161,8 +202,8 @@ export function pickSplit(p: Pick<MakeupPick, 'pair' | 'weights'>): number {
  * starts over on a jump back and folds again), it starts empty on a new log
  * (Reset, New Game), and a half with no coloured land forgets (the review of
  * #198, LOW 4: SceneryLayer kept the previous pick of whatever it had last
- * rendered). A player's pick object changes only when its kept colours or its
- * pair do, so a memoised strip is not re-rendered for nothing.
+ * rendered). A player's pick object changes only when its kept colours, its
+ * pair or its extras do, so a memoised strip is not re-rendered for nothing.
  */
 export class MakeupMemory implements SceneryObserver {
   private picks = new Map<number, MakeupPick>();
@@ -174,7 +215,7 @@ export class MakeupMemory implements SceneryObserver {
       const prev = this.picks.get(p.playerId) ?? null;
       const pick = pickFromSlots(p.slots, prev);
       if (!pick.kept.length) this.picks.delete(p.playerId);
-      else if (!prev || prev.kept.join() !== pick.kept.join() || prev.pair?.join() !== pick.pair?.join()) this.picks.set(p.playerId, pick);
+      else if (!prev || prev.kept.join() !== pick.kept.join() || prev.pair?.join() !== pick.pair?.join() || prev.extras.join() !== pick.extras.join()) this.picks.set(p.playerId, pick);
     }
   }
   /** The pick a player's half shows at the tracker's frame, or null (no coloured land yet). */
