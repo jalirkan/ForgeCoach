@@ -39,7 +39,7 @@ import { SceneryStrip } from './SceneryStrip.tsx';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
 import { accentsOn, fillOn, horizonOn, lightOn } from '../../ambience/prefs.ts';
 import { gradeFor, lightInputOf, outcomeAt } from '../../ambience/light.ts';
-import { elementBiomes, landNamesOf } from '../../ambience/pieces.ts';
+import { elementBiomes, landNamesOf, phoneElementBiomes } from '../../ambience/pieces.ts';
 import { MakeupMemory, type MakeupPick } from '../../ambience/makeup.ts';
 import { ScenePieces } from './ScenePieces.tsx';
 import { applyGrade } from './lightGrade.ts';
@@ -218,6 +218,8 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
   const pieces = fill ? (load?.pack?.pieces ?? null) : null;
   // Spec 1.14 under `?pairfull=1`: a third colour with an element is drawn inside the pair picture, not as a panel.
   const elements = useMemo(() => (prefs.pairFull ? elementBiomes(pieces) : null), [prefs.pairFull, pieces]);
+  // Spec 1.18.1: those with a phone piece, which a phone draws on a seam cell whose painted picture has no phone picture.
+  const phoneElements = useMemo(() => (prefs.pairFull ? phoneElementBiomes(pieces) : null), [prefs.pairFull, pieces]);
   // The game's end at the board's frame, per player (one walk of the log per frame, and only with pieces).
   const outcomes = useMemo(() => new Map((pieces ? (state?.players ?? []) : []).map((p) => [p.id, outcomeAt(log, frameIndex, p.id)])), [pieces, state, log, frameIndex, log.frames.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const outcomeFor = (playerId: number) => outcomes.get(playerId) ?? null;
@@ -257,6 +259,7 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
               horizon={horizonOn(prefs)}
               pairFull={!!prefs.pairFull}
               elements={elements}
+              phoneElements={phoneElements}
               showing={showing}
               scrimHost={t.el}
               version={frameIndex}
@@ -287,6 +290,8 @@ export interface HalfSceneryProps {
   horizon: boolean;
   pairFull: boolean;
   elements: ReadonlySet<Biome> | null;
+  /** Spec 1.18.1: the biomes whose element has a phone piece (pieces.ts `phoneElementBiomes`). */
+  phoneElements?: ReadonlySet<Biome> | null;
   showing: MakeupShowing | null;
   /** The battlefield the card-row scrim measures (null: no scrim, as in a test). */
   scrimHost: HTMLElement | null;
@@ -323,6 +328,7 @@ export function HalfScenery(p: HalfSceneryProps) {
         horizon={p.horizon}
         pairFull={p.pairFull}
         elements={p.elements}
+        phoneElements={p.phoneElements}
         showing={p.showing}
       />
       {p.accents && <SceneryOverlay slots={p.slots} pack={p.pack} edge={p.edge} reduced={p.reduced} half={p.fill} duals={p.duals} showing={p.showing} widthPx={p.measured?.w} />}

@@ -235,6 +235,37 @@ describe('spec 1.18: phone cells and painted-in cells', () => {
       expect(pairFullCandidates(wide.p!, 0.8, false)[0]).toMatchObject({ cell: '3x2', painted: null });
     });
 
+    it('spec 1.18.1: with phone pieces, a painted picture WITH a phone picture is drawn, never the cut-out; one without gives way to the cut-out', () => {
+      const ALL = new Set<Biome>(['plains', 'island', 'swamp', 'mountain', 'forest']);
+      const withPieces = (slots: SlotState[]) => {
+        const items = pairFullPlan(halfLayout(slots, null), pairs, { thresholds: T, slots, narrow: true, elements: ALL, phoneElements: ALL });
+        const p = items!.find((x): x is PairFullPair => x.kind === 'pair')!;
+        return { p, cands: pairFullCandidates(p, 2.1, true), caption: pairFullCaption(items) };
+      };
+      // 3x3 RL and 4x3 WL carry their own phone pictures: the painted phone picture, no element, no cut-out.
+      for (const [slots, cell, colour, file] of [
+        [[slot('island', 0, 3.5), slot('swamp', 1, 3), slot('mountain', 2, 1)], '3x3', 'R', '3x3+RL-panorama-phone'],
+        [[slot('island', 0, 4), slot('swamp', 1, 3), slot('plains', 2, 1)], '4x3', 'W', '4x3+WL-panorama-phone'],
+      ] as const) {
+        const t = withPieces([...slots]);
+        expect(t.p.grid).toMatchObject({ cell, painted: { colour, side: 'left' } });
+        expect(t.p.element).toBeUndefined();
+        expect(t.cands[0]).toMatchObject({ cell, painted: colour });
+        expect(t.cands[0]!.art.picture!.src).toBe(seam('island-swamp', file));
+        expect(t.caption).toMatch(new RegExp(`; ${colour} painted in, on island's ground$`));
+        expect(t.caption).not.toMatch(/as an element/);
+        expect(pairFullCutOutAllowed(pairFullChoice(t.cands, () => 'ready'))).toBe(false);
+      }
+      // 3x3 RR has none: the plain cell's phone picture, and the mountain's cut-out on the swamp's ground.
+      const rr = withPieces([slot('island', 0, 3), slot('swamp', 1, 3.5), slot('mountain', 2, 1)]);
+      expect(rr.p.grid!.painted).toBeUndefined();
+      expect(rr.p.element).toBe('mountain');
+      expect(rr.cands[0]).toMatchObject({ cell: '3x3', painted: null });
+      expect(rr.cands[0]!.art.picture!.src).toBe(seam('island-swamp', '3x3-panorama-phone'));
+      expect(rr.caption).toMatch(/seam 3x3; mountain as an element$/);
+      expect(pairFullCutOutAllowed(pairFullChoice(rr.cands, () => 'ready'))).toBe(true);
+    });
+
     it('a cell that gives way on a phone takes the third colour with it: 1.16.1’s stage picture, as before the grid', () => {
       const t = at([slot('island', 0, 4), slot('swamp', 1, 4), slot('mountain', 2, 1)], true);
       expect(t.p!.grid).toBeUndefined();

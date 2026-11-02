@@ -21,6 +21,11 @@
  * (pairfull.ts `pairFullChoice`) is asked here too, and the cut-out is drawn
  * only when no painted picture is shown or wanted (`pairFullCutOutAllowed`,
  * spec 1.16.1: never a sticker for the moment a painted one loads).
+ * Spec 1.18.1: on a phone, a seam cell whose painted picture of the third
+ * colour has no phone picture draws the cut-out too (its `phone` piece only)
+ * on the plain cell's phone picture, placed the same way; the plan says so
+ * (`phoneElements`), and the cut-out waits for the cell itself
+ * (`pairFullCutOutAllowed`: never over a picture the strip is not showing).
  * With the flag off a third colour keeps its own panel and no element is
  * drawn. The pair and the element come from makeup.ts's one rule, with the
  * strip's `showing`, so the two can never pick different pairs.
@@ -39,7 +44,7 @@
  * line's mist by the pack's own `half.mist`.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { BIOME_COLOUR, elementBiomes, elementUrls, frontFor, frontFrameList, FrontGate, horizonAt, makeupFromSlots, piecePlacement, piecesPhone, planHalf, veilState, WHOLE, type HalfPlan } from '../../ambience/pieces.ts';
+import { BIOME_COLOUR, elementBiomes, elementUrls, phoneElementBiomes, frontFor, frontFrameList, FrontGate, horizonAt, makeupFromSlots, piecePlacement, piecesPhone, planHalf, veilState, WHOLE, type HalfPlan } from '../../ambience/pieces.ts';
 import { pairFullCandidates, pairFullChoice, pairFullCutOutAllowed, pairFullElementRegion, pairFullHeavierSide, pairFullPanelAspect, pairFullPlan, pairFullView, type PairFullPair } from '../../ambience/pairfull.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_HALF_SIZE, DEFAULT_PHONE_SIZE, pieceUrls, type PackPiece, type PackPieces, type ScenePack, type VeilOutcome } from '../../ambience/manifest.ts';
 import { halfArtOf, halfFrameCss, halfLayout, type FrameRect } from '../../ambience/layout.ts';
@@ -131,7 +136,8 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
   const layout = useMemo(() => halfLayout(slots, pack, null, showing), [slots, pack, showing]);
   // Spec 1.14 on the whole-half pair picture: the same plan and the same load gate SceneryStrip draws.
   const elements = useMemo(() => (pairFull ? elementBiomes(pieces) : null), [pairFull, pieces]);
-  const full = useMemo(() => (pairFull && pack?.pairs ? pairFullPlan(layout, pack.pairs, { thresholds: pack.stageThresholds, elements, showing, slots, narrow }) : null), [pairFull, pack, layout, elements, showing, slots, narrow]);
+  const phoneElements = useMemo(() => (pairFull ? phoneElementBiomes(pieces) : null), [pairFull, pieces]);
+  const full = useMemo(() => (pairFull && pack?.pairs ? pairFullPlan(layout, pack.pairs, { thresholds: pack.stageThresholds, elements, phoneElements, showing, slots, narrow }) : null), [pairFull, pack, layout, elements, phoneElements, showing, slots, narrow]);
   const fullPair = full?.find((x): x is PairFullPair => x.kind === 'pair' && !!x.element) ?? null;
   const choice = useMemo(() => {
     if (!fullPair || !measured) return null;
@@ -197,7 +203,9 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
         const piece = colour ? pieces.elements[colour] : undefined;
         // One rule (makeup.ts) for the plan and the picture; a guard all the same: never the wrong colour.
         if (!piece || plan.element.colour !== colour) return null;
-        const pic = at(piece);
+        // Spec 1.18.1: on a seam cell (a phone) only the element's phone piece, else nothing.
+        if (p.grid && !piece.phone) return null;
+        const pic = p.grid ? piece.phone! : at(piece);
         // Drawn once loaded, so it fades in rather than popping in after the fade.
         if (pictureStatus(pic.src) !== 'ready') return null;
         const view = pairFullView(full, box, shown.art, shown.mirror);

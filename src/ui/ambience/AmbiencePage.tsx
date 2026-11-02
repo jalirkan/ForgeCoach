@@ -34,7 +34,7 @@ import { applyGrade } from './lightGrade.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip, useNarrowScreen } from './SceneryStrip.tsx';
 import { pairFullCaption, pairFullPlan } from '../../ambience/pairfull.ts';
-import { elementBiomes } from '../../ambience/pieces.ts';
+import { elementBiomes, phoneElementBiomes } from '../../ambience/pieces.ts';
 import { sceneryWithShowing, type MakeupShowing } from '../../ambience/makeup.ts';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
 import { HalfScrim } from './HalfScrim.tsx';
@@ -202,6 +202,7 @@ export default function AmbiencePage() {
   const outcomeOf = (i: number): LightOutcome => (ending === 'none' ? null : ending === 'draw' ? 'draw' : (ending === 'you') === (i === 0) ? 'won' : 'lost');
   const previewPieces: PackPieces | null = piecesMode === 'builtin' ? builtinPieces() : piecesMode === 'pack' ? (pack?.pieces ?? null) : null;
   const previewElements = useMemo(() => (initial.pairFull && fill ? elementBiomes(previewPieces) : null), [initial.pairFull, fill, previewPieces]);
+  const previewPhoneElements = useMemo(() => (initial.pairFull && fill ? phoneElementBiomes(previewPieces) : null), [initial.pairFull, fill, previewPieces]);
   // Spec 1.17: the caption plans as the strip does, so a phone-width screen (no seam cell drawn) is not told of a seam.
   const narrow = useNarrowScreen();
   useEffect(() => {
@@ -244,7 +245,7 @@ export default function AmbiencePage() {
             top
             slots={counts(SIM_PLAYERS[1])}
             creatures={creaturesOf(SIM_PLAYERS[1])}
-            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null, initial.pairFull === true, previewElements, narrow, showingOf(SIM_PLAYERS[1]), landsOf(SIM_PLAYERS[1])) : null}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null, initial.pairFull === true, previewElements, narrow, previewPhoneElements, showingOf(SIM_PLAYERS[1]), landsOf(SIM_PLAYERS[1])) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[1]).length > 0}
             strip={
               <>
@@ -254,6 +255,7 @@ export default function AmbiencePage() {
                   showing={showingOf(SIM_PLAYERS[1])}
                   pairFull={!!initial.pairFull}
                   elements={previewElements}
+                  phoneElements={previewPhoneElements}
                   pack={pack}
                   edge="top"
                   orient={orient}
@@ -275,7 +277,7 @@ export default function AmbiencePage() {
             player={SIM_PLAYERS[0]}
             slots={counts(SIM_PLAYERS[0])}
             creatures={creaturesOf(SIM_PLAYERS[0])}
-            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null, initial.pairFull === true, previewElements, narrow, showingOf(SIM_PLAYERS[0]), landsOf(SIM_PLAYERS[0])) : null}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null, initial.pairFull === true, previewElements, narrow, previewPhoneElements, showingOf(SIM_PLAYERS[0]), landsOf(SIM_PLAYERS[0])) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[0]).length > 0}
             strip={
               <>
@@ -285,6 +287,7 @@ export default function AmbiencePage() {
                   showing={showingOf(SIM_PLAYERS[0])}
                   pairFull={!!initial.pairFull}
                   elements={previewElements}
+                  phoneElements={previewPhoneElements}
                   pack={pack}
                   edge="bottom"
                   reduced={reduced}
@@ -580,12 +583,13 @@ function bandCaption(
   pairFull = false,
   elements: ReadonlySet<Biome> | null = null,
   narrow = false,
+  phoneElements: ReadonlySet<Biome> | null = null,
   showing: MakeupShowing | null = null,
   lands: ReadonlySet<string> | null = null,
 ): string | null {
   // Spec 1.15: under `?pairfull=1` a side drawn as its pair picture says so instead (1.17: "seam 4x3" only where a cell is drawn).
   const layout = halfLayout(slots, pack, stageOverride, showing);
-  const full = pairFull && pack?.pairs ? pairFullCaption(pairFullPlan(layout, pack.pairs, { thresholds: pack.stageThresholds, stageOverride, elements, showing, slots, narrow }), lands) : null;
+  const full = pairFull && pack?.pairs ? pairFullCaption(pairFullPlan(layout, pack.pairs, { thresholds: pack.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow }), lands) : null;
   if (full) return full;
   if (!pack?.pairs) return null;
   const bands = pairBands(layout, pack.pairs, duals);

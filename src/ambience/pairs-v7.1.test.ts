@@ -344,4 +344,88 @@ describe('pairs-v7.1 on the board', () => {
       expect(painted(warm([slot('island', 0, 3), slot('swamp', 1, 2)]))).toEqual([]);
     });
   });
+
+  describe('spec 1.18.1: a phone draws the third colour’s cut-out where the cell’s painted picture has no phone picture', () => {
+    // pack-v9.2's pieces: every colour's element has a phone piece (pieces-v1).
+    const ALL = new Set<Biome>(['plains', 'island', 'swamp', 'mountain', 'forest']);
+    const plan = (slots: SlotState[], narrow: boolean, phoneElements: ReadonlySet<Biome> | null = ALL) => {
+      const items = pairFullPlan(halfLayout(slots, null), pairs, { thresholds: T, slots, narrow, elements: ALL, phoneElements });
+      const p = items?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
+      return { items, p, cands: p ? pairFullCandidates(p, narrow ? 2.1 : 5, narrow) : [], caption: pairFullCaption(items) };
+    };
+    // Justin's phone, 2026-11-02: Island 2, Swamp 2, Mountain 2, Forest 3 -- the three heaviest kept (the tie by
+    // arrival), forest+island the pair, the swamp its third; island s2 | forest s3 is the cell 2x3, the forest heavier.
+    const justin = [slot('island', 0, 2), slot('swamp', 1, 2), slot('mountain', 2, 2), slot('forest', 3, 3)];
+
+    it('the phone: the plain cell’s phone picture with the swamp’s cut-out on the forest’s ground, and the caption says so', () => {
+      const t = plan(justin, true);
+      expect(t.p!.grid).toMatchObject({ cell: '2x3', mirror: false });
+      expect(t.p!.grid!.painted).toBeUndefined();
+      expect(t.p!.element).toBe('swamp');
+      expect(t.p!.elementSide).toBeUndefined();
+      // The cell's phone picture first; never a painted picture, the cell's or the stage's (1.18 rule 3).
+      expect(t.cands[0]).toMatchObject({ cell: '2x3', painted: null, mirror: false });
+      expect(t.cands[0]!.art.picture!.src).toBe(phoneCell('island-forest', '2x3'));
+      expect(t.cands.some((c) => c.painted)).toBe(false);
+      expect(t.caption).toMatch(/island s2 \| forest s3, seam 2x3; swamp as an element$/);
+      expect(t.caption).not.toMatch(/painted/);
+      // The cut-out stands once the cell is on screen, and not over another picture while the cell loads (the hold).
+      expect(pairFullCutOutAllowed(pairFullChoice(t.cands, () => 'ready'))).toBe(true);
+      const cellSrc = t.cands[0]!.art.picture!.src;
+      expect(pairFullCutOutAllowed(pairFullChoice(t.cands, (src) => (src === cellSrc ? 'pending' : 'ready')))).toBe(false);
+      // The cell failed: what the half falls back to (the stage's pictures) still takes the cut-out, as a pair without a grid.
+      expect(pairFullCutOutAllowed(pairFullChoice(t.cands, (src) => (src === cellSrc ? 'failed' : 'ready')))).toBe(true);
+    });
+
+    it('the desktop keeps the painted picture: the swamp painted into the cell on the forest’s ground, no element, no cut-out', () => {
+      const t = plan(justin, false);
+      expect(t.p!.grid).toMatchObject({ cell: '2x3', mirror: false, painted: { colour: 'B', side: 'right' } });
+      expect(t.p!.element).toBeUndefined();
+      expect(t.cands[0]).toMatchObject({ cell: '2x3', painted: 'B', mirror: false });
+      expect(t.cands[0]!.art.picture!.src).toBe(pin('island-forest', '2x3', 'B', 'R'));
+      expect(t.caption).toMatch(/seam 2x3; B painted in, on forest's ground$/);
+      expect(pairFullCutOutAllowed(pairFullChoice(t.cands, () => 'ready'))).toBe(false);
+    });
+
+    it('likewise for three colours, on any pair: island 3 | swamp 2 | mountain 1 on a phone is 3x2 with the mountain as an element', () => {
+      const t = plan([slot('island', 0, 3), slot('swamp', 1, 2), slot('mountain', 2, 1)], true);
+      expect(t.p!.grid).toMatchObject({ cell: '3x2', mirror: false });
+      expect(t.p!.grid!.painted).toBeUndefined();
+      expect(t.p!.element).toBe('mountain');
+      expect(t.cands[0]!.art.picture!.src).toBe(phoneCell('island-swamp', '3x2'));
+      expect(t.caption).toMatch(/seam 3x2; mountain as an element$/);
+      // The desktop: the painted picture, as before.
+      const d = plan([slot('island', 0, 3), slot('swamp', 1, 2), slot('mountain', 2, 1)], false);
+      expect(d.p!.grid!.painted).toMatchObject({ colour: 'R', side: 'left' });
+      expect(d.p!.element).toBeUndefined();
+      // Mirrored (the board has forest | swamp, the geography swamp | forest): swamp+forest's 3x2, the plains as an element.
+      const m = plan([slot('forest', 0, 2), slot('swamp', 1, 3), slot('plains', 2, 1)], true);
+      expect(m.p!.grid).toMatchObject({ cell: '3x2', mirror: true });
+      expect([m.p!.grid!.painted, m.p!.element]).toEqual([undefined, 'plains']);
+      expect(m.cands[0]).toMatchObject({ cell: '3x2', painted: null, mirror: true });
+      expect(m.caption).toMatch(/swamp s3 \| forest s2, seam 3x2; plains as an element$/);
+    });
+
+    it('a colour whose element has no phone piece draws nothing on the phone, and the caption says nothing of it', () => {
+      for (const none of [null, new Set<Biome>(['plains', 'island', 'mountain', 'forest'])]) {
+        const t = plan(justin, true, none);
+        expect(t.p!.grid!.cell).toBe('2x3');
+        expect(t.p!.element).toBeUndefined();
+        expect(t.p!.grid!.painted).toBeUndefined();
+        expect(t.caption).toMatch(/seam 2x3$/);
+      }
+    });
+
+    it('two colours, or a cell with no painted picture of the third: no element (1.17’s rule is unchanged)', () => {
+      expect(plan([slot('island', 0, 2), slot('forest', 1, 3)], true).p!.element).toBeUndefined();
+      // A cell with the colour painted only on the lighter half's side: nothing, phone or desktop (pairs-v7.1 has none such;
+      // drop the forest's side of the swamp's entry on 2x3).
+      const bad = structuredClone(raw);
+      delete bad.pairs['forest+island'].grid['2x3'].elements.B;
+      const local = validatePairs(bad, `${V71}pairs.json`).pairs!;
+      const items = pairFullPlan(halfLayout(justin, null), local, { thresholds: T, slots: justin, narrow: true, elements: ALL, phoneElements: ALL });
+      const p = items!.find((x): x is PairFullPair => x.kind === 'pair')!;
+      expect([p.grid?.cell, p.grid?.painted, p.element]).toEqual(['2x3', undefined, undefined]);
+    });
+  });
 });

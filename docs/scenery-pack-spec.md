@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.16.1; 1.17 and 1.18 in draft)
+# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18 and 1.18.1 in draft)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -35,6 +35,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.16.1 | **Sided painted-in elements** (§2, *Painted-in elements*, amended): an `elements[<colour>]` entry may give **`left`** and **`right`**, one painted panorama per pair colour's ground (the painter's `s<k>+<C>L` and `s<k>+<C>R`), and the reader draws the **heavier** pair colour's side (SYSTEM.md A5), chosen on the key's colours before any mirroring; 1.16's unsided `src` entry still reads. A picture's `phone` object may declare its own **`bytes`**, so each shape counts in the ref its own file lies in. A pairs manifest's `spec` may carry a third number (`"1.16.1"`). ForgeCoach's **pairs-v5** is the first pack written to it. |
 | 1.17 (draft) | **The seam grid** (§2, *The seam grid*), behind `?pairfull=1`, whose default pairs are pairs-v7.1 (1.18, since 2026-11-02; pairs-v6, a grid on all ten pairs, desktop only, from 2026-10-27; the board without the flag keeps pairs-v3.1), for Justin's review on the live board: a pair in `pairs.json` may carry a **`grid`** of whole-half seam pictures keyed **`"<i>x<j>"`** by the two halves' own stages -- `i` the stage of the pair's colour earlier in the one geography (Island → Swamp → Plains → Forest → Mountain: the picture's left half), `j` the later one's -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), only the seam painted. Painted for \|i − j\| ≤ 1; further apart, the lighter half is raised to one stage below the heavier. A missing cell falls back to the pair's `stages`; a third colour on a grid picture draws nothing in the draft. Every 1.0–1.16.1 pack and pairs manifest is read unchanged. |
 | 1.18 (draft) | **Phone cells and painted-in cells** (§2, *Phone cells and painted-in cells*), behind `?pairfull=1`, a draft amendment to 1.17 for the two painter lanes of 31 October 2026: a grid cell may carry a **`phone`** picture (a stage panorama's `phone` shape, 1638 × 1280) and painted-in **`elements`** (a stage's 1.16.1 sided shape, the sides in the **cell's** geography order). On a phone-shaped board a grid pair draws the cell the desktop would (the same pick) when that cell has a `phone`, and gives way to the `stages` exactly as 1.17 when it has not; a third colour on a cell draws the cell's painted-in picture on the heavier half when it has one, and nothing when it has not (1.17's rule). Warming adds the phone cells by 1.17's rules and the shown cell's painted-in pictures only. Every 1.0–1.17 pack and pairs manifest (pairs-v6 included) is read and drawn unchanged. ForgeCoach's **pairs-v7.1** (2026-11-02; pairs-v7 was the same tree, mislabelled, superseded the same day) is the first pack written to it, every cell with both, and the flag's default; its manifest is about 0.5 MB, so a pairs manifest may now be up to **1 MB** (256 KB until 1.18; a pack's `scenery.json` stays 256 KB). |
+| 1.18.1 (draft) | **A phone's third colour on a painted cell** (§2, *Phone cells and painted-in cells*, amended), reader only, no new field: on a **phone-width screen**, where the cell shown has the third colour painted in on the heavier half but that picture has **no `phone`**, the half draws the plain cell's phone picture with the third colour's **1.14 cut-out element** (its `phone` piece; an element without one draws nothing) on the heavier pair colour's ground, placed and faded exactly as on a pair without a grid, and the caption says "swamp as an element". A desktop keeps the painted picture; a painted picture with its own `phone` is drawn on a phone as 1.18 says, never the cut-out. pairs-v7.1's 660 painted pictures have no phone picture, so on a phone every painted cell takes the cut-out. Every 1.0–1.18 pack and pairs manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -1527,7 +1528,7 @@ a side has any colour. They come in one optional top-level object:
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `elements` | object keyed by colour (`W` `U` `B` `R` `G`) | A transparent piece per colour. With three or more colours the picture is the heaviest pair's, and the third colour (four or five keep the three heaviest by their own weights; the rest show nothing and weigh nothing, 1.16) is its element, on the heavier pair colour's side, faded in by its share (an equal third is fully in). **Drawn under `?pairfull=1`** (1.15, *Whole-half pair panoramas*): the heaviest pair's picture then takes the whole half, its stage counting every coloured land, and the element stands in `pairFullElementRegion` (the heavier pair colour's ground, stopping 0.05 of the half short of the transition; never mirrored), placed by its `place` on that picture's horizon or ground; warmed with the half's colours and drawn once loaded (it fades in, never pops in after the fade). Not drawn over a stage that has the colour painted in (1.16). A colour with no element (and none painted in) keeps 1.15's third panel. Without the flag a third colour keeps its own panel and no element is drawn. |
+| `elements` | object keyed by colour (`W` `U` `B` `R` `G`) | A transparent piece per colour. With three or more colours the picture is the heaviest pair's, and the third colour (four or five keep the three heaviest by their own weights; the rest show nothing and weigh nothing, 1.16) is its element, on the heavier pair colour's side, faded in by its share (an equal third is fully in). **Drawn under `?pairfull=1`** (1.15, *Whole-half pair panoramas*): the heaviest pair's picture then takes the whole half, its stage counting every coloured land, and the element stands in `pairFullElementRegion` (the heavier pair colour's ground, stopping 0.05 of the half short of the transition; never mirrored), placed by its `place` on that picture's horizon or ground; warmed with the half's colours and drawn once loaded (it fades in, never pops in after the fade). Not drawn over a stage that has the colour painted in (1.16), nor on a seam cell (1.17, 1.18) -- except on a phone, where the cell's painted picture of the colour has no phone picture (1.18.1: the element's `phone` piece only). A colour with no element (and none painted in) keeps 1.15's third panel. Without the flag a third colour keeps its own panel and no element is drawn. |
 | `landmarks` | object keyed by a card's exact name (≤ 80 characters; ≤ 24 names) | A transparent piece per landmark land. It goes over whatever the half shows, the empty table included; one per name (a second copy adds nothing), at most **two** a half, the earliest on the battlefield. Default place: `horizon`, `x` 0.5, `w` 0.25. |
 | `fronts` | object keyed by colour | `frames` (1–4, each a `src` at the desktop half's shape and an optional `phone`, each with an optional own `holdMs`), `holdMs` (40–1000, default 200), `fadeMs` (0–1000, default 180), `bytes`. Played over the whole half with hard cuts when the colour arrives (a new heaviest pair: the colour that joined it), then faded; backwards when it leaves. Its frames are warmed and picked at one shape, the half's own (the phone frames on a phone-width screen or a half nearer 4 : 5 than 16 : 5); a front whose frames are still loading at the change plays as soon as they have all decoded, unless a newer change comes first or 4 s pass (1.16). The empty table's first colour dissolves the table instead. A front and a stage step at once: only the front. None with reduced motion. |
 | `veils` | `{ "won", "lost" }` | A transparent piece over the winner's and the loser's half once the game is over (default place `fill`); faded in, and faded out when a replay steps back before the end. A draw has none. |
@@ -2009,7 +2010,8 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
   colour on a pair with no grid, or at a missing cell, is 1.16.1 as before.
   (Amended in 1.18: a cell may carry the third colour painted in, drawn on
   the heavier half; without one, nothing, as here. See *Phone cells and
-  painted-in cells*.)
+  painted-in cells*; amended in 1.18.1: on a phone, where the painted
+  picture has no phone picture, the 1.14 cut-out stands in for it.)
 - **Phone.** A cell with no `phone` gives way to the pair's stage pictures
   wherever the half would draw its phone picture (a phone, or a phone-shaped
   panel), as a desktop-only panorama does (1.15), so the draft never reaches
@@ -2204,17 +2206,68 @@ pair, the third the element):
    side (the feature on the lighter colour's ground is the wrong painting,
    SYSTEM.md A5), another cell's picture, the stage's 1.16.1 painted picture,
    or the 1.14 cut-out. The third colour's lands still move neither `i` nor
-   `j`.
+   `j`. (1.18.1 keeps this: the cut-out of rule 4 stands in only for a
+   painted picture the cell HAS, on that side, and lacks at the phone's
+   shape.)
 4. **On a phone,** the painted picture is drawn only if it carries its own
    `phone`; else the cell's phone picture is drawn and the third colour draws
    nothing, and the caption says nothing of it. (A phone-shaped panel on a
    wide screen likewise skips a painted picture with no phone for the plain
-   cell's phone picture.)
+   cell's phone picture.) **Amended in 1.18.1:** on a phone-width screen the
+   third colour then draws its 1.14 cut-out instead of nothing -- see
+   *A phone's third colour (1.18.1)* below.
 5. **Loading.** The painted cell is the load gate's first candidate, before
    the plain cell. While it loads, the picture on screen (the plain cell) is
    held, 1.17's cell hold, at most 8 s; if it fails, the plain cell. A
    cut-out is never drawn on a cell, loading, failed or otherwise: the plan
-   carries no 1.14 `element` on a cell.
+   carries no 1.14 `element` on a cell (except 1.18.1's, on a phone, below).
+
+**A phone's third colour (1.18.1, draft).** Seen on Justin's phone on
+2 November 2026, on pairs-v7.1: a side with Island 2, Swamp 2, Mountain 2
+and Forest 3 keeps forest, island and swamp (the one makeup rule; the
+mountain, tied and arrived later, is dropped) and draws island+forest's cell
+`2x3`. A desktop draws the swamp painted into the forest's ground (`s2x3+BR`);
+pairs-v7.1's painted pictures have no phone picture, so by rule 4 a phone drew
+the plain cell and nothing for the swamp -- a third colour the player had
+played and could not see. So, on a **phone-width screen** (≤ 600 px):
+
+- **When.** The half draws a cell with a third colour, and the cell has that
+  colour painted in on the heavier pair colour's half (rule 1's side, rule
+  2's picture), but that picture has no `phone`.
+- **What.** The cell's phone picture, as rule 4 says, and over it the third
+  colour's **1.14 cut-out element** -- its `phone` piece -- exactly as a pair
+  without a grid draws it: in `pairFullElementRegion` on the heavier pair
+  colour's ground (board order: the cell's mirror does not move it), placed
+  by the piece's `place` on the cell's horizon or ground, faded in by the
+  third colour's share (an equal third is fully in), drawn once loaded.
+- **Only the phone piece.** An element with no `phone` draws **nothing**
+  there (the desktop piece is drawn for the desktop's half shape); a pack
+  with no `pieces`, or none for the colour, draws nothing either, as 1.18.
+- **Never instead of a phone picture.** A painted picture that carries its
+  own `phone` is drawn (rule 4), never the cut-out; a cell with no painted
+  picture of the colour on that side draws nothing (rule 3); a stage's
+  1.16.1 painted picture is never drawn on a cell.
+- **The caption** says so: "island s2 | forest s3, seam 2x3; swamp as an
+  element" (1.16.1's words for a cut-out), and nothing when no cut-out will
+  be drawn.
+- **Loading.** The cut-out stands only over the cell itself: while the cell
+  loads, the picture on screen is held (1.17's hold, unchanged) and no
+  cut-out is drawn over anything else; if the cell fails, the stage picture
+  the half falls back to takes the cut-out, as a pair without a grid.
+- **A desktop** keeps the painted picture (rules 2 and 5) and never draws the
+  cut-out on a cell. A phone-shaped panel on a wide screen keeps rule 4's
+  plain cell (the amendment is for the phone-width screen, where the plan
+  is made).
+- **A fourth or fifth colour** is unchanged: dropped by the one makeup rule,
+  it draws nothing.
+
+pairs-v7.1's 660 painted pictures carry no phone picture, so on a phone every
+painted cell takes the cut-out until a painter adds them. ForgeCoach's own
+cut-outs with phone pieces are pack-v9.2's (`pieces-v1`); a pack without
+`pieces` (pack-v9.1) draws none. `src/ambience/pairfull.ts` decides it
+(`pairFullPlan`'s `phoneElements`, pieces.ts `phoneElementBiomes`; the plan's
+`element` on a grid cell; `pairFullCutOutAllowed`), ScenePieces draws it
+(`pairs-v7.1.test.ts`, `pairs-grid-phone.test.ts`, `sceneryDom.test.tsx`).
 
 **Captions and notes stay honest.** A caption or a note says what this
 board, at this shape, draws: the seam on a phone only where the cell has a
