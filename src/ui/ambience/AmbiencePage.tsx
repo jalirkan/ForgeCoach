@@ -621,7 +621,7 @@ function MockSide({ title, player, top, slots, creatures, strip, plays, scrim, b
         <b>{title}</b>
         <span className="amb-summary">{summary}</span>
         {bands && (
-          <span className="amb-summary amb-bands" data-amb-bands={player}>
+          <span className="amb-summary amb-bands" data-amb-bands={player} title={`Pair band · ${bands}`}>
             Pair band · {bands}
           </span>
         )}

@@ -38,6 +38,11 @@
  *      phone draws that cell's phone picture, names the cell, fetches no
  *      desktop seam picture, and the caption names the seam.
  *
+ *   6. SYSTEM.md A5's tie rule (the storyboard of 2026-11-02, sheet 5): Island, Swamp, Mountain, Mountain,
+ *      Island, Swamp keeps island+mountain at the sixth land (all three tie; the pair showing stays), and the
+ *      caption names the pair by its colours ("island + mountain"), never a dual nobody played. On the phone
+ *      (5), the caption is at most two lines.
+ *
  *   Spec 1.18 likewise on the worked example: on a grid pair whose cell has
  *   red painted in (`elements.R`), the cell's painted picture is drawn and
  *   captioned, still with no cut-out; without one, 1.17's checks as before.
@@ -192,6 +197,7 @@ async function main() {
     await page.waitForTimeout(3000);
     await page.screenshot({ path: path.join(OUT, 'ambience-three.png') });
     const ran = await gridChecks(page, manifestPairs, errors);
+    await tieCheck(page, errors);
     if (ran) await phoneCheck(browser, origin, pairs, manifest);
   } catch (e) {
     failed = true;
@@ -277,6 +283,34 @@ async function workedExamplePainted(page, pairs, server) {
     check(painted.includes('/pairs/island-plains/s2+RR-panorama.webp'), 'the right side was never fetched');
   }
   log('PASS: the worked example draws R painted in on plains’s ground (s2+RR), mirrored, with no cut-out');
+}
+
+/**
+ * SYSTEM.md A5: "on a tie, the pair already showing stays". I S M M I S (the Lands sliders append each land, so this
+ * is the play order): island+swamp, then island+mountain at the second Mountain, kept through U2 B2 R2. The caption
+ * names the pair by its colours and no dual (none was played).
+ */
+async function tieCheck(page, errors) {
+  const reset = await page.$('[data-amb-reset]:not([disabled])');
+  if (reset) await reset.click();
+  for (const [biome, n] of [['island', 1], ['swamp', 1], ['mountain', 2], ['island', 2], ['swamp', 2]]) await setLands(page, biome, n);
+  await page.waitForSelector('[data-amb-player="1"] [data-pairfull]', { timeout: TIMEOUT });
+  await page.waitForTimeout(500);
+  const keys = await page.$$eval('[data-amb-player="1"] [data-pairfull]', (els) => els.map((e) => e.getAttribute('data-pairfull')));
+  const caption = (await page.textContent('[data-amb-bands="1"]')) ?? '';
+  log(`the tie: I S M M I S draws ${keys.join(', ')}; caption: ${caption}`);
+  check(keys.length > 0 && keys.every((k) => k === 'island+mountain'), `on a tie the pair showing (island+mountain) should stay: ${keys.join(', ')}`);
+  check(/^Pair band · island \+ mountain, /.test(caption), `the caption should name the pair by its colours: ${caption}`);
+  check(!/Volcanic Island|Steam Vents|Underground Sea|Watery Grave/.test(caption), `the caption names a dual nobody played: ${caption}`);
+  check(errors.length === 0, `page errors: ${errors.join('; ')}`);
+  log('PASS: the tie keeps the pair showing (island+mountain), captioned by its colours');
+}
+
+/** The caption under a side's header on a phone: at most two lines (the storyboard's sheet 9); logs whether the clamp cut it. */
+async function captionLines(page) {
+  const m = await page.$eval('[data-amb-bands="1"]', (el) => ({ h: el.getBoundingClientRect().height, full: el.scrollHeight, line: parseFloat(getComputedStyle(el).lineHeight) }));
+  log(`phone caption: ${Math.round(m.h)} px shown of ${m.full} px, line ${m.line} px (${m.full > m.h + 1 ? 'clamped' : 'fits'})`);
+  check(Number.isFinite(m.line) && m.h <= 2 * m.line + 1, `phone: the caption is taller than two lines (${m.h} px, line ${m.line} px)`);
 }
 
 /** Sets one Lands slider of your side (React listens for `input`). */
@@ -411,6 +445,7 @@ async function phoneCheck(browser, origin, pairs, manifest) {
     check(cellAttr === null, `phone: a cell is named (${cellAttr})`);
     check(/\/pairs\/island-swamp\/s\d-panorama-phone\.webp$/.test(src ?? ''), `phone: not the stage panorama's phone picture: ${src}`);
     check(caption.includes('whole half') && !/seam/.test(caption), `phone: the caption names a seam or no whole half: ${caption}`);
+    await captionLines(page);
     check(seams.length === 0, `phone: ${seams.length} seam picture(s) fetched: ${seams.join(', ')}`);
     check(errors.length === 0, `phone: page errors: ${errors.join('; ')}`);
     await page.waitForTimeout(1500);
@@ -443,6 +478,7 @@ async function phoneCellCheck(browser, origin, pairs) {
     const desktop = seams.filter((u) => !/-phone\.webp$/.test(u));
     log(`phone: cell 4x3, img ${src}; caption: ${caption}; seam pictures fetched: ${seams.length}, ${desktop.length} desktop`);
     check(caption.includes('island s4 | swamp s3, seam 4x3'), `phone: the caption does not name the cell: ${caption}`);
+    await captionLines(page);
     check(desktop.length === 0, `phone: ${desktop.length} desktop seam picture(s) fetched: ${desktop.join(', ')}`);
     check(errors.length === 0, `phone: page errors: ${errors.join('; ')}`);
     await page.waitForTimeout(1500);

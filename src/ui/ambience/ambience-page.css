@@ -410,6 +410,27 @@
   }
 }
 
+/* A phone (layout.ts PHONE_VIEWPORT_MAX, 600 px): the side's header wraps -- the title and the land summary first, the
+   pair caption below on its own line -- and the caption stops at two lines with an ellipsis (its full text stays in the
+   DOM and its title), so a long caption cannot grow the header line by line (the storyboard of 2026-11-02, sheet 9:
+   the opponent's header ran to four lines beside a narrow summary column). */
+@media (max-width: 600px) {
+  .amb-side-h {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .amb-bands {
+    flex: 1 1 100%;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    line-height: 1.35;
+    white-space: normal;
+  }
+}
+
 /* ---- effects card */
 .amb-fxbtns {
   display: grid;
