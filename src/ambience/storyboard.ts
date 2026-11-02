@@ -40,7 +40,7 @@ import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupPick, type Makeup
 import { pairFullCandidates, pairFullCaption, pairFullChoice, pairFullCutOutAllowed, pairFullHeavierSide, pairFullPanelAspect, pairFullPlan, type PairFullCandidate, type PairFullPair } from './pairfull.ts';
 import { bandedSeams, motifBands, pairBands, pairFor, pairGridPaintedAt, pairWords, panelBands, type PairsPack, type PairSide } from './pairs.ts';
 import { bridgePlacements, phoneHalf } from './bridges.ts';
-import { elementBiomes } from './pieces.ts';
+import { elementBiomes, phoneElementBiomes } from './pieces.ts';
 
 /** The two screens walked: a desktop (1600 px wide, a half about 5 : 1) and a phone (375 px: phone-width, a half about 2.1 : 1). */
 export type Shape = 'desktop' | 'phone';
@@ -75,7 +75,8 @@ export interface Drawn {
  * Why a colour with lands has nothing on screen:
  * - `dropped`: a fourth or fifth colour (makeup.ts keeps the three heaviest; "the rest show nothing");
  * - `third-on-cell-phone`: the third colour on a seam cell on a phone -- the cell has it painted in for the
- *   desktop, but that picture has no phone picture, so 1.18 draws the plain cell and nothing of it;
+ *   desktop, but that picture has no phone picture, and the pack's 1.14 element for it has no `phone` piece
+ *   either (spec 1.18.1's cut-out; pack-v9.1, the default, has no pieces at all), so the plain cell and nothing of it;
  * - `third-on-cell-unpainted`: the third colour on a seam cell with no painted-in picture for it on the heavier half;
  * - `third-element-unpainted`: the third colour as a stage picture's element whose picture is not the one drawn;
  * - `unexplained`: none of these (a bug in this walk or a new rule).
@@ -159,8 +160,9 @@ export function landNamesFor(state: ManaState, pairs: PairsPack | null): Set<str
 /** AmbiencePage's `bandCaption` (not exported there): the pair picture's caption under the flag, else the bands in words. */
 function bandCaption(pack: ScenePack, pairs: PairsPack | null, slots: SlotState[], duals: Record<string, number>, pairfull: boolean, narrow: boolean, showing: MakeupShowing | null, lands: ReadonlySet<string>): string | null {
   const elements = pairfull ? elementBiomes(pack.pieces) : null;
+  const phoneElements = pairfull ? phoneElementBiomes(pack.pieces) : null;
   const layout = halfLayout(slots, pack, null, showing);
-  const full = pairfull && pairs ? pairFullCaption(pairFullPlan(layout, pairs, { thresholds: pack.stageThresholds, stageOverride: null, elements, showing, slots, narrow }), lands) : null;
+  const full = pairfull && pairs ? pairFullCaption(pairFullPlan(layout, pairs, { thresholds: pack.stageThresholds, stageOverride: null, elements, phoneElements, showing, slots, narrow }), lands) : null;
   if (full) return full;
   if (!pairs) return null;
   const bands = pairBands(layout, pairs, duals);
@@ -193,12 +195,14 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
   const layout = halfLayout(slots, pack, null, memory);
   const pairs = pairfull ? packs.pairsFull : packs.pairsOff;
   const elements = pairfull ? elementBiomes(pack.pieces) : null;
+  // Spec 1.18.1: a phone's cut-out on a cell whose painted third colour has no phone picture (ScenePieces' rule).
+  const phoneElements = pairfull ? phoneElementBiomes(pack.pieces) : null;
   const drawn: Drawn[] = [];
   let picturePair: [PieceColour, PieceColour] | null = null;
   let picture = '';
   let thirdReason: GapReason | null = null;
 
-  const plan = pairfull && pairs ? pairFullPlan(layout, pairs, { thresholds, elements, showing: memory, slots, narrow }) : null;
+  const plan = pairfull && pairs ? pairFullPlan(layout, pairs, { thresholds, elements, phoneElements, showing: memory, slots, narrow }) : null;
   const p = plan?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
   const choice = p ? pairFullChoice(pairFullCandidates(p, pairFullPanelAspect(halfAspect, p.share), narrow, false), () => 'ready') : null;
   const shown = choice?.show ?? null;
@@ -218,7 +222,7 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
       parts.push(what);
       picturePair = cs.length === 2 ? (BIOME_COLOUR[it.pair.left] === cs[0] ? [cs[0]!, cs[1]!] : [cs[1]!, cs[0]!]) : null;
       if (shown.painted) drawn.push({ kind: 'painted', colours: [shown.painted], what: `${shown.painted} painted in` });
-      if (it.element && elements?.has(it.element) && pairFullCutOutAllowed(choice)) {
+      if (it.element && (it.grid ? phoneElements?.has(it.element) : elements?.has(it.element)) && pairFullCutOutAllowed(choice)) {
         const c = colourOf(it.element);
         drawn.push({ kind: 'cutout', colours: c ? [c] : [], what: `${it.element} cut-out` });
       }

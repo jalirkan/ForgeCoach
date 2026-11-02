@@ -79,6 +79,8 @@ const KNOWN_GAPS: readonly string[] = [
   'pairfull/phone/dropped',
   // Spec 1.18 on a phone: the third colour on a seam cell draws only a painted cell with its own phone picture; pairs-v7.1's
   // 660 painted cells have none, and the stage's painted picture (which has one, @pairs-v5-phone) is never the fallback.
+  // Spec 1.18.1's phone cut-out closes this only with a pack whose elements have `phone` pieces (pack-v9.2's pieces-v1);
+  // the walk uses pack-v9.1, the default FORGECOACH_PACK_URL, which has no pieces, so the gap stays until that changes.
   'pairfull/phone/third-on-cell-phone',
 ];
 
@@ -87,7 +89,7 @@ const KNOWN_CAPTION_GAPS: readonly string[] = [];
 
 const RULE_WORDS: Record<GapReason, string> = {
   dropped: 'a fourth or fifth colour shows nothing: makeup.ts keeps the three heaviest by their own weights (a tie: the colour showing, then the earlier arrival) and "the rest show nothing" -- no panel, no share of the pan, no element',
-  'third-on-cell-phone': "the third colour on a seam cell shows nothing on a phone: the cell has it painted in for the desktop, but no painted cell in pairs-v7.1 has a phone picture, and spec 1.18 draws the plain cell's phone picture rather than fall back to the stage's painted picture (which has one)",
+  'third-on-cell-phone': "the third colour on a seam cell shows nothing on a phone: the cell has it painted in for the desktop, but no painted cell in pairs-v7.1 has a phone picture, spec 1.18 draws the plain cell's phone picture rather than fall back to the stage's painted picture (which has one), and spec 1.18.1's cut-out needs a phone piece the pack (pack-v9.1) does not have",
   'third-on-cell-unpainted': 'the third colour on a seam cell shows nothing: the cell has no painted-in picture for it on the heavier half (spec 1.17\'s "a third colour draws nothing")',
   'third-element-unpainted': "the third colour is the stage picture's element but the picture drawn is not its painted one, and there is no cut-out",
   unexplained: 'no known rule: the walk could not say why',
