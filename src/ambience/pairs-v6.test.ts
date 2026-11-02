@@ -2,8 +2,10 @@
  * ForgeCoach — ambience/pairs-v6.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * pairs-v6 (spec 1.17): the pairs FORGECOACH_PAIRS_FULL_URL points at under
- * `?pairfull=1` -- pairs-v5's manifest with a seam `grid` on all ten pairs,
+ * pairs-v6 (spec 1.17): the pairs FORGECOACH_PAIRS_FULL_URL pointed at under
+ * `?pairfull=1` from 2026-10-27 until pairs-v7 (spec 1.18, `pairs-v7.test.ts`,
+ * this manifest's stages and grid with each cell's phone and painted-in
+ * pictures; the tag stays up) -- pairs-v5's manifest with a seam `grid` on all ten pairs,
  * written by ~/scenery-packs/panoramas-v1/tools/make_pairs_v6_draft.py
  * (--out serve/pairs-v6) from the painter's 160 cells and tagged 2026-10-27:
  * `testdata/pairs-v6.pairs.json` is that file byte for byte (the sha256
@@ -25,7 +27,7 @@ import { describe, expect, it } from 'vitest';
 import { halfLayout } from './layout.ts';
 import { stageFor, type Biome, type SlotState } from './model.ts';
 import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullCaption, pairFullChoice, pairFullHold, pairFullPlan, type PairFullHold, type PairFullPair } from './pairfull.ts';
-import { geographyOrder, MAX_PAIRS_PACK_BYTES, pairPictures, pairsRefBytes, validatePairs } from './pairs.ts';
+import { geographyOrder, MAX_PAIRS_MANIFEST_BYTES, MAX_PAIRS_PACK_BYTES, pairPictures, pairsRefBytes, validatePairs } from './pairs.ts';
 import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
 
 const CDN = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery';
@@ -68,18 +70,13 @@ function v6Problems(raw: Record<string, any>, v5: Record<string, any>): string[]
   return out;
 }
 
-describe('pairs-v6: the flag’s default', () => {
-  it('?pairfull=1 with no ?pairs= is pairs-v6; the board without the flag stays on pairs-v3.1; ?pairs= wins', () => {
-    expect(FORGECOACH_PAIRS_FULL_URL).toBe(V6);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(V6);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', '#ambience?pairfull=on'))).toBe(V6);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', ''))).toBe(FORGECOACH_PAIRS_URL);
-    expect(FORGECOACH_PAIRS_URL).toBe(`${CDN}@pairs-v3.1/`);
+describe('pairs-v6: the flag’s default until pairs-v7', () => {
+  it('is no longer the flag’s pairs URL (pairs-v7 is, with this manifest’s stages and grid); still reachable with ?pairs=', () => {
+    expect(FORGECOACH_PAIRS_FULL_URL).not.toBe(V6);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${encodeURIComponent(V6)}`, ''))).toBe(V6);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${encodeURIComponent(DRAFT)}`, ''))).toBe(DRAFT);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1&pairs=off', ''))).toBeNull();
-    // A pack of your own brings no ForgeCoach pairs, flag or not.
-    expect(pairsUrlOf({ ...effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''), packUrl: 'https://example.org/pack/' })).toBeNull();
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
+    expect(FORGECOACH_PAIRS_URL).toBe(`${CDN}@pairs-v3.1/`);
   });
 });
 
@@ -90,9 +87,9 @@ describe('pairs-v6-draft: the shape pairs-v6 is written to', () => {
   const r = validatePairs(raw, `${DRAFT}pairs.json`);
   const pairs = r.pairs!;
 
-  it('is the file jsDelivr serves byte for byte, under the 256 KB a pairs manifest may be', () => {
+  it('is the file jsDelivr serves byte for byte, under the 1 MB a pairs manifest may be (MAX_PAIRS_MANIFEST_BYTES; 256 KB until spec 1.18)', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('f21fbe49e3fc88e9c9ff0533d65a7ad3b35d0518fbc4a790fee4e9706e303650');
-    expect(bytes.length).toBeLessThan(256 * 1024);
+    expect(bytes.length).toBeLessThan(MAX_PAIRS_MANIFEST_BYTES);
   });
 
   it('validates with no errors, written for 1.17; one budget warning a pair, the grid named where there is one', () => {
@@ -118,16 +115,16 @@ describe('pairs-v6-draft: the shape pairs-v6 is written to', () => {
   });
 });
 
-describe('pairs-v6: the published manifest, the flag’s default', () => {
+describe('pairs-v6: the published manifest, the flag’s default until pairs-v7', () => {
   const bytes = readFileSync(new URL('./testdata/pairs-v6.pairs.json', import.meta.url));
   const raw = JSON.parse(bytes.toString('utf8'));
   const v5 = JSON.parse(readFileSync(new URL('./testdata/pairs-v5.pairs.json', import.meta.url), 'utf8'));
   const r = validatePairs(raw, `${V6}pairs.json`);
   const pairs = r.pairs!;
 
-  it('is the file jsDelivr serves byte for byte (the pairs-v6 tag, 2026-10-27), under the 256 KB a pairs manifest may be', () => {
+  it('is the file jsDelivr serves byte for byte (the pairs-v6 tag, 2026-10-27), under the 1 MB a pairs manifest may be (MAX_PAIRS_MANIFEST_BYTES; 256 KB until spec 1.18)', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('f53f658f10a95ac0d00b349b796e14e5d895ecf8f6139072115726e1805ae80d');
-    expect(bytes.length).toBeLessThan(256 * 1024);
+    expect(bytes.length).toBeLessThan(MAX_PAIRS_MANIFEST_BYTES);
   });
 
   it('validates with no errors, written for 1.17; one budget warning a pair, every one naming its grid; the ref under 45 MB', () => {
@@ -139,7 +136,7 @@ describe('pairs-v6: the published manifest, the flag’s default', () => {
     expect(pairsRefBytes(pairs)).toBeLessThan(MAX_PAIRS_PACK_BYTES);
   });
 
-  it('is pairs-v5 with a grid on all ten pairs: nothing left for the reader to want', () => {
+  it('is pairs-v5 with a grid on all ten pairs: nothing left for the reader to want (in 1.17)', () => {
     expect(v6Problems(raw, v5)).toEqual([]);
     for (const k of Object.keys(v5.pairs)) {
       const g = pairs.pairs[k]!.grid!;

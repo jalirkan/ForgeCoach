@@ -68,7 +68,13 @@ function specNewer(a: string, b: string): boolean {
   for (let i = 1; i < 3; i++) if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) > (pb[i] ?? 0);
   return false;
 }
-const MAX_PAIRS_MANIFEST_BYTES = 256 * 1024;
+/**
+ * A pairs manifest longer than this is refused unread (the pack manifest's own cap, manifest.ts
+ * `MAX_MANIFEST_BYTES`, stays 256 KB). 1 MB since spec 1.18: a manifest that names every grid cell's
+ * phone picture and its 660 painted-in pictures by absolute URL is about 0.5 MB (pairs-v7: 493,232
+ * bytes, ~27 KB gzipped from jsDelivr), past the 256 KB 1.9–1.17 inherited from the pack manifest.
+ */
+export const MAX_PAIRS_MANIFEST_BYTES = 1024 * 1024;
 
 /** How wide a pair's band is, as fractions of the half's width. */
 export interface PairBand {
@@ -795,7 +801,7 @@ export async function fetchPairs(input: string, deps: { fetch: FetchText; signal
   } catch {
     return { manifestUrl, pairs: null, errors: [`${manifestUrl} is unreachable.`], warnings: [] };
   }
-  if (text.length > MAX_PAIRS_MANIFEST_BYTES) return { manifestUrl, pairs: null, errors: [`The pairs manifest is over ${MAX_PAIRS_MANIFEST_BYTES / 1024} KB.`], warnings: [] };
+  if (text.length > MAX_PAIRS_MANIFEST_BYTES) return { manifestUrl, pairs: null, errors: [`The pairs manifest is over ${MAX_PAIRS_MANIFEST_BYTES / 1048576} MB.`], warnings: [] };
   let raw: unknown;
   try {
     raw = JSON.parse(text);

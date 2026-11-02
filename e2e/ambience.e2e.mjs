@@ -11,7 +11,7 @@
  *      pairs pack on disk, e.g. ~/scenery-packs/panoramas-v1/serve/pairs-v5
  *      before its tags are cut);
  *   2. opens `/?pairfull=1#ambience` at a desktop size (the flag's own
- *      pairs, pairs-v6 on jsDelivr; `&pairs=<pairs>` only with PAIRS_DIR or
+ *      pairs, pairs-v7 on jsDelivr; `&pairs=<pairs>` only with PAIRS_DIR or
  *      PAIRS_URL), with ForgeCoach's own pack (from jsDelivr), Pieces →
  *      Placeholders (so a
  *      1.14 cut-out exists for every colour) and Pieces → Three colours
@@ -21,7 +21,7 @@
  *      cut-out element is drawn over it, and that the caption says
  *      "R painted in";
  *   4. spec 1.17 (draft), only when the pairs manifest has a seam `grid`
- *      (pairs-v6 by default, or a grid pack by PAIRS_DIR or PAIRS_URL): with the Lands sliders,
+ *      (pairs-v7 by default, or a grid pack by PAIRS_DIR or PAIRS_URL): with the Lands sliders,
  *      island 4 | swamp 3 draws the cell `4x3` unmirrored, a fourth Swamp
  *      steps one half (`4x4`), island 6 | swamp 2 clamps the lighter half
  *      (`6x5`), and forest 2 | swamp 3 draws swamp+forest's `3x2` MIRRORED
@@ -41,11 +41,17 @@
  *   Spec 1.18 likewise on the worked example: on a grid pair whose cell has
  *   red painted in (`elements.R`), the cell's painted picture is drawn and
  *   captioned, still with no cut-out; without one, 1.17's checks as before.
+ *   The flag's default, pairs-v7, has both on every cell, so a default run
+ *   must take the 1.18 branch of the worked example and of the phone (it
+ *   fails if the manifest it loads has not); a PAIRS_DIR / PAIRS_URL pack
+ *   takes whichever its cells call for (pairs-v6: 1.17's).
  *
  * Environment: PAIRS_DIR (a local pairs pack), or PAIRS_URL (a pairs pack by
- * URL, e.g. https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6-draft/;
- * with neither, no `?pairs=`: the flag's default, the pairs-v6 tag on
- * jsDelivr); BUILD=0, HEADLESS=0, BROWSER_PATH. Needs the network for
+ * URL, e.g. https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6/;
+ * with neither, no `?pairs=`: the flag's default, the pairs-v7 tag on
+ * jsDelivr, known by the URL the page fetched its manifest from -- pairs-v7's
+ * manifest names itself "pairs-v6 draft", the writer's wording, fixed in the
+ * tag); BUILD=0, HEADLESS=0, BROWSER_PATH. Needs the network for
  * ForgeCoach's pack (jsDelivr). Exit status: 0 pass, 1 a check
  * failed, 2 could not start. A screenshot goes to e2e/out/ambience-three.png.
  */
@@ -63,7 +69,7 @@ const env = process.env;
 const HEADLESS = !/^(0|false|no)$/i.test(env.HEADLESS ?? '1');
 const PAIRS_DIR = env.PAIRS_DIR ? path.resolve(env.PAIRS_DIR) : null;
 /** What `?pairfull=1` loads with no `?pairs=`: src/ambience/prefs.ts's FORGECOACH_PAIRS_FULL_URL (an .mjs cannot import it). */
-const DEFAULT_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6/';
+const DEFAULT_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7/';
 const TIMEOUT = 30_000;
 
 class Fail extends Error {}
@@ -136,10 +142,11 @@ async function main() {
   const port = await freePort();
   const server = await startServer(port);
   const origin = `http://127.0.0.1:${port}`;
-  // No ?pairs= by default: under ?pairfull=1 ForgeCoach's pack brings FORGECOACH_PAIRS_FULL_URL (pairs-v6).
+  // No ?pairs= by default: under ?pairfull=1 ForgeCoach's pack brings FORGECOACH_PAIRS_FULL_URL (pairs-v7).
   const pairs = PAIRS_DIR ? `${origin}/pairs-pack/` : (env.PAIRS_URL || null);
   // The manifest the page really loads: a pairs= of yours, or the flag's default (prefs.ts's FORGECOACH_PAIRS_FULL_URL,
-  // whose value is kept here by hand), so a default run checks the grid, the pair forming and the phone on pairs-v6 too.
+  // whose value is kept here by hand), so a default run checks the grid, the pair forming, the painted cell and the phone
+  // cell on pairs-v7 too.
   const manifestPairs = pairs ?? DEFAULT_PAIRS_FULL_URL;
   log(`pairs: ${pairs ?? `the flag’s default (no ?pairs=; ${DEFAULT_PAIRS_FULL_URL})`}`);
   const pw = await loadPlaywright();
@@ -154,13 +161,26 @@ async function main() {
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     const pairsLine = await page.textContent('[data-amb-pairs]');
     log(`pairs line: ${pairsLine?.slice(0, 120)}`);
-    // pairs-v6 by default; a local or named pack (PAIRS_DIR / PAIRS_URL) may be another (pairs-v6-draft).
-    check((pairs ? /pairs-v\d/ : /pairs-v6/).test(pairsLine ?? ''), `the pairs pack did not load as ${pairs ? 'a pairs-vN pack' : 'pairs-v6'}: ${pairsLine}`);
+    // The pack is known by the URL its manifest came from: pairs-v7 by default (whose manifest still names itself
+    // "pairs-v6 draft", the writer's wording, fixed in the tag); a local or named pack (PAIRS_DIR / PAIRS_URL) its own.
+    check(/pairs-v\d/.test(pairsLine ?? ''), `the pairs pack did not load as a pairs-vN pack: ${pairsLine}`);
+    const fetched = await page.evaluate(() => performance.getEntriesByType('resource').map((e) => e.name).filter((n) => /\/pairs\.json(\?|$)/.test(n)));
+    log(`pairs manifest fetched: ${fetched.join(' ')}`);
+    const wantManifest = new URL('pairs.json', manifestPairs.endsWith('/') ? manifestPairs : `${manifestPairs}/`).href;
+    check(fetched.some((u) => u.split('?')[0] === wantManifest), `the page did not fetch ${wantManifest}: ${fetched.join(', ')}`);
+    if (!pairs) check(/@pairs-v7\/pairs\.json$/.test(wantManifest), `the flag's default is not pairs-v7: ${wantManifest}`);
     await page.click('[data-pieces-toggle="builtin"]');
     await page.click('[data-pieces-three]');
     // Spec 1.17: on a pair with a seam grid the worked example draws the grid cell, and its third colour nothing
-    // (pairs-v6, the default); the painted-in picture (1.16) is what a pair without a grid draws (pairs-v5, the draft).
-    const manifest = await (await fetch(new URL('pairs.json', manifestPairs.endsWith('/') ? manifestPairs : `${manifestPairs}/`))).json();
+    // (pairs-v6); spec 1.18: the cell with red painted in where it has one (pairs-v7, the default); the painted-in
+    // picture (1.16) is what a pair without a grid draws (pairs-v5).
+    const manifest = await (await fetch(wantManifest)).json();
+    if (!pairs) {
+      // The default must exercise 1.18: red painted into island+plains' cells, and a phone picture on island+swamp's 4x3.
+      const ip = Object.values(manifest.pairs?.['island+plains']?.grid ?? {});
+      check(ip.length > 0 && ip.every((c) => c.elements?.R), 'the flag’s default (pairs-v7) has no red painted into island+plains’ cells');
+      check(!!manifest.pairs?.['island+swamp']?.grid?.['4x3']?.phone, 'the flag’s default (pairs-v7) has no phone picture on island+swamp’s 4x3');
+    }
     if (manifest.pairs?.['island+plains']?.grid) {
       await workedExampleOnGrid(page, manifest);
     } else {

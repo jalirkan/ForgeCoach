@@ -5,8 +5,12 @@
  * Spec 1.18 (draft): the seam grid's phone cells and painted-in cells, on
  * `testdata/pairs-v7.pairs.json` -- a HAND-MADE manifest (no file it names
  * exists) in the shape ~/scenery-packs/panoramas-v1/tools/make_pairs_v6_draft.py
- * writes with --phone-fragment and --pin-fragment, until the painters'
- * fragments exist and are merged into a tagged pack:
+ * writes with --phone-fragment and --pin-fragment, written before the
+ * painters' fragments were merged and kept as it is: its small grids hold the
+ * cases a full pack has none of (a cell with no phone picture, a painted side
+ * with and without one). The tagged pairs-v7 itself (2026-11-02, every cell
+ * with both) is a different file, `testdata/pairs-v7.tag.pairs.json`, read by
+ * `pairs-v7.test.ts`:
  *
  * - island+swamp (the key's order is the geography's: island left): cells
  *   1x1 … 4x4 within one stage; `phone` on 2x2, 3x2, 3x3, 4x3 only; painted
