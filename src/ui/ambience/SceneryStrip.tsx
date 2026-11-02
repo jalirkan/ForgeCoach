@@ -74,7 +74,7 @@
  * built-in scenery). Both halves upright; each fades into a mist band along
  * the centre line. The effects keep their strip-sized box at the outer edge.
  */
-import { createContext, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, Fragment, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Biome, SlotState } from '../../ambience/model.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, growthOf, halfAt, layersAt, type PackBiome, type PackGrowth, type PackHalf, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
 import { growthMs, slotStageFade, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
@@ -235,10 +235,14 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
                         { biome: it.left, grow: it.share * it.split },
                         { biome: it.right, grow: it.share * (1 - it.split) },
                       ];
-                      return sides.map(({ biome, grow }, j) => {
-                        const l = (drawLayout as HalfSlotLayout[]).find((x) => x.slot.biome === biome)!;
-                        return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={Math.round(grow * 1000) / 1000} first={k === 0 && j === 0} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} apart={{ key: it.key, cell: it.apart!.cell }} />;
-                      });
+                      return (
+                        <Fragment key={`apart:${it.key}`}>
+                          {sides.map(({ biome, grow }, j) => {
+                            const l = (drawLayout as HalfSlotLayout[]).find((x) => x.slot.biome === biome)!;
+                            return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={Math.round(grow * 1000) / 1000} first={k === 0 && j === 0} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} apart={{ key: it.key, cell: it.apart!.cell }} />;
+                          })}
+                        </Fragment>
+                      );
                     }
                     if (it.kind === 'pair') return <PairFullPanel key={`pairfull:${it.key}`} p={it} shown={fullShown!} first={k === 0} growth={growth} reduced={reduced} />;
                     const l = (drawLayout as HalfSlotLayout[])[it.index]!;
