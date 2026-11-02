@@ -74,6 +74,13 @@
  *   draft (no cut-out, no 1.16 painted picture: those are painted on the old
  *   whole-place panoramas). A missing cell: the pair's `stages`, as 1.15 and
  *   1.16.1 say.
+ * - Spec 1.18 (draft): a cell with a `phone` picture is planned on a
+ *   phone-width screen too (the same cell; one without still gives way to
+ *   the `stages`), and a third colour on a grid picture draws the cell's own
+ *   painted-in picture on the heavier pair colour's half when the cell has
+ *   one ({@link PairFullGrid}'s `painted`, pairs.ts `pairGridPaintedAt`),
+ *   else nothing, as 1.17. Never a cut-out on a cell: the plan carries no
+ *   `element` there.
  *
  * Pure and DOM-free; the drawing is ui/ambience/SceneryStrip.tsx's
  * `PairFullPanel`.
@@ -81,7 +88,7 @@
 import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome, type SlotState } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf, PieceColour } from './manifest.ts';
-import { pairElementAt, pairFor, pairGridGivesWay, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
+import { pairElementAt, pairFor, pairGridGivesWay, pairGridPaintedAt, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
@@ -132,6 +139,13 @@ export interface PairFullGrid extends PairGridPick {
   right: Biome;
   /** The board has the pair the other way round from the geography (the cell is drawn mirrored). */
   mirror: boolean;
+  /**
+   * Spec 1.18 (draft): the third colour painted into this cell, drawn instead
+   * of the plain cell: the colour, the side in the CELL's (geography) order
+   * -- the heavier pair colour's half -- and the picture. Absent: the third
+   * colour draws nothing on the cell (1.17), and no cut-out either.
+   */
+  painted?: { colour: PieceColour; side: PairSide; picture: PackHalf };
 }
 
 /** The third biome's panel (today's panel, a placeholder for a triple composition). */
@@ -213,6 +227,8 @@ export function pairFullPlan(
      * A phone-width screen (layout.ts `PHONE_VIEWPORT_MAX`, SceneryStrip's
      * `useNarrowScreen`): a seam grid cell with no phone picture is not
      * planned (pairs.ts `pairGridGivesWay`); the half is the pair's `stages`.
+     * Spec 1.18: a cell with one is planned, the same cell as on a desktop;
+     * its painted-in picture only with a phone picture of its own.
      */
     narrow?: boolean;
   } = {},
@@ -234,11 +250,20 @@ export function pairFullPlan(
     const wa = x.l.slot.weight;
     const wb = y.l.slot.weight;
     const third = pick.third ? byBiome(COLOUR_BIOME[pick.third]) : null;
-    // Spec 1.17 (draft): a cell for the two colours' own stages takes the whole half; a third colour shows nothing on it.
+    // Spec 1.17 (draft): a cell for the two colours' own stages takes the whole half; a third colour shows nothing on it,
+    // unless (1.18) the cell has that colour painted in on the heavier pair colour's half.
     const grid = pairFullGrid(found.pair, x.l.slot.biome, x.l.stage, y.l.stage, opts.narrow ?? false);
     if (grid) {
       const stage = pairFullStage(found.pair, third ? pick.total : wa + wb, thresholds, opts.stageOverride ?? null);
-      return [{ kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, grid }];
+      const item: PairFullPair = { kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, grid };
+      if (third && pick.third) {
+        // The heavier pair colour in board order (a tie, the earlier arrival: the 1.16.1 rule), then in the cell's order.
+        const board = pairFullHeavierSide(item, (b) => (b === x.l.slot.biome ? x.l.slot.index : y.l.slot.index));
+        const side: PairSide = grid.mirror ? (board === 'left' ? 'right' : 'left') : board;
+        const picture = pairGridPaintedAt(grid.picture, pick.third, side, opts.narrow ?? false);
+        if (picture) item.grid = { ...grid, painted: { colour: pick.third, side, picture } };
+      }
+      return [item];
     }
     if (third) {
       // Spec 1.14 / 1.16: the third colour inside the pair picture, which takes the whole half and grows with every coloured land.
@@ -327,6 +352,7 @@ export interface PairFullCandidate {
 
 /**
  * The pictures a whole-half pair panel can draw, best first, each once: the
+ * seam grid cell's painted-in picture for the third colour (spec 1.18), the
  * seam grid's cell (spec 1.17, in its own orientation), the stage's painted-in
  * element panorama for the pair's element colour (spec 1.16), the stage's
  * panorama (1.15), the stage's 1.9 `half`. Each goes
@@ -347,6 +373,8 @@ export function pairFullCandidates(p: PairFullPair, panelAspect: number | null, 
     if (from && pic.src !== from.src && pic.src !== from.phone?.src) return;
     out.push({ art, painted: c, mirror: grid ? grid.mirror : p.mirror, ...(grid ? { cell: grid.cell } : {}) });
   };
+  // Spec 1.18: the cell's painted-in picture first (no phone picture: a phone-shaped panel skips it for the plain cell).
+  if (p.grid?.painted) add(pairFullArt(half, p.grid.painted.picture, panelAspect, narrow, horizon), p.grid.painted.picture, p.grid.painted.colour, p.grid);
   // Spec 1.17: a cell with no phone picture gives way to the stage's pictures on a phone-shaped panel, as a panorama does.
   if (p.grid) add(pairFullArt(half, p.grid.picture, panelAspect, narrow, horizon), p.grid.picture, null, p.grid);
   if (painted) add(pairFullArt(half, painted, panelAspect, narrow, horizon), painted, colour);
@@ -600,11 +628,15 @@ export function pairFullCaption(items: readonly PairFullItem[] | null): string |
 /**
  * Spec 1.17: "island s4 | swamp s3, seam 4x3", in the picture's (the
  * geography's) order; a clamped half says its own stage and the one shown:
- * "island s6 | swamp s2→s5, seam 6x5 (clamped)".
+ * "island s6 | swamp s2→s5, seam 6x5 (clamped)". Spec 1.18: a cell with its
+ * third colour painted in adds "; R painted in, on island's ground" (the
+ * plan names it only where it is drawn: never on a phone without its phone
+ * picture).
  */
 export function gridCaption(g: PairFullGrid): string {
   const half = (b: Biome, own: number, shown: number) => `${b} s${own}${own !== shown ? `→s${shown}` : ''}`;
-  return `${half(g.left, g.stages[0], g.shown[0])} | ${half(g.right, g.stages[1], g.shown[1])}, seam ${g.cell}${g.clamped ? ' (clamped)' : ''}`;
+  const painted = g.painted ? `; ${g.painted.colour} painted in, on ${g.painted.side === 'left' ? g.left : g.right}'s ground` : '';
+  return `${half(g.left, g.stages[0], g.shown[0])} | ${half(g.right, g.stages[1], g.shown[1])}, seam ${g.cell}${g.clamped ? ' (clamped)' : ''}${painted}`;
 }
 
 /** The caption's element: "; R painted in, on plains's ground" (spec 1.16.1) or "; mountain as an element" (the 1.14 cut-out). */

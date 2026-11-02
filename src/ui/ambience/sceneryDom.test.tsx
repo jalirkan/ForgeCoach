@@ -454,3 +454,51 @@ describe('spec 1.17 (draft): a seam grid cell on the board', () => {
     expect(html).not.toContain('is-mirrored');
   });
 });
+
+describe('spec 1.18 (draft): a painted-in cell on the board', () => {
+  const V7 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7/';
+  // The hand-made 1.18 fixture: forest+swamp's 3x2 has W painted in on the swamp's (the cell's left) ground.
+  const raw = JSON.parse(readFileSync(new URL('../../ambience/testdata/pairs-v7.pairs.json', import.meta.url), 'utf8'));
+  const local: ScenePack = { ...pack, pairs: validatePairs(raw, `${V7}pairs.json`).pairs! };
+  const cell = `${V7}seams/swamp-forest/s3x2-panorama.webp`;
+  const painted = `${V7}seams/swamp-forest/s3x2+WL-panorama.webp`;
+  // Board forest | swamp | plains: forest+swamp drawn whole, plains the third colour.
+  const slots = [slot('forest', 0, 2), slot('swamp', 1, 3), slot('plains', 2, 1)];
+
+  const pcs = (pk: ScenePack) => renderToStaticMarkup(<ScenePieces pack={pk} pieces={pieces} slots={slots} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />);
+
+  it('control: without a grid, the same half draws the 1.14 cut-out once the stage’s painted picture fails', () => {
+    loadAll();
+    const noGrid = JSON.parse(JSON.stringify(raw));
+    delete noGrid.pairs['forest+swamp'].grid;
+    const plain: ScenePack = { ...pack, pairs: validatePairs(noGrid, `${V7}pairs.json`).pairs! };
+    markPicture(`${V7}pairs/forest-swamp/s3-panorama.webp`, true);
+    markPicture(`${V7}pairs/forest-swamp/s3+WR-panorama.webp`, false);
+    expect(attrs(pcs(plain), 'data-pc-colour')).toEqual(['W']);
+  });
+
+  it('draws the painted cell flipped as the geography says, names its colour and its side in the cell’s order, and no cut-out', () => {
+    loadAll();
+    markPicture(cell, true);
+    markPicture(painted, true);
+    const html = renderToStaticMarkup(<SceneryStrip slots={slots} pack={local} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />);
+    expect(attrs(html, 'data-pairfull-cell')).toEqual(['3x2']);
+    expect(attrs(html, 'data-pairfull-painted')).toEqual(['W']);
+    expect(attrs(html, 'data-pairfull-painted-side')).toEqual(['left']);
+    expect(attrs(html, 'data-pairfull-element')).toEqual([]);
+    expect(html).toContain(painted);
+    expect(html).toContain('scn-pairfull-flip is-mirrored');
+    expect(attrs(pcs(local), 'data-pc')).not.toContain('element');
+  });
+
+  it('the painted picture failed: the plain cell, still no cut-out', () => {
+    loadAll();
+    markPicture(cell, true);
+    markPicture(painted, false);
+    const html = renderToStaticMarkup(<SceneryStrip slots={slots} pack={local} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />);
+    expect(attrs(html, 'data-pairfull-cell')).toEqual(['3x2']);
+    expect(attrs(html, 'data-pairfull-painted')).toEqual([]);
+    expect(html).toContain(cell);
+    expect(attrs(pcs(local), 'data-pc')).not.toContain('element');
+  });
+});

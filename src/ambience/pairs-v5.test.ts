@@ -31,7 +31,7 @@ import { halfLayout } from './layout.ts';
 import { BIOME_COLOUR } from './makeup.ts';
 import { pairKey, type Biome, type SlotState } from './model.ts';
 import { pairFullCandidates, pairFullCaption, pairFullPlan, type PairFullPair } from './pairfull.ts';
-import { MAX_PAIRS_PACK_BYTES, pairElementEntryAt, pairHalfAt, pairPanoramaAt, pairsRefBytes, validatePairs } from './pairs.ts';
+import { MAX_PAIRS_MANIFEST_BYTES, MAX_PAIRS_PACK_BYTES, pairElementEntryAt, pairHalfAt, pairPanoramaAt, pairsRefBytes, validatePairs } from './pairs.ts';
 import { elementBiomes } from './pieces.ts';
 import type { PieceColour } from './manifest.ts';
 import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
@@ -53,16 +53,16 @@ describe('pairs-v5', () => {
   const pairs = r.pairs!;
   const v4 = JSON.parse(readFileSync(new URL('./testdata/pairs-v4.pairs.json', import.meta.url), 'utf8'));
 
-  it('is no longer the flag’s pairs URL (pairs-v6 is, with this manifest’s stages); still reachable with ?pairs=', () => {
+  it('is no longer the flag’s pairs URL (pairs-v6 was, then pairs-v7.1, both with this manifest’s stages); still reachable with ?pairs=', () => {
     expect(FORGECOACH_PAIRS_FULL_URL).not.toBe(V5);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${V5}`, ''))).toBe(V5);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(FORGECOACH_PAIRS_URL).toMatch(/@pairs-v3\.1\/$/);
   });
 
-  it('is the file jsDelivr serves byte for byte, under the 256 KB a pairs manifest may be', () => {
+  it('is the file jsDelivr serves byte for byte, under the 1 MB a pairs manifest may be (MAX_PAIRS_MANIFEST_BYTES; 256 KB until spec 1.18)', () => {
     expect(createHash('sha256').update(bytes).digest('hex')).toBe('31450e7f09443c35101f90e0d8fb8652acb330893098cbebb59793c5b375f8ca');
-    expect(bytes.length).toBeLessThan(256 * 1024);
+    expect(bytes.length).toBeLessThan(MAX_PAIRS_MANIFEST_BYTES);
   });
 
   it('validates with no errors, written for 1.16.1, one warning per pair: painted elements take it past 4 MB, as expected', () => {

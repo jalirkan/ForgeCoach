@@ -11,7 +11,7 @@
  *      pairs pack on disk, e.g. ~/scenery-packs/panoramas-v1/serve/pairs-v5
  *      before its tags are cut);
  *   2. opens `/?pairfull=1#ambience` at a desktop size (the flag's own
- *      pairs, pairs-v6 on jsDelivr; `&pairs=<pairs>` only with PAIRS_DIR or
+ *      pairs, pairs-v7.1 on jsDelivr; `&pairs=<pairs>` only with PAIRS_DIR or
  *      PAIRS_URL), with ForgeCoach's own pack (from jsDelivr), Pieces →
  *      Placeholders (so a
  *      1.14 cut-out exists for every colour) and Pieces → Three colours
@@ -21,7 +21,7 @@
  *      cut-out element is drawn over it, and that the caption says
  *      "R painted in";
  *   4. spec 1.17 (draft), only when the pairs manifest has a seam `grid`
- *      (pairs-v6 by default, or a grid pack by PAIRS_DIR or PAIRS_URL): with the Lands sliders,
+ *      (pairs-v7.1 by default, or a grid pack by PAIRS_DIR or PAIRS_URL): with the Lands sliders,
  *      island 4 | swamp 3 draws the cell `4x3` unmirrored, a fourth Swamp
  *      steps one half (`4x4`), island 6 | swamp 2 clamps the lighter half
  *      (`6x5`), and forest 2 | swamp 3 draws swamp+forest's `3x2` MIRRORED
@@ -33,13 +33,26 @@
  *      panorama for a moment before it (the #201 follow-up);
  *   5. with a grid, a PHONE (390 × 844): island 4 | swamp 3 draws the stage
  *      panorama's phone picture, names no cell, fetches no seam picture, and
- *      the caption says "whole half" and no "seam" (e2e/out/grid-phone.png).
+ *      the caption says "whole half" and no "seam" (e2e/out/grid-phone.png)
+ *      -- unless the cell 4x3 carries a `phone` picture (spec 1.18): then the
+ *      phone draws that cell's phone picture, names the cell, fetches no
+ *      desktop seam picture, and the caption names the seam.
+ *
+ *   Spec 1.18 likewise on the worked example: on a grid pair whose cell has
+ *   red painted in (`elements.R`), the cell's painted picture is drawn and
+ *   captioned, still with no cut-out; without one, 1.17's checks as before.
+ *   The flag's default, pairs-v7.1, has both on every cell, so a default run
+ *   must take the 1.18 branch of the worked example and of the phone (it
+ *   fails if the manifest it loads has not); a PAIRS_DIR / PAIRS_URL pack
+ *   takes whichever its cells call for (pairs-v6: 1.17's).
  *
  * Environment: PAIRS_DIR (a local pairs pack), or PAIRS_URL (a pairs pack by
- * URL, e.g. https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6-draft/;
- * with neither, no `?pairs=`: the flag's default, the pairs-v6 tag on
- * jsDelivr); BUILD=0, HEADLESS=0, BROWSER_PATH. Needs the network for
- * ForgeCoach's pack (jsDelivr). Exit status: 0 pass, 1 a check
+ * URL, e.g. https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6/;
+ * with neither, no `?pairs=`: the flag's default, the pairs-v7.1 tag on
+ * jsDelivr, checked by the pairs line's name and the URL the page fetched its
+ * manifest from -- pairs-v7.1 is pairs-v7 with the manifest named after its
+ * tag; pairs-v7's said "pairs-v6 draft"); BUILD=0, HEADLESS=0, BROWSER_PATH.
+ * Needs the network for ForgeCoach's pack (jsDelivr). Exit status: 0 pass, 1 a check
  * failed, 2 could not start. A screenshot goes to e2e/out/ambience-three.png.
  */
 import { execFileSync } from 'node:child_process';
@@ -56,7 +69,7 @@ const env = process.env;
 const HEADLESS = !/^(0|false|no)$/i.test(env.HEADLESS ?? '1');
 const PAIRS_DIR = env.PAIRS_DIR ? path.resolve(env.PAIRS_DIR) : null;
 /** What `?pairfull=1` loads with no `?pairs=`: src/ambience/prefs.ts's FORGECOACH_PAIRS_FULL_URL (an .mjs cannot import it). */
-const DEFAULT_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6/';
+const DEFAULT_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7.1/';
 const TIMEOUT = 30_000;
 
 class Fail extends Error {}
@@ -129,10 +142,11 @@ async function main() {
   const port = await freePort();
   const server = await startServer(port);
   const origin = `http://127.0.0.1:${port}`;
-  // No ?pairs= by default: under ?pairfull=1 ForgeCoach's pack brings FORGECOACH_PAIRS_FULL_URL (pairs-v6).
+  // No ?pairs= by default: under ?pairfull=1 ForgeCoach's pack brings FORGECOACH_PAIRS_FULL_URL (pairs-v7.1).
   const pairs = PAIRS_DIR ? `${origin}/pairs-pack/` : (env.PAIRS_URL || null);
   // The manifest the page really loads: a pairs= of yours, or the flag's default (prefs.ts's FORGECOACH_PAIRS_FULL_URL,
-  // whose value is kept here by hand), so a default run checks the grid, the pair forming and the phone on pairs-v6 too.
+  // whose value is kept here by hand), so a default run checks the grid, the pair forming, the painted cell and the phone
+  // cell on pairs-v7.1 too.
   const manifestPairs = pairs ?? DEFAULT_PAIRS_FULL_URL;
   log(`pairs: ${pairs ?? `the flag’s default (no ?pairs=; ${DEFAULT_PAIRS_FULL_URL})`}`);
   const pw = await loadPlaywright();
@@ -147,15 +161,28 @@ async function main() {
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     const pairsLine = await page.textContent('[data-amb-pairs]');
     log(`pairs line: ${pairsLine?.slice(0, 120)}`);
-    // pairs-v6 by default; a local or named pack (PAIRS_DIR / PAIRS_URL) may be another (pairs-v6-draft).
-    check((pairs ? /pairs-v\d/ : /pairs-v6/).test(pairsLine ?? ''), `the pairs pack did not load as ${pairs ? 'a pairs-vN pack' : 'pairs-v6'}: ${pairsLine}`);
+    // pairs-v7.1 by default, by its name on the pairs line and by the URL its manifest came from; a local or named
+    // pack (PAIRS_DIR / PAIRS_URL) may be another (pairs-v6), known by its URL.
+    check((pairs ? /pairs-v\d/ : /pairs-v7\.1/).test(pairsLine ?? ''), `the pairs pack did not load as ${pairs ? 'a pairs-vN pack' : 'pairs-v7.1'}: ${pairsLine}`);
+    const fetched = await page.evaluate(() => performance.getEntriesByType('resource').map((e) => e.name).filter((n) => /\/pairs\.json(\?|$)/.test(n)));
+    log(`pairs manifest fetched: ${fetched.join(' ')}`);
+    const wantManifest = new URL('pairs.json', manifestPairs.endsWith('/') ? manifestPairs : `${manifestPairs}/`).href;
+    check(fetched.some((u) => u.split('?')[0] === wantManifest), `the page did not fetch ${wantManifest}: ${fetched.join(', ')}`);
+    if (!pairs) check(/@pairs-v7\.1\/pairs\.json$/.test(wantManifest), `the flag's default is not pairs-v7.1: ${wantManifest}`);
     await page.click('[data-pieces-toggle="builtin"]');
     await page.click('[data-pieces-three]');
     // Spec 1.17: on a pair with a seam grid the worked example draws the grid cell, and its third colour nothing
-    // (pairs-v6, the default); the painted-in picture (1.16) is what a pair without a grid draws (pairs-v5, the draft).
-    const manifest = await (await fetch(new URL('pairs.json', manifestPairs.endsWith('/') ? manifestPairs : `${manifestPairs}/`))).json();
+    // (pairs-v6); spec 1.18: the cell with red painted in where it has one (pairs-v7.1, the default); the painted-in
+    // picture (1.16) is what a pair without a grid draws (pairs-v5).
+    const manifest = await (await fetch(wantManifest)).json();
+    if (!pairs) {
+      // The default must exercise 1.18: red painted into island+plains' cells, and a phone picture on island+swamp's 4x3.
+      const ip = Object.values(manifest.pairs?.['island+plains']?.grid ?? {});
+      check(ip.length > 0 && ip.every((c) => c.elements?.R), 'the flag’s default (pairs-v7.1) has no red painted into island+plains’ cells');
+      check(!!manifest.pairs?.['island+swamp']?.grid?.['4x3']?.phone, 'the flag’s default (pairs-v7.1) has no phone picture on island+swamp’s 4x3');
+    }
     if (manifest.pairs?.['island+plains']?.grid) {
-      await workedExampleOnGrid(page);
+      await workedExampleOnGrid(page, manifest);
     } else {
       await workedExamplePainted(page, pairs, server);
     }
@@ -165,7 +192,7 @@ async function main() {
     await page.waitForTimeout(3000);
     await page.screenshot({ path: path.join(OUT, 'ambience-three.png') });
     const ran = await gridChecks(page, manifestPairs, errors);
-    if (ran) await phoneCheck(browser, origin, pairs);
+    if (ran) await phoneCheck(browser, origin, pairs, manifest);
   } catch (e) {
     failed = true;
     if (e instanceof Fail) console.error(`[e2e ambience] FAIL: ${e.message}`);
@@ -177,10 +204,14 @@ async function main() {
   process.exit(failed ? 1 : 0);
 }
 
-/** The worked example on a pair with a seam grid (1.17): island+plains' cell, no painted-in picture, no cut-out. */
-async function workedExampleOnGrid(page) {
+/**
+ * The worked example on a pair with a seam grid (1.17): island+plains' cell, no painted-in picture, no cut-out.
+ * Spec 1.18: when the cell carries red painted in, that picture instead (still no cut-out).
+ */
+async function workedExampleOnGrid(page, manifest) {
   const panel = await page.waitForSelector('[data-pairfull="island+plains"][data-pairfull-cell]', { timeout: TIMEOUT });
   const cell = await panel.getAttribute('data-pairfull-cell');
+  if (manifest.pairs['island+plains'].grid[cell]?.elements?.R) return workedExampleOnPaintedCell(page, cell);
   const mirrored = await panel.evaluate((el) => el.classList.contains('is-mirrored'));
   check(/^[1-6]x[1-6]$/.test(cell ?? ''), `expected a grid cell on island+plains, got ${cell}`);
   check(mirrored, 'the board has plains | island and the geography puts the island left: the cell should be mirrored');
@@ -196,6 +227,23 @@ async function workedExampleOnGrid(page) {
   log(`panel: island+plains cell ${cell}, mirrored ${mirrored}; caption: ${caption}`);
   check(/seam \d x?\d|seam [1-6]x[1-6]/.test(caption ?? '') && !/painted in/.test(caption ?? ''), `the caption should name the seam and no painted-in colour: ${caption}`);
   log(`PASS: the worked example on a grid pair draws island+plains' cell ${cell}, mirrored, nothing painted in, no cut-out`);
+}
+
+/** Spec 1.18: the worked example on a cell with red painted in: the heavier half's picture, mirrored, captioned, no cut-out. */
+async function workedExampleOnPaintedCell(page, cell) {
+  const panel = await page.waitForSelector(`[data-pairfull="island+plains"][data-pairfull-cell="${cell}"][data-pairfull-painted="R"]`, { timeout: TIMEOUT });
+  const side = await panel.getAttribute('data-pairfull-painted-side');
+  const mirrored = await panel.evaluate((el) => el.classList.contains('is-mirrored'));
+  check(side === 'left' || side === 'right', `no painted side named: ${side}`);
+  check(mirrored, 'the board has plains | island and the geography puts the island left: the cell should be mirrored');
+  const want = `seams/island-plains/s${cell}\\+R${side === 'left' ? 'L' : 'R'}-panorama\\.webp$`;
+  await page.waitForFunction((src) => [...document.querySelectorAll('[data-pairfull="island+plains"] img')].every((i) => new RegExp(src).test(i.getAttribute('src') ?? '')), want, { timeout: TIMEOUT });
+  const cutOuts = await page.$$eval('[data-pc="element"]', (els) => els.length);
+  check(cutOuts === 0, `${cutOuts} cut-out element(s) drawn over the painted cell`);
+  const caption = await page.textContent('[data-amb-bands="1"]');
+  log(`panel: island+plains cell ${cell}, R painted on the cell's ${side}, mirrored ${mirrored}; caption: ${caption}`);
+  check(new RegExp(`seam ${cell}; R painted in, on (island|plains)'s ground`).test(caption ?? ''), `the caption should name the cell and red painted in: ${caption}`);
+  log(`PASS: the worked example on a grid pair draws island+plains' cell ${cell} with R painted in (spec 1.18), no cut-out`);
 }
 
 /** The worked example on a pair without a grid (1.16): R painted in on plains's ground, s2+RR, mirrored, no cut-out. */
@@ -336,8 +384,11 @@ async function formingCheck(page, errors) {
 /**
  * A phone (390 × 844): the cells are 5:1 desktop panoramas, so a phone-width screen keeps the stage panorama's phone
  * picture. island 4 | swamp 3 names no cell, fetches no seam picture, and the caption says "whole half", no "seam".
+ * Spec 1.18: when the cell 4x3 carries a `phone` picture, the phone draws that instead, names the cell and the seam,
+ * and fetches no desktop seam picture.
  */
-async function phoneCheck(browser, origin, pairs) {
+async function phoneCheck(browser, origin, pairs, manifest) {
+  if (manifest.pairs?.['island+swamp']?.grid?.['4x3']?.phone) return phoneCellCheck(browser, origin, pairs);
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   const errors = [];
@@ -364,7 +415,39 @@ async function phoneCheck(browser, origin, pairs) {
     check(errors.length === 0, `phone: page errors: ${errors.join('; ')}`);
     await page.waitForTimeout(1500);
     await page.screenshot({ path: path.join(OUT, 'grid-phone.png') });
-    log('PASS: a phone draws the stage panorama, names no seam and fetches no cell');
+    log('PASS: a phone draws the stage panorama (the cell 4x3 has no phone picture), names no seam and fetches no cell');
+  } finally {
+    await ctx.close();
+  }
+}
+
+/** Spec 1.18: a phone on a cell with a phone picture: island 4 | swamp 3 draws `s4x3-panorama-phone.webp` and names it. */
+async function phoneCellCheck(browser, origin, pairs) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const page = await ctx.newPage();
+  const errors = [];
+  const seams = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  page.on('request', (r) => {
+    if (r.url().includes('/seams/')) seams.push(r.url());
+  });
+  try {
+    await page.goto(`${origin}/?pairfull=1${pairs ? `&pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
+    await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
+    await setLands(page, 'island', 4);
+    await setLands(page, 'swamp', 3);
+    const panel = await page.waitForSelector('[data-amb-player="1"] [data-pairfull="island+swamp"][data-pairfull-cell="4x3"]', { timeout: TIMEOUT });
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-amb-player="1"] [data-pairfull] img')].every((i) => /\/seams\/island-swamp\/s4x3-panorama-phone\.webp$/.test(i.getAttribute('src') ?? '')), null, { timeout: TIMEOUT });
+    const src = await panel.$eval('img', (i) => i.getAttribute('src'));
+    const caption = (await page.textContent('[data-amb-bands="1"]')) ?? '';
+    const desktop = seams.filter((u) => !/-phone\.webp$/.test(u));
+    log(`phone: cell 4x3, img ${src}; caption: ${caption}; seam pictures fetched: ${seams.length}, ${desktop.length} desktop`);
+    check(caption.includes('island s4 | swamp s3, seam 4x3'), `phone: the caption does not name the cell: ${caption}`);
+    check(desktop.length === 0, `phone: ${desktop.length} desktop seam picture(s) fetched: ${desktop.join(', ')}`);
+    check(errors.length === 0, `phone: page errors: ${errors.join('; ')}`);
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: path.join(OUT, 'grid-phone.png') });
+    log('PASS: a phone draws the cell 4x3 from its phone picture (spec 1.18) and fetches no desktop cell');
   } finally {
     await ctx.close();
   }

@@ -78,19 +78,21 @@ export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgeco
 export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3.1/';
 /**
  * Spec 1.15: the pairs `?pairfull=1` defaults to with ForgeCoach's own pack:
- * `pairs-v6` (spec 1.17), pairs-v5's manifest with a seam grid on all ten
- * pairs -- each half its colour's own mono picture at that colour's own
- * stage, so a land grows one half and never redraws the other (Justin's
- * one-world rule, 2026-10-25, judged on the live board with free land play);
- * the cells are desktop only (sketch quality), so a phone keeps pairs-v5's
- * stage panoramas and painted-in elements, which the manifest carries
- * unchanged (`pairs-v6.test.ts`; the `pairs-v6-draft` tag, three grids, is
- * its shape until the tag is published). pairs-v5 (spec 1.16.1, the painted-in
- * elements, `pairs-v5.test.ts`) and pairs-v4 stay up, but nothing points at
- * them. `?pairs=` still wins. Without the flag the board keeps
- * FORGECOACH_PAIRS_URL.
+ * `pairs-v7.1` (spec 1.18, tagged 2026-11-02), pairs-v6's manifest and desktop
+ * pictures with every one of the 160 grid cells given a `phone` picture
+ * (`@pairs-v7-phone`) and the third colour painted in (660 pictures,
+ * `@pairs-v7-pin`), both by absolute URL (`pairs-v7.1.test.ts`; `@pairs-v7`,
+ * the same tree with its manifest mislabelled "pairs-v6 draft", was
+ * superseded the same day). pairs-v6
+ * (spec 1.17, the seam grid on all ten pairs, desktop only: each half its
+ * colour's own mono picture at that colour's own stage, so a land grows one
+ * half and never redraws the other -- Justin's one-world rule, 2026-10-25;
+ * `pairs-v6.test.ts`) was the default from 2026-10-27; it, pairs-v5 (spec
+ * 1.16.1, the painted-in elements, `pairs-v5.test.ts`) and pairs-v4 stay up,
+ * but nothing points at them. `?pairs=` still wins. Without the flag the
+ * board keeps FORGECOACH_PAIRS_URL.
  */
-export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6/';
+export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7.1/';
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true, light: false, horizon: false };
 
