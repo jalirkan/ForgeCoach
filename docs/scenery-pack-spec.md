@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18 and 1.18.1 in draft)
+# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1 and 1.19 in draft)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -36,6 +36,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.17 (draft) | **The seam grid** (§2, *The seam grid*), behind `?pairfull=1`, whose default pairs are pairs-v7.1 (1.18, since 2026-11-02; pairs-v6, a grid on all ten pairs, desktop only, from 2026-10-27; the board without the flag keeps pairs-v3.1), for Justin's review on the live board: a pair in `pairs.json` may carry a **`grid`** of whole-half seam pictures keyed **`"<i>x<j>"`** by the two halves' own stages -- `i` the stage of the pair's colour earlier in the one geography (Island → Swamp → Plains → Forest → Mountain: the picture's left half), `j` the later one's -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), only the seam painted. Painted for \|i − j\| ≤ 1; further apart, the lighter half is raised to one stage below the heavier. A missing cell falls back to the pair's `stages`; a third colour on a grid picture draws nothing in the draft. Every 1.0–1.16.1 pack and pairs manifest is read unchanged. |
 | 1.18 (draft) | **Phone cells and painted-in cells** (§2, *Phone cells and painted-in cells*), behind `?pairfull=1`, a draft amendment to 1.17 for the two painter lanes of 31 October 2026: a grid cell may carry a **`phone`** picture (a stage panorama's `phone` shape, 1638 × 1280) and painted-in **`elements`** (a stage's 1.16.1 sided shape, the sides in the **cell's** geography order). On a phone-shaped board a grid pair draws the cell the desktop would (the same pick) when that cell has a `phone`, and gives way to the `stages` exactly as 1.17 when it has not; a third colour on a cell draws the cell's painted-in picture on the heavier half when it has one, and nothing when it has not (1.17's rule). Warming adds the phone cells by 1.17's rules and the shown cell's painted-in pictures only. Every 1.0–1.17 pack and pairs manifest (pairs-v6 included) is read and drawn unchanged. ForgeCoach's **pairs-v7.1** (2026-11-02; pairs-v7 was the same tree, mislabelled, superseded the same day) is the first pack written to it, every cell with both, and the flag's default; its manifest is about 0.5 MB, so a pairs manifest may now be up to **1 MB** (256 KB until 1.18; a pack's `scenery.json` stays 256 KB). |
 | 1.18.1 (draft) | **A phone's third colour on a painted cell** (§2, *Phone cells and painted-in cells*, amended), reader only, no new field: on a **phone-width screen**, where the cell shown has the third colour painted in on the heavier half but that picture has **no `phone`**, the half draws the plain cell's phone picture with the third colour's **1.14 cut-out element** (its `phone` piece; an element without one draws nothing) on the heavier pair colour's ground, placed and faded exactly as on a pair without a grid, and the caption says "swamp as an element". A desktop keeps the painted picture; a painted picture with its own `phone` is drawn on a phone as 1.18 says, never the cut-out. pairs-v7.1's 660 painted pictures have no phone picture, so on a phone every painted cell takes the cut-out. Every 1.0–1.18 pack and pairs manifest is read unchanged. |
+| 1.19 (draft) | **Every colour, the base pair, no clamp** (§2, *Every colour, the base pair, no clamp (1.19)*), the owner's four rules of 2026-11-02 after the storyboard review (pc-results `scenery/STORYBOARD.md`), reader only, no new field: **(a) every colour visible** -- the fold to three is gone: a side with four or five colours keeps the pair's picture and the third colour's painted-in picture where it exists, and draws **every further colour as its 1.14 cut-out**, stacked on the pair's grounds (the heavier pair colour's holds two, side by side, the lighter's the rest), each faded by its share and never on the seam core, a phone drawing the phone pieces (1.18.1), the caption naming them; a third colour with nothing painted in draws its cut-out, else its 1.15 panel, never nothing; **(b) the pair is the base** -- the pair showing stays while both its colours are among the three heaviest, and changes only when one leaves the top three; **(c) no clamp** -- a seam grid with no cell for the two colours' own stages draws each colour's own mono picture side by side at the split, joined by the plain 1.10 seam, "island s1 \| forest s5, no seam cell", and a cell painted later is drawn with no code change; **(d) pack-v9.2 is ForgeCoach's default pack**, which turns on its batch-3 pieces -- five elements with phone pieces, fronts for W/U/B/G, the won/lost veils, the empty table -- on **every** board, with `?pairfull=1` and without. Every 1.0–1.18.1 pack and pairs manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -1294,7 +1295,9 @@ is read as before.
   kept panel, which on the whole-half picture (1.15) panned the pair by a
   colour that was not on screen; SYSTEM.md A6 says the dropped colours show
   nothing, and the panels, the pair picture and the pieces now share one rule,
-  `src/ambience/makeup.ts`.)* Three panels
+  `src/ambience/makeup.ts`.)* *(Amended in 1.19 a: still three panels, but a
+  colour left out is no longer hidden: it is drawn as its 1.14 cut-out on the
+  pair's panels, and weighs nothing in a panel's width.)* Three panels
   make at most two seams, or two bands and four band edges; four biomes made
   three bands and six seams, none wide enough to read. The strip (Fill each
   side off) and the accents' corner and edge pieces are unchanged.
@@ -1528,7 +1531,7 @@ a side has any colour. They come in one optional top-level object:
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `elements` | object keyed by colour (`W` `U` `B` `R` `G`) | A transparent piece per colour. With three or more colours the picture is the heaviest pair's, and the third colour (four or five keep the three heaviest by their own weights; the rest show nothing and weigh nothing, 1.16) is its element, on the heavier pair colour's side, faded in by its share (an equal third is fully in). **Drawn under `?pairfull=1`** (1.15, *Whole-half pair panoramas*): the heaviest pair's picture then takes the whole half, its stage counting every coloured land, and the element stands in `pairFullElementRegion` (the heavier pair colour's ground, stopping 0.05 of the half short of the transition; never mirrored), placed by its `place` on that picture's horizon or ground; warmed with the half's colours and drawn once loaded (it fades in, never pops in after the fade). Not drawn over a stage that has the colour painted in (1.16), nor on a seam cell (1.17, 1.18) -- except on a phone, where the cell's painted picture of the colour has no phone picture (1.18.1: the element's `phone` piece only). A colour with no element (and none painted in) keeps 1.15's third panel. Without the flag a third colour keeps its own panel and no element is drawn. |
+| `elements` | object keyed by colour (`W` `U` `B` `R` `G`) | A transparent piece per colour. With three or more colours the picture is the pair's, and the third colour is its element, on the heavier pair colour's side, faded in by its share (an equal third is fully in). *(Amended in 1.19 a: four or five colours draw every colour past the third as its element too, stacked on the pair's grounds -- the heavier pair colour's holds two, the lighter's the rest -- each faded by its share of every coloured land, n × its weight over the half's coloured lands; until 1.19 they were dropped, 1.16. And 1.19 b: the pair is the one showing while both its colours are among the three heaviest, not always the heaviest.)* **Drawn under `?pairfull=1`** (1.15, *Whole-half pair panoramas*): the heaviest pair's picture then takes the whole half, its stage counting every coloured land, and the element stands in `pairFullElementRegion` (the heavier pair colour's ground, stopping 0.05 of the half short of the transition; never mirrored), placed by its `place` on that picture's horizon or ground; warmed with the half's colours and drawn once loaded (it fades in, never pops in after the fade). Not drawn over a stage that has the colour painted in (1.16), nor on a seam cell that has it painted in at the shape drawn (1.18) -- on a phone, where the cell's painted picture of the colour has no phone picture, the element's `phone` piece (1.18.1); and since 1.19 a on any cell, or a pair apart (1.19 c), with nothing painted in for it. A colour with no element (and none painted in) keeps 1.15's third panel. Without the flag a third colour keeps its own panel and no element is drawn. |
 | `landmarks` | object keyed by a card's exact name (≤ 80 characters; ≤ 24 names) | A transparent piece per landmark land. It goes over whatever the half shows, the empty table included; one per name (a second copy adds nothing), at most **two** a half, the earliest on the battlefield. Default place: `horizon`, `x` 0.5, `w` 0.25. |
 | `fronts` | object keyed by colour | `frames` (1–4, each a `src` at the desktop half's shape and an optional `phone`, each with an optional own `holdMs`), `holdMs` (40–1000, default 200), `fadeMs` (0–1000, default 180), `bytes`. Played over the whole half with hard cuts when the colour arrives (a new heaviest pair: the colour that joined it), then faded; backwards when it leaves. Its frames are warmed and picked at one shape, the half's own (the phone frames on a phone-width screen or a half nearer 4 : 5 than 16 : 5); a front whose frames are still loading at the change plays as soon as they have all decoded, unless a newer change comes first or 4 s pass (1.16). The empty table's first colour dissolves the table instead. A front and a stage step at once: only the front. None with reduced motion. |
 | `veils` | `{ "won", "lost" }` | A transparent piece over the winner's and the loser's half once the game is over (default place `fill`); faded in, and faded out when a replay steps back before the end. A draw has none. |
@@ -1663,7 +1666,11 @@ and on 23 October had them published: ForgeCoach's **pairs-v4**.
   others show nothing and weigh nothing in what is shown -- not in the pair
   choice, not in the pan, not in the element's share -- but their lands still
   count in the **stage** (SYSTEM.md A5: "a growing third colour still grows
-  the place"; the half's total is its number of coloured lands).
+  the place"; the half's total is its number of coloured lands). *(Amended in
+  1.19: (b) the pair showing stays while both its colours are among the three
+  heaviest, so the pair is not always the two heaviest; (a) the colours past
+  the third are drawn too, as cut-outs, still weighing nothing in the pair or
+  the pan, each faded by its own share of every coloured land.)*
 - **Loading** (1.16). The pair picture is drawn once a picture of it has
   loaded and decoded. Until then the half **holds what it drew last** -- the
   one colour's picture when the second arrives, the previous stage's picture
@@ -1963,7 +1970,10 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
    is 1x1). Not the total, not the `stageMap`: those are the `stages`'.
    The preview's stage slider sets both (`s`x`s`).
 2. **The exact cell**, `"<i>x<j>"`, when the grid has it.
-3. **Else, the clamp.** When the two are more than one stage apart (the
+3. **Else, the clamp** *(withdrawn in 1.19 c: no cell for the two stages
+   draws the two colours' own mono pictures apart, never a raised half -- see
+   *Every colour, the base pair, no clamp (1.19)*; the 1.17 text follows)*.
+   When the two are more than one stage apart (the
    draft paints no such cell), **the heavier half is shown exactly and the
    lighter half is raised to one stage below it**: `i > j + 1` shows
    `i`x`(i − 1)`, `j > i + 1` shows `(j − 1)`x`j`. Why the heavier half is the
@@ -1979,6 +1989,9 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
 4. **Else, the `stages`.** No grid, no cell even after the clamp, or a colour
    not on the half: the pair's `stages`, exactly as 1.15 and 1.16.1 say (the
    stage from the total, the painted-in elements with a third colour).
+   *(Amended in 1.19 c: a pair WITH a grid and no cell for its stages is drawn
+   apart; the `stages` stay the fallback of a pair with no grid, and of a cell
+   that fails to load.)*
 
 **Drawing.**
 
@@ -2034,11 +2047,11 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
   down, both halves in one frame, a step of two). After 8 s, what has loaded
   is drawn; a cell that fails gives way to the stage pictures at once. Each
   side warms the cell it shows and the cells one land either way would show
-  (`i ± 1` and `j ± 1`, through the clamp), with the split's pictures.
+  (`i ± 1` and `j ± 1`; since 1.19 c the exact cells only), with the split's pictures.
   **A pair forming** (one colour, then a second) has no cell on screen to
   hold, so each live colour warms the first cell of every grid pair it could
   form -- the arriving colour at stage 1, the live one at its own stage
-  (`ix1` / `1xj`, through the clamp), and at the stage a dual of the two
+  (`ix1` / `1xj`; since 1.19 c the exact cell only), and at the stage a dual of the two
   would give it -- beside the stage-1 panoramas it warmed already; and while
   that first cell is still loading, the half keeps the panels it drew (at
   most 8 s), never the warm whole-place panorama for a moment first.
@@ -2046,7 +2059,10 @@ the fallback, and a pair without a grid draws them as 1.15 and 1.16.1 say):
   picture's (the geography's) order: "island s4 | swamp s3, seam 4x3"; a
   clamped half its own stage and the one shown: "island s6 | swamp s2→s5,
   seam 6x5 (clamped)". The panel carries `data-pairfull-cell` (and
-  `data-pairfull-clamped`).
+  `data-pairfull-clamped`). *(Amended in 1.19 c: no half is clamped, so no
+  caption says "(clamped)" and no panel carries `data-pairfull-clamped`; a
+  pair apart says "island s6 | swamp s2, no seam cell" and its two panels
+  carry `data-apart` and `data-apart-cell`.)*
 
 **Budget.** Every cell counts in its pair's stage pictures (1.9's
 **≤ 4 MB per pair**) and, when it lies in the pairs manifest's own folder,
@@ -2170,8 +2186,8 @@ leaves out is the **cell's** (`width`, `height`, `subjectBand`, `focal`,
   painter paints `left` where `i > j`, `right` where `i < j`, and both where
   `i = j`. A side that can never be the heavier half's (`left` on `i < j`,
   `right` on `i > j`) is warned and dropped alone, and so is a colour that is
-  one of the pair's own. The clamp keeps the heavier half exact, so a clamped
-  cell's heavier side is the same one.
+  one of the pair's own. (1.17's clamp kept the heavier half exact, so a
+  clamped cell's heavier side was the same one; 1.19 c draws no clamped cell.)
 
 **On a phone-shaped board.** On a phone-width screen (≤ 600 px), and on a
 phone-shaped panel on a wide one, the cell is chosen **exactly as on a
@@ -2208,7 +2224,10 @@ pair, the third the element):
    or the 1.14 cut-out. The third colour's lands still move neither `i` nor
    `j`. (1.18.1 keeps this: the cut-out of rule 4 stands in only for a
    painted picture the cell HAS, on that side, and lacks at the phone's
-   shape.)
+   shape.) **Amended in 1.19 a:** the third colour then draws its 1.14
+   cut-out (a phone: its `phone` piece), and with no cut-out its own 1.15
+   panel beside the cell -- never nothing; still never the other side, another
+   cell's picture or the stage's.
 4. **On a phone,** the painted picture is drawn only if it carries its own
    `phone`; else the cell's phone picture is drawn and the third colour draws
    nothing, and the caption says nothing of it. (A phone-shaped panel on a
@@ -2259,12 +2278,13 @@ played and could not see. So, on a **phone-width screen** (≤ 600 px):
   plain cell (the amendment is for the phone-width screen, where the plan
   is made).
 - **A fourth or fifth colour** is unchanged: dropped by the one makeup rule,
-  it draws nothing.
+  it draws nothing. *(Amended in 1.19 a: every colour past the third is
+  drawn as its cut-out, on a phone its `phone` piece.)*
 
 pairs-v7.1's 660 painted pictures carry no phone picture, so on a phone every
 painted cell takes the cut-out until a painter adds them. ForgeCoach's own
-cut-outs with phone pieces are pack-v9.2's (`pieces-v1`); a pack without
-`pieces` (pack-v9.1) draws none. `src/ambience/pairfull.ts` decides it
+cut-outs with phone pieces are pack-v9.2's (`pieces-v1`), ForgeCoach's
+default pack since 1.19 d; a pack without `pieces` (pack-v9.1) draws none. `src/ambience/pairfull.ts` decides it
 (`pairFullPlan`'s `phoneElements`, pieces.ts `phoneElementBiomes`; the plan's
 `element` on a grid cell; `pairFullCutOutAllowed`), ScenePieces draws it
 (`pairs-v7.1.test.ts`, `pairs-grid-phone.test.ts`, `sceneryDom.test.tsx`).
@@ -2284,7 +2304,7 @@ cell's** painted-in pictures, and to nothing else:
   cell), a phone-width screen warms that cell's **phone** picture when it has
   one, and nothing for a cell without one (as 1.17).
 - **Painted-in cells.** For the cell a pair shows now (its two halves' own
-  stages, through the clamp), its painted pictures for each other colour on
+  stages; since 1.19 c the exact cell only), its painted pictures for each other colour on
   the side that is not heavier than either pair colour (so this pair is the
   one drawn): both of the cell's sides at `i = j` (a land that turns the
   balance flips the side, as 1.16.1 warms both), its one side otherwise; on a
@@ -2331,6 +2351,128 @@ warming); `src/ambience/pairfull.ts` chooses it (`pairFullPlan`'s
 `testdata/pairs-v7.pairs.json`, `pairs-v7.1.test.ts` on the tagged
 pairs-v7.1 manifest, `testdata/pairs-v7.1.tag.pairs.json`,
 `sceneryDom.test.tsx`).
+
+### Every colour, the base pair, no clamp (1.19, draft)
+
+**A draft amendment, reader only, no new field.** On 2 November 2026 the
+storyboard (pc-results `scenery/STORYBOARD.md`: the live `#ambience` board
+land by land against SYSTEM.md, desktop and phone) showed four things the
+owner ruled on the same day: a soup deck's fourth and fifth colours drawn as
+nothing for most of a game, a single land re-keying the whole half to another
+pair, a one-land splash drawn at stage 4 by the clamp, and a phone that never
+showed a third colour. Four rules, numbered so the board, the tests and
+SYSTEM.md can name them. Every 1.0–1.18.1 pack and pairs manifest is read
+unchanged; what changes is what the reader draws from them.
+
+**1.19 a -- Every colour visible.** The fold to three (1.10, 1.16, SYSTEM.md
+A6) is gone. A side keeps its pair's picture and its third colour as 1.15–1.18
+say -- the third painted into the picture where the picture shown has it --
+and draws **every further colour** as its 1.14 cut-out element.
+
+- **Which colours.** The pair (b below) and the third colour (the heaviest
+  other; a tie, the one showing, then the earlier arrival) are the *kept*
+  colours; the rest, heaviest first (a tie, the earlier arrival), are the
+  *extras*. The extras weigh nothing in the pair, the pan or a panel's width;
+  their lands count in the stage, as before.
+- **The third colour, never nothing.** Painted in where the picture shown
+  has it (1.16.1, 1.18); else its cut-out -- on a seam cell too, desktop or
+  phone (1.18.1 on a phone, now everywhere), and over a pair apart (c); else,
+  with no cut-out for it at this shape, its own 1.15 panel beside the pair
+  picture. (1.17 and 1.18 rule 3 drew nothing on a cell with no painted
+  picture of it.)
+- **The stack.** The elements stand on the pair's grounds in weight order:
+  the **heavier** pair colour's ground first, then the **lighter**'s. The
+  heavier ground holds **two** -- the third colour (painted in or cut out;
+  a painted one keeps its place, so a fourth colour's cut-out does not jump
+  when the painting loads) and the fourth -- side by side, the heaviest at
+  the half's outer edge; the lighter ground holds the fifth. A colour with no
+  cut-out at this shape takes no place. Each element is placed by its own
+  `place` in its share of the ground.
+- **Never on the seam core.** A ground's region stops short of the
+  transition by the seam core: 0.07 of the pair picture's drawn width either
+  side of its transition (the painter's core is 0.43–0.57 of a cell), at
+  least 1.15's 0.05 of the half; over a pair apart or the board's panels, the
+  plain seam's width (`half.seamRatio`).
+- **Faded by its share.** Each element's opacity is n × its colour's weight
+  over every coloured land on the half, at most 1, with n the colours on the
+  half -- an equal share is fully in. With three colours this is 1.14's rule
+  (an equal third fully in).
+- **A phone.** On a phone-width screen (≤ 600 px) each cut-out is its
+  `phone` piece (1.18.1's rule, for every element but the 1.14 third on a
+  stage picture, which keeps 1.14's phone-else-desktop); an element with no
+  phone piece draws nothing there.
+- **Without the flag** (the board's 1.10 panels): the three kept colours keep
+  their panels, and the extras stand on the pair colours' panels by the same
+  stack (the heavier's panel two, the lighter's the rest), less the seams.
+- **The caption** names every cut-out after the picture: "…, seam 2x2; G
+  painted in, on island's ground; mountain as an element", "…; swamp,
+  mountain and forest as elements"; without the flag, after the band list.
+- **Fronts.** An extra is on screen, so its arrival plays its front (1.14).
+
+`src/ambience/makeup.ts` (`pickMakeup`'s `extras`, `elementOpacity`),
+`src/ambience/pieces.ts` (`stackElements`, `stackRegion`, `panelGround`,
+`halfCutOuts`: the one rule ScenePieces draws and the storyboard walk
+counts), `src/ambience/pairfull.ts` (the plan's `element` on a cell, its
+`extras`, `PAIR_FULL_SEAM_CORE`, `pairFullElementRegion`, the caption).
+
+**1.19 b -- The pair is the base.** The pair showing **stays** while both its
+colours are among the three heaviest by weight -- fewer than three colours
+strictly outweigh each, so a tie at the edge of the top three is not leaving
+it. It changes only when one of its colours leaves the top three, and then to
+the heaviest pair among the top three (SYSTEM.md A5's tie rule: a colour of
+the pair showing, then the earlier arrivals). With nothing showing (the
+half's first pair) the pair is the two heaviest, as before. The third colour may now outweigh the pair: it is the element,
+fully in. Worked through the storyboard's sequences (desktop and phone):
+Island, Swamp, Mountain, Mountain, Island, Swamp, Forest ×3 keeps
+island+swamp from the second land to the last (1.16 went to island+mountain
+at the second Mountain, back at the second Swamp, and to island+forest at
+the third Forest); W U B R G twice, then Forest, Island keeps island+plains
+throughout; and SYSTEM.md's worked example keeps mountain+plains at T8, the
+Island its element. Along play, every state with no dual played land by land
+with the memory carried: 28,362 pair changes against the old rule's 69,210,
+each one a pair colour leaving the top three. `src/ambience/makeup.ts`
+`pickMakeup`; MakeupMemory carries the pick, as before.
+
+**1.19 c -- No clamp.** When a pair has a seam grid and the cell for its two
+colours' own stages is missing (on pairs-v7.1, the stages more than one
+apart), the half is **not** a raised cell. It draws **each colour's own mono
+picture** -- the pack's 1.5 `half` picture at that colour's own stage, its
+phone picture on a phone -- side by side at the pair's split, where the
+cell's two halves would be (the geography's order, swapped when the board
+has the pair the other way round, as the cell would be mirrored; each mono
+picture drawn as itself, never mirrored), joined by the plain 1.10 mist seam,
+with **no band picture**. The third colour is its cut-out there (no painted
+picture exists for that pair of stages). The caption says "island s1 | forest
+s5, no seam cell" (the geography's order, as a cell's), and the two panels
+carry `data-apart` (the pair key) and `data-apart-cell` (the missing cell).
+**A cell, when it exists, is always preferred**: painting the missing cells
+later needs no code change. Nothing loads but the mono pictures (warmed as
+every slot's); a cell wanted next is held for as 1.17 holds a forming pair.
+Warming takes exact cells only. A pair with no grid draws its `stages` as
+before. `src/ambience/pairs.ts` (`pairGridPick`: the exact cell or none),
+`src/ambience/pairfull.ts` (`pairFullApart`, the plan's `apart`,
+`pairFullApartView`, `apartCaption`, `pairFullHold`), SceneryStrip.
+
+**1.19 d -- pack-v9.2 is the default.** `FORGECOACH_PACK_URL` is
+`https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v9.2/pack/`:
+pack-v9.1 plus its 1.14 `pieces` at their own tag (`@pieces-v1`, by absolute
+URL) -- five elements, each with a `phone` piece; fronts for W, U, B and G
+(red's is held); the won and lost veils; the empty table. So every board,
+with `?pairfull=1` and without, now draws the batch-3 pieces: the empty
+table before a side's first colour, a colour's front when it arrives or
+leaves, the end's veil, and the elements 1.19 a needs (the walk's last gap,
+the third colour on a phone's seam cell, was a pack with no phone pieces).
+`src/ambience/pack-v9-2.test.ts` is its manifest byte for byte.
+
+**The walk.** `src/ambience/storyboard.test.ts` walks every vector of 0–6
+lands a colour (three arrival orders, and the duals) through the board's
+rules at a desktop and a phone, with the flag and without: since 1.19 no
+colour with lands is hidden anywhere (its allow-list is empty, and the test
+that every colour is on screen is a plain one), and from a state picked with
+nothing showing no single land flips the pair picture (15,745 of 206,555
+steps did under the flag before). `src/ambience/scenery-1.19.test.ts` plays
+the storyboard's sequences on the real packs; `e2e/ambience.e2e.mjs` plays
+them land by land in a browser on a desktop and a phone.
 
 ## 3. Files and budgets
 
