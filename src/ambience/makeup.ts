@@ -39,7 +39,8 @@
  * Pure and DOM-free.
  */
 import { PIECE_COLOURS, type PieceColour } from './manifest.ts';
-import type { Biome, Scenery, SceneryObserver, SlotState } from './model.ts';
+import { SceneryTracker, type Biome, type Scenery, type SceneryObserver, type SceneryOptions, type SlotState } from './model.ts';
+import type { GameLog } from '../log.ts';
 
 export const BIOME_COLOUR: Partial<Record<Biome, PieceColour>> = { plains: 'W', island: 'U', swamp: 'B', mountain: 'R', forest: 'G' };
 export const COLOUR_BIOME: Record<PieceColour, Biome> = { W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' };
@@ -180,4 +181,21 @@ export class MakeupMemory implements SceneryObserver {
   showing(playerId: number): MakeupPick | null {
     return this.picks.get(playerId) ?? null;
   }
+}
+
+/**
+ * model.ts `sceneryFromLog` with a {@link MakeupMemory} folded over the same
+ * state frames: the scenery at `frameIndex` and what each half shows there
+ * (`memory.showing(playerId)`, the tie rules' "already showing"), as
+ * SceneryLayer has them for the board. For a page that rebuilds its log on
+ * every play (`#ambience`, sim.ts `simLog`): before this, the preview drew
+ * every half with no `showing`, so a tie went back to the earlier-arrived
+ * colours (I S M M I S drew island+swamp again at the sixth land, where the
+ * board keeps island+mountain; the storyboard of 2026-11-02, sheets 5 and 7).
+ */
+export function sceneryWithShowing(log: GameLog, frameIndex: number, opts: SceneryOptions = {}): { scenery: Scenery; memory: MakeupMemory } {
+  const memory = new MakeupMemory();
+  const tracker = new SceneryTracker(opts);
+  tracker.observe(memory);
+  return { scenery: tracker.at(log, frameIndex), memory };
 }

@@ -134,6 +134,11 @@ interface FlipStats {
   transitions: number;
   /** The half's pair picture changed to another pair (both before and after a pair picture). */
   pairFlips: number;
+  /**
+   * Of those, the flips SYSTEM.md A5's tie rule forbids: the pair drawn before is still kept and still as heavy as
+   * the pair drawn after ("on a tie, the pair already showing stays"). Zero, or the walk found a tie-rule fault.
+   */
+  tieFlips: number;
   /** A colour on screen before the land is on screen no longer after it. */
   lostColour: number;
   flipExamples: (Example & { from: string; added: PieceColour })[];
@@ -209,7 +214,7 @@ function walk(): Walk {
     w.tallies[id] = {};
     w.byMinLands[id] = {};
     w.cross[id] = {};
-    w.flips[id] = { transitions: 0, pairFlips: 0, lostColour: 0, flipExamples: [], lostExamples: [], flipsByColours: {} };
+    w.flips[id] = { transitions: 0, pairFlips: 0, tieFlips: 0, lostColour: 0, flipExamples: [], lostExamples: [], flipsByColours: {} };
     w.five[id] = { states: 0, hidden: {}, drawn: {} };
   }
   for (const { state, order } of all) {
@@ -257,6 +262,9 @@ function walk(): Walk {
         if (h.picturePair && h2.picturePair && h.picturePair.join() !== h2.picturePair.join()) {
           fl.pairFlips++;
           by.flips++;
+          const was = h.picturePair;
+          const kw = h2.pick.weights;
+          if (was.every((x) => h2.pick.kept.includes(x)) && Math.abs((kw[was[0]] ?? 0) + (kw[was[1]] ?? 0) - h2.picturePair.reduce((n, x) => n + (kw[x] ?? 0), 0)) < 1e-9) fl.tieFlips++;
           fl.flipExamples.push({ ...exampleOf(next, h2), from: h.picture, added: add });
           if (fl.flipExamples.length > 400) fl.flipExamples = fl.flipExamples.sort(bySize).slice(0, 12);
         }
@@ -349,9 +357,11 @@ describe('the storyboard walk: every colour with lands, on screen', () => {
     const w = walk();
     const lines = COMBOS.map((c) => {
       const f = w.flips[comboId(c)]!;
-      return `  ${comboId(c).padEnd(17)} ${f.transitions} steps: pair picture flips ${f.pairFlips} (${pct(f.pairFlips, f.transitions)}), a colour on screen lost ${f.lostColour} (${pct(f.lostColour, f.transitions)})`;
+      return `  ${comboId(c).padEnd(17)} ${f.transitions} steps: pair picture flips ${f.pairFlips} (${pct(f.pairFlips, f.transitions)}), of which on a tie ${f.tieFlips}, a colour on screen lost ${f.lostColour} (${pct(f.lostColour, f.transitions)})`;
     });
     console.log(`one basic land more:\n${lines.join('\n')}`);
+    // SYSTEM.md A5: on a tie the pair already showing stays, so no step flips away from a pair that still ties the heaviest.
+    for (const c of COMBOS) expect(w.flips[comboId(c)]!.tieFlips, `${comboId(c)}: a land flipped the pair on a tie`).toBe(0);
     // The flag off never draws a pair picture, so it never flips one.
     expect(w.flips['default/desktop']!.pairFlips).toBe(0);
     expect(w.flips['pairfull/desktop']!.transitions).toBeGreaterThan(0);
@@ -462,10 +472,10 @@ function reportMarkdown(w: Walk): string {
 
   out.push('## One land more: does the half switch picture?', '');
   out.push('Every state with no dual, plus one basic land of each colour that has fewer than six, with what the half showed before as the tie-breaker (MakeupMemory). A **pair flip** is the whole half switching from one pair picture to another; **a colour lost** is a colour on screen before the land and not after it.', '');
-  head(['mode', 'steps', 'pair flips', 'a colour lost']);
+  head(['mode', 'steps', 'pair flips', 'of which on a tie (A5 forbids)', 'a colour lost']);
   for (const id of ids) {
     const f = w.flips[id]!;
-    out.push(`| ${id} | ${f.transitions.toLocaleString('en')} | ${f.pairFlips.toLocaleString('en')} (${pct(f.pairFlips, f.transitions)}) | ${f.lostColour.toLocaleString('en')} (${pct(f.lostColour, f.transitions)}) |`);
+    out.push(`| ${id} | ${f.transitions.toLocaleString('en')} | ${f.pairFlips.toLocaleString('en')} (${pct(f.pairFlips, f.transitions)}) | ${f.tieFlips.toLocaleString('en')} | ${f.lostColour.toLocaleString('en')} (${pct(f.lostColour, f.transitions)}) |`);
   }
   out.push('');
   for (const id of ids.filter((x) => x.startsWith('pairfull'))) {

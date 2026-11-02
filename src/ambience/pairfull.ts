@@ -88,7 +88,7 @@
 import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome, type SlotState } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf, PieceColour } from './manifest.ts';
-import { pairElementAt, pairFor, pairGridGivesWay, pairGridPaintedAt, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
+import { pairElementAt, pairFor, pairGridGivesWay, pairGridPaintedAt, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, pairWords, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
@@ -616,13 +616,18 @@ export function pairFullElementSide(p: PairFullPair, indexOf: (b: Biome) => numb
   return board === 'left' ? 'right' : 'left';
 }
 
-/** A caption for the preview page: "Tundra, whole half: island 80% | plains 20%, pair stage 2". */
-export function pairFullCaption(items: readonly PairFullItem[] | null): string | null {
+/**
+ * A caption for the preview page: "island + plains, whole half: island 80% |
+ * plains 20%, pair stage 2" -- the pair by its colours, with its dual or shock
+ * land's name only when a land of that name is on the half (`lands`,
+ * pairs.ts `pairWords`).
+ */
+export function pairFullCaption(items: readonly PairFullItem[] | null, lands: ReadonlySet<string> | null = null): string | null {
   const p = items?.find((x): x is PairFullPair => x.kind === 'pair');
   if (!p) return null;
   const third = items!.find((x): x is PairFullSlot => x.kind === 'slot');
   const pct = (n: number) => `${Math.round(n * 100)}%`;
-  return `${p.pair.dual ?? p.key}${p.pair.shock ? ` (${p.pair.shock})` : ''}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, ${p.grid ? gridCaption(p.grid) : `pair stage ${p.stage}`}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${p.element ? elementCaption(p) : ''}`;
+  return `${pairWords(p.left, p.right, p.pair, lands)}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, ${p.grid ? gridCaption(p.grid) : `pair stage ${p.stage}`}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${p.element ? elementCaption(p) : ''}`;
 }
 
 /**

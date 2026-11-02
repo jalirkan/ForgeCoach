@@ -129,7 +129,10 @@ describe('spec 1.15: the plan', () => {
     expect(items!.filter((x) => x.kind === 'pair')).toHaveLength(1);
   });
   it('captions the plan for the preview page', () => {
-    expect(pairFullCaption(plan([slot('island', 0, 4, 4), slot('plains', 1, 1, 1)]))).toBe('Tundra (Hallowed Fountain), whole half: island 80% | plains 20%, pair stage 3');
+    // The pair by its colours (the storyboard of 2026-11-02: the dual's name read as a card in play) ...
+    expect(pairFullCaption(plan([slot('island', 0, 4, 4), slot('plains', 1, 1, 1)]))).toBe('island + plains, whole half: island 80% | plains 20%, pair stage 3');
+    // ... and its dual or shock land only when one of that name is on the half.
+    expect(pairFullCaption(plan([slot('island', 0, 4, 4), slot('plains', 1, 1, 1)]), new Set(['Hallowed Fountain', 'Island']))).toBe('island + plains (Hallowed Fountain), whole half: island 80% | plains 20%, pair stage 3');
     expect(pairFullCaption(null)).toBeNull();
   });
 });
@@ -165,7 +168,7 @@ describe('one makeup rule for the strip, the caption and the pieces', () => {
     // The stage counts every coloured land, the dropped mountain's too (SYSTEM.md A5): four lands, pair stage 2.
     expect([p.stage, plan.pairStage]).toEqual([2, 2]);
     expect(plan.pick.total).toBe(4);
-    expect(pairFullCaption([p])).toBe('Tundra (Hallowed Fountain), whole half: plains 50% | island 50%, pair stage 2; swamp as an element');
+    expect(pairFullCaption([p])).toBe('plains + island, whole half: plains 50% | island 50%, pair stage 2; swamp as an element');
   });
 
   it('four unequal colours: the lightest dropped, the pan by the pair’s own weights (before: 4 : 2, panned by the mountain)', () => {

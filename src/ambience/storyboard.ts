@@ -25,8 +25,10 @@
  * - otherwise (no flag, or no plan) the 1.10 row: the panels, pairs.ts
  *   `pairBands` (bands and motifs) and bridges.ts `bridgePlacements`;
  * - the caption `#ambience` prints (AmbiencePage's `bandCaption`, mirrored
- *   here because it is not exported: `pairFullCaption` of a plan made with no
- *   `showing`, else the band list).
+ *   here because it is not exported: `pairFullCaption` of the same plan --
+ *   the same `showing` --, else the band list; a pair named by its colours,
+ *   its dual's name only for a dual on the half, which here is the pack's
+ *   own `dual` name, as `#ambience`'s Duals row plays the ten originals).
  *
  * It changes no rule: it reads them. Pure and DOM-free;
  * `storyboard.test.ts` walks every state through it.
@@ -36,7 +38,7 @@ import { pairKey, stageFor, stageProgress, type Biome, type SlotState } from './
 import { halfLayout } from './layout.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupPick, type MakeupShowing } from './makeup.ts';
 import { pairFullCandidates, pairFullCaption, pairFullChoice, pairFullCutOutAllowed, pairFullHeavierSide, pairFullPanelAspect, pairFullPlan, type PairFullCandidate, type PairFullPair } from './pairfull.ts';
-import { bandedSeams, motifBands, pairBands, pairGridPaintedAt, panelBands, type PairsPack, type PairSide } from './pairs.ts';
+import { bandedSeams, motifBands, pairBands, pairFor, pairGridPaintedAt, pairWords, panelBands, type PairsPack, type PairSide } from './pairs.ts';
 import { bridgePlacements, phoneHalf } from './bridges.ts';
 import { elementBiomes } from './pieces.ts';
 
@@ -144,15 +146,26 @@ export function captionColours(caption: string | null, pairs: PairsPack | null):
   return PIECE_COLOURS.filter((c) => out.has(c));
 }
 
+/** The land names a state puts on the half for the caption: each dual as its pair's own `dual` name (the original, as #ambience plays it). */
+export function landNamesFor(state: ManaState, pairs: PairsPack | null): Set<string> {
+  const out = new Set<string>();
+  for (const [a, b] of state.duals) {
+    const name = pairFor(pairs, COLOUR_BIOME[a], COLOUR_BIOME[b])?.pair.dual;
+    if (name) out.add(name);
+  }
+  return out;
+}
+
 /** AmbiencePage's `bandCaption` (not exported there): the pair picture's caption under the flag, else the bands in words. */
-function bandCaption(pack: ScenePack, pairs: PairsPack | null, slots: SlotState[], duals: Record<string, number>, pairfull: boolean, narrow: boolean): string | null {
+function bandCaption(pack: ScenePack, pairs: PairsPack | null, slots: SlotState[], duals: Record<string, number>, pairfull: boolean, narrow: boolean, showing: MakeupShowing | null, lands: ReadonlySet<string>): string | null {
   const elements = pairfull ? elementBiomes(pack.pieces) : null;
-  const full = pairfull && pairs ? pairFullCaption(pairFullPlan(halfLayout(slots, pack, null), pairs, { thresholds: pack.stageThresholds, stageOverride: null, elements, slots, narrow })) : null;
+  const layout = halfLayout(slots, pack, null, showing);
+  const full = pairfull && pairs ? pairFullCaption(pairFullPlan(layout, pairs, { thresholds: pack.stageThresholds, stageOverride: null, elements, showing, slots, narrow }), lands) : null;
   if (full) return full;
   if (!pairs) return null;
-  const bands = pairBands(halfLayout(slots, pack, null), pairs, duals);
+  const bands = pairBands(layout, pairs, duals);
   if (!bands.length) return null;
-  return bands.map((b) => `${b.pair.dual ?? b.key}${b.pair.shock ? ` (${b.pair.shock})` : ''}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ');
+  return bands.map((b) => `${pairWords(b.left, b.right, b.pair, lands)}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ');
 }
 
 const file = (src: string) => src.slice(src.lastIndexOf('/') + 1).replace(/\.webp$/, '');
@@ -242,7 +255,7 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
   const colours = pick.makeup.colours;
   const visible = colours.filter((c) => on.has(c));
   const invisible = colours.filter((c) => !on.has(c)).map((colour) => ({ colour, reason: pick.dropped.includes(colour) ? ('dropped' as const) : colour === pick.third && thirdReason ? thirdReason : ('unexplained' as const) }));
-  const caption = opts.caption === false ? null : bandCaption(pack, pairs, slots, duals, pairfull, narrow);
+  const caption = opts.caption === false ? null : bandCaption(pack, pairs, slots, duals, pairfull, narrow, memory, landNamesFor(state, pairs));
   return { shape, pairfull, colours, visible, invisible, picturePair, picture, drawn, caption, captionNames: captionColours(caption, pairs), pick };
 }
 
