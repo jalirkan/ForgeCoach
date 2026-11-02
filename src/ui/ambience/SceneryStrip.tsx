@@ -118,6 +118,8 @@ export interface SceneryStripProps {
   pairFull?: boolean;
   /** Spec 1.14 under `pairFull`: the biomes the pieces have an element for; a third such biome is drawn as an element (ScenePieces), not a panel. */
   elements?: ReadonlySet<Biome> | null;
+  /** Spec 1.18.1 under `pairFull`: the biomes whose element has a phone piece; a phone draws one on a seam cell whose painted picture has no phone picture. */
+  phoneElements?: ReadonlySet<Biome> | null;
   /** What was showing before (makeup.ts; SceneryLayer's previous pick): the tie rules, shared with the pieces. */
   showing?: MakeupShowing | null;
   className?: string;
@@ -141,7 +143,7 @@ export function usePageVisible(): boolean {
 
 const NO_DUALS: Readonly<Record<string, number>> = {};
 
-export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, horizon = false, pairFull = false, elements = null, showing = null, className, style }: SceneryStripProps) {
+export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bottom', orient = 'upright', reduced, pulses, fx, stageOverride = null, fill = 'strip', duals = NO_DUALS, horizon = false, pairFull = false, elements = null, phoneElements = null, showing = null, className, style }: SceneryStripProps) {
   const visible = usePageVisible();
   const settled = useRef(false);
   useEffect(() => {
@@ -159,7 +161,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const narrow = useNarrowScreen();
   // Spec 1.17: on a phone-width screen a desktop-only seam grid cell is not planned; the half is the pair's stages (1.18: a
   // cell with a phone picture is planned there too).
-  const plannedFull = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride, elements, showing, slots, narrow }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride, elements, showing, slots, narrow]);
+  const plannedFull = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow]);
   // Spec 1.15's load gate (review fault 4): the pair picture is drawn once a picture of it has loaded (1.16: a painted-in
   // element first). Until then the half holds what it drew last (the review of #198: no panels-and-band flash on a cold
   // cache), for PAIR_FULL_HOLD_MS at most; with nothing drawn before, or if every picture fails, its panels. Never blank.

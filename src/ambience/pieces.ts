@@ -93,6 +93,17 @@ export function elementBiomes(pieces: Pick<PackPieces, 'elements'> | null | unde
   return out.size ? out : null;
 }
 
+/**
+ * Spec 1.18.1: the biomes whose element has a `phone` picture (pairfull.ts `pairFullPlan`'s `phoneElements`), or
+ * null with none. A phone-width screen draws one of these on a seam cell whose painted picture of the colour has no
+ * phone picture; an element with no phone piece draws nothing there.
+ */
+export function phoneElementBiomes(pieces: Pick<PackPieces, 'elements'> | null | undefined): ReadonlySet<Biome> | null {
+  const out = new Set<Biome>();
+  for (const c of PIECE_COLOURS) if (pieces?.elements[c]?.phone) out.add(COLOUR_BIOME[c]);
+  return out.size ? out : null;
+}
+
 /** Visible lands on a player's battlefield, by name, in the battlefield's order (the engine's: earliest first). */
 export function landNamesOf(state: GameStateBody | null, playerId: number): string[] {
   const p = state?.players.find((x) => x.id === playerId);

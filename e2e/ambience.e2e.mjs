@@ -36,7 +36,18 @@
  *      the caption says "whole half" and no "seam" (e2e/out/grid-phone.png)
  *      -- unless the cell 4x3 carries a `phone` picture (spec 1.18): then the
  *      phone draws that cell's phone picture, names the cell, fetches no
- *      desktop seam picture, and the caption names the seam.
+ *      desktop seam picture, and the caption names the seam; then (spec
+ *      1.18.1) the worked example on the phone, with Placeholders (their
+ *      elements have phone pieces): red's cut-out -- its phone piece -- on
+ *      the plains' ground over island+plains' plain phone cell, captioned
+ *      "mountain as an element", where the cell's red painted picture has no
+ *      phone picture (pairs-v7.1's); the painted phone picture and no cut-out
+ *      where it has one (e2e/out/grid-phone-three.png).
+ *
+ *   6. SYSTEM.md A5's tie rule (the storyboard of 2026-11-02, sheet 5): Island, Swamp, Mountain, Mountain,
+ *      Island, Swamp keeps island+mountain at the sixth land (all three tie; the pair showing stays), and the
+ *      caption names the pair by its colours ("island + mountain"), never a dual nobody played. On the phone
+ *      (5), the caption is at most two lines.
  *
  *   Spec 1.18 likewise on the worked example: on a grid pair whose cell has
  *   red painted in (`elements.R`), the cell's painted picture is drawn and
@@ -192,6 +203,7 @@ async function main() {
     await page.waitForTimeout(3000);
     await page.screenshot({ path: path.join(OUT, 'ambience-three.png') });
     const ran = await gridChecks(page, manifestPairs, errors);
+    await tieCheck(page, errors);
     if (ran) await phoneCheck(browser, origin, pairs, manifest);
   } catch (e) {
     failed = true;
@@ -277,6 +289,34 @@ async function workedExamplePainted(page, pairs, server) {
     check(painted.includes('/pairs/island-plains/s2+RR-panorama.webp'), 'the right side was never fetched');
   }
   log('PASS: the worked example draws R painted in on plains’s ground (s2+RR), mirrored, with no cut-out');
+}
+
+/**
+ * SYSTEM.md A5: "on a tie, the pair already showing stays". I S M M I S (the Lands sliders append each land, so this
+ * is the play order): island+swamp, then island+mountain at the second Mountain, kept through U2 B2 R2. The caption
+ * names the pair by its colours and no dual (none was played).
+ */
+async function tieCheck(page, errors) {
+  const reset = await page.$('[data-amb-reset]:not([disabled])');
+  if (reset) await reset.click();
+  for (const [biome, n] of [['island', 1], ['swamp', 1], ['mountain', 2], ['island', 2], ['swamp', 2]]) await setLands(page, biome, n);
+  await page.waitForSelector('[data-amb-player="1"] [data-pairfull]', { timeout: TIMEOUT });
+  await page.waitForTimeout(500);
+  const keys = await page.$$eval('[data-amb-player="1"] [data-pairfull]', (els) => els.map((e) => e.getAttribute('data-pairfull')));
+  const caption = (await page.textContent('[data-amb-bands="1"]')) ?? '';
+  log(`the tie: I S M M I S draws ${keys.join(', ')}; caption: ${caption}`);
+  check(keys.length > 0 && keys.every((k) => k === 'island+mountain'), `on a tie the pair showing (island+mountain) should stay: ${keys.join(', ')}`);
+  check(/^Pair band · island \+ mountain, /.test(caption), `the caption should name the pair by its colours: ${caption}`);
+  check(!/Volcanic Island|Steam Vents|Underground Sea|Watery Grave/.test(caption), `the caption names a dual nobody played: ${caption}`);
+  check(errors.length === 0, `page errors: ${errors.join('; ')}`);
+  log('PASS: the tie keeps the pair showing (island+mountain), captioned by its colours');
+}
+
+/** The caption under a side's header on a phone: at most two lines (the storyboard's sheet 9); logs whether the clamp cut it. */
+async function captionLines(page) {
+  const m = await page.$eval('[data-amb-bands="1"]', (el) => ({ h: el.getBoundingClientRect().height, full: el.scrollHeight, line: parseFloat(getComputedStyle(el).lineHeight) }));
+  log(`phone caption: ${Math.round(m.h)} px shown of ${m.full} px, line ${m.line} px (${m.full > m.h + 1 ? 'clamped' : 'fits'})`);
+  check(Number.isFinite(m.line) && m.h <= 2 * m.line + 1, `phone: the caption is taller than two lines (${m.h} px, line ${m.line} px)`);
 }
 
 /** Sets one Lands slider of your side (React listens for `input`). */
@@ -388,7 +428,7 @@ async function formingCheck(page, errors) {
  * and fetches no desktop seam picture.
  */
 async function phoneCheck(browser, origin, pairs, manifest) {
-  if (manifest.pairs?.['island+swamp']?.grid?.['4x3']?.phone) return phoneCellCheck(browser, origin, pairs);
+  if (manifest.pairs?.['island+swamp']?.grid?.['4x3']?.phone) return phoneCellCheck(browser, origin, pairs, manifest);
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   const errors = [];
@@ -411,6 +451,7 @@ async function phoneCheck(browser, origin, pairs, manifest) {
     check(cellAttr === null, `phone: a cell is named (${cellAttr})`);
     check(/\/pairs\/island-swamp\/s\d-panorama-phone\.webp$/.test(src ?? ''), `phone: not the stage panorama's phone picture: ${src}`);
     check(caption.includes('whole half') && !/seam/.test(caption), `phone: the caption names a seam or no whole half: ${caption}`);
+    await captionLines(page);
     check(seams.length === 0, `phone: ${seams.length} seam picture(s) fetched: ${seams.join(', ')}`);
     check(errors.length === 0, `phone: page errors: ${errors.join('; ')}`);
     await page.waitForTimeout(1500);
@@ -421,8 +462,11 @@ async function phoneCheck(browser, origin, pairs, manifest) {
   }
 }
 
-/** Spec 1.18: a phone on a cell with a phone picture: island 4 | swamp 3 draws `s4x3-panorama-phone.webp` and names it. */
-async function phoneCellCheck(browser, origin, pairs) {
+/**
+ * Spec 1.18: a phone on a cell with a phone picture: island 4 | swamp 3 draws `s4x3-panorama-phone.webp` and names it.
+ * Then spec 1.18.1, the worked example on the phone (Placeholders, whose elements have phone pieces as pack-v9.2's do).
+ */
+async function phoneCellCheck(browser, origin, pairs, manifest) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   const errors = [];
@@ -443,14 +487,61 @@ async function phoneCellCheck(browser, origin, pairs) {
     const desktop = seams.filter((u) => !/-phone\.webp$/.test(u));
     log(`phone: cell 4x3, img ${src}; caption: ${caption}; seam pictures fetched: ${seams.length}, ${desktop.length} desktop`);
     check(caption.includes('island s4 | swamp s3, seam 4x3'), `phone: the caption does not name the cell: ${caption}`);
+    await captionLines(page);
     check(desktop.length === 0, `phone: ${desktop.length} desktop seam picture(s) fetched: ${desktop.join(', ')}`);
     check(errors.length === 0, `phone: page errors: ${errors.join('; ')}`);
     await page.waitForTimeout(1500);
     await page.screenshot({ path: path.join(OUT, 'grid-phone.png') });
     log('PASS: a phone draws the cell 4x3 from its phone picture (spec 1.18) and fetches no desktop cell');
+    await phoneThirdCheck(page, manifest, errors);
   } finally {
     await ctx.close();
   }
+}
+
+/**
+ * Spec 1.18.1: the worked example (Plateau, Plains, Island) on the phone. island+plains' cell has red painted in on the
+ * plains' half (the cell's right: the geography puts the island left). A painted picture with its own phone picture is
+ * drawn as 1.18 says, with no cut-out; one without (pairs-v7.1's, all 660) gives way to the red cut-out -- the element's
+ * PHONE piece -- on the plain cell's phone picture, on the plains' ground, and the caption says "mountain as an element".
+ */
+async function phoneThirdCheck(page, manifest, errors) {
+  await page.click('[data-pieces-toggle="builtin"]');
+  await page.click('[data-pieces-three]');
+  const panel = await page.waitForSelector('[data-amb-player="1"] [data-pairfull="island+plains"][data-pairfull-cell]', { timeout: TIMEOUT });
+  const cell = await panel.getAttribute('data-pairfull-cell');
+  const entry = manifest.pairs['island+plains'].grid[cell]?.elements?.R;
+  const pic = entry ? (entry.right ?? entry.src ?? null) : null;
+  const picture = pic && typeof pic === 'object' ? pic : pic ? { src: pic } : null;
+  if (picture?.phone) {
+    await page.waitForSelector(`[data-amb-player="1"] [data-pairfull="island+plains"][data-pairfull-cell="${cell}"][data-pairfull-painted="R"]`, { timeout: TIMEOUT });
+    await page.waitForFunction((c) => [...document.querySelectorAll('[data-amb-player="1"] [data-pairfull] img')].every((i) => new RegExp(`s${c}\\+RR-panorama-phone\\.webp$`).test(i.getAttribute('src') ?? '')), cell, { timeout: TIMEOUT });
+    await page.waitForTimeout(1500);
+    const cutOuts = await page.$$eval('[data-amb-player="1"] [data-pc="element"]', (els) => els.length);
+    check(cutOuts === 0, `phone: ${cutOuts} cut-out(s) drawn over the cell ${cell}'s painted phone picture`);
+    log(`PASS: a phone draws the cell ${cell} with red painted in from its own phone picture (spec 1.18), no cut-out`);
+    return;
+  }
+  check(!!picture, `phone: island+plains' cell ${cell} has no red painted on the plains' side: the worked example has no third colour to show`);
+  // 1.18.1: the plain cell's phone picture, the cut-out over it.
+  await page.waitForFunction((c) => [...document.querySelectorAll('[data-amb-player="1"] [data-pairfull] img')].every((i) => new RegExp(`/seams/island-plains/s${c}-panorama-phone\\.webp$`).test(i.getAttribute('src') ?? '')), cell, { timeout: TIMEOUT });
+  const el = await page.waitForSelector('[data-amb-player="1"] [data-pc="element"][data-pc-colour="R"] img', { timeout: TIMEOUT });
+  const src = decodeURIComponent((await el.getAttribute('src')) ?? '');
+  const side = await page.getAttribute('[data-amb-player="1"] [data-pc="element"]', 'data-pc-side');
+  const element = await page.getAttribute('[data-amb-player="1"] [data-pairfull="island+plains"]', 'data-pairfull-element');
+  const painted = await page.$$eval('[data-amb-player="1"] [data-pairfull-painted]', (els) => els.length);
+  const caption = (await page.textContent('[data-amb-bands="1"]')) ?? '';
+  log(`phone, three colours: cell ${cell}, element ${element}, cut-out on the ${side} (${/phone/.test(src) ? 'its phone piece' : 'NOT its phone piece'}), painted ${painted}; caption: ${caption}`);
+  check(/R element placeholder/.test(src) && /phone/.test(src), `phone: the cut-out is not red's phone piece: ${src.slice(0, 120)}`);
+  check(side === 'left', `phone: the board has plains | island, so the plains' (heavier) ground is the left; the cut-out is on the ${side}`);
+  check(element === 'mountain', `phone: the pair panel names no element (${element})`);
+  check(painted === 0, `phone: ${painted} painted picture(s) drawn with no phone picture of their own`);
+  check(new RegExp(`seam ${cell}; mountain as an element`).test(caption) && !/painted in/.test(caption), `phone: the caption does not say "mountain as an element": ${caption}`);
+  check(errors.length === 0, `phone: page errors: ${errors.join('; ')}`);
+  await page.waitForTimeout(1500);
+  // Your half, scrolled into view (the Pieces buttons clicked above sit far below it on a phone).
+  await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, 'grid-phone-three.png') });
+  log(`PASS: a phone draws red's cut-out (its phone piece) on island+plains' cell ${cell} where the painted picture has no phone picture (spec 1.18.1)`);
 }
 
 main().catch((e) => {

@@ -404,6 +404,19 @@ export function pairHalfAt(pair: PackPair | null | undefined, stage: number): Pa
   return pair.stages[Math.min(stage, pair.stages.length) - 1]?.half ?? null;
 }
 
+/**
+ * A pair in a caption's words: its two colours as the board has them
+ * ("island + forest"), and the pack's `dual` / `shock` names only for a card
+ * of that name on the half (`lands`, the half's land names). Those names are
+ * the pair's labels in the manifest, not lands in play: "Tropical Island
+ * (Breeding Pool)" over every island+forest half read as a card the player
+ * had (the storyboard of 2026-11-02, sheet 2, turn 2).
+ */
+export function pairWords(left: Biome, right: Biome, pair: Pick<PackPair, 'dual' | 'shock'>, lands: ReadonlySet<string> | null = null): string {
+  const named = [pair.dual, pair.shock].filter((n): n is string => !!n && !!lands?.has(n));
+  return `${left} + ${right}${named.length ? ` (${named.join(', ')})` : ''}`;
+}
+
 /** The pair pack's entry for two biomes in either order, and whether to mirror it (the board has them the other way round). */
 export function pairFor(pairs: PairsPack | null | undefined, left: Biome, right: Biome): { pair: PackPair; mirror: boolean } | null {
   if (left === right) return null;

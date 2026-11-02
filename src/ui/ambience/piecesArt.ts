@@ -5,7 +5,9 @@
  * Spec 1.14's built-in placeholder pieces, for `#ambience` only (the board
  * never shows them): plain dashed shapes labelled "placeholder", so the
  * placement of landmarks, veils, fronts and the empty table can be judged
- * before any art is painted.
+ * before any art is painted. Each element has a phone piece too, as
+ * ForgeCoach's own (pack-v9.2's) do, so spec 1.18.1's phone cut-out on a
+ * seam cell (only a `phone` piece is drawn there) can be judged on a phone.
  */
 import type { PackFront, PackHalf, PackPiece, PackPieces, PieceColour, PiecePlace } from '../../ambience/manifest.ts';
 import { PIECE_COLOURS } from '../../ambience/manifest.ts';
@@ -60,7 +62,9 @@ export function builtinPieces(): PackPieces {
   const elements: PackPieces['elements'] = {};
   const fronts: PackPieces['fronts'] = {};
   for (const c of PIECE_COLOURS) {
-    elements[c] = piece(600, 300, `<ellipse cx="300" cy="220" rx="280" ry="70" fill="${TINT[c]}" fill-opacity="0.5"/>${label(300, 210, 26, `${c} element placeholder`)}`, { sit: 'ground', x: 0.5, w: 0.6, lift: 0 });
+    const el = piece(600, 300, `<ellipse cx="300" cy="220" rx="280" ry="70" fill="${TINT[c]}" fill-opacity="0.5"/>${label(300, 210, 26, `${c} element placeholder`)}`, { sit: 'ground', x: 0.5, w: 0.6, lift: 0 });
+    const phone = piece(300, 420, `<ellipse cx="150" cy="330" rx="140" ry="80" fill="${TINT[c]}" fill-opacity="0.5"/>${label(150, 320, 22, `${c} element placeholder`)}${label(150, 350, 18, 'phone')}`, el.place);
+    elements[c] = { ...el, phone: { src: phone.src, src2x: null, width: phone.width, height: phone.height } };
     fronts[c] = front(c);
   }
   cache = {

@@ -18,7 +18,7 @@ import { validateManifest, type PackPieces, type ScenePack } from '../../ambienc
 import { markPicture, pictureStatus, resetPictures } from '../../ambience/pack.ts';
 import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullCaption, pairFullChoice, pairFullHold, pairFullPlan, type PairFullHold, type PairFullPair } from '../../ambience/pairfull.ts';
 import { pairPanoramaAt, pairPictures, validatePairs, type PairsPack } from '../../ambience/pairs.ts';
-import { elementBiomes } from '../../ambience/pieces.ts';
+import { elementBiomes, phoneElementBiomes } from '../../ambience/pieces.ts';
 import { halfLayout } from '../../ambience/layout.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { ScenePieces } from './ScenePieces.tsx';
@@ -500,5 +500,71 @@ describe('spec 1.18 (draft): a painted-in cell on the board', () => {
     expect(attrs(html, 'data-pairfull-painted')).toEqual([]);
     expect(html).toContain(cell);
     expect(attrs(pcs(local), 'data-pc')).not.toContain('element');
+  });
+});
+
+describe('spec 1.18.1: on a phone, a painted cell with no phone picture of the third colour takes its cut-out', () => {
+  const V7 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7/';
+  // The hand-made 1.18 fixture: island+swamp's 3x3 has R painted on the swamp's (right) ground with no phone picture.
+  const raw = JSON.parse(readFileSync(new URL('../../ambience/testdata/pairs-v7.pairs.json', import.meta.url), 'utf8'));
+  // Pieces as pack-v9.2's: every element with a phone piece.
+  const phoned = validateManifest(
+    { ...manifest, pieces: { ...manifest.pieces, elements: Object.fromEntries(['W', 'U', 'B', 'R', 'G'].map((c) => [c, { ...piece(`el/${c}.webp`), phone: { src: `el/${c}-phone.webp`, width: 300, height: 600 } }])) } },
+    BASE,
+  ).pack!;
+  const local: ScenePack = { ...phoned, pairs: validatePairs(raw, `${V7}pairs.json`).pairs! };
+  const phonePieces: PackPieces = local.pieces!;
+  const phoneCell = `${V7}seams/island-swamp/s3x3-panorama-phone.webp`;
+  // Board swamp | island | mountain, a tie the swamp's (the earlier arrival): the cell 3x3, mirrored, R wanted on the
+  // swamp's half, the cell's right (no phone picture); on the board the swamp is the left.
+  const slots = [slot('swamp', 0, 3), slot('island', 1, 3), slot('mountain', 2, 1)];
+  const pcs = (s: SlotState[] = slots) => renderToStaticMarkup(<ScenePieces pack={local} pieces={phonePieces} slots={s} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={{ w: 390, h: 400 }} />);
+  const narrowScreen = () => vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('max-width'), media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
+
+  it('draws the element’s phone piece on the plain cell’s phone picture, on the swamp’s ground, once both have loaded', () => {
+    narrowScreen();
+    try {
+      markPicture(`${BASE}el/R-phone.webp`, true);
+      expect(attrs(pcs(), 'data-pc')).not.toContain('element');
+      markPicture(phoneCell, true);
+      const html = pcs();
+      expect(attrs(html, 'data-pc-colour')).toEqual(['R']);
+      expect(attrs(html, 'data-pc-side')).toEqual(['left']);
+      expect(html).toContain(`${BASE}el/R-phone.webp`);
+      expect(html).not.toContain(`${BASE}el/R.webp"`);
+      // The strip names the element and draws the plain cell's phone picture, nothing painted.
+      const strip = renderToStaticMarkup(<SceneryStrip slots={slots} pack={local} reduced={true} fill="half" pairFull={true} elements={elementBiomes(phonePieces)} phoneElements={phoneElementBiomes(phonePieces)} />);
+      expect(attrs(strip, 'data-pairfull-cell')).toEqual(['3x3']);
+      expect(attrs(strip, 'data-pairfull-element')).toEqual(['mountain']);
+      expect(attrs(strip, 'data-pairfull-painted')).toEqual([]);
+      expect(strip).toContain(phoneCell);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('an element with no phone piece draws nothing on the cell, not its desktop piece', () => {
+    narrowScreen();
+    try {
+      const noPhone: PackPieces = { ...phonePieces, elements: { ...phonePieces.elements, R: { ...phonePieces.elements.R!, phone: null } } };
+      markPicture(phoneCell, true);
+      markPicture(`${BASE}el/R.webp`, true);
+      const html = renderToStaticMarkup(<ScenePieces pack={local} pieces={noPhone} slots={slots} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={{ w: 390, h: 400 }} />);
+      expect(attrs(html, 'data-pc')).not.toContain('element');
+      expect(html).not.toContain(`${BASE}el/R.webp`);
+      // With the phone piece it is drawn (the control).
+      markPicture(`${BASE}el/R-phone.webp`, true);
+      expect(attrs(pcs(), 'data-pc-colour')).toEqual(['R']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('a desktop keeps 1.18: the painted picture (or nothing), never a cut-out on a cell', () => {
+    markPicture(`${V7}seams/island-swamp/s3x3-panorama.webp`, true);
+    markPicture(`${V7}seams/island-swamp/s3x3+RR-panorama.webp`, true);
+    for (const c of ['W', 'U', 'B', 'R', 'G'] as const) markPicture(`${BASE}el/${c}.webp`, true);
+    const html = renderToStaticMarkup(<ScenePieces pack={local} pieces={phonePieces} slots={slots} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />);
+    expect(attrs(html, 'data-pc')).not.toContain('element');
   });
 });

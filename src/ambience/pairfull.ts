@@ -80,7 +80,12 @@
  *   painted-in picture on the heavier pair colour's half when the cell has
  *   one ({@link PairFullGrid}'s `painted`, pairs.ts `pairGridPaintedAt`),
  *   else nothing, as 1.17. Never a cut-out on a cell: the plan carries no
- *   `element` there.
+ *   `element` there -- with one exception, spec 1.18.1 (a phone): where
+ *   the cell has the third colour painted in on that half but the picture
+ *   has no `phone`, a phone-width screen draws the third colour's 1.14
+ *   cut-out (its `phone` piece only, `opts.phoneElements`) on the plain
+ *   cell's phone picture, as a pair without a grid draws it: the plan's
+ *   `element`, and ScenePieces places it in {@link pairFullElementRegion}.
  *
  * Pure and DOM-free; the drawing is ui/ambience/SceneryStrip.tsx's
  * `PairFullPanel`.
@@ -88,7 +93,7 @@
 import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome, type SlotState } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf, PieceColour } from './manifest.ts';
-import { pairElementAt, pairFor, pairGridGivesWay, pairGridPaintedAt, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
+import { pairElementAt, pairFor, pairGridGivesWay, pairGridPaintedAt, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, pairWords, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
@@ -114,7 +119,11 @@ export interface PairFullPair {
   share: number;
   /** The pair stage ({@link pairFullStage}), at most the pair's last pictured stage. */
   stage: number;
-  /** Spec 1.14: the third biome, drawn as an element over the whole-half picture (ScenePieces), when the pack has one for its colour. */
+  /**
+   * Spec 1.14: the third biome, drawn as an element over the whole-half picture (ScenePieces), when the pack has one for
+   * its colour. On a grid cell only by spec 1.18.1 (a phone, the cell's painted picture of it with no phone picture):
+   * then a cut-out from its `phone` piece, never a painted picture.
+   */
   element?: Biome;
   /**
    * Spec 1.16.1: with an element, which painted-in picture the half draws, in
@@ -231,6 +240,13 @@ export function pairFullPlan(
      * its painted-in picture only with a phone picture of its own.
      */
     narrow?: boolean;
+    /**
+     * Spec 1.18.1: the biomes whose 1.14 element has a `phone` picture
+     * (pieces.ts `phoneElementBiomes`). On a phone-width screen, a cell with
+     * the third colour painted in on the heavier half but no phone picture of
+     * it draws that colour's cut-out instead -- only one of these.
+     */
+    phoneElements?: ReadonlySet<Biome> | null;
   } = {},
 ): PairFullItem[] | null {
   if (!pairs) return null;
@@ -262,6 +278,9 @@ export function pairFullPlan(
         const side: PairSide = grid.mirror ? (board === 'left' ? 'right' : 'left') : board;
         const picture = pairGridPaintedAt(grid.picture, pick.third, side, opts.narrow ?? false);
         if (picture) item.grid = { ...grid, painted: { colour: pick.third, side, picture } };
+        // Spec 1.18.1: a phone, and the cell has the colour painted in on that half with no phone picture of it: the
+        // third colour's 1.14 cut-out (its phone piece) on the plain cell's phone picture, as a pair without a grid.
+        else if (opts.narrow && pairGridPaintedAt(grid.picture, pick.third, side, false) && opts.phoneElements?.has(third.l.slot.biome)) item.element = third.l.slot.biome;
       }
       return [item];
     }
@@ -362,7 +381,8 @@ export interface PairFullCandidate {
 export function pairFullCandidates(p: PairFullPair, panelAspect: number | null, narrow: boolean, horizon = false): PairFullCandidate[] {
   const half = pairHalfAt(p.pair, p.stage);
   const pano = pairPanoramaAt(p.pair, p.stage);
-  const colour = p.element ? (BIOME_COLOUR[p.element] ?? null) : null;
+  // Spec 1.18 rule 3: a cell never falls back to the stage's 1.16.1 painted picture (1.18.1's element on a cell is a cut-out).
+  const colour = p.element && !p.grid ? (BIOME_COLOUR[p.element] ?? null) : null;
   // Spec 1.16.1: the side the plan picked (the heavier pair colour's ground); a sided entry without it falls back to the base panorama.
   const painted = colour ? pairElementAt(p.pair, p.stage, colour, p.elementSide) : null;
   const out: PairFullCandidate[] = [];
@@ -403,9 +423,12 @@ export function pairFullChoice(cands: readonly PairFullCandidate[], status: (src
  * the pair picture? Only when the half has no painted picture for its third
  * colour at all: none shown, and none wanted (one still loading, or held by
  * the strip). A painted picture that failed is not wanted, so the cut-out
- * stands in for it.
+ * stands in for it. Spec 1.18.1: and while a grid cell is wanted, only over
+ * that cell (the strip holds what it drew while the cell loads, 1.17's hold,
+ * so the cut-out never stands on a picture the half is not showing).
  */
 export function pairFullCutOutAllowed(choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+  if (choice?.want?.cell && choice.show !== choice.want) return false;
   return !!choice?.show && !choice.show.painted && !choice.want?.painted;
 }
 
@@ -616,13 +639,18 @@ export function pairFullElementSide(p: PairFullPair, indexOf: (b: Biome) => numb
   return board === 'left' ? 'right' : 'left';
 }
 
-/** A caption for the preview page: "Tundra, whole half: island 80% | plains 20%, pair stage 2". */
-export function pairFullCaption(items: readonly PairFullItem[] | null): string | null {
+/**
+ * A caption for the preview page: "island + plains, whole half: island 80% |
+ * plains 20%, pair stage 2" -- the pair by its colours, with its dual or shock
+ * land's name only when a land of that name is on the half (`lands`,
+ * pairs.ts `pairWords`).
+ */
+export function pairFullCaption(items: readonly PairFullItem[] | null, lands: ReadonlySet<string> | null = null): string | null {
   const p = items?.find((x): x is PairFullPair => x.kind === 'pair');
   if (!p) return null;
   const third = items!.find((x): x is PairFullSlot => x.kind === 'slot');
   const pct = (n: number) => `${Math.round(n * 100)}%`;
-  return `${p.pair.dual ?? p.key}${p.pair.shock ? ` (${p.pair.shock})` : ''}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, ${p.grid ? gridCaption(p.grid) : `pair stage ${p.stage}`}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${p.element ? elementCaption(p) : ''}`;
+  return `${pairWords(p.left, p.right, p.pair, lands)}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, ${p.grid ? gridCaption(p.grid) : `pair stage ${p.stage}`}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${p.element ? elementCaption(p) : ''}`;
 }
 
 /**
@@ -639,10 +667,13 @@ export function gridCaption(g: PairFullGrid): string {
   return `${half(g.left, g.stages[0], g.shown[0])} | ${half(g.right, g.stages[1], g.shown[1])}, seam ${g.cell}${g.clamped ? ' (clamped)' : ''}${painted}`;
 }
 
-/** The caption's element: "; R painted in, on plains's ground" (spec 1.16.1) or "; mountain as an element" (the 1.14 cut-out). */
+/**
+ * The caption's element: "; R painted in, on plains's ground" (spec 1.16.1) or "; mountain as an element" (the 1.14
+ * cut-out; on a grid cell only the cut-out, spec 1.18.1: "island s2 | forest s3, seam 2x3; swamp as an element").
+ */
 function elementCaption(p: PairFullPair): string {
   const colour = BIOME_COLOUR[p.element!];
   const side = p.elementSide;
-  if (colour && pairElementAt(p.pair, p.stage, colour, side)) return side ? `; ${colour} painted in, on ${side === 'left' ? p.pair.left : p.pair.right}'s ground` : `; ${colour} painted in`;
+  if (colour && !p.grid && pairElementAt(p.pair, p.stage, colour, side)) return side ? `; ${colour} painted in, on ${side === 'left' ? p.pair.left : p.pair.right}'s ground` : `; ${colour} painted in`;
   return `; ${p.element} as an element`;
 }
