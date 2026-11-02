@@ -144,8 +144,9 @@ export interface HalfSlotLayout extends SlotLayout {
  * land weight (5 Islands : 1 Mountain is 5 : 1), every live biome at least
  * `minShare` of the width, a withered one (its lands gone) half that. Same
  * order as the strip ({@link slotLayout}); each slot keeps its own stage.
- * Four or five colours keep three panels ({@link foldPanels}); `showing` is
- * what was on screen before (makeup.ts), for its tie rule.
+ * Four or five colours keep three panels ({@link foldPanels}; the rest are
+ * cut-outs, spec 1.19 a); `showing` is what was on screen before (makeup.ts),
+ * for its tie rule and its kept pair (spec 1.19 b).
  */
 export function halfLayout(slots: SlotState[], pack: ScenePack | null, stageOverride: number | null = null, showing: MakeupShowing | null = null): HalfSlotLayout[] {
   const layout = foldPanels(slotLayout(slots, pack, stageOverride), showing);
@@ -179,10 +180,13 @@ export const MAX_HALF_PANELS = 3;
  * most {@link MAX_HALF_PANELS} biomes -- the colours makeup.ts `pickMakeup`
  * keeps (the three heaviest by their own land weight; a tie: a colour already
  * `showing`, then the earlier arrival), then a live biome with no colour,
- * then withered ones if there is room. A biome left out shows nothing and
- * weighs nothing: its land weight is NOT added to a kept panel (until 1.16 it
- * folded into the nearest one, which panned the pair picture by a colour not
- * on screen, review fault 1). Each kept panel keeps its own stage and weight.
+ * then withered ones if there is room. A colour left out has no panel and
+ * weighs nothing in one: its land weight is NOT added to a kept panel (until
+ * 1.16 it folded into the nearest one, which panned the pair picture by a
+ * colour not on screen, review fault 1); since spec 1.19 a it is drawn as its
+ * 1.14 cut-out on the pair's panels instead (pieces.ts `halfCutOuts`,
+ * ScenePieces), so every colour with lands is on screen. Each kept panel
+ * keeps its own stage and weight.
  * Order is the row's. A fourth and fifth colour on one side made seven
  * panels and bands in a half (four biomes, three bands, six seams), none
  * wide enough to read.

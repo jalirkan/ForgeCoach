@@ -87,13 +87,25 @@
  *   cell's phone picture, as a pair without a grid draws it: the plan's
  *   `element`, and ScenePieces places it in {@link pairFullElementRegion}.
  *
+ * - Spec 1.19 (draft, the owner's rules of 2026-11-02 after the storyboard):
+ *   (a) every colour is visible -- the third is painted in where the picture
+ *   shown has it, else its 1.14 cut-out, else (no element) 1.15's third
+ *   panel; every colour past the third is a cut-out too (the plan's
+ *   `extras`, pieces.ts `stackElements` stacks them), on a cell as on a stage
+ *   picture, a phone drawing only the phone pieces; (b) makeup.ts keeps the
+ *   pair showing as the base; (c) NO clamp: a grid with no cell for the two
+ *   colours' own stages draws each colour's own mono picture side by side
+ *   where the cell's halves would be (board order), at the pair's split,
+ *   joined by the plain 1.10 seam, no band picture -- the plan's `apart`
+ *   ({@link pairFullApart}); a cell painted later is preferred at once.
+ *
  * Pure and DOM-free; the drawing is ui/ambience/SceneryStrip.tsx's
  * `PairFullPanel`.
  */
 import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome, type SlotState } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf, PieceColour } from './manifest.ts';
-import { pairElementAt, pairFor, pairGridGivesWay, pairGridPaintedAt, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, pairWords, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
+import { geographyOrder, gridCellKey, pairElementAt, pairFor, pairGridGivesWay, pairGridPaintedAt, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, pairWords, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
@@ -139,6 +151,29 @@ export interface PairFullPair {
    * back to.
    */
   grid?: PairFullGrid;
+  /**
+   * Spec 1.19 c (draft): the pair has a grid but no cell for the two colours' own stages (they differ by more than
+   * one, and nobody has painted that cell): no clamp. The half is each colour's own mono picture at its own stage
+   * (SceneryStrip's ordinary panels), side by side in board order -- where the cell's two halves would be, the
+   * geography's order mirrored as the cell would be -- at {@link split}, joined by the plain 1.10 mist seam, no band
+   * picture. A painted cell for those stages is drawn instead the day it exists.
+   */
+  apart?: PairFullApart;
+  /**
+   * Spec 1.19 a: the colours past the third (makeup.ts `extras`, heaviest first) that are drawn as 1.14 cut-outs at
+   * this shape (the pack has an element for them; on a phone-width screen one with a `phone` piece).
+   */
+  extras?: Biome[];
+}
+
+/** Spec 1.19 c: a pair drawn as its two mono pictures, the grid having no cell for its stages. */
+export interface PairFullApart {
+  /** The missing cell, `"1x5"`, in the geography's order. */
+  cell: string;
+  /** The geography's left and right colour, and each one's own stage. */
+  left: Biome;
+  right: Biome;
+  stages: [number, number];
 }
 
 /** Spec 1.17: the grid cell a whole-half pair draws, and how. */
@@ -193,7 +228,8 @@ export function pairFullStage(pair: PackPair, total: number, thresholds: readonl
  * Spec 1.17 (draft): the seam grid's cell for a pair whose board-left biome
  * is at mono stage `stageLeft` and board-right at `stageRight` (each
  * colour's own stage: layout.ts's, the preview's slider when set), or
- * undefined (no grid, or no cell even after the clamp: the `stages`).
+ * undefined (no grid, or no cell: the `stages`, or 1.19 c's
+ * {@link pairFullApart}). Spec 1.19 c: the exact cell only, never a clamp.
  * `narrow` (a phone-width screen): undefined too for a cell that gives way
  * there (pairs.ts `pairGridGivesWay`).
  */
@@ -204,6 +240,22 @@ export function pairFullGrid(pair: PackPair, boardLeft: Biome, stageLeft: number
   const pick = pairGridPick(pair, mirror ? stageRight : stageLeft, mirror ? stageLeft : stageRight);
   if (!pick || (narrow && pairGridGivesWay(pair, pick.picture))) return undefined;
   return { ...pick, left: g.left, right: g.right, mirror };
+}
+
+/**
+ * Spec 1.19 c (draft): a pair with a seam grid but no cell for its two colours' own stages (both on the half, both on
+ * the geography) is drawn apart: each colour's own mono picture, no clamp. Undefined when the pair has no grid or the
+ * cell exists (the cell is drawn; one painted later is preferred with no code change).
+ */
+export function pairFullApart(pair: PackPair, boardLeft: Biome, boardRight: Biome, stageLeft: number, stageRight: number): PairFullApart | undefined {
+  const g = pair.grid;
+  if (!g || !(stageLeft > 0) || !(stageRight > 0) || !geographyOrder(boardLeft, boardRight)) return undefined;
+  const mirror = boardLeft !== g.left;
+  const i = Math.min(6, Math.round(mirror ? stageRight : stageLeft));
+  const j = Math.min(6, Math.round(mirror ? stageLeft : stageRight));
+  const cell = gridCellKey(i, j);
+  if (g.cells[cell]) return undefined;
+  return { cell, left: g.left, right: g.right, stages: [i, j] };
 }
 
 /** A pair with a whole-half picture: a 1.9 band pair (a motif pair has no `half`, 1.12). */
@@ -249,6 +301,9 @@ export function pairFullPlan(
     phoneElements?: ReadonlySet<Biome> | null;
   } = {},
 ): PairFullItem[] | null {
+  // Spec 1.19 a: a cut-out is drawn at this shape when the pack has one -- on a phone-width screen its phone piece only.
+  const narrowScreen = opts.narrow ?? false;
+  const cuttable = (b: Biome) => !!(narrowScreen ? opts.phoneElements : opts.elements)?.has(b);
   if (!pairs) return null;
   const live = layout.map((l, i) => ({ l, i })).filter(({ l }) => l.stage > 0 && l.slot.weight > 0);
   if (live.length < 2 || live.length > 3) return null;
@@ -266,21 +321,27 @@ export function pairFullPlan(
     const wa = x.l.slot.weight;
     const wb = y.l.slot.weight;
     const third = pick.third ? byBiome(COLOUR_BIOME[pick.third]) : null;
-    // Spec 1.17 (draft): a cell for the two colours' own stages takes the whole half; a third colour shows nothing on it,
-    // unless (1.18) the cell has that colour painted in on the heavier pair colour's half.
-    const grid = pairFullGrid(found.pair, x.l.slot.biome, x.l.stage, y.l.stage, opts.narrow ?? false);
-    if (grid) {
+    // The colours past the third (spec 1.19 a): each a cut-out where the pack has one at this shape.
+    const extras = pick.extras.map((c) => COLOUR_BIOME[c]).filter(cuttable);
+    // Spec 1.17 (draft): a cell for the two colours' own stages takes the whole half. Spec 1.19 c: no cell for them (and
+    // a grid), no clamp: the two mono pictures apart.
+    const grid = pairFullGrid(found.pair, x.l.slot.biome, x.l.stage, y.l.stage, narrowScreen);
+    const apart = grid ? undefined : pairFullApart(found.pair, x.l.slot.biome, y.l.slot.biome, x.l.stage, y.l.stage);
+    if (grid || apart) {
       const stage = pairFullStage(found.pair, third ? pick.total : wa + wb, thresholds, opts.stageOverride ?? null);
-      const item: PairFullPair = { kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, grid };
+      const item: PairFullPair = { kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, ...(grid ? { grid } : { apart }), ...(extras.length ? { extras } : {}) };
       if (third && pick.third) {
-        // The heavier pair colour in board order (a tie, the earlier arrival: the 1.16.1 rule), then in the cell's order.
+        // Spec 1.18: the cell's painted-in picture of the third colour on the heavier pair colour's half (board order, a
+        // tie the earlier arrival: 1.16.1's rule, turned into the cell's order), drawn instead of the plain cell.
         const board = pairFullHeavierSide(item, (b) => (b === x.l.slot.biome ? x.l.slot.index : y.l.slot.index));
-        const side: PairSide = grid.mirror ? (board === 'left' ? 'right' : 'left') : board;
-        const picture = pairGridPaintedAt(grid.picture, pick.third, side, opts.narrow ?? false);
-        if (picture) item.grid = { ...grid, painted: { colour: pick.third, side, picture } };
-        // Spec 1.18.1: a phone, and the cell has the colour painted in on that half with no phone picture of it: the
-        // third colour's 1.14 cut-out (its phone piece) on the plain cell's phone picture, as a pair without a grid.
-        else if (opts.narrow && pairGridPaintedAt(grid.picture, pick.third, side, false) && opts.phoneElements?.has(third.l.slot.biome)) item.element = third.l.slot.biome;
+        const side: PairSide = grid?.mirror ? (board === 'left' ? 'right' : 'left') : board;
+        const picture = grid ? pairGridPaintedAt(grid.picture, pick.third, side, narrowScreen) : null;
+        if (grid && picture) item.grid = { ...grid, painted: { colour: pick.third, side, picture } };
+        // Spec 1.19 a (1.18.1 on a phone): no painted picture at this shape (a phone and a desktop-only painting, a cell
+        // painted without it, or the two halves apart): the third colour's 1.14 cut-out, on the heavier colour's ground.
+        else if (cuttable(third.l.slot.biome)) item.element = third.l.slot.biome;
+        // No cut-out either (a pack without the colour's element): 1.15's third panel beside the pair, never nothing.
+        else return withPanel(found, x, y, third, shareSum, thresholds, opts.stageOverride ?? null, narrowScreen, extras, item);
       }
       return [item];
     }
@@ -288,12 +349,12 @@ export function pairFullPlan(
       // Spec 1.14 / 1.16: the third colour inside the pair picture, which takes the whole half and grows with every coloured land.
       const stage = pairFullStage(found.pair, pick.total, thresholds, opts.stageOverride ?? null);
       const colour = pick.third!;
-      const item: PairFullPair = { kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, element: third.l.slot.biome };
+      const item: PairFullPair = { kind: 'pair', key: found.pair.key, pair: found.pair, mirror: found.mirror, left: x.l.slot.biome, right: y.l.slot.biome, weights: [wa, wb], split: pairFullSplit(wa, wb), share: 1, stage, element: third.l.slot.biome, ...(extras.length ? { extras } : {}) };
       // Spec 1.16.1: the painted picture is the heavier pair colour's side (the arrival order breaks a tie, as the cut-out's).
       const side = pairFullElementSide(item, (b) => (b === x.l.slot.biome ? x.l.slot.index : y.l.slot.index));
       if (opts.elements?.has(third.l.slot.biome) || pairElementAt(found.pair, stage, colour, side)) return [{ ...item, elementSide: side }];
     }
-    return withPanel(found, x, y, third, shareSum, thresholds, opts.stageOverride ?? null, opts.narrow ?? false);
+    return withPanel(found, x, y, third, shareSum, thresholds, opts.stageOverride ?? null, narrowScreen, extras);
   }
   // No picture for makeup.ts's pair: the heaviest pictured pair (a tie, the earlier arrivals), the third as a panel; no element.
   const cands: { a: (typeof live)[number]; b: (typeof live)[number]; w: number; arrival: number }[] = [];
@@ -308,10 +369,15 @@ export function pairFullPlan(
   cands.sort((p, q) => q.w - p.w || p.arrival - q.arrival);
   const { a, b } = cands[0]!;
   const third = live.find((x) => x !== a && x !== b) ?? null;
-  return withPanel(pairFor(pairs, a.l.slot.biome, b.l.slot.biome)!, a, b, third, shareSum, thresholds, opts.stageOverride ?? null, opts.narrow ?? false);
+  const extras = (pick?.extras ?? []).map((c) => COLOUR_BIOME[c]).filter(cuttable);
+  return withPanel(pairFor(pairs, a.l.slot.biome, b.l.slot.biome)!, a, b, third, shareSum, thresholds, opts.stageOverride ?? null, narrowScreen, extras);
 }
 
-/** The pair picture beside the third biome's panel (its own `halfLayout` share and stage, at its end of the row), or alone. */
+/**
+ * The pair picture beside the third biome's panel (its own `halfLayout` share and stage, at its end of the row), or
+ * alone. `base` (spec 1.19 a): a cell or an apart pair already planned for the whole half, whose third colour has
+ * neither a painted picture nor a cut-out, narrowed to make room for the panel.
+ */
 function withPanel(
   found: { pair: PackPair; mirror: boolean },
   a: { l: HalfSlotLayout; i: number },
@@ -321,6 +387,8 @@ function withPanel(
   thresholds: readonly number[],
   stageOverride: number | null,
   narrow: boolean,
+  extras: Biome[] = [],
+  base?: PairFullPair,
 ): PairFullItem[] {
   const wa = a.l.slot.weight;
   const wb = b.l.slot.weight;
@@ -336,9 +404,12 @@ function withPanel(
     split: pairFullSplit(wa, wb),
     share: r4(1 - thirdShare),
     stage: pairFullStage(found.pair, wa + wb, thresholds, stageOverride),
+    ...(extras.length ? { extras } : {}),
   };
-  const grid = pairFullGrid(found.pair, a.l.slot.biome, a.l.stage, b.l.stage, narrow);
+  const grid = base ? base.grid : pairFullGrid(found.pair, a.l.slot.biome, a.l.stage, b.l.stage, narrow);
+  const apart = base ? base.apart : grid ? undefined : pairFullApart(found.pair, a.l.slot.biome, b.l.slot.biome, a.l.stage, b.l.stage);
   if (grid) item.grid = grid;
+  else if (apart) item.apart = apart;
   if (!third) return [item];
   const slot: PairFullSlot = { kind: 'slot', index: third.i, biome: third.l.slot.biome, share: thirdShare };
   return third.i < a.i && third.i < b.i ? [slot, item] : [item, slot];
@@ -379,6 +450,8 @@ export interface PairFullCandidate {
  * phone-shaped panel. `panelAspect` is the pair panel's own shape.
  */
 export function pairFullCandidates(p: PairFullPair, panelAspect: number | null, narrow: boolean, horizon = false): PairFullCandidate[] {
+  // Spec 1.19 c: an apart pair is the two mono panels (SceneryStrip's own Slots, warmed as every slot is): no picture.
+  if (p.apart) return [];
   const half = pairHalfAt(p.pair, p.stage);
   const pano = pairPanoramaAt(p.pair, p.stage);
   // Spec 1.18 rule 3: a cell never falls back to the stage's 1.16.1 painted picture (1.18.1's element on a cell is a cut-out).
@@ -432,6 +505,22 @@ export function pairFullCutOutAllowed(choice: { show: PairFullCandidate | null; 
   return !!choice?.show && !choice.show.painted && !choice.want?.painted;
 }
 
+/**
+ * Spec 1.19 a: may a colour past the third (a cut-out whatever the picture) be drawn? Over an apart pair always (its
+ * panels are the strip's own); over a picture once one is shown and, while a cell is wanted, only over that cell
+ * (the strip holds what it drew while the cell loads, so a cut-out never stands on a picture the half is not showing).
+ */
+export function pairFullExtrasAllowed(p: Pick<PairFullPair, 'apart'> | null, choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+  if (p?.apart) return true;
+  if (choice?.want?.cell && choice.show !== choice.want) return false;
+  return !!choice?.show;
+}
+
+/** {@link pairFullCutOutAllowed} for the plan's third colour, an apart pair included (no picture to wait for). */
+export function pairFullThirdCutAllowed(p: Pick<PairFullPair, 'apart'> | null, choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+  return p?.apart ? true : pairFullCutOutAllowed(choice);
+}
+
 /** How long a half holds its previous picture while the pair picture it now wants loads, before it draws its panels instead. */
 export const PAIR_FULL_HOLD_MS = 8000;
 
@@ -477,6 +566,12 @@ export function pairFullHold<L>(
   now: number,
   holdMs = PAIR_FULL_HOLD_MS,
 ): { draw: PairFullDraw<L>; hold: PairFullHold<L>; holding: boolean } {
+  // Spec 1.19 c: an apart pair is its two mono panels, nothing to load: drawn at once.
+  if (planApart(cur.plan)) {
+    const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.plan, shown: null };
+    const same = hold.last && hold.last.layout === draw.layout && hold.last.plan === draw.plan && !hold.last.shown;
+    return { draw: same ? hold.last! : draw, hold: { last: same ? hold.last : draw, since: null }, holding: false };
+  }
   const cold = !!cur.plan && !!cur.choice && !cur.choice.show && !!cur.choice.want;
   // Spec 1.16.1 (the review of #199): a painted picture on screen and another painted one wanted but not loaded (the
   // side flipped, or the stage changed): hold the painted one rather than drop to the base panorama for a fetch.
@@ -484,7 +579,8 @@ export function pairFullHold<L>(
   // Spec 1.17 (the review of #201): a grid cell on screen and another cell wanted but not loaded: hold the cell.
   const gridNext = !!cur.plan && !!cur.choice?.want?.cell && cur.choice.show !== cur.choice.want && !!hold.last?.shown?.cell;
   // The pair forming (the #201 follow-up): the half drew no pair picture before and wants its first cell, not loaded yet.
-  const gridFirst = !!cur.plan && !!cur.choice?.want?.cell && cur.choice.show !== cur.choice.want && !!hold.last && !hold.last.plan;
+  // Spec 1.19 c: likewise from an apart pair (its panels) to a cell: the panels are held, never the panorama between.
+  const gridFirst = !!cur.plan && !!cur.choice?.want?.cell && cur.choice.show !== cur.choice.want && !!hold.last && (!hold.last.plan || planApart(hold.last.plan));
   if (cold || paintedNext || gridNext || gridFirst) {
     const since = hold.since ?? now;
     if (hold.last && now - since < holdMs) return { draw: hold.last, hold: { last: hold.last, since }, holding: true };
@@ -494,6 +590,11 @@ export function pairFullHold<L>(
   const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.choice?.show ? cur.plan : null, shown: cur.choice?.show ?? null };
   const same = hold.last && hold.last.layout === draw.layout && hold.last.plan === draw.plan && hold.last.shown === draw.shown;
   return { draw: same ? hold.last! : draw, hold: { last: same ? hold.last : draw, since: null }, holding: false };
+}
+
+/** Spec 1.19 c: is the plan's pair drawn apart (its two mono panels)? */
+export function planApart(plan: readonly PairFullItem[] | null | undefined): boolean {
+  return !!plan?.some((x) => x.kind === 'pair' && !!x.apart);
 }
 
 /** A pair panel's shape from the half's (rounded as SceneryStrip measures it: to 0.05), or null when unknown. */
@@ -548,8 +649,14 @@ export function pairFullFrameCss(art: Pick<HalfArt, 'aspect' | 'focal' | 'safe' 
   };
 }
 
-/** How far short of the transition an element's region stops (spec 1.14's elements on a whole-half picture). */
+/** How far short of the transition an element's region stops at least (spec 1.14's elements on a whole-half picture). */
 export const PAIR_FULL_ELEMENT_MARGIN = 0.05;
+/**
+ * Spec 1.19 a: the seam core, as a fraction of the pair picture's own width either side of its transition: the
+ * painter's core is the middle 0.43–0.57 of a cell (spec 1.17), and every pair picture is painted A | heart | B about
+ * its focal x. No element stands in it.
+ */
+export const PAIR_FULL_SEAM_CORE = 0.07;
 
 /** A span of the half's width, as fractions of it (pieces.ts `Region`'s shape). */
 export interface PairFullSpan {
@@ -572,6 +679,11 @@ export interface PairFullView {
   horizonY: number;
   /** The picture's frame in the pair panel (pairFullFrame, the picture's own order; the panel flips it when mirrored). */
   frame: FrameRect;
+  /**
+   * Spec 1.19 a: the seam core across the half (board order): {@link PAIR_FULL_SEAM_CORE} of the picture's drawn
+   * width either side of the transition; for an apart pair, the plain seam's width. No element overlaps it.
+   */
+  core: { left: number; right: number };
 }
 
 /**
@@ -591,24 +703,52 @@ export function pairFullView(items: readonly PairFullItem[] | null, box: { w: nu
   const seamInPanel = mirror ? 1 - frame.seamAt : frame.seamAt;
   const seamAt = r4(panel.left + seamInPanel * panel.width);
   const hz = art.picture ? horizonOf(art.picture) : art.focal.y;
+  const core = PAIR_FULL_SEAM_CORE * frame.width * panel.width;
   return {
     panel,
     seamAt,
     ground: { left: { left: panel.left, width: r4(seamAt - panel.left) }, right: { left: seamAt, width: r4(panel.left + panel.width - seamAt) } },
     horizonY: r4(frame.top + hz * frame.height),
     frame: { left: frame.left, top: frame.top, width: frame.width, height: frame.height },
+    core: { left: r4(seamAt - core), right: r4(seamAt + core) },
   };
 }
 
 /**
- * The region spec 1.14's element stands in on a whole-half pair picture: the
- * heavier pair colour's ground (`side`, pieces.ts `HalfPlan.element.side`),
- * stopping {@link PAIR_FULL_ELEMENT_MARGIN} of the half short of the
- * transition, so the element stays on its own ground. Never narrower than 0.
+ * Spec 1.19 c: {@link PairFullView} for an apart pair -- its two mono panels side by side at the split (board order),
+ * the pair panel the half (or all of it but a third panel), the core the plain seam between them (`seamRatio` of the
+ * half, the pack's `half.seamRatio`), `horizonY` the one given (the caller's: pieces.ts `horizonAt` over the panels).
+ * Null without an apart pair.
+ */
+export function pairFullApartView(items: readonly PairFullItem[] | null, seamRatio: number, horizonY: number): PairFullView | null {
+  const p = items?.find((x): x is PairFullPair => x.kind === 'pair');
+  if (!p?.apart) return null;
+  const pairFirst = items![0] === p;
+  const panel = { left: r4(pairFirst ? 0 : 1 - p.share), width: r4(p.share) };
+  const seamAt = r4(panel.left + p.split * panel.width);
+  const half = seamRatio / 2;
+  return {
+    panel,
+    seamAt,
+    ground: { left: { left: panel.left, width: r4(seamAt - panel.left) }, right: { left: seamAt, width: r4(panel.left + panel.width - seamAt) } },
+    horizonY,
+    frame: { left: 0, top: 0, width: 1, height: 1 },
+    core: { left: r4(seamAt - half), right: r4(seamAt + half) },
+  };
+}
+
+/**
+ * The region spec 1.14's element stands in on a whole-half pair picture: a
+ * pair colour's ground (`side`; the third colour's is the heavier's, pieces.ts
+ * `HalfPlan.element.side`), stopping short of the transition by the seam core
+ * (spec 1.19 a, {@link PairFullView.core}) and at least `margin` of the half,
+ * so the element stays on its own ground. Never narrower than 0. Spec 1.19 a's
+ * stack splits it between the elements on that ground (pieces.ts `stackRegion`).
  */
 export function pairFullElementRegion(view: PairFullView, side: 'left' | 'right', margin = PAIR_FULL_ELEMENT_MARGIN): PairFullSpan {
   const g = view.ground[side];
-  const width = r4(Math.max(0, g.width - margin));
+  const core = side === 'left' ? view.seamAt - view.core.left : view.core.right - view.seamAt;
+  const width = r4(Math.max(0, g.width - Math.max(margin, core)));
   return side === 'left' ? { left: g.left, width } : { left: r4(g.left + g.width - width), width };
 }
 
@@ -650,30 +790,48 @@ export function pairFullCaption(items: readonly PairFullItem[] | null, lands: Re
   if (!p) return null;
   const third = items!.find((x): x is PairFullSlot => x.kind === 'slot');
   const pct = (n: number) => `${Math.round(n * 100)}%`;
-  return `${pairWords(p.left, p.right, p.pair, lands)}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, ${p.grid ? gridCaption(p.grid) : `pair stage ${p.stage}`}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${p.element ? elementCaption(p) : ''}`;
+  const where = p.grid ? gridCaption(p.grid) : p.apart ? apartCaption(p.apart) : `pair stage ${p.stage}`;
+  return `${pairWords(p.left, p.right, p.pair, lands)}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, ${where}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${elementCaption(p)}`;
+}
+
+/** Spec 1.19 c: "island s1 | forest s5, no seam cell", in the geography's order, each colour at its own stage. */
+export function apartCaption(a: PairFullApart): string {
+  return `${a.left} s${a.stages[0]} | ${a.right} s${a.stages[1]}, no seam cell`;
+}
+
+/** Spec 1.19 a: "; swamp as an element", "; swamp and mountain as elements", "; swamp, mountain and plains as elements" (none: ""). */
+export function cutOutWords(biomes: readonly Biome[]): string {
+  if (!biomes.length) return '';
+  const list = biomes.length === 1 ? biomes[0]! : `${biomes.slice(0, -1).join(', ')} and ${biomes[biomes.length - 1]}`;
+  return `; ${list} as ${biomes.length === 1 ? 'an element' : 'elements'}`;
 }
 
 /**
  * Spec 1.17: "island s4 | swamp s3, seam 4x3", in the picture's (the
- * geography's) order; a clamped half says its own stage and the one shown:
- * "island s6 | swamp s2→s5, seam 6x5 (clamped)". Spec 1.18: a cell with its
+ * geography's) order (spec 1.19 c: a cell is always exact, never clamped;
+ * no cell is {@link apartCaption}'s "no seam cell"). Spec 1.18: a cell with its
  * third colour painted in adds "; R painted in, on island's ground" (the
  * plan names it only where it is drawn: never on a phone without its phone
  * picture).
  */
 export function gridCaption(g: PairFullGrid): string {
-  const half = (b: Biome, own: number, shown: number) => `${b} s${own}${own !== shown ? `→s${shown}` : ''}`;
   const painted = g.painted ? `; ${g.painted.colour} painted in, on ${g.painted.side === 'left' ? g.left : g.right}'s ground` : '';
-  return `${half(g.left, g.stages[0], g.shown[0])} | ${half(g.right, g.stages[1], g.shown[1])}, seam ${g.cell}${g.clamped ? ' (clamped)' : ''}${painted}`;
+  return `${g.left} s${g.stages[0]} | ${g.right} s${g.stages[1]}, seam ${g.cell}${painted}`;
 }
 
 /**
- * The caption's element: "; R painted in, on plains's ground" (spec 1.16.1) or "; mountain as an element" (the 1.14
- * cut-out; on a grid cell only the cut-out, spec 1.18.1: "island s2 | forest s3, seam 2x3; swamp as an element").
+ * The caption's elements: "; R painted in, on plains's ground" (spec 1.16.1) or "; mountain as an element" (the 1.14
+ * cut-out; on a grid cell only the cut-out, spec 1.18.1: "island s2 | forest s3, seam 2x3; swamp as an element"), and
+ * spec 1.19 a's colours past the third, cut-outs too: "; swamp and mountain as elements". Nothing for none.
  */
 function elementCaption(p: PairFullPair): string {
-  const colour = BIOME_COLOUR[p.element!];
-  const side = p.elementSide;
-  if (colour && !p.grid && pairElementAt(p.pair, p.stage, colour, side)) return side ? `; ${colour} painted in, on ${side === 'left' ? p.pair.left : p.pair.right}'s ground` : `; ${colour} painted in`;
-  return `; ${p.element} as an element`;
+  const cut: Biome[] = [];
+  let painted = '';
+  if (p.element) {
+    const colour = BIOME_COLOUR[p.element];
+    const side = p.elementSide;
+    if (colour && !p.grid && !p.apart && pairElementAt(p.pair, p.stage, colour, side)) painted = side ? `; ${colour} painted in, on ${side === 'left' ? p.pair.left : p.pair.right}'s ground` : `; ${colour} painted in`;
+    else cut.push(p.element);
+  }
+  return `${painted}${cutOutWords([...cut, ...(p.extras ?? [])])}`;
 }

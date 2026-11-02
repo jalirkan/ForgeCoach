@@ -14,14 +14,16 @@
  * 4. Two: the pair (`split` = the first colour of the pair key's share,
  *    clamped 0.2–0.8; `mirror` when the half met them the other way round;
  *    the pair stage by the half's whole weight: 1–2 lands 1, 3–4 2, 5+ 3).
- * 5. Three or more: the heaviest pair (a tie keeps the pair on screen, then
- *    the colours that arrived first) and the third colour's element, on the
- *    heavier pair colour's side, fading in with the third colour's share;
- *    four or five keep the three heaviest by their own weights, one element
- *    at a time; the colours dropped show nothing and weigh nothing in the
- *    pair or the pan, but the pair stage counts every coloured land.
- *    Steps 5 and 6 are makeup.ts `pickMakeup`, the one rule the strip
- *    (layout.ts `foldPanels`) and the pair picture (pairfull.ts) use too.
+ * 5. Three or more: the pair (spec 1.19 b: the pair showing stays while both
+ *    its colours are among the three heaviest; else the heaviest pair of the
+ *    three, a tie the colours that arrived first) and the third colour's
+ *    element, on the heavier pair colour's side, fading in with the third
+ *    colour's share; four or five (spec 1.19 a: the fold to three is gone)
+ *    draw every further colour as its cut-out too, stacked on the pair's
+ *    grounds ({@link stackElements}); they weigh nothing in the pair or the
+ *    pan, and the pair stage counts every coloured land. Steps 5 and 6 are
+ *    makeup.ts `pickMakeup`, the one rule the strip (layout.ts `foldPanels`)
+ *    and the pair picture (pairfull.ts) use too.
  * 6. Landmarks (B6): a land whose exact name the pack has a landmark for, one
  *    per name, at most two, the earliest on the battlefield.
  * 7. The veil (B9) once the game is over: won or lost (a draw: none).
@@ -32,22 +34,24 @@
  * Only the viewing seat's redacted battlefield is read (model.ts
  * `visibleCard`: a hidden or face-down card is never a landmark).
  *
- * The element is drawn only on the whole-half pair picture (spec 1.15,
- * pairfull.ts, behind `?pairfull=1`): there the third colour is the pair's
- * `element` and `pairFullView` / `pairFullElementRegion` give the region it
- * stands in. Today's board (the flag off) gives a third colour its own panel
- * (layout.ts `halfLayout`), so no element is drawn there.
+ * The third colour's element is drawn on the whole-half pair picture (spec
+ * 1.15, pairfull.ts, behind `?pairfull=1`): there the third colour is the
+ * pair's `element` and `pairFullView` / `pairFullElementRegion` give the
+ * region it stands in. Today's board (the flag off) gives a third colour its
+ * own panel (layout.ts `halfLayout`); spec 1.19 a puts a fourth and fifth
+ * colour's cut-outs on the pair's panels there ({@link panelGround}).
  */
 import type { GameStateBody } from '../protocol.ts';
 import { hasType, visibleCard } from '../state.ts';
-import { halfFrame, halfArtOf, horizonOf, DESKTOP_HORIZON, type FrameRect, type HalfSlotLayout } from './layout.ts';
-import { halfAt, MAX_LANDMARKS_SHOWN, PIECE_COLOURS, type PackHalf, type PackPieces, type PiecePlace, type PieceColour, type ScenePack, type VeilOutcome } from './manifest.ts';
+import { halfFrame, halfArtOf, halfSpans, horizonOf, DESKTOP_HORIZON, type FrameRect, type HalfSlotLayout } from './layout.ts';
+import { halfAt, MAX_LANDMARKS_SHOWN, PIECE_COLOURS, type PackHalf, type PackPiece, type PackPieces, type PiecePlace, type PieceColour, type ScenePack, type VeilOutcome } from './manifest.ts';
 import type { Biome } from './model.ts';
+import { pairFullExtrasAllowed, pairFullThirdCutAllowed, type PairFullCandidate, type PairFullItem, type PairFullPair } from './pairfull.ts';
 import type { LightOutcome } from './light.ts';
 import type { TweenFrame } from './transitions.ts';
-import { COLOUR_BIOME, pickMakeup, pickSplit, type Makeup, type MakeupPick, type MakeupShowing } from './makeup.ts';
+import { BIOME_COLOUR, COLOUR_BIOME, elementOpacity, pickMakeup, pickSplit, type Makeup, type MakeupPick, type MakeupShowing } from './makeup.ts';
 
-export { BIOME_COLOUR, COLOUR_BIOME, makeupFromSlots, makeupOf, pickMakeup, rankColours, type Makeup, type MakeupPick, type MakeupShowing } from './makeup.ts';
+export { BIOME_COLOUR, COLOUR_BIOME, elementOpacity, makeupFromSlots, makeupOf, pickMakeup, rankColours, type Makeup, type MakeupPick, type MakeupShowing } from './makeup.ts';
 
 /** One half's plan. */
 export interface HalfPlan {
@@ -64,6 +68,10 @@ export interface HalfPlan {
   pairStage: number;
   /** The third colour's element, or null. `side` is where the heavier pair colour's ground is. */
   element: { colour: PieceColour; opacity: number; side: 'left' | 'right' } | null;
+  /** Spec 1.19 a: the colours past the third, heaviest first, each a cut-out faded by its share ({@link stackElements} places them). */
+  extras: { colour: PieceColour; opacity: number }[];
+  /** Where the lighter pair colour's ground is (board order), or null without a pair. */
+  lighterSide: 'left' | 'right' | null;
   /** Landmark card names to draw, earliest first, at most two. */
   landmarks: string[];
   veil: VeilOutcome | null;
@@ -72,8 +80,6 @@ export interface HalfPlan {
 }
 
 export type Front = { colour: PieceColour; reverse: boolean } | { dissolve: true };
-
-const r3 = (n: number) => Math.round(n * 1000) / 1000;
 
 /** Step 5's heaviest pair, in pair-key order, or null with fewer than two colours (makeup.ts `pickMakeup`). */
 export function heaviestPair(m: Makeup, prev: readonly PieceColour[] | null = null): [PieceColour, PieceColour] | null {
@@ -139,18 +145,19 @@ export function planHalf(i: PlanInput): HalfPlan {
   const split = pickSplit(pick);
   let mirror = false;
   let element: HalfPlan['element'] = null;
+  let lighterSide: HalfPlan['lighterSide'] = null;
   if (pair) {
     const [a, b] = pair;
     // The half met b first: the board's order is the key's reversed.
     mirror = m.colours.indexOf(b) < m.colours.indexOf(a);
+    const keyLeft = pick.heavier === a;
+    const heavierSide = keyLeft !== mirror ? 'left' : 'right';
+    lighterSide = heavierSide === 'left' ? 'right' : 'left';
     const third = pick.third;
-    if (third) {
-      // An equal third (⅓ of the three kept) is fully in; less fades it. A dropped fourth or fifth colour weighs nothing.
-      const opacity = r3(Math.min(1, Math.max(0, (3 * pick.weights[third]!) / pick.keptTotal)));
-      const keyLeft = pick.heavier === a;
-      element = { colour: third, opacity, side: keyLeft !== mirror ? 'left' : 'right' };
-    }
+    // Spec 1.19 a: an equal share of the half's colours is fully in; less fades it (three colours: an equal third).
+    if (third) element = { colour: third, opacity: elementOpacity(pick, third), side: heavierSide };
   }
+  const extras = pick.extras.map((colour) => ({ colour, opacity: elementOpacity(pick, colour) }));
   const known = new Set(i.landmarks ?? []);
   const landmarks: string[] = [];
   for (const n of i.landNames ?? []) {
@@ -158,14 +165,142 @@ export function planHalf(i: PlanInput): HalfPlan {
     if (known.has(n) && !landmarks.includes(n)) landmarks.push(n);
   }
   const veil: VeilOutcome | null = i.outcome === 'won' || i.outcome === 'lost' ? i.outcome : null;
-  return { makeup: m, empty: m.colours.length === 0, pair, split, mirror, pairStage: pair ? pairStageOf(pick.total) : 0, element, landmarks, veil, pick };
+  return { makeup: m, empty: m.colours.length === 0, pair, split, mirror, pairStage: pair ? pairStageOf(pick.total) : 0, element, extras, lighterSide, landmarks, veil, pick };
 }
 
-/** The colours the picture is made of: the pair (or the one colour) and the element's colour. */
+/** The colours the picture is made of: the pair (or the one colour), the element's colour and (spec 1.19 a) every further colour's cut-out. */
 function shown(p: HalfPlan): PieceColour[] {
   const out: PieceColour[] = p.pair ? [...p.pair] : p.makeup.colours.slice(0, 1);
   if (p.element) out.push(p.element.colour);
+  for (const x of p.extras ?? []) out.push(x.colour);
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Spec 1.19 a: every colour visible -- the elements stacked on the pair's grounds
+
+/** How many elements the heavier pair colour's ground holds before the next goes on the lighter's. */
+export const HEAVIER_GROUND_HOLDS = 2;
+
+/** One element on one of the pair's grounds (spec 1.19 a). */
+export interface StackedElement {
+  colour: PieceColour;
+  opacity: number;
+  /** A cut-out to draw (false: the third colour painted into the picture, which only keeps its place in the stack). */
+  cut: boolean;
+  /** Whose ground: the heavier pair colour's or the lighter's, and which side of the half that is (board order). */
+  ground: 'heavier' | 'lighter';
+  side: 'left' | 'right';
+  /** Its place on that ground, 0 at the half's outer edge, of `of` there. */
+  slot: number;
+  of: number;
+}
+
+/**
+ * Spec 1.19 a: the elements a half stands on its pair's grounds, in weight order -- the third colour (when it is on a
+ * ground: `third` says how, `'painted'` keeping its place, `'cut'` a cut-out; `null` when it has a panel of its own, the
+ * board without the flag or 1.15's placeholder), then every further colour that `cuttable` says has a cut-out at this
+ * shape. The heavier pair colour's ground takes the first {@link HEAVIER_GROUND_HOLDS}, the lighter's the rest; each
+ * ground's elements stand side by side ({@link stackRegion}), the heaviest at the half's outer edge. Faded by each
+ * colour's share (makeup.ts `elementOpacity`). Empty without a pair.
+ */
+export function stackElements(plan: Pick<HalfPlan, 'pair' | 'element' | 'extras' | 'lighterSide'>, third: 'painted' | 'cut' | null, cuttable: (c: PieceColour) => boolean): StackedElement[] {
+  if (!plan.pair || !plan.lighterSide) return [];
+  const heavierSide: 'left' | 'right' = plan.lighterSide === 'left' ? 'right' : 'left';
+  const list: { colour: PieceColour; opacity: number; cut: boolean }[] = [];
+  if (plan.element && third) list.push({ colour: plan.element.colour, opacity: plan.element.opacity, cut: third === 'cut' });
+  for (const x of plan.extras) if (cuttable(x.colour)) list.push({ ...x, cut: true });
+  const heavy = list.slice(0, HEAVIER_GROUND_HOLDS);
+  const light = list.slice(HEAVIER_GROUND_HOLDS);
+  return [
+    ...heavy.map((x, slot) => ({ ...x, ground: 'heavier' as const, side: heavierSide, slot, of: heavy.length })),
+    ...light.map((x, slot) => ({ ...x, ground: 'lighter' as const, side: plan.lighterSide!, slot, of: light.length })),
+  ];
+}
+
+/** Spec 1.19 a: an element's share of its ground's region: the region split in `of` side by side, slot 0 at the half's outer edge. */
+export function stackRegion(ground: Region, e: Pick<StackedElement, 'side' | 'slot' | 'of'>): Region {
+  const r = (n: number) => Math.round(n * 10000) / 10000;
+  const w = ground.width / Math.max(1, e.of);
+  const left = e.side === 'left' ? ground.left + e.slot * w : ground.left + ground.width - (e.slot + 1) * w;
+  return { left: r(left), width: r(w) };
+}
+
+/**
+ * Spec 1.19 a on the board without the flag: a biome's panel as an element's ground -- its span across the half as
+ * the row lays it out (layout.ts `halfSpans`, the seams overlapping), less the seam (`seamRatio` of the half, where
+ * the mist, a band or a motif is) at each edge it shares with another panel. Null when the half has no such panel.
+ */
+export function panelGround(layout: readonly HalfSlotLayout[], biome: Biome, seamRatio: number): Region | null {
+  const i = layout.findIndex((l) => l.slot.biome === biome);
+  if (i < 0) return null;
+  const W = 10000;
+  const spans = halfSpans([...layout], W, seamRatio);
+  const total = spans.length ? spans[spans.length - 1]!.left + spans[spans.length - 1]!.width : W;
+  const s = spans[i]!;
+  const inset = seamRatio * total;
+  const left = s.left + (i > 0 ? inset : 0);
+  const right = s.left + s.width - (i < layout.length - 1 ? inset : 0);
+  const r = (n: number) => Math.round(n * 10000) / 10000;
+  return { left: r(left / total), width: r(Math.max(0, right - left) / total) };
+}
+
+/** One cut-out a half draws (spec 1.19 a): its place in the stack, and the picture at the half's shape. */
+export interface HalfCutOut extends StackedElement {
+  /** The picture to draw (null for the third colour painted into the picture: it only keeps its place). */
+  picture: { src: string; src2x: string | null; width: number; height: number } | null;
+  place: PiecePlace;
+}
+
+/**
+ * Spec 1.19 a: every element a half stands on its pair's grounds, as ScenePieces draws them and the storyboard walk
+ * counts them -- one rule for both. `full` is the flag's plan when the strip draws it (pairfull.ts `pairFullPlan`;
+ * null: the half's panels -- the board without the flag, or the flag's load gate falling back to them) and `choice`
+ * its load gate (`pairFullChoice`). On a pair picture: the third colour painted in (its place kept), cut out (the
+ * plan's `element`, once `pairFullThirdCutAllowed`), or a panel of its own (not on a ground); then the plan's
+ * `extras`, while `pairFullExtrasAllowed`. On the panels: the third has its panel, and every further colour is a
+ * cut-out on the pair's panels. A colour with no picture at this shape ({@link cutOutPicture}) is left out.
+ */
+export function halfCutOuts(i: {
+  plan: HalfPlan;
+  pieces: Pick<PackPieces, 'elements'> | null;
+  phone: boolean;
+  narrow: boolean;
+  full: readonly PairFullItem[] | null;
+  choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null;
+}): HalfCutOut[] {
+  const { plan, pieces, phone, narrow } = i;
+  if (!pieces || !plan.pair) return [];
+  const p = i.full?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
+  const onPicture = !!p && (!!p.apart || !!i.choice?.show);
+  // The flag's plan with nothing of it loaded yet (the strip holds what it drew, or its panels): no cut-out until it is.
+  if (p && (!onPicture || !pairFullExtrasAllowed(p, i.choice))) return [];
+  const third = plan.element?.colour ?? null;
+  // The third colour on a stage picture keeps 1.14's phone-else-desktop piece; every other cut-out, 1.18.1's phone piece.
+  const loose = (c: PieceColour) => !!p && c === third && !p.grid && !p.apart;
+  const pic = (c: PieceColour) => cutOutPicture(pieces.elements[c], phone, narrow, loose(c));
+  let thirdMode: 'painted' | 'cut' | null = null;
+  if (onPicture && p && third) {
+    const panel = i.full!.some((x) => x.kind === 'slot' && x.biome === COLOUR_BIOME[third]);
+    const paintedNow = !!p.grid?.painted || !!i.choice?.show?.painted || !!i.choice?.want?.painted;
+    if (panel) thirdMode = null;
+    else if (p.element === COLOUR_BIOME[third] && pairFullThirdCutAllowed(p, i.choice) && pic(third)) thirdMode = 'cut';
+    else if (paintedNow) thirdMode = 'painted';
+  }
+  const extras = onPicture ? new Set((p!.extras ?? []).map((b) => BIOME_COLOUR[b])) : null;
+  const stack = stackElements(plan, thirdMode, (c) => (extras ? extras.has(c) : true) && !!pic(c));
+  return stack.map((e) => ({ ...e, picture: e.cut ? pic(e.colour) : null, place: pieces.elements[e.colour]!.place }));
+}
+
+/**
+ * Spec 1.19 a: the picture a cut-out draws at the half's shape, or null: on a phone-width screen (`narrow`) only its
+ * `phone` piece (1.18.1's rule, for every cut-out but the 1.14 third on a stage picture, `loose`, which keeps 1.14's
+ * phone-else-desktop); on a phone-shaped half its phone piece where it has one; else the desktop piece.
+ */
+export function cutOutPicture(piece: PackPiece | undefined, phone: boolean, narrow: boolean, loose = false): { src: string; src2x: string | null; width: number; height: number } | null {
+  if (!piece) return null;
+  if (narrow && !loose) return piece.phone ?? null;
+  return phone && piece.phone ? piece.phone : piece;
 }
 
 /**

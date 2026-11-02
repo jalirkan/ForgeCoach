@@ -33,9 +33,9 @@ import { gradeFor, type LightOutcome } from '../../ambience/light.ts';
 import { applyGrade } from './lightGrade.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip, useNarrowScreen } from './SceneryStrip.tsx';
-import { pairFullCaption, pairFullPlan } from '../../ambience/pairfull.ts';
+import { cutOutWords, pairFullCaption, pairFullPlan } from '../../ambience/pairfull.ts';
 import { elementBiomes, phoneElementBiomes } from '../../ambience/pieces.ts';
-import { sceneryWithShowing, type MakeupShowing } from '../../ambience/makeup.ts';
+import { COLOUR_BIOME, pickFromSlots, sceneryWithShowing, type MakeupShowing } from '../../ambience/makeup.ts';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
 import { HalfScrim } from './HalfScrim.tsx';
 import { ScenePieces } from './ScenePieces.tsx';
@@ -203,6 +203,8 @@ export default function AmbiencePage() {
   const previewPieces: PackPieces | null = piecesMode === 'builtin' ? builtinPieces() : piecesMode === 'pack' ? (pack?.pieces ?? null) : null;
   const previewElements = useMemo(() => (initial.pairFull && fill ? elementBiomes(previewPieces) : null), [initial.pairFull, fill, previewPieces]);
   const previewPhoneElements = useMemo(() => (initial.pairFull && fill ? phoneElementBiomes(previewPieces) : null), [initial.pairFull, fill, previewPieces]);
+  // Spec 1.19 a: the cut-outs ScenePieces stands on the panels without the flag (a fourth or fifth colour), named in the caption.
+  const panelElements = useMemo(() => (fill ? { desktop: elementBiomes(previewPieces), phone: phoneElementBiomes(previewPieces) } : null), [fill, previewPieces]);
   // Spec 1.17: the caption plans as the strip does, so a phone-width screen (no seam cell drawn) is not told of a seam.
   const narrow = useNarrowScreen();
   useEffect(() => {
@@ -245,7 +247,7 @@ export default function AmbiencePage() {
             top
             slots={counts(SIM_PLAYERS[1])}
             creatures={creaturesOf(SIM_PLAYERS[1])}
-            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null, initial.pairFull === true, previewElements, narrow, previewPhoneElements, showingOf(SIM_PLAYERS[1]), landsOf(SIM_PLAYERS[1])) : null}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[1]), dualsOf(scenery, SIM_PLAYERS[1]), stage || null, initial.pairFull === true, previewElements, narrow, previewPhoneElements, showingOf(SIM_PLAYERS[1]), landsOf(SIM_PLAYERS[1]), panelElements) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[1]).length > 0}
             strip={
               <>
@@ -277,7 +279,7 @@ export default function AmbiencePage() {
             player={SIM_PLAYERS[0]}
             slots={counts(SIM_PLAYERS[0])}
             creatures={creaturesOf(SIM_PLAYERS[0])}
-            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null, initial.pairFull === true, previewElements, narrow, previewPhoneElements, showingOf(SIM_PLAYERS[0]), landsOf(SIM_PLAYERS[0])) : null}
+            bands={fill ? bandCaption(pack, slotsOf(scenery, SIM_PLAYERS[0]), dualsOf(scenery, SIM_PLAYERS[0]), stage || null, initial.pairFull === true, previewElements, narrow, previewPhoneElements, showingOf(SIM_PLAYERS[0]), landsOf(SIM_PLAYERS[0]), panelElements) : null}
             scrim={fill && slotsOf(scenery, SIM_PLAYERS[0]).length > 0}
             strip={
               <>
@@ -473,7 +475,7 @@ export default function AmbiencePage() {
                 </button>
               </div>
               <span className="amb-hint">
-                Spec 1.14 (whole half only): the empty table before a side's first colour, landmarks on the horizon (<i>Placeholders</i> stands City of Brass on your side, Seaside Citadel and Exotic Orchard on the opponent's), a colour's front when it arrives or leaves, and the end's veil (the Light card's <i>end</i>). A third colour's element is drawn only with <code>?pairfull=1</code>, inside the pair picture on the heavier colour's ground (<i>Three colours</i>: island+plains with red on the plains side -- painted into the picture where the pairs have it at that stage, spec 1.16.1's sided pictures, as pairs-v5, the flag's default pairs, has them, else the cut-out element). <i>Placeholders</i> are ForgeCoach's own shapes, preview only; the board never shows them.
+                Spec 1.14 (whole half only): the empty table before a side's first colour, landmarks on the horizon (<i>Placeholders</i> stands City of Brass on your side, Seaside Citadel and Exotic Orchard on the opponent's), a colour's front when it arrives or leaves, and the end's veil (the Light card's <i>end</i>). A third colour's element is drawn only with <code>?pairfull=1</code>, inside the pair picture on the heavier colour's ground (<i>Three colours</i>: mountain+plains, the Plateau's pair kept as the base (spec 1.19 b), with blue on the plains side -- painted into the picture where the pairs have it, else the cut-out element). Every colour past the third is a cut-out too, with the flag or without, stacked on the pair's grounds (spec 1.19 a). <i>Placeholders</i> are ForgeCoach's own shapes, preview only; the board never shows them.
                 {pack?.pieces ? ' This pack has pieces.' : ''}
               </span>
             </div>
@@ -586,6 +588,7 @@ function bandCaption(
   phoneElements: ReadonlySet<Biome> | null = null,
   showing: MakeupShowing | null = null,
   lands: ReadonlySet<string> | null = null,
+  panelElements: { desktop: ReadonlySet<Biome> | null; phone: ReadonlySet<Biome> | null } | null = null,
 ): string | null {
   // Spec 1.15: under `?pairfull=1` a side drawn as its pair picture says so instead (1.17: "seam 4x3" only where a cell is drawn).
   const layout = halfLayout(slots, pack, stageOverride, showing);
@@ -594,7 +597,10 @@ function bandCaption(
   if (!pack?.pairs) return null;
   const bands = pairBands(layout, pack.pairs, duals);
   if (!bands.length) return null;
-  return bands.map((b) => `${pairWords(b.left, b.right, b.pair, lands)}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ');
+  // Spec 1.19 a: the colours past the third, cut-outs on the pair's panels (a phone: those with a phone piece).
+  const cut = narrow ? panelElements?.phone : panelElements?.desktop;
+  const extras = pickFromSlots(slots, showing).extras.map((c) => COLOUR_BIOME[c]).filter((b) => !!cut?.has(b));
+  return `${bands.map((b) => `${pairWords(b.left, b.right, b.pair, lands)}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ')}${cutOutWords(extras)}`;
 }
 
 function MockSide({ title, player, top, slots, creatures, strip, plays, scrim, bands }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; creatures: number[]; strip: React.ReactNode; plays: SimPlay[]; scrim?: boolean; bands?: string | null }) {

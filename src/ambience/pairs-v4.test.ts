@@ -134,12 +134,13 @@ describe('pairs-v4', () => {
     expect(v.ground.left.width + v.ground.right.width).toBeCloseTo(1, 4);
     expect(v.horizonY).toBeGreaterThan(0.3);
     expect(v.horizonY).toBeLessThan(0.7);
-    // The heavier colour (plains, on the left here) holds the element, stopping 0.05 short of the transition.
+    // The heavier colour (plains, on the left here) holds the element, stopping the seam core short of the transition
+    // (spec 1.19 a: 0.07 of the picture's drawn width either side).
     const el = pairFullElementRegion(v, 'left');
     expect(el.left).toBe(0);
-    expect(el.width).toBeCloseTo(v.seamAt - 0.05, 4);
+    expect(el.width).toBeCloseTo(v.seamAt - 0.07 * v.frame.width, 3);
     const er = pairFullElementRegion(v, 'right');
-    expect(er.left).toBeCloseTo(v.seamAt + 0.05, 4);
+    expect(er.left).toBeCloseTo(v.seamAt + 0.07 * v.frame.width, 3);
     expect(er.left + er.width).toBeCloseTo(1, 4);
   });
 

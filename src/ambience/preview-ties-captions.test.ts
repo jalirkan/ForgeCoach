@@ -15,7 +15,11 @@
  *    turn 6), and Tropical Island, Tundra, Island, Plains, Forest redrew
  *    island+forest at the fifth (sheet 7, turn 5). makeup.ts
  *    `sceneryWithShowing` folds the memory over the preview's log as the
- *    board does.
+ *    board does. Since spec 1.19 b (the owner's rule after that storyboard)
+ *    the memory matters more: the pair showing stays the base while both its
+ *    colours are among the three heaviest, so both sequences keep their
+ *    first pair throughout, and only a colour of it leaving the top three
+ *    re-keys.
  * 2. The caption named the pack's dual for every pair ("Pair band · Tropical
  *    Island (Breeding Pool), …" on every island+forest half, sheet 2): a
  *    pair is named by its colours, and its dual or shock land only when one
@@ -34,7 +38,7 @@ import { FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL } from './prefs.ts';
 import { SIM_PLAYERS, simLog, type SimLandName } from './sim.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
-const pack = validateManifest(json('pack-v9.1.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!;
+const pack = validateManifest(json('pack-v9.2.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!;
 const pairs = validatePairs(json('pairs-v7.1.tag.pairs.json'), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs!;
 const elements = elementBiomes(pack.pieces);
 const ME = SIM_PLAYERS[0];
@@ -52,37 +56,40 @@ function afterEach(names: SimLandName[], opts: { memory?: boolean } = {}) {
   });
 }
 
-describe('the tie rule on the preview: the pair already showing stays (SYSTEM.md A5)', () => {
-  it('Island, Swamp, Mountain, Mountain, Island, Swamp: island+mountain from the fourth land on, swamp painted in (storyboard sheet 5)', () => {
+describe('the pair kept as the base on the preview (SYSTEM.md A5, spec 1.19 b)', () => {
+  it('Island, Swamp, Mountain, Mountain, Island, Swamp: island+swamp from the second land on, red painted in (storyboard sheet 5)', () => {
     const steps = afterEach(['Island', 'Swamp', 'Mountain', 'Mountain', 'Island', 'Swamp']);
-    expect(steps.map((s) => s.key)).toEqual([null, 'island+swamp', 'island+swamp', 'island+mountain', 'island+mountain', 'island+mountain']);
-    // U2 B2 R2: all three tie, and the pair showing (island+mountain) stays; the swamp is the third colour.
-    expect(steps[5]!.pick.third).toBe('B');
+    // Before 1.19 b the second Mountain re-keyed to island+mountain (R2 outweighs B1): the swamp half became desert.
+    expect(steps.map((s) => s.key)).toEqual([null, 'island+swamp', 'island+swamp', 'island+swamp', 'island+swamp', 'island+swamp']);
+    // U2 B2 R2: the mountain is the third colour, painted in on the island's ground (the tie: the earlier arrival).
+    expect(steps[5]!.pick.third).toBe('R');
     expect(steps[5]!.cell).toBe('2x2');
-    expect(steps[5]!.painted).toBe('B');
-    expect(steps[5]!.caption).toMatch(/^island \+ mountain, whole half: .*seam 2x2; B painted in/);
-  });
-
-  it('without what was showing (the preview before the fix) the sixth land went back to island+swamp, the earlier arrivals', () => {
-    const steps = afterEach(['Island', 'Swamp', 'Mountain', 'Mountain', 'Island', 'Swamp'], { memory: false });
-    expect(steps[5]!.key).toBe('island+swamp');
     expect(steps[5]!.painted).toBe('R');
+    expect(steps[5]!.caption).toMatch(/^island \+ swamp, whole half: .*seam 2x2; R painted in, on island's ground$/);
   });
 
-  it('Tropical Island, Tundra, Island, Plains, Forest: island+plains stays when the forest ties the plains (storyboard sheet 7)', () => {
+  it('without what was showing the fourth land would re-key to the heaviest pair, island+mountain', () => {
+    const steps = afterEach(['Island', 'Swamp', 'Mountain', 'Mountain', 'Island', 'Swamp'], { memory: false });
+    expect(steps[3]!.key).toBe('island+mountain');
+  });
+
+  it('Tropical Island, Tundra, Island, Plains, Forest: forest+island throughout, the plains the third colour (storyboard sheet 7)', () => {
     const steps = afterEach(['Tropical Island', 'Tundra', 'Island', 'Plains', 'Forest']);
-    expect(steps.map((s) => s.key)).toEqual(['forest+island', 'forest+island', 'forest+island', 'island+plains', 'island+plains']);
-    // U2 G1.5 W1.5: the forest is the third colour, painted in.
-    expect(steps[4]!.pick.third).toBe('G');
-    expect(steps[4]!.painted).toBe('G');
-    expect(afterEach(['Tropical Island', 'Tundra', 'Island', 'Plains', 'Forest'], { memory: false })[4]!.key).toBe('forest+island');
+    // Before 1.19 b the Plains re-keyed to island+plains (W1.5 outweighs G0.5) and threw the forest cliffs away.
+    expect(steps.map((s) => s.key)).toEqual(['forest+island', 'forest+island', 'forest+island', 'forest+island', 'forest+island']);
+    // U2 W1.5 G1.5: the plains is the third colour, painted in.
+    expect(steps[4]!.pick.third).toBe('W');
+    expect(steps[4]!.painted).toBe('W');
   });
 
-  it('a strictly heavier pair still re-keys (A8): a third Swamp after U2 B2 R2 moves off island+mountain', () => {
-    const steps = afterEach(['Island', 'Swamp', 'Mountain', 'Mountain', 'Island', 'Swamp', 'Swamp']);
-    // U2 B3 R2: island+swamp and swamp+mountain tie at 5, both heavier than island+mountain (4), so the pair showing is
-    // not among the heaviest; "failing that, the colours that arrived first win": the island.
-    expect(steps[6]!.key).toBe('island+swamp');
+  it('a pair colour leaving the top three re-keys (A8): Island, Swamp, Mountain ×2, Forest ×2, Plains ×2', () => {
+    const steps = afterEach(['Island', 'Swamp', 'Mountain', 'Mountain', 'Forest', 'Forest', 'Plains', 'Plains']);
+    // U1 B1 R2 G2 W1: two colours outweigh the island and the swamp, island+swamp stays. W2: three do -- the heaviest pair
+    // of the top three (R G W tie at 2: the mountain showing, then the forest by arrival).
+    expect(steps.map((s) => s.key)).toEqual([null, 'island+swamp', 'island+swamp', 'island+swamp', 'island+swamp', 'island+swamp', 'island+swamp', 'forest+mountain']);
+    expect([steps[7]!.pick.third, ...steps[7]!.pick.extras]).toEqual(['W', 'U', 'B']);
+    // Every colour named: the plains painted in, the island and the swamp as cut-outs (spec 1.19 a).
+    expect(steps[7]!.caption).toMatch(/; W painted in, on [a-z]+'s ground; island and swamp as elements$/);
   });
 });
 

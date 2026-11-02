@@ -17,7 +17,7 @@ import type { MakeupShowing } from './makeup.ts';
 import { BIOME_COLOUR, makeupFromSlots, planHalf } from './pieces.ts';
 import type { Biome, SlotState } from './model.ts';
 import { pairHalfAt, pairPanoramaAt, validatePairs, type PairsPack } from './pairs.ts';
-import { PAIR_FULL_ELEMENT_MARGIN, PAIR_FULL_MAX_ZOOM, pairFullArt, pairFullCaption, pairFullElementRegion, pairFullFrame, pairFullFrameCss, pairFullPlan, pairFullSplit, pairFullStage, pairFullView, pairFullZoom, type PairFullPair } from './pairfull.ts';
+import { PAIR_FULL_ELEMENT_MARGIN, PAIR_FULL_MAX_ZOOM, PAIR_FULL_SEAM_CORE, pairFullArt, pairFullCaption, pairFullElementRegion, pairFullFrame, pairFullFrameCss, pairFullPlan, pairFullSplit, pairFullStage, pairFullView, pairFullZoom, type PairFullPair } from './pairfull.ts';
 import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
 
 const BASE = 'http://127.0.0.1:8654/pairs-v2/';
@@ -165,10 +165,12 @@ describe('one makeup rule for the strip, the caption and the pieces', () => {
     expect(stripPair).toEqual(planPair);
     expect(plan.element).toMatchObject({ colour: 'B', opacity: 1 });
     expect(stripElement).toBe(plan.element!.colour);
-    // The stage counts every coloured land, the dropped mountain's too (SYSTEM.md A5): four lands, pair stage 2.
+    // The stage counts every coloured land, the mountain's too (SYSTEM.md A5): four lands, pair stage 2.
     expect([p.stage, plan.pairStage]).toEqual([2, 2]);
     expect(plan.pick.total).toBe(4);
-    expect(pairFullCaption([p])).toBe('plains + island, whole half: plains 50% | island 50%, pair stage 2; swamp as an element');
+    // Spec 1.19 a: the mountain is no longer dropped: a cut-out too, and the caption names it.
+    expect(p.extras).toEqual(['mountain']);
+    expect(pairFullCaption([p])).toBe('plains + island, whole half: plains 50% | island 50%, pair stage 2; swamp and mountain as elements');
   });
 
   it('four unequal colours: the lightest dropped, the pan by the pair’s own weights (before: 4 : 2, panned by the mountain)', () => {
@@ -177,7 +179,10 @@ describe('one makeup rule for the strip, the caption and the pieces', () => {
     expect([p.key, p.left, p.right, p.weights, p.split, p.element]).toEqual(['island+plains', 'plains', 'island', [3, 2], 0.6, 'swamp']);
     expect(stripPair).toEqual(planPair);
     expect(stripElement).toBe(plan.element!.colour);
-    expect(plan.element!.opacity).toBeCloseTo((3 * 1.5) / 6.5, 3);
+    // Spec 1.19 a: faded by its share of all four colours (4 × 1.5 / 7.5); the mountain a cut-out at 4 × 1 / 7.5.
+    expect(plan.element!.opacity).toBeCloseTo((4 * 1.5) / 7.5, 3);
+    expect(plan.extras).toEqual([{ colour: 'R', opacity: 0.533 }]);
+    expect(p.extras).toEqual(['mountain']);
     // 7.5 coloured lands, the dropped mountain's included: pair stage 3.
     expect([p.stage, plan.pairStage]).toEqual([3, 3]);
   });
@@ -188,8 +193,9 @@ describe('one makeup rule for the strip, the caption and the pieces', () => {
     const s = [slot('plains', 0, 1, 1), slot('island', 1, 1, 1), slot('swamp', 2, 0.5, 1), slot('mountain', 3, 0.5, 1), slot('forest', 4, 0.5, 1)];
     const { p, plan } = both(s);
     expect([p.key, p.element, p.stage, plan.pairStage]).toEqual(['island+plains', 'swamp', 2, 2]);
-    // The dropped colours still weigh nothing in the pan or the element's share.
-    expect([p.split, plan.element!.opacity]).toEqual([0.5, 0.6]);
+    // The colours past the third weigh nothing in the pan; spec 1.19 a fades each element by its share of all five.
+    expect([p.split, plan.element!.opacity]).toEqual([0.5, 0.714]);
+    expect(p.extras).toEqual(['mountain', 'forest']);
   });
 
   it('five colours: the three heaviest, a tie for third to the earliest arrival; the other two nowhere', () => {
@@ -388,11 +394,16 @@ describe('spec 1.15: the view the pieces (1.14) stand on', () => {
     expect(v.ground.left.left).toBe(v.panel.left);
   });
 
-  it('an element’s region is the heavier colour’s ground, stopping the margin short of the transition, never negative', () => {
+  it('an element’s region is a pair colour’s ground, stopping the seam core short of the transition (spec 1.19 a), never negative', () => {
     expect(PAIR_FULL_ELEMENT_MARGIN).toBe(0.05);
+    expect(PAIR_FULL_SEAM_CORE).toBe(0.07);
     const v = pairFullView(plan([slot('island', 0, 4, 4), slot('plains', 1, 1, 1)]), { w: 1600, h: 500 }, art)!;
-    expect(pairFullElementRegion(v, 'left')).toEqual({ left: 0, width: 0.75 });
-    expect(pairFullElementRegion(v, 'right')).toEqual({ left: 0.85, width: 0.15 });
+    // Split 0.8: the picture drawn 1.6 × the half, so the core is 0.07 × 1.6 = 0.112 of the half either side of 0.8.
+    expect(v.seamAt).toBe(0.8);
+    expect(v.frame.width).toBeCloseTo(1.6, 3);
+    expect(v.core).toEqual({ left: 0.688, right: 0.912 });
+    expect(pairFullElementRegion(v, 'left')).toEqual({ left: 0, width: 0.688 });
+    expect(pairFullElementRegion(v, 'right')).toEqual({ left: 0.912, width: 0.088 });
     expect(pairFullElementRegion(v, 'right', 0.5).width).toBe(0);
   });
 });

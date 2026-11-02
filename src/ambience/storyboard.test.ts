@@ -4,7 +4,7 @@
  *
  * The scenery's storyboard walk (storyboard.ts): every mana state a side can
  * have, through the board's real rules, with ForgeCoach's own pack
- * (pack-v9.1), the pairs each mode loads (pairs-v3.1 without the flag, the
+ * (pack-v9.2, the default since spec 1.19 d), the pairs each mode loads (pairs-v3.1 without the flag, the
  * tagged pairs-v7.1 under `?pairfull=1`), at a desktop's shape (1600 px) and
  * a phone's (375 px). It asks one question of each: is every colour with
  * lands on the battlefield on screen?
@@ -24,17 +24,25 @@
  * WUBRG order. Every picture is taken as loaded (the load gate's hold is not
  * walked).
  *
- * `every colour with lands is on screen` is an EXPECTED FAILURE (`it.fails`):
- * its assertion fails while any state has an invisible colour, which keeps
- * the suite green while the owner decides the hiding rules; the log lists
- * each rule that hides one, its count and its smallest state, and marks the
- * rules in {@link KNOWN_GAPS}, the explicit allow-list of today's gaps. `the
- * gaps are exactly the known ones` (a normal test) holds that list to what
- * the walk finds: a new gap fails it, and so does a rule that no longer hides
- * anything. Fix a rule, delete its line here; when the list is empty the
- * expected failure starts passing its assertion, so `it.fails` reports it as
- * FAILED -- make it a plain `it` then. Captions likewise
- * ({@link KNOWN_CAPTION_GAPS}, a plain test: empty today).
+ * `every colour with lands is on screen` was an EXPECTED FAILURE (`it.fails`)
+ * while the owner decided the hiding rules, with {@link KNOWN_GAPS} the
+ * explicit allow-list of the gaps (a fourth or fifth colour dropped
+ * everywhere, the third on a phone's seam cell). Spec 1.19 a (2026-11-02:
+ * every colour visible, the fold to three gone) and d (pack-v9.2's phone
+ * cut-outs the default) closed both, so it is a plain test now and the list
+ * is empty: a colour with lands and nothing on screen fails it, and `the gaps
+ * are exactly the known ones` still holds the list to what the walk finds,
+ * should a gap ever be allowed again. Captions likewise
+ * ({@link KNOWN_CAPTION_GAPS}, a plain test: empty).
+ *
+ * The flip count: the walk's own single-land steps start from a state picked
+ * with nothing showing, so under spec 1.19 b (the pair showing stays while
+ * both its colours are among the three heaviest) one land can never move a
+ * pair colour out of the top three -- the count is 0 by construction (it was
+ * 15,745 of 206,555 under the flag before). `alongPlay` counts what a player
+ * sees instead: every state with no dual played land by land (in blocks, and
+ * round-robin, in its arrival order) with the memory carried, under the old
+ * rule and the new.
  *
  * The report: `STORYBOARD_REPORT=<dir> npx vitest run src/ambience/storyboard.test.ts`
  * writes `<dir>/STORYBOARD-WALK.md` and `<dir>/storyboard-walk.json`.
@@ -43,13 +51,14 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { PIECE_COLOURS, validateManifest, type PieceColour } from './manifest.ts';
+import { makeupOf, pairKeyOrder, pickMakeup, rankColours, type Makeup, type MakeupShowing } from './makeup.ts';
 import { validatePairs } from './pairs.ts';
 import { FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL } from './prefs.ts';
 import { addLand, colourCount, enumerateStates, landCount, SHAPES, stateLabel, storyboardHalf, weightOf, type GapReason, type HalfStoryboard, type ManaState, type Shape, type StoryboardPacks } from './storyboard.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
 const PACKS: StoryboardPacks = {
-  pack: validateManifest(json('pack-v9.1.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!,
+  pack: validateManifest(json('pack-v9.2.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!,
   pairsOff: validatePairs(json('pairs-v3.1.pairs.json'), `${FORGECOACH_PAIRS_URL}pairs.json`).pairs,
   pairsFull: validatePairs(json('pairs-v7.1.tag.pairs.json'), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs,
 };
@@ -67,31 +76,17 @@ const COMBOS: readonly Combo[] = [
 const comboId = (c: Combo) => `${c.pairfull ? 'pairfull' : 'default'}/${c.shape}`;
 
 /**
- * Today's gaps, `<flag>/<shape>/<reason>` (storyboard.ts `GapReason`): every
- * rule that leaves a colour with lands with nothing on screen. Delete a line
- * when its rule is fixed; empty, the walk is green.
+ * The allowed gaps, `<flag>/<shape>/<reason>` (storyboard.ts `GapReason`): every rule that may leave a colour with
+ * lands with nothing on screen. Empty since spec 1.19 a and d (2026-11-02), which closed the last two: the dropped
+ * fourth and fifth colour (`dropped`, everywhere) and the third on a phone's seam cell (`third-on-cell-phone`).
  */
-const KNOWN_GAPS: readonly string[] = [
-  // makeup.ts: four or five colours keep the three heaviest; "the rest show nothing" (SYSTEM.md A6, spec 1.15 / 1.16).
-  'default/desktop/dropped',
-  'default/phone/dropped',
-  'pairfull/desktop/dropped',
-  'pairfull/phone/dropped',
-  // Spec 1.18 on a phone: the third colour on a seam cell draws only a painted cell with its own phone picture; pairs-v7.1's
-  // 660 painted cells have none, and the stage's painted picture (which has one, @pairs-v5-phone) is never the fallback.
-  // Spec 1.18.1's phone cut-out closes this only with a pack whose elements have `phone` pieces (pack-v9.2's pieces-v1);
-  // the walk uses pack-v9.1, the default FORGECOACH_PACK_URL, which has no pieces, so the gap stays until that changes.
-  'pairfull/phone/third-on-cell-phone',
-];
+const KNOWN_GAPS: readonly string[] = [];
 
 /** Today's caption faults, `<flag>/<shape>/<names-undrawn|omits-drawn>`; empty, the captions are honest. */
 const KNOWN_CAPTION_GAPS: readonly string[] = [];
 
 const RULE_WORDS: Record<GapReason, string> = {
-  dropped: 'a fourth or fifth colour shows nothing: makeup.ts keeps the three heaviest by their own weights (a tie: the colour showing, then the earlier arrival) and "the rest show nothing" -- no panel, no share of the pan, no element',
-  'third-on-cell-phone': "the third colour on a seam cell shows nothing on a phone: the cell has it painted in for the desktop, but no painted cell in pairs-v7.1 has a phone picture, spec 1.18 draws the plain cell's phone picture rather than fall back to the stage's painted picture (which has one), and spec 1.18.1's cut-out needs a phone piece the pack (pack-v9.1) does not have",
-  'third-on-cell-unpainted': 'the third colour on a seam cell shows nothing: the cell has no painted-in picture for it on the heavier half (spec 1.17\'s "a third colour draws nothing")',
-  'third-element-unpainted': "the third colour is the stage picture's element but the picture drawn is not its painted one, and there is no cut-out",
+  'no-element': "a colour drawn as a 1.14 cut-out (spec 1.19 a: the third where nothing is painted in, every colour past it) whose element the pack lacks at this shape (on a phone, its phone piece)",
   unexplained: 'no known rule: the walk could not say why',
 };
 const CAPTION_WORDS: Record<string, string> = {
@@ -319,29 +314,31 @@ describe('the storyboard walk: every colour with lands, on screen', () => {
     for (const c of COMBOS) expect(w.tallies[comboId(c)]!.all!.states).toBe(w.states);
   });
 
-  it('reproduces Justin’s phone board of 2026-11-02 (U2 B2 R2 G3 under ?pairfull=1): forest+island’s cell, the swamp and the mountain hidden only as the known rules allow', () => {
+  it('reproduces Justin’s phone board of 2026-11-02 (U2 B2 R2 G3 under ?pairfull=1): forest+island’s cell, and now the swamp and the mountain as cut-outs', () => {
     const phone = storyboardHalf(JUSTIN, 'phone', true, PACKS);
     expect(phone.picturePair).toEqual(['G', 'U']);
-    expect(phone.picture).toMatch(/^forest\+island cell 2x3 /);
+    expect(phone.picture).toMatch(/^forest\+island cell 2x3 \[s2x3-panorama-phone\] \+ cut-outs BR$/);
     expect(phone.colours).toEqual(['U', 'B', 'R', 'G']);
-    // Each colour he could not see is hidden by a rule on the known list (an empty list: none may be hidden).
-    for (const x of phone.invisible) expect(KNOWN_GAPS).toContain(`pairfull/phone/${x.reason}`);
-    expect(phone.visible.length + phone.invisible.length).toBe(4);
+    // Spec 1.19 a and 1.18.1 with pack-v9.2's phone pieces: the swamp (third, painted only for the desktop) and the
+    // mountain (fourth, dropped until 1.19) stand on the forest's ground; the caption names them.
+    expect(phone.invisible).toEqual([]);
+    expect(phone.drawn.filter((d) => d.kind === 'cutout').map((d) => d.what)).toEqual(['swamp cut-out (heavier ground 1/2, 0.889)', 'mountain cut-out (heavier ground 2/2, 0.889)']);
+    expect(phone.caption).toMatch(/island s2 \| forest s3, seam 2x3; swamp and mountain as elements$/);
+    const desk = storyboardHalf(JUSTIN, 'desktop', true, PACKS);
+    expect(desk.picture).toMatch(/^forest\+island cell 2x3 \+B \[s2x3\+BR-panorama\] \+ cut-outs R$/);
+    expect(desk.caption).toMatch(/seam 2x3; B painted in, on forest's ground; mountain as an element$/);
   });
 
-  // An EXPECTED failure (vitest `it.fails`): while any colour with lands is hidden (today: the KNOWN_GAPS below, whose
-  // rules wait on the owner's decisions) this assertion fails, so the test PASSES and CI stays green. The day the last
-  // gap is fixed the assertion passes and this test FAILS -- that is the signal: turn it back into a plain `it`.
-  // The allow-list itself is held exactly by the next test ("the gaps are exactly the known ones"), a normal test
-  // that must pass: a new gap, or a fixed one still listed, fails it.
-  it.fails('every colour with lands is on screen (an expected failure while KNOWN_GAPS lists any; the log lists them)', { timeout: 600_000 }, () => {
+  // Was an EXPECTED failure (vitest `it.fails`) while KNOWN_GAPS listed any gap; spec 1.19 a and d closed the last one,
+  // so it is a plain test: a colour with lands and nothing on screen fails it.
+  it('every colour with lands is on screen (the log lists any rule that hides one)', { timeout: 600_000 }, () => {
     const w = walk();
     const table = COMBOS.map((c) => {
       const t = w.tallies[comboId(c)]!;
       return `  ${comboId(c).padEnd(17)} ${[1, 2, 3, 4, 5].map((n) => `${n}c ${t[n]?.withGap ?? 0}/${t[n]?.states ?? 0}`).join('  ')}  all ${t.all!.withGap}/${t.all!.states} (${pct(t.all!.withGap, t.all!.states)})`;
     }).join('\n');
     const message = `states with a colour that has lands and nothing on screen, by colours:\n${table}\nthe rules (KNOWN = on the allow-list, KNOWN_GAPS):\n${ruleLines(w.rules, KNOWN_GAPS)}\n`;
-    console.log(message);
+    if (w.rules.size) console.log(message);
     expect([...w.rules.keys()].sort(), message).toEqual([]);
   });
 
@@ -351,7 +348,7 @@ describe('the storyboard walk: every colour with lands, on screen', () => {
     expect(KNOWN_GAPS.filter((id) => !found.includes(id)), 'FIXED: delete these lines from KNOWN_GAPS').toEqual([]);
   });
 
-  it('no gap is unexplained (every hidden colour is the fourth or fifth, or the third on a picture without it)', { timeout: 600_000 }, () => {
+  it('no gap is unexplained (every hidden colour is one the pack has no cut-out for)', { timeout: 600_000 }, () => {
     expect([...walk().rules.keys()].filter((id) => id.endsWith('/unexplained'))).toEqual([]);
   });
 
@@ -374,9 +371,81 @@ describe('the storyboard walk: every colour with lands, on screen', () => {
     for (const c of COMBOS) expect(w.flips[comboId(c)]!.tieFlips, `${comboId(c)}: a land flipped the pair on a tie`).toBe(0);
     // The flag off never draws a pair picture, so it never flips one.
     expect(w.flips['default/desktop']!.pairFlips).toBe(0);
-    expect(w.flips['pairfull/desktop']!.transitions).toBeGreaterThan(0);
+    expect(w.flips['pairfull/desktop']!.transitions).toBe(206_555);
+    // Spec 1.19 b: from a state picked with nothing showing, a pair colour has at most one colour above it, so one land
+    // cannot move it out of the top three (15,745 flips under the flag before 1.19 b). And no colour leaves the screen.
+    for (const c of COMBOS) expect([w.flips[comboId(c)]!.pairFlips, w.flips[comboId(c)]!.lostColour]).toEqual([0, 0]);
+  });
+
+  it('counts the pair changes a player sees, land by land with the memory carried: the old rule against spec 1.19 b (reported)', { timeout: 600_000 }, () => {
+    const a = alongPlay();
+    const line = (name: string, x: PlayCount) => `  ${name.padEnd(22)} ${x.steps} steps: the pair changes ${x.oldFlips} times under the old rule (${pct(x.oldFlips, x.steps)}), ${x.newFlips} under 1.19 b (${pct(x.newFlips, x.steps)})`;
+    console.log(`every state with no dual, played land by land in its arrival order:\n${line('in blocks', a.blocks)}\n${line('round-robin', a.robin)}`);
+    for (const x of [a.blocks, a.robin]) {
+      expect(x.steps).toBeGreaterThan(100_000);
+      // The base changes far less often; a change still happens when a pair colour leaves the top three.
+      expect(x.newFlips).toBeLessThan(x.oldFlips / 2);
+      expect(x.newFlips).toBeGreaterThan(0);
+      // Every change under 1.19 b is a pair colour leaving the top three (or the pair forming at the second colour, not counted).
+      expect(x.newNotLeaving).toBe(0);
+    }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Along play: what a player sees, the memory carried
+
+interface PlayCount {
+  steps: number;
+  oldFlips: number;
+  newFlips: number;
+  /** Changes under 1.19 b where both colours of the pair before were still among the three heaviest (must be none). */
+  newNotLeaving: number;
+}
+
+/** makeup.ts's pick before spec 1.19 b: the three heaviest kept (a tie: showing, then arrival), the pair their two heaviest. */
+function oldPick(m: Makeup, showing: MakeupShowing | null): MakeupShowing {
+  const keptSet = rankColours(m, showing?.kept ?? showing?.pair ?? null).slice(0, 3);
+  const kept = rankColours(m, showing?.pair ?? null, keptSet);
+  return { kept, pair: kept.length >= 2 ? pairKeyOrder(kept[0]!, kept[1]!) : null };
+}
+
+/** Every state with no dual, its lands played one at a time (each colour's in a block, or one of each in turn), counting the steps that change the pair. */
+function alongPlay(): { blocks: PlayCount; robin: PlayCount } {
+  const out = { blocks: { steps: 0, oldFlips: 0, newFlips: 0, newNotLeaving: 0 }, robin: { steps: 0, oldFlips: 0, newFlips: 0, newNotLeaving: 0 } };
+  for (const { state } of enumerateStates({ duals: false })) {
+    const order = state.arrival.filter((c) => (state.counts[c] ?? 0) > 0);
+    const blocks = order.flatMap((c) => Array<PieceColour>(state.counts[c]!).fill(c));
+    const robin: PieceColour[] = [];
+    for (let k = 0; robin.length < blocks.length; k++) for (const c of order) if ((state.counts[c] ?? 0) > k) robin.push(c);
+    for (const [name, seq] of [['blocks', blocks], ['robin', robin]] as const) {
+      const n = out[name];
+      const w: Partial<Record<PieceColour, number>> = {};
+      const arrived: PieceColour[] = [];
+      let oldShow: MakeupShowing | null = null;
+      let newShow: MakeupShowing | null = null;
+      for (const c of seq) {
+        w[c] = (w[c] ?? 0) + 1;
+        if (!arrived.includes(c)) arrived.push(c);
+        const m = makeupOf(w, arrived);
+        const o = oldPick(m, oldShow);
+        const p = pickMakeup(m, newShow);
+        if (oldShow?.pair && o.pair) {
+          n.steps++;
+          if (o.pair.join() !== oldShow.pair.join()) n.oldFlips++;
+        }
+        if (newShow?.pair && p.pair && p.pair.join() !== newShow.pair.join()) {
+          n.newFlips++;
+          const above = (x: PieceColour) => m.colours.filter((y) => (m.weights[y] ?? 0) > (m.weights[x] ?? 0) + 1e-9).length;
+          if (newShow.pair.every((x) => above(x) < 3)) n.newNotLeaving++;
+        }
+        oldShow = o;
+        newShow = p;
+      }
+    }
+  }
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 // The report (only when asked: STORYBOARD_REPORT=<dir>)
@@ -421,7 +490,7 @@ function reportMarkdown(w: Walk): string {
   const head = (cols: string[]) => out.push(`| ${cols.join(' | ')} |`, `|${cols.map(() => '---').join('|')}|`);
   out.push('# The scenery storyboard walk', '');
   out.push(`Generated ${new Date().toISOString()} by \`src/ambience/storyboard.test.ts\` (ForgeCoach branch \`pc/storyboard\`): \`STORYBOARD_REPORT=<dir> npx vitest run src/ambience/storyboard.test.ts\`. The JSON beside this file has every state with no dual.`, '');
-  out.push(`**What was walked.** ${w.states.toLocaleString('en')} mana states: every vector of 0–6 basics in each of W U B R G (16,806), in three arrival orders -- WUBRG, its reverse, and heaviest last (an order giving the same arrival walked once: ${w.basics.toLocaleString('en')} states) -- and each vector of 0–4 a colour plus one dual of any of the ten pairs, arriving WUBRG (${w.duals.toLocaleString('en')}). Each through the board's own functions (makeup.ts, layout.ts \`halfLayout\`, pairfull.ts \`pairFullPlan\` / \`pairFullCandidates\` / \`pairFullChoice\`, the cut-out rule, pairs.ts \`pairBands\`, bridges.ts) with pack-v9.1, pairs-v3.1 without the flag and the tagged pairs-v7.1 under \`?pairfull=1\`; at a desktop (1600 px, half ≈ 5 : 1) and a phone (375 px: phone-width, half ≈ 2.1 : 1). Every picture is taken as loaded (the load gate's hold is not walked). The caption is \`#ambience\`'s (AmbiencePage \`bandCaption\`); the board itself prints none.`, '');
+  out.push(`**What was walked.** ${w.states.toLocaleString('en')} mana states: every vector of 0–6 basics in each of W U B R G (16,806), in three arrival orders -- WUBRG, its reverse, and heaviest last (an order giving the same arrival walked once: ${w.basics.toLocaleString('en')} states) -- and each vector of 0–4 a colour plus one dual of any of the ten pairs, arriving WUBRG (${w.duals.toLocaleString('en')}). Each through the board's own functions (makeup.ts, layout.ts \`halfLayout\`, pairfull.ts \`pairFullPlan\` / \`pairFullCandidates\` / \`pairFullChoice\`, the cut-out rule, pairs.ts \`pairBands\`, bridges.ts) with pack-v9.2, pairs-v3.1 without the flag and the tagged pairs-v7.1 under \`?pairfull=1\`; at a desktop (1600 px, half ≈ 5 : 1) and a phone (375 px: phone-width, half ≈ 2.1 : 1). Every picture is taken as loaded (the load gate's hold is not walked). The caption is \`#ambience\`'s (AmbiencePage \`bandCaption\`); the board itself prints none.`, '');
   out.push('**Visible** means something on the half is of that colour: a panel, the pair picture (a seam cell or a stage picture: both its colours), a painted-in third colour, a cut-out, a band, a motif or a bridge. **Invisible**: the colour has lands and none of these.', '');
 
   out.push('## States with an invisible colour, by colours', '');

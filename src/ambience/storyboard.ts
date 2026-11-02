@@ -20,10 +20,13 @@
  * - layout.ts `halfLayout` (the three kept colours' panels);
  * - under the flag, pairfull.ts `pairFullPlan` → `pairFullCandidates` →
  *   `pairFullChoice` (the pair picture: a seam cell, a painted cell, a stage
- *   panorama, a painted stage panorama, a stage half) and ScenePieces' cut-out
- *   rule (`pairFullCutOutAllowed`, only with the pack's 1.14 elements);
+ *   panorama, a painted stage panorama, a stage half; spec 1.19 c: or the
+ *   two mono panels apart, no cell for their stages);
  * - otherwise (no flag, or no plan) the 1.10 row: the panels, pairs.ts
  *   `pairBands` (bands and motifs) and bridges.ts `bridgePlacements`;
+ * - and in both, ScenePieces' cut-outs (pieces.ts `halfCutOuts`, the one
+ *   rule: the third colour's where it is cut out, spec 1.19 a's every
+ *   further colour's), with the pack's 1.14 elements at the shape;
  * - the caption `#ambience` prints (AmbiencePage's `bandCaption`, mirrored
  *   here because it is not exported: `pairFullCaption` of the same plan --
  *   the same `showing` --, else the band list; a pair named by its colours,
@@ -37,10 +40,10 @@ import { PIECE_COLOURS, type PieceColour, type ScenePack } from './manifest.ts';
 import { pairKey, stageFor, stageProgress, type Biome, type SlotState } from './model.ts';
 import { halfLayout } from './layout.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupPick, type MakeupShowing } from './makeup.ts';
-import { pairFullCandidates, pairFullCaption, pairFullChoice, pairFullCutOutAllowed, pairFullHeavierSide, pairFullPanelAspect, pairFullPlan, type PairFullCandidate, type PairFullPair } from './pairfull.ts';
-import { bandedSeams, motifBands, pairBands, pairFor, pairGridPaintedAt, pairWords, panelBands, type PairsPack, type PairSide } from './pairs.ts';
+import { cutOutWords, pairFullCandidates, pairFullCaption, pairFullChoice, pairFullPanelAspect, pairFullPlan, type PairFullCandidate, type PairFullPair } from './pairfull.ts';
+import { bandedSeams, motifBands, pairBands, pairFor, pairWords, panelBands, type PairsPack } from './pairs.ts';
 import { bridgePlacements, phoneHalf } from './bridges.ts';
-import { elementBiomes, phoneElementBiomes } from './pieces.ts';
+import { elementBiomes, halfCutOuts, phoneElementBiomes, piecesPhone, planHalf } from './pieces.ts';
 
 /** The two screens walked: a desktop (1600 px wide, a half about 5 : 1) and a phone (375 px: phone-width, a half about 2.1 : 1). */
 export type Shape = 'desktop' | 'phone';
@@ -66,22 +69,20 @@ export interface StoryboardPacks {
 
 /** One thing on the half: a biome's panel, the pair picture, the third colour painted in or cut out, a band, a motif, a bridge. */
 export interface Drawn {
-  kind: 'panel' | 'pair' | 'painted' | 'cutout' | 'band' | 'motif' | 'bridge';
+  kind: 'panel' | 'pair' | 'apart' | 'painted' | 'cutout' | 'band' | 'motif' | 'bridge';
   colours: PieceColour[];
   what: string;
 }
 
 /**
  * Why a colour with lands has nothing on screen:
- * - `dropped`: a fourth or fifth colour (makeup.ts keeps the three heaviest; "the rest show nothing");
- * - `third-on-cell-phone`: the third colour on a seam cell on a phone -- the cell has it painted in for the
- *   desktop, but that picture has no phone picture, and the pack's 1.14 element for it has no `phone` piece
- *   either (spec 1.18.1's cut-out; pack-v9.1, the default, has no pieces at all), so the plain cell and nothing of it;
- * - `third-on-cell-unpainted`: the third colour on a seam cell with no painted-in picture for it on the heavier half;
- * - `third-element-unpainted`: the third colour as a stage picture's element whose picture is not the one drawn;
+ * - `no-element`: a colour drawn as a 1.14 cut-out (spec 1.19 a: the third where nothing is painted in, every colour
+ *   past it) whose element the pack lacks at this shape (on a phone-width screen, its `phone` piece);
  * - `unexplained`: none of these (a bug in this walk or a new rule).
+ * Until spec 1.19 there were four more: `dropped` (a fourth or fifth colour: "the rest show nothing"), and the third
+ * colour on a seam cell on a phone, on a cell with no painted picture of it, and on a stage picture not its painted one.
  */
-export type GapReason = 'dropped' | 'third-on-cell-phone' | 'third-on-cell-unpainted' | 'third-element-unpainted' | 'unexplained';
+export type GapReason = 'no-element' | 'unexplained';
 
 /** What one half draws for one mana state, at one shape, with or without the flag. */
 export interface HalfStoryboard {
@@ -157,7 +158,10 @@ export function landNamesFor(state: ManaState, pairs: PairsPack | null): Set<str
   return out;
 }
 
-/** AmbiencePage's `bandCaption` (not exported there): the pair picture's caption under the flag, else the bands in words. */
+/**
+ * AmbiencePage's `bandCaption` (not exported there): the pair picture's caption under the flag, else the bands in
+ * words; spec 1.19 a: the panels' cut-outs named after them ("; mountain as an element").
+ */
 function bandCaption(pack: ScenePack, pairs: PairsPack | null, slots: SlotState[], duals: Record<string, number>, pairfull: boolean, narrow: boolean, showing: MakeupShowing | null, lands: ReadonlySet<string>): string | null {
   const elements = pairfull ? elementBiomes(pack.pieces) : null;
   const phoneElements = pairfull ? phoneElementBiomes(pack.pieces) : null;
@@ -167,14 +171,19 @@ function bandCaption(pack: ScenePack, pairs: PairsPack | null, slots: SlotState[
   if (!pairs) return null;
   const bands = pairBands(layout, pairs, duals);
   if (!bands.length) return null;
-  return bands.map((b) => `${pairWords(b.left, b.right, b.pair, lands)}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ');
+  // Spec 1.19 a: the colours past the third, cut-outs on the pair's panels (a phone: those with a phone piece).
+  const cut = narrow ? phoneElementBiomes(pack.pieces) : elementBiomes(pack.pieces);
+  const extras = pickFromSlots(slots, showing).extras.map((c) => COLOUR_BIOME[c]).filter((b) => !!cut?.has(b));
+  return `${bands.map((b) => `${pairWords(b.left, b.right, b.pair, lands)}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ')}${cutOutWords(extras)}`;
 }
 
 const file = (src: string) => src.slice(src.lastIndexOf('/') + 1).replace(/\.webp$/, '');
 
-function describeShown(p: PairFullPair, shown: PairFullCandidate): string {
+function describeShown(p: PairFullPair, shown: PairFullCandidate | null): string {
+  if (p.apart) return `${p.key} apart, no cell ${p.apart.cell}: ${p.apart.left} s${p.apart.stages[0]} | ${p.apart.right} s${p.apart.stages[1]}`;
+  if (!shown) return `${p.key} (nothing shown)`;
   const pic = shown.art.picture ? file(shown.art.picture.src) : 'strip';
-  if (shown.cell) return `${p.key} cell ${shown.cell}${p.grid?.clamped ? ' (clamped)' : ''}${shown.painted ? ` +${shown.painted}` : ''} [${pic}]`;
+  if (shown.cell) return `${p.key} cell ${shown.cell}${shown.painted ? ` +${shown.painted}` : ''} [${pic}]`;
   return `${p.key} pair stage ${p.stage}${shown.painted ? ` +${shown.painted}` : ''} [${pic}]`;
 }
 
@@ -200,15 +209,15 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
   const drawn: Drawn[] = [];
   let picturePair: [PieceColour, PieceColour] | null = null;
   let picture = '';
-  let thirdReason: GapReason | null = null;
 
   const plan = pairfull && pairs ? pairFullPlan(layout, pairs, { thresholds, elements, phoneElements, showing: memory, slots, narrow }) : null;
   const p = plan?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
   const choice = p ? pairFullChoice(pairFullCandidates(p, pairFullPanelAspect(halfAspect, p.share), narrow, false), () => 'ready') : null;
   const shown = choice?.show ?? null;
-  if (plan && p && shown) {
+  const drawsPlan = !!(plan && p && (shown || p.apart));
+  if (drawsPlan) {
     const parts: string[] = [];
-    for (const it of plan) {
+    for (const it of plan!) {
       if (it.kind === 'slot') {
         const l = layout[it.index]!;
         const c = colourOf(it.biome);
@@ -218,26 +227,13 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
       }
       const cs = [colourOf(it.left), colourOf(it.right)].filter((c): c is PieceColour => !!c);
       const what = describeShown(it, shown);
-      drawn.push({ kind: 'pair', colours: cs, what });
+      // Spec 1.19 c: an apart pair is its two colours' own mono panels, a plain seam between.
+      drawn.push({ kind: it.apart ? 'apart' : 'pair', colours: cs, what });
       parts.push(what);
       picturePair = cs.length === 2 ? (BIOME_COLOUR[it.pair.left] === cs[0] ? [cs[0]!, cs[1]!] : [cs[1]!, cs[0]!]) : null;
-      if (shown.painted) drawn.push({ kind: 'painted', colours: [shown.painted], what: `${shown.painted} painted in` });
-      if (it.element && (it.grid ? phoneElements?.has(it.element) : elements?.has(it.element)) && pairFullCutOutAllowed(choice)) {
-        const c = colourOf(it.element);
-        drawn.push({ kind: 'cutout', colours: c ? [c] : [], what: `${it.element} cut-out` });
-      }
+      if (shown?.painted) drawn.push({ kind: 'painted', colours: [shown.painted], what: `${shown.painted} painted in` });
     }
     picture = parts.join(' | ');
-    const third = pick.third;
-    if (third && !drawn.some((d) => d.colours.includes(third))) {
-      if (p.grid) {
-        // The side the plan would paint on (pairfull.ts: the heavier pair colour, in the cell's order).
-        const xi = (b: Biome) => slots.find((s) => s.biome === b)?.index ?? 99;
-        const board = pairFullHeavierSide(p, xi);
-        const side: PairSide = p.grid.mirror ? (board === 'left' ? 'right' : 'left') : board;
-        thirdReason = narrow && pairGridPaintedAt(p.grid.picture, third, side, false) ? 'third-on-cell-phone' : 'third-on-cell-unpainted';
-      } else if (p.element) thirdReason = 'third-element-unpainted';
-    }
   } else {
     // The 1.10 row: the kept colours' panels, the pair bands (pictures or motifs) and the bridges between them.
     const parts: string[] = [];
@@ -254,11 +250,17 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
       drawn.push({ kind: 'bridge', colours: [colourOf(br.left), colourOf(br.right)].filter((c): c is PieceColour => !!c), what: `${br.key} bridge` });
     picture = parts.join(' | ');
   }
+  // ScenePieces' cut-outs (the half board's pieces, Fill each side on): one rule, pieces.ts `halfCutOuts`.
+  const halfBox = { w: halfAspect * 100, h: 100 };
+  const cuts = halfCutOuts({ plan: planHalf({ makeup: pick.makeup, showing: memory }), pieces: pack.pieces ?? null, phone: piecesPhone(halfBox, narrow), narrow, full: drawsPlan ? plan : null, choice: drawsPlan ? choice : null });
+  for (const e of cuts) if (e.cut && e.picture) drawn.push({ kind: 'cutout', colours: [e.colour], what: `${COLOUR_BIOME[e.colour]} cut-out (${e.ground} ground ${e.slot + 1}/${e.of}, ${e.opacity})` });
+  if (cuts.some((e) => e.cut && e.picture)) picture += ` + cut-outs ${cuts.filter((e) => e.cut && e.picture).map((e) => e.colour).join('')}`;
 
   const on = new Set(drawn.flatMap((d) => d.colours));
   const colours = pick.makeup.colours;
   const visible = colours.filter((c) => on.has(c));
-  const invisible = colours.filter((c) => !on.has(c)).map((colour) => ({ colour, reason: pick.dropped.includes(colour) ? ('dropped' as const) : colour === pick.third && thirdReason ? thirdReason : ('unexplained' as const) }));
+  const wantsCut = new Set([...pick.extras, ...(pick.third && !on.has(pick.third) ? [pick.third] : [])]);
+  const invisible = colours.filter((c) => !on.has(c)).map((colour) => ({ colour, reason: wantsCut.has(colour) && !pack.pieces?.elements[colour] ? ('no-element' as const) : wantsCut.has(colour) && narrow && !pack.pieces?.elements[colour]?.phone ? ('no-element' as const) : ('unexplained' as const) }));
   const caption = opts.caption === false ? null : bandCaption(pack, pairs, slots, duals, pairfull, narrow, memory, landNamesFor(state, pairs));
   return { shape, pairfull, colours, visible, invisible, picturePair, picture, drawn, caption, captionNames: captionColours(caption, pairs), pick };
 }
