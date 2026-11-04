@@ -17,7 +17,23 @@ button.primary{background:var(--pick);color:#141412;border-color:var(--pick);fon
 button.danger{border-color:var(--warn);color:var(--warn)}
 label.chk{display:flex;gap:6px;align-items:center;color:var(--mute);font-size:13px}
 .count{margin-left:auto;color:var(--mute);font-variant-numeric:tabular-nums}
+#filters{width:100%}
+#filters>summary{cursor:pointer;color:var(--mute);font-size:13px;padding:2px 0;list-style:revert}
+.fl{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap}
 #chips{width:100%;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+@media (min-width:641px){#filters>summary{display:none}}
+@media (max-width:640px){
+  header{gap:6px 8px;padding-top:6px;padding-bottom:6px}
+  header h1{font-size:15px;flex-basis:100%;margin:0}
+  input[type=search]{padding:5px 8px;font-size:14px}
+  button{padding:5px 10px;font-size:14px}
+  .count{font-size:12px;flex-basis:100%;margin-left:0}
+  .fl{gap:6px 10px;margin-top:4px}
+  label.chk .hint{display:none}
+  .chip{font-size:12px;padding:4px 8px}
+  #chips{gap:4px}
+  main{padding-top:8px}
+}
 #chips .lbl{color:var(--mute);font-size:12px;letter-spacing:.04em;text-transform:uppercase;margin-right:2px}
 .chip{font-size:13px;line-height:1;font-family:inherit;background:var(--chip);border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:5px 10px;cursor:pointer;user-select:none}
 .chip[aria-pressed=true]{background:var(--chipOn);border-color:var(--pick);color:var(--pick)}
@@ -49,13 +65,15 @@ footer{color:var(--mute);font-size:13px;padding:10px 0 30px;display:flex;gap:12p
 <header>
 <h1>The 72 extras</h1>
 <input id="q" type="search" placeholder="search a card or artist…" aria-label="Search cards and artists">
-<label class="chk"><input id="onlyUnpicked" type="checkbox"> only unpicked</label>
-<label class="chk"><input id="oneArt" type="checkbox"> one per artwork (hide the other printings of the same painting)</label>
-<label class="chk"><input id="english" type="checkbox" checked> English where it exists</label>
-<button id="defaults">Pick the starred printing for the rest</button>
 <button id="export" class="primary">Send picks</button>
 <span class="count" id="count"></span>
+<details id="filters"><summary>Filters and styles</summary><div class="fl">
+<label class="chk"><input id="onlyUnpicked" type="checkbox"> only unpicked</label>
+<label class="chk"><input id="oneArt" type="checkbox"> one per artwork <span class="hint">(hide the other printings of the same painting)</span></label>
+<label class="chk"><input id="english" type="checkbox" checked> English where it exists</label>
+<button id="defaults">Pick the starred printing for the rest</button>
 <div id="chips" role="group" aria-label="Show only these styles"><span class="lbl">Styles</span></div>
+</div></details>
 <div id="msg" hidden></div>
 <textarea id="out" hidden readonly aria-label="Your picks, as text"></textarea>
 </header>
@@ -165,6 +183,8 @@ for(const [id,name] of STYLES){
   b.addEventListener('click',()=>{if(active.has(id))active.delete(id);else active.add(id);b.setAttribute('aria-pressed',String(active.has(id)));render()});
   chips.appendChild(b);
 }
+// the filters fold away on a phone, where the open toolbar filled the screen; always open on a wide screen
+{const f=document.getElementById('filters'),mq=matchMedia('(max-width:640px)');const set=()=>{f.open=!mq.matches};set();mq.addEventListener('change',set)}
 document.getElementById('q').addEventListener('input',refresh);
 document.getElementById('onlyUnpicked').addEventListener('change',refresh);
 document.getElementById('oneArt').addEventListener('change',render);
