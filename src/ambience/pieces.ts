@@ -271,7 +271,7 @@ export function halfCutOuts(i: {
 }): HalfCutOut[] {
   const { plan, pieces, phone, narrow } = i;
   // Spec 1.20: a scene is the whole half, every colour painted in: nothing stands on it (nor on what the strip holds
-  // while it loads). A scene whose picture failed draws the panels, and the panels' cut-outs below.
+  // while it loads). A scene whose painting failed is today's plan (pairfull.ts `sceneFailed`), and its cut-outs below.
   if (pairFullSceneDrawn(i.full, i.choice)) return [];
   if (!pieces || !plan.pair) return [];
   const p = i.full?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;

@@ -47,8 +47,8 @@
  * Spec 1.20: over a scene (one painting of the half's exact state, the
  * strip's `ScenePanel`) nothing is drawn -- no element, no cut-out, no
  * landmark, no front, no veil -- while it is shown or loading
- * (`pairFullSceneDrawn`); a scene whose picture failed leaves the panels, and
- * the pieces stand on them as ever. The chips, the effects and the mist are
+ * (`pairFullSceneDrawn`); a scene whose painting failed is planned as today
+ * (pairfull.ts `sceneFailed`, as the strip), and the pieces stand on that. The chips, the effects and the mist are
  * not pieces, and draw as they do over a cell.
  *
  * A pack without `pieces` draws nothing (SceneryLayer does not mount this).
@@ -156,7 +156,12 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
   const phoneElements = useMemo(() => (pairFull ? phoneElementBiomes(pieces) : null), [pairFull, pieces]);
   // Spec 1.20: the scenes too, with the flag or without (the strip's own plan: without the flag only a scene comes back).
   const scenes = pack?.scenes ?? null;
-  const full = useMemo(() => ((pairFull && pack?.pairs) || scenes ? pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, elements, phoneElements, showing, slots, narrow, scenes }) : null), [pairFull, pack, scenes, layout, elements, phoneElements, showing, slots, narrow]);
+  // A scene whose painting failed at this shape: today's plan, as the strip (pairfull.ts `sceneFailed`).
+  const halfAspect = measured ? Math.round((box.w / box.h) * 20) / 20 : null;
+  const full = useMemo(
+    () => ((pairFull && pack?.pairs) || scenes ? pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, elements, phoneElements, showing, slots, narrow, scenes, sceneFailed: (src) => pictureStatus(src) === 'failed', halfAspect }) : null),
+    [pairFull, pack, scenes, layout, elements, phoneElements, showing, slots, narrow, halfAspect, pictures], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const fullPair = full?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
   const choice = useMemo(() => {
     if (!full || !measured) return null;

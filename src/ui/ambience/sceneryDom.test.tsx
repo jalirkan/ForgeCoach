@@ -746,12 +746,26 @@ describe('spec 1.20: a scene on the board', () => {
     expect(attrs(html, 'data-pc')).toContain('veil');
   });
 
-  it('the scene’s picture failed: the panels and their pieces, as with no scene', () => {
+  it('the scene’s picture failed: the half is today’s plan exactly (the pair picture, its cut-out, its caption), never the bare panels', () => {
     loadAll();
     markPicture(scene.half.src, false);
+    const without: ScenePack = { ...pack, scenes: null };
     const html = strip(true);
     expect(attrs(html, 'data-scene')).toEqual([]);
-    expect(attrs(pcs(true), 'data-pc')).toContain('veil');
+    expect(attrs(html, 'data-pairfull').length).toBe(1);
+    expect(html).toBe(renderToStaticMarkup(<SceneryStrip slots={slots} pack={without} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />));
+    expect(pcs(true)).toBe(renderToStaticMarkup(<ScenePieces pack={without} pieces={pieces} slots={slots} landNames={[]} outcome="won" edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />));
+    expect(attrs(pcs(true), 'data-pc-colour').length).toBeGreaterThan(0);
+    const opts = { thresholds: pack.stageThresholds, elements: ELEMENTS, slots };
+    const caption = pairFullCaption(pairFullPlan(halfLayout(slots, local), pack.pairs, { ...opts, scenes, sceneFailed: (src) => pictureStatus(src) === 'failed' }));
+    expect(caption).toBe(pairFullCaption(pairFullPlan(halfLayout(slots, pack), pack.pairs, opts)));
+    expect(caption).not.toMatch(/^Scene/);
+    // Only the picture the half would draw counts: the phone painting failing leaves a desktop’s scene alone.
+    resetPictures();
+    loadAll();
+    markPicture(scene.half.src, true);
+    markPicture(scene.half.phone.src, false);
+    expect(attrs(strip(true), 'data-scene')).toEqual(['island2+forest3+mountain2']);
   });
 });
 

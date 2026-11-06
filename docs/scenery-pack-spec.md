@@ -2625,9 +2625,13 @@ half's key, the half is that one painting, across the whole half:
 - **the load gate and the hold as 1.15–1.19's**: while the painting loads
   the half keeps what it drew (the pair, a cell, the panels, the previous
   scene) for at most 8 s, then its panels -- never blank; a scene on screen
-  is held while the next picture loads when the lands move on; a painting
-  that fails gives the half back to 1.5–1.19 and their pieces. A half warms
-  its own scene and every scene one basic land away, at the shape it draws;
+  is held while the next picture loads when the lands move on. **A
+  painting that fails** -- the picture this shape draws, desktop or phone --
+  gives the half back to today's plan exactly, as if there were no scenes:
+  with the whole-half flag the pair picture, its cell and its cut-outs, and
+  the caption theirs; without it the 1.10 row -- never the bare panels under
+  a "Scene" caption. A half warms its own scene and every scene one basic
+  land away, at the shape it draws;
 - **no memory update**: the pair the half "shows" (1.19 b, makeup.ts's
   memory) is **not** moved to a scene. A scene is not a pick: the memory
   keeps folding the pair rule over every state as if no scene were drawn, so
@@ -2652,6 +2656,23 @@ painting.
 (`ScenePanel`), ScenePieces. `src/ambience/scenes.test.ts` holds a sample
 file of two scenes (`testdata/scenes-v1.scenes.json`), not pinned until the
 pictures are tagged.
+
+**Follow-ups** (from the review of the 1.20 lane, not fixed yet):
+
+1. ScenePieces does not share the strip's hold of a scene on screen while
+   the next picture loads (`pairFullHold`'s `sceneNext`), so on a slow
+   network the pieces can draw over a held scene for up to 8 s. Fix: run its
+   own `pairFullHold` over the same plan and choice, in a ref.
+2. The scenes manifest is awaited with the pack and has no timeout
+   (pack.ts `resolveScenery`): a slow `scenes.json` holds the whole scenery
+   back. Fix: race it against about 3 s, and treat a loser as no scenes.
+3. The picture paths contain `+` (`scenes/island2+forest3+mountain2/…`): to
+   be checked through jsDelivr when the scenes-v1 tag is cut (a `+` read as
+   a space would 404 every scene, and each would then fall back as above).
+4. `scenePictures` warms the phone painting by the window's width only
+   (`innerWidth` ≤ 600: SceneryLayer and `#ambience`), so a phone-shaped
+   panel on a wide screen warms the desktop painting and loads its phone one
+   cold.
 
 ## 3. Files and budgets
 

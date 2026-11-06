@@ -323,6 +323,15 @@ export function pairFullPlan(
     phoneElements?: ReadonlySet<Biome> | null;
     /** Spec 1.20: the scenes pack (scenes.ts); a scene for the half's exact state is the whole plan. */
     scenes?: ScenesPack | null;
+    /**
+     * Spec 1.20: has this picture failed to load (pack.ts `pictureStatus(src) === 'failed'`)? When the scene's chosen
+     * picture at this shape ({@link sceneCandidates}: `narrow`, `halfAspect`) has, the half is planned as if there
+     * were no scenes -- today's plan, the pair picture and its cut-outs -- never the bare panels. Absent: never failed
+     * (the storyboard takes every picture as loaded).
+     */
+    sceneFailed?: ((src: string) => boolean) | null;
+    /** The whole half's shape (width / height), for the scene's chosen picture; unknown: the desktop picture unless `narrow`. */
+    halfAspect?: number | null;
   } = {},
 ): PairFullItem[] | null {
   // Spec 1.20: a scene for the half's exact state wins, whole, before any pair logic (and with no pairs pack at all).
@@ -331,7 +340,13 @@ export function pairFullPlan(
   // with no scene for its state, e.g. a fourth colour) the pair rule continues from its own last pick -- the pair it
   // would have been showing all along -- rather than from whatever the painting happened to contain.
   const scene = sceneFor(opts.scenes, opts.slots ?? layout.map((l) => l.slot), opts.thresholds ?? DEFAULT_STAGE_THRESHOLDS);
-  if (scene) return [{ kind: 'scene', key: scene.key, scene, share: 1 }];
+  if (scene) {
+    const item: PairFullScene = { kind: 'scene', key: scene.key, scene, share: 1 };
+    // The painting failed at this shape: the half goes back to today's plan, with no scenes (the finding of the review).
+    const chosen = sceneCandidates(item, pairFullPanelAspect(opts.halfAspect ?? null, 1), opts.narrow ?? false)[0];
+    if (!opts.sceneFailed || !chosen || !opts.sceneFailed(chosen.art.picture!.src)) return [item];
+    return pairFullPlan(layout, pairs, { ...opts, scenes: null });
+  }
   // Spec 1.19 a: a cut-out is drawn at this shape when the pack has one -- on a phone-width screen its phone piece only.
   const narrowScreen = opts.narrow ?? false;
   const cuttable = (b: Biome) => !!(narrowScreen ? opts.phoneElements : opts.elements)?.has(b);
@@ -502,8 +517,9 @@ export function planScene(plan: readonly PairFullItem[] | null | undefined): Pai
 
 /**
  * Spec 1.20: does the half draw a scene, or hold what it drew while its picture loads (pairFullHold)? Either way no
- * piece is drawn over it. False when the scene's picture failed (the strip then draws the half's panels, and the
- * pieces stand on them as on any panels) and for a plan with no scene.
+ * piece is drawn over it. False for a plan with no scene -- which is what a scene whose painting failed becomes
+ * (`pairFullPlan`'s `sceneFailed`: today's plan) -- and, for a caller that planned without `sceneFailed`, when the
+ * choice says the painting failed.
  */
 export function pairFullSceneDrawn(plan: readonly PairFullItem[] | null | undefined, choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
   if (!planScene(plan)) return false;

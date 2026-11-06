@@ -71,7 +71,8 @@
  * painting (`ScenePanel`), with the flag or without: no pair, no band, no
  * panel, never mirrored; its phone picture on a phone. The same load gate and
  * hold as a pair picture (pairfull.ts `planCandidates` / `pairFullHold`):
- * while it loads the half keeps what it drew.
+ * while it loads the half keeps what it drew, and a painting that fails gives
+ * the half back to today's plan (pairfull.ts `sceneFailed`), never the bare panels.
  *
  * `fill="half"` (spec 1.5, Settings → Fill each side): the same slots fill
  * the player's whole half of the board instead of a strip, split by land
@@ -94,7 +95,7 @@ import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import { useFadeIn, useFadeStack } from './useFade.ts';
 import { useTween } from './useTween.ts';
-import { PAIR_FULL_HOLD_MS, pairFullChoice, pairFullFrameCss, pairFullHold, pairFullPlan, planCandidates, type PairFullCandidate, type PairFullHold, type PairFullPair, type PairFullScene } from '../../ambience/pairfull.ts';
+import { PAIR_FULL_HOLD_MS, pairFullChoice, pairFullFrameCss, pairFullHold, pairFullPlan, planCandidates, planScene, type PairFullCandidate, type PairFullHold, type PairFullPair, type PairFullScene } from '../../ambience/pairfull.ts';
 import type { MakeupShowing } from '../../ambience/makeup.ts';
 import { usePicturesVersion } from './usePictures.ts';
 import './scenery.css';
@@ -171,12 +172,19 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   // Spec 1.17: on a phone-width screen a desktop-only seam grid cell is not planned; the half is the pair's stages (1.18: a
   // cell with a phone picture is planned there too).
   // Spec 1.20: without the flag only a scene can be planned (no pairs are passed).
-  const plannedFull = useMemo(() => ((pairFull && pairsPack) || scenesPack ? pairFullPlan(layout as HalfSlotLayout[], pairFull ? pairsPack : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes: scenesPack }) : null), [pairFull, pairsPack, scenesPack, layout, pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow]);
+  const planOpts = useMemo(() => ({ thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes: scenesPack }), [pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenesPack]);
+  const firstPlan = useMemo(() => ((pairFull && pairsPack) || scenesPack ? pairFullPlan(layout as HalfSlotLayout[], pairFull ? pairsPack : null, planOpts) : null), [pairFull, pairsPack, scenesPack, layout, planOpts]);
   // Spec 1.15's load gate (review fault 4): the pair picture is drawn once a picture of it has loaded (1.16: a painted-in
   // element first). Until then the half holds what it drew last (the review of #198: no panels-and-band flash on a cold
   // cache), for PAIR_FULL_HOLD_MS at most; with nothing drawn before, or if every picture fails, its panels. Never blank.
-  const fullAspect = usePanelAspect(hostRef, !!plannedFull);
-  const pictures = usePicturesVersion(!!plannedFull);
+  const fullAspect = usePanelAspect(hostRef, !!firstPlan);
+  const pictures = usePicturesVersion(!!firstPlan);
+  // Spec 1.20: a scene whose painting failed at this shape gives the half back to today's plan (no scenes), never the
+  // bare panels: planned again once the picture store says so.
+  const plannedFull = useMemo(
+    () => (planScene(firstPlan) ? pairFullPlan(layout as HalfSlotLayout[], pairFull ? pairsPack : null, { ...planOpts, sceneFailed: (src) => pictureStatus(src) === 'failed', halfAspect: fullAspect }) : firstPlan),
+    [firstPlan, layout, pairFull, pairsPack, planOpts, fullAspect, pictures], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const fullGate = useMemo(() => {
     // The pair picture's candidates, or (spec 1.20) the scene's one painting.
     const cands = planCandidates(plannedFull, fullAspect, narrow, horizon);

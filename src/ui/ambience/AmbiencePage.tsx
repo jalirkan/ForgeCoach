@@ -24,7 +24,7 @@ import { BIOME_LABEL, dualsOf, sceneryFromLog, slotsOf, type Biome } from '../..
 import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '../../ambience/effects.ts';
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
 import { SIM_PLAYERS, simLandCount, simLog, simSetLandCount, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
-import { browserLoader, checkEffectFiles, fetchManifest, loadPairs, manifestUrlFor, preloadPack, warmPicture, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
+import { browserLoader, checkEffectFiles, fetchManifest, loadPairs, manifestUrlFor, pictureStatus, preloadPack, warmPicture, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
 import { pairBands, pairPictures, pairsBytes, pairWords, type PairsPack } from '../../ambience/pairs.ts';
 import { halfLayout, PHONE_VIEWPORT_MAX } from '../../ambience/layout.ts';
 import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, pieceUrls, type EffectEvent, type PackEffect, type PackPieces, type ScenePack } from '../../ambience/manifest.ts';
@@ -42,6 +42,7 @@ import { HalfScrim } from './HalfScrim.tsx';
 import { ScenePieces } from './ScenePieces.tsx';
 import { builtinPieces } from './piecesArt.ts';
 import { useSceneryFx, type PlaceCard } from './useScenery.ts';
+import { usePicturesVersion } from './usePictures.ts';
 import './ambience-page.css';
 
 /** Spec 1.11: no Wastes or five-colour land here — a land that makes no coloured mana, or any colour, draws nothing. */
@@ -236,6 +237,8 @@ export default function AmbiencePage() {
   const panelElements = useMemo(() => (fill ? { desktop: elementBiomes(previewPieces), phone: phoneElementBiomes(previewPieces) } : null), [fill, previewPieces]);
   // Spec 1.17: the caption plans as the strip does, so a phone-width screen (no seam cell drawn) is not told of a seam.
   const narrow = useNarrowScreen();
+  // Spec 1.20: the caption follows a scene's painting failing (re-rendered when a picture settles, only with scenes).
+  usePicturesVersion(!!pack?.scenes);
   useEffect(() => {
     if (previewPieces) for (const src of pieceUrls(previewPieces, { phone: window.innerWidth < 700 })) warmPicture({ src, src2x: null });
   }, [previewPieces]);
@@ -628,7 +631,8 @@ function bandCaption(
   // Spec 1.20: a side with a scene for its exact state says "Scene · island 2, forest 3, mountain 2 — one painting", flag or not.
   const layout = halfLayout(slots, pack, stageOverride, showing);
   const scenes = pack?.scenes ?? null;
-  const full = (pairFull && pack?.pairs) || scenes ? pairFullCaption(pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes }), lands) : null;
+  // A scene whose painting failed is captioned as what the strip then draws: today's plan (pairfull.ts `sceneFailed`).
+  const full = (pairFull && pack?.pairs) || scenes ? pairFullCaption(pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes, sceneFailed: (src) => pictureStatus(src) === 'failed' }), lands) : null;
   if (full) return full;
   if (!pack?.pairs) return null;
   const bands = pairBands(layout, pack.pairs, duals);

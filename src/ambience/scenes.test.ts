@@ -308,6 +308,27 @@ describe('spec 1.20: the plan', () => {
     expect(sceneOf(planOf(STATE_A, { scenes: null }))).toBeNull();
   });
 
+  it('gives a scene whose chosen painting failed back to today’s plan (the plan with no scenes), at the shape it draws', () => {
+    const a = SCENES.scenes['island2+forest3+mountain2']!;
+    const failed = (bad: string) => (src: string) => src === bad;
+    const plan = (narrow: boolean, bad: string, halfAspect: number | null = null) =>
+      pairFullPlan(halfLayout(STATE_A, PACK), PAIRS_FULL, { thresholds: T, elements: ELEMENTS, phoneElements: PHONE_ELEMENTS, slots: STATE_A, narrow, scenes: SCENES, sceneFailed: failed(bad), halfAspect });
+    for (const narrow of [false, true]) {
+      const today = planOf(STATE_A, { scenes: null, narrow });
+      expect(sceneOf(today)).toBeNull();
+      expect(today!.some((x) => x.kind === 'pair')).toBe(true);
+      // The picture this shape draws failed: today's plan, exactly.
+      expect(plan(narrow, narrow ? a.half.phone.src : a.half.src)).toEqual(today);
+      // The other shape's picture failed: the scene stands.
+      expect(sceneOf(plan(narrow, narrow ? a.half.src : a.half.phone.src))?.key).toBe(a.key);
+    }
+    // A phone-shaped half on a desktop draws the phone painting, so its failure is the one that counts.
+    expect(sceneOf(plan(false, a.half.phone.src, 0.8))).toBeNull();
+    expect(sceneOf(plan(false, a.half.src, 0.8))?.key).toBe(a.key);
+    // Without the flag (no pairs): no scene, no plan -- the half as today without the flag.
+    expect(pairFullPlan(halfLayout(STATE_A, PACK), null, { thresholds: T, slots: STATE_A, scenes: SCENES, sceneFailed: failed(a.half.src) })).toBeNull();
+  });
+
   it('leaves the showing memory as it was: after a scene, the pair rule continues from its own last pick', () => {
     // Played land by land, the memory folded as MakeupMemory folds it (pickFromSlots of each state with the last pick).
     const seq: SlotState[][] = [slotsOf(['island', 1]), slotsOf(['island', 2]), slotsOf(['island', 2], ['forest', 1]), slotsOf(['island', 2], ['forest', 2]), slotsOf(['island', 2], ['forest', 3]), slotsOf(['island', 2], ['forest', 3], ['mountain', 1]), slotsOf(['island', 2], ['forest', 3], ['mountain', 2]), slotsOf(['island', 2], ['forest', 3], ['mountain', 2], ['swamp', 1])];
