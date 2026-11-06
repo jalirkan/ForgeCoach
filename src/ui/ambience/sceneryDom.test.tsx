@@ -20,6 +20,7 @@ import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullCaption, pairFullChoice,
 import { pairPanoramaAt, pairPictures, validatePairs, type PairsPack } from '../../ambience/pairs.ts';
 import { elementBiomes, phoneElementBiomes } from '../../ambience/pieces.ts';
 import { halfLayout } from '../../ambience/layout.ts';
+import { validateScenes } from '../../ambience/scenes.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { ScenePieces } from './ScenePieces.tsx';
 import { HalfScenery } from './SceneryLayer.tsx';
@@ -696,3 +697,75 @@ describe('spec 1.19 on pack-v10 and pairs-v8: the stacked cut-outs, and a pair a
 function pairFullFrameOf(items: ReturnType<typeof pairFullPlan>, shown: { art: Parameters<typeof pairFullView>[2]; mirror: boolean }): number {
   return pairFullView(items, BOX, shown.art, shown.mirror)!.frame.width;
 }
+
+describe('spec 1.20: a scene on the board', () => {
+  const SCENES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1/';
+  const scenes = validateScenes(JSON.parse(readFileSync(new URL('../../ambience/testdata/scenes-sample.scenes.json', import.meta.url), 'utf8')), `${SCENES_URL}scenes.json`).scenes!;
+  const local: ScenePack = { ...pack, scenes };
+  const scene = scenes.scenes['island2+forest3+mountain2']!;
+  // Board order is not the geography's: the scene is found by its lands alone.
+  const slots = [slot('mountain', 0, 2), slot('forest', 1, 3), slot('island', 2, 2)];
+  const strip = (pairFull: boolean) => renderToStaticMarkup(<SceneryStrip slots={slots} pack={local} reduced={true} fill="half" pairFull={pairFull} elements={pairFull ? ELEMENTS : null} />);
+  const pcs = (pairFull: boolean) => renderToStaticMarkup(<ScenePieces pack={local} pieces={pieces} slots={slots} landNames={[]} outcome="won" edge="bottom" reduced={true} pairFull={pairFull} initialBox={BOX} />);
+
+  it('a first draw with the scene not loaded: the half’s panels (never blank), no scene', () => {
+    for (const pairFull of [true, false]) {
+      const html = strip(pairFull);
+      expect(attrs(html, 'data-scene')).toEqual([]);
+      expect(html).toContain('forest/s3-half.webp');
+    }
+  });
+
+  it('the scene loaded: one painting across the half, with the flag and without -- no pair, no panel, never mirrored', () => {
+    loadAll();
+    markPicture(scene.half.src, true);
+    for (const pairFull of [true, false]) {
+      const html = strip(pairFull);
+      expect(attrs(html, 'data-scene')).toEqual(['island2+forest3+mountain2']);
+      expect(attrs(html, 'data-pairfull')).toEqual([]);
+      expect(html).not.toContain('is-mirrored');
+      expect(html).not.toContain('-half.webp');
+      expect(html).toContain(scene.half.src);
+      expect(html).toContain(`${scene.half.src} 1x, ${scene.half.src2x} 2x`);
+    }
+  });
+
+  it('no piece over a scene: no element, no cut-out, no veil -- with every element loaded', () => {
+    loadAll();
+    markPicture(scene.half.src, true);
+    for (const pairFull of [true, false]) {
+      const html = pcs(pairFull);
+      // The empty table stays mounted at opacity 0 (it fades out with the first colour), as on any half with colour.
+      expect(attrs(html, 'data-pc')).toEqual(['empty']);
+      expect(html).toMatch(/class="scn-pc-empty" style="opacity:0;/);
+      expect(attrs(html, 'data-pc-colour')).toEqual([]);
+    }
+    // The same half one Swamp later has no scene: the pieces are back (the cut-outs, the veil).
+    const four = [...slots, slot('swamp', 3, 1)];
+    const html = renderToStaticMarkup(<ScenePieces pack={local} pieces={pieces} slots={four} landNames={[]} outcome="won" edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />);
+    expect(attrs(html, 'data-pc')).toContain('veil');
+  });
+
+  it('the scene’s picture failed: the half is today’s plan exactly (the pair picture, its cut-out, its caption), never the bare panels', () => {
+    loadAll();
+    markPicture(scene.half.src, false);
+    const without: ScenePack = { ...pack, scenes: null };
+    const html = strip(true);
+    expect(attrs(html, 'data-scene')).toEqual([]);
+    expect(attrs(html, 'data-pairfull').length).toBe(1);
+    expect(html).toBe(renderToStaticMarkup(<SceneryStrip slots={slots} pack={without} reduced={true} fill="half" pairFull={true} elements={ELEMENTS} />));
+    expect(pcs(true)).toBe(renderToStaticMarkup(<ScenePieces pack={without} pieces={pieces} slots={slots} landNames={[]} outcome="won" edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />));
+    expect(attrs(pcs(true), 'data-pc-colour').length).toBeGreaterThan(0);
+    const opts = { thresholds: pack.stageThresholds, elements: ELEMENTS, slots };
+    const caption = pairFullCaption(pairFullPlan(halfLayout(slots, local), pack.pairs, { ...opts, scenes, sceneFailed: (src) => pictureStatus(src) === 'failed' }));
+    expect(caption).toBe(pairFullCaption(pairFullPlan(halfLayout(slots, pack), pack.pairs, opts)));
+    expect(caption).not.toMatch(/^Scene/);
+    // Only the picture the half would draw counts: the phone painting failing leaves a desktop’s scene alone.
+    resetPictures();
+    loadAll();
+    markPicture(scene.half.src, true);
+    markPicture(scene.half.phone.src, false);
+    expect(attrs(strip(true), 'data-scene')).toEqual(['island2+forest3+mountain2']);
+  });
+});
+

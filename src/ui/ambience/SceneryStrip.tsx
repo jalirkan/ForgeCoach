@@ -66,6 +66,14 @@
  * holds what it drew last (`pairFullHold`, at most 8 s); with nothing drawn
  * before, or if all fail, it is drawn as without the flag. Never blank.
  *
+ * Scenes (spec 1.20, ambience/scenes.ts): on the half board, when the pack's
+ * scenes have a painting for the half's exact state, the half is that one
+ * painting (`ScenePanel`), with the flag or without: no pair, no band, no
+ * panel, never mirrored; its phone picture on a phone. The same load gate and
+ * hold as a pair picture (pairfull.ts `planCandidates` / `pairFullHold`):
+ * while it loads the half keeps what it drew, and a painting that fails gives
+ * the half back to today's plan (pairfull.ts `sceneFailed`), never the bare panels.
+ *
  * `fill="half"` (spec 1.5, Settings → Fill each side): the same slots fill
  * the player's whole half of the board instead of a strip, split by land
  * count (layout.ts `halfLayout`), each slot's art in a frame of the art's
@@ -87,7 +95,7 @@ import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
 import { useFadeIn, useFadeStack } from './useFade.ts';
 import { useTween } from './useTween.ts';
-import { PAIR_FULL_HOLD_MS, pairFullCandidates, pairFullChoice, pairFullFrameCss, pairFullHold, pairFullPanelAspect, pairFullPlan, type PairFullCandidate, type PairFullHold, type PairFullPair } from '../../ambience/pairfull.ts';
+import { PAIR_FULL_HOLD_MS, pairFullChoice, pairFullFrameCss, pairFullHold, pairFullPlan, planCandidates, planScene, type PairFullCandidate, type PairFullHold, type PairFullPair, type PairFullScene } from '../../ambience/pairfull.ts';
 import type { MakeupShowing } from '../../ambience/makeup.ts';
 import { usePicturesVersion } from './usePictures.ts';
 import './scenery.css';
@@ -157,21 +165,30 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const hostRef = useRef<HTMLDivElement>(null);
   const bridged = half && !!pack?.bridges;
   const pairsPack = half ? (pack?.pairs ?? null) : null;
+  // Spec 1.20: the scenes, on the half board, with the flag or without.
+  const scenesPack = half ? (pack?.scenes ?? null) : null;
   // Spec 1.15: the pair picture as the whole half (null: the half as today).
   const narrow = useNarrowScreen();
   // Spec 1.17: on a phone-width screen a desktop-only seam grid cell is not planned; the half is the pair's stages (1.18: a
   // cell with a phone picture is planned there too).
-  const plannedFull = useMemo(() => (pairFull && pairsPack ? pairFullPlan(layout as HalfSlotLayout[], pairsPack, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow }) : null), [pairFull, pairsPack, layout, pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow]);
+  // Spec 1.20: without the flag only a scene can be planned (no pairs are passed).
+  const planOpts = useMemo(() => ({ thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes: scenesPack }), [pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenesPack]);
+  const firstPlan = useMemo(() => ((pairFull && pairsPack) || scenesPack ? pairFullPlan(layout as HalfSlotLayout[], pairFull ? pairsPack : null, planOpts) : null), [pairFull, pairsPack, scenesPack, layout, planOpts]);
   // Spec 1.15's load gate (review fault 4): the pair picture is drawn once a picture of it has loaded (1.16: a painted-in
   // element first). Until then the half holds what it drew last (the review of #198: no panels-and-band flash on a cold
   // cache), for PAIR_FULL_HOLD_MS at most; with nothing drawn before, or if every picture fails, its panels. Never blank.
-  const fullAspect = usePanelAspect(hostRef, !!plannedFull);
-  const pictures = usePicturesVersion(!!plannedFull);
+  const fullAspect = usePanelAspect(hostRef, !!firstPlan);
+  const pictures = usePicturesVersion(!!firstPlan);
+  // Spec 1.20: a scene whose painting failed at this shape gives the half back to today's plan (no scenes), never the
+  // bare panels: planned again once the picture store says so.
+  const plannedFull = useMemo(
+    () => (planScene(firstPlan) ? pairFullPlan(layout as HalfSlotLayout[], pairFull ? pairsPack : null, { ...planOpts, sceneFailed: (src) => pictureStatus(src) === 'failed', halfAspect: fullAspect }) : firstPlan),
+    [firstPlan, layout, pairFull, pairsPack, planOpts, fullAspect, pictures], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const fullGate = useMemo(() => {
-    const p = plannedFull?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
-    if (!p) return null;
-    const cands = pairFullCandidates(p, pairFullPanelAspect(fullAspect, p.share), narrow, horizon);
-    return { p, ...pairFullChoice(cands, pictureStatus) };
+    // The pair picture's candidates, or (spec 1.20) the scene's one painting.
+    const cands = planCandidates(plannedFull, fullAspect, narrow, horizon);
+    return cands ? pairFullChoice(cands, pictureStatus) : null;
   }, [plannedFull, fullAspect, narrow, horizon, pictures]); // eslint-disable-line react-hooks/exhaustive-deps
   const wantPic = fullGate?.want && fullGate.want !== fullGate.show ? fullGate.want.art.picture! : null;
   useEffect(() => {
@@ -245,6 +262,7 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
                       );
                     }
                     if (it.kind === 'pair') return <PairFullPanel key={`pairfull:${it.key}`} p={it} shown={fullShown!} first={k === 0} growth={growth} reduced={reduced} />;
+                    if (it.kind === 'scene') return <ScenePanel key="scene" s={it} shown={fullShown!} first={k === 0} growth={growth} reduced={reduced} />;
                     const l = (drawLayout as HalfSlotLayout[])[it.index]!;
                     return <Slot key={l.slot.biome} slot={l.slot} stage={l.stage} progress={l.progress} grow={it.share} first={k === 0} pack={pack?.biomes[l.slot.biome]} growth={growth} reduced={reduced} paused={!visible} pulse={pulses?.[l.slot.biome] ?? 0} half={half} />;
                   })
@@ -731,6 +749,37 @@ function PairFullPanel({ p, shown, first, growth, reduced }: { p: PairFullPair; 
           render={(e) => (
             <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
               <PairFullPicture art={e.payload.art} split={e.payload.mirror ? 1 - p.split : p.split} mirror={e.payload.mirror} />
+            </Layer>
+          )}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Spec 1.20: a scene across the whole half -- the painting for the half's exact state, framed as every 1.5 half picture
+ * is (layout.ts `halfFrameCss`: the focal point, the safe rect kept whole, the horizon pinned when one horizon is on),
+ * never mirrored, never panned. A step to another scene cross-fades over the pack's growth seconds, as a cell does; the
+ * key stays the same across scenes so the fade runs in one panel.
+ */
+function ScenePanel({ s, shown, first, growth, reduced }: { s: PairFullScene; shown: PairFullCandidate; first: boolean; growth: PackGrowth; reduced: boolean }) {
+  const art = shown.art;
+  const ms = growthMs(growth, reduced);
+  const pic = art.picture!;
+  return (
+    <div className={['scn-slot', 'scn-pairfull', 'scn-scene', first && 'is-first'].filter(Boolean).join(' ')} style={{ flexGrow: 1 }} data-scene={shown.scene ?? s.key} data-art={art.source}>
+      <div className="scn-pairfull-art">
+        <FadeGroup
+          cur={{ key: pic.src, payload: art }}
+          next={null}
+          fade={0}
+          ms={ms}
+          render={(e) => (
+            <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
+              <div className="scn-frame" style={halfFrameCss(e.payload)}>
+                <img className="scn-half-img" src={e.payload.picture!.src} srcSet={e.payload.picture!.src2x ? `${e.payload.picture!.src} 1x, ${e.payload.picture!.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => markPicture(e.payload.picture!.src, true)} onError={() => markPicture(e.payload.picture!.src, false)} />
+              </div>
             </Layer>
           )}
         />

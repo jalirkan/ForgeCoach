@@ -1,0 +1,545 @@
+{
+ "schema": 1,
+ "spec": "1.20",
+ "name": "scenes-v1",
+ "author": "jalirkan",
+ "license": "CC BY 4.0 (the paintings); made with FLUX.2 klein 4B and Real-ESRGAN on the owner's PC",
+ "scenes": {
+  "island2+forest3+mountain2": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "forest",
+     "stage": 3
+    },
+    {
+     "biome": "mountain",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+forest3+mountain2/half.webp",
+    "src2x": "scenes/island2+forest3+mountain2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 96386,
+    "subjectBand": [
+     0.158,
+     0.777
+    ],
+    "horizon": 0.677,
+    "hour": 16.5,
+    "key": "afternoon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.597
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.377,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+forest3+mountain2/phone.webp",
+     "src2x": "scenes/island2+forest3+mountain2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 102480,
+     "subjectBand": [
+      0.347,
+      0.762
+     ],
+     "horizon": 0.662,
+     "focal": {
+      "x": 0.5,
+      "y": 0.612
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.362,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "candidates/imf-223/k-a-s13.png",
+    "phone": "candidates/imf-223/p-r-s31.png"
+   }
+  },
+  "plains2+forest4+mountain2": {
+   "lands": [
+    {
+     "biome": "plains",
+     "stage": 2
+    },
+    {
+     "biome": "forest",
+     "stage": 4
+    },
+    {
+     "biome": "mountain",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/plains2+forest4+mountain2/half.webp",
+    "src2x": "scenes/plains2+forest4+mountain2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 105778,
+    "subjectBand": [
+     0.446,
+     0.804
+    ],
+    "horizon": 0.704,
+    "hour": 19,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.624
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.404,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/plains2+forest4+mountain2/phone.webp",
+     "src2x": "scenes/plains2+forest4+mountain2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 88468,
+     "subjectBand": [
+      0.449,
+      0.775
+     ],
+     "horizon": 0.675,
+     "focal": {
+      "x": 0.5,
+      "y": 0.625
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.375,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "candidates/pmf-224/k-b-s12.png",
+    "phone": "candidates/pmf-224/p-s32.png"
+   }
+  },
+  "island1+swamp1+plains1": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 1
+    },
+    {
+     "biome": "plains",
+     "stage": 1
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp1+plains1/half.webp",
+    "src2x": "scenes/island1+swamp1+plains1/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 60808,
+    "subjectBand": [
+     0.374,
+     0.694
+    ],
+    "horizon": 0.594,
+    "hour": 6.5,
+    "key": "dawn",
+    "focal": {
+     "x": 0.5,
+     "y": 0.514
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.294,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island1+swamp1+plains1/phone.webp",
+     "src2x": "scenes/island1+swamp1+plains1/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 52830,
+     "subjectBand": [
+      0.401,
+      0.721
+     ],
+     "horizon": 0.621,
+     "focal": {
+      "x": 0.5,
+      "y": 0.571
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.321,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/isp-111-k-g-s11.png",
+    "phone": "build/native/isp-111-p-r-s31.png"
+   }
+  },
+  "swamp2+forest2+mountain2": {
+   "lands": [
+    {
+     "biome": "swamp",
+     "stage": 2
+    },
+    {
+     "biome": "forest",
+     "stage": 2
+    },
+    {
+     "biome": "mountain",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/swamp2+forest2+mountain2/half.webp",
+    "src2x": "scenes/swamp2+forest2+mountain2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 115960,
+    "subjectBand": [
+     0.05,
+     0.825
+    ],
+    "horizon": 0.725,
+    "hour": 12,
+    "key": "noon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.645
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.425,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/swamp2+forest2+mountain2/phone.webp",
+     "src2x": "scenes/swamp2+forest2+mountain2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 156424,
+     "subjectBand": [
+      0.05,
+      0.738
+     ],
+     "horizon": 0.638,
+     "focal": {
+      "x": 0.5,
+      "y": 0.588
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.338,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/sfm-222-k-g-s12.png",
+    "phone": "build/native/sfm-222-p-r-s31.png"
+   }
+  },
+  "island1+swamp1+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 1
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp1+plains4/half.webp",
+    "src2x": "scenes/island1+swamp1+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 107280,
+    "subjectBand": [
+     0.413,
+     0.733
+    ],
+    "horizon": 0.633,
+    "hour": 19,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.553
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.333,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp1+plains4/phone.webp",
+     "src2x": "scenes/island1+swamp1+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 101662,
+     "subjectBand": [
+      0.339,
+      0.659
+     ],
+     "horizon": 0.559,
+     "focal": {
+      "x": 0.5,
+      "y": 0.509
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.259,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/pis-411-k-g-s12.png",
+    "phone": "build/native/pis-411-p-r-s32.png"
+   }
+  },
+  "island6+forest1+mountain1": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 6
+    },
+    {
+     "biome": "forest",
+     "stage": 1
+    },
+    {
+     "biome": "mountain",
+     "stage": 1
+    }
+   ],
+   "half": {
+    "src": "scenes/island6+forest1+mountain1/half.webp",
+    "src2x": "scenes/island6+forest1+mountain1/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 68716,
+    "subjectBand": [
+     0.267,
+     0.754
+    ],
+    "horizon": 0.654,
+    "hour": 23,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.574
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.354,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island6+forest1+mountain1/phone.webp",
+     "src2x": "scenes/island6+forest1+mountain1/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 95132,
+     "subjectBand": [
+      0.215,
+      0.535
+     ],
+     "horizon": 0.435,
+     "focal": {
+      "x": 0.5,
+      "y": 0.385
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.135,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/ifm-611-k-h-s11.png",
+    "phone": "build/native/ifm-611-p-r-s32.png"
+   }
+  },
+  "swamp4+plains4+forest4": {
+   "lands": [
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    },
+    {
+     "biome": "forest",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/swamp4+plains4+forest4/half.webp",
+    "src2x": "scenes/swamp4+plains4+forest4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 81326,
+    "subjectBand": [
+     0.311,
+     0.631
+    ],
+    "horizon": 0.531,
+    "hour": 19.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.451
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.231,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/swamp4+plains4+forest4/phone.webp",
+     "src2x": "scenes/swamp4+plains4+forest4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 79386,
+     "subjectBand": [
+      0.47,
+      0.79
+     ],
+     "horizon": 0.69,
+     "focal": {
+      "x": 0.5,
+      "y": 0.64
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.39,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/spf-444-k-g-s12.png",
+    "phone": "build/native/spf-444-p-r-s31.png"
+   }
+  },
+  "island3+swamp1+mountain3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 3
+    },
+    {
+     "biome": "swamp",
+     "stage": 1
+    },
+    {
+     "biome": "mountain",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island3+swamp1+mountain3/half.webp",
+    "src2x": "scenes/island3+swamp1+mountain3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 75270,
+    "subjectBand": [
+     0.409,
+     0.729
+    ],
+    "horizon": 0.629,
+    "hour": 16.5,
+    "key": "afternoon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.549
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.329,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island3+swamp1+mountain3/phone.webp",
+     "src2x": "scenes/island3+swamp1+mountain3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 79264,
+     "subjectBand": [
+      0.261,
+      0.581
+     ],
+     "horizon": 0.481,
+     "focal": {
+      "x": 0.5,
+      "y": 0.431
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.181,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/mis-331-k-g-s12.png",
+    "phone": "build/native/mis-331-p-r-s32.png"
+   }
+  }
+ }
+}

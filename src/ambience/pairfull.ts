@@ -99,14 +99,24 @@
  *   joined by the plain 1.10 seam, no band picture -- the plan's `apart`
  *   ({@link pairFullApart}); a cell painted later is preferred at once.
  *
+ * - Spec 1.20, scenes (scenes.ts): before any of the above, when the scenes
+ *   pack (`opts.scenes`) has a painting for the half's exact state (scenes.ts
+ *   `sceneKey`, over the half's own slots), the plan is that one item, a
+ *   {@link PairFullScene}: the whole half, at a desktop and on a phone alike,
+ *   drawn as painted -- no pair, no element, no extras, no cut-out, no panel,
+ *   no band. With or without the whole-half flag (a caller without it passes
+ *   no pairs, and only a scene can come back). No scene: everything above,
+ *   unchanged.
+ *
  * Pure and DOM-free; the drawing is ui/ambience/SceneryStrip.tsx's
- * `PairFullPanel`.
+ * `PairFullPanel` (and `ScenePanel` for a scene).
  */
 import { DEFAULT_STAGE_THRESHOLDS, stageFor, type Biome, type SlotState } from './model.ts';
 import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfArt, type HalfSlotLayout } from './layout.ts';
 import type { PackHalf, PieceColour } from './manifest.ts';
 import { geographyOrder, gridCellKey, pairElementAt, pairFor, pairGridGivesWay, pairGridPaintedAt, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, pairWords, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
+import { sceneFor, sceneWords, type PackScene, type ScenesPack } from './scenes.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
 export const PAIR_FULL_SPLIT: readonly [number, number] = [0.2, 0.8];
@@ -201,7 +211,19 @@ export interface PairFullSlot {
   share: number;
 }
 
-export type PairFullItem = PairFullPair | PairFullSlot;
+/**
+ * Spec 1.20: the half's scene, a painting of its exact state, across the whole half (its `phone` picture on a phone,
+ * by the rule a grid cell's follows), never mirrored. The plan's only item when it is there.
+ */
+export interface PairFullScene {
+  kind: 'scene';
+  /** scenes.ts `sceneKeyOf`: `island2+forest3+mountain2`. */
+  key: string;
+  scene: PackScene;
+  share: 1;
+}
+
+export type PairFullItem = PairFullPair | PairFullSlot | PairFullScene;
 
 const r4 = (n: number) => Math.round(n * 10000) / 10000;
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -299,8 +321,32 @@ export function pairFullPlan(
      * it draws that colour's cut-out instead -- only one of these.
      */
     phoneElements?: ReadonlySet<Biome> | null;
+    /** Spec 1.20: the scenes pack (scenes.ts); a scene for the half's exact state is the whole plan. */
+    scenes?: ScenesPack | null;
+    /**
+     * Spec 1.20: has this picture failed to load (pack.ts `pictureStatus(src) === 'failed'`)? When the scene's chosen
+     * picture at this shape ({@link sceneCandidates}: `narrow`, `halfAspect`) has, the half is planned as if there
+     * were no scenes -- today's plan, the pair picture and its cut-outs -- never the bare panels. Absent: never failed
+     * (the storyboard takes every picture as loaded).
+     */
+    sceneFailed?: ((src: string) => boolean) | null;
+    /** The whole half's shape (width / height), for the scene's chosen picture; unknown: the desktop picture unless `narrow`. */
+    halfAspect?: number | null;
   } = {},
 ): PairFullItem[] | null {
+  // Spec 1.20: a scene for the half's exact state wins, whole, before any pair logic (and with no pairs pack at all).
+  // The `showing` memory (makeup.ts MakeupMemory) is deliberately NOT moved to the scene: a scene is not a pick, so the
+  // memory keeps folding the pair rule over every state as if no scene were drawn, and when the scene ends (a land
+  // with no scene for its state, e.g. a fourth colour) the pair rule continues from its own last pick -- the pair it
+  // would have been showing all along -- rather than from whatever the painting happened to contain.
+  const scene = sceneFor(opts.scenes, opts.slots ?? layout.map((l) => l.slot), opts.thresholds ?? DEFAULT_STAGE_THRESHOLDS);
+  if (scene) {
+    const item: PairFullScene = { kind: 'scene', key: scene.key, scene, share: 1 };
+    // The painting failed at this shape: the half goes back to today's plan, with no scenes (the finding of the review).
+    const chosen = sceneCandidates(item, pairFullPanelAspect(opts.halfAspect ?? null, 1), opts.narrow ?? false)[0];
+    if (!opts.sceneFailed || !chosen || !opts.sceneFailed(chosen.art.picture!.src)) return [item];
+    return pairFullPlan(layout, pairs, { ...opts, scenes: null });
+  }
   // Spec 1.19 a: a cut-out is drawn at this shape when the pack has one -- on a phone-width screen its phone piece only.
   const narrowScreen = opts.narrow ?? false;
   const cuttable = (b: Biome) => !!(narrowScreen ? opts.phoneElements : opts.elements)?.has(b);
@@ -438,6 +484,46 @@ export interface PairFullCandidate {
   mirror: boolean;
   /** Spec 1.17: the grid cell this picture is (`"4x3"`), when it is one. */
   cell?: string;
+  /** Spec 1.20: the scene this picture is (its key), when it is one. */
+  scene?: string;
+}
+
+/**
+ * Spec 1.20: the picture a scene draws -- its one painting, the `phone` picture on a phone-width screen or a
+ * phone-shaped panel (layout.ts `pickHalfPicture`, the rule a grid cell's picture follows through {@link pairFullArt}),
+ * the horizon pinned as every panel's when `horizon` (spec 1.13). Never mirrored: a scene is drawn as painted.
+ */
+export function sceneCandidates(s: PairFullScene, panelAspect: number | null, narrow: boolean, horizon = false): PairFullCandidate[] {
+  const art = halfArtOf(s.scene.half, panelAspect, { narrow, horizon });
+  return art.picture ? [{ art, painted: null, mirror: false, scene: s.key }] : [];
+}
+
+/**
+ * The candidates for whatever a plan draws across the half: a scene's ({@link sceneCandidates}) or the pair's
+ * ({@link pairFullCandidates}, at the pair panel's own shape); null for a plan with neither (or none). `halfAspect`
+ * is the whole half's shape.
+ */
+export function planCandidates(plan: readonly PairFullItem[] | null | undefined, halfAspect: number | null, narrow: boolean, horizon = false): PairFullCandidate[] | null {
+  const s = plan?.find((x): x is PairFullScene => x.kind === 'scene');
+  if (s) return sceneCandidates(s, pairFullPanelAspect(halfAspect, 1), narrow, horizon);
+  const p = plan?.find((x): x is PairFullPair => x.kind === 'pair');
+  return p ? pairFullCandidates(p, pairFullPanelAspect(halfAspect, p.share), narrow, horizon) : null;
+}
+
+/** Spec 1.20: the plan's scene, or null. */
+export function planScene(plan: readonly PairFullItem[] | null | undefined): PairFullScene | null {
+  return plan?.find((x): x is PairFullScene => x.kind === 'scene') ?? null;
+}
+
+/**
+ * Spec 1.20: does the half draw a scene, or hold what it drew while its picture loads (pairFullHold)? Either way no
+ * piece is drawn over it. False for a plan with no scene -- which is what a scene whose painting failed becomes
+ * (`pairFullPlan`'s `sceneFailed`: today's plan) -- and, for a caller that planned without `sceneFailed`, when the
+ * choice says the painting failed.
+ */
+export function pairFullSceneDrawn(plan: readonly PairFullItem[] | null | undefined, choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+  if (!planScene(plan)) return false;
+  return !choice || !!choice.show || !!choice.want;
 }
 
 /**
@@ -501,6 +587,8 @@ export function pairFullChoice(cands: readonly PairFullCandidate[], status: (src
  * so the cut-out never stands on a picture the half is not showing).
  */
 export function pairFullCutOutAllowed(choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+  // Spec 1.20: never over a scene (shown, or loading while the strip holds what it drew).
+  if (choice?.show?.scene || choice?.want?.scene) return false;
   if (choice?.want?.cell && choice.show !== choice.want) return false;
   return !!choice?.show && !choice.show.painted && !choice.want?.painted;
 }
@@ -510,14 +598,17 @@ export function pairFullCutOutAllowed(choice: { show: PairFullCandidate | null; 
  * panels are the strip's own); over a picture once one is shown and, while a cell is wanted, only over that cell
  * (the strip holds what it drew while the cell loads, so a cut-out never stands on a picture the half is not showing).
  */
-export function pairFullExtrasAllowed(p: Pick<PairFullPair, 'apart'> | null, choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+export function pairFullExtrasAllowed(p: (Pick<PairFullPair, 'apart'> & { kind?: PairFullItem['kind'] }) | null, choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+  // Spec 1.20: a scene is the whole half, every colour painted in: no cut-out at all.
+  if (p?.kind === 'scene' || choice?.show?.scene || choice?.want?.scene) return false;
   if (p?.apart) return true;
   if (choice?.want?.cell && choice.show !== choice.want) return false;
   return !!choice?.show;
 }
 
 /** {@link pairFullCutOutAllowed} for the plan's third colour, an apart pair included (no picture to wait for). */
-export function pairFullThirdCutAllowed(p: Pick<PairFullPair, 'apart'> | null, choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+export function pairFullThirdCutAllowed(p: (Pick<PairFullPair, 'apart'> & { kind?: PairFullItem['kind'] }) | null, choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null): boolean {
+  if (p?.kind === 'scene' || choice?.show?.scene || choice?.want?.scene) return false;
   return p?.apart ? true : pairFullCutOutAllowed(choice);
 }
 
@@ -558,6 +649,11 @@ export interface PairFullHold<L> {
  * the panels are held, never the warm whole-place panorama for a moment
  * before the cell (the #201 follow-up; `pairPictures` warms the first cells
  * ahead, so this is the slow-network case).
+ * Spec 1.20: a scene is one picture, so a scene wanted and not loaded is the
+ * `cold` case: the half holds what it drew (a cell, a pair, the panels, the
+ * previous scene). And when a scene is on screen and the plan moves on (a
+ * land with no scene for its state) to a picture not loaded yet, the scene is
+ * held, never a warm panorama in between.
  * Pure: `hold` in, the new memory out (SceneryStrip keeps it in a ref).
  */
 export function pairFullHold<L>(
@@ -581,7 +677,9 @@ export function pairFullHold<L>(
   // The pair forming (the #201 follow-up): the half drew no pair picture before and wants its first cell, not loaded yet.
   // Spec 1.19 c: likewise from an apart pair (its panels) to a cell: the panels are held, never the panorama between.
   const gridFirst = !!cur.plan && !!cur.choice?.want?.cell && cur.choice.show !== cur.choice.want && !!hold.last && (!hold.last.plan || planApart(hold.last.plan));
-  if (cold || paintedNext || gridNext || gridFirst) {
+  // Spec 1.20: a scene on screen and the next plan's best picture not loaded yet: hold the scene.
+  const sceneNext = !!cur.plan && !!cur.choice?.want && cur.choice.show !== cur.choice.want && !!hold.last?.shown?.scene;
+  if (cold || paintedNext || gridNext || gridFirst || sceneNext) {
     const since = hold.since ?? now;
     if (hold.last && now - since < holdMs) return { draw: hold.last, hold: { last: hold.last, since }, holding: true };
     if (cold) return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
@@ -786,12 +884,20 @@ export function pairFullElementSide(p: PairFullPair, indexOf: (b: Biome) => numb
  * pairs.ts `pairWords`).
  */
 export function pairFullCaption(items: readonly PairFullItem[] | null, lands: ReadonlySet<string> | null = null): string | null {
+  // Spec 1.20: "Scene · island 2, forest 3, mountain 2 — one painting".
+  const scene = planScene(items);
+  if (scene) return sceneCaption(scene);
   const p = items?.find((x): x is PairFullPair => x.kind === 'pair');
   if (!p) return null;
   const third = items!.find((x): x is PairFullSlot => x.kind === 'slot');
   const pct = (n: number) => `${Math.round(n * 100)}%`;
   const where = p.grid ? gridCaption(p.grid) : p.apart ? apartCaption(p.apart) : `pair stage ${p.stage}`;
   return `${pairWords(p.left, p.right, p.pair, lands)}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, ${where}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${elementCaption(p)}`;
+}
+
+/** Spec 1.20: a scene's caption, its lands in the geography's order. */
+export function sceneCaption(s: Pick<PairFullScene, 'scene'>): string {
+  return `Scene · ${sceneWords(s.scene)} — one painting`;
 }
 
 /** Spec 1.19 c: "island s1 | forest s5, no seam cell", in the geography's order, each colour at its own stage. */
