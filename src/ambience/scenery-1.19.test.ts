@@ -4,8 +4,10 @@
  *
  * Spec 1.19 (draft, the owner's four rules of 2026-11-02 after the storyboard
  * review, pc-results scenery/STORYBOARD.md) on the real packs the board loads:
- * pack-v9.2 (1.19 d, the default: five elements with phone pieces), the
- * tagged pairs-v7.1 under `?pairfull=1` and pairs-v3.1 without it, through
+ * pack-v10 (the default since 2026-11-06; its `pieces` are 1.19 d's five
+ * elements with phone pieces, as pack-v9.2's were), the tagged pairs-v8 under
+ * `?pairfull=1` (no painted-in cells: a third colour is a cut-out) and
+ * pairs-v3.1 without it, through
  * storyboard.ts `storyboardHalf` (the board's own functions composed as
  * SceneryLayer composes them) at a desktop's and a phone's shape.
  *
@@ -31,9 +33,9 @@ import type { MakeupShowing } from './makeup.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
 const PACKS: StoryboardPacks = {
-  pack: validateManifest(json('pack-v9.2.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!,
+  pack: validateManifest(json('pack-v10.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!,
   pairsOff: validatePairs(json('pairs-v3.1.pairs.json'), `${FORGECOACH_PAIRS_URL}pairs.json`).pairs,
-  pairsFull: validatePairs(json('pairs-v7.1.tag.pairs.json'), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs,
+  pairsFull: validatePairs(json('pairs-v8.tag.pairs.json'), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs,
 };
 const SHAPES: readonly Shape[] = ['desktop', 'phone'];
 const EMPTY: ManaState = { counts: {}, duals: [], arrival: [] };
@@ -65,32 +67,27 @@ describe('spec 1.19 b: the pair kept as the base (the storyboard’s sequences 5
       // U2 B2 R2 G3: the forest (3) is the third colour now, the mountain past it a cut-out.
       const last = steps[8]!;
       expect([last.pick.third, last.pick.extras]).toEqual(['G', ['R']]);
-      if (shape === 'desktop') {
-        expect(last.picture).toBe('island+swamp cell 2x2 +G [s2x2+GL-panorama] + cut-outs R');
-        expect(last.caption).toMatch(/^island \+ swamp, whole half: island 50% \| swamp 50%, island s2 \| swamp s2, seam 2x2; G painted in, on island's ground; mountain as an element$/);
-      } else {
-        // The painted forest has no phone picture: its cut-out (1.18.1), stacked with the mountain's on the island's ground.
-        expect(last.picture).toBe('island+swamp cell 2x2 [s2x2-panorama-phone] + cut-outs GR');
-        expect(cutOuts(last)).toEqual(['forest cut-out (heavier ground 1/2, 1)', 'mountain cut-out (heavier ground 2/2, 0.889)']);
-        expect(last.caption).toMatch(/seam 2x2; forest and mountain as elements$/);
-      }
+      // pairs-v8 paints no third colour into a cell: at both shapes the forest is its cut-out (1.19 a), stacked with
+      // the mountain's on the island's ground (pairs-v7.1 painted it in on the desktop).
+      expect(last.picture).toBe(`island+swamp cell 2x2 [s2x2-panorama${shape === 'phone' ? '-phone' : ''}] + cut-outs GR`);
+      expect(cutOuts(last)).toEqual(['forest cut-out (heavier ground 1/2, 1)', 'mountain cut-out (heavier ground 2/2, 0.889)']);
+      expect(last.caption).toMatch(/^island \+ swamp, whole half: island 50% \| swamp 50%, island s2 \| swamp s2, seam 2x2; forest and mountain as elements$/);
     });
 
     it(`sequence 6, W U B R G ×2 then Forest, Island (${shape}): island+plains from the second land to the last, every colour on screen`, () => {
       const steps = play('W U B R G W U B R G G U', shape);
       expect(steps.map((h) => h.picturePair?.join('') ?? null)).toEqual([null, ...Array(11).fill('UW')]);
       for (const h of steps) expect(h.invisible, h.picture).toEqual([]);
-      // W1 U1 B1 R1 G1: the swamp the third (painted in on the desktop), the mountain and the forest cut-outs -- the
-      // mountain on the plains' ground (the heavier pair colour's: the earlier arrival on a tie) beside the swamp's place, the forest on the island's.
+      // W1 U1 B1 R1 G1: the swamp the third, then the mountain and the forest, all three cut-outs at both shapes (pairs-v8
+      // paints nothing in) -- the swamp and the mountain on the plains' ground (the heavier pair colour's: the earlier
+      // arrival on a tie), the forest on the island's.
       const five = steps[4]!;
       expect([five.pick.third, five.pick.extras]).toEqual(['B', ['R', 'G']]);
-      expect(five.drawn.filter((d) => d.kind === 'cutout').map((d) => d.what.replace(/, [\d.]+\)$/, ')'))).toEqual(
-        shape === 'desktop' ? ['mountain cut-out (heavier ground 2/2)', 'forest cut-out (lighter ground 1/1)'] : ['swamp cut-out (heavier ground 1/2)', 'mountain cut-out (heavier ground 2/2)', 'forest cut-out (lighter ground 1/1)'],
-      );
+      expect(five.drawn.filter((d) => d.kind === 'cutout').map((d) => d.what.replace(/, [\d.]+\)$/, ')'))).toEqual(['swamp cut-out (heavier ground 1/2)', 'mountain cut-out (heavier ground 2/2)', 'forest cut-out (lighter ground 1/1)']);
       // The last, W2 U3 B2 R2 G3: the forest (3) the third; the swamp and the mountain past it.
       const last = steps[11]!;
       expect([last.pick.third, last.pick.extras]).toEqual(['G', ['B', 'R']]);
-      expect(last.caption).toMatch(shape === 'desktop' ? /island s3 \| plains s2, seam 3x2; G painted in, on island's ground; swamp and mountain as elements$/ : /island s3 \| plains s2, seam 3x2; forest, swamp and mountain as elements$/);
+      expect(last.caption).toMatch(/island s3 \| plains s2, seam 3x2; forest, swamp and mountain as elements$/);
     });
   }
 

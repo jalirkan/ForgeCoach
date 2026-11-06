@@ -4,8 +4,9 @@
  *
  * The scenery's storyboard walk (storyboard.ts): every mana state a side can
  * have, through the board's real rules, with ForgeCoach's own pack
- * (pack-v9.2, the default since spec 1.19 d), the pairs each mode loads (pairs-v3.1 without the flag, the
- * tagged pairs-v7.1 under `?pairfull=1`), at a desktop's shape (1600 px) and
+ * (pack-v10, the default since 2026-11-06; spec 1.19 d made its tag's
+ * predecessor pack-v9.2 the default), the pairs each mode loads (pairs-v3.1 without the flag, the
+ * tagged pairs-v8 under `?pairfull=1`), at a desktop's shape (1600 px) and
  * a phone's (375 px). It asks one question of each: is every colour with
  * lands on the battlefield on screen?
  *
@@ -58,9 +59,9 @@ import { addLand, colourCount, enumerateStates, landCount, SHAPES, stateLabel, s
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
 const PACKS: StoryboardPacks = {
-  pack: validateManifest(json('pack-v9.2.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!,
+  pack: validateManifest(json('pack-v10.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!,
   pairsOff: validatePairs(json('pairs-v3.1.pairs.json'), `${FORGECOACH_PAIRS_URL}pairs.json`).pairs,
-  pairsFull: validatePairs(json('pairs-v7.1.tag.pairs.json'), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs,
+  pairsFull: validatePairs(json('pairs-v8.tag.pairs.json'), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs,
 };
 
 interface Combo {
@@ -319,14 +320,18 @@ describe('the storyboard walk: every colour with lands, on screen', () => {
     expect(phone.picturePair).toEqual(['G', 'U']);
     expect(phone.picture).toMatch(/^forest\+island cell 2x3 \[s2x3-panorama-phone\] \+ cut-outs BR$/);
     expect(phone.colours).toEqual(['U', 'B', 'R', 'G']);
-    // Spec 1.19 a and 1.18.1 with pack-v9.2's phone pieces: the swamp (third, painted only for the desktop) and the
-    // mountain (fourth, dropped until 1.19) stand on the forest's ground; the caption names them.
+    // Spec 1.19 a and 1.18.1 with the pack's phone pieces (`@pieces-v1`): the swamp (third) and the mountain (fourth,
+    // dropped until 1.19) stand on the forest's ground; the caption names them.
     expect(phone.invisible).toEqual([]);
     expect(phone.drawn.filter((d) => d.kind === 'cutout').map((d) => d.what)).toEqual(['swamp cut-out (heavier ground 1/2, 0.889)', 'mountain cut-out (heavier ground 2/2, 0.889)']);
     expect(phone.caption).toMatch(/island s2 \| forest s3, seam 2x3; swamp and mountain as elements$/);
+    // pairs-v8 paints no third colour into a cell (pairs-v7.1 painted the swamp in on the desktop): the desktop is the
+    // phone's board at its own shape, the plain cell with both cut-outs on the forest's ground.
     const desk = storyboardHalf(JUSTIN, 'desktop', true, PACKS);
-    expect(desk.picture).toMatch(/^forest\+island cell 2x3 \+B \[s2x3\+BR-panorama\] \+ cut-outs R$/);
-    expect(desk.caption).toMatch(/seam 2x3; B painted in, on forest's ground; mountain as an element$/);
+    expect(desk.picture).toMatch(/^forest\+island cell 2x3 \[s2x3-panorama\] \+ cut-outs BR$/);
+    expect(desk.invisible).toEqual([]);
+    expect(desk.drawn.filter((d) => d.kind === 'cutout').map((d) => d.what)).toEqual(['swamp cut-out (heavier ground 1/2, 0.889)', 'mountain cut-out (heavier ground 2/2, 0.889)']);
+    expect(desk.caption).toMatch(/island s2 \| forest s3, seam 2x3; swamp and mountain as elements$/);
   });
 
   // Was an EXPECTED failure (vitest `it.fails`) while KNOWN_GAPS listed any gap; spec 1.19 a and d closed the last one,
@@ -490,7 +495,7 @@ function reportMarkdown(w: Walk): string {
   const head = (cols: string[]) => out.push(`| ${cols.join(' | ')} |`, `|${cols.map(() => '---').join('|')}|`);
   out.push('# The scenery storyboard walk', '');
   out.push(`Generated ${new Date().toISOString()} by \`src/ambience/storyboard.test.ts\` (ForgeCoach branch \`pc/storyboard\`): \`STORYBOARD_REPORT=<dir> npx vitest run src/ambience/storyboard.test.ts\`. The JSON beside this file has every state with no dual.`, '');
-  out.push(`**What was walked.** ${w.states.toLocaleString('en')} mana states: every vector of 0–6 basics in each of W U B R G (16,806), in three arrival orders -- WUBRG, its reverse, and heaviest last (an order giving the same arrival walked once: ${w.basics.toLocaleString('en')} states) -- and each vector of 0–4 a colour plus one dual of any of the ten pairs, arriving WUBRG (${w.duals.toLocaleString('en')}). Each through the board's own functions (makeup.ts, layout.ts \`halfLayout\`, pairfull.ts \`pairFullPlan\` / \`pairFullCandidates\` / \`pairFullChoice\`, the cut-out rule, pairs.ts \`pairBands\`, bridges.ts) with pack-v9.2, pairs-v3.1 without the flag and the tagged pairs-v7.1 under \`?pairfull=1\`; at a desktop (1600 px, half ≈ 5 : 1) and a phone (375 px: phone-width, half ≈ 2.1 : 1). Every picture is taken as loaded (the load gate's hold is not walked). The caption is \`#ambience\`'s (AmbiencePage \`bandCaption\`); the board itself prints none.`, '');
+  out.push(`**What was walked.** ${w.states.toLocaleString('en')} mana states: every vector of 0–6 basics in each of W U B R G (16,806), in three arrival orders -- WUBRG, its reverse, and heaviest last (an order giving the same arrival walked once: ${w.basics.toLocaleString('en')} states) -- and each vector of 0–4 a colour plus one dual of any of the ten pairs, arriving WUBRG (${w.duals.toLocaleString('en')}). Each through the board's own functions (makeup.ts, layout.ts \`halfLayout\`, pairfull.ts \`pairFullPlan\` / \`pairFullCandidates\` / \`pairFullChoice\`, the cut-out rule, pairs.ts \`pairBands\`, bridges.ts) with pack-v10, pairs-v3.1 without the flag and the tagged pairs-v8 under \`?pairfull=1\`; at a desktop (1600 px, half ≈ 5 : 1) and a phone (375 px: phone-width, half ≈ 2.1 : 1). Every picture is taken as loaded (the load gate's hold is not walked). The caption is \`#ambience\`'s (AmbiencePage \`bandCaption\`); the board itself prints none.`, '');
   out.push('**Visible** means something on the half is of that colour: a panel, the pair picture (a seam cell or a stage picture: both its colours), a painted-in third colour, a cut-out, a band, a motif or a bridge. **Invisible**: the colour has lands and none of these.', '');
 
   out.push('## States with an invisible colour, by colours', '');
