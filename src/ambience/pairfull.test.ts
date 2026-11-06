@@ -18,7 +18,7 @@ import { BIOME_COLOUR, makeupFromSlots, planHalf } from './pieces.ts';
 import type { Biome, SlotState } from './model.ts';
 import { pairHalfAt, pairPanoramaAt, validatePairs, type PairsPack } from './pairs.ts';
 import { PAIR_FULL_ELEMENT_MARGIN, PAIR_FULL_MAX_ZOOM, PAIR_FULL_SEAM_CORE, pairFullArt, pairFullCaption, pairFullElementRegion, pairFullFrame, pairFullFrameCss, pairFullPlan, pairFullSplit, pairFullStage, pairFullView, pairFullZoom, type PairFullPair } from './pairfull.ts';
-import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
+import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, loadSceneryPrefs, pairFullOn, pairsUrlOf } from './prefs.ts';
 
 const BASE = 'http://127.0.0.1:8654/pairs-v2/';
 const slot = (biome: Biome, index: number, weight: number, stage: number): SlotState => ({ biome, index, weight, stage, peak: stage });
@@ -299,18 +299,30 @@ describe('spec 1.15: the frame pans the transition to the land share', () => {
 });
 
 describe('spec 1.15: the flag', () => {
-  it('is off unless the page asks, and never changes the stored prefs', () => {
-    expect(effectivePrefs(DEFAULT_PREFS, '', '').pairFull).toBeUndefined();
-    expect(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', '').pairFull).toBeUndefined();
-    expect(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', '').pairFull).toBe(true);
-    expect(effectivePrefs(DEFAULT_PREFS, '', '#ambience?pairfull=on').pairFull).toBe(true);
+  it('is on unless the page says ?pairfull=0 (since pairs-v8, 2026-11-06); ?pairfull=1 changes nothing; never stored', () => {
+    expect(pairFullOn(DEFAULT_PREFS)).toBe(true);
+    expect(pairFullOn(loadSceneryPrefs(null))).toBe(true);
+    // A bare page and ?pairfull=1 leave the stored prefs as they are (the same object).
+    expect(effectivePrefs(DEFAULT_PREFS, '', '')).toBe(DEFAULT_PREFS);
+    expect(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', '')).toBe(DEFAULT_PREFS);
+    expect(effectivePrefs(DEFAULT_PREFS, '', '#ambience?pairfull=on')).toBe(DEFAULT_PREFS);
+    expect(pairFullOn(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(true);
+    expect(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', '').pairFull).toBe(false);
+    expect(effectivePrefs(DEFAULT_PREFS, '', '#ambience?pairfull=off').pairFull).toBe(false);
+    expect(pairFullOn(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', ''))).toBe(false);
+    expect('pairFull' in DEFAULT_PREFS).toBe(false);
+    // A stored pairFull is never read back: the page decides.
+    const stored = { getItem: () => JSON.stringify({ ...DEFAULT_PREFS, pairFull: false }), setItem: () => {} };
+    expect(loadSceneryPrefs(stored).pairFull).toBeUndefined();
   });
 
-  it('with it, ForgeCoach’s own pack defaults to the whole-half pairs; ?pairs= still wins', () => {
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
+  it('ForgeCoach’s own pack defaults to the whole-half pairs, ?pairfull=0 to the 1.9 bands; ?pairs= still wins', () => {
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_FULL_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(FORGECOACH_PAIRS_FULL_URL);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', ''))).toBe(FORGECOACH_PAIRS_URL);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=0&pairs=http://127.0.0.1:8654/pairs-v2/', ''))).toBe('http://127.0.0.1:8654/pairs-v2/');
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1&pairs=http://127.0.0.1:8654/pairs-v2/', ''))).toBe('http://127.0.0.1:8654/pairs-v2/');
-    expect(FORGECOACH_PAIRS_FULL_URL).toMatch(/@pairs-v7\.1\/$/);
+    expect(FORGECOACH_PAIRS_FULL_URL).toMatch(/@pairs-v8\/$/);
   });
 });
 

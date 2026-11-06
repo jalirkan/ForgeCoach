@@ -37,7 +37,7 @@ import { sceneryEvents } from '../../ambience/events.ts';
 import { cachedMap, useCardsVersion } from '../cardData.ts';
 import { SceneryStrip } from './SceneryStrip.tsx';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
-import { accentsOn, fillOn, horizonOn, lightOn } from '../../ambience/prefs.ts';
+import { accentsOn, fillOn, horizonOn, lightOn, pairFullOn } from '../../ambience/prefs.ts';
 import { gradeFor, lightInputOf, outcomeAt } from '../../ambience/light.ts';
 import { elementBiomes, landNamesOf, phoneElementBiomes } from '../../ambience/pieces.ts';
 import { MakeupMemory, type MakeupPick } from '../../ambience/makeup.ts';
@@ -98,6 +98,8 @@ const sameTargets =(a: Target[], b: Target[]) => a.length === b.length && a.ever
 
 export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; frameIndex: number; seat: number }) {
   const prefs = useSceneryPrefs();
+  // Spec 1.15: on unless the page says `?pairfull=0` (the default since pairs-v8).
+  const pairFull = pairFullOn(prefs);
   const load = useSceneryLoad(prefs);
   const reduced = useReducedMotion(prefs);
   const anchor = useRef<HTMLSpanElement>(null);
@@ -205,21 +207,21 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     for (const w of growthPictures(load.pack, scenery.players.flatMap((p) => p.slots), { half: fill, phone })) warmPicture(w);
     // Spec 1.8: a side's bridge warms with its split's pictures (the half board only).
     if (fill) for (const w of bridgePictures(load.pack, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
-    // Spec 1.9: and its pair band's pictures (the stage its lower neighbour maps to, and the next); under `?pairfull=1`
+    // Spec 1.9: and its pair band's pictures (the stage its lower neighbour maps to, and the next); with spec 1.15 on
     // the whole-half panoramas and 1.16's painted-in elements too (review fault 4: the panorama was never warmed).
     // Spec 1.17: a phone-width screen draws no desktop-only seam cell, so none is fetched there (1.18: a cell with a phone
     // picture is, at that shape).
-    const full = prefs.pairFull ? { thresholds: load.pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
+    const full = pairFull ? { thresholds: load.pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
     if (fill) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone, full })) warmPicture(w);
-  }, [scenery, load?.pack, fill, prefs.pairFull]);
+  }, [scenery, load?.pack, fill, pairFull]);
 
   // Spec 1.14: the pieces that can appear at once (fronts, veils, landmarks, the empty table) warm in ScenePieces, at the
   // shape of the half it measures (review fault 3: warming by the window's width picked the wrong frames for a tall half).
   const pieces = fill ? (load?.pack?.pieces ?? null) : null;
-  // Spec 1.14 under `?pairfull=1`: a third colour with an element is drawn inside the pair picture, not as a panel.
-  const elements = useMemo(() => (prefs.pairFull ? elementBiomes(pieces) : null), [prefs.pairFull, pieces]);
+  // Spec 1.14 with spec 1.15 on (the default; off with `?pairfull=0`): a third colour with an element is drawn inside the pair picture, not as a panel.
+  const elements = useMemo(() => (pairFull ? elementBiomes(pieces) : null), [pairFull, pieces]);
   // Spec 1.18.1: those with a phone piece, which a phone draws on a seam cell whose painted picture has no phone picture.
-  const phoneElements = useMemo(() => (prefs.pairFull ? phoneElementBiomes(pieces) : null), [prefs.pairFull, pieces]);
+  const phoneElements = useMemo(() => (pairFull ? phoneElementBiomes(pieces) : null), [pairFull, pieces]);
   // The game's end at the board's frame, per player (one walk of the log per frame, and only with pieces).
   const outcomes = useMemo(() => new Map((pieces ? (state?.players ?? []) : []).map((p) => [p.id, outcomeAt(log, frameIndex, p.id)])), [pieces, state, log, frameIndex, log.frames.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const outcomeFor = (playerId: number) => outcomes.get(playerId) ?? null;
@@ -257,7 +259,7 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
               fill={fill}
               duals={dualsOf(scenery, t.playerId)}
               horizon={horizonOn(prefs)}
-              pairFull={!!prefs.pairFull}
+              pairFull={pairFull}
               elements={elements}
               phoneElements={phoneElements}
               showing={showing}

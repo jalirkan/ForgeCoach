@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * Two faults the storyboard of 2026-11-02 (pc-results scenery/STORYBOARD.md)
- * found on the `#ambience` preview, on the real pairs-v7.1 snapshot and
+ * found on the `#ambience` preview, then on the real pairs-v7.1 snapshot,
+ * now on pairs-v8's (no painted-in cells: a third colour is its cut-out) and
  * ForgeCoach's pack:
  *
  * 1. SYSTEM.md A5's tie rule ("on a tie, the pair already showing stays;
@@ -38,8 +39,8 @@ import { FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL } from './prefs.ts';
 import { SIM_PLAYERS, simLog, type SimLandName } from './sim.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
-const pack = validateManifest(json('pack-v9.2.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!;
-const pairs = validatePairs(json('pairs-v7.1.tag.pairs.json'), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs!;
+const pack = validateManifest(json('pack-v10.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!;
+const pairs = validatePairs(json('pairs-v8.tag.pairs.json'), `${FORGECOACH_PAIRS_FULL_URL}pairs.json`).pairs!;
 const elements = elementBiomes(pack.pieces);
 const ME = SIM_PLAYERS[0];
 
@@ -57,15 +58,15 @@ function afterEach(names: SimLandName[], opts: { memory?: boolean } = {}) {
 }
 
 describe('the pair kept as the base on the preview (SYSTEM.md A5, spec 1.19 b)', () => {
-  it('Island, Swamp, Mountain, Mountain, Island, Swamp: island+swamp from the second land on, red painted in (storyboard sheet 5)', () => {
+  it('Island, Swamp, Mountain, Mountain, Island, Swamp: island+swamp from the second land on, red as a cut-out (storyboard sheet 5)', () => {
     const steps = afterEach(['Island', 'Swamp', 'Mountain', 'Mountain', 'Island', 'Swamp']);
     // Before 1.19 b the second Mountain re-keyed to island+mountain (R2 outweighs B1): the swamp half became desert.
     expect(steps.map((s) => s.key)).toEqual([null, 'island+swamp', 'island+swamp', 'island+swamp', 'island+swamp', 'island+swamp']);
-    // U2 B2 R2: the mountain is the third colour, painted in on the island's ground (the tie: the earlier arrival).
+    // U2 B2 R2: the mountain is the third colour; pairs-v8 paints no cell, so it is its cut-out (spec 1.19 a).
     expect(steps[5]!.pick.third).toBe('R');
     expect(steps[5]!.cell).toBe('2x2');
-    expect(steps[5]!.painted).toBe('R');
-    expect(steps[5]!.caption).toMatch(/^island \+ swamp, whole half: .*seam 2x2; R painted in, on island's ground$/);
+    expect(steps[5]!.painted).toBeNull();
+    expect(steps[5]!.caption).toMatch(/^island \+ swamp, whole half: .*seam 2x2; mountain as an element$/);
   });
 
   it('without what was showing the fourth land would re-key to the heaviest pair, island+mountain', () => {
@@ -77,9 +78,10 @@ describe('the pair kept as the base on the preview (SYSTEM.md A5, spec 1.19 b)',
     const steps = afterEach(['Tropical Island', 'Tundra', 'Island', 'Plains', 'Forest']);
     // Before 1.19 b the Plains re-keyed to island+plains (W1.5 outweighs G0.5) and threw the forest cliffs away.
     expect(steps.map((s) => s.key)).toEqual(['forest+island', 'forest+island', 'forest+island', 'forest+island', 'forest+island']);
-    // U2 W1.5 G1.5: the plains is the third colour, painted in.
+    // U2 W1.5 G1.5: the plains is the third colour, its cut-out (nothing painted in on pairs-v8).
     expect(steps[4]!.pick.third).toBe('W');
-    expect(steps[4]!.painted).toBe('W');
+    expect(steps[4]!.painted).toBeNull();
+    expect(steps[4]!.caption).toMatch(/seam 2x1; plains as an element$/);
   });
 
   it('a pair colour leaving the top three re-keys (A8): Island, Swamp, Mountain ×2, Forest ×2, Plains ×2', () => {
@@ -88,8 +90,9 @@ describe('the pair kept as the base on the preview (SYSTEM.md A5, spec 1.19 b)',
     // of the top three (R G W tie at 2: the mountain showing, then the forest by arrival).
     expect(steps.map((s) => s.key)).toEqual([null, 'island+swamp', 'island+swamp', 'island+swamp', 'island+swamp', 'island+swamp', 'island+swamp', 'forest+mountain']);
     expect([steps[7]!.pick.third, ...steps[7]!.pick.extras]).toEqual(['W', 'U', 'B']);
-    // Every colour named: the plains painted in, the island and the swamp as cut-outs (spec 1.19 a).
-    expect(steps[7]!.caption).toMatch(/; W painted in, on [a-z]+'s ground; island and swamp as elements$/);
+    // Every colour named: the plains, the island and the swamp as cut-outs (spec 1.19 a; nothing painted in on pairs-v8).
+    expect(steps[7]!.painted).toBeNull();
+    expect(steps[7]!.caption).toMatch(/seam 2x2; plains, island and swamp as elements$/);
   });
 });
 

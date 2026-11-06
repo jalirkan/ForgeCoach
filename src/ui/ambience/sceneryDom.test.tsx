@@ -576,16 +576,17 @@ describe('spec 1.18.1: on a phone, a painted cell with no phone picture of the t
 });
 
 /**
- * Spec 1.19 on the real packs (pack-v9.2, the default since 1.19 d, and the tagged pairs-v7.1): every colour past the
- * third is a cut-out (a), stacked on the pair's grounds -- the heavier pair colour's holds two, side by side, the
+ * Spec 1.19 on the real packs (pack-v10, the default since 2026-11-06, its `pieces` 1.19 d's as pack-v9.2's were, and
+ * the tagged pairs-v8, which paints no third colour into a cell): the third colour and every colour past it are
+ * cut-outs (a), stacked on the pair's grounds -- the heavier pair colour's holds two, side by side, the
  * heaviest at the half's outer edge; the lighter's the rest -- each faded by its share and clear of the seam core; and a
  * pair whose cell is not painted is its two mono pictures apart with a plain seam (c).
  */
-describe('spec 1.19 on pack-v9.2 and pairs-v7.1: the stacked cut-outs, and a pair apart', () => {
-  const V71 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7.1/';
+describe('spec 1.19 on pack-v10 and pairs-v8: the stacked cut-outs, and a pair apart', () => {
+  const V8 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v8/';
   const testdata = (f: string) => JSON.parse(readFileSync(new URL(`../../ambience/testdata/${f}`, import.meta.url), 'utf8'));
-  const v92 = validateManifest(testdata('pack-v9.2.scenery.json'), 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v9.2/pack/scenery.json').pack!;
-  const real: ScenePack = { ...v92, pairs: validatePairs(testdata('pairs-v7.1.tag.pairs.json'), `${V71}pairs.json`).pairs! };
+  const v10 = validateManifest(testdata('pack-v10.scenery.json'), 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v10/pack/scenery.json').pack!;
+  const real: ScenePack = { ...v10, pairs: validatePairs(testdata('pairs-v8.tag.pairs.json'), `${V8}pairs.json`).pairs! };
   const realPieces = real.pieces!;
   const EL = elementBiomes(realPieces);
   const PHONE_EL = phoneElementBiomes(realPieces);
@@ -607,29 +608,32 @@ describe('spec 1.19 on pack-v9.2 and pairs-v7.1: the stacked cut-outs, and a pai
     [...html.matchAll(/data-pc="element" data-pc-colour="(\w)" data-pc-side="(\w+)" data-pc-ground="(\w+)" data-pc-slot="([\d/]+)"><img[^>]*style="left:(-?[\d.]+)%;top:[^;]+;width:([\d.]+)%/g)].map((m) => ({ colour: m[1]!, side: m[2]!, ground: m[3]!, slot: m[4]!, left: Number(m[5]) / 100, right: (Number(m[5]) + Number(m[6])) / 100 }));
   const five = [slot('plains', 0, 1), slot('island', 1, 1), slot('swamp', 2, 1), slot('mountain', 3, 1), slot('forest', 4, 1)];
 
-  it('desktop, five even colours: the swamp painted into island+plains’ cell 1x1, the mountain beside its place on the plains’ ground, the forest on the island’s -- none on the seam core', () => {
+  it('desktop, five even colours: island+plains’ cell 1x1 with nothing painted in, the swamp and the mountain on the plains’ ground, the forest on the island’s -- none on the seam core', () => {
     loadCuts();
     const { items } = loadPlan(five, false);
     const strip = renderToStaticMarkup(<SceneryStrip slots={five} pack={real} reduced={true} fill="half" pairFull={true} elements={EL} phoneElements={PHONE_EL} />);
-    expect([attrs(strip, 'data-pairfull-cell'), attrs(strip, 'data-pairfull-painted'), attrs(strip, 'data-pairfull-extras')]).toEqual([['1x1'], ['B'], ['mountain forest']]);
+    // pairs-v8 paints no cell: the swamp, the third colour, is its cut-out (pairs-v7.1 painted it into the cell).
+    expect([attrs(strip, 'data-pairfull-cell'), attrs(strip, 'data-pairfull-painted'), attrs(strip, 'data-pairfull-extras')]).toEqual([['1x1'], [], ['mountain forest']]);
     const html = renderToStaticMarkup(<ScenePieces pack={real} pieces={realPieces} slots={five} landNames={[]} outcome={null} edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />);
     const cuts = cutOuts(html);
     expect(cuts.map((c) => [c.colour, c.side, c.ground, c.slot])).toEqual([
+      ['B', 'left', 'heavier', '1/2'],
       ['R', 'left', 'heavier', '2/2'],
       ['G', 'right', 'lighter', '1/1'],
     ]);
     // Faded by its share: five colours, five lands, each fully in.
-    expect([...html.matchAll(/class="scn-pc-element" style="opacity:([\d.]+)/g)].map((m) => m[1])).toEqual(['1', '1']);
+    expect([...html.matchAll(/class="scn-pc-element" style="opacity:([\d.]+)/g)].map((m) => m[1])).toEqual(['1', '1', '1']);
     // Clear of the seam core (0.07 of the cell's drawn width either side of the transition at 0.5).
     const p = items.find((x): x is PairFullPair => x.kind === 'pair')!;
     const shown = pairFullChoice(pairFullCandidates(p, 3.2, false), pictureStatus).show!;
     const core = 0.07 * pairFullFrameOf(items, shown);
     for (const c of cuts) expect(c.right <= 0.5 - core + 1e-3 || c.left >= 0.5 + core - 1e-3, `${c.colour} ${c.left}–${c.right}`).toBe(true);
-    // The mountain is in the inner half of the plains' ground (the swamp's painted place is the outer).
-    expect(cuts[0]!.left).toBeGreaterThanOrEqual((0.5 - core) / 2 - 1e-3);
+    // Side by side on the plains' ground, never overlapping: the swamp outermost, the mountain in the inner half.
+    expect(cuts[0]!.right).toBeLessThanOrEqual(cuts[1]!.left + 1e-3);
+    expect(cuts[1]!.left).toBeGreaterThanOrEqual((0.5 - core) / 2 - 1e-3);
   });
 
-  it('phone, five even colours: the painted swamp has no phone picture, so three phone cut-outs -- swamp and mountain on the plains’ ground, the forest on the island’s', () => {
+  it('phone, five even colours: three phone cut-outs, as on the desktop -- swamp and mountain on the plains’ ground, the forest on the island’s', () => {
     const narrowScreen = () => vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('max-width'), media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
     narrowScreen();
     try {

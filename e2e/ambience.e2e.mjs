@@ -10,19 +10,22 @@
  *      static server; with PAIRS_DIR, that folder too, at /pairs-pack/ (a
  *      pairs pack on disk, e.g. ~/scenery-packs/panoramas-v1/serve/pairs-v5
  *      before its tags are cut);
- *   2. opens `/?pairfull=1#ambience` at a desktop size (the flag's own
- *      pairs, pairs-v7.1 on jsDelivr; `&pairs=<pairs>` only with PAIRS_DIR or
- *      PAIRS_URL), with ForgeCoach's own pack (pack-v9.2 from jsDelivr, spec
- *      1.19 d), Pieces → Placeholders (so a
+ *   2. opens a bare `/#ambience` at a desktop size -- no `?pairfull=1`: spec
+ *      1.15 is the default since pairs-v8 (2026-11-06) -- (its own pairs,
+ *      pairs-v8 on jsDelivr; `?pairs=<pairs>` only with PAIRS_DIR or
+ *      PAIRS_URL), with ForgeCoach's own pack (pack-v10 from jsDelivr, its
+ *      pieces spec 1.19 d's), Pieces → Placeholders (so a
  *      1.14 cut-out exists for every colour) and Pieces → Three colours
  *      (SYSTEM.md's worked example: Plateau, Plains, Island);
  *   3. checks that your half draws mountain+plains whole (spec 1.19 b: the
  *      pair showing stays the base, so the Island no longer re-keys it to
- *      island+plains) with blue PAINTED IN on plains's ground -- the sided
- *      picture --, that no cut-out element is drawn over it, and that the
- *      caption says "U painted in";
+ *      island+plains): on a grid pack with nothing painted in (pairs-v8, the
+ *      default) its plain cell, mirrored, with blue's cut-out and the caption
+ *      "island as an element" (spec 1.19 a); on a cell or a 1.16 pair with
+ *      blue PAINTED IN on plains's ground, the sided picture, no cut-out
+ *      element over it, and the caption "U painted in";
  *   4. spec 1.17 (draft), only when the pairs manifest has a seam `grid`
- *      (pairs-v7.1 by default, or a grid pack by PAIRS_DIR or PAIRS_URL): with the Lands sliders,
+ *      (pairs-v8 by default, or a grid pack by PAIRS_DIR or PAIRS_URL): with the Lands sliders,
  *      island 4 | swamp 3 draws the cell `4x3` unmirrored, a fourth Swamp
  *      steps one half (`4x4`), island 6 | swamp 2 -- no cell `6x2` -- is the
  *      two mono pictures apart (spec 1.19 c: no clamp; "no seam cell"), and
@@ -42,12 +45,13 @@
  *      1.18.1) the worked example on the phone, with Placeholders (their
  *      elements have phone pieces): blue's cut-out -- its phone piece -- on
  *      the plains' ground over mountain+plains' plain phone cell, captioned
- *      "island as an element", where the cell's blue painted picture has no
- *      phone picture (pairs-v7.1's); the painted phone picture and no cut-out
- *      where it has one (e2e/out/grid-phone-three.png).
+ *      "island as an element", where the cell has no blue painted picture
+ *      (pairs-v8) or one with no phone picture (pairs-v7.1's); the painted
+ *      phone picture and no cut-out where it has one
+ *      (e2e/out/grid-phone-three.png).
  *
  *   6. Spec 1.19 a and b (the owner's rules after the storyboard of 2026-11-02), with the pack's own pieces
- *      (pack-v9.2), on the desktop and on the phone, land by land: Island, Swamp, Mountain, Mountain, Island,
+ *      (pack-v10's, at `@pieces-v1` as pack-v9.2's were), on the desktop and on the phone, land by land: Island, Swamp, Mountain, Mountain, Island,
  *      Swamp, Forest ×3 (the storyboard's sequence 5) keeps island+swamp from the second land to the last -- the
  *      pair showing stays the base while both its colours are among the three heaviest; the old rule went to
  *      island+mountain at the second Mountain and to island+forest at the third Forest -- and W U B R G ×2, Forest,
@@ -57,19 +61,20 @@
  *      (e2e/out/seq-*.png).
  *
  *   Spec 1.18 likewise on the worked example: on a grid pair whose cell has
- *   red painted in (`elements.R`), the cell's painted picture is drawn and
- *   captioned, still with no cut-out; without one, 1.17's checks as before.
- *   The flag's default, pairs-v7.1, has both on every cell, so a default run
- *   must take the 1.18 branch of the worked example and of the phone (it
- *   fails if the manifest it loads has not); a PAIRS_DIR / PAIRS_URL pack
- *   takes whichever its cells call for (pairs-v6: 1.17's).
+ *   blue painted in (`elements.U`), the cell's painted picture is drawn and
+ *   captioned, still with no cut-out; without one, spec 1.19 a's cut-out over
+ *   the plain cell. The flag's default, pairs-v8, paints nothing in and has a
+ *   phone picture on every cell, so a default run must take the cut-out
+ *   branch of the worked example and of the phone, and the phone cell (it
+ *   fails if the manifest it loads has a painted-in cell or a cell with no
+ *   phone picture); a PAIRS_DIR / PAIRS_URL pack takes whichever its cells
+ *   call for (pairs-v7.1: 1.18's painted cells, pairs-v6: no phone cells).
  *
  * Environment: PAIRS_DIR (a local pairs pack), or PAIRS_URL (a pairs pack by
  * URL, e.g. https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6/;
- * with neither, no `?pairs=`: the flag's default, the pairs-v7.1 tag on
+ * with neither, no `?pairs=`: the default, the pairs-v8 tag on
  * jsDelivr, checked by the pairs line's name and the URL the page fetched its
- * manifest from -- pairs-v7.1 is pairs-v7 with the manifest named after its
- * tag; pairs-v7's said "pairs-v6 draft"); BUILD=0, HEADLESS=0, BROWSER_PATH.
+ * manifest from); BUILD=0, HEADLESS=0, BROWSER_PATH.
  * Needs the network for ForgeCoach's pack (jsDelivr). Exit status: 0 pass, 1 a check
  * failed, 2 could not start. A screenshot goes to e2e/out/ambience-three.png.
  */
@@ -86,8 +91,8 @@ const OUT = path.join(ROOT, 'e2e', 'out');
 const env = process.env;
 const HEADLESS = !/^(0|false|no)$/i.test(env.HEADLESS ?? '1');
 const PAIRS_DIR = env.PAIRS_DIR ? path.resolve(env.PAIRS_DIR) : null;
-/** What `?pairfull=1` loads with no `?pairs=`: src/ambience/prefs.ts's FORGECOACH_PAIRS_FULL_URL (an .mjs cannot import it). */
-const DEFAULT_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7.1/';
+/** What a bare page loads with no `?pairs=` (spec 1.15 on by default): src/ambience/prefs.ts's FORGECOACH_PAIRS_FULL_URL (an .mjs cannot import it). */
+const DEFAULT_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v8/';
 const TIMEOUT = 30_000;
 
 class Fail extends Error {}
@@ -160,13 +165,13 @@ async function main() {
   const port = await freePort();
   const server = await startServer(port);
   const origin = `http://127.0.0.1:${port}`;
-  // No ?pairs= by default: under ?pairfull=1 ForgeCoach's pack brings FORGECOACH_PAIRS_FULL_URL (pairs-v7.1).
+  // No ?pairs= and no ?pairfull=1 by default: on a bare page ForgeCoach's pack brings FORGECOACH_PAIRS_FULL_URL (pairs-v8).
   const pairs = PAIRS_DIR ? `${origin}/pairs-pack/` : (env.PAIRS_URL || null);
-  // The manifest the page really loads: a pairs= of yours, or the flag's default (prefs.ts's FORGECOACH_PAIRS_FULL_URL,
-  // whose value is kept here by hand), so a default run checks the grid, the pair forming, the painted cell and the phone
-  // cell on pairs-v7.1 too.
+  // The manifest the page really loads: a pairs= of yours, or the default (prefs.ts's FORGECOACH_PAIRS_FULL_URL,
+  // whose value is kept here by hand), so a default run checks the grid, the pair forming, the third colour's cut-out and
+  // the phone cell on pairs-v8 too.
   const manifestPairs = pairs ?? DEFAULT_PAIRS_FULL_URL;
-  log(`pairs: ${pairs ?? `the flag’s default (no ?pairs=; ${DEFAULT_PAIRS_FULL_URL})`}`);
+  log(`pairs: ${pairs ?? `the default (no ?pairs=; ${DEFAULT_PAIRS_FULL_URL})`}`);
   const pw = await loadPlaywright();
   const browser = await launchBrowser(pw, { headless: HEADLESS });
   let failed = false;
@@ -174,30 +179,31 @@ async function main() {
     const page = await (await browser.newContext({ viewport: { width: 1600, height: 1000 } })).newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
-    await page.goto(`${origin}/?pairfull=1${pairs ? `&pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
+    await page.goto(`${origin}/${pairs ? `?pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
     // The pack and its pairs: the pairs line names a pairs-vN pack.
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     const pairsLine = await page.textContent('[data-amb-pairs]');
     log(`pairs line: ${pairsLine?.slice(0, 120)}`);
-    // pairs-v7.1 by default, by its name on the pairs line and by the URL its manifest came from; a local or named
-    // pack (PAIRS_DIR / PAIRS_URL) may be another (pairs-v6), known by its URL.
-    check((pairs ? /pairs-v\d/ : /pairs-v7\.1/).test(pairsLine ?? ''), `the pairs pack did not load as ${pairs ? 'a pairs-vN pack' : 'pairs-v7.1'}: ${pairsLine}`);
+    // pairs-v8 by default, by its name on the pairs line and by the URL its manifest came from; a local or named
+    // pack (PAIRS_DIR / PAIRS_URL) may be another (pairs-v7.1, pairs-v6), known by its URL.
+    check((pairs ? /pairs-v\d/ : /pairs-v8\b/).test(pairsLine ?? ''), `the pairs pack did not load as ${pairs ? 'a pairs-vN pack' : 'pairs-v8'}: ${pairsLine}`);
     const fetched = await page.evaluate(() => performance.getEntriesByType('resource').map((e) => e.name).filter((n) => /\/pairs\.json(\?|$)/.test(n)));
     log(`pairs manifest fetched: ${fetched.join(' ')}`);
     const wantManifest = new URL('pairs.json', manifestPairs.endsWith('/') ? manifestPairs : `${manifestPairs}/`).href;
     check(fetched.some((u) => u.split('?')[0] === wantManifest), `the page did not fetch ${wantManifest}: ${fetched.join(', ')}`);
-    if (!pairs) check(/@pairs-v7\.1\/pairs\.json$/.test(wantManifest), `the flag's default is not pairs-v7.1: ${wantManifest}`);
+    if (!pairs) check(/@pairs-v8\/pairs\.json$/.test(wantManifest), `the default is not pairs-v8: ${wantManifest}`);
     await page.click('[data-pieces-toggle="builtin"]');
     await page.click('[data-pieces-three]');
     // Spec 1.17: on a pair with a seam grid the worked example draws the grid cell, and its third colour nothing
-    // (pairs-v6); spec 1.18: the cell with red painted in where it has one (pairs-v7.1, the default); the painted-in
-    // picture (1.16) is what a pair without a grid draws (pairs-v5).
+    // (pairs-v6), and since 1.19 a its cut-out (pairs-v8, the default); spec 1.18: the cell with red painted in where
+    // it has one (pairs-v7.1); the painted-in picture (1.16) is what a pair without a grid draws (pairs-v5).
     const manifest = await (await fetch(wantManifest)).json();
     if (!pairs) {
-      // The default must exercise 1.18: red painted into island+plains' cells, and a phone picture on island+swamp's 4x3.
-      const ip = Object.values(manifest.pairs?.['island+plains']?.grid ?? {});
-      check(ip.length > 0 && ip.every((c) => c.elements?.R), 'the flag’s default (pairs-v7.1) has no red painted into island+plains’ cells');
-      check(!!manifest.pairs?.['island+swamp']?.grid?.['4x3']?.phone, 'the flag’s default (pairs-v7.1) has no phone picture on island+swamp’s 4x3');
+      // The default (pairs-v8) paints no cell -- a third colour is its cut-out -- and has a phone picture on every cell,
+      // island+swamp's 4x3 among them.
+      const cells = Object.values(manifest.pairs ?? {}).flatMap((p) => Object.values(p.grid ?? {}));
+      check(cells.length === 160 && cells.every((c) => !c.elements && c.phone), 'the default (pairs-v8) is not 160 cells, each with a phone picture and nothing painted in');
+      check(!!manifest.pairs?.['island+swamp']?.grid?.['4x3']?.phone, 'the default (pairs-v8) has no phone picture on island+swamp’s 4x3');
     }
     if (manifest.pairs?.['island+plains']?.grid) {
       await workedExampleOnGrid(page, manifest);
@@ -344,7 +350,7 @@ async function shownColours(page) {
 }
 
 /**
- * Spec 1.19 a and b, land by land, with the pack's own pieces (pack-v9.2's elements, their phone pieces on a phone):
+ * Spec 1.19 a and b, land by land, with the pack's own pieces (pack-v10's elements, their phone pieces on a phone):
  * after each land, once the half has settled, the pair is the one kept and every colour with lands is on screen and
  * named in the caption (by its biome, or "<C> painted in"), which names no dual (none was played).
  */
@@ -485,7 +491,7 @@ async function gridChecks(page, pairs, errors) {
 }
 
 /**
- * Spec 1.19 c: island 6 | swamp 2 has no cell 6x2 (pairs-v7.1 paints |i − j| ≤ 1), and there is no clamp: your half is
+ * Spec 1.19 c: island 6 | swamp 2 has no cell 6x2 (pairs-v8, like pairs-v7.1, has cells where |i − j| ≤ 1), and there is no clamp: your half is
  * the island's own stage-6 picture and the swamp's own stage-2 picture side by side at the split (the island 75%), the
  * plain 1.10 seam between them -- no pair picture, no band -- and the caption says "no seam cell".
  */
@@ -559,7 +565,7 @@ async function phoneCheck(browser, origin, pairs, manifest) {
     if (r.url().includes('/seams/')) seams.push(r.url());
   });
   try {
-    await page.goto(`${origin}/?pairfull=1${pairs ? `&pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
+    await page.goto(`${origin}/${pairs ? `?pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     await setLands(page, 'island', 4);
     await setLands(page, 'swamp', 3);
@@ -585,7 +591,7 @@ async function phoneCheck(browser, origin, pairs, manifest) {
 
 /**
  * Spec 1.18: a phone on a cell with a phone picture: island 4 | swamp 3 draws `s4x3-panorama-phone.webp` and names it.
- * Then spec 1.18.1, the worked example on the phone (Placeholders, whose elements have phone pieces as pack-v9.2's do).
+ * Then spec 1.18.1, the worked example on the phone (Placeholders, whose elements have phone pieces as pack-v10's do).
  */
 async function phoneCellCheck(browser, origin, pairs, manifest) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
@@ -597,7 +603,7 @@ async function phoneCellCheck(browser, origin, pairs, manifest) {
     if (r.url().includes('/seams/')) seams.push(r.url());
   });
   try {
-    await page.goto(`${origin}/?pairfull=1${pairs ? `&pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
+    await page.goto(`${origin}/${pairs ? `?pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     await setLands(page, 'island', 4);
     await setLands(page, 'swamp', 3);
@@ -623,10 +629,11 @@ async function phoneCellCheck(browser, origin, pairs, manifest) {
 /**
  * Spec 1.18.1: the worked example (Plateau, Plains, Island) on the phone -- spec 1.19 b's pair, mountain+plains (the
  * Plateau's), with the island its third colour. mountain+plains' cell has blue painted in on the plains' half (the
- * cell's left: the geography puts the plains left). A painted picture with its own phone picture is drawn as 1.18 says,
- * with no cut-out; one without (pairs-v7.1's, all 660) gives way to the blue cut-out -- the element's PHONE piece -- on
- * the plain cell's phone picture, on the plains' ground (the board's right: it has mountain | plains), and the caption
- * says "island as an element". Then the storyboard's sequences on the phone (spec 1.19 a and b).
+ * cell's left: the geography puts the plains left), or -- on pairs-v8, the default -- nothing painted in. A painted
+ * picture with its own phone picture is drawn as 1.18 says, with no cut-out; with none (pairs-v8), or one without a
+ * phone picture (pairs-v7.1's, all 660), the blue cut-out -- the element's PHONE piece -- stands on the plain cell's
+ * phone picture, on the plains' ground (the board's right: it has mountain | plains), and the caption says "island as
+ * an element". Then the storyboard's sequences on the phone (spec 1.19 a and b).
  */
 async function phoneThirdCheck(page, manifest, errors) {
   await page.click('[data-pieces-toggle="builtin"]');
@@ -644,8 +651,7 @@ async function phoneThirdCheck(page, manifest, errors) {
     check(cutOuts === 0, `phone: ${cutOuts} cut-out(s) drawn over the cell ${cell}'s painted phone picture`);
     log(`PASS: a phone draws the cell ${cell} with blue painted in from its own phone picture (spec 1.18), no cut-out`);
   } else {
-    check(!!picture, `phone: mountain+plains' cell ${cell} has no blue painted on the plains' side: the worked example has no third colour to show`);
-    // 1.18.1: the plain cell's phone picture, the cut-out over it.
+    // 1.18.1 / 1.19 a: the plain cell's phone picture, the cut-out over it (pairs-v8 paints nothing in: this is its path).
     await page.waitForFunction((c) => [...document.querySelectorAll('[data-amb-player="1"] [data-pairfull] img')].every((i) => new RegExp(`/seams/plains-mountain/s${c}-panorama-phone\\.webp$`).test(i.getAttribute('src') ?? '')), cell, { timeout: TIMEOUT });
     const el = await page.waitForSelector('[data-amb-player="1"] [data-pc="element"][data-pc-colour="U"] img', { timeout: TIMEOUT });
     const src = decodeURIComponent((await el.getAttribute('src')) ?? '');
@@ -663,7 +669,7 @@ async function phoneThirdCheck(page, manifest, errors) {
     await page.waitForTimeout(1500);
     // Your half, scrolled into view (the Pieces buttons clicked above sit far below it on a phone).
     await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, 'grid-phone-three.png') });
-    log(`PASS: a phone draws blue's cut-out (its phone piece) on mountain+plains' cell ${cell} where the painted picture has no phone picture (spec 1.18.1)`);
+    log(`PASS: a phone draws blue's cut-out (its phone piece) on mountain+plains' cell ${cell}, ${picture ? 'whose painted picture has no phone picture (spec 1.18.1)' : 'with nothing painted in (spec 1.19 a)'}`);
   }
   for (const seq of SEQUENCES) await sequenceCheck(page, seq, errors, 'phone');
 }

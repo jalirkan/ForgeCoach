@@ -75,7 +75,9 @@ describe('pairs-v6: the flag’s default until pairs-v7.1', () => {
     expect(FORGECOACH_PAIRS_FULL_URL).not.toBe(V6);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${encodeURIComponent(V6)}`, ''))).toBe(V6);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${encodeURIComponent(DRAFT)}`, ''))).toBe(DRAFT);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
+    // The bare page is the seam grid since pairs-v8; `?pairfull=0` keeps the 1.9 bands.
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_FULL_URL);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(FORGECOACH_PAIRS_URL).toBe(`${CDN}@pairs-v3.1/`);
   });
 });

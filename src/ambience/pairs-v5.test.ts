@@ -56,7 +56,9 @@ describe('pairs-v5', () => {
   it('is no longer the flag’s pairs URL (pairs-v6 was, then pairs-v7.1, both with this manifest’s stages); still reachable with ?pairs=', () => {
     expect(FORGECOACH_PAIRS_FULL_URL).not.toBe(V5);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${V5}`, ''))).toBe(V5);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
+    // The bare page is the seam grid since pairs-v8; `?pairfull=0` keeps the 1.9 bands.
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_FULL_URL);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(FORGECOACH_PAIRS_URL).toMatch(/@pairs-v3\.1\/$/);
   });
 

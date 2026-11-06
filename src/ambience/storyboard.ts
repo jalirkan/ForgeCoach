@@ -60,7 +60,7 @@ export interface ManaState {
   arrival: readonly PieceColour[];
 }
 
-/** The board's packs: ForgeCoach's scenery pack and the pairs each mode loads (pairs-v3.1 without the flag, pairs-v7.1 with it). */
+/** The board's packs: ForgeCoach's scenery pack and the pairs each mode loads (pairs-v3.1 without the flag, pairs-v8 with it). */
 export interface StoryboardPacks {
   pack: ScenePack;
   pairsOff: PairsPack | null;

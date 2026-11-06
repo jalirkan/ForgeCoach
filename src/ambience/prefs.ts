@@ -17,7 +17,8 @@
  * scenery fills each player's whole half of the board (on by default), or,
  * off, keeps to the strip along their land row.
  * `?pairs=off` (or a URL) does the same for spec 1.9's pair bands: by default
- * they come from ForgeCoach's own pairs pack (`FORGECOACH_PAIRS_URL`), and only
+ * they come from ForgeCoach's own pairs (`FORGECOACH_PAIRS_FULL_URL`, the seam
+ * grid, or with `?pairfull=0` the old bands at `FORGECOACH_PAIRS_URL`), and only
  * with ForgeCoach's own scenery pack, whose pictures they were painted to meet.
  * `?light=on` (or `off`) does the same for the light pass (spec 1.13,
  * light.ts): each half graded by the game's arc, low life and game over. Off
@@ -31,6 +32,13 @@ export type MotionPref = 'system' | 'reduce' | 'full';
 
 export interface SceneryPrefs {
   mode: SceneryMode;
+  /**
+   * The art pack's base URL. A stored ForgeCoach pack URL at any tag
+   * (`@pack-v<n>/pack/`, {@link FORGECOACH_PACK_URL_AT_ANY_TAG}) loads as the
+   * current FORGECOACH_PACK_URL, so a browser that saved Settings under an
+   * older default follows the new one; any other URL (a pack of your own)
+   * loads as stored.
+   */
   packUrl: string;
   motion: MotionPref;
   /** Board accents (corner and edge pieces in the player's area); only drawn when the scenery is on. */
@@ -47,9 +55,12 @@ export interface SceneryPrefs {
    */
   pairsUrl?: string;
   /**
-   * Spec 1.15 (`?pairfull=1`, pairfull.ts): a half of exactly two
-   * colours shows their pair picture across the whole half, panned by the land
-   * share. Off unless the page asks; never stored.
+   * Spec 1.15 (pairfull.ts): a half of exactly two colours shows their pair
+   * picture across the whole half, panned by the land share. On by default
+   * since pairs-v8 (2026-11-06), whose seam grid is the pack's seams: absent
+   * means on ({@link pairFullOn}), and only `?pairfull=0` (or `off`) sets it
+   * false for the page, which brings back the 1.9 bands. `?pairfull=1` is
+   * still accepted and changes nothing. Never stored.
    */
   pairFull?: boolean;
 }
@@ -60,9 +71,14 @@ export const SCENERY_KEY = 'forgecoach.scenery';
  * ForgeCoach's own art pack (CC BY 4.0, github.com/jalirkan/forgecoach-scenery),
  * served by jsDelivr from a fixed tag: CORS, the right MIME types and long
  * caching. A new pack version is a new tag, so this URL never changes under a
- * cached copy.
+ * cached copy. `pack-v10` (spec 1.14, tagged 2026-11-06): every half and phone
+ * picture painted in oil (oil-v2), and the old-style pictures that drew around
+ * them dropped -- no strip sky layers, full-area accents, transitions or
+ * bridges, stage-6 loops on forest, plains and swamp only; `pieces` stays at
+ * `@pieces-v1` (`pack-v10.test.ts`). `pack-v9.2` (`pack-v9-2.test.ts`) and
+ * every older tag stay up, but nothing points at them.
  */
-export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v9.2/pack/';
+export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v10/pack/';
 /**
  * Spec 1.9: ForgeCoach's own pair bands, a second manifest (`pairs.json` at
  * this base) in a ref of its own on the same repository, since the main pack
@@ -77,22 +93,33 @@ export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgeco
  */
 export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3.1/';
 /**
- * Spec 1.15: the pairs `?pairfull=1` defaults to with ForgeCoach's own pack:
- * `pairs-v7.1` (spec 1.18, tagged 2026-11-02), pairs-v6's manifest and desktop
- * pictures with every one of the 160 grid cells given a `phone` picture
- * (`@pairs-v7-phone`) and the third colour painted in (660 pictures,
- * `@pairs-v7-pin`), both by absolute URL (`pairs-v7.1.test.ts`; `@pairs-v7`,
- * the same tree with its manifest mislabelled "pairs-v6 draft", was
- * superseded the same day). pairs-v6
+ * Spec 1.15: the pairs ForgeCoach's own pack defaults to (since pairs-v8,
+ * 2026-11-06, with no flag; before it only under `?pairfull=1`):
+ * `pairs-v8` (spec 1.18, tagged 2026-11-06), the seam grid painted in oil
+ * (oil-v2): all 160 cells with their desktop and `phone` pictures in the ref
+ * itself, each pair's stage halves still at `@pairs-v2`, and no painted-in
+ * cells -- a third colour is its 1.19 a cut-out (`pairs-v8.test.ts`).
+ * `pairs-v7.1` (spec 1.18, tagged 2026-11-02, `pairs-v7.1.test.ts`: pairs-v6's
+ * manifest and desktop pictures with every cell given a `phone` picture at
+ * `@pairs-v7-phone` and the third colour painted in, 660 pictures at
+ * `@pairs-v7-pin`) was the default until then and stays up; `@pairs-v7`, the
+ * same tree with its manifest mislabelled "pairs-v6 draft", was superseded
+ * the same day. pairs-v6
  * (spec 1.17, the seam grid on all ten pairs, desktop only: each half its
  * colour's own mono picture at that colour's own stage, so a land grows one
  * half and never redraws the other -- Justin's one-world rule, 2026-10-25;
  * `pairs-v6.test.ts`) was the default from 2026-10-27; it, pairs-v5 (spec
  * 1.16.1, the painted-in elements, `pairs-v5.test.ts`) and pairs-v4 stay up,
- * but nothing points at them. `?pairs=` still wins. Without the flag the
- * board keeps FORGECOACH_PAIRS_URL.
+ * but nothing points at them. `?pairs=` still wins. With `?pairfull=0` the
+ * board keeps FORGECOACH_PAIRS_URL's 1.9 bands.
  */
-export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7.1/';
+export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v8/';
+/**
+ * ForgeCoach's own pack at any tag: a stored URL that matches is the default
+ * of the day it was saved, and {@link loadSceneryPrefs} replaces it with the
+ * current FORGECOACH_PACK_URL.
+ */
+export const FORGECOACH_PACK_URL_AT_ANY_TAG = /^https:\/\/cdn\.jsdelivr\.net\/gh\/jalirkan\/forgecoach-scenery@pack-v[0-9.]+\/pack\/$/;
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true, light: false, horizon: false };
 
@@ -114,7 +141,8 @@ export function loadSceneryPrefs(s?: Store | null): SceneryPrefs {
     if (!raw) return out;
     const v = JSON.parse(raw) as Partial<SceneryPrefs>;
     if (v.mode === 'off' || v.mode === 'procedural' || v.mode === 'pack') out.mode = v.mode;
-    if (typeof v.packUrl === 'string') out.packUrl = v.packUrl.slice(0, 512);
+    // ForgeCoach's own pack at an older tag follows the current default; a pack of your own stays yours.
+    if (typeof v.packUrl === 'string') out.packUrl = FORGECOACH_PACK_URL_AT_ANY_TAG.test(v.packUrl) ? FORGECOACH_PACK_URL : v.packUrl.slice(0, 512);
     if (v.motion === 'system' || v.motion === 'reduce' || v.motion === 'full') out.motion = v.motion;
     if (typeof v.accents === 'boolean') out.accents = v.accents;
     if (typeof v.fill === 'boolean') out.fill = v.fill;
@@ -160,7 +188,7 @@ function switchParam(search: string, hash: string, name: string): boolean | null
   return v === 'off' || v === '0' ? false : v === 'on' || v === '1' ? true : null;
 }
 
-/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=`, `?light=`, `?horizon=` and `?pairs=` applied. */
+/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=`, `?light=`, `?horizon=`, `?pairs=` and `?pairfull=0` applied. */
 export function effectivePrefs(stored: SceneryPrefs, search: string, hash: string): SceneryPrefs {
   const a = switchParam(search, hash, 'accents');
   const f = switchParam(search, hash, 'fill');
@@ -168,17 +196,23 @@ export function effectivePrefs(stored: SceneryPrefs, search: string, hash: strin
   const hz = switchParam(search, hash, 'horizon');
   const pr = sceneryParam(search, hash, 'pairs');
   const pairs = pr === null ? {} : { pairsUrl: pr === 'off' || pr === '0' ? '' : pr === 'forgecoach' || pr === 'on' ? FORGECOACH_PAIRS_URL : pr };
+  // Spec 1.15 is on by default: only `?pairfull=0` turns it off for the page; `?pairfull=1` changes nothing.
   const pf = switchParam(search, hash, 'pairfull');
   const withAccents =
-    a === null && f === null && l === null && hz === null && pr === null && pf !== true
+    a === null && f === null && l === null && hz === null && pr === null && pf !== false
       ? stored
-      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...(hz === null ? {} : { horizon: hz }), ...pairs, ...(pf === true ? { pairFull: true } : {}) };
+      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...(hz === null ? {} : { horizon: hz }), ...pairs, ...(pf === false ? { pairFull: false } : {}) };
   const p = sceneryParam(search, hash);
   if (!p) return withAccents;
   if (p === 'off') return { ...withAccents, mode: 'off' };
   if (p === 'procedural' || p === 'builtin') return { ...withAccents, mode: 'procedural' };
   if (p === 'forgecoach') return { ...withAccents, mode: 'pack', packUrl: FORGECOACH_PACK_URL };
   return { ...withAccents, mode: 'pack', packUrl: p };
+}
+
+/** Spec 1.15: does a half of two colours draw their pair picture whole? On unless the page said `?pairfull=0`. */
+export function pairFullOn(p: SceneryPrefs): boolean {
+  return p.pairFull !== false;
 }
 
 /** Are the board accents drawn? Only with the scenery on and the sub-toggle on. */
@@ -218,12 +252,14 @@ export function reducedMotion(pref: MotionPref, systemReduces: boolean): boolean
 
 /**
  * Spec 1.9: the pairs manifest's base URL for these prefs, or null for none:
- * the page's `?pairs=` when given; else ForgeCoach's own pairs with
- * ForgeCoach's own pack (the bands were painted between its pictures); else
- * none (a pack of your own brings its bands with `?pairs=<url>`).
+ * the page's `?pairs=` when given; else, with ForgeCoach's own pack (the
+ * pairs were painted between its pictures), ForgeCoach's own pairs -- the
+ * spec 1.15 seam grid FORGECOACH_PAIRS_FULL_URL by default (since pairs-v8,
+ * 2026-11-06), the 1.9 bands FORGECOACH_PAIRS_URL under `?pairfull=0`; else
+ * none (a pack of your own brings its pairs with `?pairs=<url>`).
  */
 export function pairsUrlOf(p: SceneryPrefs): string | null {
   if (p.mode !== 'pack') return null;
   if (p.pairsUrl !== undefined) return p.pairsUrl.trim() || null;
-  return p.packUrl.trim() === FORGECOACH_PACK_URL ? (p.pairFull ? FORGECOACH_PAIRS_FULL_URL : FORGECOACH_PAIRS_URL) : null;
+  return p.packUrl.trim() === FORGECOACH_PACK_URL ? (pairFullOn(p) ? FORGECOACH_PAIRS_FULL_URL : FORGECOACH_PAIRS_URL) : null;
 }
