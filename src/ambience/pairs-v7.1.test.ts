@@ -2,8 +2,9 @@
  * ForgeCoach — ambience/pairs-v7.1.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * pairs-v7.1 (spec 1.18): the pairs FORGECOACH_PAIRS_FULL_URL points at under
- * `?pairfull=1` -- pairs-v6's manifest and desktop pictures with every one of
+ * pairs-v7.1 (spec 1.18): the pairs FORGECOACH_PAIRS_FULL_URL pointed at under
+ * `?pairfull=1` from 2026-11-02 until pairs-v8 (2026-11-06, `pairs-v8.test.ts`);
+ * its tag stays up -- pairs-v6's manifest and desktop pictures with every one of
  * its 160 grid cells given a `phone` picture and the third colour painted in,
  * merged by ~/scenery-packs/panoramas-v1/tools/make_pairs_v6_draft.py
  * (--phone-fragment / --pin-fragment, --phone-base / --pin-base) from the two
@@ -114,12 +115,9 @@ function v7Problems(m: Record<string, any>, prev: Record<string, any>): string[]
   return out;
 }
 
-describe('pairs-v7.1: the flag’s default', () => {
-  it('?pairfull=1 with no ?pairs= is pairs-v7.1 (never the mislabelled pairs-v7); the board without the flag stays on pairs-v3.1; ?pairs= wins', () => {
-    expect(FORGECOACH_PAIRS_FULL_URL).toBe(V71);
+describe('pairs-v7.1: the flag’s default until pairs-v8', () => {
+  it('?pairfull=1 never names the mislabelled pairs-v7; the board without the flag stays on pairs-v3.1; ?pairs= wins (pairs-v8.test.ts pins the default)', () => {
     expect(FORGECOACH_PAIRS_FULL_URL).not.toBe(V7);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(V71);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', '#ambience?pairfull=on'))).toBe(V71);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(FORGECOACH_PAIRS_URL).toBe(`${CDN}@pairs-v3.1/`);

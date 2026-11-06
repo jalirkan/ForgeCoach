@@ -60,9 +60,14 @@ export const SCENERY_KEY = 'forgecoach.scenery';
  * ForgeCoach's own art pack (CC BY 4.0, github.com/jalirkan/forgecoach-scenery),
  * served by jsDelivr from a fixed tag: CORS, the right MIME types and long
  * caching. A new pack version is a new tag, so this URL never changes under a
- * cached copy.
+ * cached copy. `pack-v10` (spec 1.14, tagged 2026-11-06): every half and phone
+ * picture painted in oil (oil-v2), and the old-style pictures that drew around
+ * them dropped -- no strip sky layers, full-area accents, transitions or
+ * bridges, stage-6 loops on forest, plains and swamp only; `pieces` stays at
+ * `@pieces-v1` (`pack-v10.test.ts`). `pack-v9.2` (`pack-v9-2.test.ts`) and
+ * every older tag stay up, but nothing points at them.
  */
-export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v9.2/pack/';
+export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v10/pack/';
 /**
  * Spec 1.9: ForgeCoach's own pair bands, a second manifest (`pairs.json` at
  * this base) in a ref of its own on the same repository, since the main pack
@@ -78,12 +83,16 @@ export const FORGECOACH_PACK_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgeco
 export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3.1/';
 /**
  * Spec 1.15: the pairs `?pairfull=1` defaults to with ForgeCoach's own pack:
- * `pairs-v7.1` (spec 1.18, tagged 2026-11-02), pairs-v6's manifest and desktop
- * pictures with every one of the 160 grid cells given a `phone` picture
- * (`@pairs-v7-phone`) and the third colour painted in (660 pictures,
- * `@pairs-v7-pin`), both by absolute URL (`pairs-v7.1.test.ts`; `@pairs-v7`,
- * the same tree with its manifest mislabelled "pairs-v6 draft", was
- * superseded the same day). pairs-v6
+ * `pairs-v8` (spec 1.18, tagged 2026-11-06), the seam grid painted in oil
+ * (oil-v2): all 160 cells with their desktop and `phone` pictures in the ref
+ * itself, each pair's stage halves still at `@pairs-v2`, and no painted-in
+ * cells -- a third colour is its 1.19 a cut-out (`pairs-v8.test.ts`).
+ * `pairs-v7.1` (spec 1.18, tagged 2026-11-02, `pairs-v7.1.test.ts`: pairs-v6's
+ * manifest and desktop pictures with every cell given a `phone` picture at
+ * `@pairs-v7-phone` and the third colour painted in, 660 pictures at
+ * `@pairs-v7-pin`) was the default until then and stays up; `@pairs-v7`, the
+ * same tree with its manifest mislabelled "pairs-v6 draft", was superseded
+ * the same day. pairs-v6
  * (spec 1.17, the seam grid on all ten pairs, desktop only: each half its
  * colour's own mono picture at that colour's own stage, so a land grows one
  * half and never redraws the other -- Justin's one-world rule, 2026-10-25;
@@ -92,7 +101,7 @@ export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgec
  * but nothing points at them. `?pairs=` still wins. Without the flag the
  * board keeps FORGECOACH_PAIRS_URL.
  */
-export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v7.1/';
+export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v8/';
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true, light: false, horizon: false };
 
