@@ -700,7 +700,7 @@ function pairFullFrameOf(items: ReturnType<typeof pairFullPlan>, shown: { art: P
 
 describe('spec 1.20: a scene on the board', () => {
   const SCENES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1/';
-  const scenes = validateScenes(JSON.parse(readFileSync(new URL('../../ambience/testdata/scenes-v1.scenes.json', import.meta.url), 'utf8')), `${SCENES_URL}scenes.json`).scenes!;
+  const scenes = validateScenes(JSON.parse(readFileSync(new URL('../../ambience/testdata/scenes-sample.scenes.json', import.meta.url), 'utf8')), `${SCENES_URL}scenes.json`).scenes!;
   const local: ScenePack = { ...pack, scenes };
   const scene = scenes.scenes['island2+forest3+mountain2']!;
   // Board order is not the geography's: the scene is found by its lands alone.

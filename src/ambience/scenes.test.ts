@@ -3,12 +3,14 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * Spec 1.20, scenes (scenes.ts): the key, the file, the plan, the gates, the
- * hold, the caption and the storyboard. The sample file
- * `testdata/scenes-v1.scenes.json` has the shape of scenes-v1 with exactly two
- * scenes and no pictures yet (bytes 0); it is NOT hash-pinned: the pin comes
- * with the tag, when the real file replaces it. Nothing here touches the
- * network (fetchScenes and resolveScenery are given fakes).
+ * hold, the caption and the storyboard. `testdata/scenes-sample.scenes.json`
+ * is a two-scene sample in scenes-v1's shape, for the shape tests;
+ * `testdata/scenes-v1.scenes.json` is the scenes-v1 tag's `scenes.json` byte
+ * for byte (eight scenes, 2026-11-06), hash-pinned at the end as the pairs
+ * file is. Nothing here touches the network (fetchScenes and resolveScenery
+ * are given fakes).
  */
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { validateManifest, type ScenePack } from './manifest.ts';
@@ -39,7 +41,7 @@ import { fetchScenes, MAX_SCENE_BYTES, sceneFor, sceneKey, sceneKeyOf, scenePict
 import { enumerateStates, SHAPES, storyboardHalf, type Shape, type StoryboardPacks } from './storyboard.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
-const SAMPLE = json('scenes-v1.scenes.json');
+const SAMPLE = json('scenes-sample.scenes.json');
 const MANIFEST = `${FORGECOACH_SCENES_URL}scenes.json`;
 const scenesPack = (): ScenesPack => {
   const r = validateScenes(SAMPLE, MANIFEST);
@@ -470,5 +472,22 @@ describe('spec 1.20: the caption and the storyboard', () => {
     expect(scenePictures(SCENES, [slotsOf(['swamp', 4])], { phone: false, thresholds: T })).toEqual([]);
     expect(scenePictures(null, [STATE_A], { phone: false })).toEqual([]);
     expect(sceneFor(SCENES, STATE_B, T)?.key).toBe('plains2+forest4+mountain2');
+  });
+});
+
+describe('the scenes-v1 tag (2026-11-06)', () => {
+  const bytes = readFileSync(new URL('./testdata/scenes-v1.scenes.json', import.meta.url));
+  it('is the file jsDelivr serves byte for byte', () => {
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe('42549e6260aacb8d5f68ce66ce164ed081c0b363e5103f70dc2bd2a9eb6b824f');
+    expect(bytes.length).toBe(9_924);
+  });
+  it('holds eight scenes, every one with a phone picture, and validates clean', () => {
+    const r = validateScenes(JSON.parse(bytes.toString('utf8')), `${FORGECOACH_SCENES_URL}scenes.json`);
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([]);
+    const keys = Object.keys(r.scenes!.scenes ?? r.scenes!);
+    expect(keys.length).toBe(8);
+    expect(keys).toContain('island2+forest3+mountain2');
+    expect(keys).toContain('swamp4+plains4+forest4');
   });
 });

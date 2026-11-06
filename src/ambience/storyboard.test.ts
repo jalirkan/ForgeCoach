@@ -46,7 +46,7 @@
  * rule and the new.
  *
  * Spec 1.20: the walk runs once more with the sample scenes file
- * (`testdata/scenes-v1.scenes.json`) -- a scene names every colour of its
+ * (`testdata/scenes-sample.scenes.json`) -- a scene names every colour of its
  * key, so no colour may hide there either, and the captions stay honest.
  *
  * The report: `STORYBOARD_REPORT=<dir> npx vitest run src/ambience/storyboard.test.ts`
@@ -403,11 +403,11 @@ describe('the storyboard walk: every colour with lands, on screen', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Spec 1.20: the same walk with the sample scenes file (testdata/scenes-v1.scenes.json, two scenes; the real file at
+// Spec 1.20: the same walk with the sample scenes file (testdata/scenes-sample.scenes.json, two scenes; the real file at
 // its tag replaces it): a scene names every colour of its key, so nothing may hide, and the captions stay honest.
 
 describe('the storyboard walk with the sample scenes (spec 1.20)', () => {
-  const scenes = validateScenes(json('scenes-v1.scenes.json'), `${FORGECOACH_SCENES_URL}scenes.json`).scenes!;
+  const scenes = validateScenes(json('scenes-sample.scenes.json'), `${FORGECOACH_SCENES_URL}scenes.json`).scenes!;
   const WITH: StoryboardPacks = { ...PACKS, scenes };
   it('every colour with lands is on screen and every caption is honest, in every state, at both shapes, with the flag and without', { timeout: 600_000 }, () => {
     const drawn: Record<string, number> = {};
