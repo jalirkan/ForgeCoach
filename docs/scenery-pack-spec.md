@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1 and 1.19 in draft)
+# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1, 1.19 and 1.20 in draft)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -37,6 +37,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.18 (draft) | **Phone cells and painted-in cells** (§2, *Phone cells and painted-in cells*), behind `?pairfull=1`, a draft amendment to 1.17 for the two painter lanes of 31 October 2026: a grid cell may carry a **`phone`** picture (a stage panorama's `phone` shape, 1638 × 1280) and painted-in **`elements`** (a stage's 1.16.1 sided shape, the sides in the **cell's** geography order). On a phone-shaped board a grid pair draws the cell the desktop would (the same pick) when that cell has a `phone`, and gives way to the `stages` exactly as 1.17 when it has not; a third colour on a cell draws the cell's painted-in picture on the heavier half when it has one, and nothing when it has not (1.17's rule). Warming adds the phone cells by 1.17's rules and the shown cell's painted-in pictures only. Every 1.0–1.17 pack and pairs manifest (pairs-v6 included) is read and drawn unchanged. ForgeCoach's **pairs-v7.1** (2026-11-02; pairs-v7 was the same tree, mislabelled, superseded the same day) is the first pack written to it, every cell with both, and was the flag's default until **pairs-v8** (2026-11-06: phone cells and no painted-in cells); its manifest is about 0.5 MB, so a pairs manifest may now be up to **1 MB** (256 KB until 1.18; a pack's `scenery.json` stays 256 KB). |
 | 1.18.1 (draft) | **A phone's third colour on a painted cell** (§2, *Phone cells and painted-in cells*, amended), reader only, no new field: on a **phone-width screen**, where the cell shown has the third colour painted in on the heavier half but that picture has **no `phone`**, the half draws the plain cell's phone picture with the third colour's **1.14 cut-out element** (its `phone` piece; an element without one draws nothing) on the heavier pair colour's ground, placed and faded exactly as on a pair without a grid, and the caption says "swamp as an element". A desktop keeps the painted picture; a painted picture with its own `phone` is drawn on a phone as 1.18 says, never the cut-out. pairs-v7.1's 660 painted pictures have no phone picture, so on a phone every painted cell takes the cut-out. Every 1.0–1.18 pack and pairs manifest is read unchanged. |
 | 1.19 (draft) | **Every colour, the base pair, no clamp** (§2, *Every colour, the base pair, no clamp (1.19)*), the owner's four rules of 2026-11-02 after the storyboard review (pc-results `scenery/STORYBOARD.md`), reader only, no new field: **(a) every colour visible** -- the fold to three is gone: a side with four or five colours keeps the pair's picture and the third colour's painted-in picture where it exists, and draws **every further colour as its 1.14 cut-out**, stacked on the pair's grounds (the heavier pair colour's holds two, side by side, the lighter's the rest), each faded by its share and never on the seam core, a phone drawing the phone pieces (1.18.1), the caption naming them; a third colour with nothing painted in draws its cut-out, else its 1.15 panel, never nothing; **(b) the pair is the base** -- the pair showing stays while both its colours are among the three heaviest, and changes only when one leaves the top three; **(c) no clamp** -- a seam grid with no cell for the two colours' own stages draws each colour's own mono picture side by side at the split, joined by the plain 1.10 seam, "island s1 \| forest s5, no seam cell", and a cell painted later is drawn with no code change; **(d) pack-v9.2 is ForgeCoach's default pack**, which turns on its batch-3 pieces -- five elements with phone pieces, fronts for W/U/B/G, the won/lost veils, the empty table -- on **every** board, with `?pairfull=1` and without. Every 1.0–1.18.1 pack and pairs manifest is read unchanged. |
+| 1.20 (draft) | **Scenes** (§2, *Scenes (1.20)*): a third, optional manifest, **`scenes.json`**, fetched beside `scenery.json` from a scenes URL of its own (ForgeCoach's at `@scenes-v1`, with ForgeCoach's pack only, with `?pairfull=0` too): per exact state of a half -- its colours, each at its own stage, keyed `island2+forest3+mountain2` in the geography's order -- **one whole-half painting**, a 1.5 `half` that must carry its `phone` picture. When the half's state has a scene, the half draws that scene and nothing else -- no pair, no element, no cut-out, no band, no panel, no piece -- at a desktop and on a phone alike, never mirrored; the pair rule's memory is left alone. A state with no scene is drawn by 1.5–1.19 unchanged. Every 1.0–1.19 pack and pairs manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -2523,6 +2524,135 @@ steps did under the flag before). `src/ambience/scenery-1.19.test.ts` plays
 the storyboard's sequences on the real packs; `e2e/ambience.e2e.mjs` plays
 them land by land in a browser on a desktop and a phone.
 
+### Scenes (1.20, draft)
+
+**One painting for an exact set of lands.** On 6 November 2026 the owner
+judged the three-colour half ugly: a pair picture with the third colour as a
+tiny tree pasted under the land chips. 1.20 lets a painter make the half
+whole instead -- one picture of that very state, every colour on it at its
+own stage, composed as one place -- and the reader draws it as painted.
+Scenes are made state by state, so the rule is exact: a half whose state has
+a scene draws it; any other half is drawn by 1.5–1.19, unchanged. Nothing
+in a scene is cut out, stacked or panned.
+
+**The key.** A half's state is the set of its live colours (a land weight
+above 0), each with its stage on the pack's own `stageThresholds` -- the
+stage a 1.5 panel of that colour would show (ForgeCoach's pack steps a stage
+with every land, so the stage is the colour's land count, at most 6; a dual
+gives ½ to each colour, 1.11, and a lone half-land is stage 1). The key is
+those colours in the one geography's order -- **island, swamp, plains,
+forest, mountain** (1.17) -- each written `<biome><stage>`, joined by `+`:
+
+    island2+forest3+mountain2      two Islands, three Forests, two Mountains
+    island1+swamp1+plains1         one of each
+    forest4                        four Forests (a scene for one colour is allowed; none is expected)
+    island1+forest1                one Island, one Forest and a Breeding Pool (1½ each: stage 1)
+
+Board order, the order the colours arrived and which side a colour is on do
+**not** matter: two halves with the same lands find the same scene, and the
+scene is drawn as painted, never mirrored. A half with a land the five do not
+name (a `wastes` slot, 1.11) has no key. `#ambience`'s stage slider does not
+change the key: a scene is made for lands, not for a preview's stage.
+
+**The file.** `scenes.json`, at the root of its own URL (a jsDelivr ref of
+its own, as `pairs.json`): ForgeCoach's is
+`https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1/scenes.json`,
+loaded whenever the pack is ForgeCoach's own, with the whole-half flag and
+without. A pack of your own brings none. A file that does not load or does
+not validate means **no scenes**, never an error on the board (`#ambience`
+says why).
+
+```json
+{
+  "schema": 1,
+  "spec": "1.20",
+  "name": "scenes-v1",
+  "author": "jalirkan",
+  "license": "CC BY 4.0",
+  "scenes": {
+    "island2+forest3+mountain2": {
+      "lands": [{ "biome": "island", "stage": 2 }, { "biome": "forest", "stage": 3 }, { "biome": "mountain", "stage": 2 }],
+      "half": {
+        "src": "scenes/island2+forest3+mountain2/half.webp",
+        "src2x": "scenes/island2+forest3+mountain2/half@2x.webp",
+        "width": 2048, "height": 640, "bytes": 0,
+        "subjectBand": [0.05, 0.95], "horizon": 0.6, "hour": 15, "key": "afternoon",
+        "focal": { "x": 0.5, "y": 0.55 }, "safe": { "x": 0, "y": 0.3, "w": 1, "h": 0.4 },
+        "phone": {
+          "src": "scenes/island2+forest3+mountain2/phone.webp",
+          "src2x": "scenes/island2+forest3+mountain2/phone@2x.webp",
+          "width": 1024, "height": 1280, "bytes": 0,
+          "subjectBand": [0.25, 0.75], "horizon": 0.6,
+          "focal": { "x": 0.5, "y": 0.5 }, "safe": { "x": 0, "y": 0.3, "w": 1, "h": 0.4 }
+        }
+      }
+    }
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `scenes.<key>` | The state the painting was made for: the key above. It must be exactly the key its `lands` make. |
+| `lands` | That state as a list, one entry per colour: `biome` (one of the five) and `stage` (a whole number 1–6). The order of the list does not matter; the key's does. |
+| `half` | The painting: a 1.5 `half` (`src`, `src2x`, `width`, `height`, `bytes`, `subjectBand`, `focal`, `safe`) with 1.13's `horizon`, `hour` and `key`, read by the same rules as a stage's or a seam cell's. Relative files resolve against `scenes.json`'s own URL. |
+| `half.phone` | **Required.** The phone painting (4 : 5, 1024 × 1280; `src2x` 2048 × 2560), with its own `subjectBand`, `horizon`, `focal`, `safe` and `bytes`. A scene is drawn at a desktop and on a phone alike, so a scene without one is refused. |
+
+**What the validator refuses.** A file that is not a schema-1 scenes
+manifest (no `scenes` object) is an error, and there are no scenes. A scene
+of the wrong shape is refused -- an error naming the scene and why -- and the
+others still load: a key that is not the key its `lands` make (out of the
+geography's order, another stage, a colour more or fewer), a biome outside
+the five, a stage outside 1–6 or not a whole number, a colour named twice, no
+`half`, an unusable `half`, and **no phone picture**. Budgets are warnings
+(§3).
+
+**The rule: a scene wins, whole, at both shapes.** When the scenes have the
+half's key, the half is that one painting, across the whole half:
+
+- **before any pair logic**: no pair picture, no seam cell, no band, no
+  bridge, no panel, no 1.14 element, no 1.19 a cut-out, and no piece over it
+  -- no landmark, front or veil either. The land chips, the effects and the
+  centre line's mist draw as they do over a cell;
+- **with `?pairfull=0` too**: the scenes do not depend on the whole-half
+  flag;
+- **at both shapes**: the desktop painting on a desktop, the phone painting
+  on a phone-width screen (≤ 600 px) or a phone-shaped panel -- 1.5's
+  `pickHalfPicture`, the rule a seam cell's picture follows -- framed as
+  every 1.5 half picture is (the focal point, the safe rect kept whole, the
+  horizon pinned at 1.13's height when one horizon is on), never mirrored and
+  never panned;
+- **the load gate and the hold as 1.15–1.19's**: while the painting loads
+  the half keeps what it drew (the pair, a cell, the panels, the previous
+  scene) for at most 8 s, then its panels -- never blank; a scene on screen
+  is held while the next picture loads when the lands move on; a painting
+  that fails gives the half back to 1.5–1.19 and their pieces. A half warms
+  its own scene and every scene one basic land away, at the shape it draws;
+- **no memory update**: the pair the half "shows" (1.19 b, makeup.ts's
+  memory) is **not** moved to a scene. A scene is not a pick: the memory
+  keeps folding the pair rule over every state as if no scene were drawn, so
+  when the scene ends -- a land whose state has no scene, a fourth colour say
+  -- the pair rule continues from its own last pick, the pair it would have
+  shown all along, not from whatever the painting happened to contain. This
+  is deliberate.
+
+**The caption** (`#ambience`): "Scene · island 2, forest 3, mountain 2 — one
+painting", the lands in the geography's order. The storyboard walk counts
+every colour of the key as on screen (the scene names it). `#ambience`'s Art
+pack card says which scenes the file holds -- "Scenes (spec 1.20): scenes-v1
+by jalirkan, …/scenes.json, 2 scenes: island2+forest3+mountain2, …" -- or "no
+scenes" and why, so the owner can see on the live site which states have a
+painting.
+
+`src/ambience/scenes.ts` (`sceneKey`, `validateScenes`, `fetchScenes`,
+`scenePictures`), `src/ambience/pairfull.ts` (`pairFullPlan`'s `scene` item,
+`sceneCandidates`, `pairFullSceneDrawn`, the gates, `pairFullHold`,
+`sceneCaption`), `src/ambience/prefs.ts` (`FORGECOACH_SCENES_URL`,
+`scenesUrlOf`), `src/ambience/pack.ts` (`loadScenes`), SceneryStrip
+(`ScenePanel`), ScenePieces. `src/ambience/scenes.test.ts` holds a sample
+file of two scenes (`testdata/scenes-v1.scenes.json`), not pinned until the
+pictures are tagged.
+
 ## 3. Files and budgets
 
 | What | Format | Size |
@@ -2589,6 +2719,12 @@ Budgets for pieces (1.14), counted apart from everything above:
 - **≤ 6 MB for the pack's pieces** (every element, landmark, front, veil and the empty table, both shapes and 2x; declare `bytes`; the validator warns past it).
 - Elements, landmarks and veils: **transparent** WebP or AVIF (or PNG), mostly clear. Fronts: 1x only, at the `half` shapes (2048 × 640 and 1024 × 1280), as 1.7's frames. The empty table: a 1.5 `half`.
 - A device warms the landmarks, veils, fronts and the empty table at the shape its half shows (they can appear at once); with three or more colours under `?pairfull=1`, the half's elements too (each drawn once loaded).
+
+Budgets for scenes (1.20), in their own manifest and their own ref:
+- **≤ 4 MB per scene**, desktop and phone, 1x and 2x (declare `bytes` on the `half` and, for its own ref, on its `phone`; the validator warns past it): 1.5's shapes, **2048 × 640** (`src2x` 4096 × 1280) and **1024 × 1280** (`src2x` 2048 × 2560).
+- **≤ 45 MB for the scenes pack** in its own folder (the validator warns past it): a jsDelivr ref holds at most 50 MB. About a dozen and a half scenes at 2.5 MB fit one ref; more go at tags of their own, named by absolute URL.
+- **≤ 1 MB** for `scenes.json` itself.
+- A device loads only its halves' scenes and those one land away, at the shape it draws.
 
 The whole pack should stay ≤ 30 MB, effects and accents included (half pictures count apart: up to 40 MB more for five biomes).
 
