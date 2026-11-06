@@ -11,7 +11,7 @@
  * when a colour leaves). The plan is ambience/pieces.ts's; nothing here
  * decides what shows.
  *
- * The third colour's element is drawn only under `?pairfull=1` (spec 1.15),
+ * The third colour's element is drawn only under spec 1.15 (the default; off with `?pairfull=0`),
  * where the pair picture fills the half (pairfull.ts `pairFullPlan` with the
  * pieces' `elements`): in the heavier pair colour's ground stopping short of
  * the transition (`pairFullElementRegion`, never mirrored), placed by its
@@ -77,7 +77,7 @@ export interface ScenePiecesProps {
   reduced: boolean;
   /** Settings → One horizon (spec 1.13): the horizon a landmark stands on is the pinned one. */
   horizon?: boolean;
-  /** Spec 1.15 (`?pairfull=1`): the pair picture fills the half, and a third colour's element is drawn in it. */
+  /** Spec 1.15 (on unless `?pairfull=0`): the pair picture fills the half, and a third colour's element is drawn in it. */
   pairFull?: boolean;
   /** What was showing before (makeup.ts; SceneryLayer's previous pick, the one the strip gets too): the tie rules. */
   showing?: MakeupShowing | null;

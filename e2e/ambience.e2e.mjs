@@ -10,8 +10,9 @@
  *      static server; with PAIRS_DIR, that folder too, at /pairs-pack/ (a
  *      pairs pack on disk, e.g. ~/scenery-packs/panoramas-v1/serve/pairs-v5
  *      before its tags are cut);
- *   2. opens `/?pairfull=1#ambience` at a desktop size (the flag's own
- *      pairs, pairs-v8 on jsDelivr; `&pairs=<pairs>` only with PAIRS_DIR or
+ *   2. opens a bare `/#ambience` at a desktop size -- no `?pairfull=1`: spec
+ *      1.15 is the default since pairs-v8 (2026-11-06) -- (its own pairs,
+ *      pairs-v8 on jsDelivr; `?pairs=<pairs>` only with PAIRS_DIR or
  *      PAIRS_URL), with ForgeCoach's own pack (pack-v10 from jsDelivr, its
  *      pieces spec 1.19 d's), Pieces → Placeholders (so a
  *      1.14 cut-out exists for every colour) and Pieces → Three colours
@@ -71,7 +72,7 @@
  *
  * Environment: PAIRS_DIR (a local pairs pack), or PAIRS_URL (a pairs pack by
  * URL, e.g. https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6/;
- * with neither, no `?pairs=`: the flag's default, the pairs-v8 tag on
+ * with neither, no `?pairs=`: the default, the pairs-v8 tag on
  * jsDelivr, checked by the pairs line's name and the URL the page fetched its
  * manifest from); BUILD=0, HEADLESS=0, BROWSER_PATH.
  * Needs the network for ForgeCoach's pack (jsDelivr). Exit status: 0 pass, 1 a check
@@ -90,7 +91,7 @@ const OUT = path.join(ROOT, 'e2e', 'out');
 const env = process.env;
 const HEADLESS = !/^(0|false|no)$/i.test(env.HEADLESS ?? '1');
 const PAIRS_DIR = env.PAIRS_DIR ? path.resolve(env.PAIRS_DIR) : null;
-/** What `?pairfull=1` loads with no `?pairs=`: src/ambience/prefs.ts's FORGECOACH_PAIRS_FULL_URL (an .mjs cannot import it). */
+/** What a bare page loads with no `?pairs=` (spec 1.15 on by default): src/ambience/prefs.ts's FORGECOACH_PAIRS_FULL_URL (an .mjs cannot import it). */
 const DEFAULT_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v8/';
 const TIMEOUT = 30_000;
 
@@ -164,13 +165,13 @@ async function main() {
   const port = await freePort();
   const server = await startServer(port);
   const origin = `http://127.0.0.1:${port}`;
-  // No ?pairs= by default: under ?pairfull=1 ForgeCoach's pack brings FORGECOACH_PAIRS_FULL_URL (pairs-v8).
+  // No ?pairs= and no ?pairfull=1 by default: on a bare page ForgeCoach's pack brings FORGECOACH_PAIRS_FULL_URL (pairs-v8).
   const pairs = PAIRS_DIR ? `${origin}/pairs-pack/` : (env.PAIRS_URL || null);
-  // The manifest the page really loads: a pairs= of yours, or the flag's default (prefs.ts's FORGECOACH_PAIRS_FULL_URL,
+  // The manifest the page really loads: a pairs= of yours, or the default (prefs.ts's FORGECOACH_PAIRS_FULL_URL,
   // whose value is kept here by hand), so a default run checks the grid, the pair forming, the third colour's cut-out and
   // the phone cell on pairs-v8 too.
   const manifestPairs = pairs ?? DEFAULT_PAIRS_FULL_URL;
-  log(`pairs: ${pairs ?? `the flag’s default (no ?pairs=; ${DEFAULT_PAIRS_FULL_URL})`}`);
+  log(`pairs: ${pairs ?? `the default (no ?pairs=; ${DEFAULT_PAIRS_FULL_URL})`}`);
   const pw = await loadPlaywright();
   const browser = await launchBrowser(pw, { headless: HEADLESS });
   let failed = false;
@@ -178,7 +179,7 @@ async function main() {
     const page = await (await browser.newContext({ viewport: { width: 1600, height: 1000 } })).newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
-    await page.goto(`${origin}/?pairfull=1${pairs ? `&pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
+    await page.goto(`${origin}/${pairs ? `?pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
     // The pack and its pairs: the pairs line names a pairs-vN pack.
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     const pairsLine = await page.textContent('[data-amb-pairs]');
@@ -190,7 +191,7 @@ async function main() {
     log(`pairs manifest fetched: ${fetched.join(' ')}`);
     const wantManifest = new URL('pairs.json', manifestPairs.endsWith('/') ? manifestPairs : `${manifestPairs}/`).href;
     check(fetched.some((u) => u.split('?')[0] === wantManifest), `the page did not fetch ${wantManifest}: ${fetched.join(', ')}`);
-    if (!pairs) check(/@pairs-v8\/pairs\.json$/.test(wantManifest), `the flag's default is not pairs-v8: ${wantManifest}`);
+    if (!pairs) check(/@pairs-v8\/pairs\.json$/.test(wantManifest), `the default is not pairs-v8: ${wantManifest}`);
     await page.click('[data-pieces-toggle="builtin"]');
     await page.click('[data-pieces-three]');
     // Spec 1.17: on a pair with a seam grid the worked example draws the grid cell, and its third colour nothing
@@ -201,8 +202,8 @@ async function main() {
       // The default (pairs-v8) paints no cell -- a third colour is its cut-out -- and has a phone picture on every cell,
       // island+swamp's 4x3 among them.
       const cells = Object.values(manifest.pairs ?? {}).flatMap((p) => Object.values(p.grid ?? {}));
-      check(cells.length === 160 && cells.every((c) => !c.elements && c.phone), 'the flag’s default (pairs-v8) is not 160 cells, each with a phone picture and nothing painted in');
-      check(!!manifest.pairs?.['island+swamp']?.grid?.['4x3']?.phone, 'the flag’s default (pairs-v8) has no phone picture on island+swamp’s 4x3');
+      check(cells.length === 160 && cells.every((c) => !c.elements && c.phone), 'the default (pairs-v8) is not 160 cells, each with a phone picture and nothing painted in');
+      check(!!manifest.pairs?.['island+swamp']?.grid?.['4x3']?.phone, 'the default (pairs-v8) has no phone picture on island+swamp’s 4x3');
     }
     if (manifest.pairs?.['island+plains']?.grid) {
       await workedExampleOnGrid(page, manifest);
@@ -564,7 +565,7 @@ async function phoneCheck(browser, origin, pairs, manifest) {
     if (r.url().includes('/seams/')) seams.push(r.url());
   });
   try {
-    await page.goto(`${origin}/?pairfull=1${pairs ? `&pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
+    await page.goto(`${origin}/${pairs ? `?pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     await setLands(page, 'island', 4);
     await setLands(page, 'swamp', 3);
@@ -602,7 +603,7 @@ async function phoneCellCheck(browser, origin, pairs, manifest) {
     if (r.url().includes('/seams/')) seams.push(r.url());
   });
   try {
-    await page.goto(`${origin}/?pairfull=1${pairs ? `&pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
+    await page.goto(`${origin}/${pairs ? `?pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     await setLands(page, 'island', 4);
     await setLands(page, 'swamp', 3);

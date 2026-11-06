@@ -31,11 +31,14 @@ const raw = JSON.parse(bytes.toString('utf8'));
 const relative = (s: unknown) => typeof s === 'string' && !/^[a-z]+:|^\//.test(s);
 
 describe('pairs-v8: the flag’s default', () => {
-  it('?pairfull=1 with no ?pairs= is pairs-v8; the board without the flag stays on FORGECOACH_PAIRS_URL', () => {
+  it('a bare page is pairs-v8 (no flag needed since 2026-11-06; ?pairfull=1 changes nothing); ?pairfull=0 brings back FORGECOACH_PAIRS_URL', () => {
     expect(FORGECOACH_PAIRS_FULL_URL).toBe(V8);
+    expect(pairsUrlOf(DEFAULT_PREFS)).toBe(V8);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(V8);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=1', ''))).toBe(V8);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', '#ambience?pairfull=on'))).toBe(V8);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', ''))).toBe(FORGECOACH_PAIRS_URL);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', '#ambience?pairfull=off'))).toBe(FORGECOACH_PAIRS_URL);
   });
 });
 

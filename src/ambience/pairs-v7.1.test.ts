@@ -116,9 +116,8 @@ function v7Problems(m: Record<string, any>, prev: Record<string, any>): string[]
 }
 
 describe('pairs-v7.1: the flag’s default until pairs-v8', () => {
-  it('?pairfull=1 never names the mislabelled pairs-v7; the board without the flag stays on pairs-v3.1; ?pairs= wins (pairs-v8.test.ts pins the default)', () => {
+  it('the default never names the mislabelled pairs-v7; ?pairfull=0 stays on pairs-v3.1; ?pairs= wins (pairs-v8.test.ts pins the default)', () => {
     expect(FORGECOACH_PAIRS_FULL_URL).not.toBe(V7);
-    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(FORGECOACH_PAIRS_URL).toBe(`${CDN}@pairs-v3.1/`);
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, `?pairfull=1&pairs=${encodeURIComponent(V6)}`, ''))).toBe(V6);

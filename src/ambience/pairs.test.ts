@@ -22,7 +22,7 @@ import { halfLayout, halfSpans, type HalfSlotLayout } from './layout.ts';
 import { dualsOf, stepScenery, type Biome, type SlotState } from './model.ts';
 import { simCard, simState } from './sim.ts';
 import { resolveScenery, clearSceneryCache } from './pack.ts';
-import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PACK_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
+import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, pairsUrlOf } from './prefs.ts';
 import {
   bandWidth,
   DEFAULT_PAIR_BAND,
@@ -278,9 +278,10 @@ describe('warming', () => {
 });
 
 describe('loading and prefs', () => {
-  it('fetches ForgeCoach’s pairs with ForgeCoach’s pack, none with another pack, and takes ?pairs= for one page', () => {
+  it('fetches ForgeCoach’s pairs with ForgeCoach’s pack (the seam grid; the 1.9 bands with ?pairfull=0), none with another pack, and takes ?pairs= for one page', () => {
     expect(FORGECOACH_PAIRS_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v3.1/');
-    expect(pairsUrlOf(DEFAULT_PREFS)).toBe(FORGECOACH_PAIRS_URL);
+    expect(pairsUrlOf(DEFAULT_PREFS)).toBe(FORGECOACH_PAIRS_FULL_URL);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairfull=0', ''))).toBe(FORGECOACH_PAIRS_URL);
     expect(pairsUrlOf({ ...DEFAULT_PREFS, packUrl: 'http://127.0.0.1:8650/' })).toBeNull();
     expect(pairsUrlOf({ ...DEFAULT_PREFS, mode: 'procedural' })).toBeNull();
     expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?pairs=off', ''))).toBeNull();
