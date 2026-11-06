@@ -33,8 +33,8 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.15 | **Whole-half pair panoramas** (§2, *Whole-half pair panoramas*), behind `?pairfull=1` only, default off: a pair stage in `pairs.json` may carry a **`panorama`**, one picture of one place 1.6 × the half's 16 : 5 (and a 1.28 : 1 `phone`), the key's first biome the ground at its left end and the second at its right. A half of exactly two colours with a pair picture shows it across the **whole half** (the panorama, else the 1.9 `half`), and the land share **pans** it (the transition sits at the share) instead of widening a band; its stage from the two colours' total lands. Three colours: the heaviest pair's picture beside the third's panel (a placeholder until 1.14's element is drawn). `pairFullView` exposes the transition, each colour's ground and the horizon for 1.14's pieces. ForgeCoach's pairs under the flag: pairs-v4. |
 | 1.16 | **Painted-in elements and one makeup rule** (§2, *Painted-in elements*), behind `?pairfull=1` for the pictures: a pair stage in `pairs.json` may carry **`elements`**, per colour that stage's panorama with the third colour's feature painted **into** the place; under the flag the half draws it instead of the panorama (a cross-fade, no cut-out on top), else the 1.14 cut-out element as before. And four corrections from the scenery review of 2026-10-24, reading the same manifests: **one makeup rule** for the panels, the pair picture and the pieces (four or five colours keep the three heaviest by their own weights; the colours dropped show nothing and **weigh nothing** in the pan or the pair choice, correcting 1.10's fold, while the stage still counts every coloured land); **pieces above every scenery layer** (the land pictures, every accent, the card-row scrim and the effects), below every card, label and control (correcting 1.14); a **front plays once its frames have loaded**; and a **load gate** for the whole-half picture (its panels until a picture of it has loaded; never blank). The pairs pack's 45 MB warning counts only the files in its own ref. Every 1.0–1.15 pack and pairs manifest is read unchanged. |
 | 1.16.1 | **Sided painted-in elements** (§2, *Painted-in elements*, amended): an `elements[<colour>]` entry may give **`left`** and **`right`**, one painted panorama per pair colour's ground (the painter's `s<k>+<C>L` and `s<k>+<C>R`), and the reader draws the **heavier** pair colour's side (SYSTEM.md A5), chosen on the key's colours before any mirroring; 1.16's unsided `src` entry still reads. A picture's `phone` object may declare its own **`bytes`**, so each shape counts in the ref its own file lies in. A pairs manifest's `spec` may carry a third number (`"1.16.1"`). ForgeCoach's **pairs-v5** is the first pack written to it. |
-| 1.17 (draft) | **The seam grid** (§2, *The seam grid*), behind `?pairfull=1`, whose default pairs are pairs-v7.1 (1.18, since 2026-11-02; pairs-v6, a grid on all ten pairs, desktop only, from 2026-10-27; the board without the flag keeps pairs-v3.1), for Justin's review on the live board: a pair in `pairs.json` may carry a **`grid`** of whole-half seam pictures keyed **`"<i>x<j>"`** by the two halves' own stages -- `i` the stage of the pair's colour earlier in the one geography (Island → Swamp → Plains → Forest → Mountain: the picture's left half), `j` the later one's -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), only the seam painted. Painted for \|i − j\| ≤ 1; further apart, the lighter half is raised to one stage below the heavier. A missing cell falls back to the pair's `stages`; a third colour on a grid picture draws nothing in the draft. Every 1.0–1.16.1 pack and pairs manifest is read unchanged. |
-| 1.18 (draft) | **Phone cells and painted-in cells** (§2, *Phone cells and painted-in cells*), behind `?pairfull=1`, a draft amendment to 1.17 for the two painter lanes of 31 October 2026: a grid cell may carry a **`phone`** picture (a stage panorama's `phone` shape, 1638 × 1280) and painted-in **`elements`** (a stage's 1.16.1 sided shape, the sides in the **cell's** geography order). On a phone-shaped board a grid pair draws the cell the desktop would (the same pick) when that cell has a `phone`, and gives way to the `stages` exactly as 1.17 when it has not; a third colour on a cell draws the cell's painted-in picture on the heavier half when it has one, and nothing when it has not (1.17's rule). Warming adds the phone cells by 1.17's rules and the shown cell's painted-in pictures only. Every 1.0–1.17 pack and pairs manifest (pairs-v6 included) is read and drawn unchanged. ForgeCoach's **pairs-v7.1** (2026-11-02; pairs-v7 was the same tree, mislabelled, superseded the same day) is the first pack written to it, every cell with both, and the flag's default; its manifest is about 0.5 MB, so a pairs manifest may now be up to **1 MB** (256 KB until 1.18; a pack's `scenery.json` stays 256 KB). |
+| 1.17 (draft) | **The seam grid** (§2, *The seam grid*), behind `?pairfull=1`, whose default pairs are pairs-v8 (1.18, since 2026-11-06: the grid painted in oil, with phone cells and nothing painted in; pairs-v7.1 from 2026-11-02; pairs-v6, a grid on all ten pairs, desktop only, from 2026-10-27; the board without the flag keeps pairs-v3.1), for Justin's review on the live board: a pair in `pairs.json` may carry a **`grid`** of whole-half seam pictures keyed **`"<i>x<j>"`** by the two halves' own stages -- `i` the stage of the pair's colour earlier in the one geography (Island → Swamp → Plains → Forest → Mountain: the picture's left half), `j` the later one's -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), only the seam painted. Painted for \|i − j\| ≤ 1; further apart, the lighter half is raised to one stage below the heavier. A missing cell falls back to the pair's `stages`; a third colour on a grid picture draws nothing in the draft. Every 1.0–1.16.1 pack and pairs manifest is read unchanged. |
+| 1.18 (draft) | **Phone cells and painted-in cells** (§2, *Phone cells and painted-in cells*), behind `?pairfull=1`, a draft amendment to 1.17 for the two painter lanes of 31 October 2026: a grid cell may carry a **`phone`** picture (a stage panorama's `phone` shape, 1638 × 1280) and painted-in **`elements`** (a stage's 1.16.1 sided shape, the sides in the **cell's** geography order). On a phone-shaped board a grid pair draws the cell the desktop would (the same pick) when that cell has a `phone`, and gives way to the `stages` exactly as 1.17 when it has not; a third colour on a cell draws the cell's painted-in picture on the heavier half when it has one, and nothing when it has not (1.17's rule). Warming adds the phone cells by 1.17's rules and the shown cell's painted-in pictures only. Every 1.0–1.17 pack and pairs manifest (pairs-v6 included) is read and drawn unchanged. ForgeCoach's **pairs-v7.1** (2026-11-02; pairs-v7 was the same tree, mislabelled, superseded the same day) is the first pack written to it, every cell with both, and was the flag's default until **pairs-v8** (2026-11-06: phone cells and no painted-in cells); its manifest is about 0.5 MB, so a pairs manifest may now be up to **1 MB** (256 KB until 1.18; a pack's `scenery.json` stays 256 KB). |
 | 1.18.1 (draft) | **A phone's third colour on a painted cell** (§2, *Phone cells and painted-in cells*, amended), reader only, no new field: on a **phone-width screen**, where the cell shown has the third colour painted in on the heavier half but that picture has **no `phone`**, the half draws the plain cell's phone picture with the third colour's **1.14 cut-out element** (its `phone` piece; an element without one draws nothing) on the heavier pair colour's ground, placed and faded exactly as on a pair without a grid, and the caption says "swamp as an element". A desktop keeps the painted picture; a painted picture with its own `phone` is drawn on a phone as 1.18 says, never the cut-out. pairs-v7.1's 660 painted pictures have no phone picture, so on a phone every painted cell takes the cut-out. Every 1.0–1.18 pack and pairs manifest is read unchanged. |
 | 1.19 (draft) | **Every colour, the base pair, no clamp** (§2, *Every colour, the base pair, no clamp (1.19)*), the owner's four rules of 2026-11-02 after the storyboard review (pc-results `scenery/STORYBOARD.md`), reader only, no new field: **(a) every colour visible** -- the fold to three is gone: a side with four or five colours keeps the pair's picture and the third colour's painted-in picture where it exists, and draws **every further colour as its 1.14 cut-out**, stacked on the pair's grounds (the heavier pair colour's holds two, side by side, the lighter's the rest), each faded by its share and never on the seam core, a phone drawing the phone pieces (1.18.1), the caption naming them; a third colour with nothing painted in draws its cut-out, else its 1.15 panel, never nothing; **(b) the pair is the base** -- the pair showing stays while both its colours are among the three heaviest, and changes only when one leaves the top three; **(c) no clamp** -- a seam grid with no cell for the two colours' own stages draws each colour's own mono picture side by side at the split, joined by the plain 1.10 seam, "island s1 \| forest s5, no seam cell", and a cell painted later is drawn with no code change; **(d) pack-v9.2 is ForgeCoach's default pack**, which turns on its batch-3 pieces -- five elements with phone pieces, fronts for W/U/B/G, the won/lost veils, the empty table -- on **every** board, with `?pairfull=1` and without. Every 1.0–1.18.1 pack and pairs manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
@@ -1894,8 +1894,10 @@ leaves the cut-out out (`pairs-elements.test.ts`, `pairs-v5.test.ts`,
 
 **A draft, behind the same flag.** Drawn only under **`?pairfull=1`** (1.15)
 with a pairs manifest that has a grid: the flag's default pairs,
-**pairs-v7.1** (pairs-v6's grid with 1.18's phone and painted-in cells;
-the default since 2026-11-02), or a `?pairs=` naming one (**pairs-v6**, a grid
+**pairs-v8** (the grid painted in oil, with 1.18's phone cells and no
+painted-in cells; the default since 2026-11-06), or a `?pairs=` naming one
+(**pairs-v7.1**, pairs-v6's grid with 1.18's phone and painted-in cells, the
+default from 2026-11-02; **pairs-v6**, a grid
 on all ten pairs, desktop only, the default from 2026-10-27;
 pairs-v6-draft, three pairs). The board without the flag is unchanged
 (pairs-v3.1). A pairs manifest without `grid` is read as before, and a
@@ -2100,8 +2102,9 @@ manifest, `width` 3277, `height` 640 and `bytes`. pairs-v5's desktop files
 (28.0 MB) and 160 cells at about 70 KB are about 39 MB in one ref, under
 the 45 MB warning.
 
-**pairs-v7.1.** The flag's default pairs since 2026-11-02 (prefs.ts
-`FORGECOACH_PAIRS_FULL_URL`, `@pairs-v7.1`), the first pack written to 1.18
+**pairs-v7.1.** The flag's default pairs from 2026-11-02 until pairs-v8
+(prefs.ts `FORGECOACH_PAIRS_FULL_URL` named `@pairs-v7.1`; the tag stays up,
+reachable with `?pairs=`), the first pack written to 1.18
 (*Phone cells and painted-in cells*, below): pairs-v6 with, on every one of
 its 160 cells, a `phone` picture and the three other colours painted in on
 the sides the reader draws (660 pictures), merged from the two painters'
@@ -2126,6 +2129,25 @@ entry apart from its cells' `phone` and `elements`; each cell's `phone`
 1638 × 1280 at `@pairs-v7-phone` with `bytes` and a `subjectBand`; each
 cell's `elements` the three colours that are not the pair's, `left` where
 i ≥ j and `right` where i ≤ j, at `@pairs-v7-pin`.
+
+**pairs-v8.** The flag's default pairs since 2026-11-06 (prefs.ts
+`FORGECOACH_PAIRS_FULL_URL`, `@pairs-v8`): the seam grid painted in oil
+(oil-v2, the hand of pack-v10's halves), 160 cells with one sky each, every
+cell's desktop picture (3277 × 640) and `phone` picture (1638 × 1280) in
+the ref itself, named relatively -- 27.7 million bytes of cells, under the
+45 MB warning. Each pair keeps its `band`, `stageMap`, `dual`, `shock`,
+`place` and its stages' `half` pictures at `@pairs-v2` (a pair needs a half
+to be planned); the 1.15 panoramas, the 1.16 painted-in pictures, the
+cells' 1.18 `elements` and the 1.7 band frames are dropped, so a third
+colour on a cell is always its 1.19 a cut-out, on a phone and on a desktop.
+The manifest is 195,774 bytes (sha256
+`bcbca31336311765c3dc9cc1e6c965a2ebaefbe2ec7f5d3a817e9d45ec53ac72`).
+`pairs-v8.test.ts` writes down what the reader needs of it
+(`testdata/pairs-v8.tag.pairs.json`, the tagged file byte for byte):
+schema 1, spec `"1.18"`, no errors and a grid-budget warning on nine pairs
+(mountain+plains' cells are under 4 MB); 160 cells, each with a relative
+`src` and `phone.src` and no `elements`; stages that hold only `half`, at
+`@pairs-v2`.
 
 `src/ambience/pairs.ts` reads it (`GEOGRAPHY`, `geographyOrder`, `parseGrid`,
 `pairGridPick`, `pairGridGivesWay`, `pairPictures`' warming); `src/ambience/pairfull.ts` chooses
@@ -2283,8 +2305,10 @@ played and could not see. So, on a **phone-width screen** (≤ 600 px):
 
 pairs-v7.1's 660 painted pictures carry no phone picture, so on a phone every
 painted cell takes the cut-out until a painter adds them. ForgeCoach's own
-cut-outs with phone pieces are pack-v9.2's (`pieces-v1`), ForgeCoach's
-default pack since 1.19 d; a pack without `pieces` (pack-v9.1) draws none. `src/ambience/pairfull.ts` decides it
+cut-outs with phone pieces are at `@pieces-v1`, named by pack-v9.2 (the
+default pack from 1.19 d) and by pack-v10 (the default since 2026-11-06); a
+pack without `pieces` (pack-v9.1) draws none. pairs-v8 paints no cell, so on
+it the third colour is a cut-out at both shapes. `src/ambience/pairfull.ts` decides it
 (`pairFullPlan`'s `phoneElements`, pieces.ts `phoneElementBiomes`; the plan's
 `element` on a grid cell; `pairFullCutOutAllowed`), ScenePieces draws it
 (`pairs-v7.1.test.ts`, `pairs-grid-phone.test.ts`, `sceneryDom.test.tsx`).
@@ -2463,6 +2487,22 @@ table before a side's first colour, a colour's front when it arrives or
 leaves, the end's veil, and the elements 1.19 a needs (the walk's last gap,
 the third colour on a phone's seam cell, was a pack with no phone pieces).
 `src/ambience/pack-v9-2.test.ts` is its manifest byte for byte.
+
+**pack-v10 is the default (2026-11-06).** `FORGECOACH_PACK_URL` is
+`https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v10/pack/`,
+spec `"1.14"`: every stage's `half` -- desktop and phone, 1x and 2x -- painted
+in oil (oil-v2), its `subjectBand`, `horizon`, `hour` and `key` measured on
+the new pictures; and the pack v9.2 pictures that drew over or beside them
+dropped from `scenery.json`: every strip `sky` image layer (a stage with
+only a `half` gets a strip layer of it, 1.5), every full-area accent
+(`overlay`), every biome's 1.7 `transitions` (a stage step is 1.6's 1.2 s
+cross-fade), the island's and the mountain's stage-6 loops, and the
+top-level `bridges`. The forest's, the plains' and the swamp's stage-6 loops,
+every biome's `effects` and the same `pieces` at `@pieces-v1` stay, so 1.19
+d's pieces are drawn as before. It validates with no error and no warning.
+`src/ambience/pack-v10.test.ts` is its manifest byte for byte (30,431 bytes,
+sha256 `59a688c1a725f8685fe8e5d0f36fe8bf8a62b37518d19196cc43a1ab36e3d666`);
+pack-v9.2's tag stays up.
 
 **The walk.** `src/ambience/storyboard.test.ts` walks every vector of 0–6
 lands a colour (three arrival orders, and the duals) through the board's

@@ -6,7 +6,7 @@
  * never shows them): plain dashed shapes labelled "placeholder", so the
  * placement of landmarks, veils, fronts and the empty table can be judged
  * before any art is painted. Each element has a phone piece too, as
- * ForgeCoach's own (pack-v9.2's) do, so spec 1.18.1's phone cut-out on a
+ * ForgeCoach's own (pack-v10's, at `@pieces-v1`) do, so spec 1.18.1's phone cut-out on a
  * seam cell (only a `phone` piece is drawn there) can be judged on a phone.
  */
 import type { PackFront, PackHalf, PackPiece, PackPieces, PieceColour, PiecePlace } from '../../ambience/manifest.ts';
