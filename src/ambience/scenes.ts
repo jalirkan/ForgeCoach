@@ -160,7 +160,11 @@ function parseScene(rawKey: string, v: unknown, base: string, errors: string[], 
   if (!isObj(v.half)) return refuse('half: missing (a 1.5 half picture with its phone picture)');
   const halfWarn: string[] = [];
   const half = parseHalf(v.half, base, `${path}.half`, halfWarn);
-  if (!half) return refuse(halfWarn[0] ?? 'half: unusable');
+  if (!half) {
+    // parseHalf's own reason already names the field.
+    errors.push(`${halfWarn[0] ?? `${path}.half: unusable`}; scene refused`);
+    return null;
+  }
   if (!half.phone) return refuse(`half.phone: missing or unusable${halfWarn.length ? ` (${halfWarn.join('; ')})` : ''} -- a scene must look right on a desktop and a phone`);
   warnings.push(...halfWarn);
   const bytes = (half.bytes ?? 0) + (half.phoneBytes ?? 0);

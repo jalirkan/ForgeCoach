@@ -45,6 +45,10 @@
  * round-robin, in its arrival order) with the memory carried, under the old
  * rule and the new.
  *
+ * Spec 1.20: the walk runs once more with the sample scenes file
+ * (`testdata/scenes-v1.scenes.json`) -- a scene names every colour of its
+ * key, so no colour may hide there either, and the captions stay honest.
+ *
  * The report: `STORYBOARD_REPORT=<dir> npx vitest run src/ambience/storyboard.test.ts`
  * writes `<dir>/STORYBOARD-WALK.md` and `<dir>/storyboard-walk.json`.
  */
@@ -54,7 +58,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { PIECE_COLOURS, validateManifest, type PieceColour } from './manifest.ts';
 import { makeupOf, pairKeyOrder, pickMakeup, rankColours, type Makeup, type MakeupShowing } from './makeup.ts';
 import { validatePairs } from './pairs.ts';
-import { FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL } from './prefs.ts';
+import { FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, FORGECOACH_SCENES_URL } from './prefs.ts';
+import { validateScenes } from './scenes.ts';
 import { addLand, colourCount, enumerateStates, landCount, SHAPES, stateLabel, storyboardHalf, weightOf, type GapReason, type HalfStoryboard, type ManaState, type Shape, type StoryboardPacks } from './storyboard.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
@@ -394,6 +399,32 @@ describe('the storyboard walk: every colour with lands, on screen', () => {
       // Every change under 1.19 b is a pair colour leaving the top three (or the pair forming at the second colour, not counted).
       expect(x.newNotLeaving).toBe(0);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec 1.20: the same walk with the sample scenes file (testdata/scenes-v1.scenes.json, two scenes; the real file at
+// its tag replaces it): a scene names every colour of its key, so nothing may hide, and the captions stay honest.
+
+describe('the storyboard walk with the sample scenes (spec 1.20)', () => {
+  const scenes = validateScenes(json('scenes-v1.scenes.json'), `${FORGECOACH_SCENES_URL}scenes.json`).scenes!;
+  const WITH: StoryboardPacks = { ...PACKS, scenes };
+  it('every colour with lands is on screen and every caption is honest, in every state, at both shapes, with the flag and without', { timeout: 600_000 }, () => {
+    const drawn: Record<string, number> = {};
+    for (const { state } of enumerateStates({ duals: true, dualMax: 4 }))
+      for (const c of COMBOS) {
+        const h = storyboardHalf(state, c.shape, c.pairfull, WITH);
+        expect(h.invisible, `${comboId(c)} ${stateLabel(state)}`).toEqual([]);
+        if (h.caption) {
+          expect(h.captionNames.filter((x) => !h.visible.includes(x)), h.caption).toEqual([]);
+          expect(h.visible.filter((x) => !h.captionNames.includes(x)), h.caption).toEqual([]);
+        }
+        const sc = h.drawn.find((d) => d.kind === 'scene');
+        if (sc) drawn[sc.what.split(' ')[1]!] = (drawn[sc.what.split(' ')[1]!] ?? 0) + 1;
+      }
+    // Both sample scenes are drawn, in every mode and shape, and nothing else is a scene.
+    expect(Object.keys(drawn).sort()).toEqual(['island2+forest3+mountain2', 'plains2+forest4+mountain2']);
+    for (const n of Object.values(drawn)) expect(n % COMBOS.length).toBe(0);
   });
 });
 
