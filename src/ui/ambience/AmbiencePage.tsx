@@ -28,7 +28,8 @@ import { browserLoader, checkEffectFiles, fetchManifest, loadPairs, manifestUrlF
 import { pairBands, pairPictures, pairsBytes, pairWords, type PairsPack } from '../../ambience/pairs.ts';
 import { halfLayout, PHONE_VIEWPORT_MAX } from '../../ambience/layout.ts';
 import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, pieceUrls, type EffectEvent, type PackEffect, type PackPieces, type ScenePack } from '../../ambience/manifest.ts';
-import { currentPrefs, loadSceneryPrefs, pairFullOn, pairsUrlOf, saveSceneryPrefs } from '../../ambience/prefs.ts';
+import { currentPrefs, loadSceneryPrefs, pairFullOn, pairsUrlOf, saveSceneryPrefs, scenesUrlOf } from '../../ambience/prefs.ts';
+import { fetchScenes, scenePictures, type ScenesPack } from '../../ambience/scenes.ts';
 import { gradeFor, type LightOutcome } from '../../ambience/light.ts';
 import { applyGrade } from './lightGrade.ts';
 import { useMediaQuery } from '../hooks.ts';
@@ -75,7 +76,20 @@ const THREE_COLOURS: SimPlay[] = (['Plateau', 'Plains', 'Island'] as const).map(
 type PackState =
   | { status: 'none' }
   | { status: 'loading'; url: string }
-  | { status: 'ok' | 'failed'; url: string; manifestUrl: string | null; pack: ScenePack | null; errors: string[]; warnings: string[]; note: string | null; pairs?: PairsPack | null };
+  | {
+      status: 'ok' | 'failed';
+      url: string;
+      manifestUrl: string | null;
+      pack: ScenePack | null;
+      errors: string[];
+      warnings: string[];
+      note: string | null;
+      pairs?: PairsPack | null;
+      /** Spec 1.20: the scenes loaded beside the pack, the file they came from (null: none tried, a pack of your own), and why there are none or fewer. */
+      scenes?: ScenesPack | null;
+      scenesUrl?: string | null;
+      scenesErrors?: string[];
+    };
 
 export default function AmbiencePage() {
   const [plays, setPlays] = useState<SimPlay[]>([]);
@@ -111,7 +125,13 @@ export default function AmbiencePage() {
   const basePack = pastedPack ?? (usePack && packState.status === 'ok' ? packState.pack : null);
   // Spec 1.9: the pair bands loaded beside the pack (a pasted manifest gets them too).
   const loadedPairs = packState.status === 'ok' ? (packState.pairs ?? null) : null;
-  const pack = useMemo(() => (basePack && loadedPairs && basePack.pairs !== loadedPairs ? { ...basePack, pairs: loadedPairs } : basePack), [basePack, loadedPairs]);
+  // Spec 1.20: and the scenes.
+  const loadedScenes = packState.status === 'ok' ? (packState.scenes ?? null) : null;
+  const pack = useMemo(() => {
+    if (!basePack) return basePack;
+    const withPairs = loadedPairs && basePack.pairs !== loadedPairs ? { ...basePack, pairs: loadedPairs } : basePack;
+    return loadedScenes && withPairs.scenes !== loadedScenes ? { ...withPairs, scenes: loadedScenes } : withPairs;
+  }, [basePack, loadedPairs, loadedScenes]);
   // The pack's own stage thresholds, as the board uses them (SceneryLayer): ForgeCoach's pack steps a stage with every land.
   const thresholds = pack?.stageThresholds ?? undefined;
   // With what each half showed at the previous play (makeup.ts MakeupMemory, as SceneryLayer folds it for the board): the
@@ -170,12 +190,16 @@ export default function AmbiencePage() {
     setPackState({ status: 'loading', url: u });
     const pairsUrl = pairsUrlOf({ ...initial, mode: 'pack', packUrl: u });
     const pairsP = pairsUrl ? loadPairs(pairsUrl, { fetch: (x, i) => fetch(x, i) }) : Promise.resolve(null);
+    // Spec 1.20: the scenes (ForgeCoach's own pack only), fetched here rather than through pack.ts so the status line can
+    // name the file and say why there are none.
+    const scenesUrl = scenesUrlOf({ ...initial, mode: 'pack', packUrl: u });
+    const scenesP = scenesUrl ? fetchScenes(scenesUrl, { fetch: (x, i) => fetch(x, i) }) : Promise.resolve(null);
     const m = await fetchManifest(u, { fetch: (x, i) => fetch(x, i) });
     if (!m.pack) {
       setPackState({ status: 'failed', url: u, manifestUrl: m.manifestUrl, pack: null, errors: m.errors, warnings: m.warnings, note: 'Showing the built-in scenery.' });
       return;
     }
-    const [pre, pairs] = await Promise.all([preloadPack(m.pack, browserLoader(), { maxStage: 6 }), pairsP]);
+    const [pre, pairs, sc] = await Promise.all([preloadPack(m.pack, browserLoader(), { maxStage: 6 }), pairsP, scenesP]);
     const p = pre.failed.length ? withoutBiomes(m.pack, pre.failed) : m.pack;
     // A pack with effects and no stage art (spec 1.2) is usable too.
     const any = Object.keys(p.biomes).length > 0 || !!p.effects;
@@ -185,9 +209,12 @@ export default function AmbiencePage() {
       manifestUrl: m.manifestUrl,
       pack: any ? p : null,
       errors: any ? [] : ['No asset loaded.'],
-      warnings: [...m.warnings, ...pre.reasons],
+      warnings: [...m.warnings, ...pre.reasons, ...(sc?.scenes ? [...sc.errors, ...sc.warnings] : [])],
       note: pre.failed.length ? `${pre.failed.map((b) => BIOME_LABEL[b]).join(', ')} fell back to the built-in scenery.` : null,
       pairs,
+      scenes: sc?.scenes ?? null,
+      scenesUrl: sc?.manifestUrl ?? null,
+      scenesErrors: sc?.errors ?? [],
     });
     setUsePack(true);
   };
@@ -219,6 +246,11 @@ export default function AmbiencePage() {
     const full = pairFull ? { thresholds: pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
     for (const w of pairPictures(pack.pairs, SIM_PLAYERS.map((p) => slotsOf(scenery, p)), { phone: window.innerWidth < 700, full })) warmPicture(w);
   }, [scenery, pack, fill, pairFull]);
+  // Spec 1.20: each side's scene and those one land away, as the board warms them.
+  useEffect(() => {
+    if (!fill || !pack?.scenes) return;
+    for (const w of scenePictures(pack.scenes, SIM_PLAYERS.map((p) => slotsOf(scenery, p)), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: pack.stageThresholds })) warmPicture(w);
+  }, [scenery, pack, fill]);
 
   useLayoutEffect(() => {
     SIM_PLAYERS.forEach((player, i) => {
@@ -593,8 +625,10 @@ function bandCaption(
   panelElements: { desktop: ReadonlySet<Biome> | null; phone: ReadonlySet<Biome> | null } | null = null,
 ): string | null {
   // Spec 1.15 (on unless `?pairfull=0`): a side drawn as its pair picture says so instead (1.17: "seam 4x3" only where a cell is drawn).
+  // Spec 1.20: a side with a scene for its exact state says "Scene · island 2, forest 3, mountain 2 — one painting", flag or not.
   const layout = halfLayout(slots, pack, stageOverride, showing);
-  const full = pairFull && pack?.pairs ? pairFullCaption(pairFullPlan(layout, pack.pairs, { thresholds: pack.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow }), lands) : null;
+  const scenes = pack?.scenes ?? null;
+  const full = (pairFull && pack?.pairs) || scenes ? pairFullCaption(pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes }), lands) : null;
   if (full) return full;
   if (!pack?.pairs) return null;
   const bands = pairBands(layout, pack.pairs, duals);
@@ -633,8 +667,8 @@ function MockSide({ title, player, top, slots, creatures, strip, plays, scrim, b
         <b>{title}</b>
         <span className="amb-summary">{summary}</span>
         {bands && (
-          <span className="amb-summary amb-bands" data-amb-bands={player} title={`Pair band · ${bands}`}>
-            Pair band · {bands}
+          <span className="amb-summary amb-bands" data-amb-bands={player} title={bands.startsWith('Scene · ') ? bands : `Pair band · ${bands}`}>
+            {bands.startsWith('Scene · ') ? bands : `Pair band · ${bands}`}
           </span>
         )}
       </div>
@@ -673,6 +707,21 @@ function* packSummary(pack: ScenePack): Generator<string> {
 }
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+/**
+ * Spec 1.20: the scenes' status line, so the owner can see on the live site which states have a painting: the file,
+ * how many scenes it holds and their keys, or "no scenes" and why.
+ */
+function scenesLine(state: Extract<PackState, { status: 'ok' | 'failed' }>): string {
+  const file = state.scenesUrl ?? null;
+  if (!file) return 'Scenes (spec 1.20): no scenes (only ForgeCoach’s own pack loads them).';
+  const sc = state.scenes;
+  if (!sc) return `Scenes (spec 1.20): no scenes -- ${file} did not load (${state.scenesErrors?.[0] ?? 'unknown problem'}).`;
+  const keys = Object.keys(sc.scenes);
+  const refused = state.scenesErrors?.length ?? 0;
+  const list = keys.length ? `: ${keys.slice(0, 12).join(', ')}${keys.length > 12 ? `, and ${keys.length - 12} more` : ''}` : '';
+  return `Scenes (spec 1.20): ${sc.name}${sc.author ? ` by ${sc.author}` : ''}, ${file}, ${keys.length ? `${keys.length} scene${keys.length === 1 ? '' : 's'}` : 'no scenes'}${list}${refused ? ` (${refused} refused: see the issues below)` : ''}.`;
+}
 
 function PackCard({
   url,
@@ -737,6 +786,7 @@ function PackCard({
                   Pair bands (spec 1.9): <b>{state.pairs.name}</b>, {Object.keys(state.pairs.pairs).length} pairs ({(pairsBytes(state.pairs) / 1048576).toFixed(1)} MB declared).{state.pairs.note ? ` ${state.pairs.note}` : ''}
                 </div>
               ) : null}
+              <div data-amb-scenes>{scenesLine(state)}</div>
             </>
           ) : (
             <>Not loaded. {state.note}</>

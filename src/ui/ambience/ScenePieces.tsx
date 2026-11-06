@@ -44,6 +44,13 @@
  * its frames have decoded (pieces.ts `FrontGate`), not only if they already
  * had at the moment of the change.
  *
+ * Spec 1.20: over a scene (one painting of the half's exact state, the
+ * strip's `ScenePanel`) nothing is drawn -- no element, no cut-out, no
+ * landmark, no front, no veil -- while it is shown or loading
+ * (`pairFullSceneDrawn`); a scene whose picture failed leaves the panels, and
+ * the pieces stand on them as ever. The chips, the effects and the mist are
+ * not pieces, and draw as they do over a cell.
+ *
  * A pack without `pieces` draws nothing (SceneryLayer does not mount this).
  * Reduced motion: no fronts, and the empty table, landmarks and veils appear
  * and go at once. Purely decorative: aria-hidden, no pointer events, over every
@@ -54,7 +61,7 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { COLOUR_BIOME, elementBiomes, elementUrls, phoneElementBiomes, frontFor, frontFrameList, FrontGate, halfCutOuts, horizonAt, makeupFromSlots, panelGround, piecePlacement, piecesPhone, planHalf, stackRegion, veilState, WHOLE, type HalfPlan, type Region } from '../../ambience/pieces.ts';
-import { pairFullApartView, pairFullCandidates, pairFullChoice, pairFullElementRegion, pairFullHeavierSide, pairFullPanelAspect, pairFullPlan, pairFullView, type PairFullPair } from '../../ambience/pairfull.ts';
+import { pairFullApartView, pairFullChoice, pairFullElementRegion, pairFullHeavierSide, pairFullPlan, pairFullSceneDrawn, pairFullView, planCandidates, type PairFullPair } from '../../ambience/pairfull.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_HALF_SIZE, DEFAULT_PHONE_SIZE, pieceUrls, type PackPiece, type PackPieces, type ScenePack, type VeilOutcome } from '../../ambience/manifest.ts';
 import { halfArtOf, halfFrameCss, halfLayout, type FrameRect } from '../../ambience/layout.ts';
 import type { MakeupShowing } from '../../ambience/makeup.ts';
@@ -130,8 +137,9 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
 
   // A front plays once its frames have all decoded (warmed above; a cold one warms now and plays when it lands).
   const waiting = gate.waiting(now());
-  // Woken when a picture settles only while something here waits on one: a front's frames, or (the flag on) an element.
-  const pictures = usePicturesVersion(!!waiting || makeup.colours.length >= 3);
+  // Woken when a picture settles only while something here waits on one: a front's frames, (the flag on) an element, or
+  // (spec 1.20) a scene, whose failure hands the half back to its panels and their pieces.
+  const pictures = usePicturesVersion(!!waiting || makeup.colours.length >= 3 || !!pack?.scenes);
   const waitingFrames = waiting ? frontFrameList(pieces, waiting, phone) : null;
   const framesReady = !!waitingFrames && waitingFrames.frames.every((f) => pictureStatus(f.src) === 'ready');
   useEffect(() => {
@@ -146,13 +154,18 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
   // Spec 1.14 on the whole-half pair picture: the same plan and the same load gate SceneryStrip draws.
   const elements = useMemo(() => (pairFull ? elementBiomes(pieces) : null), [pairFull, pieces]);
   const phoneElements = useMemo(() => (pairFull ? phoneElementBiomes(pieces) : null), [pairFull, pieces]);
-  const full = useMemo(() => (pairFull && pack?.pairs ? pairFullPlan(layout, pack.pairs, { thresholds: pack.stageThresholds, elements, phoneElements, showing, slots, narrow }) : null), [pairFull, pack, layout, elements, phoneElements, showing, slots, narrow]);
+  // Spec 1.20: the scenes too, with the flag or without (the strip's own plan: without the flag only a scene comes back).
+  const scenes = pack?.scenes ?? null;
+  const full = useMemo(() => ((pairFull && pack?.pairs) || scenes ? pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, elements, phoneElements, showing, slots, narrow, scenes }) : null), [pairFull, pack, scenes, layout, elements, phoneElements, showing, slots, narrow]);
   const fullPair = full?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
   const choice = useMemo(() => {
-    if (!fullPair || !measured) return null;
-    return pairFullChoice(pairFullCandidates(fullPair, pairFullPanelAspect(Math.round((box.w / box.h) * 20) / 20, fullPair.share), narrow, horizon), pictureStatus);
-  }, [fullPair, measured, box, narrow, horizon, pictures]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!full || !measured) return null;
+    const cands = planCandidates(full, Math.round((box.w / box.h) * 20) / 20, narrow, horizon);
+    return cands ? pairFullChoice(cands, pictureStatus) : null;
+  }, [full, measured, box, narrow, horizon, pictures]); // eslint-disable-line react-hooks/exhaustive-deps
   const shown = choice?.show ?? null;
+  // Spec 1.20: a scene shown or loading: no piece over it.
+  const onScene = pairFullSceneDrawn(full, choice);
   // Spec 1.19 a: every cut-out the half stands on its pair's grounds (the third where it is cut out, every colour past
   // it), the one rule the storyboard walk counts too; spec 1.16.1: no third cut-out while a painted picture is shown,
   // loading or held by the strip (the review of #199).
@@ -250,6 +263,7 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
           );
         })}
       {measured &&
+        !onScene &&
         plan.landmarks.map((name) => {
           const p = pieces.landmarks[name]!;
           const pic = at(p);
@@ -257,12 +271,12 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
           const f = piecePlacement(p.place, pic.width / pic.height, WHOLE, box, hz);
           return <img key={name} className={`scn-pc${reduced ? '' : ' scn-pc-in'}`} style={rectCss(f)} src={pic.src} srcSet={pic.src2x ? `${pic.src} 1x, ${pic.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} data-pc="landmark" data-pc-name={name} />;
         })}
-      {veil && measured && (
+      {veil && measured && !onScene && (
         <div className="scn-pc-veil-wrap" style={{ opacity: vs!.leaving ? 0 : 1, transition: `opacity ${ms}ms ease` }} data-pc="veil" data-pc-veil={vs!.veil} data-pc-leaving={vs!.leaving ? 'yes' : undefined}>
           <img className={`scn-pc scn-pc-veil${reduced ? '' : ' scn-pc-in'}`} style={rectCss(piecePlacement(veil.place, at(veil).width / at(veil).height, WHOLE, box, 0.43))} src={at(veil).src} alt="" decoding="async" draggable={false} />
         </div>
       )}
-      {tween.frames && (
+      {tween.frames && !onScene && (
         <div className="scn-pc-front" style={{ opacity: tween.fading ? 0 : 1, transition: tween.fading ? `opacity ${tween.fadeMs}ms ease` : 'none' }} data-pc="front">
           {tween.frames.map((f, i) => (
             <div key={`${f.src}:${i}`} className="scn-frame" style={{ ...halfFrameCss({ aspect: halfShape, focal: { x: 0.5, y: 0.5 }, safe: null }), opacity: i === tween.index ? 1 : 0 }}>

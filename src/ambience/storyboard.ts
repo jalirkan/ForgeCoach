@@ -24,6 +24,10 @@
  *   two mono panels apart, no cell for their stages);
  * - otherwise (no flag, or no plan) the 1.10 row: the panels, pairs.ts
  *   `pairBands` (bands and motifs) and bridges.ts `bridgePlacements`;
+ * - spec 1.20, before all of it: a scene for the half's exact state (the
+ *   packs' `scenes`, scenes.ts), with the flag or without -- one painting,
+ *   every colour of its key on screen because the scene names it, and
+ *   nothing over it;
  * - and in both, ScenePieces' cut-outs (pieces.ts `halfCutOuts`, the one
  *   rule: the third colour's where it is cut out, spec 1.19 a's every
  *   further colour's), with the pack's 1.14 elements at the shape;
@@ -40,7 +44,8 @@ import { PIECE_COLOURS, type PieceColour, type ScenePack } from './manifest.ts';
 import { pairKey, stageFor, stageProgress, type Biome, type SlotState } from './model.ts';
 import { halfLayout } from './layout.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupPick, type MakeupShowing } from './makeup.ts';
-import { cutOutWords, pairFullCandidates, pairFullCaption, pairFullChoice, pairFullPanelAspect, pairFullPlan, type PairFullCandidate, type PairFullPair } from './pairfull.ts';
+import { cutOutWords, pairFullCaption, pairFullChoice, pairFullPlan, planCandidates, planScene, type PairFullCandidate, type PairFullPair } from './pairfull.ts';
+import type { ScenesPack } from './scenes.ts';
 import { bandedSeams, motifBands, pairBands, pairFor, pairWords, panelBands, type PairsPack } from './pairs.ts';
 import { bridgePlacements, phoneHalf } from './bridges.ts';
 import { elementBiomes, halfCutOuts, phoneElementBiomes, piecesPhone, planHalf } from './pieces.ts';
@@ -65,11 +70,13 @@ export interface StoryboardPacks {
   pack: ScenePack;
   pairsOff: PairsPack | null;
   pairsFull: PairsPack | null;
+  /** Spec 1.20: the scenes, loaded in both modes (none: every half as before). */
+  scenes?: ScenesPack | null;
 }
 
 /** One thing on the half: a biome's panel, the pair picture, the third colour painted in or cut out, a band, a motif, a bridge. */
 export interface Drawn {
-  kind: 'panel' | 'pair' | 'apart' | 'painted' | 'cutout' | 'band' | 'motif' | 'bridge';
+  kind: 'panel' | 'pair' | 'apart' | 'painted' | 'cutout' | 'band' | 'motif' | 'bridge' | 'scene';
   colours: PieceColour[];
   what: string;
 }
@@ -162,11 +169,12 @@ export function landNamesFor(state: ManaState, pairs: PairsPack | null): Set<str
  * AmbiencePage's `bandCaption` (not exported there): the pair picture's caption under the flag, else the bands in
  * words; spec 1.19 a: the panels' cut-outs named after them ("; mountain as an element").
  */
-function bandCaption(pack: ScenePack, pairs: PairsPack | null, slots: SlotState[], duals: Record<string, number>, pairfull: boolean, narrow: boolean, showing: MakeupShowing | null, lands: ReadonlySet<string>): string | null {
+function bandCaption(pack: ScenePack, pairs: PairsPack | null, slots: SlotState[], duals: Record<string, number>, pairfull: boolean, narrow: boolean, showing: MakeupShowing | null, lands: ReadonlySet<string>, scenes: ScenesPack | null = null): string | null {
   const elements = pairfull ? elementBiomes(pack.pieces) : null;
   const phoneElements = pairfull ? phoneElementBiomes(pack.pieces) : null;
   const layout = halfLayout(slots, pack, null, showing);
-  const full = pairfull && pairs ? pairFullCaption(pairFullPlan(layout, pairs, { thresholds: pack.stageThresholds, stageOverride: null, elements, phoneElements, showing, slots, narrow }), lands) : null;
+  // Spec 1.20: a scene is captioned in both modes ("Scene · island 2, forest 3, mountain 2 — one painting").
+  const full = (pairfull && pairs) || scenes ? pairFullCaption(pairFullPlan(layout, pairfull ? pairs : null, { thresholds: pack.stageThresholds, stageOverride: null, elements, phoneElements, showing, slots, narrow, scenes }), lands) : null;
   if (full) return full;
   if (!pairs) return null;
   const bands = pairBands(layout, pairs, duals);
@@ -210,14 +218,23 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
   let picturePair: [PieceColour, PieceColour] | null = null;
   let picture = '';
 
-  const plan = pairfull && pairs ? pairFullPlan(layout, pairs, { thresholds, elements, phoneElements, showing: memory, slots, narrow }) : null;
+  const scenes = packs.scenes ?? null;
+  const plan = (pairfull && pairs) || scenes ? pairFullPlan(layout, pairfull ? pairs : null, { thresholds, elements, phoneElements, showing: memory, slots, narrow, scenes }) : null;
   const p = plan?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
-  const choice = p ? pairFullChoice(pairFullCandidates(p, pairFullPanelAspect(halfAspect, p.share), narrow, false), () => 'ready') : null;
+  const scene = planScene(plan);
+  const cands = planCandidates(plan, halfAspect, narrow, false);
+  const choice = cands ? pairFullChoice(cands, () => 'ready') : null;
   const shown = choice?.show ?? null;
-  const drawsPlan = !!(plan && p && (shown || p.apart));
-  if (drawsPlan) {
+  const drawsPlan = !!(plan && ((p && (shown || p.apart)) || (scene && shown)));
+  if (drawsPlan && scene) {
+    // Spec 1.20: one painting of the half's exact state; every colour of its key is on screen (the scene names it).
+    const what = `scene ${scene.key} [${file(shown!.art.picture!.src)}]`;
+    drawn.push({ kind: 'scene', colours: scene.scene.lands.map((l) => colourOf(l.biome)).filter((c): c is PieceColour => !!c), what });
+    picture = what;
+  } else if (drawsPlan) {
     const parts: string[] = [];
     for (const it of plan!) {
+      if (it.kind === 'scene') continue;
       if (it.kind === 'slot') {
         const l = layout[it.index]!;
         const c = colourOf(it.biome);
@@ -261,7 +278,7 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
   const visible = colours.filter((c) => on.has(c));
   const wantsCut = new Set([...pick.extras, ...(pick.third && !on.has(pick.third) ? [pick.third] : [])]);
   const invisible = colours.filter((c) => !on.has(c)).map((colour) => ({ colour, reason: wantsCut.has(colour) && !pack.pieces?.elements[colour] ? ('no-element' as const) : wantsCut.has(colour) && narrow && !pack.pieces?.elements[colour]?.phone ? ('no-element' as const) : ('unexplained' as const) }));
-  const caption = opts.caption === false ? null : bandCaption(pack, pairs, slots, duals, pairfull, narrow, memory, landNamesFor(state, pairs));
+  const caption = opts.caption === false ? null : bandCaption(pack, pairs, slots, duals, pairfull, narrow, memory, landNamesFor(state, pairs), scenes);
   return { shape, pairfull, colours, visible, invisible, picturePair, picture, drawn, caption, captionNames: captionColours(caption, pairs), pick };
 }
 

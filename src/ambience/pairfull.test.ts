@@ -109,11 +109,11 @@ describe('spec 1.15: the plan', () => {
     expect(f[1]!.share).toBeCloseTo(0.15, 3);
     // The third arrived first: its panel on the left.
     const b = plan([slot('mountain', 0, 1, 1), slot('island', 1, 3, 3), slot('plains', 2, 2, 2)])!;
-    expect(b.map((x) => (x.kind === 'pair' ? x.key : x.biome))).toEqual(['mountain', 'island+plains']);
+    expect(b.map((x) => (x.kind === 'slot' ? x.biome : x.key))).toEqual(['mountain', 'island+plains']);
     // The heaviest pair with no picture loses to a pictured one: forest+island is a motif pair.
     const c = plan([slot('forest', 0, 4, 4), slot('island', 1, 3, 3), slot('plains', 2, 1, 1)])!;
     expect(pairOf(c)!.key).toBe('island+plains');
-    expect(c.map((x) => (x.kind === 'pair' ? x.key : x.biome))).toEqual(['forest', 'island+plains']);
+    expect(c.map((x) => (x.kind === 'slot' ? x.biome : x.key))).toEqual(['forest', 'island+plains']);
   });
 
   it('four biomes fold to three first, the dropped colour weighing nothing (1.16, SYSTEM.md A6)', () => {

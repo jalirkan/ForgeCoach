@@ -18,7 +18,8 @@
  *
  * Spec 1.9: with ForgeCoach's own pack (or `?pairs=`), a second manifest,
  * `pairs.json`, is fetched beside the first and carried as the pack's `pairs`
- * ({@link loadPairs}); it never holds the pack back.
+ * ({@link loadPairs}); it never holds the pack back. Spec 1.20: likewise
+ * a third, `scenes.json` ({@link loadScenes}), carried as the pack's `scenes`.
  *
  * Packs are served from the user's own machine (e.g. http://127.0.0.1:8650/,
  * see docs/scenery-pack-spec.md); nothing from a pack is ever stored here.
@@ -27,8 +28,9 @@ import type { Biome } from './model.ts';
 import { BIOMES } from './model.ts';
 import { effectUrls, halfAt, layersAt, overlayUrls, MANIFEST_FILE, MAX_EFFECT_BYTES, MAX_MANIFEST_BYTES, packUrls, validateManifest, type EffectEvent, type LayerKind, type ScenePack } from './manifest.ts';
 import type { SceneryPrefs } from './prefs.ts';
-import { pairsUrlOf } from './prefs.ts';
+import { pairsUrlOf, scenesUrlOf } from './prefs.ts';
 import { fetchPairs, type PairsPack } from './pairs.ts';
+import { fetchScenes, type ScenesPack } from './scenes.ts';
 
 export interface SceneryLoad {
   /** `procedural`: no pack (chosen, or fallen back to); `pack`: every biome the pack covers loaded. */
@@ -241,12 +243,16 @@ export async function resolveScenery(prefs: SceneryPrefs, deps: { fetch: FetchLi
   // Spec 1.9: the pair bands' manifest, fetched beside the pack's; it never holds the pack back, and a failure only means no bands.
   const pairsUrl = pairsUrlOf(prefs);
   const pairsP = pairsUrl ? loadPairs(pairsUrl, deps) : Promise.resolve(null);
+  // Spec 1.20: the scenes' manifest likewise; a failure only means no scenes.
+  const scenesUrl = scenesUrlOf(prefs);
+  const scenesP = scenesUrl ? loadScenes(scenesUrl, deps) : Promise.resolve(null);
   const m = await fetchManifest(prefs.packUrl, deps);
   if (!m.pack) {
     return { ...PROCEDURAL, note: `Scenery pack not loaded: ${m.errors[0] ?? 'unknown problem'} Showing the built-in scenery.`, errors: m.errors, warnings: m.warnings, manifestUrl: m.manifestUrl };
   }
-  const [pre, pairs] = await Promise.all([preloadPack(m.pack, deps.load), pairsP]);
+  const [pre, pairs, scenes] = await Promise.all([preloadPack(m.pack, deps.load), pairsP, scenesP]);
   if (pairs) m.pack = { ...m.pack, pairs };
+  if (scenes) m.pack = { ...m.pack, scenes };
   const covered = BIOMES.filter((b) => m.pack!.biomes[b]);
   const loadOf = (failed: Biome[]): SceneryLoad => {
     const reasons = pre.reasons.filter((r) => failed.some((b) => r.startsWith(`${b}:`)));
@@ -282,10 +288,26 @@ export async function loadPairs(url: string, deps: { fetch: FetchLike; signal?: 
   return r.pairs;
 }
 
+/**
+ * Spec 1.20: a scenes manifest, or null when it does not load or validate (no
+ * half has a scene, and every half is drawn as before; why goes to the
+ * console). A scene refused by the validator is left out and said there too.
+ * Its pictures are not preloaded here: a half warms its own scene and those
+ * one land away (scenes.ts `scenePictures`), and draws one once it has loaded.
+ */
+export async function loadScenes(url: string, deps: { fetch: FetchLike; signal?: AbortSignal }): Promise<ScenesPack | null> {
+  const r = await fetchScenes(url, deps);
+  if (typeof console !== 'undefined') {
+    if (!r.scenes) console.info(`ForgeCoach scenery: scenes not loaded (${r.errors[0] ?? 'unknown problem'}); every half is drawn as before.`);
+    else if (r.errors.length) console.info(`ForgeCoach scenery: ${r.errors.length} scene(s) refused (${r.errors[0]}).`);
+  }
+  return r.scenes;
+}
+
 /** One load per prefs at a time, shared by every strip on the page. */
 const cache = new Map<string, Promise<SceneryLoad | null>>();
 export function resolveSceneryCached(prefs: SceneryPrefs, deps: { fetch: FetchLike; load: AssetLoader }): Promise<SceneryLoad | null> {
-  const key = `${prefs.mode}|${prefs.mode === 'pack' ? prefs.packUrl.trim() : ''}|${pairsUrlOf(prefs) ?? ''}`;
+  const key = `${prefs.mode}|${prefs.mode === 'pack' ? prefs.packUrl.trim() : ''}|${pairsUrlOf(prefs) ?? ''}|${scenesUrlOf(prefs) ?? ''}`;
   let p = cache.get(key);
   if (!p) {
     const made = resolveScenery(prefs, deps);

@@ -32,6 +32,7 @@ import { chosenColorSource, chosenColors } from '../../state.ts';
 import { dualsOf, SceneryTracker, slotsOf } from '../../ambience/model.ts';
 import { bridgePictures } from '../../ambience/bridges.ts';
 import { pairPictures } from '../../ambience/pairs.ts';
+import { scenePictures } from '../../ambience/scenes.ts';
 import { PHONE_VIEWPORT_MAX } from '../../ambience/layout.ts';
 import { sceneryEvents } from '../../ambience/events.ts';
 import { cachedMap, useCardsVersion } from '../cardData.ts';
@@ -213,6 +214,8 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     // picture is, at that shape).
     const full = pairFull ? { thresholds: load.pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
     if (fill) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone, full })) warmPicture(w);
+    // Spec 1.20: each half's scene and the scenes one land away, at the shape a scene draws (its phone picture on a phone).
+    if (fill) for (const w of scenePictures(load.pack.scenes, scenery.players.map((p) => p.slots), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: load.pack.stageThresholds })) warmPicture(w);
   }, [scenery, load?.pack, fill, pairFull]);
 
   // Spec 1.14: the pieces that can appear at once (fronts, veils, landmarks, the empty table) warm in ScenePieces, at the

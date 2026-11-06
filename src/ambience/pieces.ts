@@ -46,7 +46,7 @@ import { hasType, visibleCard } from '../state.ts';
 import { halfFrame, halfArtOf, halfSpans, horizonOf, DESKTOP_HORIZON, type FrameRect, type HalfSlotLayout } from './layout.ts';
 import { halfAt, MAX_LANDMARKS_SHOWN, PIECE_COLOURS, type PackHalf, type PackPiece, type PackPieces, type PiecePlace, type PieceColour, type ScenePack, type VeilOutcome } from './manifest.ts';
 import type { Biome } from './model.ts';
-import { pairFullExtrasAllowed, pairFullThirdCutAllowed, type PairFullCandidate, type PairFullItem, type PairFullPair } from './pairfull.ts';
+import { pairFullExtrasAllowed, pairFullSceneDrawn, pairFullThirdCutAllowed, type PairFullCandidate, type PairFullItem, type PairFullPair } from './pairfull.ts';
 import type { LightOutcome } from './light.ts';
 import type { TweenFrame } from './transitions.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, elementOpacity, pickMakeup, pickSplit, type Makeup, type MakeupPick, type MakeupShowing } from './makeup.ts';
@@ -270,6 +270,9 @@ export function halfCutOuts(i: {
   choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null;
 }): HalfCutOut[] {
   const { plan, pieces, phone, narrow } = i;
+  // Spec 1.20: a scene is the whole half, every colour painted in: nothing stands on it (nor on what the strip holds
+  // while it loads). A scene whose picture failed draws the panels, and the panels' cut-outs below.
+  if (pairFullSceneDrawn(i.full, i.choice)) return [];
   if (!pieces || !plan.pair) return [];
   const p = i.full?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
   const onPicture = !!p && (!!p.apart || !!i.choice?.show);

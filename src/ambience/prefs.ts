@@ -115,6 +115,14 @@ export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgec
  */
 export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v8/';
 /**
+ * Spec 1.20 (ambience/scenes.ts): ForgeCoach's scenes -- whole-half paintings,
+ * each made for an exact set of lands -- `scenes.json` at this folder's root,
+ * loaded whenever the pack is ForgeCoach's own ({@link scenesUrlOf}), with
+ * `?pairfull=0` too. Until the tag is cut the file is not there, which reads
+ * as "no scenes".
+ */
+export const FORGECOACH_SCENES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1/';
+/**
  * ForgeCoach's own pack at any tag: a stored URL that matches is the default
  * of the day it was saved, and {@link loadSceneryPrefs} replaces it with the
  * current FORGECOACH_PACK_URL.
@@ -262,4 +270,14 @@ export function pairsUrlOf(p: SceneryPrefs): string | null {
   if (p.mode !== 'pack') return null;
   if (p.pairsUrl !== undefined) return p.pairsUrl.trim() || null;
   return p.packUrl.trim() === FORGECOACH_PACK_URL ? (pairFullOn(p) ? FORGECOACH_PAIRS_FULL_URL : FORGECOACH_PAIRS_URL) : null;
+}
+
+/**
+ * Spec 1.20: the scenes manifest's base URL for these prefs, or null for none:
+ * FORGECOACH_SCENES_URL with ForgeCoach's own pack (the scenes were painted in
+ * its world), whatever the whole-half flag says; else none.
+ */
+export function scenesUrlOf(p: SceneryPrefs): string | null {
+  if (p.mode !== 'pack') return null;
+  return p.packUrl.trim() === FORGECOACH_PACK_URL ? FORGECOACH_SCENES_URL : null;
 }
