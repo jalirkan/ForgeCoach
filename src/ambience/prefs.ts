@@ -32,6 +32,13 @@ export type MotionPref = 'system' | 'reduce' | 'full';
 
 export interface SceneryPrefs {
   mode: SceneryMode;
+  /**
+   * The art pack's base URL. A stored ForgeCoach pack URL at any tag
+   * (`@pack-v<n>/pack/`, {@link FORGECOACH_PACK_URL_AT_ANY_TAG}) loads as the
+   * current FORGECOACH_PACK_URL, so a browser that saved Settings under an
+   * older default follows the new one; any other URL (a pack of your own)
+   * loads as stored.
+   */
   packUrl: string;
   motion: MotionPref;
   /** Board accents (corner and edge pieces in the player's area); only drawn when the scenery is on. */
@@ -107,6 +114,12 @@ export const FORGECOACH_PAIRS_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgec
  * board keeps FORGECOACH_PAIRS_URL's 1.9 bands.
  */
 export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v8/';
+/**
+ * ForgeCoach's own pack at any tag: a stored URL that matches is the default
+ * of the day it was saved, and {@link loadSceneryPrefs} replaces it with the
+ * current FORGECOACH_PACK_URL.
+ */
+export const FORGECOACH_PACK_URL_AT_ANY_TAG = /^https:\/\/cdn\.jsdelivr\.net\/gh\/jalirkan\/forgecoach-scenery@pack-v[0-9.]+\/pack\/$/;
 /** On by default with ForgeCoach's own art (Justin, 2026-10-07); Off and Built-in stay one tap away. */
 export const DEFAULT_PREFS: SceneryPrefs = { mode: 'pack', packUrl: FORGECOACH_PACK_URL, motion: 'system', accents: true, fill: true, light: false, horizon: false };
 
@@ -128,7 +141,8 @@ export function loadSceneryPrefs(s?: Store | null): SceneryPrefs {
     if (!raw) return out;
     const v = JSON.parse(raw) as Partial<SceneryPrefs>;
     if (v.mode === 'off' || v.mode === 'procedural' || v.mode === 'pack') out.mode = v.mode;
-    if (typeof v.packUrl === 'string') out.packUrl = v.packUrl.slice(0, 512);
+    // ForgeCoach's own pack at an older tag follows the current default; a pack of your own stays yours.
+    if (typeof v.packUrl === 'string') out.packUrl = FORGECOACH_PACK_URL_AT_ANY_TAG.test(v.packUrl) ? FORGECOACH_PACK_URL : v.packUrl.slice(0, 512);
     if (v.motion === 'system' || v.motion === 'reduce' || v.motion === 'full') out.motion = v.motion;
     if (typeof v.accents === 'boolean') out.accents = v.accents;
     if (typeof v.fill === 'boolean') out.fill = v.fill;

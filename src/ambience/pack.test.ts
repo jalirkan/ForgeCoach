@@ -129,6 +129,27 @@ describe('prefs', () => {
     expect(loadSceneryPrefs(s)).toEqual(DEFAULT_PREFS);
   });
 
+  it('a stored ForgeCoach pack URL at any tag loads as the current default; a pack of your own stays as stored', () => {
+    const m = new Map<string, string>();
+    const s = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+    const stored = (packUrl: string) => {
+      m.set('forgecoach.scenery', JSON.stringify({ mode: 'pack', packUrl, motion: 'reduce', accents: false }));
+      return loadSceneryPrefs(s);
+    };
+    const CDN = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery';
+    expect(FORGECOACH_PACK_URL).toBe(`${CDN}@pack-v10/pack/`);
+    for (const old of [`${CDN}@pack-v9.2/pack/`, `${CDN}@pack-v7/pack/`]) {
+      expect(stored(old).packUrl, old).toBe(FORGECOACH_PACK_URL);
+      // Only the URL moves: the rest of what was saved stays.
+      expect([stored(old).mode, stored(old).motion, stored(old).accents]).toEqual(['pack', 'reduce', false]);
+    }
+    expect(stored(FORGECOACH_PACK_URL).packUrl).toBe(FORGECOACH_PACK_URL);
+    expect(stored('https://example.com/my/pack/').packUrl).toBe('https://example.com/my/pack/');
+    // Not ForgeCoach's pack at a tag: another ref, path or repository stays as stored.
+    for (const other of [`${CDN}@pairs-v8/`, `${CDN}@pack-v9.2/pack/extra/`, `${CDN}@main/pack/`, 'https://cdn.jsdelivr.net/gh/someone/forgecoach-scenery@pack-v9.2/pack/'])
+      expect(stored(other).packUrl, other).toBe(other);
+  });
+
   it('?scenery= overrides, in the query or the hash', () => {
     expect(sceneryParam('?scenery=http%3A%2F%2F127.0.0.1%3A8650%2F', '')).toBe('http://127.0.0.1:8650/');
     expect(sceneryParam('', '#ambience?scenery=procedural')).toBe('procedural');
