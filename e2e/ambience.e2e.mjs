@@ -439,7 +439,7 @@ async function sequenceCheck(page, seq, errors, shape) {
   if (shape === 'phone') await captionLines(page);
   await page.waitForTimeout(1000);
   await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `${seq.name}-${shape}.png`) });
-  log(`PASS: ${shape} ${seq.name}: ${seq.key} kept from the second land to the last, every colour on screen and named at every land (spec 1.19 a, b)`);
+  log(`PASS: ${shape} ${seq.name}: ${seq.key} kept from the second land to the last (or a scene drawn alone, spec 1.20), every colour on screen and named at every land (spec 1.19 a, b)`);
 }
 
 /** The caption under a side's header on a phone: at most two lines (the storyboard's sheet 9); logs whether the clamp cut it. */

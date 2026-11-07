@@ -6,7 +6,7 @@
  * hold, the caption and the storyboard. `testdata/scenes-sample.scenes.json`
  * is a two-scene sample in scenes-v1's shape, for the shape tests;
  * `testdata/scenes-v1.3.scenes.json` is the scenes-v1.3 tag's `scenes.json`
- * byte for byte (48 scenes, 2026-11-06), hash-pinned at the end as the pairs
+ * byte for byte (434 scenes, 2026-11-07), hash-pinned at the end as the pairs
  * file is. Nothing here touches the network (fetchScenes and resolveScenery
  * are given fakes).
  */
