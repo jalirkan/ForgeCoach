@@ -1,0 +1,3273 @@
+{
+ "schema": 1,
+ "spec": "1.20",
+ "name": "scenes-v1",
+ "author": "jalirkan",
+ "license": "CC BY 4.0 (the paintings); made with FLUX.2 klein 4B and Real-ESRGAN on the owner's PC",
+ "scenes": {
+  "island2+forest3+mountain2": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "forest",
+     "stage": 3
+    },
+    {
+     "biome": "mountain",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+forest3+mountain2/half.webp",
+    "src2x": "scenes/island2+forest3+mountain2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 96386,
+    "subjectBand": [
+     0.158,
+     0.777
+    ],
+    "horizon": 0.677,
+    "hour": 16.5,
+    "key": "afternoon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.597
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.377,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+forest3+mountain2/phone.webp",
+     "src2x": "scenes/island2+forest3+mountain2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 102480,
+     "subjectBand": [
+      0.347,
+      0.762
+     ],
+     "horizon": 0.662,
+     "focal": {
+      "x": 0.5,
+      "y": 0.612
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.362,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "candidates/imf-223/k-a-s13.png",
+    "phone": "candidates/imf-223/p-r-s31.png"
+   },
+   "region": null
+  },
+  "plains2+forest4+mountain2": {
+   "lands": [
+    {
+     "biome": "plains",
+     "stage": 2
+    },
+    {
+     "biome": "forest",
+     "stage": 4
+    },
+    {
+     "biome": "mountain",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/plains2+forest4+mountain2/half.webp",
+    "src2x": "scenes/plains2+forest4+mountain2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 105778,
+    "subjectBand": [
+     0.446,
+     0.804
+    ],
+    "horizon": 0.704,
+    "hour": 19,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.624
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.404,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/plains2+forest4+mountain2/phone.webp",
+     "src2x": "scenes/plains2+forest4+mountain2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 88468,
+     "subjectBand": [
+      0.449,
+      0.775
+     ],
+     "horizon": 0.675,
+     "focal": {
+      "x": 0.5,
+      "y": 0.625
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.375,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "candidates/pmf-224/k-b-s12.png",
+    "phone": "candidates/pmf-224/p-s32.png"
+   },
+   "region": null
+  },
+  "island1+swamp1+plains1": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 1
+    },
+    {
+     "biome": "plains",
+     "stage": 1
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp1+plains1/half.webp",
+    "src2x": "scenes/island1+swamp1+plains1/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 60808,
+    "subjectBand": [
+     0.374,
+     0.694
+    ],
+    "horizon": 0.594,
+    "hour": 6.5,
+    "key": "dawn",
+    "focal": {
+     "x": 0.5,
+     "y": 0.514
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.294,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island1+swamp1+plains1/phone.webp",
+     "src2x": "scenes/island1+swamp1+plains1/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 52830,
+     "subjectBand": [
+      0.401,
+      0.721
+     ],
+     "horizon": 0.621,
+     "focal": {
+      "x": 0.5,
+      "y": 0.571
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.321,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/isp-111-k-g-s11.png",
+    "phone": "build/native/isp-111-p-r-s31.png"
+   },
+   "region": null
+  },
+  "swamp2+forest2+mountain2": {
+   "lands": [
+    {
+     "biome": "swamp",
+     "stage": 2
+    },
+    {
+     "biome": "forest",
+     "stage": 2
+    },
+    {
+     "biome": "mountain",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/swamp2+forest2+mountain2/half.webp",
+    "src2x": "scenes/swamp2+forest2+mountain2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 115960,
+    "subjectBand": [
+     0.05,
+     0.825
+    ],
+    "horizon": 0.725,
+    "hour": 12,
+    "key": "noon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.645
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.425,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/swamp2+forest2+mountain2/phone.webp",
+     "src2x": "scenes/swamp2+forest2+mountain2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 156424,
+     "subjectBand": [
+      0.05,
+      0.738
+     ],
+     "horizon": 0.638,
+     "focal": {
+      "x": 0.5,
+      "y": 0.588
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.338,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/sfm-222-k-g-s12.png",
+    "phone": "build/native/sfm-222-p-r-s31.png"
+   },
+   "region": null
+  },
+  "island1+swamp1+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 1
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp1+plains4/half.webp",
+    "src2x": "scenes/island1+swamp1+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 107280,
+    "subjectBand": [
+     0.413,
+     0.733
+    ],
+    "horizon": 0.633,
+    "hour": 19,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.553
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.333,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp1+plains4/phone.webp",
+     "src2x": "scenes/island1+swamp1+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 101662,
+     "subjectBand": [
+      0.339,
+      0.659
+     ],
+     "horizon": 0.559,
+     "focal": {
+      "x": 0.5,
+      "y": 0.509
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.259,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/pis-411-k-g-s12.png",
+    "phone": "build/native/pis-411-p-r-s32.png"
+   },
+   "region": null
+  },
+  "island6+forest1+mountain1": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 6
+    },
+    {
+     "biome": "forest",
+     "stage": 1
+    },
+    {
+     "biome": "mountain",
+     "stage": 1
+    }
+   ],
+   "half": {
+    "src": "scenes/island6+forest1+mountain1/half.webp",
+    "src2x": "scenes/island6+forest1+mountain1/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 68716,
+    "subjectBand": [
+     0.267,
+     0.754
+    ],
+    "horizon": 0.654,
+    "hour": 23,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.574
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.354,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island6+forest1+mountain1/phone.webp",
+     "src2x": "scenes/island6+forest1+mountain1/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 95132,
+     "subjectBand": [
+      0.215,
+      0.535
+     ],
+     "horizon": 0.435,
+     "focal": {
+      "x": 0.5,
+      "y": 0.385
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.135,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/ifm-611-k-h-s11.png",
+    "phone": "build/native/ifm-611-p-r-s32.png"
+   },
+   "region": null
+  },
+  "swamp4+plains4+forest4": {
+   "lands": [
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    },
+    {
+     "biome": "forest",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/swamp4+plains4+forest4/half.webp",
+    "src2x": "scenes/swamp4+plains4+forest4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 81326,
+    "subjectBand": [
+     0.311,
+     0.631
+    ],
+    "horizon": 0.531,
+    "hour": 19.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.451
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.231,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/swamp4+plains4+forest4/phone.webp",
+     "src2x": "scenes/swamp4+plains4+forest4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 79386,
+     "subjectBand": [
+      0.47,
+      0.79
+     ],
+     "horizon": 0.69,
+     "focal": {
+      "x": 0.5,
+      "y": 0.64
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.39,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/spf-444-k-g-s12.png",
+    "phone": "build/native/spf-444-p-r-s31.png"
+   },
+   "region": null
+  },
+  "island3+swamp1+mountain3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 3
+    },
+    {
+     "biome": "swamp",
+     "stage": 1
+    },
+    {
+     "biome": "mountain",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island3+swamp1+mountain3/half.webp",
+    "src2x": "scenes/island3+swamp1+mountain3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 75270,
+    "subjectBand": [
+     0.409,
+     0.729
+    ],
+    "horizon": 0.629,
+    "hour": 16.5,
+    "key": "afternoon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.549
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.329,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island3+swamp1+mountain3/phone.webp",
+     "src2x": "scenes/island3+swamp1+mountain3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 79264,
+     "subjectBand": [
+      0.261,
+      0.581
+     ],
+     "horizon": 0.481,
+     "focal": {
+      "x": 0.5,
+      "y": 0.431
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.181,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/mis-331-k-g-s12.png",
+    "phone": "build/native/mis-331-p-r-s32.png"
+   },
+   "region": null
+  },
+  "island1+swamp2+plains2": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 2
+    },
+    {
+     "biome": "plains",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp2+plains2/half.webp",
+    "src2x": "scenes/island1+swamp2+plains2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 223684,
+    "subjectBand": [
+     0.05,
+     0.718
+    ],
+    "horizon": 0.618,
+    "hour": 12,
+    "key": "noon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.538
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.318,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp2+plains2/phone.webp",
+     "src2x": "scenes/island1+swamp2+plains2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 161900,
+     "subjectBand": [
+      0.05,
+      0.733
+     ],
+     "horizon": 0.633,
+     "focal": {
+      "x": 0.5,
+      "y": 0.583
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.333,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp2+plains2.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp2+plains2.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp2+plains3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 2
+    },
+    {
+     "biome": "plains",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp2+plains3/half.webp",
+    "src2x": "scenes/island1+swamp2+plains3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 192806,
+    "subjectBand": [
+     0.123,
+     0.701
+    ],
+    "horizon": 0.601,
+    "hour": 16.5,
+    "key": "afternoon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.521
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.301,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp2+plains3/phone.webp",
+     "src2x": "scenes/island1+swamp2+plains3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 140050,
+     "subjectBand": [
+      0.168,
+      0.638
+     ],
+     "horizon": 0.538,
+     "focal": {
+      "x": 0.5,
+      "y": 0.488
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.238,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp2+plains3.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp2+plains3.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp2+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 2
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp2+plains4/half.webp",
+    "src2x": "scenes/island1+swamp2+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 180784,
+    "subjectBand": [
+     0.162,
+     0.694
+    ],
+    "horizon": 0.594,
+    "hour": 19,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.514
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.294,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp2+plains4/phone.webp",
+     "src2x": "scenes/island1+swamp2+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 133150,
+     "subjectBand": [
+      0.192,
+      0.633
+     ],
+     "horizon": 0.533,
+     "focal": {
+      "x": 0.5,
+      "y": 0.483
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.233,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp2+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp2+plains4.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp2+plains5": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 2
+    },
+    {
+     "biome": "plains",
+     "stage": 5
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp2+plains5/half.webp",
+    "src2x": "scenes/island1+swamp2+plains5/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 151958,
+    "subjectBand": [
+     0.233,
+     0.736
+    ],
+    "horizon": 0.636,
+    "hour": 20.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.556
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.336,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp2+plains5/phone.webp",
+     "src2x": "scenes/island1+swamp2+plains5/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 119354,
+     "subjectBand": [
+      0.332,
+      0.652
+     ],
+     "horizon": 0.552,
+     "focal": {
+      "x": 0.5,
+      "y": 0.502
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.252,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp2+plains5.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp2+plains5.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp2+plains6": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 2
+    },
+    {
+     "biome": "plains",
+     "stage": 6
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp2+plains6/half.webp",
+    "src2x": "scenes/island1+swamp2+plains6/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 137974,
+    "subjectBand": [
+     0.082,
+     0.677
+    ],
+    "horizon": 0.577,
+    "hour": 23,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.497
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.277,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp2+plains6/phone.webp",
+     "src2x": "scenes/island1+swamp2+plains6/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 104542,
+     "subjectBand": [
+      0.05,
+      0.656
+     ],
+     "horizon": 0.556,
+     "focal": {
+      "x": 0.5,
+      "y": 0.506
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.256,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp2+plains6.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp2+plains6.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp3+plains2": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 3
+    },
+    {
+     "biome": "plains",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp3+plains2/half.webp",
+    "src2x": "scenes/island1+swamp3+plains2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 171858,
+    "subjectBand": [
+     0.273,
+     0.593
+    ],
+    "horizon": 0.493,
+    "hour": 16.5,
+    "key": "afternoon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.413
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.193,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island1+swamp3+plains2/phone.webp",
+     "src2x": "scenes/island1+swamp3+plains2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 113378,
+     "subjectBand": [
+      0.382,
+      0.702
+     ],
+     "horizon": 0.602,
+     "focal": {
+      "x": 0.5,
+      "y": 0.552
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.302,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp3+plains2.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp3+plains2.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp3+plains3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 3
+    },
+    {
+     "biome": "plains",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp3+plains3/half.webp",
+    "src2x": "scenes/island1+swamp3+plains3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 187758,
+    "subjectBand": [
+     0.121,
+     0.658
+    ],
+    "horizon": 0.558,
+    "hour": 16.5,
+    "key": "afternoon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.478
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.258,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp3+plains3/phone.webp",
+     "src2x": "scenes/island1+swamp3+plains3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 144246,
+     "subjectBand": [
+      0.104,
+      0.65
+     ],
+     "horizon": 0.55,
+     "focal": {
+      "x": 0.5,
+      "y": 0.5
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.25,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp3+plains3.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp3+plains3.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp3+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 3
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp3+plains4/half.webp",
+    "src2x": "scenes/island1+swamp3+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 178756,
+    "subjectBand": [
+     0.174,
+     0.724
+    ],
+    "horizon": 0.624,
+    "hour": 19,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.544
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.324,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp3+plains4/phone.webp",
+     "src2x": "scenes/island1+swamp3+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 132978,
+     "subjectBand": [
+      0.191,
+      0.631
+     ],
+     "horizon": 0.531,
+     "focal": {
+      "x": 0.5,
+      "y": 0.481
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.231,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp3+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp3+plains4.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp3+plains5": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 3
+    },
+    {
+     "biome": "plains",
+     "stage": 5
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp3+plains5/half.webp",
+    "src2x": "scenes/island1+swamp3+plains5/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 152146,
+    "subjectBand": [
+     0.302,
+     0.622
+    ],
+    "horizon": 0.522,
+    "hour": 20.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.442
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.222,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island1+swamp3+plains5/phone.webp",
+     "src2x": "scenes/island1+swamp3+plains5/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 117254,
+     "subjectBand": [
+      0.257,
+      0.614
+     ],
+     "horizon": 0.514,
+     "focal": {
+      "x": 0.5,
+      "y": 0.464
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.214,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp3+plains5.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp3+plains5.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp3+plains6": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 3
+    },
+    {
+     "biome": "plains",
+     "stage": 6
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp3+plains6/half.webp",
+    "src2x": "scenes/island1+swamp3+plains6/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 133276,
+    "subjectBand": [
+     0.084,
+     0.587
+    ],
+    "horizon": 0.487,
+    "hour": 23,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.407
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.187,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp3+plains6/phone.webp",
+     "src2x": "scenes/island1+swamp3+plains6/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 98364,
+     "subjectBand": [
+      0.05,
+      0.629
+     ],
+     "horizon": 0.529,
+     "focal": {
+      "x": 0.5,
+      "y": 0.479
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.229,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp3+plains6.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp3+plains6.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp4+plains2": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp4+plains2/half.webp",
+    "src2x": "scenes/island1+swamp4+plains2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 147680,
+    "subjectBand": [
+     0.112,
+     0.579
+    ],
+    "horizon": 0.479,
+    "hour": 19.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.399
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.179,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp4+plains2/phone.webp",
+     "src2x": "scenes/island1+swamp4+plains2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 108168,
+     "subjectBand": [
+      0.063,
+      0.581
+     ],
+     "horizon": 0.481,
+     "focal": {
+      "x": 0.5,
+      "y": 0.431
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.181,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp4+plains2.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp4+plains2.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp4+plains3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp4+plains3/half.webp",
+    "src2x": "scenes/island1+swamp4+plains3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 144766,
+    "subjectBand": [
+     0.112,
+     0.532
+    ],
+    "horizon": 0.432,
+    "hour": 19.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.352
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.132,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp4+plains3/phone.webp",
+     "src2x": "scenes/island1+swamp4+plains3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 113358,
+     "subjectBand": [
+      0.063,
+      0.701
+     ],
+     "horizon": 0.601,
+     "focal": {
+      "x": 0.5,
+      "y": 0.551
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.301,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp4+plains3.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp4+plains3.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp4+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp4+plains4/half.webp",
+    "src2x": "scenes/island1+swamp4+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 175942,
+    "subjectBand": [
+     0.165,
+     0.748
+    ],
+    "horizon": 0.648,
+    "hour": 19.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.568
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.348,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp4+plains4/phone.webp",
+     "src2x": "scenes/island1+swamp4+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 139752,
+     "subjectBand": [
+      0.191,
+      0.652
+     ],
+     "horizon": 0.552,
+     "focal": {
+      "x": 0.5,
+      "y": 0.502
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.252,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp4+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp4+plains4.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp4+plains5": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 5
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp4+plains5/half.webp",
+    "src2x": "scenes/island1+swamp4+plains5/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 152708,
+    "subjectBand": [
+     0.235,
+     0.681
+    ],
+    "horizon": 0.581,
+    "hour": 20.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.501
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.281,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp4+plains5/phone.webp",
+     "src2x": "scenes/island1+swamp4+plains5/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 125266,
+     "subjectBand": [
+      0.253,
+      0.752
+     ],
+     "horizon": 0.652,
+     "focal": {
+      "x": 0.5,
+      "y": 0.602
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.352,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp4+plains5.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp4+plains5.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp4+plains6": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 6
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp4+plains6/half.webp",
+    "src2x": "scenes/island1+swamp4+plains6/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 138934,
+    "subjectBand": [
+     0.078,
+     0.684
+    ],
+    "horizon": 0.584,
+    "hour": 23,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.504
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.284,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp4+plains6/phone.webp",
+     "src2x": "scenes/island1+swamp4+plains6/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 108342,
+     "subjectBand": [
+      0.05,
+      0.669
+     ],
+     "horizon": 0.569,
+     "focal": {
+      "x": 0.5,
+      "y": 0.519
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.269,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp4+plains6.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp4+plains6.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp5+plains2": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 5
+    },
+    {
+     "biome": "plains",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp5+plains2/half.webp",
+    "src2x": "scenes/island1+swamp5+plains2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 136650,
+    "subjectBand": [
+     0.064,
+     0.773
+    ],
+    "horizon": 0.673,
+    "hour": 22,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.593
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.373,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp5+plains2/phone.webp",
+     "src2x": "scenes/island1+swamp5+plains2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 95596,
+     "subjectBand": [
+      0.05,
+      0.685
+     ],
+     "horizon": 0.585,
+     "focal": {
+      "x": 0.5,
+      "y": 0.535
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.285,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp5+plains2.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp5+plains2.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp5+plains3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 5
+    },
+    {
+     "biome": "plains",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp5+plains3/half.webp",
+    "src2x": "scenes/island1+swamp5+plains3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 127210,
+    "subjectBand": [
+     0.073,
+     0.668
+    ],
+    "horizon": 0.568,
+    "hour": 22,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.488
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.268,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp5+plains3/phone.webp",
+     "src2x": "scenes/island1+swamp5+plains3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 109426,
+     "subjectBand": [
+      0.05,
+      0.65
+     ],
+     "horizon": 0.55,
+     "focal": {
+      "x": 0.5,
+      "y": 0.5
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.25,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp5+plains3.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp5+plains3.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp5+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 5
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp5+plains4/half.webp",
+    "src2x": "scenes/island1+swamp5+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 130942,
+    "subjectBand": [
+     0.075,
+     0.778
+    ],
+    "horizon": 0.678,
+    "hour": 22,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.598
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.378,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp5+plains4/phone.webp",
+     "src2x": "scenes/island1+swamp5+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 100558,
+     "subjectBand": [
+      0.05,
+      0.596
+     ],
+     "horizon": 0.496,
+     "focal": {
+      "x": 0.5,
+      "y": 0.446
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.196,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp5+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp5+plains4.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp5+plains5": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 5
+    },
+    {
+     "biome": "plains",
+     "stage": 5
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp5+plains5/half.webp",
+    "src2x": "scenes/island1+swamp5+plains5/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 148848,
+    "subjectBand": [
+     0.359,
+     0.679
+    ],
+    "horizon": 0.579,
+    "hour": 22,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.499
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.279,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island1+swamp5+plains5/phone.webp",
+     "src2x": "scenes/island1+swamp5+plains5/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 111544,
+     "subjectBand": [
+      0.34,
+      0.66
+     ],
+     "horizon": 0.56,
+     "focal": {
+      "x": 0.5,
+      "y": 0.51
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.26,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp5+plains5.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp5+plains5.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp5+plains6": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 5
+    },
+    {
+     "biome": "plains",
+     "stage": 6
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp5+plains6/half.webp",
+    "src2x": "scenes/island1+swamp5+plains6/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 133122,
+    "subjectBand": [
+     0.075,
+     0.648
+    ],
+    "horizon": 0.548,
+    "hour": 23,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.468
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.248,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp5+plains6/phone.webp",
+     "src2x": "scenes/island1+swamp5+plains6/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 92342,
+     "subjectBand": [
+      0.05,
+      0.604
+     ],
+     "horizon": 0.504,
+     "focal": {
+      "x": 0.5,
+      "y": 0.454
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.204,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp5+plains6.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp5+plains6.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp6+plains2": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 6
+    },
+    {
+     "biome": "plains",
+     "stage": 2
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp6+plains2/half.webp",
+    "src2x": "scenes/island1+swamp6+plains2/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 122178,
+    "subjectBand": [
+     0.055,
+     0.619
+    ],
+    "horizon": 0.519,
+    "hour": 23.5,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.439
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.219,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp6+plains2/phone.webp",
+     "src2x": "scenes/island1+swamp6+plains2/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 101052,
+     "subjectBand": [
+      0.05,
+      0.668
+     ],
+     "horizon": 0.568,
+     "focal": {
+      "x": 0.5,
+      "y": 0.518
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.268,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp6+plains2.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp6+plains2.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp6+plains3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 6
+    },
+    {
+     "biome": "plains",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp6+plains3/half.webp",
+    "src2x": "scenes/island1+swamp6+plains3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 120784,
+    "subjectBand": [
+     0.057,
+     0.597
+    ],
+    "horizon": 0.497,
+    "hour": 23.5,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.417
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.197,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp6+plains3/phone.webp",
+     "src2x": "scenes/island1+swamp6+plains3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 107576,
+     "subjectBand": [
+      0.05,
+      0.648
+     ],
+     "horizon": 0.548,
+     "focal": {
+      "x": 0.5,
+      "y": 0.498
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.248,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp6+plains3.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp6+plains3.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp6+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 6
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp6+plains4/half.webp",
+    "src2x": "scenes/island1+swamp6+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 126144,
+    "subjectBand": [
+     0.059,
+     0.648
+    ],
+    "horizon": 0.548,
+    "hour": 23.5,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.468
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.248,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp6+plains4/phone.webp",
+     "src2x": "scenes/island1+swamp6+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 103974,
+     "subjectBand": [
+      0.05,
+      0.609
+     ],
+     "horizon": 0.509,
+     "focal": {
+      "x": 0.5,
+      "y": 0.459
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.209,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp6+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp6+plains4.png"
+   },
+   "region": "nile-delta"
+  },
+  "island1+swamp6+plains5": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 1
+    },
+    {
+     "biome": "swamp",
+     "stage": 6
+    },
+    {
+     "biome": "plains",
+     "stage": 5
+    }
+   ],
+   "half": {
+    "src": "scenes/island1+swamp6+plains5/half.webp",
+    "src2x": "scenes/island1+swamp6+plains5/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 118908,
+    "subjectBand": [
+     0.057,
+     0.561
+    ],
+    "horizon": 0.461,
+    "hour": 23.5,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.381
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.161,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island1+swamp6+plains5/phone.webp",
+     "src2x": "scenes/island1+swamp6+plains5/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 95872,
+     "subjectBand": [
+      0.05,
+      0.533
+     ],
+     "horizon": 0.433,
+     "focal": {
+      "x": 0.5,
+      "y": 0.383
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.133,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island1+swamp6+plains5.png",
+    "phone": "build/native/n2-nile-delta-p-island1+swamp6+plains5.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp3+plains3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 3
+    },
+    {
+     "biome": "plains",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp3+plains3/half.webp",
+    "src2x": "scenes/island2+swamp3+plains3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 191288,
+    "subjectBand": [
+     0.087,
+     0.674
+    ],
+    "horizon": 0.574,
+    "hour": 16.5,
+    "key": "afternoon",
+    "focal": {
+     "x": 0.5,
+     "y": 0.494
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.274,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+swamp3+plains3/phone.webp",
+     "src2x": "scenes/island2+swamp3+plains3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 145274,
+     "subjectBand": [
+      0.065,
+      0.651
+     ],
+     "horizon": 0.551,
+     "focal": {
+      "x": 0.5,
+      "y": 0.501
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.251,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp3+plains3.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp3+plains3.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp3+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 3
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp3+plains4/half.webp",
+    "src2x": "scenes/island2+swamp3+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 178176,
+    "subjectBand": [
+     0.206,
+     0.587
+    ],
+    "horizon": 0.487,
+    "hour": 19,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.407
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.187,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+swamp3+plains4/phone.webp",
+     "src2x": "scenes/island2+swamp3+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 135548,
+     "subjectBand": [
+      0.225,
+      0.612
+     ],
+     "horizon": 0.512,
+     "focal": {
+      "x": 0.5,
+      "y": 0.462
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.212,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp3+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp3+plains4.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp3+plains5": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 3
+    },
+    {
+     "biome": "plains",
+     "stage": 5
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp3+plains5/half.webp",
+    "src2x": "scenes/island2+swamp3+plains5/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 153468,
+    "subjectBand": [
+     0.251,
+     0.571
+    ],
+    "horizon": 0.471,
+    "hour": 20.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.391
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.171,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island2+swamp3+plains5/phone.webp",
+     "src2x": "scenes/island2+swamp3+plains5/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 118704,
+     "subjectBand": [
+      0.183,
+      0.503
+     ],
+     "horizon": 0.403,
+     "focal": {
+      "x": 0.5,
+      "y": 0.353
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.103,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp3+plains5.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp3+plains5.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp3+plains6": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 3
+    },
+    {
+     "biome": "plains",
+     "stage": 6
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp3+plains6/half.webp",
+    "src2x": "scenes/island2+swamp3+plains6/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 139608,
+    "subjectBand": [
+     0.082,
+     0.634
+    ],
+    "horizon": 0.534,
+    "hour": 23,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.454
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.234,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+swamp3+plains6/phone.webp",
+     "src2x": "scenes/island2+swamp3+plains6/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 108004,
+     "subjectBand": [
+      0.05,
+      0.646
+     ],
+     "horizon": 0.546,
+     "focal": {
+      "x": 0.5,
+      "y": 0.496
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.246,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp3+plains6.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp3+plains6.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp4+plains3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp4+plains3/half.webp",
+    "src2x": "scenes/island2+swamp4+plains3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 143074,
+    "subjectBand": [
+     0.121,
+     0.639
+    ],
+    "horizon": 0.539,
+    "hour": 19.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.459
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.239,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+swamp4+plains3/phone.webp",
+     "src2x": "scenes/island2+swamp4+plains3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 116136,
+     "subjectBand": [
+      0.064,
+      0.702
+     ],
+     "horizon": 0.602,
+     "focal": {
+      "x": 0.5,
+      "y": 0.552
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.302,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp4+plains3.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp4+plains3.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp4+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp4+plains4/half.webp",
+    "src2x": "scenes/island2+swamp4+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 176794,
+    "subjectBand": [
+     0.201,
+     0.748
+    ],
+    "horizon": 0.648,
+    "hour": 19.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.568
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.348,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+swamp4+plains4/phone.webp",
+     "src2x": "scenes/island2+swamp4+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 140068,
+     "subjectBand": [
+      0.195,
+      0.686
+     ],
+     "horizon": 0.586,
+     "focal": {
+      "x": 0.5,
+      "y": 0.536
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.286,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp4+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp4+plains4.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp4+plains5": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 5
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp4+plains5/half.webp",
+    "src2x": "scenes/island2+swamp4+plains5/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 153632,
+    "subjectBand": [
+     0.358,
+     0.678
+    ],
+    "horizon": 0.578,
+    "hour": 20.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.498
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.278,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island2+swamp4+plains5/phone.webp",
+     "src2x": "scenes/island2+swamp4+plains5/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 127082,
+     "subjectBand": [
+      0.249,
+      0.608
+     ],
+     "horizon": 0.508,
+     "focal": {
+      "x": 0.5,
+      "y": 0.458
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.208,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp4+plains5.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp4+plains5.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp4+plains6": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 6
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp4+plains6/half.webp",
+    "src2x": "scenes/island2+swamp4+plains6/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 139400,
+    "subjectBand": [
+     0.084,
+     0.598
+    ],
+    "horizon": 0.498,
+    "hour": 23,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.418
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.198,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+swamp4+plains6/phone.webp",
+     "src2x": "scenes/island2+swamp4+plains6/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 104528,
+     "subjectBand": [
+      0.05,
+      0.649
+     ],
+     "horizon": 0.549,
+     "focal": {
+      "x": 0.5,
+      "y": 0.499
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.249,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp4+plains6.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp4+plains6.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp5+plains3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 5
+    },
+    {
+     "biome": "plains",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp5+plains3/half.webp",
+    "src2x": "scenes/island2+swamp5+plains3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 131232,
+    "subjectBand": [
+     0.075,
+     0.776
+    ],
+    "horizon": 0.676,
+    "hour": 22,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.596
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.376,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+swamp5+plains3/phone.webp",
+     "src2x": "scenes/island2+swamp5+plains3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 107930,
+     "subjectBand": [
+      0.05,
+      0.563
+     ],
+     "horizon": 0.463,
+     "focal": {
+      "x": 0.5,
+      "y": 0.413
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.163,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp5+plains3.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp5+plains3.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp5+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 5
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp5+plains4/half.webp",
+    "src2x": "scenes/island2+swamp5+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 126160,
+    "subjectBand": [
+     0.078,
+     0.761
+    ],
+    "horizon": 0.661,
+    "hour": 22,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.581
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.361,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+swamp5+plains4/phone.webp",
+     "src2x": "scenes/island2+swamp5+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 107394,
+     "subjectBand": [
+      0.05,
+      0.611
+     ],
+     "horizon": 0.511,
+     "focal": {
+      "x": 0.5,
+      "y": 0.461
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.211,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp5+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp5+plains4.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp5+plains5": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 5
+    },
+    {
+     "biome": "plains",
+     "stage": 5
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp5+plains5/half.webp",
+    "src2x": "scenes/island2+swamp5+plains5/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 149748,
+    "subjectBand": [
+     0.447,
+     0.767
+    ],
+    "horizon": 0.667,
+    "hour": 22,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.587
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.367,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island2+swamp5+plains5/phone.webp",
+     "src2x": "scenes/island2+swamp5+plains5/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 111078,
+     "subjectBand": [
+      0.334,
+      0.654
+     ],
+     "horizon": 0.554,
+     "focal": {
+      "x": 0.5,
+      "y": 0.504
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.254,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp5+plains5.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp5+plains5.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp6+plains3": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 6
+    },
+    {
+     "biome": "plains",
+     "stage": 3
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp6+plains3/half.webp",
+    "src2x": "scenes/island2+swamp6+plains3/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 120178,
+    "subjectBand": [
+     0.052,
+     0.608
+    ],
+    "horizon": 0.508,
+    "hour": 23.5,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.428
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.208,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+swamp6+plains3/phone.webp",
+     "src2x": "scenes/island2+swamp6+plains3/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 108438,
+     "subjectBand": [
+      0.05,
+      0.698
+     ],
+     "horizon": 0.598,
+     "focal": {
+      "x": 0.5,
+      "y": 0.548
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.298,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp6+plains3.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp6+plains3.png"
+   },
+   "region": "nile-delta"
+  },
+  "island2+swamp6+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 2
+    },
+    {
+     "biome": "swamp",
+     "stage": 6
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island2+swamp6+plains4/half.webp",
+    "src2x": "scenes/island2+swamp6+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 122882,
+    "subjectBand": [
+     0.08,
+     0.647
+    ],
+    "horizon": 0.547,
+    "hour": 23.5,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.467
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.247,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island2+swamp6+plains4/phone.webp",
+     "src2x": "scenes/island2+swamp6+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 104492,
+     "subjectBand": [
+      0.05,
+      0.731
+     ],
+     "horizon": 0.631,
+     "focal": {
+      "x": 0.5,
+      "y": 0.581
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.331,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island2+swamp6+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island2+swamp6+plains4.png"
+   },
+   "region": "nile-delta"
+  },
+  "island3+swamp4+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 3
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island3+swamp4+plains4/half.webp",
+    "src2x": "scenes/island3+swamp4+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 175628,
+    "subjectBand": [
+     0.208,
+     0.751
+    ],
+    "horizon": 0.651,
+    "hour": 19.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.571
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.351,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island3+swamp4+plains4/phone.webp",
+     "src2x": "scenes/island3+swamp4+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 133408,
+     "subjectBand": [
+      0.233,
+      0.65
+     ],
+     "horizon": 0.55,
+     "focal": {
+      "x": 0.5,
+      "y": 0.5
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.25,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island3+swamp4+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island3+swamp4+plains4.png"
+   },
+   "region": "nile-delta"
+  },
+  "island3+swamp4+plains5": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 3
+    },
+    {
+     "biome": "swamp",
+     "stage": 4
+    },
+    {
+     "biome": "plains",
+     "stage": 5
+    }
+   ],
+   "half": {
+    "src": "scenes/island3+swamp4+plains5/half.webp",
+    "src2x": "scenes/island3+swamp4+plains5/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 150726,
+    "subjectBand": [
+     0.334,
+     0.654
+    ],
+    "horizon": 0.554,
+    "hour": 20.5,
+    "key": "dusk",
+    "focal": {
+     "x": 0.5,
+     "y": 0.474
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.254,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": false,
+    "phone": {
+     "src": "scenes/island3+swamp4+plains5/phone.webp",
+     "src2x": "scenes/island3+swamp4+plains5/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 116350,
+     "subjectBand": [
+      0.247,
+      0.603
+     ],
+     "horizon": 0.503,
+     "focal": {
+      "x": 0.5,
+      "y": 0.453
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.203,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island3+swamp4+plains5.png",
+    "phone": "build/native/n2-nile-delta-p-island3+swamp4+plains5.png"
+   },
+   "region": "nile-delta"
+  },
+  "island3+swamp5+plains4": {
+   "lands": [
+    {
+     "biome": "island",
+     "stage": 3
+    },
+    {
+     "biome": "swamp",
+     "stage": 5
+    },
+    {
+     "biome": "plains",
+     "stage": 4
+    }
+   ],
+   "half": {
+    "src": "scenes/island3+swamp5+plains4/half.webp",
+    "src2x": "scenes/island3+swamp5+plains4/half@2x.webp",
+    "width": 2048,
+    "height": 640,
+    "bytes": 127762,
+    "subjectBand": [
+     0.094,
+     0.778
+    ],
+    "horizon": 0.678,
+    "hour": 22,
+    "key": "night",
+    "focal": {
+     "x": 0.5,
+     "y": 0.598
+    },
+    "safe": {
+     "x": 0.0,
+     "y": 0.378,
+     "w": 1.0,
+     "h": 0.4
+    },
+    "body": true,
+    "phone": {
+     "src": "scenes/island3+swamp5+plains4/phone.webp",
+     "src2x": "scenes/island3+swamp5+plains4/phone@2x.webp",
+     "width": 1024,
+     "height": 1280,
+     "bytes": 101684,
+     "subjectBand": [
+      0.05,
+      0.646
+     ],
+     "horizon": 0.546,
+     "focal": {
+      "x": 0.5,
+      "y": 0.496
+     },
+     "safe": {
+      "x": 0.0,
+      "y": 0.246,
+      "w": 1.0,
+      "h": 0.4
+     }
+    }
+   },
+   "sources": {
+    "desktop": "build/native/n2-nile-delta-d-island3+swamp5+plains4.png",
+    "phone": "build/native/n2-nile-delta-p-island3+swamp5+plains4.png"
+   },
+   "region": "nile-delta"
+  }
+ }
+}
