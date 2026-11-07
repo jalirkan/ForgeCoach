@@ -699,7 +699,7 @@ function pairFullFrameOf(items: ReturnType<typeof pairFullPlan>, shown: { art: P
 }
 
 describe('spec 1.20: a scene on the board', () => {
-  const SCENES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1.1/';
+  const SCENES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1.3/';
   const scenes = validateScenes(JSON.parse(readFileSync(new URL('../../ambience/testdata/scenes-sample.scenes.json', import.meta.url), 'utf8')), `${SCENES_URL}scenes.json`).scenes!;
   const local: ScenePack = { ...pack, scenes };
   const scene = scenes.scenes['island2+forest3+mountain2']!;
