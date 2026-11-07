@@ -345,16 +345,40 @@ async function shownColours(page) {
       cuts.push(`${host.getAttribute('data-pc-colour')}:${host.getAttribute('data-pc-ground')} ${host.getAttribute('data-pc-slot')}`);
       out.add(host.getAttribute('data-pc-colour'));
     }
-    return { colours: [...out].sort(), pairs: [...new Set(pairs)], cuts };
+    const sceneEl = root.querySelector('[data-scene] img');
+    const scene = sceneEl && sceneEl.complete && sceneEl.naturalWidth > 0 ? sceneEl.closest('[data-scene]').getAttribute('data-scene') : null;
+    return { colours: [...out].sort(), pairs: [...new Set(pairs)], cuts, scene };
   }, COLOUR_OF);
+}
+
+/** Spec 1.20: the live scenes manifest's keys (ForgeCoach's own scenes URL, read from prefs.ts), fetched once; a state with a scene draws it and nothing else. */
+let sceneKeys = null;
+async function liveSceneKeys() {
+  if (sceneKeys) return sceneKeys;
+  const prefs = readFileSync(new URL('../src/ambience/prefs.ts', import.meta.url), 'utf8');
+  const url = /FORGECOACH_SCENES_URL = '([^']+)'/.exec(prefs)?.[1];
+  if (!url) throw new Fail('FORGECOACH_SCENES_URL not found in src/ambience/prefs.ts');
+  const r = await fetch(`${url}scenes.json`);
+  if (!r.ok) throw new Fail(`scenes manifest ${url}scenes.json: HTTP ${r.status}`);
+  const j = await r.json();
+  sceneKeys = new Set(Object.keys(j.scenes ?? {}));
+  log(`scenes manifest fetched: ${url}scenes.json (${sceneKeys.size} scenes)`);
+  return sceneKeys;
+}
+const GEOGRAPHY = ['island', 'swamp', 'plains', 'forest', 'mountain'];
+/** The scene key of a half's lands: each biome at its stage (its count, 6 at most) in the geography's order. */
+function sceneKeyOf(counts) {
+  return GEOGRAPHY.filter((b) => counts[b]).map((b) => `${b}${Math.min(counts[b], 6)}`).join('+');
 }
 
 /**
  * Spec 1.19 a and b, land by land, with the pack's own pieces (pack-v10's elements, their phone pieces on a phone):
  * after each land, once the half has settled, the pair is the one kept and every colour with lands is on screen and
- * named in the caption (by its biome, or "<C> painted in"), which names no dual (none was played).
+ * named in the caption (by its biome, or "<C> painted in"), which names no dual (none was played). A land whose exact
+ * state has a scene (spec 1.20) draws that painting alone: no pair, no cut-out; the caption names every land in it.
  */
 async function sequenceCheck(page, seq, errors, shape) {
+  const scenes = await liveSceneKeys();
   await page.click('[data-pieces-toggle="pack"]');
   const reset = await page.$('[data-amb-reset]:not([disabled])');
   if (reset) await reset.click();
@@ -366,10 +390,15 @@ async function sequenceCheck(page, seq, errors, shape) {
     await setLands(page, biome, counts[biome]);
     const want = Object.keys(counts).map((b) => COLOUR_OF[b]).sort();
     const key = i === 0 ? null : seq.key;
+    const scene = scenes.has(sceneKeyOf(counts)) ? sceneKeyOf(counts) : null;
     try {
       await page.waitForFunction(
-        ({ want, key, B }) => {
+        ({ want, key, scene, B }) => {
           const root = document.querySelector('[data-amb-player="1"]');
+          if (scene) {
+            const img = root.querySelector(`[data-scene="${scene}"] img`);
+            return !!img && img.complete && img.naturalWidth > 0 && !root.querySelector('[data-pairfull]') && !root.querySelector('[data-pc="element"]');
+          }
           const out = new Set();
           const pairs = new Set();
           for (const el of root.querySelectorAll('[data-pairfull]')) {
@@ -387,17 +416,17 @@ async function sequenceCheck(page, seq, errors, shape) {
           const okPair = key ? pairs.size === 1 && pairs.has(key) : pairs.size === 0;
           return okPair && want.every((c) => out.has(c));
         },
-        { want, key, B: COLOUR_OF },
+        { want, key, scene, B: COLOUR_OF },
         { timeout: TIMEOUT },
       );
     } catch {
       const s = await shownColours(page);
-      throw new Fail(`${shape} ${seq.name}, land ${i + 1} (${lands.slice(0, i + 1).join(' ')}): expected the pair ${key ?? 'none'} and ${want.join('')} on screen, saw the pair ${s.pairs.join(', ') || 'none'} and ${s.colours.join('')} (cut-outs ${s.cuts.join(', ') || 'none'})`);
+      throw new Fail(`${shape} ${seq.name}, land ${i + 1} (${lands.slice(0, i + 1).join(' ')}): expected ${scene ? `the scene ${scene} alone` : `the pair ${key ?? 'none'} and ${want.join('')} on screen`}, saw the pair ${s.pairs.join(', ') || 'none'}, the scene ${s.scene ?? 'none'} and ${s.colours.join('')} (cut-outs ${s.cuts.join(', ') || 'none'})`);
     }
     const s = await shownColours(page);
     // A side of one colour has no caption.
     const caption = (await page.$('[data-amb-bands="1"]')) ? ((await page.textContent('[data-amb-bands="1"]')) ?? '') : '';
-    log(`${shape} ${seq.name} ${i + 1}: ${lands.slice(0, i + 1).join(' ')} -> ${s.pairs.join(', ') || 'mono'}; on screen ${s.colours.join('')}; cut-outs ${s.cuts.join(', ') || 'none'}; caption: ${caption}`);
+    log(`${shape} ${seq.name} ${i + 1}: ${lands.slice(0, i + 1).join(' ')} -> ${s.scene ? `scene ${s.scene}` : s.pairs.join(', ') || 'mono'}; on screen ${s.colours.join('')}; cut-outs ${s.cuts.join(', ') || 'none'}; caption: ${caption}`);
     if (key) {
       const named = new Set([...caption.matchAll(/\b(island|swamp|plains|forest|mountain)\b/g)].map((m) => COLOUR_OF[m[1]]));
       for (const m of caption.matchAll(/\b([WUBRG]) painted in\b/g)) named.add(m[1]);
@@ -410,7 +439,7 @@ async function sequenceCheck(page, seq, errors, shape) {
   if (shape === 'phone') await captionLines(page);
   await page.waitForTimeout(1000);
   await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `${seq.name}-${shape}.png`) });
-  log(`PASS: ${shape} ${seq.name}: ${seq.key} kept from the second land to the last, every colour on screen and named at every land (spec 1.19 a, b)`);
+  log(`PASS: ${shape} ${seq.name}: ${seq.key} kept from the second land to the last (or a scene drawn alone, spec 1.20), every colour on screen and named at every land (spec 1.19 a, b)`);
 }
 
 /** The caption under a side's header on a phone: at most two lines (the storyboard's sheet 9); logs whether the clamp cut it. */

@@ -2743,7 +2743,7 @@ Budgets for pieces (1.14), counted apart from everything above:
 
 Budgets for scenes (1.20), in their own manifest and their own ref:
 - **≤ 4 MB per scene**, desktop and phone, 1x and 2x (declare `bytes` on the `half` and, for its own ref, on its `phone`; the validator warns past it): 1.5's shapes, **2048 × 640** (`src2x` 4096 × 1280) and **1024 × 1280** (`src2x` 2048 × 2560).
-- **≤ 45 MB for the scenes pack** in its own folder (the validator warns past it): a jsDelivr ref holds at most 50 MB. About a dozen and a half scenes at 2.5 MB fit one ref; more go at tags of their own, named by absolute URL.
+- **≤ 45 MB for the scenes pack** in its own folder (the validator warns past it): a jsDelivr ref holds at most 50 MB. About a dozen and a half scenes at 2.5 MB fit one ref; more go at tags of their own, named by absolute URL. Measured 2026-11-07: a 293 MB tag (scenes-v1.2) answered 403 "Package size exceeded the configured limit of 50 MB" and was withdrawn; from scenes-v1.3 each region's pictures live at orphan tags of at most 40 MB (`scenes-r-<region>-<n>`), the index names them by absolute URL, and a scene may carry `ref`, the tag its pictures are at (the reader ignores it).
 - **≤ 1 MB** for `scenes.json` itself.
 - A device loads only its halves' scenes and those one land away, at the shape it draws.
 
