@@ -5,8 +5,8 @@
  * Spec 1.20, scenes (scenes.ts): the key, the file, the plan, the gates, the
  * hold, the caption and the storyboard. `testdata/scenes-sample.scenes.json`
  * is a two-scene sample in scenes-v1's shape, for the shape tests;
- * `testdata/scenes-v1.scenes.json` is the scenes-v1 tag's `scenes.json` byte
- * for byte (eight scenes, 2026-11-06), hash-pinned at the end as the pairs
+ * `testdata/scenes-v1.1.scenes.json` is the scenes-v1.1 tag's `scenes.json`
+ * byte for byte (48 scenes, 2026-11-06), hash-pinned at the end as the pairs
  * file is. Nothing here touches the network (fetchScenes and resolveScenery
  * are given fakes).
  */
@@ -236,7 +236,7 @@ describe('spec 1.20: the scenes file', () => {
   });
 
   it('is loaded with ForgeCoach’s own pack, with the whole-half flag or without, and with no other pack', () => {
-    expect(FORGECOACH_SCENES_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1/');
+    expect(FORGECOACH_SCENES_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1.1/');
     expect(scenesUrlOf(DEFAULT_PREFS)).toBe(FORGECOACH_SCENES_URL);
     expect(scenesUrlOf({ ...DEFAULT_PREFS, pairFull: false })).toBe(FORGECOACH_SCENES_URL);
     expect(pairsUrlOf({ ...DEFAULT_PREFS, pairFull: false })).toBe(FORGECOACH_PAIRS_URL);
@@ -475,18 +475,20 @@ describe('spec 1.20: the caption and the storyboard', () => {
   });
 });
 
-describe('the scenes-v1 tag (2026-11-06)', () => {
-  const bytes = readFileSync(new URL('./testdata/scenes-v1.scenes.json', import.meta.url));
+describe('the scenes-v1.1 tag (2026-11-06)', () => {
+  const bytes = readFileSync(new URL('./testdata/scenes-v1.1.scenes.json', import.meta.url));
   it('is the file jsDelivr serves byte for byte', () => {
-    expect(createHash('sha256').update(bytes).digest('hex')).toBe('42549e6260aacb8d5f68ce66ce164ed081c0b363e5103f70dc2bd2a9eb6b824f');
-    expect(bytes.length).toBe(9_924);
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe('3e1e0543839afe28b3d9e67864dc10442ef5a71f530d83a467cb957ea6bd869f');
+    expect(bytes.length).toBe(61_322);
   });
-  it('holds eight scenes, every one with a phone picture, and validates clean', () => {
+  it('holds 48 scenes (the first eight and the Nile delta region), every one with a phone picture, and validates clean', () => {
     const r = validateScenes(JSON.parse(bytes.toString('utf8')), `${FORGECOACH_SCENES_URL}scenes.json`);
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual([]);
     const keys = Object.keys(r.scenes!.scenes ?? r.scenes!);
-    expect(keys.length).toBe(8);
+    expect(keys.length).toBe(48);
+    const raw = JSON.parse(bytes.toString('utf8')) as { scenes: Record<string, { region?: string }> };
+    expect(Object.values(raw.scenes).filter((sc) => sc.region === 'nile-delta').length).toBe(40);
     expect(keys).toContain('island2+forest3+mountain2');
     expect(keys).toContain('swamp4+plains4+forest4');
   });

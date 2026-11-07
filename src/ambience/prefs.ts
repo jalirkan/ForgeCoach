@@ -121,7 +121,7 @@ export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/f
  * `?pairfull=0` too. Until the tag is cut the file is not there, which reads
  * as "no scenes".
  */
-export const FORGECOACH_SCENES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1/';
+export const FORGECOACH_SCENES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1.1/';
 /**
  * ForgeCoach's own pack at any tag: a stored URL that matches is the default
  * of the day it was saved, and {@link loadSceneryPrefs} replaces it with the
