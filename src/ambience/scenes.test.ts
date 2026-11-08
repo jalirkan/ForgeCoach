@@ -5,8 +5,8 @@
  * Spec 1.20, scenes (scenes.ts): the key, the file, the plan, the gates, the
  * hold, the caption and the storyboard. `testdata/scenes-sample.scenes.json`
  * is a two-scene sample in scenes-v1's shape, for the shape tests;
- * `testdata/scenes-v1.3.scenes.json` is the scenes-v1.3 tag's `scenes.json`
- * byte for byte (434 scenes, 2026-11-07), hash-pinned at the end as the pairs
+ * `testdata/scenes-v1.4.scenes.json` is the scenes-v1.4 tag's `scenes.json`
+ * byte for byte (1563 scenes, 2026-11-08), hash-pinned at the end as the pairs
  * file is. Nothing here touches the network (fetchScenes and resolveScenery
  * are given fakes).
  */
@@ -37,7 +37,7 @@ import {
 import { elementBiomes, halfCutOuts, phoneElementBiomes, planHalf } from './pieces.ts';
 import { DEFAULT_PREFS, FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, FORGECOACH_SCENES_URL, pairsUrlOf, scenesUrlOf } from './prefs.ts';
 import { resolveScenery, type FetchLike } from './pack.ts';
-import { fetchScenes, MAX_SCENE_BYTES, sceneFor, sceneKey, sceneKeyOf, scenePictures, scenesBytes, scenesManifestUrl, sceneWords, validateScenes, type ScenesPack } from './scenes.ts';
+import { fetchScenes, MAX_SCENE_BYTES, MAX_SCENES_MANIFEST_BYTES, sceneFor, sceneKey, sceneKeyOf, scenePictures, scenesBytes, scenesManifestUrl, sceneWords, validateScenes, type ScenesPack } from './scenes.ts';
 import { enumerateStates, SHAPES, storyboardHalf, type Shape, type StoryboardPacks } from './storyboard.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
@@ -236,7 +236,7 @@ describe('spec 1.20: the scenes file', () => {
   });
 
   it('is loaded with ForgeCoach’s own pack, with the whole-half flag or without, and with no other pack', () => {
-    expect(FORGECOACH_SCENES_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1.3/');
+    expect(FORGECOACH_SCENES_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1.4/');
     expect(scenesUrlOf(DEFAULT_PREFS)).toBe(FORGECOACH_SCENES_URL);
     expect(scenesUrlOf({ ...DEFAULT_PREFS, pairFull: false })).toBe(FORGECOACH_SCENES_URL);
     expect(pairsUrlOf({ ...DEFAULT_PREFS, pairFull: false })).toBe(FORGECOACH_PAIRS_URL);
@@ -475,25 +475,40 @@ describe('spec 1.20: the caption and the storyboard', () => {
   });
 });
 
-describe('the scenes-v1.3 tag (2026-11-07)', () => {
-  const bytes = readFileSync(new URL('./testdata/scenes-v1.3.scenes.json', import.meta.url));
+describe('the scenes-v1.4 tag (2026-11-08)', () => {
+  const bytes = readFileSync(new URL('./testdata/scenes-v1.4.scenes.json', import.meta.url));
   it('is the file jsDelivr serves byte for byte', () => {
-    expect(createHash('sha256').update(bytes).digest('hex')).toBe('5f50a6ce62b20ba98ebd1871a1e4f4a6a0ad5a8e2f1ac9c3ad463f24326473dd');
-    expect(bytes.length).toBe(704_184);
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe('ec5372d7348a79bbbf99a7622a5b4346a8d4701eb7baa61126a5eb6e81253060');
+    expect(bytes.length).toBe(2_594_290);
   });
-  it('holds 434 scenes (eight regions and six of the first drafts), every one with a phone picture, and validates clean', () => {
+  it('holds 1563 scenes (thirty regions at forty region tags, and three of the first drafts), every one with a phone picture, and validates clean', () => {
     const r = validateScenes(JSON.parse(bytes.toString('utf8')), `${FORGECOACH_SCENES_URL}scenes.json`);
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual([]);
     const keys = Object.keys(r.scenes!.scenes ?? r.scenes!);
-    expect(keys.length).toBe(434);
+    expect(keys.length).toBe(1563);
     const raw = JSON.parse(bytes.toString('utf8')) as { scenes: Record<string, { region?: string }> };
     const byRegion = new Map<string, number>();
     for (const sc of Object.values(raw.scenes)) byRegion.set(sc.region ?? '', (byRegion.get(sc.region ?? '') ?? 0) + 1);
     expect(Object.fromEntries(byRegion)).toEqual({
-      '': 6, 'nile-delta': 40, patagonia: 64, mesopotamia: 52, amazon: 64, polynesia: 52, 'mesopotamia-forest': 40, santorini: 64, kamchatka: 52,
+      '': 3,
+      amazon: 64, 'amazon-steppe': 64, anatolia: 64, 'anatolia-marsh': 64, cascades: 64, 'cascades-bog': 64, patagonia: 64, 'patagonia-forest': 64, santorini: 64, 'santorini-steppe': 64,
+      'amazon-volcano': 52, 'anatolia-coast': 52, kamchatka: 52, 'kamchatka-steppe': 52, mesopotamia: 52, polynesia: 52, 'polynesia-steppe': 52, 'polynesia-volcano': 52, serengeti: 52, 'serengeti-crag': 52,
+      'cascades-steppe': 40, 'kamchatka-forest': 40, 'mesopotamia-forest': 40, 'mesopotamia-volcano': 40, 'nile-delta': 40, 'nile-delta-crag': 40, 'nile-delta-grove': 40, 'patagonia-crag': 40, 'santorini-forest': 40, 'serengeti-coast': 40,
     });
     expect(keys).toContain('island2+forest3+mountain2');
     expect(keys).toContain('swamp4+plains4+forest4');
+  });
+  it('fetchScenes reads it (past the 1 MB a scenes manifest could be until 2026-11-08, under the 4 MB it may be); a manifest past 4 MB is still refused unread', async () => {
+    expect(bytes.length).toBeGreaterThan(1024 * 1024);
+    expect(MAX_SCENES_MANIFEST_BYTES).toBe(4 * 1024 * 1024);
+    expect(bytes.length).toBeLessThan(MAX_SCENES_MANIFEST_BYTES);
+    const serve = (text: string) => async () => ({ ok: true, status: 200, text: async () => text });
+    const ok = await fetchScenes(FORGECOACH_SCENES_URL, { fetch: serve(bytes.toString('utf8')) });
+    expect(ok.errors).toEqual([]);
+    expect(Object.keys(ok.scenes!.scenes).length).toBe(1563);
+    const big = await fetchScenes(FORGECOACH_SCENES_URL, { fetch: serve(' '.repeat(MAX_SCENES_MANIFEST_BYTES + 1)) });
+    expect(big.scenes).toBeNull();
+    expect(big.errors).toEqual(['The scenes manifest is over 4 MB.']);
   });
 });
