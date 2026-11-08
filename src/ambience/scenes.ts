@@ -7,7 +7,10 @@
  * with a tiny tree pasted under the land chips), so a half may instead show
  * a painting of that very state -- every colour on it, each at its own stage
  * -- and nothing else: no pair logic, no element, no cut-out, no band, no
- * panel. Only a state with no scene is drawn by the 1.9-1.19 rules, unchanged.
+ * panel. Spec 1.21: a state of two or more colours with no scene of its own
+ * draws its nearest scene ({@link nearestScene}) the same way; only a state of
+ * one colour, a half with a `wastes` slot, or a half whose every picture
+ * failed is drawn by the 1.9-1.19 rules.
  *
  * - The key ({@link sceneKey}): the half's live biomes (a land weight above
  *   0) in pairs.ts `GEOGRAPHY`'s order (island, swamp, plains, forest,
@@ -32,7 +35,7 @@
  */
 import { DEFAULT_STAGE_THRESHOLDS, MAX_STAGES, stageFor, type Biome, type SlotState } from './model.ts';
 import { cleanText } from '../lab/status.ts';
-import { isObj, packBase, parseHalf, type HalfPicture, type PackHalf } from './manifest.ts';
+import { halfAt, isObj, packBase, parseHalf, type HalfPicture, type PackBiome, type PackHalf } from './manifest.ts';
 import { GEOGRAPHY } from './pairs.ts';
 
 /** The scenes manifest, at the root of the scenes URL. */
@@ -126,6 +129,204 @@ export function sceneFor(scenes: ScenesPack | null | undefined, slots: readonly 
   if (!scenes) return null;
   const key = sceneKey(slots, thresholds);
   return key ? (scenes.scenes[key] ?? null) : null;
+}
+
+/**
+ * A half's state as lands (its {@link sceneKey}'s), in the geography's order: each live colour with its stage. Empty
+ * with no live slot, or with one off the geography (`wastes`: no key, so no scene, exact or nearest).
+ */
+export function sceneLands(slots: readonly Pick<SlotState, 'biome' | 'weight'>[], thresholds: readonly number[] | null = DEFAULT_STAGE_THRESHOLDS): SceneLand[] {
+  const key = sceneKey(slots, thresholds);
+  if (!key) return [];
+  return key.split('+').map((k) => {
+    const m = /^([a-z]+)(\d)$/.exec(k)!;
+    return { biome: m[1] as Biome, stage: Number(m[2]) };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Spec 1.21, the nearest scene
+
+/** Where a pack's own picture of one colour comes from (spec 1.21's last step): its biomes, as the scenery pack has them. */
+export type MonoBiomes = Partial<Record<Biome, PackBiome>>;
+
+/**
+ * Spec 1.21: what a half with no scene of its own draws -- the nearest painted scene, alone, as a scene state draws it
+ * -- and how it differs from the state asked for. `scene` is the scene drawn (a manifest's, or for one colour left the
+ * pack's own 1.5 picture of it, `mono`); `key` its key; `for` the state's own key. `dropped` are the colours the rule
+ * left out, in the order it dropped them; `clamped` the colours kept at another stage.
+ */
+export interface NearestScene {
+  scene: PackScene;
+  key: string;
+  for: string;
+  dropped: Biome[];
+  clamped: { biome: Biome; from: number; to: number }[];
+  /** The scene is the pack's own picture of one colour (no scene painted for any colour set the rule reached). */
+  mono: boolean;
+  /**
+   * {@link heaviestMono}: the key of the scene whose picture failed to load, which this one stands in for; then
+   * `dropped` are the colours not drawn, painted or not, and the caption says the picture failed, not "not yet painted".
+   */
+  failed?: string;
+}
+
+/**
+ * Which of a state's colours is the heavier (spec 1.21): the higher stage; at one stage, the one earlier in the
+ * geography. The lightest is dropped first, so at equal stages the colour later in the geography goes first.
+ */
+function heavierFirst(a: SceneLand, b: SceneLand): number {
+  return b.stage - a.stage || GEOGRAPHY.indexOf(a.biome) - GEOGRAPHY.indexOf(b.biome);
+}
+
+/** The scenes of each colour set (`island+swamp+mountain`), built once a pack. */
+const BY_SET = new WeakMap<ScenesPack, Map<string, PackScene[]>>();
+function scenesOfSet(scenes: ScenesPack, set: readonly Biome[]): PackScene[] {
+  let index = BY_SET.get(scenes);
+  if (!index) {
+    index = new Map();
+    for (const s of Object.values(scenes.scenes)) {
+      if (!s) continue;
+      const k = s.lands.map((l) => l.biome).join('+');
+      const list = index.get(k);
+      if (list) list.push(s);
+      else index.set(k, [s]);
+    }
+    BY_SET.set(scenes, index);
+  }
+  return index.get(set.join('+')) ?? [];
+}
+
+/**
+ * Spec 1.21, step 1: the nearest scene among `cands` (one colour set, the same as `want`'s) to the stages `want` asks
+ * for. In order (the owner's smoother rule, 2026-11-08): the smallest LARGEST move of any one colour (max |painted −
+ * asked|: no colour drawn far from its lands to keep the others exact); then the smallest total stage distance (the
+ * sum of |painted − asked|); then the scene where the heavier colours keep their stage (the distances compared colour
+ * by colour, heaviest first, by {@link heavierFirst}); then the one painted below rather than above (the signed
+ * differences, heaviest first); then the key, lexically. Null with no candidate.
+ */
+function nearestOf(cands: readonly PackScene[], want: readonly SceneLand[]): PackScene | null {
+  const order = [...want].sort(heavierFirst);
+  const diffs = (s: PackScene) => order.map((w) => (s.lands.find((l) => l.biome === w.biome)?.stage ?? w.stage) - w.stage);
+  let best: PackScene | null = null;
+  let bestD: number[] = [];
+  const better = (d: number[], key: string): boolean => {
+    if (!best) return true;
+    const largest = (x: number[]) => x.reduce((n, v) => Math.max(n, Math.abs(v)), 0);
+    if (largest(d) !== largest(bestD)) return largest(d) < largest(bestD);
+    const total = (x: number[]) => x.reduce((n, v) => n + Math.abs(v), 0);
+    if (total(d) !== total(bestD)) return total(d) < total(bestD);
+    for (let i = 0; i < d.length; i++) if (Math.abs(d[i]!) !== Math.abs(bestD[i]!)) return Math.abs(d[i]!) < Math.abs(bestD[i]!);
+    for (let i = 0; i < d.length; i++) if (d[i] !== bestD[i]) return d[i]! < bestD[i]!;
+    return key < best.key;
+  };
+  for (const s of cands) {
+    const d = diffs(s);
+    if (better(d, s.key)) {
+      best = s;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/** The pack's own 1.5 picture of one colour at a stage, as a scene (spec 1.21's last step), or null when it has none. */
+export function monoScene(biomes: MonoBiomes | null | undefined, land: SceneLand): PackScene | null {
+  const half = halfAt(biomes?.[land.biome], land.stage);
+  if (!half) return null;
+  // A pack picture with no phone one: its desktop picture stands in at both shapes (layout.ts crops it).
+  return { key: sceneKeyOf([land])!, lands: [{ ...land }], half: { ...half, phone: half.phone ?? half } };
+}
+
+/** The {@link NearestScene} for `scene` drawn in place of `want`. */
+function nearestResult(scene: PackScene, want: readonly SceneLand[], dropped: Biome[], mono: boolean): NearestScene {
+  const clamped: NearestScene['clamped'] = [];
+  for (const l of scene.lands) {
+    const w = want.find((x) => x.biome === l.biome);
+    if (w && w.stage !== l.stage) clamped.push({ biome: l.biome, from: w.stage, to: l.stage });
+  }
+  return { scene, key: scene.key, for: sceneKeyOf(want)!, dropped, clamped, mono };
+}
+
+/**
+ * Spec 1.21, the nearest scene: what a half whose lands are `lands` draws. Its own scene when one is painted (1.20,
+ * any number of colours). Else, for two or more colours, deterministically:
+ *
+ * 1. among the scenes of the same colour set, the nearest by stage ({@link nearestOf}: the smallest largest move of
+ *    one colour, then the smallest total move, then the heavier colours keep theirs, then below before above);
+ * 2. if that colour set has no scene at all, the LIGHTEST colour is dropped (the lowest stage; at one stage the later
+ *    in the geography, {@link heavierFirst}) and step 1 runs on the colours left, down to a pair;
+ * 3. with one colour left: its own scene at its own stage if one is painted, else the pack's own 1.5 picture of that
+ *    colour at its stage ({@link monoScene}, from `biomes`), drawn as a scene is.
+ *
+ * Null for a state of one colour with no scene of its own (it keeps today's picture: not a scene state), for no
+ * state, and when even step 3 has nothing (no `biomes`, or a pack with no picture of that colour).
+ */
+export function nearestScene(scenes: ScenesPack | null | undefined, lands: readonly SceneLand[], biomes: MonoBiomes | null = null): NearestScene | null {
+  if (!scenes || !lands.length) return null;
+  const want = [...lands].sort((a, b) => GEOGRAPHY.indexOf(a.biome) - GEOGRAPHY.indexOf(b.biome));
+  const key = sceneKeyOf(want);
+  if (!key) return null;
+  const exact = scenes.scenes[key];
+  if (exact) return nearestResult(exact, want, [], false);
+  if (want.length < 2) return null;
+  let set = want;
+  const dropped: Biome[] = [];
+  while (set.length >= 2) {
+    const s = nearestOf(scenesOfSet(scenes, set.map((l) => l.biome)), set);
+    if (s) return nearestResult(s, want, dropped, false);
+    const lightest = [...set].sort(heavierFirst)[set.length - 1]!;
+    dropped.push(lightest.biome);
+    set = set.filter((l) => l !== lightest);
+  }
+  const last = set[0]!;
+  const own = scenes.scenes[sceneKeyOf([last])!];
+  if (own) return nearestResult(own, want, dropped, false);
+  const mono = monoScene(biomes, last);
+  return mono ? nearestResult(mono, want, dropped, true) : null;
+}
+
+/**
+ * Spec 1.21: the stand-in when the nearest painting failed to load -- the heaviest colour's own 1.5 picture alone
+ * ({@link heavierFirst}: the colour step 2 would keep last), never the seam and its cut-outs. Null for a state of
+ * one colour (1.20: a failed painting gives it back to today's picture) or with nothing to draw.
+ */
+export function heaviestMono(lands: readonly SceneLand[], biomes: MonoBiomes | null | undefined, failed: string | null = null): NearestScene | null {
+  if (lands.length < 2) return null;
+  const want = [...lands].sort((a, b) => GEOGRAPHY.indexOf(a.biome) - GEOGRAPHY.indexOf(b.biome));
+  const order = [...want].sort(heavierFirst);
+  const mono = monoScene(biomes, order[0]!);
+  if (!mono) return null;
+  const n = nearestResult(mono, want, order.slice(1).reverse().map((l) => l.biome), true);
+  return failed ? { ...n, failed } : n;
+}
+
+/** "island 1, swamp 1, mountain 2": lands in words, in the geography's order. */
+function landWords(lands: readonly SceneLand[]): string {
+  return lands.map((l) => `${l.biome} ${l.stage}`).join(', ');
+}
+
+/** "swamp", "swamp and mountain", "island, swamp and mountain". */
+function listWords(xs: readonly string[]): string {
+  return xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
+}
+
+/**
+ * Spec 1.21's caption: "Scene · island 1, swamp 1, mountain 1 — nearest painting: island 1, swamp 1, mountain 2
+ * (mountain not yet painted at this stage)"; a colour dropped "(plains not yet painted in)"; one colour left
+ * "nearest painting: island 6 alone (swamp not yet painted in)". The state first, in the geography's order; then the
+ * scene drawn; then why, the dropped colours before the clamped. Standing in for a painting that failed to load
+ * ({@link heaviestMono}): "nearest painting: forest 3 alone (picture failed to load: island 2, forest 3, mountain 2)" --
+ * never "not yet painted" for colours that are painted.
+ */
+export function nearestWords(n: Pick<NearestScene, 'scene' | 'for' | 'dropped' | 'clamped' | 'mono' | 'failed'>): string {
+  const words = (key: string) => key.split('+').map((k) => `${k.replace(/\d$/, '')} ${k.slice(-1)}`).join(', ');
+  const asked = words(n.for);
+  if (n.failed) return `Scene · ${asked} — nearest painting: ${landWords(n.scene.lands)}${n.scene.lands.length === 1 ? ' alone' : ''} (picture failed to load: ${words(n.failed)})`;
+  const why: string[] = [];
+  if (n.dropped.length) why.push(`${listWords(GEOGRAPHY.filter((b) => n.dropped.includes(b)))} not yet painted in`);
+  if (n.clamped.length) why.push(`${listWords(n.clamped.map((c) => c.biome))} not yet painted at ${n.clamped.length === 1 ? 'this stage' : 'these stages'}`);
+  return `Scene · ${asked} — nearest painting: ${landWords(n.scene.lands)}${n.scene.lands.length === 1 ? ' alone' : ''}${why.length ? ` (${why.join('; ')})` : ''}`;
 }
 
 /** "island 2, forest 3, mountain 2": a scene's state in words, in the geography's order. */
@@ -262,21 +463,24 @@ export async function fetchScenes(input: string, deps: { fetch: FetchText; signa
 /**
  * The scene pictures worth warming for these halves (`slots` per half), at one shape (`phone`: the phone picture):
  * each half's own scene, and every scene one basic land away (a live colour's next land, or a new colour's first), so
- * a scene that arrives with a land is usually there already. Each once.
+ * a scene that arrives with a land is usually there already. Since spec 1.21 a state with no scene warms the scene it
+ * draws instead, its nearest ({@link nearestScene}; with `biomes`, the pack's own picture of one colour too). Each once.
  */
-export function scenePictures(scenes: ScenesPack | null | undefined, halves: readonly (readonly Pick<SlotState, 'biome' | 'weight'>[])[], opts: { phone: boolean; thresholds?: readonly number[] | null }): { src: string; src2x: string | null }[] {
+export function scenePictures(scenes: ScenesPack | null | undefined, halves: readonly (readonly Pick<SlotState, 'biome' | 'weight'>[])[], opts: { phone: boolean; thresholds?: readonly number[] | null; biomes?: MonoBiomes | null }): { src: string; src2x: string | null }[] {
   if (!scenes || !Object.keys(scenes.scenes).length) return [];
   const out: { src: string; src2x: string | null }[] = [];
-  const add = (s: PackScene | null) => {
+  // Spec 1.21: the scene each state would draw -- its own, else its nearest (the pack's own picture of one colour too).
+  const add = (slots: readonly Pick<SlotState, 'biome' | 'weight'>[]) => {
+    const s = nearestScene(scenes, sceneLands(slots, opts.thresholds ?? null), opts.biomes ?? null)?.scene ?? null;
     const pic = s ? (opts.phone ? s.half.phone : s.half) : null;
     if (pic && !out.some((x) => x.src === pic.src)) out.push({ src: pic.src, src2x: pic.src2x });
   };
   for (const slots of halves) {
-    add(sceneFor(scenes, slots, opts.thresholds ?? null));
+    add(slots);
     for (const b of GEOGRAPHY) {
       const has = slots.some((s) => s.biome === b);
       const next = has ? slots.map((s) => (s.biome === b ? { biome: s.biome, weight: s.weight + 1 } : s)) : [...slots, { biome: b, weight: 1 }];
-      add(sceneFor(scenes, next, opts.thresholds ?? null));
+      add(next);
     }
   }
   return out;

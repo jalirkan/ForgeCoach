@@ -35,9 +35,9 @@ import {
   type PairFullScene,
 } from './pairfull.ts';
 import { elementBiomes, halfCutOuts, phoneElementBiomes, planHalf } from './pieces.ts';
-import { DEFAULT_PREFS, FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, FORGECOACH_SCENES_URL, pairsUrlOf, scenesUrlOf } from './prefs.ts';
+import { DEFAULT_PREFS, effectivePrefs, FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, FORGECOACH_SCENES_URL, pairsUrlOf, scenesUrlOf } from './prefs.ts';
 import { resolveScenery, type FetchLike } from './pack.ts';
-import { fetchScenes, MAX_SCENE_BYTES, MAX_SCENES_MANIFEST_BYTES, sceneFor, sceneKey, sceneKeyOf, scenePictures, scenesBytes, scenesManifestUrl, sceneWords, validateScenes, type ScenesPack } from './scenes.ts';
+import { fetchScenes, MAX_SCENE_BYTES, MAX_SCENES_MANIFEST_BYTES, nearestScene, nearestWords, sceneFor, sceneKey, sceneKeyOf, scenePictures, scenesBytes, scenesManifestUrl, sceneWords, validateScenes, type ScenesPack } from './scenes.ts';
 import { enumerateStates, SHAPES, storyboardHalf, type Shape, type StoryboardPacks } from './storyboard.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
@@ -243,6 +243,13 @@ describe('spec 1.20: the scenes file', () => {
     expect(scenesUrlOf({ ...DEFAULT_PREFS, packUrl: 'http://127.0.0.1:8650/' })).toBeNull();
     expect(scenesUrlOf({ ...DEFAULT_PREFS, mode: 'procedural' })).toBeNull();
     expect(scenesUrlOf({ ...DEFAULT_PREFS, mode: 'off' })).toBeNull();
+    // Spec 1.21: `?scenes=off` (or 0) loads none for the page -- the 1.15–1.19 halves, for checking them -- and nothing else
+    // changes; `?scenes=on` is the default.
+    expect(scenesUrlOf(effectivePrefs(DEFAULT_PREFS, '?scenes=off', ''))).toBeNull();
+    expect(scenesUrlOf(effectivePrefs(DEFAULT_PREFS, '', '#ambience?scenes=0'))).toBeNull();
+    expect(scenesUrlOf(effectivePrefs(DEFAULT_PREFS, '?scenes=on', ''))).toBe(FORGECOACH_SCENES_URL);
+    expect(pairsUrlOf(effectivePrefs(DEFAULT_PREFS, '?scenes=off', ''))).toBe(FORGECOACH_PAIRS_FULL_URL);
+    expect(effectivePrefs(DEFAULT_PREFS, '?scenes=on', '')).toBe(DEFAULT_PREFS);
   });
 
   it('resolveScenery carries the scenes as the pack’s `scenes`; a failed scenes file leaves the pack whole, with none', async () => {
@@ -275,7 +282,7 @@ const SCENES = scenesPack();
 const ELEMENTS = elementBiomes(PACK.pieces);
 const PHONE_ELEMENTS = phoneElementBiomes(PACK.pieces);
 const planOf = (slots: SlotState[], o: { scenes?: ScenesPack | null; pairs?: PairsPack | null; narrow?: boolean; showing?: MakeupShowing | null } = {}) =>
-  pairFullPlan(halfLayout(slots, PACK, null, o.showing ?? null), o.pairs === undefined ? PAIRS_FULL : o.pairs, { thresholds: T, elements: ELEMENTS, phoneElements: PHONE_ELEMENTS, showing: o.showing ?? null, slots, narrow: o.narrow ?? false, scenes: o.scenes === undefined ? SCENES : o.scenes });
+  pairFullPlan(halfLayout(slots, PACK, null, o.showing ?? null), o.pairs === undefined ? PAIRS_FULL : o.pairs, { thresholds: T, elements: ELEMENTS, phoneElements: PHONE_ELEMENTS, showing: o.showing ?? null, slots, narrow: o.narrow ?? false, scenes: o.scenes === undefined ? SCENES : o.scenes, biomes: PACK.biomes });
 const sceneOf = (plan: PairFullItem[] | null) => plan?.find((x): x is PairFullScene => x.kind === 'scene') ?? null;
 
 /** The two sample states, in board orders that are not the geography's. */
@@ -299,20 +306,44 @@ describe('spec 1.20: the plan', () => {
     expect(sceneOf(planOf(STATE_A, { showing }))?.key).toBe('island2+forest3+mountain2');
   });
 
-  it('is the old plan, unchanged, for a state with no scene (one more Swamp; a stage off by one; no scenes at all)', () => {
-    for (const slots of [[...STATE_A, slot('swamp', 3, 1)], slotsOf(['mountain', 2], ['forest', 4], ['island', 2]), slotsOf(['island', 2], ['forest', 3])]) {
-      const withScenes = planOf(slots);
-      expect(sceneOf(withScenes)).toBeNull();
-      expect(withScenes).toEqual(planOf(slots, { scenes: null }));
-    }
-    // With no pairs pack and no scene: null, the half as without the flag.
-    expect(planOf([...STATE_A, slot('swamp', 3, 1)], { pairs: null })).toBeNull();
+  it('spec 1.21: a state with no scene of its own draws its nearest, alone (one more Swamp; a stage off by one; two colours); no scenes at all is the old plan', () => {
+    // [slots, the key drawn, the key asked for, dropped, clamped, mono]
+    const cases: [SlotState[], string, string, Biome[], { biome: Biome; from: number; to: number }[], boolean][] = [
+      [[...STATE_A, slot('swamp', 3, 1)], 'island2+forest3+mountain2', 'island2+swamp1+forest3+mountain2', ['swamp'], [], false],
+      [slotsOf(['mountain', 2], ['forest', 4], ['island', 2]), 'island2+forest3+mountain2', 'island2+forest4+mountain2', [], [{ biome: 'forest', from: 4, to: 3 }], false],
+      // The sample has no pair: the lighter colour is dropped and the forest's own picture is drawn as a scene.
+      [slotsOf(['island', 2], ['forest', 3]), 'forest3', 'island2+forest3', ['island'], [], true],
+    ];
+    for (const [slots, key, asked, dropped, clamped, mono] of cases)
+      for (const pairs of [PAIRS_FULL, null]) {
+        const plan = planOf(slots, { pairs });
+        expect(plan).toHaveLength(1);
+        expect(sceneOf(plan)).toMatchObject({ kind: 'scene', key, share: 1, nearest: { for: asked, dropped, clamped, mono } });
+      }
+    // The forest's own picture is the pack's stage-3 half, phone and all.
+    expect(sceneOf(planOf(cases[2]![0]))!.scene.half).toMatchObject({ src: PACK.biomes.forest!.stages[2]!.half!.src, phone: PACK.biomes.forest!.stages[2]!.half!.phone });
+    // An exact scene carries no `nearest`.
+    expect(sceneOf(planOf(STATE_A))!.nearest).toBeUndefined();
+    // One colour: today's picture, not a scene state.
+    expect(planOf(slotsOf(['forest', 3]))).toEqual(planOf(slotsOf(['forest', 3]), { scenes: null }));
+    // No scenes at all: the old plan, unchanged.
     expect(sceneOf(planOf(STATE_A, { scenes: null }))).toBeNull();
+    expect(planOf([...STATE_A, slot('swamp', 3, 1)], { scenes: null, pairs: null })).toBeNull();
   });
 
-  it('gives a scene whose chosen painting failed back to today’s plan (the plan with no scenes), at the shape it draws', () => {
+  it('gives a scene whose chosen painting failed back to today’s plan (the plan with no scenes), at the shape it draws -- spec 1.21: with the pack’s biomes, to the heaviest colour’s own picture first', () => {
     const a = SCENES.scenes['island2+forest3+mountain2']!;
     const failed = (bad: string) => (src: string) => src === bad;
+    // Spec 1.21: given the pack's biomes, the failed painting gives way to the forest's own picture, as a scene.
+    for (const narrow of [false, true]) {
+      const viaMono = pairFullPlan(halfLayout(STATE_A, PACK), PAIRS_FULL, { thresholds: T, elements: ELEMENTS, slots: STATE_A, narrow, scenes: SCENES, biomes: PACK.biomes, sceneFailed: failed(narrow ? a.half.phone.src : a.half.src) });
+      expect(sceneOf(viaMono)).toMatchObject({ key: 'forest3', nearest: { for: 'island2+forest3+mountain2', dropped: ['mountain', 'island'], clamped: [], mono: true, failed: 'island2+forest3+mountain2' } });
+      expect(pairFullCaption(viaMono)).toBe('Scene · island 2, forest 3, mountain 2 — nearest painting: forest 3 alone (picture failed to load: island 2, forest 3, mountain 2)');
+      const forest = PACK.biomes.forest!.stages[2]!.half!;
+      const both = (src: string) => src === a.half.src || src === a.half.phone.src || src === forest.src || src === forest.phone!.src;
+      expect(pairFullPlan(halfLayout(STATE_A, PACK), PAIRS_FULL, { thresholds: T, elements: ELEMENTS, phoneElements: PHONE_ELEMENTS, slots: STATE_A, narrow, scenes: SCENES, biomes: PACK.biomes, sceneFailed: both })).toEqual(planOf(STATE_A, { scenes: null, narrow }));
+    }
+    // Without the biomes (a caller with no pack), 1.20's rule: today's plan.
     const plan = (narrow: boolean, bad: string, halfAspect: number | null = null) =>
       pairFullPlan(halfLayout(STATE_A, PACK), PAIRS_FULL, { thresholds: T, elements: ELEMENTS, phoneElements: PHONE_ELEMENTS, slots: STATE_A, narrow, scenes: SCENES, sceneFailed: failed(bad), halfAspect });
     for (const narrow of [false, true]) {
@@ -346,10 +377,11 @@ describe('spec 1.20: the plan', () => {
     expect(sceneOf(plans[6]!)?.key).toBe('island2+forest3+mountain2');
     // The memory at the scene is the pair rule's pick (island+forest), not the scene's three colours.
     expect([...memories[6]!.pair!].sort()).toEqual(['G', 'U']);
-    // The fourth colour, no scene for it: exactly the plan the board would draw had there never been a scene.
-    expect(sceneOf(plans[7]!)).toBeNull();
-    expect(plans[7]).toEqual(planOf(seq[7]!, { showing: memories[7]!, scenes: null }));
-    expect(plans[7]!.find((x) => x.kind === 'pair')).toMatchObject({ key: 'forest+island' });
+    // The fourth colour, no scene for it: spec 1.21, its nearest (this scene, the Swamp dropped) -- and the memory went on
+    // folding the pair rule under it, so with the scenes gone the board draws the pair it would have shown all along.
+    expect(sceneOf(plans[7]!)).toMatchObject({ key: 'island2+forest3+mountain2', nearest: { for: 'island2+swamp1+forest3+mountain2', dropped: ['swamp'] } });
+    expect([...memories[7]!.pair!].sort()).toEqual(['G', 'U']);
+    expect(planOf(seq[7]!, { showing: memories[7]!, scenes: null })!.find((x) => x.kind === 'pair')).toMatchObject({ key: 'forest+island' });
   });
 });
 
@@ -408,8 +440,9 @@ describe('spec 1.20: the picture, the gates and the hold', () => {
     r = pairFullHold({ layout: 'L2', plan, choice: { show: cand, want: cand } }, hold, 200);
     expect(r).toMatchObject({ holding: false, draw: { plan, shown: cand } });
     hold = r.hold;
-    // A Swamp: no scene, the pair's cell wanted and not loaded, its warm panorama ready -- the scene is held, not the panorama.
-    const after = planOf([...STATE_A, slot('swamp', 3, 1)], { showing: pickFromSlots(STATE_A) })!;
+    // The plan moves on to the pair (a Swamp, planned with no scenes: since spec 1.21 only a half whose every scene
+    // picture failed gets here), its cell wanted and not loaded, its warm panorama ready -- the scene is held, not the panorama.
+    const after = planOf([...STATE_A, slot('swamp', 3, 1)], { showing: pickFromSlots(STATE_A), scenes: null })!;
     const cands = planCandidates(after, 5, false)!;
     const warm = cands[cands.length - 1]!;
     expect(cands[0]).not.toBe(warm);
@@ -444,25 +477,28 @@ describe('spec 1.20: the caption and the storyboard', () => {
     expect(SHAPES.phone.narrow).toBe(true);
   });
 
-  it('walks every state of 0–3 lands a colour (and a dual) with the sample scenes: every colour on screen, honest captions, and every state with no scene drawn as without scenes', { timeout: 120_000 }, () => {
-    let scenesDrawn = 0;
+  it('walks every state of 0–3 lands a colour (and a dual) with the sample scenes: every colour on screen or named not painted yet, honest captions, every state of two or more colours a scene (spec 1.21), every state of one drawn as without scenes', { timeout: 120_000 }, () => {
+    let exact = 0;
     for (const { state } of enumerateStates({ max: 3, duals: true, dualMax: 2 }))
       for (const c of combos) {
         const h = storyboardHalf(state, c.shape, c.pairfull, PACKS);
-        expect(h.invisible, JSON.stringify(state)).toEqual([]);
+        expect(h.invisible.filter((x) => x.reason !== 'not-painted'), JSON.stringify(state)).toEqual([]);
+        const notPainted = h.invisible.map((x) => x.colour);
         if (h.caption) {
-          expect(h.captionNames.filter((x) => !h.visible.includes(x)), h.caption).toEqual([]);
+          expect(h.captionNames.filter((x) => !h.visible.includes(x) && !notPainted.includes(x)), h.caption).toEqual([]);
           expect(h.visible.filter((x) => !h.captionNames.includes(x)), h.caption).toEqual([]);
         }
-        if (h.drawn.some((d) => d.kind === 'scene')) {
-          scenesDrawn++;
+        const scene = h.drawn.find((d) => d.kind === 'scene');
+        if (h.colours.length >= 2) {
+          expect(h.drawn.map((d) => d.kind), JSON.stringify(state)).toEqual(['scene']);
+          if (!scene!.what.includes(' for ')) exact++;
           continue;
         }
         const without = storyboardHalf(state, c.shape, c.pairfull, NO_SCENES);
         expect(h).toEqual(without);
       }
     // Each sample state is reached with max 3 in every order walked, at four combos; the A state also with a dual.
-    expect(scenesDrawn).toBeGreaterThanOrEqual(8);
+    expect(exact).toBeGreaterThanOrEqual(8);
   });
 
   it('warms each half’s scene and those one land away, at the shape it draws', () => {
@@ -510,5 +546,122 @@ describe('the scenes-v1.4 tag (2026-11-08)', () => {
     const big = await fetchScenes(FORGECOACH_SCENES_URL, { fetch: serve(' '.repeat(MAX_SCENES_MANIFEST_BYTES + 1)) });
     expect(big.scenes).toBeNull();
     expect(big.errors).toEqual(['The scenes manifest is over 4 MB.']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec 1.21, the nearest scene (2026-11-08)
+
+describe('spec 1.21: the nearest scene on scenes-v1.4', () => {
+  const V14 = validateScenes(json('scenes-v1.4.scenes.json'), `${FORGECOACH_SCENES_URL}scenes.json`).scenes!;
+  const lands = (key: string) => key.split('+').map((k) => ({ biome: k.replace(/\d$/, '') as Biome, stage: Number(k.slice(-1)) }));
+  const near = (key: string, scenes: ScenesPack = V14) => nearestScene(scenes, lands(key), PACK.biomes);
+  // the state asked for, the key drawn, the colours dropped (in the order dropped), the colours clamped (biome:from>to), mono
+  const TABLE: [string, string, string[], string[], boolean][] = [
+    // The owner's screenshot (2026-11-08): one of each, no scene -- the same colours, the mountain one stage up (the
+    // three candidates one stage away are tied; the heavier colours, island then swamp, keep their stage).
+    ['island1+swamp1+mountain1', 'island1+swamp1+mountain2', [], ['mountain:1>2'], false],
+    // Two colours: no pair has a scene at v1.4, so the lighter is dropped (a tie: the later in the geography) and the
+    // heavier's own picture is drawn alone. A pair scene painted (v1.5) resolves to itself: below.
+    ['island6+swamp6', 'island6', ['swamp'], [], true],
+    ['island1+swamp1', 'island1', ['swamp'], [], true],
+    ['swamp3+forest3', 'swamp3', ['forest'], [], true],
+    ['forest4+mountain2', 'forest4', ['mountain'], [], true],
+    ['island1+mountain5', 'mountain5', ['island'], [], true],
+    // Three colours with a scene of their own: exact.
+    ['island1+swamp1+plains1', 'island1+swamp1+plains1', [], [], false],
+    ['island2+forest3+mountain2', 'island2+forest3+mountain2', [], [], false],
+    ['island6+plains1+mountain1', 'island6+plains1+mountain1', [], [], false],
+    ['island3+swamp2+mountain6', 'island3+swamp2+mountain6', [], [], false],
+    // Three colours, no scene: the nearest stages -- the smallest largest move of one colour first (the owner's smoother
+    // rule), then the smallest total. At an even tie the lighter of the tied colours moves, and down rather than up.
+    ['island1+plains1+mountain1', 'island1+plains1+mountain2', [], ['mountain:1>2'], false],
+    ['island2+swamp2+mountain2', 'island2+swamp2+mountain1', [], ['mountain:2>1'], false],
+    ['island3+swamp3+mountain3', 'island3+swamp3+mountain2', [], ['mountain:3>2'], false],
+    ['island4+swamp4+mountain4', 'island4+swamp4+mountain3', [], ['mountain:4>3'], false],
+    ['island1+swamp6+mountain6', 'island1+swamp6+mountain5', [], ['mountain:6>5'], false],
+    // Smoother: no colour moves more than three stages (the total-distance rule drew island6+swamp5+mountain1, the
+    // mountain five stages short).
+    ['island6+swamp6+mountain6', 'island6+swamp3+mountain3', [], ['swamp:6>3', 'mountain:6>3'], false],
+    ['plains6+forest6+mountain6', 'plains6+forest3+mountain3', [], ['forest:6>3', 'mountain:6>3'], false],
+    // Four colours: no four-colour scene, so the lightest is dropped, then step 1 on the three left.
+    ['island1+swamp1+plains1+mountain1', 'island1+swamp1+plains1', ['mountain'], [], false],
+    ['island2+swamp2+forest3+mountain2', 'island2+swamp2+forest3', ['mountain'], [], false],
+    ['swamp1+plains1+forest1+mountain1', 'swamp1+plains1+forest2', ['mountain'], ['forest:1>2'], false],
+    ['island2+swamp1+forest3+mountain2', 'island2+forest3+mountain2', ['swamp'], [], false],
+    // Five colours: the two lightest dropped.
+    ['island1+swamp1+plains1+forest1+mountain1', 'island1+swamp1+plains1', ['mountain', 'forest'], [], false],
+    ['island2+swamp2+plains2+forest3+mountain3', 'island2+forest3+mountain3', ['plains', 'swamp'], [], false],
+    ['island6+swamp6+plains6+forest6+mountain6', 'island6+swamp3+plains3', ['mountain', 'forest'], ['swamp:6>3', 'plains:6>3'], false],
+  ];
+  for (const [asked, drawn, dropped, clamped, mono] of TABLE)
+    it(`${asked} → ${drawn}`, () => {
+      const n = near(asked)!;
+      expect(n.for).toBe(asked);
+      expect(n.key).toBe(drawn);
+      expect(n.scene.key).toBe(drawn);
+      expect(n.dropped).toEqual(dropped);
+      expect(n.clamped.map((c) => `${c.biome}:${c.from}>${c.to}`)).toEqual(clamped);
+      expect(n.mono).toBe(mono);
+      // A painted scene is the manifest's own; the pack's own picture is the colour's 1.5 half at its stage.
+      if (!mono) expect(n.scene).toBe(V14.scenes[drawn]);
+      else expect(n.scene.half.src).toBe(PACK.biomes[n.scene.lands[0]!.biome]!.stages[n.scene.lands[0]!.stage - 1]!.half!.src);
+      // Deterministic: the same answer from the lands in any order.
+      expect(nearestScene(V14, [...lands(asked)].reverse(), PACK.biomes)!.key).toBe(drawn);
+    });
+
+  it('the owner’s caption: the state, the painting drawn and why', () => {
+    expect(nearestWords(near('island1+swamp1+mountain1')!)).toBe('Scene · island 1, swamp 1, mountain 1 — nearest painting: island 1, swamp 1, mountain 2 (mountain not yet painted at this stage)');
+    expect(nearestWords(near('island6+swamp6')!)).toBe('Scene · island 6, swamp 6 — nearest painting: island 6 alone (swamp not yet painted in)');
+    expect(nearestWords(near('swamp1+plains1+forest1+mountain1')!)).toBe('Scene · swamp 1, plains 1, forest 1, mountain 1 — nearest painting: swamp 1, plains 1, forest 2 (mountain not yet painted in; forest not yet painted at this stage)');
+    expect(nearestWords(near('island6+swamp6+mountain6')!)).toBe('Scene · island 6, swamp 6, mountain 6 — nearest painting: island 6, swamp 3, mountain 3 (swamp and mountain not yet painted at these stages)');
+  });
+
+  it('one colour is not a scene state: no nearest, today’s single-colour picture (unless a scene of it is painted)', () => {
+    expect(near('island1')).toBeNull();
+    expect(near('forest6')).toBeNull();
+    expect(nearestScene(V14, [], PACK.biomes)).toBeNull();
+    expect(nearestScene(null, lands('island1+swamp1+mountain1'), PACK.biomes)).toBeNull();
+  });
+
+  it('a pair scene painted (scenes-v1.5) resolves a pair to itself; a three-colour state still prefers its own colour set', () => {
+    const half = SAMPLE.scenes['island2+forest3+mountain2'].half;
+    const raw = JSON.parse(JSON.stringify(json('scenes-v1.4.scenes.json')));
+    raw.scenes['island6+swamp6'] = { lands: [{ biome: 'island', stage: 6 }, { biome: 'swamp', stage: 6 }], half };
+    raw.scenes['island5+swamp6'] = { lands: [{ biome: 'island', stage: 5 }, { biome: 'swamp', stage: 6 }], half };
+    const v15 = validateScenes(raw, MANIFEST).scenes!;
+    expect(near('island6+swamp6', v15)).toMatchObject({ key: 'island6+swamp6', dropped: [], clamped: [], mono: false });
+    // A pair state with no scene of its own, beside a painted pair of the same colours: the nearest pair, not one colour.
+    expect(near('island4+swamp6', v15)).toMatchObject({ key: 'island5+swamp6', dropped: [], clamped: [{ biome: 'island', from: 4, to: 5 }], mono: false });
+    expect(near('island1+swamp1+mountain1', v15)!.key).toBe('island1+swamp1+mountain2');
+  });
+
+  it('without the pack’s biomes, a state the rule takes down to one colour has no nearest (the board then keeps today’s plan)', () => {
+    expect(nearestScene(V14, lands('island6+swamp6'), null)).toBeNull();
+    expect(nearestScene(V14, lands('island1+swamp1+mountain1'), null)!.key).toBe('island1+swamp1+mountain2');
+  });
+
+  it('the tie rules, on a hand-made file: the heavier colours keep their stage, then down rather than up, then the key', () => {
+    const half = SAMPLE.scenes['island2+forest3+mountain2'].half;
+    const make = (...keys: string[]) => validateScenes({ schema: 1, scenes: Object.fromEntries(keys.map((k) => [k, { lands: lands(k), half }])) }, MANIFEST).scenes!;
+    // island 3, forest 3: both one stage away; the forest is the lighter at equal stages (later in the geography), so it moves.
+    expect(nearestScene(make('island2+forest3+mountain1', 'island3+forest2+mountain1'), lands('island3+forest3+mountain1'))!.key).toBe('island3+forest2+mountain1');
+    // The heavier colour by stage keeps it, whatever the geography.
+    expect(nearestScene(make('island1+forest4+mountain1', 'island2+forest3+mountain1'), lands('island2+forest4+mountain1'))!.key).toBe('island1+forest4+mountain1');
+    // One colour one stage either way: down.
+    expect(nearestScene(make('island2+forest4+mountain1', 'island4+forest4+mountain1'), lands('island3+forest4+mountain1'))!.key).toBe('island2+forest4+mountain1');
+    // The smoother rule first: the smallest largest move of one colour, even at a greater total (4 4 4 moves 2, 2 and 2;
+    // 6 6 2 moves the mountain 4).
+    expect(nearestScene(make('island6+forest6+mountain2', 'island4+forest4+mountain4'), lands('island6+forest6+mountain6'))!.key).toBe('island4+forest4+mountain4');
+    // At one largest move, the smaller total: a scene two stages from the heavier colour loses to one a stage from the lighter.
+    expect(nearestScene(make('island1+forest1+mountain1', 'island3+forest3+mountain2'), lands('island3+forest3+mountain1'))!.key).toBe('island3+forest3+mountain2');
+  });
+
+  it('warms the scene a state with none would draw (its nearest), and the pack’s own picture of one colour', () => {
+    const owner = slotsOf(['mountain', 1], ['island', 1], ['swamp', 1]);
+    const srcs = scenePictures(V14, [owner], { phone: false, thresholds: T, biomes: PACK.biomes }).map((x) => x.src);
+    expect(srcs[0]).toBe(V14.scenes['island1+swamp1+mountain2']!.half.src);
+    const pair = scenePictures(V14, [slotsOf(['island', 6], ['swamp', 6])], { phone: true, thresholds: T, biomes: PACK.biomes }).map((x) => x.src);
+    expect(pair[0]).toBe(PACK.biomes.island!.stages[5]!.half!.phone!.src);
   });
 });

@@ -105,8 +105,16 @@
  *   {@link PairFullScene}: the whole half, at a desktop and on a phone alike,
  *   drawn as painted -- no pair, no element, no extras, no cut-out, no panel,
  *   no band. With or without the whole-half flag (a caller without it passes
- *   no pairs, and only a scene can come back). No scene: everything above,
- *   unchanged.
+ *   no pairs, and only a scene can come back).
+ * - Spec 1.21, the nearest scene (scenes.ts `nearestScene`): a half of two or
+ *   more colours with no scene of its own draws the NEAREST painted scene,
+ *   alone, as a scene state draws it -- the same colours at the nearest
+ *   stages, else with the lightest colour dropped, down to one colour and the
+ *   pack's own picture of it (`opts.biomes`) -- its {@link PairFullScene}
+ *   carrying `nearest` for the caption and the DOM. So with a scenes pack
+ *   loaded, a half of two or more colours never reaches the pair logic below
+ *   (unless every picture it could draw failed); a half of one colour does,
+ *   as before. No scenes pack: everything above, unchanged.
  *
  * Pure and DOM-free; the drawing is ui/ambience/SceneryStrip.tsx's
  * `PairFullPanel` (and `ScenePanel` for a scene).
@@ -116,7 +124,7 @@ import { cropAxis, cropAxisCss, halfArtOf, horizonOf, type FrameRect, type HalfA
 import type { PackHalf, PieceColour } from './manifest.ts';
 import { geographyOrder, gridCellKey, pairElementAt, pairFor, pairGridGivesWay, pairGridPaintedAt, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, pairWords, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
-import { sceneFor, sceneWords, type PackScene, type ScenesPack } from './scenes.ts';
+import { heaviestMono, nearestScene, nearestWords, sceneLands, sceneWords, type MonoBiomes, type NearestScene, type PackScene, type ScenesPack } from './scenes.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
 export const PAIR_FULL_SPLIT: readonly [number, number] = [0.2, 0.8];
@@ -217,10 +225,15 @@ export interface PairFullSlot {
  */
 export interface PairFullScene {
   kind: 'scene';
-  /** scenes.ts `sceneKeyOf`: `island2+forest3+mountain2`. */
+  /** scenes.ts `sceneKeyOf`: `island2+forest3+mountain2`. The key DRAWN (spec 1.21: the nearest scene's, when it stands in). */
   key: string;
   scene: PackScene;
   share: 1;
+  /**
+   * Spec 1.21: present when the scene stands in for a state with no scene of its own -- the state asked for (`for`),
+   * the colours dropped and the colours clamped, and whether it is the pack's own picture of one colour (`mono`).
+   */
+  nearest?: Pick<NearestScene, 'for' | 'dropped' | 'clamped' | 'mono' | 'failed'>;
 }
 
 export type PairFullItem = PairFullPair | PairFullSlot | PairFullScene;
@@ -321,8 +334,14 @@ export function pairFullPlan(
      * it draws that colour's cut-out instead -- only one of these.
      */
     phoneElements?: ReadonlySet<Biome> | null;
-    /** Spec 1.20: the scenes pack (scenes.ts); a scene for the half's exact state is the whole plan. */
+    /** Spec 1.20: the scenes pack (scenes.ts); a scene for the half's exact state is the whole plan (spec 1.21: or its nearest). */
     scenes?: ScenesPack | null;
+    /**
+     * Spec 1.21: the scenery pack's biomes, for the nearest scene's last step (one colour left: the pack's own 1.5
+     * picture of it, drawn as a scene) and the stand-in for a painting that failed. Absent: that step draws nothing
+     * and the half goes on to today's plan.
+     */
+    biomes?: MonoBiomes | null;
     /**
      * Spec 1.20: has this picture failed to load (pack.ts `pictureStatus(src) === 'failed'`)? When the scene's chosen
      * picture at this shape ({@link sceneCandidates}: `narrow`, `halfAspect`) has, the half is planned as if there
@@ -339,12 +358,21 @@ export function pairFullPlan(
   // memory keeps folding the pair rule over every state as if no scene were drawn, and when the scene ends (a land
   // with no scene for its state, e.g. a fourth colour) the pair rule continues from its own last pick -- the pair it
   // would have been showing all along -- rather than from whatever the painting happened to contain.
-  const scene = sceneFor(opts.scenes, opts.slots ?? layout.map((l) => l.slot), opts.thresholds ?? DEFAULT_STAGE_THRESHOLDS);
-  if (scene) {
-    const item: PairFullScene = { kind: 'scene', key: scene.key, scene, share: 1 };
-    // The painting failed at this shape: the half goes back to today's plan, with no scenes (the finding of the review).
-    const chosen = sceneCandidates(item, pairFullPanelAspect(opts.halfAspect ?? null, 1), opts.narrow ?? false)[0];
-    if (!opts.sceneFailed || !chosen || !opts.sceneFailed(chosen.art.picture!.src)) return [item];
+  // Spec 1.21: no scene of its own, the nearest painted scene -- the same colours at the nearest stages, else fewer
+  // colours, down to the pack's own picture of one -- drawn exactly as a scene; never the seam and its cut-outs.
+  const lands = opts.scenes ? sceneLands(opts.slots ?? layout.map((l) => l.slot), opts.thresholds ?? DEFAULT_STAGE_THRESHOLDS) : [];
+  const near = nearestScene(opts.scenes, lands, opts.biomes ?? null);
+  if (near) {
+    const failed = (item: PairFullScene) => {
+      const chosen = sceneCandidates(item, pairFullPanelAspect(opts.halfAspect ?? null, 1), opts.narrow ?? false)[0];
+      return !!opts.sceneFailed && !!chosen && opts.sceneFailed(chosen.art.picture!.src);
+    };
+    const item = sceneItem(near);
+    if (!failed(item)) return [item];
+    // The painting failed at this shape (the finding of the 1.20 review): spec 1.21, the heaviest colour's own picture
+    // alone; a half of one colour, or that picture failing too, goes back to today's plan, with no scenes.
+    const mono = near.mono ? null : heaviestMono(lands, opts.biomes ?? null, near.key);
+    if (mono && !failed(sceneItem(mono))) return [sceneItem(mono)];
     return pairFullPlan(layout, pairs, { ...opts, scenes: null });
   }
   // Spec 1.19 a: a cut-out is drawn at this shape when the pack has one -- on a phone-width screen its phone piece only.
@@ -695,6 +723,12 @@ export function planApart(plan: readonly PairFullItem[] | null | undefined): boo
   return !!plan?.some((x) => x.kind === 'pair' && !!x.apart);
 }
 
+/** Spec 1.20 / 1.21: the plan's scene item for a scene drawn, exact or nearest (with what it stands in for). */
+function sceneItem(n: NearestScene): PairFullScene {
+  const exact = n.key === n.for;
+  return { kind: 'scene', key: n.key, scene: n.scene, share: 1, ...(exact ? {} : { nearest: { for: n.for, dropped: n.dropped, clamped: n.clamped, mono: n.mono, ...(n.failed ? { failed: n.failed } : {}) } }) };
+}
+
 /** A pair panel's shape from the half's (rounded as SceneryStrip measures it: to 0.05), or null when unknown. */
 export function pairFullPanelAspect(halfAspect: number | null, share: number): number | null {
   if (!(halfAspect && halfAspect > 0 && share > 0)) return null;
@@ -895,8 +929,13 @@ export function pairFullCaption(items: readonly PairFullItem[] | null, lands: Re
   return `${pairWords(p.left, p.right, p.pair, lands)}, ${third ? `${pct(p.share)} of the half` : 'whole half'}: ${p.left} ${pct(p.split)} | ${p.right} ${pct(1 - p.split)}, ${where}${third ? `; ${third.biome} ${pct(third.share)} panel (placeholder)` : ''}${elementCaption(p)}`;
 }
 
-/** Spec 1.20: a scene's caption, its lands in the geography's order. */
-export function sceneCaption(s: Pick<PairFullScene, 'scene'>): string {
+/**
+ * Spec 1.20: a scene's caption, its lands in the geography's order. Spec 1.21: a scene standing in for a state with
+ * none names the state, the scene drawn and what is missing -- "Scene · island 1, swamp 1, mountain 1 — nearest
+ * painting: island 1, swamp 1, mountain 2 (mountain not yet painted at this stage)".
+ */
+export function sceneCaption(s: Pick<PairFullScene, 'scene' | 'nearest'>): string {
+  if (s.nearest) return nearestWords({ scene: s.scene, ...s.nearest });
   return `Scene · ${sceneWords(s.scene)} — one painting`;
 }
 

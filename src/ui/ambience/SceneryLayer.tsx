@@ -206,16 +206,19 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     if (!load?.pack) return;
     const phone = window.innerWidth < 700;
     for (const w of growthPictures(load.pack, scenery.players.flatMap((p) => p.slots), { half: fill, phone })) warmPicture(w);
+    // Spec 1.21: with scenes loaded a half of two or more colours always draws a scene (its own, or the nearest), so
+    // the bridges, pair bands, seam cells and panoramas are never drawn and nothing of them is warmed.
+    const pairsDrawn = fill && !load.pack.scenes;
     // Spec 1.8: a side's bridge warms with its split's pictures (the half board only).
-    if (fill) for (const w of bridgePictures(load.pack, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
+    if (pairsDrawn) for (const w of bridgePictures(load.pack, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
     // Spec 1.9: and its pair band's pictures (the stage its lower neighbour maps to, and the next); with spec 1.15 on
     // the whole-half panoramas and 1.16's painted-in elements too (review fault 4: the panorama was never warmed).
     // Spec 1.17: a phone-width screen draws no desktop-only seam cell, so none is fetched there (1.18: a cell with a phone
     // picture is, at that shape).
     const full = pairFull ? { thresholds: load.pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
-    if (fill) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone, full })) warmPicture(w);
+    if (pairsDrawn) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone, full })) warmPicture(w);
     // Spec 1.20: each half's scene and the scenes one land away, at the shape a scene draws (its phone picture on a phone).
-    if (fill) for (const w of scenePictures(load.pack.scenes, scenery.players.map((p) => p.slots), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: load.pack.stageThresholds })) warmPicture(w);
+    if (fill) for (const w of scenePictures(load.pack.scenes, scenery.players.map((p) => p.slots), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: load.pack.stageThresholds, biomes: load.pack.biomes })) warmPicture(w);
   }, [scenery, load?.pack, fill, pairFull]);
 
   // Spec 1.14: the pieces that can appear at once (fronts, veils, landmarks, the empty table) warm in ScenePieces, at the

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1, 1.19 and 1.20 in draft)
+# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1, 1.19, 1.20 and 1.21 in draft)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -36,8 +36,9 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.17 (draft) | **The seam grid** (§2, *The seam grid*), behind `?pairfull=1`, whose default pairs are pairs-v8 (1.18, since 2026-11-06: the grid painted in oil, with phone cells and nothing painted in; pairs-v7.1 from 2026-11-02; pairs-v6, a grid on all ten pairs, desktop only, from 2026-10-27; the board without the flag keeps pairs-v3.1), for Justin's review on the live board: a pair in `pairs.json` may carry a **`grid`** of whole-half seam pictures keyed **`"<i>x<j>"`** by the two halves' own stages -- `i` the stage of the pair's colour earlier in the one geography (Island → Swamp → Plains → Forest → Mountain: the picture's left half), `j` the later one's -- each half its colour's mono picture at that colour's own stage (SYSTEM.md C, Option A), only the seam painted. Painted for \|i − j\| ≤ 1; further apart, the lighter half is raised to one stage below the heavier. A missing cell falls back to the pair's `stages`; a third colour on a grid picture draws nothing in the draft. Every 1.0–1.16.1 pack and pairs manifest is read unchanged. |
 | 1.18 (draft) | **Phone cells and painted-in cells** (§2, *Phone cells and painted-in cells*), behind `?pairfull=1`, a draft amendment to 1.17 for the two painter lanes of 31 October 2026: a grid cell may carry a **`phone`** picture (a stage panorama's `phone` shape, 1638 × 1280) and painted-in **`elements`** (a stage's 1.16.1 sided shape, the sides in the **cell's** geography order). On a phone-shaped board a grid pair draws the cell the desktop would (the same pick) when that cell has a `phone`, and gives way to the `stages` exactly as 1.17 when it has not; a third colour on a cell draws the cell's painted-in picture on the heavier half when it has one, and nothing when it has not (1.17's rule). Warming adds the phone cells by 1.17's rules and the shown cell's painted-in pictures only. Every 1.0–1.17 pack and pairs manifest (pairs-v6 included) is read and drawn unchanged. ForgeCoach's **pairs-v7.1** (2026-11-02; pairs-v7 was the same tree, mislabelled, superseded the same day) is the first pack written to it, every cell with both, and was the flag's default until **pairs-v8** (2026-11-06: phone cells and no painted-in cells); its manifest is about 0.5 MB, so a pairs manifest may now be up to **1 MB** (256 KB until 1.18; a pack's `scenery.json` stays 256 KB). |
 | 1.18.1 (draft) | **A phone's third colour on a painted cell** (§2, *Phone cells and painted-in cells*, amended), reader only, no new field: on a **phone-width screen**, where the cell shown has the third colour painted in on the heavier half but that picture has **no `phone`**, the half draws the plain cell's phone picture with the third colour's **1.14 cut-out element** (its `phone` piece; an element without one draws nothing) on the heavier pair colour's ground, placed and faded exactly as on a pair without a grid, and the caption says "swamp as an element". A desktop keeps the painted picture; a painted picture with its own `phone` is drawn on a phone as 1.18 says, never the cut-out. pairs-v7.1's 660 painted pictures have no phone picture, so on a phone every painted cell takes the cut-out. Every 1.0–1.18 pack and pairs manifest is read unchanged. |
-| 1.19 (draft) | **Every colour, the base pair, no clamp** (§2, *Every colour, the base pair, no clamp (1.19)*), the owner's four rules of 2026-11-02 after the storyboard review (pc-results `scenery/STORYBOARD.md`), reader only, no new field: **(a) every colour visible** -- the fold to three is gone: a side with four or five colours keeps the pair's picture and the third colour's painted-in picture where it exists, and draws **every further colour as its 1.14 cut-out**, stacked on the pair's grounds (the heavier pair colour's holds two, side by side, the lighter's the rest), each faded by its share and never on the seam core, a phone drawing the phone pieces (1.18.1), the caption naming them; a third colour with nothing painted in draws its cut-out, else its 1.15 panel, never nothing; **(b) the pair is the base** -- the pair showing stays while both its colours are among the three heaviest, and changes only when one leaves the top three; **(c) no clamp** -- a seam grid with no cell for the two colours' own stages draws each colour's own mono picture side by side at the split, joined by the plain 1.10 seam, "island s1 \| forest s5, no seam cell", and a cell painted later is drawn with no code change; **(d) pack-v9.2 is ForgeCoach's default pack**, which turns on its batch-3 pieces -- five elements with phone pieces, fronts for W/U/B/G, the won/lost veils, the empty table -- on **every** board, with `?pairfull=1` and without. Every 1.0–1.18.1 pack and pairs manifest is read unchanged. |
+| 1.19 (draft) | **Every colour, the base pair, no clamp** (§2, *Every colour, the base pair, no clamp (1.19)*), the owner's four rules of 2026-11-02 after the storyboard review (pc-results `scenery/STORYBOARD.md`), reader only, no new field: **(a) every colour visible** -- the fold to three is gone: a side with four or five colours keeps the pair's picture and the third colour's painted-in picture where it exists, and draws **every further colour as its 1.14 cut-out**, stacked on the pair's grounds (the heavier pair colour's holds two, side by side, the lighter's the rest), each faded by its share and never on the seam core, a phone drawing the phone pieces (1.18.1), the caption naming them; a third colour with nothing painted in draws its cut-out, else its 1.15 panel, never nothing; **(b) the pair is the base** -- the pair showing stays while both its colours are among the three heaviest, and changes only when one leaves the top three; **(c) no clamp** -- a seam grid with no cell for the two colours' own stages draws each colour's own mono picture side by side at the split, joined by the plain 1.10 seam, "island s1 \| forest s5, no seam cell", and a cell painted later is drawn with no code change; **(d) pack-v9.2 is ForgeCoach's default pack**, which turns on its batch-3 pieces -- five elements with phone pieces, fronts for W/U/B/G, the won/lost veils, the empty table -- on **every** board, with `?pairfull=1` and without. Every 1.0–1.18.1 pack and pairs manifest is read unchanged. *(Amended in 1.21, 2026-11-08: with a scenes manifest loaded, a half of two or more colours draws a scene -- its own or the nearest -- so (a) holds only on a board without scenes; on one with them a colour the nearest scene leaves out is not on the half, and the caption says "not yet painted in".)* |
 | 1.20 (draft) | **Scenes** (§2, *Scenes (1.20)*): a third, optional manifest, **`scenes.json`**, fetched beside `scenery.json` from a scenes URL of its own (ForgeCoach's at `@scenes-v1`, with ForgeCoach's pack only, with `?pairfull=0` too): per exact state of a half -- its colours, each at its own stage, keyed `island2+forest3+mountain2` in the geography's order -- **one whole-half painting**, a 1.5 `half` that must carry its `phone` picture. When the half's state has a scene, the half draws that scene and nothing else -- no pair, no element, no cut-out, no band, no panel, no piece -- at a desktop and on a phone alike, never mirrored; the pair rule's memory is left alone. A state with no scene is drawn by 1.5–1.19 unchanged. Every 1.0–1.19 pack and pairs manifest is read unchanged. |
+| 1.21 (draft) | **The nearest scene** (§2, *The nearest scene (1.21)*), reader only, no new field, the owner's ruling of 2026-11-08: a half of **two or more colours** whose state has no scene of its own draws the **nearest painted scene**, alone, exactly as a scene state draws (no pair, no seam cell, no cut-out, no element, no piece): the same colours at the nearest stages (the smallest largest move of any one colour; then the least total stage distance; then the heavier colours keep their stage; then below before above), else the **lightest** colour dropped and the search repeated, down to a pair and then one colour, whose own 1.5 picture is drawn as a scene. The caption names the state, the painting drawn and what is not painted yet; the scene slot carries `data-scene-for`. With a scenes manifest loaded the 1.15–1.19 pair picture, seam and cut-outs are no longer drawn for two or more colours; they stay for a board with no scenes (a pack of your own, `?scenery=procedural`, `?scenes=off`). A half of one colour is unchanged. Every 1.0–1.20 manifest is read unchanged. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -2401,7 +2402,12 @@ unchanged; what changes is what the reader draws from them.
 **1.19 a -- Every colour visible.** The fold to three (1.10, 1.16, SYSTEM.md
 A6) is gone. A side keeps its pair's picture and its third colour as 1.15–1.18
 say -- the third painted into the picture where the picture shown has it --
-and draws **every further colour** as its 1.14 cut-out element.
+and draws **every further colour** as its 1.14 cut-out element. *(Amended in
+1.21, 2026-11-08: this holds on a board with no scenes manifest. With one
+loaded, a half of two or more colours draws a scene, its own or the nearest
+(*The nearest scene (1.21)*); a colour the nearest scene leaves out is not on
+the half -- no cut-out stands in for it -- and the caption says it is "not
+yet painted in".)*
 
 - **Which colours.** The pair (b below) and the third colour (the heaviest
   other; a tie, the one showing, then the earlier arrival) are the *kept*
@@ -2518,7 +2524,9 @@ pack-v9.2's tag stays up.
 lands a colour (three arrival orders, and the duals) through the board's
 rules at a desktop and a phone, with the flag and without: since 1.19 no
 colour with lands is hidden anywhere (its allow-list is empty, and the test
-that every colour is on screen is a plain one), and from a state picked with
+that every colour is on screen is a plain one) -- on a board **without
+scenes**, which is what that walk loads (1.21's walk on scenes-v1.4 is in
+*The nearest scene (1.21)*) --, and from a state picked with
 nothing showing no single land flips the pair picture (15,745 of 206,555
 steps did under the flag before). `src/ambience/scenery-1.19.test.ts` plays
 the storyboard's sequences on the real packs; `e2e/ambience.e2e.mjs` plays
@@ -2533,7 +2541,10 @@ whole instead -- one picture of that very state, every colour on it at its
 own stage, composed as one place -- and the reader draws it as painted.
 Scenes are made state by state, so the rule is exact: a half whose state has
 a scene draws it; any other half is drawn by 1.5–1.19, unchanged. Nothing
-in a scene is cut out, stacked or panned.
+in a scene is cut out, stacked or panned. *(Amended in 1.21, 2026-11-08: a
+half of two or more colours with no scene of its own draws the nearest
+painted scene instead -- see *The nearest scene (1.21)*; only a half of one
+colour, and a board with no scenes, are drawn by 1.5–1.19.)*
 
 **The key.** A half's state is the set of its live colours (a land weight
 above 0), each with its stage on the pack's own `stageThresholds` -- the
@@ -2627,7 +2638,9 @@ half's key, the half is that one painting, across the whole half:
   scene) for at most 8 s, then its panels -- never blank; a scene on screen
   is held while the next picture loads when the lands move on. **A
   painting that fails** -- the picture this shape draws, desktop or phone --
-  gives the half back to today's plan exactly, as if there were no scenes:
+  gives the half back to today's plan exactly, as if there were no scenes
+  *(amended in 1.21: for two or more colours, to the heaviest colour's own
+  picture first)*:
   with the whole-half flag the pair picture, its cell and its cut-outs, and
   the caption theirs; without it the 1.10 row -- never the bare panels under
   a "Scene" caption. A half warms its own scene and every scene one basic
@@ -2673,6 +2686,161 @@ pictures are tagged.
    (`innerWidth` ≤ 600: SceneryLayer and `#ambience`), so a phone-shaped
    panel on a wide screen warms the desktop painting and loads its phone one
    cold.
+
+### The nearest scene (1.21, draft)
+
+**No seam and no cut-out where a scene can stand.** On 8 November 2026 the
+owner looked at a half of Island 1, Swamp 1 and Mountain 1 on the live board:
+no scene is painted for that state, so 1.20 handed it back to 1.15–1.19 --
+"Pair band · island + swamp, whole half … seam 1x1", two cut-out cells
+stitched, with the mountain pasted on as a cartoon volcano. He judged it
+garbage, and every state without a scene of its own falls back the same way:
+at scenes-v1.4 (1563 scenes, every one of three colours) about 600
+three-colour states, every two-colour state and every four- and five-colour
+state. The painting queue is filling the pairs and the three-colour gaps, but
+four and five colours will stay unpainted for a long time, and the board must
+not draw a seam with elements again. So a half with no scene of its own draws
+the **nearest painted scene**, alone, and says so.
+
+**When.** A half of **two or more** live colours (1.20's key) whose key is not
+in the scenes manifest, with a scenes manifest loaded. A half of one colour
+keeps today's single-colour picture -- it is not a scene state -- unless a
+scene of that very state is painted (1.20). A half with a land off the five
+(1.20: no key) is drawn as before.
+
+**The rule**, deterministic, in this order, on the key's colours and stages
+(`scenes.ts` `nearestScene`):
+
+1. **The same colours, the nearest stages.** Among the scenes of exactly the
+   same colour set, the one whose **largest move** of any one colour --
+   max over the colours of |painted stage − the half's stage| -- is the
+   smallest (the owner's smoother rule of 2026-11-08: no colour is drawn far
+   from its lands to keep the others exact); a tie goes to the least **total
+   stage distance**, the sum of those moves. A tie still goes to the
+   scene where the **heavier colours keep their stage**: the distances are
+   compared colour by colour, the heaviest first (the higher stage; at one
+   stage, the colour earlier in the geography, Island → Swamp → Plains →
+   Forest → Mountain). A tie still goes to the scene painted **below** rather
+   than above (the signed differences, heaviest first), then to the key in
+   lexical order.
+2. **Else, fewer colours.** If that colour set has **no scene at all** (a
+   pair before the pair scenes are painted, every four- and five-colour set),
+   the **lightest** colour is dropped -- the lowest stage; at one stage, the
+   later in the geography -- and step 1 runs on the colours left, again down
+   to a pair.
+3. **One colour left:** its own scene at its own stage if one is painted, else
+   the pack's own 1.5 `half` picture of that colour at its stage (its `phone`
+   picture on a phone), drawn as a scene is.
+
+What is drawn is the nearest scene **exactly as a scene state draws it**
+(1.20): one painting across the whole half, at a desktop and on a phone, never
+mirrored or panned; no pair picture, seam cell, band, bridge, panel, 1.14
+element, 1.19 a cut-out or piece; the load gate and the hold as 1.20's (the
+scene on screen is held while the next one loads); no move of the pair rule's
+memory. Its colours are the ones the painting names: a colour dropped by step
+2 is not on the half, and the caption says it is not painted yet.
+
+Worked through scenes-v1.4 (`scenes.test.ts`, *the nearest scene on
+scenes-v1.4*: a table of 24 states):
+
+| The half | Drawn | Why |
+| --- | --- | --- |
+| island 1, swamp 1, mountain 1 (the owner's) | `island1+swamp1+mountain2` | No scene; three one stage away, tied; island and swamp, the heavier at stage 1, keep theirs. |
+| island 6, swamp 6 | `island6` (the pack's island stage 6) | No pair has a scene at v1.4; the swamp, tied and later in the geography, is dropped. With a pair scene painted (v1.5) it is `island6+swamp6` itself. |
+| island 2, swamp 2, mountain 2 | `island2+swamp2+mountain1` | One stage away, down before up. |
+| island 6, swamp 6, mountain 6 | `island6+swamp3+mountain3` | No colour moves more than 3. The total alone chose `island6+swamp5+mountain1` (a total of 6 too), the mountain 5 stages short. |
+| island 1, swamp 1, plains 1, mountain 1 | `island1+swamp1+plains1` | No four-colour scene; the mountain is dropped. |
+| all five at stage 1 | `island1+swamp1+plains1` | The mountain, then the forest, dropped. |
+| island 2, swamp 2, plains 2, forest 3, mountain 3 | `island2+forest3+mountain3` | The plains, then the swamp, dropped. |
+
+**Smoother, measured.** Of scenes-v1.4's 2,160 three-colour states, 597 have
+no scene of their own; the largest move rule changes the scene drawn for 320
+of them. The largest single-colour move over all 597 is at most **3** stages
+(9 states at 3), where the total alone reached 5 (70 states at 4 or 5). And
+land by land -- every state of two to five colours at stages 1–6 (16,776),
+every land that can be played on it (a colour one stage up, or a new colour
+at stage 1: 71,880 steps), the scene drawn before and after, counting a step
+where a colour other than the one played is drawn at a lower stage after it
+than before: the total-distance rule shrank another colour on 16,538 steps
+(from 8,660 states), 29,609 stages in all, by up to 4 stages and by 3 or more
+on 4,112 steps; the smoother rule on 21,154 steps (from 10,828 states),
+24,726 stages, by at most 3 and by 3 on 18 steps. So a played land still
+draws another colour lower on many steps -- more often, by less -- and no
+tie-break among v1.4's paintings removes it: the paintings available step
+unevenly. A colour leaving the painting (a fourth colour arriving, or a pair
+changing which colour it keeps) is counted apart, 10,868 steps under both
+rules.
+
+**A painting that fails** (1.20's rule, amended): when the picture this
+shape would draw of the nearest scene -- or of the state's own -- has failed
+to load, a half of two or more colours draws the **heaviest colour's own
+picture** alone, as a scene (the colour step 2 would keep last); only if that
+fails too is the half given back to today's plan, the 1.15–1.19 drawing. A
+half of one colour whose own scene failed goes back to today's picture, as in
+1.20. The caption then says the picture failed, not that colours are
+unpainted: "Scene · island 2, forest 3, mountain 2 — nearest painting:
+forest 3 alone (picture failed to load: island 2, forest 3, mountain 2)", and
+the slot carries `data-scene-failed` (the key whose picture failed).
+
+**The seam is not drawn with scenes present.** With a scenes manifest loaded,
+a half of two or more colours always draws a scene, so the pair picture, the
+seam grid, the 1.19 c pair apart, the bands and every cut-out element of
+1.9–1.19 are no longer drawn for it. That code stays, and draws exactly as
+1.5–1.19 say, for a board with **no scenes manifest**: a pack of your own,
+`?scenery=procedural`, a scenes file that does not load, and the page
+parameter **`?scenes=off`** (or `0`; on the page or in `#ambience`'s query,
+never stored and not a setting), which loads no scenes so those rules can be
+checked on `#ambience` and in the e2e.
+
+**Warming.** A half warms the scene each state one basic land away would draw
+-- its own or its nearest, the pack's own picture included -- at the shape it
+draws (`scenePictures`). With scenes loaded it warms **no** pair picture,
+seam cell, panorama or bridge (`pairPictures`, `bridgePictures`: none is
+drawn); the pairs manifest itself still loads, for the fallback.
+
+**The walk on scenes-v1.4.** `storyboard.test.ts` walks every state of
+0–6 lands a colour (three arrival orders, and a dual on states of at most 4
+a colour, each counted as the walk counts it) at both shapes, with the flag
+and without, with the scenes-v1.4 file. No colour is off screen for any
+reason but `not-painted`, every half of two or more colours is one scene,
+and the same at every combo:
+
+| Colours on the half | States walked | Drawn by its own scene | With a colour not painted | Colours not painted |
+| --- | --- | --- | --- | --- |
+| 1 | 30 | -- (today's picture) | 0 | 0 |
+| 2 | 970 | 0 | 970 | 970 (the lighter, every one: no pair scene yet) |
+| 3 | 8,720 | 6,974 | 0 | 0 (1,746 drawn at the nearest stages) |
+| 4 | 30,735 | 0 | 30,735 | 30,735 |
+| 5 | 39,070 | 0 | 39,070 | 78,140 |
+
+So at v1.4 every pair shows one colour alone and every four- or five-colour
+half one or two colours short, until the queue paints those sets; three
+colours are never short a colour. The 1.19 walk's "nothing hidden" above is
+the board without scenes.
+
+**The caption** (`#ambience`) names the state, the painting drawn and why,
+the dropped colours before the clamped: "Scene · island 1, swamp 1,
+mountain 1 — nearest painting: island 1, swamp 1, mountain 2 (mountain not
+yet painted at this stage)"; "Scene · island 6, swamp 6 — nearest painting:
+island 6 alone (swamp not yet painted in)"; "Scene · swamp 1, plains 1,
+forest 1, mountain 1 — nearest painting: swamp 1, plains 1, forest 2
+(mountain not yet painted in; forest not yet painted at this stage)". A scene
+of the state's own keeps 1.20's "— one painting". The storyboard walk counts
+the colours of the key drawn as on screen, and a dropped colour as
+`not-painted`, named in the caption.
+
+**The DOM.** The scene slot stays `.scn-slot.scn-scene[data-scene="<key
+drawn>"]`, with **`data-scene-for="<the state's key>"`** when the two differ
+and `data-scene-mono="1"` when it is a colour's own picture -- taken from
+the scene drawn, so a scene held while the next loads keeps its own.
+
+`src/ambience/scenes.ts` (`sceneLands`, `nearestScene`, `heaviestMono`,
+`monoScene`, `nearestWords`, `scenePictures`), `src/ambience/pairfull.ts`
+(`pairFullPlan`'s `biomes` and the scene item's `nearest`, `sceneCaption`),
+`src/ambience/prefs.ts` (`?scenes=off`), SceneryStrip (`ScenePanel`),
+`src/ambience/storyboard.ts` (`not-painted`); `scenes.test.ts`,
+`sceneryDom.test.tsx`, `storyboard.test.ts` and `e2e/ambience.e2e.mjs`
+(step 7) hold it.
 
 ## 3. Files and budgets
 

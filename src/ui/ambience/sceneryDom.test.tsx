@@ -740,15 +740,42 @@ describe('spec 1.20: a scene on the board', () => {
       expect(html).toMatch(/class="scn-pc-empty" style="opacity:0;/);
       expect(attrs(html, 'data-pc-colour')).toEqual([]);
     }
-    // The same half one Swamp later has no scene: the pieces are back (the cut-outs, the veil).
+    // Spec 1.21: the same half one Swamp later has no scene of its own; it draws its nearest -- this one, the Swamp
+    // dropped -- alone, and still no piece stands on it. (1.20 gave it back to the pair and its cut-outs.)
     const four = [...slots, slot('swamp', 3, 1)];
-    const html = renderToStaticMarkup(<ScenePieces pack={local} pieces={pieces} slots={four} landNames={[]} outcome="won" edge="bottom" reduced={true} pairFull={true} initialBox={BOX} />);
-    expect(attrs(html, 'data-pc')).toContain('veil');
+    for (const pairFull of [true, false]) {
+      const html = renderToStaticMarkup(<ScenePieces pack={local} pieces={pieces} slots={four} landNames={[]} outcome="won" edge="bottom" reduced={true} pairFull={pairFull} initialBox={BOX} />);
+      expect(attrs(html, 'data-pc')).toEqual(['empty']);
+      const strip = renderToStaticMarkup(<SceneryStrip slots={four} pack={local} reduced={true} fill="half" pairFull={pairFull} elements={pairFull ? ELEMENTS : null} />);
+      expect(attrs(strip, 'data-scene')).toEqual(['island2+forest3+mountain2']);
+      expect(attrs(strip, 'data-scene-for')).toEqual(['island2+swamp1+forest3+mountain2']);
+    }
   });
 
-  it('the scene’s picture failed: the half is today’s plan exactly (the pair picture, its cut-out, its caption), never the bare panels', () => {
+  it('the scene’s picture failed: spec 1.21, the heaviest colour’s own picture alone, no piece; and when that fails too, today’s plan exactly, never the bare panels', () => {
     loadAll();
     markPicture(scene.half.src, false);
+    // The forest (3 lands, the heaviest) alone, drawn as a scene: no pair, no cut-out (1.20 gave the half back to the pair).
+    const mono = `${BASE}forest/s3-half.webp`;
+    markPicture(mono, true);
+    for (const pairFull of [true, false]) {
+      const html = strip(pairFull);
+      expect(attrs(html, 'data-scene')).toEqual(['forest3']);
+      expect(attrs(html, 'data-scene-for')).toEqual(['island2+forest3+mountain2']);
+      expect(attrs(html, 'data-scene-mono')).toEqual(['1']);
+      expect(attrs(html, 'data-pairfull')).toEqual([]);
+      expect(html).toContain(mono);
+      expect(attrs(pcs(pairFull), 'data-pc-colour')).toEqual([]);
+    }
+    const near = { thresholds: pack.stageThresholds, elements: ELEMENTS, slots, scenes, biomes: pack.biomes, sceneFailed: (src: string) => pictureStatus(src) === 'failed' };
+    // The caption says the painting failed -- never "not yet painted" for colours that are painted (the review of #216).
+    expect(pairFullCaption(pairFullPlan(halfLayout(slots, local), pack.pairs, near))).toBe('Scene · island 2, forest 3, mountain 2 — nearest painting: forest 3 alone (picture failed to load: island 2, forest 3, mountain 2)');
+    expect(attrs(strip(true), 'data-scene-failed')).toEqual(['island2+forest3+mountain2']);
+    // That picture failing too: today's plan, exactly as with no scenes (a picture once ready stays ready: start over).
+    resetPictures();
+    loadAll();
+    markPicture(scene.half.src, false);
+    markPicture(mono, false);
     const without: ScenePack = { ...pack, scenes: null };
     const html = strip(true);
     expect(attrs(html, 'data-scene')).toEqual([]);
@@ -769,3 +796,76 @@ describe('spec 1.20: a scene on the board', () => {
   });
 });
 
+
+/**
+ * Spec 1.21 on the real packs (pack-v10 with its pieces, pairs-v8, scenes-v1.4): a half of two or more colours with no
+ * scene of its own draws its nearest scene ALONE -- exactly one scene slot, no pair picture, no seam cell, no band and
+ * no cut-out element -- with the flag and without, at a desktop and on a phone; the slot names the key drawn
+ * (`data-scene`) and the state asked for (`data-scene-for`).
+ */
+describe('spec 1.21: the nearest scene on the board', () => {
+  const testdata = (f: string) => JSON.parse(readFileSync(new URL(`../../ambience/testdata/${f}`, import.meta.url), 'utf8'));
+  const V8 = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v8/';
+  const v10 = validateManifest(testdata('pack-v10.scenery.json'), 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pack-v10/pack/scenery.json').pack!;
+  const scenes = validateScenes(testdata('scenes-v1.4.scenes.json'), 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1.4/scenes.json').scenes!;
+  const real: ScenePack = { ...v10, pairs: validatePairs(testdata('pairs-v8.tag.pairs.json'), `${V8}pairs.json`).pairs!, scenes };
+  const realPieces = real.pieces!;
+  const EL = elementBiomes(realPieces);
+  const PHONE_EL = phoneElementBiomes(realPieces);
+  /** Every element (both shapes), every pack half and every scene picture loaded: the steady state. */
+  const loadEverything = () => {
+    for (const c of ['W', 'U', 'B', 'R', 'G'] as const) {
+      markPicture(realPieces.elements[c]!.src, true);
+      markPicture(realPieces.elements[c]!.phone!.src, true);
+    }
+    for (const b of Object.values(v10.biomes)) for (const st of b!.stages) if (st.half) [st.half.src, st.half.phone?.src].forEach((x) => x && markPicture(x, true));
+    for (const sc of Object.values(scenes.scenes)) [sc!.half.src, sc!.half.phone.src].forEach((x) => markPicture(x, true));
+  };
+  // name, slots (board order, not the geography's), the key drawn, the key asked for
+  const cases: [string, SlotState[], string, string][] = [
+    ['the owner’s island 1, swamp 1, mountain 1', [slot('mountain', 0, 1), slot('island', 1, 1), slot('swamp', 2, 1)], 'island1+swamp1+mountain2', 'island1+swamp1+mountain1'],
+    ['two colours, no pair scene at v1.4: the heavier alone', [slot('swamp', 0, 6), slot('island', 1, 6)], 'island6', 'island6+swamp6'],
+    ['four colours: the lightest dropped', [slot('island', 0, 2), slot('swamp', 1, 2), slot('mountain', 2, 2), slot('forest', 3, 3)], 'island2+swamp2+forest3', 'island2+swamp2+forest3+mountain2'],
+    ['five colours: the two lightest dropped', [slot('plains', 0, 1), slot('island', 1, 1), slot('swamp', 2, 1), slot('mountain', 3, 1), slot('forest', 4, 1)], 'island1+swamp1+plains1', 'island1+swamp1+plains1+forest1+mountain1'],
+  ];
+  for (const [name, slots, drawn, asked] of cases)
+    it(`${name}: one scene slot (${drawn} for ${asked}), no pair picture, no element`, () => {
+      loadEverything();
+      for (const pairFull of [true, false]) {
+        const strip = renderToStaticMarkup(<SceneryStrip slots={slots} pack={real} reduced={true} fill="half" pairFull={pairFull} elements={pairFull ? EL : null} phoneElements={pairFull ? PHONE_EL : null} />);
+        expect(strip.match(/class="scn-slot scn-pairfull scn-scene/g)?.length, `${name} ${pairFull}`).toBe(1);
+        expect(attrs(strip, 'data-scene')).toEqual([drawn]);
+        expect(attrs(strip, 'data-scene-for')).toEqual([asked]);
+        expect(attrs(strip, 'data-scene-mono')).toEqual(drawn.includes('+') ? [] : ['1']);
+        expect(attrs(strip, 'data-pairfull')).toEqual([]);
+        expect(attrs(strip, 'data-pairfull-cell')).toEqual([]);
+        expect(attrs(strip, 'data-apart')).toEqual([]);
+        expect(attrs(strip, 'data-band')).toEqual([]);
+        expect(attrs(strip, 'data-biome')).toEqual([]);
+        const scene = scenes.scenes[drawn];
+        if (scene) expect(strip).toContain(scene.half.src);
+        else expect(strip).toContain(`${drawn.replace(/\d$/, '')}/s${drawn.slice(-1)}`);
+        for (const box of [BOX, { w: 390, h: 400 }]) {
+          const pcs = renderToStaticMarkup(<ScenePieces pack={real} pieces={realPieces} slots={slots} landNames={[]} outcome="won" edge="bottom" reduced={true} pairFull={pairFull} initialBox={box} />);
+          expect(attrs(pcs, 'data-pc').filter((x) => x === 'element' || x === 'veil' || x === 'landmark'), `${name} ${pairFull} ${box.w}`).toEqual([]);
+        }
+      }
+    });
+
+  it('the caption names the state, the painting drawn and what is not painted yet', () => {
+    const caption = (slots: SlotState[]) => pairFullCaption(pairFullPlan(halfLayout(slots, real), real.pairs, { thresholds: real.stageThresholds, elements: EL, slots, scenes, biomes: real.biomes }));
+    expect(caption(cases[0]![1])).toBe('Scene · island 1, swamp 1, mountain 1 — nearest painting: island 1, swamp 1, mountain 2 (mountain not yet painted at this stage)');
+    expect(caption(cases[1]![1])).toBe('Scene · island 6, swamp 6 — nearest painting: island 6 alone (swamp not yet painted in)');
+    expect(caption(cases[2]![1])).toBe('Scene · island 2, swamp 2, forest 3, mountain 2 — nearest painting: island 2, swamp 2, forest 3 (mountain not yet painted in)');
+    // A scene of its own keeps 1.20's words; one colour keeps today's picture and has no scene caption.
+    expect(caption([slot('island', 0, 1), slot('swamp', 1, 1), slot('plains', 2, 1)])).toBe('Scene · island 1, swamp 1, plains 1 — one painting');
+    expect(caption([slot('island', 0, 3)])).toBeNull();
+  });
+
+  it('one colour keeps today’s single-colour picture: its own panel, no scene slot', () => {
+    loadEverything();
+    const strip = renderToStaticMarkup(<SceneryStrip slots={[slot('island', 0, 3)]} pack={real} reduced={true} fill="half" pairFull={true} elements={EL} />);
+    expect(attrs(strip, 'data-scene')).toEqual([]);
+    expect(attrs(strip, 'data-biome')).toEqual(['island']);
+  });
+});

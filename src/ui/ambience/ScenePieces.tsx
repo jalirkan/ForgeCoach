@@ -159,7 +159,7 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
   // A scene whose painting failed at this shape: today's plan, as the strip (pairfull.ts `sceneFailed`).
   const halfAspect = measured ? Math.round((box.w / box.h) * 20) / 20 : null;
   const full = useMemo(
-    () => ((pairFull && pack?.pairs) || scenes ? pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, elements, phoneElements, showing, slots, narrow, scenes, sceneFailed: (src) => pictureStatus(src) === 'failed', halfAspect }) : null),
+    () => ((pairFull && pack?.pairs) || scenes ? pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, elements, phoneElements, showing, slots, narrow, scenes, biomes: pack?.biomes ?? null, sceneFailed: (src) => pictureStatus(src) === 'failed', halfAspect }) : null),
     [pairFull, pack, scenes, layout, elements, phoneElements, showing, slots, narrow, halfAspect, pictures], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const fullPair = full?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;

@@ -60,6 +60,18 @@
  *      names no dual nobody played. On the phone (5), the caption is at most two lines
  *      (e2e/out/seq-*.png).
  *
+ *   7. Spec 1.21, the nearest scene, on a page WITH the scenes (ForgeCoach's own, scenes-v1.4), on the desktop and
+ *      the phone, land by land: Island, Swamp, Mountain, Forest, Plains (the owner's island 1, swamp 1, mountain 1 at
+ *      the third land, which has no scene of its own; a four- and a five-colour state after it), then the storyboard's
+ *      sequences 5 and 6 -- at every land from the second on, your half is exactly one scene slot whose picture has
+ *      loaded, naming the state (`data-scene-for`, or `data-scene` when it is the state's own), the key drawn a scene
+ *      of the live manifest or one colour's own picture (`data-scene-mono`), no colour that is not on the board, no
+ *      pair picture, no seam cell and no cut-out element; the caption "Scene · … — nearest painting: …" where it
+ *      stands in (e2e/out/nearest-*.png).
+ *
+ *   Steps 2–6 run with `?scenes=off` (spec 1.21: no scenes for the page): with scenes loaded a half of two or more
+ *   colours never draws the pair logic they check, which still draws for a pack with no scenes.
+ *
  *   Spec 1.18 likewise on the worked example: on a grid pair whose cell has
  *   blue painted in (`elements.U`), the cell's painted picture is drawn and
  *   captioned, still with no cut-out; without one, spec 1.19 a's cut-out over
@@ -94,6 +106,11 @@ const PAIRS_DIR = env.PAIRS_DIR ? path.resolve(env.PAIRS_DIR) : null;
 /** What a bare page loads with no `?pairs=` (spec 1.15 on by default): src/ambience/prefs.ts's FORGECOACH_PAIRS_FULL_URL (an .mjs cannot import it). */
 const DEFAULT_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v8/';
 const TIMEOUT = 30_000;
+/** The page's query: `?pairs=` when given, and (spec 1.21) `scenes=off` for the checks of the 1.15–1.19 halves. */
+const queryOf = (pairs, scenesOff = true) => {
+  const q = [pairs ? `pairs=${encodeURIComponent(pairs)}` : null, scenesOff ? 'scenes=off' : null].filter(Boolean);
+  return q.length ? `?${q.join('&')}` : '';
+};
 
 class Fail extends Error {}
 const check = (ok, msg) => {
@@ -179,7 +196,7 @@ async function main() {
     const page = await (await browser.newContext({ viewport: { width: 1600, height: 1000 } })).newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
-    await page.goto(`${origin}/${pairs ? `?pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
+    await page.goto(`${origin}/${queryOf(pairs)}#ambience`);
     // The pack and its pairs: the pairs line names a pairs-vN pack.
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     const pairsLine = await page.textContent('[data-amb-pairs]');
@@ -218,6 +235,9 @@ async function main() {
     const ran = await gridChecks(page, manifestPairs, errors);
     for (const seq of SEQUENCES) await sequenceCheck(page, seq, errors, 'desktop');
     if (ran) await phoneCheck(browser, origin, pairs, manifest);
+    // Spec 1.21: the nearest scene, with the scenes loaded (no `?scenes=off`), on a desktop and a phone.
+    await nearestCheck(browser, origin, pairs, 'desktop');
+    await nearestCheck(browser, origin, pairs, 'phone');
   } catch (e) {
     failed = true;
     if (e instanceof Fail) console.error(`[e2e ambience] FAIL: ${e.message}`);
@@ -378,7 +398,11 @@ function sceneKeyOf(counts) {
  * state has a scene (spec 1.20) draws that painting alone: no pair, no cut-out; the caption names every land in it.
  */
 async function sequenceCheck(page, seq, errors, shape) {
-  const scenes = await liveSceneKeys();
+  // Spec 1.21: these pages run with `?scenes=off` (with scenes, a half of two or more colours is always a scene: see
+  // nearestCheck), so no state draws one here.
+  const scenes = new Set();
+  const line = (await page.textContent('[data-amb-scenes]')) ?? '';
+  check(/scenes=off/.test(line), `${shape} ${seq.name}: the page should have no scenes (?scenes=off): ${line}`);
   await page.click('[data-pieces-toggle="pack"]');
   const reset = await page.$('[data-amb-reset]:not([disabled])');
   if (reset) await reset.click();
@@ -440,6 +464,105 @@ async function sequenceCheck(page, seq, errors, shape) {
   await page.waitForTimeout(1000);
   await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `${seq.name}-${shape}.png`) });
   log(`PASS: ${shape} ${seq.name}: ${seq.key} kept from the second land to the last (or a scene drawn alone, spec 1.20), every colour on screen and named at every land (spec 1.19 a, b)`);
+}
+
+/** Spec 1.21: the owner's sequence -- island 1, swamp 1, mountain 1 at the third land (no scene of its own), then a fourth and a fifth colour. */
+const NEAREST_SEQUENCES = [{ name: 'seq-nearest-owner', lands: 'I S M F P' }, ...SEQUENCES];
+
+/**
+ * Spec 1.21 on a page with the scenes: after each land from the second on, your half is exactly one scene slot with
+ * its picture loaded -- the state's own scene, or the nearest standing in for it (`data-scene-for`) -- and no pair
+ * picture, seam cell, panel or cut-out element; the key drawn is a scene of the live manifest or one colour's own
+ * picture, with no colour the board does not have; the caption names the state and, standing in, the painting drawn.
+ */
+async function nearestCheck(browser, origin, pairs, shape) {
+  const scenes = await liveSceneKeys();
+  const viewport = shape === 'phone' ? { width: 390, height: 844 } : { width: 1600, height: 1000 };
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: shape === 'phone' ? 2 : 1 });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  // With scenes loaded no pair picture is drawn, so none is fetched: no pairs-v* picture, no seam cell (the pairs
+  // manifest itself still loads, for the fallback).
+  const pairRequests = [];
+  page.on('request', (r) => {
+    const u = r.url();
+    if (/\/seams\/|\/pairs\/|@pairs-v[^/]*\/.*\.(webp|png|jpe?g)(\?|$)/.test(u)) pairRequests.push(u);
+  });
+  try {
+    await page.goto(`${origin}/${queryOf(pairs, false)}#ambience`);
+    await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
+    await page.waitForFunction(() => /scenes-v[\d.]+.*\d+ scenes/.test(document.querySelector('[data-amb-scenes]')?.textContent ?? ''), null, { timeout: TIMEOUT });
+    log(`${shape} scenes line: ${((await page.textContent('[data-amb-scenes]')) ?? '').slice(0, 140)}`);
+    await page.click('[data-pieces-toggle="pack"]');
+    for (const seq of NEAREST_SEQUENCES) {
+      const reset = await page.$('[data-amb-reset]:not([disabled])');
+      if (reset) await reset.click();
+      const counts = {};
+      const lands = seq.lands.split(' ');
+      let standIns = 0;
+      for (let i = 0; i < lands.length; i++) {
+        const biome = BIOME_OF[lands[i]];
+        counts[biome] = (counts[biome] ?? 0) + 1;
+        await setLands(page, biome, counts[biome]);
+        if (i === 0) continue;
+        const asked = sceneKeyOf(counts);
+        let got;
+        try {
+          await page.waitForFunction(
+            (asked) => {
+              const root = document.querySelector('[data-amb-player="1"]');
+              const slots = root.querySelectorAll('.scn-slot');
+              const el = root.querySelector('.scn-slot.scn-scene');
+              if (!el || slots.length !== 1) return false;
+              if ((el.getAttribute('data-scene-for') ?? el.getAttribute('data-scene')) !== asked) return false;
+              const imgs = [...el.querySelectorAll('img')];
+              return imgs.length > 0 && imgs.every((img) => img.complete && img.naturalWidth > 0) && !root.querySelector('[data-pairfull]') && !root.querySelector('[data-pc="element"]');
+            },
+            asked,
+            { timeout: TIMEOUT },
+          );
+          got = await page.evaluate(() => {
+            const root = document.querySelector('[data-amb-player="1"]');
+            const el = root.querySelector('.scn-slot.scn-scene');
+            return {
+              slots: root.querySelectorAll('.scn-slot').length,
+              scene: el.getAttribute('data-scene'),
+              sceneFor: el.getAttribute('data-scene-for'),
+              mono: el.getAttribute('data-scene-mono'),
+              src: el.querySelector('img').getAttribute('src'),
+              width: el.querySelector('img').naturalWidth,
+              pairs: root.querySelectorAll('[data-pairfull], [data-band], [data-apart]').length,
+              elements: root.querySelectorAll('[data-pc="element"]').length,
+            };
+          });
+        } catch {
+          const s = await shownColours(page);
+          throw new Fail(`${shape} ${seq.name}, land ${i + 1} (${lands.slice(0, i + 1).join(' ')} = ${asked}): expected one scene slot for ${asked} with its picture loaded and no element, saw the scene ${s.scene ?? 'none'}, the pair ${s.pairs.join(', ') || 'none'}, cut-outs ${s.cuts.join(', ') || 'none'}`);
+        }
+        const caption = (await page.$('[data-amb-bands="1"]')) ? ((await page.textContent('[data-amb-bands="1"]')) ?? '') : '';
+        const drawnColours = got.scene.split('+').map((k) => k.replace(/\d$/, ''));
+        const standIn = got.scene !== asked;
+        if (standIn) standIns++;
+        log(`${shape} ${seq.name} ${i + 1}: ${asked} -> ${standIn ? `nearest ${got.scene}${got.mono ? ' (its own picture)' : ''}` : 'its own scene'}; ${got.src.replace(/^.*@/, '@')} (${got.width} px); caption: ${caption}`);
+        check(got.slots === 1 && got.pairs === 0 && got.elements === 0, `${shape} ${seq.name}, land ${i + 1}: ${got.slots} slots, ${got.pairs} pair pictures, ${got.elements} elements`);
+        check(drawnColours.every((b) => counts[b]), `${shape} ${seq.name}, land ${i + 1}: ${got.scene} draws a colour ${asked} does not have`);
+        if (scenes.has(asked)) check(!standIn, `${shape} ${seq.name}, land ${i + 1}: ${asked} has a scene of its own, drew ${got.scene}`);
+        if (standIn) check(scenes.has(got.scene) || (drawnColours.length === 1 && got.mono === '1'), `${shape} ${seq.name}, land ${i + 1}: ${got.scene} is neither a scene of the manifest nor one colour's own picture`);
+        if (asked === 'island1+swamp1+mountain1') check(got.scene === 'island1+swamp1+mountain2', `${shape}: the owner's island 1, swamp 1, mountain 1 should draw island1+swamp1+mountain2 at scenes-v1.4, drew ${got.scene}`);
+        check(caption.startsWith('Scene · ') && (standIn ? caption.includes(' — nearest painting: ') : caption.endsWith(' — one painting')), `${shape} ${seq.name}, land ${i + 1}: the caption should say the scene${standIn ? ' and the nearest painting' : ''}: ${caption}`);
+        if (i === 2 && seq.name === 'seq-nearest-owner') await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `nearest-owner-${shape}.png`) });
+      }
+      check(errors.length === 0, `${shape}: page errors: ${errors.join('; ')}`);
+      if (shape === 'phone') await captionLines(page);
+      await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `nearest-${seq.name}-${shape}.png`) });
+      log(`PASS: ${shape} ${seq.name}: one scene slot, its picture loaded and no element, at every land from the second (${standIns} stood in by the nearest, spec 1.21)`);
+    }
+    check(pairRequests.length === 0, `${shape}: ${pairRequests.length} pair or seam picture(s) fetched with scenes loaded: ${pairRequests.slice(0, 5).join(', ')}`);
+    log(`PASS: ${shape}: no pairs-v* or seam picture fetched with the scenes loaded (spec 1.21)`);
+  } finally {
+    await ctx.close();
+  }
 }
 
 /** The caption under a side's header on a phone: at most two lines (the storyboard's sheet 9); logs whether the clamp cut it. */
@@ -594,7 +717,7 @@ async function phoneCheck(browser, origin, pairs, manifest) {
     if (r.url().includes('/seams/')) seams.push(r.url());
   });
   try {
-    await page.goto(`${origin}/${pairs ? `?pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
+    await page.goto(`${origin}/${queryOf(pairs)}#ambience`);
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     await setLands(page, 'island', 4);
     await setLands(page, 'swamp', 3);
@@ -632,7 +755,7 @@ async function phoneCellCheck(browser, origin, pairs, manifest) {
     if (r.url().includes('/seams/')) seams.push(r.url());
   });
   try {
-    await page.goto(`${origin}/${pairs ? `?pairs=${encodeURIComponent(pairs)}` : ''}#ambience`);
+    await page.goto(`${origin}/${queryOf(pairs)}#ambience`);
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     await setLands(page, 'island', 4);
     await setLands(page, 'swamp', 3);

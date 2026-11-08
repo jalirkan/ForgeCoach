@@ -243,16 +243,17 @@ export default function AmbiencePage() {
     if (previewPieces) for (const src of pieceUrls(previewPieces, { phone: window.innerWidth < 700 })) warmPicture({ src, src2x: null });
   }, [previewPieces]);
   // The pair pictures the board warms as its lands change (SceneryLayer), so a Lands step here plays as on the board
-  // (spec 1.17: a pair's first seam cell is warm before its second colour arrives).
+  // (spec 1.17: a pair's first seam cell is warm before its second colour arrives). Spec 1.21: none with scenes loaded,
+  // which draw a scene for every half of two or more colours.
   useEffect(() => {
-    if (!fill || !pack?.pairs) return;
+    if (!fill || !pack?.pairs || pack.scenes) return;
     const full = pairFull ? { thresholds: pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
     for (const w of pairPictures(pack.pairs, SIM_PLAYERS.map((p) => slotsOf(scenery, p)), { phone: window.innerWidth < 700, full })) warmPicture(w);
   }, [scenery, pack, fill, pairFull]);
   // Spec 1.20: each side's scene and those one land away, as the board warms them.
   useEffect(() => {
     if (!fill || !pack?.scenes) return;
-    for (const w of scenePictures(pack.scenes, SIM_PLAYERS.map((p) => slotsOf(scenery, p)), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: pack.stageThresholds })) warmPicture(w);
+    for (const w of scenePictures(pack.scenes, SIM_PLAYERS.map((p) => slotsOf(scenery, p)), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: pack.stageThresholds, biomes: pack.biomes })) warmPicture(w);
   }, [scenery, pack, fill]);
 
   useLayoutEffect(() => {
@@ -632,7 +633,7 @@ function bandCaption(
   const layout = halfLayout(slots, pack, stageOverride, showing);
   const scenes = pack?.scenes ?? null;
   // A scene whose painting failed is captioned as what the strip then draws: today's plan (pairfull.ts `sceneFailed`).
-  const full = (pairFull && pack?.pairs) || scenes ? pairFullCaption(pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes, sceneFailed: (src) => pictureStatus(src) === 'failed' }), lands) : null;
+  const full = (pairFull && pack?.pairs) || scenes ? pairFullCaption(pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes, biomes: pack?.biomes ?? null, sceneFailed: (src) => pictureStatus(src) === 'failed' }), lands) : null;
   if (full) return full;
   if (!pack?.pairs) return null;
   const bands = pairBands(layout, pack.pairs, duals);
@@ -716,8 +717,10 @@ const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
  * Spec 1.20: the scenes' status line, so the owner can see on the live site which states have a painting: the file,
  * how many scenes it holds and their keys, or "no scenes" and why.
  */
-function scenesLine(state: Extract<PackState, { status: 'ok' | 'failed' }>): string {
+function scenesLine(state: Extract<PackState, { status: 'ok' | 'failed' }>, off = false): string {
   const file = state.scenesUrl ?? null;
+  // Spec 1.21: `?scenes=off` loads none for the page, so the halves are drawn by the 1.5–1.19 rules.
+  if (!file && off) return 'Scenes (spec 1.20): no scenes -- ?scenes=off (the pair pictures, seams and cut-outs of 1.15–1.19 instead).';
   if (!file) return 'Scenes (spec 1.20): no scenes (only ForgeCoach’s own pack loads them).';
   const sc = state.scenes;
   if (!sc) return `Scenes (spec 1.20): no scenes -- ${file} did not load (${state.scenesErrors?.[0] ?? 'unknown problem'}).`;
@@ -790,7 +793,7 @@ function PackCard({
                   Pair bands (spec 1.9): <b>{state.pairs.name}</b>, {Object.keys(state.pairs.pairs).length} pairs ({(pairsBytes(state.pairs) / 1048576).toFixed(1)} MB declared).{state.pairs.note ? ` ${state.pairs.note}` : ''}
                 </div>
               ) : null}
-              <div data-amb-scenes>{scenesLine(state)}</div>
+              <div data-amb-scenes>{scenesLine(state, currentPrefs().scenes === false)}</div>
             </>
           ) : (
             <>Not loaded. {state.note}</>
