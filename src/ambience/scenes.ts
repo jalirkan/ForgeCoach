@@ -39,8 +39,12 @@ import { GEOGRAPHY } from './pairs.ts';
 export const SCENES_MANIFEST_FILE = 'scenes.json';
 /** The newest spec version this reader knows (1.20 added scenes). */
 export const SCENES_SPEC = '1.20';
-/** A scenes manifest longer than this is refused unread (the pairs manifest's cap). */
-export const MAX_SCENES_MANIFEST_BYTES = 1024 * 1024;
+/**
+ * A scenes manifest longer than this is refused unread. 4 MB since 2026-11-08: scenes-v1.4's index names 1563 scenes
+ * by absolute URL in 2,594,290 bytes (about 61 KB brotli from jsDelivr), past the 1 MB (the pairs manifest's cap) it
+ * inherited.
+ */
+export const MAX_SCENES_MANIFEST_BYTES = 4 * 1024 * 1024;
 /** Declared files of one scene (desktop and phone, 1x and 2x) past this get a warning (a pair stage's budget). */
 export const MAX_SCENE_BYTES = 4 * 1024 * 1024;
 /** Declared files of the whole scenes pack in its own folder past this get a warning: jsDelivr serves a ref of at most 50 MB. */
