@@ -337,7 +337,8 @@ describe('spec 1.20: the plan', () => {
     // Spec 1.21: given the pack's biomes, the failed painting gives way to the forest's own picture, as a scene.
     for (const narrow of [false, true]) {
       const viaMono = pairFullPlan(halfLayout(STATE_A, PACK), PAIRS_FULL, { thresholds: T, elements: ELEMENTS, slots: STATE_A, narrow, scenes: SCENES, biomes: PACK.biomes, sceneFailed: failed(narrow ? a.half.phone.src : a.half.src) });
-      expect(sceneOf(viaMono)).toMatchObject({ key: 'forest3', nearest: { for: 'island2+forest3+mountain2', dropped: ['mountain', 'island'], clamped: [], mono: true } });
+      expect(sceneOf(viaMono)).toMatchObject({ key: 'forest3', nearest: { for: 'island2+forest3+mountain2', dropped: ['mountain', 'island'], clamped: [], mono: true, failed: 'island2+forest3+mountain2' } });
+      expect(pairFullCaption(viaMono)).toBe('Scene · island 2, forest 3, mountain 2 — nearest painting: forest 3 alone (picture failed to load: island 2, forest 3, mountain 2)');
       const forest = PACK.biomes.forest!.stages[2]!.half!;
       const both = (src: string) => src === a.half.src || src === a.half.phone.src || src === forest.src || src === forest.phone!.src;
       expect(pairFullPlan(halfLayout(STATE_A, PACK), PAIRS_FULL, { thresholds: T, elements: ELEMENTS, phoneElements: PHONE_ELEMENTS, slots: STATE_A, narrow, scenes: SCENES, biomes: PACK.biomes, sceneFailed: both })).toEqual(planOf(STATE_A, { scenes: null, narrow }));
@@ -572,15 +573,17 @@ describe('spec 1.21: the nearest scene on scenes-v1.4', () => {
     ['island2+forest3+mountain2', 'island2+forest3+mountain2', [], [], false],
     ['island6+plains1+mountain1', 'island6+plains1+mountain1', [], [], false],
     ['island3+swamp2+mountain6', 'island3+swamp2+mountain6', [], [], false],
-    // Three colours, no scene: the nearest stages. At an even tie the lighter of the tied colours moves, and down
-    // rather than up.
+    // Three colours, no scene: the nearest stages -- the smallest largest move of one colour first (the owner's smoother
+    // rule), then the smallest total. At an even tie the lighter of the tied colours moves, and down rather than up.
     ['island1+plains1+mountain1', 'island1+plains1+mountain2', [], ['mountain:1>2'], false],
     ['island2+swamp2+mountain2', 'island2+swamp2+mountain1', [], ['mountain:2>1'], false],
     ['island3+swamp3+mountain3', 'island3+swamp3+mountain2', [], ['mountain:3>2'], false],
     ['island4+swamp4+mountain4', 'island4+swamp4+mountain3', [], ['mountain:4>3'], false],
     ['island1+swamp6+mountain6', 'island1+swamp6+mountain5', [], ['mountain:6>5'], false],
-    ['island6+swamp6+mountain6', 'island6+swamp5+mountain1', [], ['swamp:6>5', 'mountain:6>1'], false],
-    ['plains6+forest6+mountain6', 'plains6+forest5+mountain1', [], ['forest:6>5', 'mountain:6>1'], false],
+    // Smoother: no colour moves more than three stages (the total-distance rule drew island6+swamp5+mountain1, the
+    // mountain five stages short).
+    ['island6+swamp6+mountain6', 'island6+swamp3+mountain3', [], ['swamp:6>3', 'mountain:6>3'], false],
+    ['plains6+forest6+mountain6', 'plains6+forest3+mountain3', [], ['forest:6>3', 'mountain:6>3'], false],
     // Four colours: no four-colour scene, so the lightest is dropped, then step 1 on the three left.
     ['island1+swamp1+plains1+mountain1', 'island1+swamp1+plains1', ['mountain'], [], false],
     ['island2+swamp2+forest3+mountain2', 'island2+swamp2+forest3', ['mountain'], [], false],
@@ -589,7 +592,7 @@ describe('spec 1.21: the nearest scene on scenes-v1.4', () => {
     // Five colours: the two lightest dropped.
     ['island1+swamp1+plains1+forest1+mountain1', 'island1+swamp1+plains1', ['mountain', 'forest'], [], false],
     ['island2+swamp2+plains2+forest3+mountain3', 'island2+forest3+mountain3', ['plains', 'swamp'], [], false],
-    ['island6+swamp6+plains6+forest6+mountain6', 'island6+swamp5+plains1', ['mountain', 'forest'], ['swamp:6>5', 'plains:6>1'], false],
+    ['island6+swamp6+plains6+forest6+mountain6', 'island6+swamp3+plains3', ['mountain', 'forest'], ['swamp:6>3', 'plains:6>3'], false],
   ];
   for (const [asked, drawn, dropped, clamped, mono] of TABLE)
     it(`${asked} → ${drawn}`, () => {
@@ -611,7 +614,7 @@ describe('spec 1.21: the nearest scene on scenes-v1.4', () => {
     expect(nearestWords(near('island1+swamp1+mountain1')!)).toBe('Scene · island 1, swamp 1, mountain 1 — nearest painting: island 1, swamp 1, mountain 2 (mountain not yet painted at this stage)');
     expect(nearestWords(near('island6+swamp6')!)).toBe('Scene · island 6, swamp 6 — nearest painting: island 6 alone (swamp not yet painted in)');
     expect(nearestWords(near('swamp1+plains1+forest1+mountain1')!)).toBe('Scene · swamp 1, plains 1, forest 1, mountain 1 — nearest painting: swamp 1, plains 1, forest 2 (mountain not yet painted in; forest not yet painted at this stage)');
-    expect(nearestWords(near('island6+swamp6+mountain6')!)).toBe('Scene · island 6, swamp 6, mountain 6 — nearest painting: island 6, swamp 5, mountain 1 (swamp and mountain not yet painted at these stages)');
+    expect(nearestWords(near('island6+swamp6+mountain6')!)).toBe('Scene · island 6, swamp 6, mountain 6 — nearest painting: island 6, swamp 3, mountain 3 (swamp and mountain not yet painted at these stages)');
   });
 
   it('one colour is not a scene state: no nearest, today’s single-colour picture (unless a scene of it is painted)', () => {
@@ -647,7 +650,10 @@ describe('spec 1.21: the nearest scene on scenes-v1.4', () => {
     expect(nearestScene(make('island1+forest4+mountain1', 'island2+forest3+mountain1'), lands('island2+forest4+mountain1'))!.key).toBe('island1+forest4+mountain1');
     // One colour one stage either way: down.
     expect(nearestScene(make('island2+forest4+mountain1', 'island4+forest4+mountain1'), lands('island3+forest4+mountain1'))!.key).toBe('island2+forest4+mountain1');
-    // Distance first: a scene two stages from the heavier colour loses to one a stage from the lighter.
+    // The smoother rule first: the smallest largest move of one colour, even at a greater total (4 4 4 moves 2, 2 and 2;
+    // 6 6 2 moves the mountain 4).
+    expect(nearestScene(make('island6+forest6+mountain2', 'island4+forest4+mountain4'), lands('island6+forest6+mountain6'))!.key).toBe('island4+forest4+mountain4');
+    // At one largest move, the smaller total: a scene two stages from the heavier colour loses to one a stage from the lighter.
     expect(nearestScene(make('island1+forest1+mountain1', 'island3+forest3+mountain2'), lands('island3+forest3+mountain1'))!.key).toBe('island3+forest3+mountain2');
   });
 

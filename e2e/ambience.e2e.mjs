@@ -482,6 +482,13 @@ async function nearestCheck(browser, origin, pairs, shape) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
+  // With scenes loaded no pair picture is drawn, so none is fetched: no pairs-v* picture, no seam cell (the pairs
+  // manifest itself still loads, for the fallback).
+  const pairRequests = [];
+  page.on('request', (r) => {
+    const u = r.url();
+    if (/\/seams\/|\/pairs\/|@pairs-v[^/]*\/.*\.(webp|png|jpe?g)(\?|$)/.test(u)) pairRequests.push(u);
+  });
   try {
     await page.goto(`${origin}/${queryOf(pairs, false)}#ambience`);
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
@@ -551,6 +558,8 @@ async function nearestCheck(browser, origin, pairs, shape) {
       await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `nearest-${seq.name}-${shape}.png`) });
       log(`PASS: ${shape} ${seq.name}: one scene slot, its picture loaded and no element, at every land from the second (${standIns} stood in by the nearest, spec 1.21)`);
     }
+    check(pairRequests.length === 0, `${shape}: ${pairRequests.length} pair or seam picture(s) fetched with scenes loaded: ${pairRequests.slice(0, 5).join(', ')}`);
+    log(`PASS: ${shape}: no pairs-v* or seam picture fetched with the scenes loaded (spec 1.21)`);
   } finally {
     await ctx.close();
   }

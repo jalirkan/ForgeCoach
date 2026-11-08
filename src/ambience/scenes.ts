@@ -7,7 +7,10 @@
  * with a tiny tree pasted under the land chips), so a half may instead show
  * a painting of that very state -- every colour on it, each at its own stage
  * -- and nothing else: no pair logic, no element, no cut-out, no band, no
- * panel. Only a state with no scene is drawn by the 1.9-1.19 rules, unchanged.
+ * panel. Spec 1.21: a state of two or more colours with no scene of its own
+ * draws its nearest scene ({@link nearestScene}) the same way; only a state of
+ * one colour, a half with a `wastes` slot, or a half whose every picture
+ * failed is drawn by the 1.9-1.19 rules.
  *
  * - The key ({@link sceneKey}): the half's live biomes (a land weight above
  *   0) in pairs.ts `GEOGRAPHY`'s order (island, swamp, plains, forest,
@@ -161,6 +164,11 @@ export interface NearestScene {
   clamped: { biome: Biome; from: number; to: number }[];
   /** The scene is the pack's own picture of one colour (no scene painted for any colour set the rule reached). */
   mono: boolean;
+  /**
+   * {@link heaviestMono}: the key of the scene whose picture failed to load, which this one stands in for; then
+   * `dropped` are the colours not drawn, painted or not, and the caption says the picture failed, not "not yet painted".
+   */
+  failed?: string;
 }
 
 /**
@@ -191,10 +199,11 @@ function scenesOfSet(scenes: ScenesPack, set: readonly Biome[]): PackScene[] {
 
 /**
  * Spec 1.21, step 1: the nearest scene among `cands` (one colour set, the same as `want`'s) to the stages `want` asks
- * for. In order: the smallest total stage distance (the sum of |painted − asked| over the colours); then the scene
- * where the heavier colours keep their stage (the distances compared colour by colour, heaviest first, by
- * {@link heavierFirst}); then the one painted below rather than above (the signed differences, heaviest first); then
- * the key, lexically. Null with no candidate.
+ * for. In order (the owner's smoother rule, 2026-11-08): the smallest LARGEST move of any one colour (max |painted −
+ * asked|: no colour drawn far from its lands to keep the others exact); then the smallest total stage distance (the
+ * sum of |painted − asked|); then the scene where the heavier colours keep their stage (the distances compared colour
+ * by colour, heaviest first, by {@link heavierFirst}); then the one painted below rather than above (the signed
+ * differences, heaviest first); then the key, lexically. Null with no candidate.
  */
 function nearestOf(cands: readonly PackScene[], want: readonly SceneLand[]): PackScene | null {
   const order = [...want].sort(heavierFirst);
@@ -203,6 +212,8 @@ function nearestOf(cands: readonly PackScene[], want: readonly SceneLand[]): Pac
   let bestD: number[] = [];
   const better = (d: number[], key: string): boolean => {
     if (!best) return true;
+    const largest = (x: number[]) => x.reduce((n, v) => Math.max(n, Math.abs(v)), 0);
+    if (largest(d) !== largest(bestD)) return largest(d) < largest(bestD);
     const total = (x: number[]) => x.reduce((n, v) => n + Math.abs(v), 0);
     if (total(d) !== total(bestD)) return total(d) < total(bestD);
     for (let i = 0; i < d.length; i++) if (Math.abs(d[i]!) !== Math.abs(bestD[i]!)) return Math.abs(d[i]!) < Math.abs(bestD[i]!);
@@ -241,7 +252,8 @@ function nearestResult(scene: PackScene, want: readonly SceneLand[], dropped: Bi
  * Spec 1.21, the nearest scene: what a half whose lands are `lands` draws. Its own scene when one is painted (1.20,
  * any number of colours). Else, for two or more colours, deterministically:
  *
- * 1. among the scenes of the same colour set, the nearest by stage ({@link nearestOf});
+ * 1. among the scenes of the same colour set, the nearest by stage ({@link nearestOf}: the smallest largest move of
+ *    one colour, then the smallest total move, then the heavier colours keep theirs, then below before above);
  * 2. if that colour set has no scene at all, the LIGHTEST colour is dropped (the lowest stage; at one stage the later
  *    in the geography, {@link heavierFirst}) and step 1 runs on the colours left, down to a pair;
  * 3. with one colour left: its own scene at its own stage if one is painted, else the pack's own 1.5 picture of that
@@ -279,12 +291,14 @@ export function nearestScene(scenes: ScenesPack | null | undefined, lands: reado
  * ({@link heavierFirst}: the colour step 2 would keep last), never the seam and its cut-outs. Null for a state of
  * one colour (1.20: a failed painting gives it back to today's picture) or with nothing to draw.
  */
-export function heaviestMono(lands: readonly SceneLand[], biomes: MonoBiomes | null | undefined): NearestScene | null {
+export function heaviestMono(lands: readonly SceneLand[], biomes: MonoBiomes | null | undefined, failed: string | null = null): NearestScene | null {
   if (lands.length < 2) return null;
   const want = [...lands].sort((a, b) => GEOGRAPHY.indexOf(a.biome) - GEOGRAPHY.indexOf(b.biome));
   const order = [...want].sort(heavierFirst);
   const mono = monoScene(biomes, order[0]!);
-  return mono ? nearestResult(mono, want, order.slice(1).reverse().map((l) => l.biome), true) : null;
+  if (!mono) return null;
+  const n = nearestResult(mono, want, order.slice(1).reverse().map((l) => l.biome), true);
+  return failed ? { ...n, failed } : n;
 }
 
 /** "island 1, swamp 1, mountain 2": lands in words, in the geography's order. */
@@ -301,10 +315,14 @@ function listWords(xs: readonly string[]): string {
  * Spec 1.21's caption: "Scene · island 1, swamp 1, mountain 1 — nearest painting: island 1, swamp 1, mountain 2
  * (mountain not yet painted at this stage)"; a colour dropped "(plains not yet painted in)"; one colour left
  * "nearest painting: island 6 alone (swamp not yet painted in)". The state first, in the geography's order; then the
- * scene drawn; then why, the dropped colours before the clamped.
+ * scene drawn; then why, the dropped colours before the clamped. Standing in for a painting that failed to load
+ * ({@link heaviestMono}): "nearest painting: forest 3 alone (picture failed to load: island 2, forest 3, mountain 2)" --
+ * never "not yet painted" for colours that are painted.
  */
-export function nearestWords(n: Pick<NearestScene, 'scene' | 'for' | 'dropped' | 'clamped' | 'mono'>): string {
-  const asked = n.for.split('+').map((k) => `${k.replace(/\d$/, '')} ${k.slice(-1)}`).join(', ');
+export function nearestWords(n: Pick<NearestScene, 'scene' | 'for' | 'dropped' | 'clamped' | 'mono' | 'failed'>): string {
+  const words = (key: string) => key.split('+').map((k) => `${k.replace(/\d$/, '')} ${k.slice(-1)}`).join(', ');
+  const asked = words(n.for);
+  if (n.failed) return `Scene · ${asked} — nearest painting: ${landWords(n.scene.lands)}${n.scene.lands.length === 1 ? ' alone' : ''} (picture failed to load: ${words(n.failed)})`;
   const why: string[] = [];
   if (n.dropped.length) why.push(`${listWords(GEOGRAPHY.filter((b) => n.dropped.includes(b)))} not yet painted in`);
   if (n.clamped.length) why.push(`${listWords(n.clamped.map((c) => c.biome))} not yet painted at ${n.clamped.length === 1 ? 'this stage' : 'these stages'}`);

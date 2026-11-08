@@ -768,7 +768,9 @@ describe('spec 1.20: a scene on the board', () => {
       expect(attrs(pcs(pairFull), 'data-pc-colour')).toEqual([]);
     }
     const near = { thresholds: pack.stageThresholds, elements: ELEMENTS, slots, scenes, biomes: pack.biomes, sceneFailed: (src: string) => pictureStatus(src) === 'failed' };
-    expect(pairFullCaption(pairFullPlan(halfLayout(slots, local), pack.pairs, near))).toBe('Scene · island 2, forest 3, mountain 2 — nearest painting: forest 3 alone (island and mountain not yet painted in)');
+    // The caption says the painting failed -- never "not yet painted" for colours that are painted (the review of #216).
+    expect(pairFullCaption(pairFullPlan(halfLayout(slots, local), pack.pairs, near))).toBe('Scene · island 2, forest 3, mountain 2 — nearest painting: forest 3 alone (picture failed to load: island 2, forest 3, mountain 2)');
+    expect(attrs(strip(true), 'data-scene-failed')).toEqual(['island2+forest3+mountain2']);
     // That picture failing too: today's plan, exactly as with no scenes (a picture once ready stays ready: start over).
     resetPictures();
     loadAll();

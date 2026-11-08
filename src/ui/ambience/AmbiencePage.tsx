@@ -243,9 +243,10 @@ export default function AmbiencePage() {
     if (previewPieces) for (const src of pieceUrls(previewPieces, { phone: window.innerWidth < 700 })) warmPicture({ src, src2x: null });
   }, [previewPieces]);
   // The pair pictures the board warms as its lands change (SceneryLayer), so a Lands step here plays as on the board
-  // (spec 1.17: a pair's first seam cell is warm before its second colour arrives).
+  // (spec 1.17: a pair's first seam cell is warm before its second colour arrives). Spec 1.21: none with scenes loaded,
+  // which draw a scene for every half of two or more colours.
   useEffect(() => {
-    if (!fill || !pack?.pairs) return;
+    if (!fill || !pack?.pairs || pack.scenes) return;
     const full = pairFull ? { thresholds: pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
     for (const w of pairPictures(pack.pairs, SIM_PLAYERS.map((p) => slotsOf(scenery, p)), { phone: window.innerWidth < 700, full })) warmPicture(w);
   }, [scenery, pack, fill, pairFull]);

@@ -233,7 +233,7 @@ export interface PairFullScene {
    * Spec 1.21: present when the scene stands in for a state with no scene of its own -- the state asked for (`for`),
    * the colours dropped and the colours clamped, and whether it is the pack's own picture of one colour (`mono`).
    */
-  nearest?: Pick<NearestScene, 'for' | 'dropped' | 'clamped' | 'mono'>;
+  nearest?: Pick<NearestScene, 'for' | 'dropped' | 'clamped' | 'mono' | 'failed'>;
 }
 
 export type PairFullItem = PairFullPair | PairFullSlot | PairFullScene;
@@ -371,7 +371,7 @@ export function pairFullPlan(
     if (!failed(item)) return [item];
     // The painting failed at this shape (the finding of the 1.20 review): spec 1.21, the heaviest colour's own picture
     // alone; a half of one colour, or that picture failing too, goes back to today's plan, with no scenes.
-    const mono = near.mono ? null : heaviestMono(lands, opts.biomes ?? null);
+    const mono = near.mono ? null : heaviestMono(lands, opts.biomes ?? null, near.key);
     if (mono && !failed(sceneItem(mono))) return [sceneItem(mono)];
     return pairFullPlan(layout, pairs, { ...opts, scenes: null });
   }
@@ -726,7 +726,7 @@ export function planApart(plan: readonly PairFullItem[] | null | undefined): boo
 /** Spec 1.20 / 1.21: the plan's scene item for a scene drawn, exact or nearest (with what it stands in for). */
 function sceneItem(n: NearestScene): PairFullScene {
   const exact = n.key === n.for;
-  return { kind: 'scene', key: n.key, scene: n.scene, share: 1, ...(exact ? {} : { nearest: { for: n.for, dropped: n.dropped, clamped: n.clamped, mono: n.mono } }) };
+  return { kind: 'scene', key: n.key, scene: n.scene, share: 1, ...(exact ? {} : { nearest: { for: n.for, dropped: n.dropped, clamped: n.clamped, mono: n.mono, ...(n.failed ? { failed: n.failed } : {}) } }) };
 }
 
 /** A pair panel's shape from the half's (rounded as SceneryStrip measures it: to 0.05), or null when unknown. */

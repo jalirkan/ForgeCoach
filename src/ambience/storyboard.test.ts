@@ -438,6 +438,50 @@ describe('the storyboard walk with the sample scenes (spec 1.20, 1.21)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Spec 1.21: the same walk on the real scenes (testdata/scenes-v1.4.scenes.json, the live tag byte for byte): with the
+// scenes a half of two or more colours is always a scene -- its own or its nearest -- and the only colours off screen
+// are the ones the nearest scene left out (`not-painted`), each named in the caption. The walks above load no scenes:
+// their "nothing hidden" describes a board without a scenes manifest.
+
+describe('the storyboard walk on scenes-v1.4 (spec 1.21)', () => {
+  const scenes = validateScenes(json('scenes-v1.4.scenes.json'), `${FORGECOACH_SCENES_URL}scenes.json`).scenes!;
+  const WITH: StoryboardPacks = { ...PACKS, scenes };
+  it('every colour on screen or not-painted, every half of two or more colours a scene; the not-painted counted by colours on the half', { timeout: 600_000 }, () => {
+    // Per number of colours on the half: states walked, states with a colour not painted, colours not painted, and
+    // states drawn by their own scene -- the same at every combo (the nearest rule does not depend on the shape or flag).
+    const count: Record<string, { states: number; withNotPainted: number; notPainted: number; own: number }> = {};
+    for (const { state } of enumerateStates({ duals: true, dualMax: 4 }))
+      for (const c of COMBOS) {
+        const h = storyboardHalf(state, c.shape, c.pairfull, WITH);
+        expect(h.invisible.filter((x) => x.reason !== 'not-painted'), `${comboId(c)} ${stateLabel(state)}`).toEqual([]);
+        const notPainted = h.invisible.map((x) => x.colour);
+        if (notPainted.length) expect(h.caption, `${comboId(c)} ${stateLabel(state)}`).toMatch(/not yet painted in(\)|;)/);
+        if (h.caption) expect(h.captionNames.filter((x) => !h.visible.includes(x) && !notPainted.includes(x)), h.caption).toEqual([]);
+        const sc = h.drawn.find((d) => d.kind === 'scene');
+        if (h.colours.length >= 2) expect(h.drawn.map((d) => d.kind), `${comboId(c)} ${stateLabel(state)}`).toEqual(['scene']);
+        if (c.shape !== 'desktop' || c.pairfull) continue;
+        const k = String(h.colours.length);
+        const t = (count[k] ??= { states: 0, withNotPainted: 0, notPainted: 0, own: 0 });
+        t.states++;
+        if (notPainted.length) t.withNotPainted++;
+        t.notPainted += notPainted.length;
+        if (sc && !sc.what.includes(' for ')) t.own++;
+      }
+    console.info(`[storyboard] scenes-v1.4 not-painted by colours on the half: ${JSON.stringify(count)}`);
+    expect(count).toEqual(EXPECTED_V14);
+  });
+});
+
+/** The walk on scenes-v1.4 (spec 1.21's section quotes it), every state with a dual too, per number of colours. */
+const EXPECTED_V14: Record<string, { states: number; withNotPainted: number; notPainted: number; own: number }> = {
+  '1': { states: 30, withNotPainted: 0, notPainted: 0, own: 0 },
+  '2': { states: 970, withNotPainted: 970, notPainted: 970, own: 0 },
+  '3': { states: 8720, withNotPainted: 0, notPainted: 0, own: 6974 },
+  '4': { states: 30735, withNotPainted: 30735, notPainted: 30735, own: 0 },
+  '5': { states: 39070, withNotPainted: 39070, notPainted: 78140, own: 0 },
+};
+
+// ---------------------------------------------------------------------------
 // Along play: what a player sees, the memory carried
 
 interface PlayCount {
