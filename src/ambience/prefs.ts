@@ -63,6 +63,13 @@ export interface SceneryPrefs {
    * still accepted and changes nothing. Never stored.
    */
   pairFull?: boolean;
+  /**
+   * Spec 1.21: `?scenes=off` (or `0`) loads no scenes manifest for the page, so the halves are drawn by the
+   * 1.5–1.19 rules (the pair picture, its seam cell and cut-outs) as with a pack of your own -- for checking those
+   * rules on `#ambience` and in the e2e, now that a half of two or more colours with scenes loaded always draws a
+   * scene. Absent means on ({@link scenesUrlOf}). Not a setting: never stored, no Settings row.
+   */
+  scenes?: boolean;
 }
 
 export const SCENERY_KEY = 'forgecoach.scenery';
@@ -196,7 +203,7 @@ function switchParam(search: string, hash: string, name: string): boolean | null
   return v === 'off' || v === '0' ? false : v === 'on' || v === '1' ? true : null;
 }
 
-/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=`, `?light=`, `?horizon=`, `?pairs=` and `?pairfull=0` applied. */
+/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=`, `?light=`, `?horizon=`, `?pairs=`, `?pairfull=0` and `?scenes=off` applied. */
 export function effectivePrefs(stored: SceneryPrefs, search: string, hash: string): SceneryPrefs {
   const a = switchParam(search, hash, 'accents');
   const f = switchParam(search, hash, 'fill');
@@ -206,10 +213,12 @@ export function effectivePrefs(stored: SceneryPrefs, search: string, hash: strin
   const pairs = pr === null ? {} : { pairsUrl: pr === 'off' || pr === '0' ? '' : pr === 'forgecoach' || pr === 'on' ? FORGECOACH_PAIRS_URL : pr };
   // Spec 1.15 is on by default: only `?pairfull=0` turns it off for the page; `?pairfull=1` changes nothing.
   const pf = switchParam(search, hash, 'pairfull');
+  // Spec 1.21: only `?scenes=off` changes anything (no scenes for the page); `?scenes=on` is the default.
+  const sc = switchParam(search, hash, 'scenes');
   const withAccents =
-    a === null && f === null && l === null && hz === null && pr === null && pf !== false
+    a === null && f === null && l === null && hz === null && pr === null && pf !== false && sc !== false
       ? stored
-      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...(hz === null ? {} : { horizon: hz }), ...pairs, ...(pf === false ? { pairFull: false } : {}) };
+      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...(hz === null ? {} : { horizon: hz }), ...pairs, ...(pf === false ? { pairFull: false } : {}), ...(sc === false ? { scenes: false } : {}) };
   const p = sceneryParam(search, hash);
   if (!p) return withAccents;
   if (p === 'off') return { ...withAccents, mode: 'off' };
@@ -275,9 +284,10 @@ export function pairsUrlOf(p: SceneryPrefs): string | null {
 /**
  * Spec 1.20: the scenes manifest's base URL for these prefs, or null for none:
  * FORGECOACH_SCENES_URL with ForgeCoach's own pack (the scenes were painted in
- * its world), whatever the whole-half flag says; else none.
+ * its world), whatever the whole-half flag says, unless the page said
+ * `?scenes=off` (spec 1.21); else none.
  */
 export function scenesUrlOf(p: SceneryPrefs): string | null {
-  if (p.mode !== 'pack') return null;
+  if (p.mode !== 'pack' || p.scenes === false) return null;
   return p.packUrl.trim() === FORGECOACH_PACK_URL ? FORGECOACH_SCENES_URL : null;
 }

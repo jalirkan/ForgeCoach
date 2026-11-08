@@ -93,6 +93,7 @@ const KNOWN_CAPTION_GAPS: readonly string[] = [];
 
 const RULE_WORDS: Record<GapReason, string> = {
   'no-element': "a colour drawn as a 1.14 cut-out (spec 1.19 a: the third where nothing is painted in, every colour past it) whose element the pack lacks at this shape (on a phone, its phone piece)",
+  'not-painted': 'spec 1.21: a colour the nearest scene left out (no scene painted with it yet), named in the caption as "not yet painted in"',
   unexplained: 'no known rule: the walk could not say why',
 };
 const CAPTION_WORDS: Record<string, string> = {
@@ -406,24 +407,32 @@ describe('the storyboard walk: every colour with lands, on screen', () => {
 // Spec 1.20: the same walk with the sample scenes file (testdata/scenes-sample.scenes.json, two scenes; the real file at
 // its tag replaces it): a scene names every colour of its key, so nothing may hide, and the captions stay honest.
 
-describe('the storyboard walk with the sample scenes (spec 1.20)', () => {
+describe('the storyboard walk with the sample scenes (spec 1.20, 1.21)', () => {
   const scenes = validateScenes(json('scenes-sample.scenes.json'), `${FORGECOACH_SCENES_URL}scenes.json`).scenes!;
   const WITH: StoryboardPacks = { ...PACKS, scenes };
-  it('every colour with lands is on screen and every caption is honest, in every state, at both shapes, with the flag and without', { timeout: 600_000 }, () => {
+  it('every colour with lands is on screen or named "not yet painted in", and every caption is honest, in every state, at both shapes, with the flag and without', { timeout: 600_000 }, () => {
     const drawn: Record<string, number> = {};
     for (const { state } of enumerateStates({ duals: true, dualMax: 4 }))
       for (const c of COMBOS) {
         const h = storyboardHalf(state, c.shape, c.pairfull, WITH);
-        expect(h.invisible, `${comboId(c)} ${stateLabel(state)}`).toEqual([]);
+        // Spec 1.21: the only colour that may be off screen is one the nearest scene left out, and the caption says so.
+        expect(h.invisible.filter((x) => x.reason !== 'not-painted'), `${comboId(c)} ${stateLabel(state)}`).toEqual([]);
+        const notPainted = h.invisible.map((x) => x.colour);
+        if (notPainted.length) expect(h.caption, `${comboId(c)} ${stateLabel(state)}`).toMatch(/not yet painted in\)$|not yet painted in;/);
         if (h.caption) {
-          expect(h.captionNames.filter((x) => !h.visible.includes(x)), h.caption).toEqual([]);
+          expect(h.captionNames.filter((x) => !h.visible.includes(x) && !notPainted.includes(x)), h.caption).toEqual([]);
           expect(h.visible.filter((x) => !h.captionNames.includes(x)), h.caption).toEqual([]);
         }
         const sc = h.drawn.find((d) => d.kind === 'scene');
         if (sc) drawn[sc.what.split(' ')[1]!] = (drawn[sc.what.split(' ')[1]!] ?? 0) + 1;
+        // Spec 1.21: with scenes loaded a half of two or more colours is always a scene (every picture is loaded here).
+        if (h.colours.length >= 2) expect(sc, `${comboId(c)} ${stateLabel(state)}: ${h.picture}`).toBeDefined();
+        else expect(h.drawn.some((d) => d.kind === 'pair' || d.kind === 'cutout' || d.kind === 'band')).toBe(false);
       }
-    // Both sample scenes are drawn, in every mode and shape, and nothing else is a scene.
-    expect(Object.keys(drawn).sort()).toEqual(['island2+forest3+mountain2', 'plains2+forest4+mountain2']);
+    // Both sample scenes are drawn, in every mode and shape; every other scene drawn is the pack's own picture of one colour.
+    const keys = Object.keys(drawn);
+    expect(keys).toEqual(expect.arrayContaining(['island2+forest3+mountain2', 'plains2+forest4+mountain2']));
+    expect(keys.filter((k) => k.includes('+')).sort()).toEqual(['island2+forest3+mountain2', 'plains2+forest4+mountain2']);
     for (const n of Object.values(drawn)) expect(n % COMBOS.length).toBe(0);
   });
 });

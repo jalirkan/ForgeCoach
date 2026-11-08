@@ -172,7 +172,8 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   // Spec 1.17: on a phone-width screen a desktop-only seam grid cell is not planned; the half is the pair's stages (1.18: a
   // cell with a phone picture is planned there too).
   // Spec 1.20: without the flag only a scene can be planned (no pairs are passed).
-  const planOpts = useMemo(() => ({ thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes: scenesPack }), [pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenesPack]);
+  // Spec 1.21: the pack's biomes, for the nearest scene's last step (one colour left: its own picture, as a scene).
+  const planOpts = useMemo(() => ({ thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes: scenesPack, biomes: pack?.biomes ?? null }), [pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenesPack, pack?.biomes]);
   const firstPlan = useMemo(() => ((pairFull && pairsPack) || scenesPack ? pairFullPlan(layout as HalfSlotLayout[], pairFull ? pairsPack : null, planOpts) : null), [pairFull, pairsPack, scenesPack, layout, planOpts]);
   // Spec 1.15's load gate (review fault 4): the pair picture is drawn once a picture of it has loaded (1.16: a painted-in
   // element first). Until then the half holds what it drew last (the review of #198: no panels-and-band flash on a cold
@@ -768,7 +769,7 @@ function ScenePanel({ s, shown, first, growth, reduced }: { s: PairFullScene; sh
   const ms = growthMs(growth, reduced);
   const pic = art.picture!;
   return (
-    <div className={['scn-slot', 'scn-pairfull', 'scn-scene', first && 'is-first'].filter(Boolean).join(' ')} style={{ flexGrow: 1 }} data-scene={shown.scene ?? s.key} data-art={art.source}>
+    <div className={['scn-slot', 'scn-pairfull', 'scn-scene', first && 'is-first'].filter(Boolean).join(' ')} style={{ flexGrow: 1 }} data-scene={shown.scene ?? s.key} data-scene-for={s.nearest && (shown.scene ?? s.key) === s.key ? s.nearest.for : undefined} data-scene-mono={s.nearest?.mono && (shown.scene ?? s.key) === s.key ? '1' : undefined} data-art={art.source}>
       <div className="scn-pairfull-art">
         <FadeGroup
           cur={{ key: pic.src, payload: art }}

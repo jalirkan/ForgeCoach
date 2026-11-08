@@ -27,7 +27,9 @@
  * - spec 1.20, before all of it: a scene for the half's exact state (the
  *   packs' `scenes`, scenes.ts), with the flag or without -- one painting,
  *   every colour of its key on screen because the scene names it, and
- *   nothing over it;
+ *   nothing over it; spec 1.21: else, for two or more colours, the nearest
+ *   scene, the same way -- the colours of the key DRAWN are on screen, and a
+ *   colour it left out is `not-painted`;
  * - and in both, ScenePieces' cut-outs (pieces.ts `halfCutOuts`, the one
  *   rule: the third colour's where it is cut out, spec 1.19 a's every
  *   further colour's), with the pack's 1.14 elements at the shape;
@@ -85,11 +87,13 @@ export interface Drawn {
  * Why a colour with lands has nothing on screen:
  * - `no-element`: a colour drawn as a 1.14 cut-out (spec 1.19 a: the third where nothing is painted in, every colour
  *   past it) whose element the pack lacks at this shape (on a phone-width screen, its `phone` piece);
+ * - `not-painted`: spec 1.21, a colour the nearest scene left out (no scene painted with it yet: the half draws the
+ *   nearest painting of fewer colours, and its caption says "<colour> not yet painted in");
  * - `unexplained`: none of these (a bug in this walk or a new rule).
  * Until spec 1.19 there were four more: `dropped` (a fourth or fifth colour: "the rest show nothing"), and the third
  * colour on a seam cell on a phone, on a cell with no painted picture of it, and on a stage picture not its painted one.
  */
-export type GapReason = 'no-element' | 'unexplained';
+export type GapReason = 'no-element' | 'not-painted' | 'unexplained';
 
 /** What one half draws for one mana state, at one shape, with or without the flag. */
 export interface HalfStoryboard {
@@ -174,7 +178,7 @@ function bandCaption(pack: ScenePack, pairs: PairsPack | null, slots: SlotState[
   const phoneElements = pairfull ? phoneElementBiomes(pack.pieces) : null;
   const layout = halfLayout(slots, pack, null, showing);
   // Spec 1.20: a scene is captioned in both modes ("Scene · island 2, forest 3, mountain 2 — one painting").
-  const full = (pairfull && pairs) || scenes ? pairFullCaption(pairFullPlan(layout, pairfull ? pairs : null, { thresholds: pack.stageThresholds, stageOverride: null, elements, phoneElements, showing, slots, narrow, scenes }), lands) : null;
+  const full = (pairfull && pairs) || scenes ? pairFullCaption(pairFullPlan(layout, pairfull ? pairs : null, { thresholds: pack.stageThresholds, stageOverride: null, elements, phoneElements, showing, slots, narrow, scenes, biomes: pack.biomes }), lands) : null;
   if (full) return full;
   if (!pairs) return null;
   const bands = pairBands(layout, pairs, duals);
@@ -219,7 +223,7 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
   let picture = '';
 
   const scenes = packs.scenes ?? null;
-  const plan = (pairfull && pairs) || scenes ? pairFullPlan(layout, pairfull ? pairs : null, { thresholds, elements, phoneElements, showing: memory, slots, narrow, scenes }) : null;
+  const plan = (pairfull && pairs) || scenes ? pairFullPlan(layout, pairfull ? pairs : null, { thresholds, elements, phoneElements, showing: memory, slots, narrow, scenes, biomes: pack.biomes }) : null;
   const p = plan?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
   const scene = planScene(plan);
   const cands = planCandidates(plan, halfAspect, narrow, false);
@@ -228,7 +232,8 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
   const drawsPlan = !!(plan && ((p && (shown || p.apart)) || (scene && shown)));
   if (drawsPlan && scene) {
     // Spec 1.20: one painting of the half's exact state; every colour of its key is on screen (the scene names it).
-    const what = `scene ${scene.key} [${file(shown!.art.picture!.src)}]`;
+    // Spec 1.21: the nearest scene standing in -- the colours of the key drawn are on screen, the ones it left out not.
+    const what = `scene ${scene.key}${scene.nearest ? ` for ${scene.nearest.for}` : ''} [${file(shown!.art.picture!.src)}]`;
     drawn.push({ kind: 'scene', colours: scene.scene.lands.map((l) => colourOf(l.biome)).filter((c): c is PieceColour => !!c), what });
     picture = what;
   } else if (drawsPlan) {
@@ -277,7 +282,8 @@ export function storyboardHalf(state: ManaState, shape: Shape, pairfull: boolean
   const colours = pick.makeup.colours;
   const visible = colours.filter((c) => on.has(c));
   const wantsCut = new Set([...pick.extras, ...(pick.third && !on.has(pick.third) ? [pick.third] : [])]);
-  const invisible = colours.filter((c) => !on.has(c)).map((colour) => ({ colour, reason: wantsCut.has(colour) && !pack.pieces?.elements[colour] ? ('no-element' as const) : wantsCut.has(colour) && narrow && !pack.pieces?.elements[colour]?.phone ? ('no-element' as const) : ('unexplained' as const) }));
+  const notPainted = new Set((drawsPlan && scene?.nearest?.dropped) || []);
+  const invisible = colours.filter((c) => !on.has(c)).map((colour) => ({ colour, reason: notPainted.has(COLOUR_BIOME[colour]) ? ('not-painted' as const) : wantsCut.has(colour) && !pack.pieces?.elements[colour] ? ('no-element' as const) : wantsCut.has(colour) && narrow && !pack.pieces?.elements[colour]?.phone ? ('no-element' as const) : ('unexplained' as const) }));
   const caption = opts.caption === false ? null : bandCaption(pack, pairs, slots, duals, pairfull, narrow, memory, landNamesFor(state, pairs), scenes);
   return { shape, pairfull, colours, visible, invisible, picturePair, picture, drawn, caption, captionNames: captionColours(caption, pairs), pick };
 }

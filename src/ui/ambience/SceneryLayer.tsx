@@ -215,7 +215,7 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     const full = pairFull ? { thresholds: load.pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
     if (fill) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone, full })) warmPicture(w);
     // Spec 1.20: each half's scene and the scenes one land away, at the shape a scene draws (its phone picture on a phone).
-    if (fill) for (const w of scenePictures(load.pack.scenes, scenery.players.map((p) => p.slots), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: load.pack.stageThresholds })) warmPicture(w);
+    if (fill) for (const w of scenePictures(load.pack.scenes, scenery.players.map((p) => p.slots), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: load.pack.stageThresholds, biomes: load.pack.biomes })) warmPicture(w);
   }, [scenery, load?.pack, fill, pairFull]);
 
   // Spec 1.14: the pieces that can appear at once (fronts, veils, landmarks, the empty table) warm in ScenePieces, at the
