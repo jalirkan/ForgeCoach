@@ -9,7 +9,7 @@
  * named or sent: the AI's list stays hidden.
  *
  * The opponent AI (mtg-table D414): `{"aiPolicy"}` on the same call, when
- * /health says `engine_start_policy: 1`. The search AI (search-v2) unless the
+ * /health says `engine_start_policy: 1`. The search AI (search-v3) unless the
  * player picked another; plain Forge is one tap away. A running match keeps its
  * own AI (the helper's warning says so).
  */

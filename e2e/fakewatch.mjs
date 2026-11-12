@@ -16,8 +16,8 @@
  * With `engine: 'd444'` it is the helper after mtg-table D443/D444: `/health`
  * lists `watchDrafters` / `watchPlayers` (objects, the docs' example) and says
  * `watchLlmCap` and `watchCustom: 1`; `POST /watch` takes `drafterA`/`drafterB`
- * (at most one not `lab`), players by id (case-insensitive, `search` =
- * `search-v2`), and a `my-<slug>` cube with its `cubeDoc` (400 in the parser's
+ * (at most one not `lab`), players by id (case-insensitive; `search` and
+ * `search-v2`, its id before mtg-table D539, are `search-v3`), and a `my-<slug>` cube with its `cubeDoc` (400 in the parser's
  * words, 413 past 256 KB); match.json carries `drafters` and, with a Claude
  * drafter, `cost`. Without it, the D440 helper as before.
  *
@@ -51,7 +51,7 @@ export const D443_HEALTH = {
     { id: 'Default', label: 'Forge AI (Default)' },
     { id: 'Experimental', label: 'Forge AI (Experimental)' },
     { id: 'Reckless', label: 'Forge AI (Reckless)' },
-    { id: 'search-v2', label: 'Search AI (search-v2: Forge AI plus a look-ahead search)' },
+    { id: 'search-v3', label: 'Search AI (search-v3: Forge AI plus a look-ahead search)' },
   ],
   watchLlmCap: { maxUsd: 1, maxCalls: 40, maxFallbackRate: 0.25 },
   watchCustom: 1,
@@ -128,7 +128,7 @@ export function createFakeWatch({ draftMs = 1500, gameStartMs = 2500, bootMs = 8
       status = 'stopped';
       for (const g of games) if (g.status === 'playing') Object.assign(g, { status: 'error', error: 'the watch process was stopped (SIGTERM)' });
     }
-    const player = (p) => (/^search(-v2)?$/i.test(p) ? { player: 'search', profile: 'Default', policy: 'search' } : { player: p, profile: p, policy: 'plain' });
+    const player = (p) => (/^search(-v[23])?$/i.test(p) ? { player: 'search', profile: 'Default', policy: 'search' } : { player: p, profile: p, policy: 'plain' });
     const match = {
       v: 1, kind: 'watch-match', id: w.id, status, startedAt: new Date(w.at).toISOString(), updatedAt: new Date(now()).toISOString(),
       cube: w.req.cubeDoc ? { title: w.req.cubeDoc.title, file: cubeOf.file } : { title: draftRaw.cube.title, file: `cubes/${w.req.cube}.md` }, seed: w.req.seed, bestOf: w.req.games, need, paceMs: w.req.pace,
@@ -176,7 +176,7 @@ export function createFakeWatch({ draftMs = 1500, gameStartMs = 2500, bootMs = 8
       let cubeDoc = null;
       if (d444) {
         const listed = D443_HEALTH.watchPlayers.map((p) => p.id.toLowerCase());
-        players = [...listed, 'search'];
+        players = [...listed, 'search', 'search-v2'];
         const ids = D443_HEALTH.watchDrafters.map((d) => d.id);
         for (const k of ['drafterA', 'drafterB']) if (q[k] !== undefined && !ids.includes(q[k])) return no(`"${k}" is one of ${ids.join(', ')}`);
         drafterA = q.drafterA ?? 'lab';

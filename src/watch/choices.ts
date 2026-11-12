@@ -20,7 +20,8 @@
  *     drafter and no drafter field is sent. At most one side drafts with
  *     anything but `lab` (the route's 400; `drafterBlock` greys the other side).
  *   - `watchPlayers: [{id, label}]` (D443): one per Forge AI profile on that PC,
- *     plus `search-v2`. When the helper lists them, they are the only players
+ *     plus the search seat (`search-v3` since mtg-table D539, `search-v2`
+ *     before it). When the helper lists them, they are the only players
  *     offered; without the list, the search AI and the four stock profiles (a
  *     profile is a style, never a difficulty, D107). There is no Claude player.
  *   - `watchLlmCap: {maxUsd, maxCalls, maxFallbackRate}` (D442/D443): the cap a
@@ -56,7 +57,10 @@ const PROFILE_BLURB: Record<string, string> = {
   Experimental: 'Forge’s own AI with unpredictable heuristics.',
 };
 
-const SEARCH_BLURB = 'Forge’s Default plus sacrifice play and a look-ahead at its plays, attacks and blocks (search-v2). Thinks 1–3 s a decision, so games run slower.';
+const SEARCH_BLURB = 'Forge’s Default plus sacrifice play and a look-ahead at its plays and attacks; it blocks as Forge does (search-v3). Thinks 1–3 s a decision, so games run slower.';
+
+/** The search seat's id as a helper lists it or a match names it: `search`, or `search-v<n>` (v2 until mtg-table D539, v3 since). */
+const SEARCH_ID = /^search(-v\d+)?$/i;
 
 export const SEARCH_PLAYER: SeatOption = { id: 'search', label: 'Search AI', blurb: SEARCH_BLURB };
 
@@ -146,7 +150,7 @@ function listedDrafter(e: { id: string; label: string | null; costNote: string |
 /** A player the helper lists: the search AI, a known profile in our words, another profile by its label. Never a Claude seat. */
 function listedPlayer(e: { id: string; label: string | null }): SeatOption | null {
   if (/^llm:/i.test(e.id)) return null;
-  if (/^search(-v2)?$/i.test(e.id)) return { ...SEARCH_PLAYER, id: e.id };
+  if (SEARCH_ID.test(e.id)) return { ...SEARCH_PLAYER, id: e.id };
   const stock = PROFILES.find((p) => p.toLowerCase() === e.id.toLowerCase());
   if (stock) return { id: e.id, label: stock, blurb: PROFILE_BLURB[stock]! };
   return { id: e.id, label: e.id, blurb: `Forge’s own AI, the ${e.id} profile on your PC${e.label && e.label !== e.id ? ` (${e.label})` : ''}.` };
@@ -227,7 +231,7 @@ export interface WatchForm {
 
 /** A fresh form: the lab drafter both sides, the search AI both sides (D414) when offered, best of 3, the default pace. Never a Claude seat. */
 export function defaultForm(cube: string, caps: Pick<WatchCaps, 'players'>): WatchForm {
-  const search = caps.players.find((p) => /^search(-v2)?$/i.test(p.id));
+  const search = caps.players.find((p) => SEARCH_ID.test(p.id));
   const plain = caps.players.find((p) => p.id.toLowerCase() === 'default') ?? caps.players.find((p) => !p.costly);
   const player = search?.id ?? plain?.id ?? 'Default';
   return { cube, drafter: { A: 'lab', B: 'lab' }, player: { A: player, B: player }, bestOf: 3, paceMs: 600, seed: '', costOk: false };
@@ -335,7 +339,7 @@ export const canStart = (f: WatchForm, caps: WatchCaps, custom: { title: string;
 /** A seat's words, from match.json's player ("search" → Search AI). */
 export function playerLabel(player: string | null | undefined): string {
   if (!player) return 'a bot';
-  if (/^search(-v2)?$/i.test(player)) return 'Search AI';
+  if (SEARCH_ID.test(player)) return 'Search AI';
   return player;
 }
 
