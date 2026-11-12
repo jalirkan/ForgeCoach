@@ -2345,7 +2345,7 @@ export interface SessionHeader {
   /**
    * §8.1, amendment **M62** (D414) — the AI seat's controller when it is not
    * plain Forge (absent for plain Forge and before M62): `outlets`, or the
-   * search with its live version (`search-v2`, or null when other knobs were
+   * search with its live version (`search-v3` since D539, or null when other knobs were
    * changed), its budget per searched decision and its config string. The
    * search's knobs only — never a card or a deck.
    */

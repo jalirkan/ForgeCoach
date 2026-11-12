@@ -1444,7 +1444,7 @@ const watchD444Scenario = {
     await page.waitForURL(/#watch\/watch-my-friday-cube-4242$/, { timeout: STEP_MS });
     const posted = watchD444Scenario.fake.fake.posts.at(-1);
     check(JSON.stringify(Object.keys(posted).sort()) === JSON.stringify(['cube', 'cubeDoc', 'drafterA', 'drafterB', 'games', 'pace', 'playerA', 'playerB']), `the D444 body's fields (${Object.keys(posted)})`);
-    check(posted.cube === 'my-friday-cube' && posted.drafterA === 'lab' && posted.drafterB === 'forge-ranks' && posted.playerA === 'search-v2' && posted.playerB === 'Reckless', `the body says what was picked (${JSON.stringify({ ...posted, cubeDoc: '…' })})`);
+    check(posted.cube === 'my-friday-cube' && posted.drafterA === 'lab' && posted.drafterB === 'forge-ranks' && posted.playerA === 'search-v3' && posted.playerB === 'Reckless', `the body says what was picked (${JSON.stringify({ ...posted, cubeDoc: '…' })})`);
     check(posted.cubeDoc.title === 'Friday Cube' && posted.cubeDoc.markdown === FRIDAY.doc, 'the cube goes as its own saved document');
     // The watch runs on it: the kicker names the cube, the decks say who drafted.
     await page.locator('.wb-runhead .setup-kicker', { hasText: 'Friday Cube' }).waitFor({ timeout: STEP_MS });

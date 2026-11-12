@@ -288,7 +288,7 @@ describe('who drafts, who plays', () => {
     watchPlayers: [
       { id: 'Cautious', label: 'Forge AI (Cautious)' }, { id: 'Default', label: 'Forge AI (Default)' },
       { id: 'Experimental', label: 'Forge AI (Experimental)' }, { id: 'Reckless', label: 'Forge AI (Reckless)' },
-      { id: 'search-v2', label: 'Search AI (search-v2: Forge AI plus a look-ahead search)' },
+      { id: 'search-v3', label: 'Search AI (search-v3: Forge AI plus a look-ahead search)' },
     ],
     watchLlmCap: { maxUsd: 1, maxCalls: 40, maxFallbackRate: 0.25 },
   };
@@ -296,13 +296,17 @@ describe('who drafts, who plays', () => {
   it('D443: reads the lists of objects; players only from watchPlayers; the cap; custom cubes', () => {
     expect(rich.drafters.map((o) => [o.id, o.label, !!o.costly])).toEqual([['lab', 'Lab drafter', false], ['forge-ranks', 'Forge ranks', false], ['llm:haiku', 'Haiku 5.5', true], ['llm:sonnet', 'Sonnet 5.5', true]]);
     expect(rich.drafters.find((o) => o.id === 'llm:sonnet')!.cost).toBe('Sonnet 5.5 drafting one side: about $0.30 a draft at list price');
-    expect(rich.players.map((o) => [o.id, o.label])).toEqual([['Cautious', 'Cautious'], ['Default', 'Default'], ['Experimental', 'Experimental'], ['Reckless', 'Reckless'], ['search-v2', 'Search AI']]);
+    expect(rich.players.map((o) => [o.id, o.label])).toEqual([['Cautious', 'Cautious'], ['Default', 'Default'], ['Experimental', 'Experimental'], ['Reckless', 'Reckless'], ['search-v3', 'Search AI']]);
     expect(rich.sendsDrafters).toBe(true);
     expect(rich.llmCap).toEqual({ maxUsd: 1, maxCalls: 40, maxFallbackRate: 0.25 });
     expect(rich.custom).toBe(true);
     // A PC with only Default: only Default and the search AI, never the stock four from a copy.
-    const lean = watchCapsOf({ ...HEALTH, watchPlayers: [{ id: 'Default', label: 'Forge AI (Default)' }, { id: 'search-v2', label: 'Search AI' }] });
-    expect(lean.players.map((o) => o.id)).toEqual(['Default', 'search-v2']);
+    const lean = watchCapsOf({ ...HEALTH, watchPlayers: [{ id: 'Default', label: 'Forge AI (Default)' }, { id: 'search-v3', label: 'Search AI' }] });
+    expect(lean.players.map((o) => o.id)).toEqual(['Default', 'search-v3']);
+    // A helper from before mtg-table D539 lists the search seat as search-v2: still the Search AI, still the default.
+    const older = watchCapsOf({ ...HEALTH, watchPlayers: [{ id: 'Default', label: 'Forge AI (Default)' }, { id: 'search-v2', label: 'Search AI (search-v2: Forge AI plus a look-ahead search)' }] });
+    expect(older.players.map((o) => [o.id, o.label])).toEqual([['Default', 'Default'], ['search-v2', 'Search AI']]);
+    expect(defaultForm('x', older).player.A).toBe('search-v2');
     // A profile of its own on that PC: by its id; a Claude player is never offered (the route has none); bad entries dropped.
     const odd = watchCapsOf({ ...HEALTH, watchPlayers: [{ id: 'Dragon', label: 'Forge AI (Dragon)' }, { id: 'llm:sonnet', label: 'Claude' }, 'Default', { id: '../x' }, { label: 'no id' }] });
     expect(odd.players.map((o) => o.id)).toEqual(['Dragon']);
@@ -317,10 +321,10 @@ describe('who drafts, who plays', () => {
   });
   it('defaults: lab drafter, the search AI (D414) on both sides, best of 3, pace 600 — never a Claude seat', () => {
     const f = defaultForm('fair-fight-cube-180', rich);
-    expect(f).toMatchObject({ drafter: { A: 'lab', B: 'lab' }, player: { A: 'search-v2', B: 'search-v2' }, bestOf: 3, paceMs: 600, costOk: false });
+    expect(f).toMatchObject({ drafter: { A: 'lab', B: 'lab' }, player: { A: 'search-v3', B: 'search-v3' }, bestOf: 3, paceMs: 600, costOk: false });
     expect(costlyPicks(f, rich)).toHaveLength(0);
     expect(defaultForm('x', watchCapsOf({ ...HEALTH, watchPlayers: [{ id: 'Cautious', label: 'C' }, { id: 'Default', label: 'D' }] })).player.A).toBe('Default');
-    expect(watchRequest(f, rich)).toEqual({ body: { cube: 'fair-fight-cube-180', games: 3, playerA: 'search-v2', playerB: 'search-v2', pace: 600, drafterA: 'lab', drafterB: 'lab' } });
+    expect(watchRequest(f, rich)).toEqual({ body: { cube: 'fair-fight-cube-180', games: 3, playerA: 'search-v3', playerB: 'search-v3', pace: 600, drafterA: 'lab', drafterB: 'lab' } });
   });
   it('one side at most drafts with anything but the lab drafter: the other side greyed with a reason, the request refused', () => {
     const f: WatchForm = { ...defaultForm('vintage-cube-180', rich), drafter: { A: 'forge-ranks', B: 'lab' } };
@@ -370,6 +374,8 @@ describe('who drafts, who plays', () => {
   });
   it('labels', () => {
     expect(playerLabel('search')).toBe('Search AI');
+    expect(playerLabel('search-v2')).toBe('Search AI');
+    expect(playerLabel('search-v3')).toBe('Search AI');
     expect(playerLabel('Reckless')).toBe('Reckless');
     expect(drafterLabel('lab')).toBe('Lab drafter');
     expect(drafterLabel('llm:haiku:thinking=low')).toBe('Haiku 5.5');

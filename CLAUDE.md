@@ -174,7 +174,7 @@ glossary: "the bot", "the engine on your PC", "Claude Code on your PC"). The log
   `{"aiProfile"}` only when `/health` has `engine_start_profile: 1`, D381 —
   picker `ui/PlayProfile.tsx`, the helper's warnings shown on the board; and
   `{"aiPolicy"}` with `engine_start_policy: 1`, D414). Since mtg-table D414 the
-  opponent is the search AI (search-v2) by default wherever it is offered
+  opponent is the search AI (search-v3 since D539) by default wherever it is offered
   (`defaultPolicy`: Setup's picker and `PlayPolicyPicker`), plain Forge one tap away. Hidden information:
   the player only ever sees `knownAiCards`, never the AI's list.
 - `draft/room.ts` — Draft with a friend: the client for mtg-table's draft room

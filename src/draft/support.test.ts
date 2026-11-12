@@ -336,7 +336,7 @@ describe('the search AI is the default opponent (mtg-table D414)', () => {
   });
 
   it('the search AI blurb names it the default', () => {
-    expect(AI_POLICIES.find((p) => p.id === 'search')!.blurb).toMatch(/default \(search-v2\)/);
+    expect(AI_POLICIES.find((p) => p.id === 'search')!.blurb).toMatch(/default \(search-v3\)/);
   });
 });
 

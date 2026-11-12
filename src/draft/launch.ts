@@ -25,7 +25,7 @@
  * page offers the choice only when /health advertises `aiPolicies`; with an
  * older helper the request carries no `aiPolicy` and the engine plays as
  * play.sh started it. Since mtg-table D414 the pickers start on the search AI
- * (search-v2) whenever it is offered (`defaultPolicy`); plain Forge is one tap
+ * (search-v3 since mtg-table D539, search-v2 before) whenever it is offered (`defaultPolicy`); plain Forge is one tap
  * away, and a choice the helper does not offer falls back to plain.
  *
  * Since D308 the engine can be asleep: play.sh and the helper stay up, nothing
@@ -73,7 +73,7 @@ export const AI_POLICIES: Array<{ id: AiPolicy; label: string; blurb: string }> 
     id: 'search',
     label: 'Search AI (stronger, slower)',
     blurb:
-      'Sacrifice play plus a look-ahead at its main-phase plays, attacks and blocks. Thinks about 1–3 s per decision, so games run slower. The default (search-v2): against Forge’s own AI it won 60% of 1,200 games in mtg-table’s tests. It never sees your hand or library: it guesses them.',
+      'Sacrifice play plus a look-ahead at its main-phase plays and attacks; it blocks as Forge does. Thinks about 1–3 s per decision, so games run slower. The default (search-v3): against Forge’s own AI it won 62% of 1,200 games in mtg-table’s tests. It never sees your hand or library: it guesses them.',
   },
 ];
 
@@ -234,7 +234,7 @@ export function policyFields(choice: AiPolicy, health: Pick<EngineHealth, 'aiPol
 }
 
 /**
- * The opponent a picker starts on (mtg-table D414): the search AI (search-v2)
+ * The opponent a picker starts on (mtg-table D414): the search AI (search-v3)
  * whenever the helper offers it, else plain Forge. Plain stays one tap away.
  */
 export const DEFAULT_POLICY: AiPolicy = 'search';

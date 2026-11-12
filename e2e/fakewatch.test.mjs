@@ -97,11 +97,11 @@ describe('the fake /watch', () => {
     const c = clockAt();
     const w = createFakeWatch({ now: c.now, engine: 'd444' });
     const caps = watchCapsOf(w.health());
-    expect(caps.players.map((o) => o.id)).toEqual(['Cautious', 'Default', 'Experimental', 'Reckless', 'search-v2']);
+    expect(caps.players.map((o) => o.id)).toEqual(['Cautious', 'Default', 'Experimental', 'Reckless', 'search-v3']);
     expect(caps.custom && caps.sendsDrafters && caps.llmCap?.maxUsd === 1).toBe(true);
     const cards = 'Opt Brainstorm Ponder Preordain Counterspell Mana-Leak Daze Force-Spike Remand Impulse'.split(' ').map((n) => ({ name: n.replace('-', ' '), colors: 'U', type: 'Instant', mv: 1 }));
     const doc = cubeMarkdown({ title: 'Friday Cube', blurb: '', cards });
-    const f = { ...defaultForm('my-friday-cube', caps), drafter: { A: 'lab', B: 'forge-ranks' }, player: { A: 'search-v2', B: 'Reckless' }, seed: '7' };
+    const f = { ...defaultForm('my-friday-cube', caps), drafter: { A: 'lab', B: 'forge-ranks' }, player: { A: 'search-v3', B: 'Reckless' }, seed: '7' };
     const r = watchRequest(f, caps, { title: 'Friday Cube', doc });
     expect('body' in r).toBe(true);
     const post = (b) => w.handle('POST', '/watch', '', {}, JSON.stringify(b));
