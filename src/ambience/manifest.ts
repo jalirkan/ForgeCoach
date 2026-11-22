@@ -39,6 +39,7 @@ import { cleanText, int, num } from '../lab/status.ts';
 import { BIOMES, MAX_STAGES, pairKey, type Biome } from './model.ts';
 import type { PairsPack } from './pairs.ts';
 import type { ScenesPack } from './scenes.ts';
+import type { PlacesPack } from './places.ts';
 
 export const MANIFEST_SCHEMA = 1;
 /** The spec minor version this engine reads (docs/scenery-pack-spec.md). */
@@ -967,6 +968,11 @@ export interface ScenePack {
    * null (no half has a scene; every half is drawn by 1.5-1.19).
    */
   scenes?: ScenesPack | null;
+  /**
+   * Spec 1.22: the places, from a fourth manifest (`places.json`, places.ts) the loader fetches with ForgeCoach's own
+   * pack, or undefined / null. When they load, the scenes are not fetched: a place is drawn before any scene.
+   */
+  places?: PlacesPack | null;
   /** Spec 1.14: elements, landmarks, fronts, veils and the empty table, or undefined / null when the pack has none. */
   pieces?: PackPieces | null;
 }

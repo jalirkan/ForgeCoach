@@ -208,7 +208,8 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     for (const w of growthPictures(load.pack, scenery.players.flatMap((p) => p.slots), { half: fill, phone })) warmPicture(w);
     // Spec 1.21: with scenes loaded a half of two or more colours always draws a scene (its own, or the nearest), so
     // the bridges, pair bands, seam cells and panoramas are never drawn and nothing of them is warmed.
-    const pairsDrawn = fill && !load.pack.scenes;
+    // Spec 1.22: likewise with places loaded (every half with a state draws its place).
+    const pairsDrawn = fill && !load.pack.scenes && !load.pack.places;
     // Spec 1.8: a side's bridge warms with its split's pictures (the half board only).
     if (pairsDrawn) for (const w of bridgePictures(load.pack, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
     // Spec 1.9: and its pair band's pictures (the stage its lower neighbour maps to, and the next); with spec 1.15 on

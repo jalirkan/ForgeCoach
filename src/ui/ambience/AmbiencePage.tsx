@@ -28,8 +28,9 @@ import { browserLoader, checkEffectFiles, fetchManifest, loadPairs, manifestUrlF
 import { pairBands, pairPictures, pairsBytes, pairWords, type PairsPack } from '../../ambience/pairs.ts';
 import { halfLayout, PHONE_VIEWPORT_MAX } from '../../ambience/layout.ts';
 import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, pieceUrls, type EffectEvent, type PackEffect, type PackPieces, type ScenePack } from '../../ambience/manifest.ts';
-import { currentPrefs, loadSceneryPrefs, pairFullOn, pairsUrlOf, saveSceneryPrefs, scenesUrlOf } from '../../ambience/prefs.ts';
+import { currentPrefs, loadSceneryPrefs, pairFullOn, pairsUrlOf, placesUrlOf, saveSceneryPrefs, scenesUrlOf } from '../../ambience/prefs.ts';
 import { fetchScenes, scenePictures, type ScenesPack } from '../../ambience/scenes.ts';
+import { fetchPlaces, placesBytes, type PlacesPack } from '../../ambience/places.ts';
 import { gradeFor, type LightOutcome } from '../../ambience/light.ts';
 import { applyGrade } from './lightGrade.ts';
 import { useMediaQuery } from '../hooks.ts';
@@ -90,6 +91,10 @@ type PackState =
       scenes?: ScenesPack | null;
       scenesUrl?: string | null;
       scenesErrors?: string[];
+      /** Spec 1.22: the places, fetched first; when they load, no scenes are fetched. */
+      places?: PlacesPack | null;
+      placesUrl?: string | null;
+      placesErrors?: string[];
     };
 
 export default function AmbiencePage() {
@@ -128,11 +133,14 @@ export default function AmbiencePage() {
   const loadedPairs = packState.status === 'ok' ? (packState.pairs ?? null) : null;
   // Spec 1.20: and the scenes.
   const loadedScenes = packState.status === 'ok' ? (packState.scenes ?? null) : null;
+  // Spec 1.22: and the places.
+  const loadedPlaces = packState.status === 'ok' ? (packState.places ?? null) : null;
   const pack = useMemo(() => {
     if (!basePack) return basePack;
     const withPairs = loadedPairs && basePack.pairs !== loadedPairs ? { ...basePack, pairs: loadedPairs } : basePack;
-    return loadedScenes && withPairs.scenes !== loadedScenes ? { ...withPairs, scenes: loadedScenes } : withPairs;
-  }, [basePack, loadedPairs, loadedScenes]);
+    const withScenes = loadedScenes && withPairs.scenes !== loadedScenes ? { ...withPairs, scenes: loadedScenes } : withPairs;
+    return loadedPlaces && withScenes.places !== loadedPlaces ? { ...withScenes, places: loadedPlaces } : withScenes;
+  }, [basePack, loadedPairs, loadedScenes, loadedPlaces]);
   // The pack's own stage thresholds, as the board uses them (SceneryLayer): ForgeCoach's pack steps a stage with every land.
   const thresholds = pack?.stageThresholds ?? undefined;
   // With what each half showed at the previous play (makeup.ts MakeupMemory, as SceneryLayer folds it for the board): the
@@ -193,14 +201,18 @@ export default function AmbiencePage() {
     const pairsP = pairsUrl ? loadPairs(pairsUrl, { fetch: (x, i) => fetch(x, i) }) : Promise.resolve(null);
     // Spec 1.20: the scenes (ForgeCoach's own pack only), fetched here rather than through pack.ts so the status line can
     // name the file and say why there are none.
+    // Spec 1.22: the places first, likewise; when they load, the scenes are not fetched at all (pack.ts's rule).
+    const placesUrl = placesUrlOf({ ...initial, mode: 'pack', packUrl: u });
+    const placesP = placesUrl ? fetchPlaces(placesUrl, { fetch: (x, i) => fetch(x, i) }) : Promise.resolve(null);
     const scenesUrl = scenesUrlOf({ ...initial, mode: 'pack', packUrl: u });
-    const scenesP = scenesUrl ? fetchScenes(scenesUrl, { fetch: (x, i) => fetch(x, i) }) : Promise.resolve(null);
+    const scenesP = placesP.then((pl) => (pl?.places && Object.keys(pl.places.places).length ? null : scenesUrl ? fetchScenes(scenesUrl, { fetch: (x, i) => fetch(x, i) }) : null));
     const m = await fetchManifest(u, { fetch: (x, i) => fetch(x, i) });
     if (!m.pack) {
       setPackState({ status: 'failed', url: u, manifestUrl: m.manifestUrl, pack: null, errors: m.errors, warnings: m.warnings, note: 'Showing the built-in scenery.' });
       return;
     }
-    const [pre, pairs, sc] = await Promise.all([preloadPack(m.pack, browserLoader(), { maxStage: 6 }), pairsP, scenesP]);
+    const [pre, pairs, pl, sc] = await Promise.all([preloadPack(m.pack, browserLoader(), { maxStage: 6 }), pairsP, placesP, scenesP]);
+    const places = pl?.places && Object.keys(pl.places.places).length ? pl.places : null;
     const p = pre.failed.length ? withoutBiomes(m.pack, pre.failed) : m.pack;
     // A pack with effects and no stage art (spec 1.2) is usable too.
     const any = Object.keys(p.biomes).length > 0 || !!p.effects;
@@ -210,12 +222,15 @@ export default function AmbiencePage() {
       manifestUrl: m.manifestUrl,
       pack: any ? p : null,
       errors: any ? [] : ['No asset loaded.'],
-      warnings: [...m.warnings, ...pre.reasons, ...(sc?.scenes ? [...sc.errors, ...sc.warnings] : [])],
+      warnings: [...m.warnings, ...pre.reasons, ...(places ? [...pl!.errors, ...pl!.warnings] : []), ...(sc?.scenes ? [...sc.errors, ...sc.warnings] : [])],
       note: pre.failed.length ? `${pre.failed.map((b) => BIOME_LABEL[b]).join(', ')} fell back to the built-in scenery.` : null,
       pairs,
       scenes: sc?.scenes ?? null,
       scenesUrl: sc?.manifestUrl ?? null,
       scenesErrors: sc?.errors ?? [],
+      places,
+      placesUrl: pl?.manifestUrl ?? null,
+      placesErrors: pl?.errors ?? [],
     });
     setUsePack(true);
   };
@@ -238,7 +253,7 @@ export default function AmbiencePage() {
   // Spec 1.17: the caption plans as the strip does, so a phone-width screen (no seam cell drawn) is not told of a seam.
   const narrow = useNarrowScreen();
   // Spec 1.20: the caption follows a scene's painting failing (re-rendered when a picture settles, only with scenes).
-  usePicturesVersion(!!pack?.scenes);
+  usePicturesVersion(!!pack?.scenes || !!pack?.places);
   useEffect(() => {
     if (previewPieces) for (const src of pieceUrls(previewPieces, { phone: window.innerWidth < 700 })) warmPicture({ src, src2x: null });
   }, [previewPieces]);
@@ -246,7 +261,7 @@ export default function AmbiencePage() {
   // (spec 1.17: a pair's first seam cell is warm before its second colour arrives). Spec 1.21: none with scenes loaded,
   // which draw a scene for every half of two or more colours.
   useEffect(() => {
-    if (!fill || !pack?.pairs || pack.scenes) return;
+    if (!fill || !pack?.pairs || pack.scenes || pack.places) return;
     const full = pairFull ? { thresholds: pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
     for (const w of pairPictures(pack.pairs, SIM_PLAYERS.map((p) => slotsOf(scenery, p)), { phone: window.innerWidth < 700, full })) warmPicture(w);
   }, [scenery, pack, fill, pairFull]);
@@ -632,8 +647,10 @@ function bandCaption(
   // Spec 1.20: a side with a scene for its exact state says "Scene · island 2, forest 3, mountain 2 — one painting", flag or not.
   const layout = halfLayout(slots, pack, stageOverride, showing);
   const scenes = pack?.scenes ?? null;
+  // Spec 1.22: a side drawn as its place says "Cartagena de Indias: Island 2, Swamp 1, Plains 3, Mountain 1".
+  const places = pack?.places ?? null;
   // A scene whose painting failed is captioned as what the strip then draws: today's plan (pairfull.ts `sceneFailed`).
-  const full = (pairFull && pack?.pairs) || scenes ? pairFullCaption(pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes, biomes: pack?.biomes ?? null, sceneFailed: (src) => pictureStatus(src) === 'failed' }), lands) : null;
+  const full = (pairFull && pack?.pairs) || scenes || places ? pairFullCaption(pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes, places, biomes: pack?.biomes ?? null, sceneFailed: (src) => pictureStatus(src) === 'failed' }), lands) : null;
   if (full) return full;
   if (!pack?.pairs) return null;
   const bands = pairBands(layout, pack.pairs, duals);
@@ -714,11 +731,28 @@ function* packSummary(pack: ScenePack): Generator<string> {
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 /**
+ * Spec 1.22: the places' status line: the file, how many places and which, or "no places" and why.
+ */
+function placesLine(state: Extract<PackState, { status: 'ok' | 'failed' }>, prefs: { scenes?: boolean; places?: boolean }): string {
+  const file = state.placesUrl ?? null;
+  if (!file && (prefs.places === false || prefs.scenes === false)) return `Places (spec 1.22): no places -- ${prefs.places === false ? '?places=off' : '?scenes=off'}.`;
+  if (!file) return 'Places (spec 1.22): no places (only ForgeCoach’s own pack loads them).';
+  const pl = state.places;
+  if (!pl) return `Places (spec 1.22): no places -- ${file} did not load (${state.placesErrors?.[0] ?? 'no place in the file'}).`;
+  const names = Object.values(pl.places).map((p) => p!.name);
+  const refused = state.placesErrors?.length ?? 0;
+  const list = `: ${names.slice(0, 12).join(', ')}${names.length > 12 ? `, and ${names.length - 12} more` : ''}`;
+  return `Places (spec 1.22): ${pl.name}${pl.author ? ` by ${pl.author}` : ''}, ${file}, ${names.length} place${names.length === 1 ? '' : 's'} (${(placesBytes(pl) / 1048576).toFixed(1)} MB declared)${list}${refused ? ` (${refused} refused: see the issues below)` : ''}.`;
+}
+
+/**
  * Spec 1.20: the scenes' status line, so the owner can see on the live site which states have a painting: the file,
  * how many scenes it holds and their keys, or "no scenes" and why.
  */
 function scenesLine(state: Extract<PackState, { status: 'ok' | 'failed' }>, off = false): string {
   const file = state.scenesUrl ?? null;
+  // Spec 1.22: with places loaded the scenes are not fetched.
+  if (!file && state.places) return 'Scenes (spec 1.20): not loaded -- the places are drawn instead.';
   // Spec 1.21: `?scenes=off` loads none for the page, so the halves are drawn by the 1.5–1.19 rules.
   if (!file && off) return 'Scenes (spec 1.20): no scenes -- ?scenes=off (the pair pictures, seams and cut-outs of 1.15–1.19 instead).';
   if (!file) return 'Scenes (spec 1.20): no scenes (only ForgeCoach’s own pack loads them).';
@@ -793,6 +827,7 @@ function PackCard({
                   Pair bands (spec 1.9): <b>{state.pairs.name}</b>, {Object.keys(state.pairs.pairs).length} pairs ({(pairsBytes(state.pairs) / 1048576).toFixed(1)} MB declared).{state.pairs.note ? ` ${state.pairs.note}` : ''}
                 </div>
               ) : null}
+              <div data-amb-places>{placesLine(state, currentPrefs())}</div>
               <div data-amb-scenes>{scenesLine(state, currentPrefs().scenes === false)}</div>
             </>
           ) : (

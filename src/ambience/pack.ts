@@ -20,6 +20,9 @@
  * `pairs.json`, is fetched beside the first and carried as the pack's `pairs`
  * ({@link loadPairs}); it never holds the pack back. Spec 1.20: likewise
  * a third, `scenes.json` ({@link loadScenes}), carried as the pack's `scenes`.
+ * Spec 1.22: and first `places.json` ({@link loadPlaces}), carried as the
+ * pack's `places`; when it loads, `scenes.json` (2.6 MB of superseded
+ * paintings) is not fetched at all.
  *
  * Packs are served from the user's own machine (e.g. http://127.0.0.1:8650/,
  * see docs/scenery-pack-spec.md); nothing from a pack is ever stored here.
@@ -28,9 +31,10 @@ import type { Biome } from './model.ts';
 import { BIOMES } from './model.ts';
 import { effectUrls, halfAt, layersAt, overlayUrls, MANIFEST_FILE, MAX_EFFECT_BYTES, MAX_MANIFEST_BYTES, packUrls, validateManifest, type EffectEvent, type LayerKind, type ScenePack } from './manifest.ts';
 import type { SceneryPrefs } from './prefs.ts';
-import { pairsUrlOf, scenesUrlOf } from './prefs.ts';
+import { pairsUrlOf, placesUrlOf, scenesUrlOf } from './prefs.ts';
 import { fetchPairs, type PairsPack } from './pairs.ts';
 import { fetchScenes, type ScenesPack } from './scenes.ts';
+import { fetchPlaces, type PlacesPack } from './places.ts';
 
 export interface SceneryLoad {
   /** `procedural`: no pack (chosen, or fallen back to); `pack`: every biome the pack covers loaded. */
@@ -243,16 +247,21 @@ export async function resolveScenery(prefs: SceneryPrefs, deps: { fetch: FetchLi
   // Spec 1.9: the pair bands' manifest, fetched beside the pack's; it never holds the pack back, and a failure only means no bands.
   const pairsUrl = pairsUrlOf(prefs);
   const pairsP = pairsUrl ? loadPairs(pairsUrl, deps) : Promise.resolve(null);
-  // Spec 1.20: the scenes' manifest likewise; a failure only means no scenes.
+  // Spec 1.22: the places' manifest likewise; a failure only means no places.
+  const placesUrl = placesUrlOf(prefs);
+  const placesP = placesUrl ? loadPlaces(placesUrl, deps) : Promise.resolve(null);
+  // Spec 1.20: the scenes' manifest, only when no places loaded (a place is drawn before any scene); a failure only
+  // means no scenes.
   const scenesUrl = scenesUrlOf(prefs);
-  const scenesP = scenesUrl ? loadScenes(scenesUrl, deps) : Promise.resolve(null);
+  const scenesP = placesP.then((places) => (!places && scenesUrl ? loadScenes(scenesUrl, deps) : null));
   const m = await fetchManifest(prefs.packUrl, deps);
   if (!m.pack) {
     return { ...PROCEDURAL, note: `Scenery pack not loaded: ${m.errors[0] ?? 'unknown problem'} Showing the built-in scenery.`, errors: m.errors, warnings: m.warnings, manifestUrl: m.manifestUrl };
   }
-  const [pre, pairs, scenes] = await Promise.all([preloadPack(m.pack, deps.load), pairsP, scenesP]);
+  const [pre, pairs, places, scenes] = await Promise.all([preloadPack(m.pack, deps.load), pairsP, placesP, scenesP]);
   if (pairs) m.pack = { ...m.pack, pairs };
-  if (scenes) m.pack = { ...m.pack, scenes };
+  if (places) m.pack = { ...m.pack, places };
+  else if (scenes) m.pack = { ...m.pack, scenes };
   const covered = BIOMES.filter((b) => m.pack!.biomes[b]);
   const loadOf = (failed: Biome[]): SceneryLoad => {
     const reasons = pre.reasons.filter((r) => failed.some((b) => r.startsWith(`${b}:`)));
@@ -304,10 +313,28 @@ export async function loadScenes(url: string, deps: { fetch: FetchLike; signal?:
   return r.scenes;
 }
 
+/**
+ * Spec 1.22: a places manifest, or null when it does not load or validate (the
+ * halves are then drawn by 1.20 / 1.21's scenes; why goes to the console). A
+ * place refused by the validator is left out and said there too. Its pictures
+ * are not preloaded here: a half warms its place's base and the pieces of its
+ * state, and the next stage's pieces once it is drawn.
+ */
+export async function loadPlaces(url: string, deps: { fetch: FetchLike; signal?: AbortSignal }): Promise<PlacesPack | null> {
+  const r = await fetchPlaces(url, deps);
+  // A manifest every place of which was refused is no places too (the scenes are fetched instead).
+  const places = r.places && Object.keys(r.places.places).length ? r.places : null;
+  if (typeof console !== 'undefined') {
+    if (!places) console.info(`ForgeCoach scenery: places not loaded (${r.errors[0] ?? 'no place in the file'}); the halves are drawn by the scenes.`);
+    else if (r.errors.length) console.info(`ForgeCoach scenery: ${r.errors.length} place(s) refused (${r.errors[0]}).`);
+  }
+  return places;
+}
+
 /** One load per prefs at a time, shared by every strip on the page. */
 const cache = new Map<string, Promise<SceneryLoad | null>>();
 export function resolveSceneryCached(prefs: SceneryPrefs, deps: { fetch: FetchLike; load: AssetLoader }): Promise<SceneryLoad | null> {
-  const key = `${prefs.mode}|${prefs.mode === 'pack' ? prefs.packUrl.trim() : ''}|${pairsUrlOf(prefs) ?? ''}|${scenesUrlOf(prefs) ?? ''}`;
+  const key = `${prefs.mode}|${prefs.mode === 'pack' ? prefs.packUrl.trim() : ''}|${pairsUrlOf(prefs) ?? ''}|${placesUrlOf(prefs) ?? ''}|${scenesUrlOf(prefs) ?? ''}`;
   let p = cache.get(key);
   if (!p) {
     const made = resolveScenery(prefs, deps);

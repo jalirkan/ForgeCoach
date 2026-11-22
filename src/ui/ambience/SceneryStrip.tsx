@@ -98,6 +98,7 @@ import { useTween } from './useTween.ts';
 import { PAIR_FULL_HOLD_MS, pairFullChoice, pairFullFrameCss, pairFullHold, pairFullPlan, planCandidates, planScene, type PairFullCandidate, type PairFullHold, type PairFullPair, type PairFullScene } from '../../ambience/pairfull.ts';
 import type { MakeupShowing } from '../../ambience/makeup.ts';
 import { usePicturesVersion } from './usePictures.ts';
+import { nextPlacePieces, pieceSettleIn, pieceSettleOut, pieceWant, type PieceEntry, type PlacePiece } from '../../ambience/places.ts';
 import './scenery.css';
 
 export type { StripEffect } from './SceneryEffects.tsx';
@@ -167,14 +168,16 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
   const pairsPack = half ? (pack?.pairs ?? null) : null;
   // Spec 1.20: the scenes, on the half board, with the flag or without.
   const scenesPack = half ? (pack?.scenes ?? null) : null;
+  // Spec 1.22: the places, before the scenes, likewise.
+  const placesPack = half ? (pack?.places ?? null) : null;
   // Spec 1.15: the pair picture as the whole half (null: the half as today).
   const narrow = useNarrowScreen();
   // Spec 1.17: on a phone-width screen a desktop-only seam grid cell is not planned; the half is the pair's stages (1.18: a
   // cell with a phone picture is planned there too).
   // Spec 1.20: without the flag only a scene can be planned (no pairs are passed).
   // Spec 1.21: the pack's biomes, for the nearest scene's last step (one colour left: its own picture, as a scene).
-  const planOpts = useMemo(() => ({ thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes: scenesPack, biomes: pack?.biomes ?? null }), [pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenesPack, pack?.biomes]);
-  const firstPlan = useMemo(() => ((pairFull && pairsPack) || scenesPack ? pairFullPlan(layout as HalfSlotLayout[], pairFull ? pairsPack : null, planOpts) : null), [pairFull, pairsPack, scenesPack, layout, planOpts]);
+  const planOpts = useMemo(() => ({ thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes: scenesPack, places: placesPack, biomes: pack?.biomes ?? null }), [pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenesPack, placesPack, pack?.biomes]);
+  const firstPlan = useMemo(() => ((pairFull && pairsPack) || scenesPack || placesPack ? pairFullPlan(layout as HalfSlotLayout[], pairFull ? pairsPack : null, planOpts) : null), [pairFull, pairsPack, scenesPack, placesPack, layout, planOpts]);
   // Spec 1.15's load gate (review fault 4): the pair picture is drawn once a picture of it has loaded (1.16: a painted-in
   // element first). Until then the half holds what it drew last (the review of #198: no panels-and-band flash on a cold
   // cache), for PAIR_FULL_HOLD_MS at most; with nothing drawn before, or if every picture fails, its panels. Never blank.
@@ -193,9 +196,13 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
     return cands ? pairFullChoice(cands, pictureStatus) : null;
   }, [plannedFull, fullAspect, narrow, horizon, pictures]); // eslint-disable-line react-hooks/exhaustive-deps
   const wantPic = fullGate?.want && fullGate.want !== fullGate.show ? fullGate.want.art.picture! : null;
+  // Spec 1.22: a place wanted warms its base and the pieces of its state (it is swapped in once they have settled).
+  const wantPieces = fullGate?.want && fullGate.want !== fullGate.show ? (fullGate.want.place?.pieces ?? []) : [];
+  const wantPiecesKey = wantPieces.map((p) => p.piece?.src ?? '').join(' ');
   useEffect(() => {
     if (wantPic) warmPicture(wantPic);
-  }, [wantPic?.src]); // eslint-disable-line react-hooks/exhaustive-deps
+    for (const p of wantPieces) if (p.piece) warmPicture({ src: p.piece.src, src2x: null });
+  }, [wantPic?.src, wantPiecesKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const holdRef = useRef<PairFullHold<SlotLayout[]>>({ last: null, since: null });
   const held = pairFullHold({ layout: layout as SlotLayout[], plan: plannedFull, choice: fullGate }, holdRef.current, Date.now());
   holdRef.current = held.hold;
@@ -769,6 +776,7 @@ function ScenePanel({ s, shown, first, growth, reduced }: { s: PairFullScene; sh
   const art = shown.art;
   const ms = growthMs(growth, reduced);
   const pic = art.picture!;
+  if (s.place && shown.place) return <PlacePanel s={s} shown={shown} first={first} ms={ms} reduced={reduced} />;
   return (
     <div className={['scn-slot', 'scn-pairfull', 'scn-scene', first && 'is-first'].filter(Boolean).join(' ')} style={{ flexGrow: 1 }} data-scene={shown.scene ?? s.key} data-scene-for={s.nearest?.for} data-scene-mono={s.nearest?.mono ? '1' : undefined} data-scene-failed={s.nearest?.failed} data-art={art.source}>
       <div className="scn-pairfull-art">
@@ -787,6 +795,119 @@ function ScenePanel({ s, shown, first, growth, reduced }: { s: PairFullScene; sh
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * Spec 1.22: a place across the whole half -- its base picture framed exactly as a scene is (layout.ts `halfFrameCss`,
+ * the phone base on a phone-shaped half, never mirrored, never panned) and, INSIDE THE SAME FRAME above the base, one
+ * picture per live land in the geography's order, that land's piece at its stage stretched to its box (fractions of
+ * the frame), so base and pieces scale and crop as one picture. A place change (another base) cross-fades the whole
+ * half over the growth time as a scene step does; within the place only a land whose stage changed moves
+ * ({@link PlaceLandPiece}).
+ */
+export function PlacePanel({ s, shown, first, ms, reduced }: { s: PairFullScene; shown: PairFullCandidate; first: boolean; ms: number; reduced: boolean }) {
+  const art = shown.art;
+  const pic = art.picture!;
+  const place = s.place!.place;
+  // Warm ahead, once the place is drawn: the next stage's piece of every live land, at the shape in use.
+  const phone = art.source === 'phone';
+  const ahead = nextPlacePieces(place, s.place!.lands, phone);
+  const aheadKey = ahead.map((p) => p.src).join(' ');
+  useEffect(() => {
+    for (const p of ahead) warmPicture({ src: p.src, src2x: null });
+  }, [aheadKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className={['scn-slot', 'scn-pairfull', 'scn-scene', 'scn-place', first && 'is-first'].filter(Boolean).join(' ')} style={{ flexGrow: 1 }} data-place={place.slug} data-scene={s.key} data-art={art.source}>
+      <div className="scn-pairfull-art">
+        <FadeGroup
+          cur={{ key: pic.src, payload: { art, pieces: shown.place!.pieces } }}
+          next={null}
+          fade={0}
+          ms={ms}
+          render={(e) => (
+            <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
+              <div className="scn-frame" style={halfFrameCss(e.payload.art)}>
+                <img className="scn-half-img" src={e.payload.art.picture!.src} srcSet={e.payload.art.picture!.src2x ? `${e.payload.art.picture!.src} 1x, ${e.payload.art.picture!.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => markPicture(e.payload.art.picture!.src, true)} onError={() => markPicture(e.payload.art.picture!.src, false)} />
+                {e.payload.pieces.map((p) => (
+                  <PlaceLandPiece key={p.biome} biome={p.biome} stage={p.stage} piece={p.piece} ms={ms} />
+                ))}
+              </div>
+            </Layer>
+          )}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Spec 1.22: one live land's piece over a place's base. A stage change (a land drop, a land destroyed): the new piece
+ * fades in on top of the old over the growth time, the old kept beneath; once the new one is fully in the old fades
+ * out over half that time and is removed (places.ts `pieceWant` / `pieceSettleIn` / `pieceSettleOut`). A piece is
+ * shown only once it has loaded -- until then the land keeps what it showed -- and one that fails is skipped
+ * (`data-piece-failed`). A null piece draws nothing. Reduced motion (`ms` 0): at once.
+ */
+function PlaceLandPiece({ biome, stage, piece, ms }: { biome: Biome; stage: number; piece: PlacePiece | null; ms: number }) {
+  usePicturesVersion(!!piece);
+  const status = piece ? pictureStatus(piece.src) : null;
+  useEffect(() => {
+    if (piece && status === 'pending') warmPicture({ src: piece.src, src2x: null });
+  }, [piece?.src, status]); // eslint-disable-line react-hooks/exhaustive-deps
+  // What the land shows now: the piece once loaded, nothing for a null piece; a piece loading or failed changes nothing.
+  const st = useRef<{ sig: string | null; stack: PieceEntry[] }>({ sig: null, stack: [] });
+  const [, bump] = useState(0);
+  const sig = !piece ? '' : status === 'ready' ? piece.src : (st.current.sig ?? '');
+  if (st.current.sig !== sig) st.current = { sig, stack: pieceWant(st.current.stack, sig ? piece : null, st.current.sig === null || ms <= 0, stage) };
+  const stack = st.current.stack;
+  const fading = stack.some((e) => e.role === 'in') ? 'in' : stack.some((e) => e.role === 'out') ? 'out' : null;
+  useEffect(() => {
+    if (!fading) return;
+    const t = setTimeout(
+      () => {
+        st.current = { ...st.current, stack: fading === 'in' ? pieceSettleIn(st.current.stack) : pieceSettleOut(st.current.stack) };
+        bump((n) => n + 1);
+      },
+      (fading === 'in' ? ms : ms / 2) + 40,
+    );
+    return () => clearTimeout(t);
+  }, [stack, fading, ms]);
+  return <PlaceLandView biome={biome} stage={stage} stack={stack} failed={!!piece && status === 'failed'} ms={ms} />;
+}
+
+/** What one land draws from its piece stack (pure: {@link PlaceLandPiece} keeps the stack); a failed piece leaves a mark. */
+export function PlaceLandView({ biome, stage, stack, failed, ms }: { biome: Biome; stage: number; stack: readonly PieceEntry[]; failed: boolean; ms: number }) {
+  return (
+    <>
+      {stack.map((e) => (
+        <PieceImg key={e.key} e={e} biome={biome} ms={ms} />
+      ))}
+      {failed && <span hidden data-piece={`${biome}${stage}`} data-piece-failed="1" />}
+    </>
+  );
+}
+
+/** One piece, stretched to its box in the base's frame, its opacity carried by a CSS transition (in: the growth time; out: half). */
+function PieceImg({ e, biome, ms }: { e: PieceEntry; biome: Biome; ms: number }) {
+  const ref = useRef<HTMLImageElement>(null);
+  const target = e.role === 'out' ? 0 : 1;
+  const o = useFadeIn(ref, target, e.from, ms);
+  const p = e.piece;
+  const dur = e.role === 'out' ? ms / 2 : ms;
+  return (
+    <img
+      ref={ref}
+      className="scn-place-piece"
+      style={{ left: `${+(p.x * 100).toFixed(4)}%`, top: `${+(p.y * 100).toFixed(4)}%`, width: `${+(p.w * 100).toFixed(4)}%`, height: `${+(p.h * 100).toFixed(4)}%`, opacity: o, transition: dur > 0 ? `opacity ${Math.round(dur)}ms ease` : undefined }}
+      src={p.src}
+      alt=""
+      decoding="async"
+      draggable={false}
+      data-piece={`${biome}${e.stage}`}
+      data-piece-role={e.role}
+      onLoad={() => markPicture(p.src, true)}
+      onError={() => markPicture(p.src, false)}
+    />
   );
 }
 

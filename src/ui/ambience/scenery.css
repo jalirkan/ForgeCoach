@@ -1142,3 +1142,11 @@
 .scn.is-reduced .scn-pairfull-frame {
   transition: none;
 }
+
+/* Spec 1.22: a place's piece, stretched to its box in the base picture's frame (fractions of the frame). */
+.scn-place-piece {
+  position: absolute;
+  display: block;
+  max-width: none;
+  pointer-events: none;
+}

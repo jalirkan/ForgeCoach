@@ -70,6 +70,13 @@ export interface SceneryPrefs {
    * scene. Absent means on ({@link scenesUrlOf}). Not a setting: never stored, no Settings row.
    */
   scenes?: boolean;
+  /**
+   * Spec 1.22: `?places=off` (or `0`) loads no places manifest for the page, so the halves are drawn by 1.20 / 1.21's
+   * scenes (and, with `?scenes=off` too, by the 1.5–1.19 rules) -- for checking those on `#ambience` and in the e2e.
+   * `?scenes=off` alone turns the places off as well (it asks for the 1.5–1.19 halves). Absent means on
+   * ({@link placesUrlOf}). Never stored, no Settings row.
+   */
+  places?: boolean;
 }
 
 export const SCENERY_KEY = 'forgecoach.scenery';
@@ -129,6 +136,13 @@ export const FORGECOACH_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/f
  * as "no scenes".
  */
 export const FORGECOACH_SCENES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@scenes-v1.4/';
+/**
+ * Spec 1.22 (ambience/places.ts): ForgeCoach's places -- one real place for every set of mana colours, a base picture
+ * and six pieces per land laid over it -- `places.json` at this folder's root (its pictures at the per-place refs it
+ * names), loaded whenever the pack is ForgeCoach's own ({@link placesUrlOf}). When it loads, `scenes.json` is not
+ * fetched at all.
+ */
+export const FORGECOACH_PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v1/';
 /**
  * ForgeCoach's own pack at any tag: a stored URL that matches is the default
  * of the day it was saved, and {@link loadSceneryPrefs} replaces it with the
@@ -203,7 +217,7 @@ function switchParam(search: string, hash: string, name: string): boolean | null
   return v === 'off' || v === '0' ? false : v === 'on' || v === '1' ? true : null;
 }
 
-/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=`, `?light=`, `?horizon=`, `?pairs=`, `?pairfull=0` and `?scenes=off` applied. */
+/** The stored prefs with the page's `?scenery=`, `?accents=`, `?fill=`, `?light=`, `?horizon=`, `?pairs=`, `?pairfull=0`, `?scenes=off` and `?places=off` applied. */
 export function effectivePrefs(stored: SceneryPrefs, search: string, hash: string): SceneryPrefs {
   const a = switchParam(search, hash, 'accents');
   const f = switchParam(search, hash, 'fill');
@@ -215,10 +229,12 @@ export function effectivePrefs(stored: SceneryPrefs, search: string, hash: strin
   const pf = switchParam(search, hash, 'pairfull');
   // Spec 1.21: only `?scenes=off` changes anything (no scenes for the page); `?scenes=on` is the default.
   const sc = switchParam(search, hash, 'scenes');
+  // Spec 1.22: likewise `?places=off` (no places for the page: the scenes instead).
+  const pl = switchParam(search, hash, 'places');
   const withAccents =
-    a === null && f === null && l === null && hz === null && pr === null && pf !== false && sc !== false
+    a === null && f === null && l === null && hz === null && pr === null && pf !== false && sc !== false && pl !== false
       ? stored
-      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...(hz === null ? {} : { horizon: hz }), ...pairs, ...(pf === false ? { pairFull: false } : {}), ...(sc === false ? { scenes: false } : {}) };
+      : { ...stored, ...(a === null ? {} : { accents: a }), ...(f === null ? {} : { fill: f }), ...(l === null ? {} : { light: l }), ...(hz === null ? {} : { horizon: hz }), ...pairs, ...(pf === false ? { pairFull: false } : {}), ...(sc === false ? { scenes: false } : {}), ...(pl === false ? { places: false } : {}) };
   const p = sceneryParam(search, hash);
   if (!p) return withAccents;
   if (p === 'off') return { ...withAccents, mode: 'off' };
@@ -290,4 +306,14 @@ export function pairsUrlOf(p: SceneryPrefs): string | null {
 export function scenesUrlOf(p: SceneryPrefs): string | null {
   if (p.mode !== 'pack' || p.scenes === false) return null;
   return p.packUrl.trim() === FORGECOACH_PACK_URL ? FORGECOACH_SCENES_URL : null;
+}
+
+/**
+ * Spec 1.22: the places manifest's base URL for these prefs, or null for none: FORGECOACH_PLACES_URL on the same
+ * condition as {@link scenesUrlOf} (ForgeCoach's own pack, the page not saying `?scenes=off`), unless the page said
+ * `?places=off`.
+ */
+export function placesUrlOf(p: SceneryPrefs): string | null {
+  if (p.places === false || !scenesUrlOf(p)) return null;
+  return FORGECOACH_PLACES_URL;
 }

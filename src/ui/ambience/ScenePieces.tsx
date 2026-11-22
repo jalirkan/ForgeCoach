@@ -139,7 +139,7 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
   const waiting = gate.waiting(now());
   // Woken when a picture settles only while something here waits on one: a front's frames, (the flag on) an element, or
   // (spec 1.20) a scene, whose failure hands the half back to its panels and their pieces.
-  const pictures = usePicturesVersion(!!waiting || makeup.colours.length >= 3 || !!pack?.scenes);
+  const pictures = usePicturesVersion(!!waiting || makeup.colours.length >= 3 || !!pack?.scenes || !!pack?.places);
   const waitingFrames = waiting ? frontFrameList(pieces, waiting, phone) : null;
   const framesReady = !!waitingFrames && waitingFrames.frames.every((f) => pictureStatus(f.src) === 'ready');
   useEffect(() => {
@@ -156,11 +156,13 @@ export function ScenePieces({ pack, pieces, slots, landNames, outcome, edge, red
   const phoneElements = useMemo(() => (pairFull ? phoneElementBiomes(pieces) : null), [pairFull, pieces]);
   // Spec 1.20: the scenes too, with the flag or without (the strip's own plan: without the flag only a scene comes back).
   const scenes = pack?.scenes ?? null;
+  // Spec 1.22: the places, before the scenes (a place is a scene item: no piece over it).
+  const places = pack?.places ?? null;
   // A scene whose painting failed at this shape: today's plan, as the strip (pairfull.ts `sceneFailed`).
   const halfAspect = measured ? Math.round((box.w / box.h) * 20) / 20 : null;
   const full = useMemo(
-    () => ((pairFull && pack?.pairs) || scenes ? pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, elements, phoneElements, showing, slots, narrow, scenes, biomes: pack?.biomes ?? null, sceneFailed: (src) => pictureStatus(src) === 'failed', halfAspect }) : null),
-    [pairFull, pack, scenes, layout, elements, phoneElements, showing, slots, narrow, halfAspect, pictures], // eslint-disable-line react-hooks/exhaustive-deps
+    () => ((pairFull && pack?.pairs) || scenes || places ? pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, elements, phoneElements, showing, slots, narrow, scenes, places, biomes: pack?.biomes ?? null, sceneFailed: (src) => pictureStatus(src) === 'failed', halfAspect }) : null),
+    [pairFull, pack, scenes, places, layout, elements, phoneElements, showing, slots, narrow, halfAspect, pictures], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const fullPair = full?.find((x): x is PairFullPair => x.kind === 'pair') ?? null;
   const choice = useMemo(() => {
