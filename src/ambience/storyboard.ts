@@ -147,13 +147,14 @@ export function slotsFor(state: ManaState, thresholds: readonly number[]): { slo
 }
 
 const colourOf = (b: Biome): PieceColour | null => BIOME_COLOUR[b] ?? null;
-const BIOME_WORDS = /\b(island|swamp|plains|forest|mountain)\b/g;
+const BIOME_WORDS = /\b(island|swamp|plains|forest|mountain)\b/gi;
 
 /** The colours a caption names: biome words, a pair's dual or shock name (both its colours), "R painted in". */
 export function captionColours(caption: string | null, pairs: PairsPack | null): PieceColour[] {
   if (!caption) return [];
   const out = new Set<PieceColour>();
-  for (const m of caption.matchAll(BIOME_WORDS)) out.add(BIOME_COLOUR[m[1] as Biome]!);
+  // Spec 1.22: a place caption capitalises the lands ("Cartagena de Indias: Island 2, Swamp 1").
+  for (const m of caption.matchAll(BIOME_WORDS)) out.add(BIOME_COLOUR[m[1]!.toLowerCase() as Biome]!);
   for (const m of caption.matchAll(/\b([WUBRG]) painted in\b/g)) out.add(m[1] as PieceColour);
   for (const p of Object.values(pairs?.pairs ?? {})) {
     if (!p) continue;

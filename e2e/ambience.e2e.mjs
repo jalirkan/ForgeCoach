@@ -69,8 +69,20 @@
  *      pair picture, no seam cell and no cut-out element; the caption "Scene · … — nearest painting: …" where it
  *      stands in (e2e/out/nearest-*.png).
  *
- *   Steps 2–6 run with `?scenes=off` (spec 1.21: no scenes for the page): with scenes loaded a half of two or more
- *   colours never draws the pair logic they check, which still draws for a pack with no scenes.
+ *   8. Spec 1.22, places, on a bare page (ForgeCoach's default draws them), the places manifest and every place
+ *      picture served from disk (PLACES_DIR, default ~/scenery-packs/scenes-v1/pack-places-v1: `index/places.json`
+ *      and `places/<slug>/<d|p>/…`) through the browser context's routing, never the network; on the desktop and the
+ *      phone, land by land (Cartagena's four, a homeland from stage 1, the storyboard's 5 and 6, a land destroyed):
+ *      your half is exactly one place panel for the half's colours (`data-place`) and state (`data-scene`), its base
+ *      (the phone base on a phone) and every live land's piece at its stage loaded, each piece at its box in the
+ *      base's frame to a pixel; a stage step fades the land's new piece in over the old (both on screen, the old
+ *      beneath) and leaves the base and the other pieces the same elements; a new colour cross-fades the whole half;
+ *      the caption is "<place>: Island 2, Swamp 1, …"; scenes.json is never fetched (e2e/out/places-*.png). A state
+ *      whose colours have no place on disk is skipped and said so (while the pack is being built).
+ *
+ *   Steps 2–6 run with `?scenes=off` (spec 1.21: no scenes for the page; it turns the places off too): with scenes
+ *   or places loaded a half of two or more colours never draws the pair logic they check, which still draws for a
+ *   pack with neither. Step 7 runs with `?places=off`, so the scenes are fetched and drawn.
  *
  *   Spec 1.18 likewise on the worked example: on a grid pair whose cell has
  *   blue painted in (`elements.U`), the cell's painted picture is drawn and
@@ -82,7 +94,7 @@
  *   phone picture); a PAIRS_DIR / PAIRS_URL pack takes whichever its cells
  *   call for (pairs-v7.1: 1.18's painted cells, pairs-v6: no phone cells).
  *
- * Environment: PAIRS_DIR (a local pairs pack), or PAIRS_URL (a pairs pack by
+ * Environment: PLACES_DIR (the places pack on disk, step 8), PAIRS_DIR (a local pairs pack), or PAIRS_URL (a pairs pack by
  * URL, e.g. https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v6/;
  * with neither, no `?pairs=`: the default, the pairs-v8 tag on
  * jsDelivr, checked by the pairs line's name and the URL the page fetched its
@@ -93,6 +105,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, statSync } from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { freePort, launchBrowser, loadPlaywright } from './harness.mjs';
@@ -106,9 +119,12 @@ const PAIRS_DIR = env.PAIRS_DIR ? path.resolve(env.PAIRS_DIR) : null;
 /** What a bare page loads with no `?pairs=` (spec 1.15 on by default): src/ambience/prefs.ts's FORGECOACH_PAIRS_FULL_URL (an .mjs cannot import it). */
 const DEFAULT_PAIRS_FULL_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@pairs-v8/';
 const TIMEOUT = 30_000;
-/** The page's query: `?pairs=` when given, and (spec 1.21) `scenes=off` for the checks of the 1.15–1.19 halves. */
-const queryOf = (pairs, scenesOff = true) => {
-  const q = [pairs ? `pairs=${encodeURIComponent(pairs)}` : null, scenesOff ? 'scenes=off' : null].filter(Boolean);
+/**
+ * The page's query: `?pairs=` when given, (spec 1.21) `scenes=off` for the checks of the 1.15–1.19 halves (it turns the
+ * places off too), and (spec 1.22) `places=off` for the checks of 1.21's scenes.
+ */
+const queryOf = (pairs, scenesOff = true, placesOff = false) => {
+  const q = [pairs ? `pairs=${encodeURIComponent(pairs)}` : null, scenesOff ? 'scenes=off' : null, placesOff && !scenesOff ? 'places=off' : null].filter(Boolean);
   return q.length ? `?${q.join('&')}` : '';
 };
 
@@ -235,9 +251,12 @@ async function main() {
     const ran = await gridChecks(page, manifestPairs, errors);
     for (const seq of SEQUENCES) await sequenceCheck(page, seq, errors, 'desktop');
     if (ran) await phoneCheck(browser, origin, pairs, manifest);
-    // Spec 1.21: the nearest scene, with the scenes loaded (no `?scenes=off`), on a desktop and a phone.
+    // Spec 1.21: the nearest scene, with the scenes loaded (no `?scenes=off`; `?places=off`), on a desktop and a phone.
     await nearestCheck(browser, origin, pairs, 'desktop');
     await nearestCheck(browser, origin, pairs, 'phone');
+    // Spec 1.22: places, on a bare page (ForgeCoach's default draws them), the manifest and pictures served from disk.
+    await placesCheck(browser, origin, pairs, 'desktop');
+    await placesCheck(browser, origin, pairs, 'phone');
   } catch (e) {
     failed = true;
     if (e instanceof Fail) console.error(`[e2e ambience] FAIL: ${e.message}`);
@@ -490,7 +509,7 @@ async function nearestCheck(browser, origin, pairs, shape) {
     if (/\/seams\/|\/pairs\/|@pairs-v[^/]*\/.*\.(webp|png|jpe?g)(\?|$)/.test(u)) pairRequests.push(u);
   });
   try {
-    await page.goto(`${origin}/${queryOf(pairs, false)}#ambience`);
+    await page.goto(`${origin}/${queryOf(pairs, false, true)}#ambience`);
     await page.waitForSelector('[data-amb-pairs]', { timeout: TIMEOUT });
     await page.waitForFunction(() => /scenes-v[\d.]+.*\d+ scenes/.test(document.querySelector('[data-amb-scenes]')?.textContent ?? ''), null, { timeout: TIMEOUT });
     log(`${shape} scenes line: ${((await page.textContent('[data-amb-scenes]')) ?? '').slice(0, 140)}`);
@@ -573,6 +592,248 @@ async function captionLines(page) {
 }
 
 /** Sets one Lands slider of your side (React listens for `input`). */
+// ---------------------------------------------------------------------------
+// Spec 1.22: places
+
+/** The places pack on disk (the manifest jsDelivr serves at @places-v1, and every place's pictures): PLACES_DIR, else the owner's. */
+const PLACES_DIR = path.resolve(env.PLACES_DIR ?? path.join(os.homedir(), 'scenery-packs', 'scenes-v1', 'pack-places-v1'));
+/** ForgeCoach's places URL, read from prefs.ts (an .mjs cannot import it). */
+function placesUrl() {
+  const prefs = readFileSync(new URL('../src/ambience/prefs.ts', import.meta.url), 'utf8');
+  const url = /FORGECOACH_PLACES_URL = '([^']+)'/.exec(prefs)?.[1];
+  if (!url) throw new Fail('FORGECOACH_PLACES_URL not found in src/ambience/prefs.ts');
+  return url;
+}
+let placesManifest = null;
+function diskPlaces() {
+  if (!placesManifest) placesManifest = JSON.parse(readFileSync(path.join(PLACES_DIR, 'index', 'places.json'), 'utf8'));
+  return placesManifest;
+}
+
+/**
+ * Route the places manifest and every place picture to disk, never the network: places.json at the places URL from
+ * `index/places.json`, and any `forgecoach-scenery@places-v1*` URL under `places/` from the folder's `places/`. Every
+ * picture served is kept; one not on disk answers 404 (so a missing file shows as a failed piece, never a fetch).
+ */
+async function routePlaces(ctx) {
+  const served = [];
+  const base = placesUrl();
+  await ctx.route(`${base}places.json`, (route) => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: readFileSync(path.join(PLACES_DIR, 'index', 'places.json')) }));
+  await ctx.route(/^https:\/\/cdn\.jsdelivr\.net\/gh\/jalirkan\/forgecoach-scenery@places-v1[^/]*\/places\//, (route) => {
+    const rel = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^.*?@places-v1[^/]*\//, ''));
+    const file = path.normalize(path.join(PLACES_DIR, rel));
+    if (!file.startsWith(path.join(PLACES_DIR, 'places'))) return route.fulfill({ status: 404, body: '' });
+    try {
+      const body = readFileSync(file);
+      served.push(rel);
+      return route.fulfill({ status: 200, contentType: 'image/webp', headers: { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'max-age=600' }, body });
+    } catch {
+      return route.fulfill({ status: 404, body: '' });
+    }
+  });
+  return served;
+}
+
+/** Land sequences for the places: Cartagena's four land by land, a homeland from stage 1, the storyboard's 5 and 6, and a land destroyed. */
+const PLACE_SEQUENCES = [
+  { name: 'places-cartagena', lands: 'I S P M P P I I' },
+  { name: 'places-homeland', lands: 'F F F' },
+  { name: 'places-seq-5', lands: 'I S M M I S F F F' },
+  { name: 'places-seq-6', lands: 'P I S M F P I S M F F I' },
+  { name: 'places-alexandria', lands: 'I S P I I', down: 'island' },
+];
+const cap = (b) => b.charAt(0).toUpperCase() + b.slice(1);
+
+/**
+ * Spec 1.22 on a bare page (no `?scenes=off`): ForgeCoach's default draws a place for every state. Land by land, your
+ * half is exactly one place panel -- `data-place` the place of the half's colours, `data-scene` the state -- whose base
+ * (the phone base on a phone) and every live land's piece at its stage have loaded, each piece at its box in the base's
+ * frame (left x, top y, width w, height h of it, to a pixel); a stage's null piece draws nothing. No scene, pair, cell
+ * or cut-out; scenes.json is never fetched and no pair or seam picture either. A stage step: the land's new piece fades
+ * in over its old one (both on screen at once, the old beneath), then the old goes; the base and the other lands'
+ * pieces stay the same elements. A new colour: the whole half cross-fades (two bases on screen during the fade). The
+ * caption: "<name>: Island 2, Swamp 1, …". States whose colours have no place in the manifest on disk are skipped
+ * (said so): with places-v1's 31 none is.
+ */
+async function placesCheck(browser, origin, pairs, shape) {
+  const manifest = diskPlaces();
+  const keys = Object.keys(manifest.places ?? {});
+  log(`${shape} places on disk: ${PLACES_DIR} (${keys.length} places)`);
+  const viewport = shape === 'phone' ? { width: 390, height: 844 } : { width: 1600, height: 1000 };
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: shape === 'phone' ? 2 : 1 });
+  const served = await routePlaces(ctx);
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  const forbidden = [];
+  page.on('request', (r) => {
+    const u = r.url();
+    if (/\/scenes\.json(\?|$)/.test(u) || /\/seams\/|\/pairs\/|@pairs-v[^/]*\/.*\.(webp|png|jpe?g)(\?|$)|@scenes-v/.test(u)) forbidden.push(u);
+  });
+  let skipped = 0;
+  try {
+    await page.goto(`${origin}/${queryOf(pairs, false)}#ambience`);
+    await page.waitForSelector('[data-amb-places]', { timeout: TIMEOUT });
+    await page.waitForFunction(() => /Places \(spec 1\.22\): .*\d+ places?/.test(document.querySelector('[data-amb-places]')?.textContent ?? ''), null, { timeout: TIMEOUT });
+    const line = (await page.textContent('[data-amb-places]')) ?? '';
+    log(`${shape} places line: ${line.slice(0, 160)}`);
+    check(new RegExp(`\\b${keys.length} places?\\b`).test(line), `${shape}: the places line should count ${keys.length}: ${line}`);
+    check(/not loaded -- the places are drawn instead/.test((await page.textContent('[data-amb-scenes]')) ?? ''), `${shape}: the scenes line should say the places are drawn instead`);
+    await page.click('[data-pieces-toggle="pack"]');
+    for (const seq of PLACE_SEQUENCES) {
+      const reset = await page.$('[data-amb-reset]:not([disabled])');
+      if (reset) await reset.click();
+      const counts = {};
+      const steps = seq.lands.split(' ').map((l) => ({ biome: BIOME_OF[l], delta: 1 }));
+      if (seq.down) steps.push({ biome: seq.down, delta: -1 });
+      let prevPlace = null;
+      let checkedStep = false;
+      let checkedFade = false;
+      for (let i = 0; i < steps.length; i++) {
+        const { biome, delta } = steps[i];
+        const before = { ...counts };
+        counts[biome] = (counts[biome] ?? 0) + delta;
+        const placeKey = GEOGRAPHY.filter((b) => counts[b]).join('+');
+        const place = manifest.places[placeKey];
+        const state = sceneKeyOf(counts);
+        if (!place) {
+          await setLands(page, biome, counts[biome]);
+          skipped++;
+          log(`${shape} ${seq.name} ${i + 1}: ${state} -- no place for ${placeKey} on disk; skipped`);
+          prevPlace = null;
+          continue;
+        }
+        const sameStep = prevPlace === place.slug;
+        const changedLand = sameStep ? biome : null;
+        // Before a step inside the place: tag the base and the other lands' pieces, to see they are the same elements after.
+        if (sameStep)
+          await page.evaluate((changed) => {
+            const el = document.querySelector('[data-amb-player="1"] [data-place]');
+            for (const img of el.querySelectorAll('img')) {
+              const land = (img.getAttribute('data-piece') ?? '').replace(/\d$/, '');
+              if (!land || land !== changed) img.dataset.e2eKeep = '1';
+            }
+          }, changedLand);
+        await setLands(page, biome, counts[biome]);
+        const shapeDir = shape === 'phone' ? 'p' : 'd';
+        const want = GEOGRAPHY.filter((b) => counts[b]).map((b) => {
+          const st = Math.min(counts[b], 6);
+          const pc = place.layers[b][st - 1][shape === 'phone' ? 'phone' : 'half'];
+          return { biome: b, stage: st, piece: pc };
+        });
+        // A stage step: the new piece fades in over the old one, the old kept beneath, both on screen at once.
+        if (sameStep && !checkedFade) {
+          const old = `${biome}${Math.min(before[biome], 6)}`;
+          const nu = `${biome}${Math.min(counts[biome], 6)}`;
+          const nuPiece = want.find((w) => w.biome === biome).piece;
+          const oldPiece = place.layers[biome][Math.min(before[biome], 6) - 1][shape === 'phone' ? 'phone' : 'half'];
+          if (nuPiece && oldPiece) {
+            try {
+              await page.waitForFunction(
+                ({ old, nu }) => {
+                  const el = document.querySelector('[data-amb-player="1"] [data-place]');
+                  const o = el?.querySelector(`[data-piece="${old}"]`);
+                  const n = el?.querySelector(`[data-piece="${nu}"]`);
+                  return !!o && !!n && (o.getAttribute('data-piece-role') === 'under' || o.getAttribute('data-piece-role') === 'out') && n.getAttribute('data-piece-role') === 'in' && o.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING;
+                },
+                { old, nu },
+                { timeout: 3000, polling: 30 },
+              );
+              checkedFade = true;
+              log(`${shape} ${seq.name} ${i + 1}: ${old} -> ${nu}: the new piece fading in over the old, the old beneath`);
+            } catch {
+              throw new Fail(`${shape} ${seq.name}, step ${i + 1}: no fade from ${old} to ${nu} seen (the new piece in on top, the old beneath)`);
+            }
+          }
+        }
+        // A new colour: the whole half cross-fades (two bases in the panel at once).
+        if (!sameStep && prevPlace && !checkedStep) {
+          try {
+            await page.waitForFunction(() => document.querySelector('[data-amb-player="1"] [data-place]')?.querySelectorAll('.scn-half-img').length === 2, null, { timeout: 12_000, polling: 30 });
+            checkedStep = true;
+            log(`${shape} ${seq.name} ${i + 1}: ${prevPlace} -> ${place.slug}: the whole half cross-fading (two bases)`);
+          } catch {
+            throw new Fail(`${shape} ${seq.name}, step ${i + 1}: no cross-fade from ${prevPlace} to ${place.slug} seen`);
+          }
+        }
+        let got;
+        try {
+          await page.waitForFunction(
+            ({ slug, state, want, base }) => {
+              const root = document.querySelector('[data-amb-player="1"]');
+              if (root.querySelectorAll('.scn-slot').length !== 1) return false;
+              const el = root.querySelector('.scn-slot[data-place]');
+              if (!el || el.getAttribute('data-place') !== slug || el.getAttribute('data-scene') !== state) return false;
+              const bases = el.querySelectorAll('.scn-half-img');
+              if (bases.length !== 1 || bases[0].getAttribute('src') !== base || !bases[0].complete || !(bases[0].naturalWidth > 0)) return false;
+              const pieces = [...el.querySelectorAll('img[data-piece]')];
+              const live = want.filter((w) => w.piece);
+              if (pieces.length !== live.length) return false;
+              return live.every((w, i) => pieces[i].getAttribute('data-piece') === `${w.biome}${w.stage}` && pieces[i].getAttribute('src') === w.piece.src && pieces[i].complete && pieces[i].naturalWidth > 0 && pieces[i].getAttribute('data-piece-role') === 'cur' && getComputedStyle(pieces[i]).opacity === '1');
+            },
+            { slug: place.slug, state, want, base: shape === 'phone' ? place.half.phone.src : place.half.src },
+            { timeout: TIMEOUT },
+          );
+          got = await page.evaluate(() => {
+            const root = document.querySelector('[data-amb-player="1"]');
+            const el = root.querySelector('.scn-slot[data-place]');
+            const frame = el.querySelector('.scn-frame').getBoundingClientRect();
+            return {
+              art: el.getAttribute('data-art'),
+              frame: { x: frame.x, y: frame.y, w: frame.width, h: frame.height },
+              pieces: [...el.querySelectorAll('img[data-piece]')].map((img) => {
+                const r = img.getBoundingClientRect();
+                return { piece: img.getAttribute('data-piece'), x: r.x, y: r.y, w: r.width, h: r.height, kept: img.dataset.e2eKeep === '1' };
+              }),
+              baseKept: el.querySelector('.scn-half-img').dataset.e2eKeep === '1',
+              others: root.querySelectorAll('[data-pairfull], [data-band], [data-apart], [data-pc="element"], [data-scene-for]').length,
+            };
+          });
+        } catch {
+          const seen = await page.evaluate(() => {
+            const el = document.querySelector('[data-amb-player="1"] .scn-slot[data-place]');
+            return el ? `${el.getAttribute('data-place')} ${el.getAttribute('data-scene')} [${[...el.querySelectorAll('img')].map((i) => `${i.getAttribute('data-piece') ?? 'base'}:${i.getAttribute('data-piece-role') ?? ''}:${i.complete && i.naturalWidth > 0 ? 'ok' : 'loading'}`).join(' ')}]` : `no place (${document.querySelectorAll('[data-amb-player="1"] .scn-slot').length} slots)`;
+          });
+          throw new Fail(`${shape} ${seq.name}, step ${i + 1} (${state}): expected ${place.slug} composed for ${state}, its base and ${want.filter((w) => w.piece).map((w) => `${w.biome}${w.stage}`).join(' ')} loaded; saw ${seen}`);
+        }
+        check(got.art === (shape === 'phone' ? 'phone' : 'half'), `${shape} ${seq.name}, step ${i + 1}: the base drawn is the ${got.art} picture`);
+        check(got.others === 0, `${shape} ${seq.name}, step ${i + 1}: something else drawn on the place half (${got.others})`);
+        // Each piece at its box in the base's frame, to a pixel.
+        const live = want.filter((w) => w.piece);
+        live.forEach((w, k) => {
+          const g = got.pieces[k];
+          const exp = { x: got.frame.x + w.piece.x * got.frame.w, y: got.frame.y + w.piece.y * got.frame.h, w: w.piece.w * got.frame.w, h: w.piece.h * got.frame.h };
+          const off = Math.max(Math.abs(g.x - exp.x), Math.abs(g.y - exp.y), Math.abs(g.w - exp.w), Math.abs(g.h - exp.h));
+          check(off <= 1.5, `${shape} ${seq.name}, step ${i + 1}: ${g.piece} is ${off.toFixed(1)} px off its box`);
+          check(w.piece.src.includes(`/${shapeDir}/`), `${shape}: ${g.piece} is not the ${shapeDir} piece: ${w.piece.src}`);
+        });
+        if (sameStep) {
+          check(got.baseKept, `${shape} ${seq.name}, step ${i + 1}: the base was replaced by a stage step`);
+          for (const g of got.pieces) if (!g.piece.startsWith(changedLand)) check(g.kept, `${shape} ${seq.name}, step ${i + 1}: ${g.piece} was replaced though only the ${changedLand} changed`);
+        }
+        const caption = (await page.$('[data-amb-bands="1"]')) ? ((await page.textContent('[data-amb-bands="1"]')) ?? '') : '';
+        const wantCaption = `${place.name}: ${want.map((w) => `${cap(w.biome)} ${w.stage}`).join(', ')}`;
+        check(caption === wantCaption, `${shape} ${seq.name}, step ${i + 1}: the caption should be "${wantCaption}", is "${caption}"`);
+        log(`${shape} ${seq.name} ${i + 1}: ${state} -> ${place.slug} (${place.name}); pieces ${got.pieces.map((g) => g.piece).join(' ') || 'none (the base is stage 1)'}; caption: ${caption}`);
+        prevPlace = place.slug;
+      }
+      check(errors.length === 0, `${shape}: page errors: ${errors.join('; ')}`);
+      if (shape === 'phone') await captionLines(page);
+      await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `${seq.name}-${shape}.png`) });
+      log(`PASS: ${shape} ${seq.name}: the place composed for the state at every land${checkedFade ? ', a stage step faded over the old piece' : ''}${checkedStep ? ', a new colour cross-faded the half' : ''}`);
+    }
+    // A state with no place on disk is drawn by the 1.15–1.19 rules (no scenes are fetched): its pair pictures then load.
+    const scenesFetched = forbidden.filter((u) => /\/scenes\.json(\?|$)|@scenes-v/.test(u));
+    check(scenesFetched.length === 0, `${shape}: scenes fetched with places loaded: ${scenesFetched.slice(0, 5).join(', ')}`);
+    if (skipped === 0) check(forbidden.length === 0, `${shape}: ${forbidden.length} pair or seam file(s) fetched with every state a place: ${forbidden.slice(0, 5).join(', ')}`);
+    else log(`${shape}: ${forbidden.length} pair or seam picture(s) fetched for the ${skipped} step(s) with no place on disk`);
+    check(served.length > 0, `${shape}: no place picture was served from disk`);
+    log(`PASS: ${shape}: places drawn (${served.length} pictures served from ${PLACES_DIR}; ${skipped} step(s) skipped, no place on disk); no scenes.json, pair or seam picture fetched`);
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function setLands(page, biome, n) {
   await page.evaluate(
     ({ biome, n }) => {

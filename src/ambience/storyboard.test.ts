@@ -58,11 +58,14 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { PIECE_COLOURS, validateManifest, type PieceColour } from './manifest.ts';
 import { makeupOf, pairKeyOrder, pickMakeup, rankColours, type Makeup, type MakeupShowing } from './makeup.ts';
 import { validatePairs } from './pairs.ts';
-import { FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, FORGECOACH_SCENES_URL } from './prefs.ts';
+import { FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, FORGECOACH_PLACES_URL, FORGECOACH_SCENES_URL } from './prefs.ts';
+import { validatePlaces } from './places.ts';
 import { validateScenes } from './scenes.ts';
 import { addLand, colourCount, enumerateStates, landCount, SHAPES, stateLabel, storyboardHalf, weightOf, type GapReason, type HalfStoryboard, type ManaState, type Shape, type StoryboardPacks } from './storyboard.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
+import { synthPlaces } from './testdata/placesSynth.ts';
+const PLACES_RAW = (): unknown => synthPlaces();
 const PACKS: StoryboardPacks = {
   pack: validateManifest(json('pack-v10.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!,
   pairsOff: validatePairs(json('pairs-v3.1.pairs.json'), `${FORGECOACH_PAIRS_URL}pairs.json`).pairs,
@@ -675,3 +678,32 @@ function reportMarkdown(w: Walk): string {
   out.push('A side with no caption (one colour, or no band) is not counted as leaving anything out: the caption describes bands and pair pictures only.', '');
   return out.join('\n');
 }
+
+// ---------------------------------------------------------------------------
+// Spec 1.22: the walk with places (testdata/places-v1.places.json, the places-v1 tag's file byte for byte): a place is
+// drawn for every state with lands, every colour on it -- its base and each live land's piece at its stage -- so no colour
+// is hidden in any state, at either shape, with the flag or without, and the caption names the place and every land.
+
+describe('the storyboard walk with places (spec 1.22)', () => {
+  const places = validatePlaces(PLACES_RAW(), `${FORGECOACH_PLACES_URL}places.json`).places!;
+  const WITH: StoryboardPacks = { ...PACKS, places };
+  it('every state with lands is its place alone, every colour on screen, every caption honest, at both shapes, with the flag and without', { timeout: 600_000 }, () => {
+    let states = 0;
+    const slugs = new Set<string>();
+    for (const { state } of enumerateStates({ duals: true, dualMax: 4 }))
+      for (const c of COMBOS) {
+        const h = storyboardHalf(state, c.shape, c.pairfull, WITH);
+        const id = `${comboId(c)} ${stateLabel(state)}`;
+        expect(h.invisible, id).toEqual([]);
+        if (!h.colours.length) continue;
+        states++;
+        expect(h.drawn.map((d) => d.kind), `${id}: ${h.picture}`).toEqual(['place']);
+        expect([...h.drawn[0]!.colours].sort(), id).toEqual([...h.colours].sort());
+        expect(h.captionNames.filter((x) => !h.visible.includes(x)), h.caption!).toEqual([]);
+        expect(h.visible.filter((x) => !h.captionNames.includes(x)), h.caption!).toEqual([]);
+        slugs.add(h.picture.split(' ')[1]!);
+      }
+    expect(slugs.size).toBe(31);
+    expect(states).toBeGreaterThan(0);
+  });
+});

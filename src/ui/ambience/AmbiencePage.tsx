@@ -35,7 +35,7 @@ import { gradeFor, type LightOutcome } from '../../ambience/light.ts';
 import { applyGrade } from './lightGrade.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip, useNarrowScreen } from './SceneryStrip.tsx';
-import { cutOutWords, pairFullCaption, pairFullPlan } from '../../ambience/pairfull.ts';
+import { cutOutWords, pairFullCaption, pairFullPlan, planScene } from '../../ambience/pairfull.ts';
 import { elementBiomes, phoneElementBiomes } from '../../ambience/pieces.ts';
 import { COLOUR_BIOME, pickFromSlots, sceneryWithShowing, type MakeupShowing } from '../../ambience/makeup.ts';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
@@ -650,15 +650,17 @@ function bandCaption(
   // Spec 1.22: a side drawn as its place says "Cartagena de Indias: Island 2, Swamp 1, Plains 3, Mountain 1".
   const places = pack?.places ?? null;
   // A scene whose painting failed is captioned as what the strip then draws: today's plan (pairfull.ts `sceneFailed`).
-  const full = (pairFull && pack?.pairs) || scenes || places ? pairFullCaption(pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes, places, biomes: pack?.biomes ?? null, sceneFailed: (src) => pictureStatus(src) === 'failed' }), lands) : null;
-  if (full) return full;
+  const plan = (pairFull && pack?.pairs) || scenes || places ? pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes, places, biomes: pack?.biomes ?? null, sceneFailed: (src) => pictureStatus(src) === 'failed' }) : null;
+  const full = plan ? pairFullCaption(plan, lands) : null;
+  // A scene ("Scene · …") and a place ("Cartagena de Indias: …") say what they are; everything else is a pair band's.
+  if (full) return planScene(plan) ? full : `Pair band · ${full}`;
   if (!pack?.pairs) return null;
   const bands = pairBands(layout, pack.pairs, duals);
   if (!bands.length) return null;
   // Spec 1.19 a: the colours past the third, cut-outs on the pair's panels (a phone: those with a phone piece).
   const cut = narrow ? panelElements?.phone : panelElements?.desktop;
   const extras = pickFromSlots(slots, showing).extras.map((c) => COLOUR_BIOME[c]).filter((b) => !!cut?.has(b));
-  return `${bands.map((b) => `${pairWords(b.left, b.right, b.pair, lands)}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ')}${cutOutWords(extras)}`;
+  return `Pair band · ${bands.map((b) => `${pairWords(b.left, b.right, b.pair, lands)}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ')}${cutOutWords(extras)}`;
 }
 
 function MockSide({ title, player, top, slots, creatures, strip, plays, scrim, bands }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; creatures: number[]; strip: React.ReactNode; plays: SimPlay[]; scrim?: boolean; bands?: string | null }) {
@@ -689,8 +691,8 @@ function MockSide({ title, player, top, slots, creatures, strip, plays, scrim, b
         <b>{title}</b>
         <span className="amb-summary">{summary}</span>
         {bands && (
-          <span className="amb-summary amb-bands" data-amb-bands={player} title={bands.startsWith('Scene · ') ? bands : `Pair band · ${bands}`}>
-            {bands.startsWith('Scene · ') ? bands : `Pair band · ${bands}`}
+          <span className="amb-summary amb-bands" data-amb-bands={player} title={bands}>
+            {bands}
           </span>
         )}
       </div>

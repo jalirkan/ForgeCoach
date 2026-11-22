@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { validateManifest, type ScenePack } from './manifest.ts';
 import { halfLayout } from './layout.ts';
 import type { Biome, SlotState } from './model.ts';
-import { GEOGRAPHY, validatePairs, type PairsPack } from './pairs.ts';
+import { validatePairs, type PairsPack } from './pairs.ts';
 import {
   PAIR_FULL_HOLD_MS,
   pairFullCaption,
