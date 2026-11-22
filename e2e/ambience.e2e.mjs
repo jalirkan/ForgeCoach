@@ -818,7 +818,8 @@ async function placesCheck(browser, origin, pairs, shape) {
         prevPlace = place.slug;
       }
       check(errors.length === 0, `${shape}: page errors: ${errors.join('; ')}`);
-      if (shape === 'phone') await captionLines(page);
+      // (A sequence every step of which was skipped may end on a side with no caption.)
+      if (shape === 'phone' && (await page.$('[data-amb-bands="1"]'))) await captionLines(page);
       await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `${seq.name}-${shape}.png`) });
       log(`PASS: ${shape} ${seq.name}: the place composed for the state at every land${checkedFade ? ', a stage step faded over the old piece' : ''}${checkedStep ? ', a new colour cross-faded the half' : ''}`);
     }
@@ -828,7 +829,7 @@ async function placesCheck(browser, origin, pairs, shape) {
     if (skipped === 0) check(forbidden.length === 0, `${shape}: ${forbidden.length} pair or seam file(s) fetched with every state a place: ${forbidden.slice(0, 5).join(', ')}`);
     else log(`${shape}: ${forbidden.length} pair or seam picture(s) fetched for the ${skipped} step(s) with no place on disk`);
     check(served.length > 0, `${shape}: no place picture was served from disk`);
-    log(`PASS: ${shape}: places drawn (${served.length} pictures served from ${PLACES_DIR}; ${skipped} step(s) skipped, no place on disk); no scenes.json, pair or seam picture fetched`);
+    log(`PASS: ${shape}: places drawn (${served.length} pictures served from ${PLACES_DIR}; ${skipped} step(s) skipped, no place on disk); no scenes.json fetched${skipped ? '' : ', no pair or seam picture'}`);
   } finally {
     await ctx.close();
   }
