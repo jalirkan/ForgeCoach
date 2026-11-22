@@ -61,11 +61,11 @@ import { validatePairs } from './pairs.ts';
 import { FORGECOACH_PACK_URL, FORGECOACH_PAIRS_FULL_URL, FORGECOACH_PAIRS_URL, FORGECOACH_PLACES_URL, FORGECOACH_SCENES_URL } from './prefs.ts';
 import { validatePlaces } from './places.ts';
 import { validateScenes } from './scenes.ts';
-import { addLand, colourCount, enumerateStates, landCount, SHAPES, stateLabel, storyboardHalf, weightOf, type GapReason, type HalfStoryboard, type ManaState, type Shape, type StoryboardPacks } from './storyboard.ts';
+import { addLand, captionColours, colourCount, enumerateStates, landCount, SHAPES, stateLabel, storyboardHalf, weightOf, type GapReason, type HalfStoryboard, type ManaState, type Shape, type StoryboardPacks } from './storyboard.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
-import { synthPlaces } from './testdata/placesSynth.ts';
-const PLACES_RAW = (): unknown => synthPlaces();
+const PLACES_RAW = (): unknown => json('places-v1.places.json');
+const PIECE_COLOURS_OF = (bs: readonly string[]) => (['W', 'U', 'B', 'R', 'G'] as const).filter((c) => bs.includes({ W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' }[c]));
 const PACKS: StoryboardPacks = {
   pack: validateManifest(json('pack-v10.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!,
   pairsOff: validatePairs(json('pairs-v3.1.pairs.json'), `${FORGECOACH_PAIRS_URL}pairs.json`).pairs,
@@ -705,5 +705,25 @@ describe('the storyboard walk with places (spec 1.22)', () => {
       }
     expect(slugs.size).toBe(31);
     expect(states).toBeGreaterThan(0);
+  });
+});
+
+describe('the caption reader and the places’ names (spec 1.22)', () => {
+  const places = validatePlaces(PLACES_RAW(), `${FORGECOACH_PLACES_URL}places.json`).places!;
+  it('reads a place caption from its land list only: no name confuses it', () => {
+    // Names that hold a land word, or a colour's word, in any case.
+    expect(captionColours('Hawaii, the Big Island: Forest 2, Mountain 1', null)).toEqual(['R', 'G']);
+    expect(captionColours("Cambodia's rice plains around Angkor: Swamp 1", null)).toEqual(['B']);
+    for (const p of Object.values(places.places)) {
+      if (!p) continue;
+      // Each place captioned for every single land of it alone, and for all its lands: exactly those colours.
+      const all = `${p.name}: ${p.lands.map((b) => `${b[0]!.toUpperCase()}${b.slice(1)} 3`).join(', ')}`;
+      const want = PIECE_COLOURS_OF(p.lands);
+      expect(captionColours(all, null), all).toEqual(want);
+      for (const b of p.lands) {
+        const one = `${p.name}: ${b[0]!.toUpperCase()}${b.slice(1)} 1`;
+        expect(captionColours(one, null), one).toEqual(PIECE_COLOURS_OF([b]));
+      }
+    }
   });
 });

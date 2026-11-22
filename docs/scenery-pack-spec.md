@@ -2860,8 +2860,10 @@ missing. A place is not painted per combination of stages: it is **one base
 picture** (the bare site) and, for each of its lands, **six small transparent
 pieces** (stages 1–6), each painted inside that land's own region of the
 picture. Any state of the place is the base with each live land's piece at
-its stage laid over it, and the reader stacks them at run time. The pieces of
-different lands never overlap.
+its stage laid over it, and the reader stacks them at run time. The BOXES of
+neighbouring lands' pieces may overlap by their soft edges, but a piece's
+alpha never covers another land's built pixels, so the order they are
+stacked in (the geography's) changes nothing visible.
 
 **The key.** A place is keyed by its colours alone: its lands in the one
 geography's order (**island, swamp, plains, forest, mountain**, 1.17) joined
@@ -2964,7 +2966,8 @@ above 1.001: the painters' fractions are rounded).
    focal point and safe rect, the phone base on a phone-shaped half by the
    1.5 rule), never mirrored, never panned; and **inside the same frame**,
    above the base, one picture per live land in the geography's order -- that
-   land's piece at its stage, placed at `left: x`, `top: y`, `width: w`,
+   land's piece at its stage (overlapping boxes: the later in the geography
+   on top), placed at `left: x`, `top: y`, `width: w`,
    `height: h` of the frame -- so the base and its pieces scale and crop as
    one picture. A null piece draws nothing.
 4. Nothing else is drawn on a place half: no pair, element, cut-out, band or
@@ -2997,8 +3000,8 @@ above 1.001: the painters' fractions are rounded).
 - **Warm ahead**: once a place is drawn, the next stage's piece of every live
   land (stage + 1, at the shape in use). Other places' bases are not warmed.
 
-**Budgets.** The manifest at most **2 MB** (refused unread past it; places-v1
-is about 0.3 MB). As warnings: a place's declared files (both bases and every
+**Budgets.** The manifest at most **2 MB** (refused unread past it; places-v1's
+is 213,566 bytes). As warnings: a place's declared files (both bases and every
 piece at both shapes) past **8 MB**, and any one ref's past **45 MB**
 (jsDelivr's 50 MB).
 
@@ -3018,7 +3021,10 @@ Plains 3, Mountain 1".
 **The walk with places.** `storyboard.test.ts` walks every state of 0–6
 lands a colour (three arrival orders, the duals) at both shapes, with the
 flag and without, on places-v1: every state with lands is its place alone,
-every colour on screen, and the caption names the place and every land.
+every colour on screen, and the caption names the place and every land. The
+caption is read from its land list only ("…: Island 2, Forest 1"), since a
+name may hold a land word: "Hawaii, the Big Island", "Cambodia's rice plains
+around Angkor".
 
 **The DOM.** The place slot is `.scn-slot.scn-scene.scn-place[data-place="<slug>"]`
 with `data-scene="<the state's key>"` and `data-art` (`half` / `phone`); each

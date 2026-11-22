@@ -147,14 +147,22 @@ export function slotsFor(state: ManaState, thresholds: readonly number[]): { slo
 }
 
 const colourOf = (b: Biome): PieceColour | null => BIOME_COLOUR[b] ?? null;
-const BIOME_WORDS = /\b(island|swamp|plains|forest|mountain)\b/gi;
+const BIOME_WORDS = /\b(island|swamp|plains|forest|mountain)\b/g;
+/** Spec 1.22: a place caption's land list, after the place's name: "Island 2, Swamp 1, Plains 3, Mountain 1". */
+const PLACE_LANDS = /: ((?:(?:Island|Swamp|Plains|Forest|Mountain) [1-6])(?:, (?:Island|Swamp|Plains|Forest|Mountain) [1-6])*)$/;
 
 /** The colours a caption names: biome words, a pair's dual or shock name (both its colours), "R painted in". */
 export function captionColours(caption: string | null, pairs: PairsPack | null): PieceColour[] {
   if (!caption) return [];
   const out = new Set<PieceColour>();
-  // Spec 1.22: a place caption capitalises the lands ("Cartagena de Indias: Island 2, Swamp 1").
-  for (const m of caption.matchAll(BIOME_WORDS)) out.add(BIOME_COLOUR[m[1]!.toLowerCase() as Biome]!);
+  // Spec 1.22: a place caption ("Hawaii, the Big Island: Island 2, Forest 1") is read from its land list only -- a
+  // place's name may hold a land word ("the Big Island", "Cambodia's rice plains") that is no colour on the half.
+  const place = PLACE_LANDS.exec(caption);
+  if (place) {
+    for (const m of place[1]!.matchAll(/\b(Island|Swamp|Plains|Forest|Mountain) [1-6]\b/g)) out.add(BIOME_COLOUR[m[1]!.toLowerCase() as Biome]!);
+    return PIECE_COLOURS.filter((c) => out.has(c));
+  }
+  for (const m of caption.matchAll(BIOME_WORDS)) out.add(BIOME_COLOUR[m[1] as Biome]!);
   for (const m of caption.matchAll(/\b([WUBRG]) painted in\b/g)) out.add(m[1] as PieceColour);
   for (const p of Object.values(pairs?.pairs ?? {})) {
     if (!p) continue;
