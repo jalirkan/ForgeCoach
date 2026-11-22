@@ -4,9 +4,9 @@
  *
  * Spec 1.22, places (places.ts): the key, the file, the composition, the plan's
  * precedence, the load gate and hold, the caption, the piece fade's state and
- * the loader. `synthPlaces()` builds a places manifest in places-v1's shape for
+ * the loader. `synthPlaces()` builds a places manifest in places-v1's or places-v2's shape for
  * all 31 colour sets with relative URLs (the shape tests); the real tagged file
- * is `testdata/places-v1.places.json`, hash-pinned in places-v1.test.ts.
+ * is `testdata/places-v2.places.json`, hash-pinned in places-v2.test.ts.
  * Nothing here touches the network.
  */
 import { describe, expect, it } from 'vitest';
@@ -102,7 +102,7 @@ describe('spec 1.22: the file', () => {
     expect(c.half.src).toBe(`${FORGECOACH_PLACES_URL}places/cartagena/d/base.webp`);
     expect(c.half.phone.src).toBe(`${FORGECOACH_PLACES_URL}places/cartagena/p/base.webp`);
     expect(c.layers.island![2]!.half).toEqual({ src: `${FORGECOACH_PLACES_URL}places/cartagena/d/island-3.webp`, x: 0, y: 0.25, w: 0.1, h: 0.25, width: 103, height: 83, bytes: 3000 });
-    // Absolute URLs are kept as they are (places-v1 names each place's files at its own ref).
+    // Absolute URLs are kept as they are (places names each place's files at its own ref).
     const abs = withPlace('forest', (p) => (p.layers.forest[1].half.src = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v1-p9/places/x/d/forest-2.webp'));
     expect(validatePlaces(abs, MANIFEST).places!.places.forest!.layers.forest![1]!.half!.src).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v1-p9/places/x/d/forest-2.webp');
     // The homelands' stage 1 is null at both shapes; the land still has six stages.
@@ -168,7 +168,7 @@ describe('spec 1.22: the file', () => {
     expect(r.warnings.some((w) => /^places\.island: 9\.\d MB declared; a place's budget is 8 MB/.test(w))).toBe(true);
     expect(r.warnings.some((w) => /^places: .* MB declared in /.test(w))).toBe(false);
     const huge = withPlace('island', (p) => (p.half.bytes = 46 * 1048576));
-    expect(validatePlaces(huge, MANIFEST).warnings.some((w) => /^places: 4\d\.\d MB declared in https:\/\/cdn\.jsdelivr\.net\/gh.*|^places: .* MB declared in places-v1/.test(w))).toBe(true);
+    expect(validatePlaces(huge, MANIFEST).warnings.some((w) => /^places: 4\d\.\d MB declared in https:\/\/cdn\.jsdelivr\.net\/gh.*|^places: .* MB declared in places-v\d/.test(w))).toBe(true);
   });
 
   it('is fetched never throwing: missing, broken, unreachable or over 2 MB is no places', async () => {
@@ -191,7 +191,7 @@ describe('spec 1.22: the file', () => {
   });
 
   it('is loaded with ForgeCoach’s own pack on the scenes’ condition; ?places=off and ?scenes=off load none', () => {
-    expect(FORGECOACH_PLACES_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v1/');
+    expect(FORGECOACH_PLACES_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v2/');
     expect(placesUrlOf(DEFAULT_PREFS)).toBe(FORGECOACH_PLACES_URL);
     expect(placesUrlOf({ ...DEFAULT_PREFS, pairFull: false })).toBe(FORGECOACH_PLACES_URL);
     expect(placesUrlOf({ ...DEFAULT_PREFS, packUrl: 'http://127.0.0.1:8650/' })).toBeNull();

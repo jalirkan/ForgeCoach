@@ -70,7 +70,7 @@
  *      stands in (e2e/out/nearest-*.png).
  *
  *   8. Spec 1.22, places, on a bare page (ForgeCoach's default draws them), the places manifest and every place
- *      picture served from disk (PLACES_DIR, default ~/scenery-packs/scenes-v1/pack-places-v1: `index/places.json`
+ *      picture served from disk (PLACES_DIR, default ~/scenery-packs/scenes-v1/pack-<the places tag>, pack-places-v2: `index/places.json`
  *      and `places/<slug>/<d|p>/…`) through the browser context's routing, never the network; on the desktop and the
  *      phone, land by land (Cartagena's four, a homeland from stage 1, the storyboard's 5 and 6, a land destroyed):
  *      your half is exactly one place panel for the half's colours (`data-place`) and state (`data-scene`), its base
@@ -615,7 +615,7 @@ function diskPlaces() {
 
 /**
  * Route the places manifest and every place picture to disk, never the network: places.json at the places URL from
- * `index/places.json`, and any `forgecoach-scenery@places-v1*` URL under `places/` from the folder's `places/`. Every
+ * `index/places.json`, and any `forgecoach-scenery@places-v<n>*` URL under `places/` from the folder's `places/`. Every
  * picture served is kept; one not on disk answers 404 (so a missing file shows as a failed piece, never a fetch).
  */
 async function routePlaces(ctx) {
@@ -656,7 +656,7 @@ const cap = (b) => b.charAt(0).toUpperCase() + b.slice(1);
  * in over its old one (both on screen at once, the old beneath), then the old goes; the base and the other lands'
  * pieces stay the same elements. A new colour: the whole half cross-fades (two bases on screen during the fade). The
  * caption: "<name>: Island 2, Swamp 1, …". States whose colours have no place in the manifest on disk are skipped
- * (said so): with places-v1's 31 none is.
+ * (said so): with places-v2's 31 none is.
  */
 async function placesCheck(browser, origin, pairs, shape) {
   const manifest = diskPlaces();

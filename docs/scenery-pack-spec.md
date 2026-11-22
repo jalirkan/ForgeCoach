@@ -2879,11 +2879,12 @@ never mirrored. A half with a land the five do not name (a `wastes` slot,
 1.11) has no place and is drawn as before.
 
 **The file.** `places.json`, at the root of its own URL: ForgeCoach's is
-`https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v1/places.json`,
+`https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v2/places.json`,
 loaded on 1.20's condition (the pack is ForgeCoach's own, with the
 whole-half flag and without; never with `?scenes=off`, nor `?places=off`). The
-pictures may live at other refs (places-v1 names each place's files at a ref
-of its own, `@places-v1-p<n>`, so no ref passes jsDelivr's 50 MB). A file
+pictures may live at other refs (places-v2 names its files at
+`@places-v2-p1`, 30 places, 39.8 MB, and `@places-v2-p2`, Istanbul, so no ref
+passes jsDelivr's 50 MB, which is per ref). A file
 that does not load or does not validate, or whose every place is refused,
 means **no places** -- never an error on the board -- and the halves are drawn
 as before (1.20 / 1.21). `scenes.json` is fetched beside `places.json`, never
@@ -2896,31 +2897,31 @@ every place has loaded clean.
 {
   "schema": 1,
   "spec": "1.22",
-  "name": "places-v1",
+  "name": "places-v2",
   "author": "jalirkan",
   "license": "CC BY 4.0",
   "places": {
     "island+swamp+plains+mountain": {
       "slug": "cartagena",
       "name": "Cartagena de Indias",
-      "ref": "places-v1-p3",
+      "ref": "places-v2-p1",
       "lands": ["island", "swamp", "plains", "mountain"],
       "half": {
-        "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v1-p3/places/cartagena/d/base.webp",
-        "width": 2560, "height": 800, "bytes": 190000,
-        "subjectBand": [0.05, 0.65], "horizon": 0.55,
-        "focal": { "x": 0.5, "y": 0.5 }, "safe": { "x": 0, "y": 0, "w": 1, "h": 1 },
+        "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v2-p1/places/cartagena/d/base.webp",
+        "width": 2560, "height": 800, "bytes": 205450,
+        "subjectBand": [0.05, 0.71], "horizon": 0.6098,
+        "focal": { "x": 0.4961, "y": 0.4563 }, "safe": { "x": 0, "y": 0.05, "w": 0.9922, "h": 0.8125 },
         "phone": {
-          "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v1-p3/places/cartagena/p/base.webp",
-          "width": 2560, "height": 1152, "bytes": 200000,
-          "subjectBand": [0.05, 0.64], "horizon": 0.54,
-          "focal": { "x": 0.5, "y": 0.47 }, "safe": { "x": 0, "y": 0.03, "w": 1, "h": 0.89 }
+          "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v2-p1/places/cartagena/w/base.webp",
+          "width": 2560, "height": 1152, "bytes": 270984,
+          "subjectBand": [0.2014, 0.6597], "horizon": 0.5901,
+          "focal": { "x": 0.4961, "y": 0.4835 }, "safe": { "x": 0, "y": 0.2014, "w": 0.9922, "h": 0.5642 }
         }
       },
       "layers": {
         "island": [
-          { "half":  { "src": "…/places/cartagena/d/island-1.webp", "x": 0.20, "y": 0.56, "w": 0.05, "h": 0.14, "width": 124, "height": 108, "bytes": 4228 },
-            "phone": { "src": "…/places/cartagena/d/island-1.webp", "x": 0.20, "y": 0.54, "w": 0.05, "h": 0.09, "width": 124, "height": 108, "bytes": 4228 } },
+          { "half":  { "src": "…/places/cartagena/d/island-1.webp", "x": 0.2738, "y": 0.6913, "w": 0.0859, "h": 0.18, "width": 220, "height": 144, "bytes": 6620 },
+            "phone": { "src": "…/places/cartagena/d/island-1.webp", "x": 0.2738, "y": 0.6467, "w": 0.0859, "h": 0.125, "width": 220, "height": 144, "bytes": 6620 } },
           "… five more: stages 2 to 6"
         ],
         "swamp": ["… six"], "plains": ["… six"], "mountain": ["… six"]
@@ -2935,10 +2936,11 @@ every place has loaded clean.
   **must carry its `phone` picture** (a place is drawn on a desktop and a phone
   alike). Both MUST declare `width` and `height` (every piece is placed in
   fractions of its base, so a base without its pixel size is refused, never
-  given 1.5's default size). Nothing assumes the phone base's shape: places-v1's
-  were 4:5 (1152 × 1440); places-v2's are 2.22 : 1 (2560 × 1152), the desktop
-  panorama with sky above and ground below, since a phone's half of the board
-  is a ~2.1 : 1 strip. A phone base without a `subjectBand` takes the desktop
+  given 1.5's default size). Nothing assumes the phone base's shape. places-v2's
+  phone base is the desktop panorama with more sky above and near ground
+  below, 2.22 : 1 (2560 × 1152), because a phone's half of the board is a
+  2.1 : 1 strip (places-v1's were 4:5, 1152 × 1440, and a phone drew a thin
+  middle slice of them). A phone base without a `subjectBand` takes the desktop
   band mapped into it as a full-width outpainting. The pictures come in one
   size, so there is no `src2x`.
 - **`layers`** holds exactly the place's lands, each with **exactly six**
@@ -3018,8 +3020,8 @@ above 1.001: the painters' fractions are rounded).
 - **Warm ahead**: once a place is drawn, the next stage's piece of every live
   land (stage + 1, at the shape in use). Other places' bases are not warmed.
 
-**Budgets.** The manifest at most **2 MB** (refused unread past it; places-v1's
-is 213,566 bytes). As warnings: a place's declared files (both bases and every
+**Budgets.** The manifest at most **2 MB** (refused unread past it; places-v2's
+is 214,280 bytes). As warnings: a place's declared files (both bases and every
 piece at both shapes) past **8 MB**, and any one ref's past **45 MB**
 (jsDelivr's 50 MB).
 
@@ -3032,13 +3034,17 @@ from `cartagena/d/`, each at its own box. A third Island: the island's piece
 `island-3` fades in over `island-2` (1.2 s on ForgeCoach's pack), then
 `island-2` fades out over 0.6 s; the base and the other three pieces stay.
 A first Forest: the half holds Cartagena until Istanbul's base and its five
-pieces have loaded, then cross-fades to Istanbul. On a phone the same over the
-phone base, each piece at its phone box. The caption: "Cartagena de Indias: Island 2, Swamp 1,
-Plains 3, Mountain 1".
+pieces have loaded, then cross-fades to Istanbul. On a phone the half draws
+`cartagena/w/base.webp` (2560 × 1152, the same panorama with more sky and near
+ground) and the same four piece files from `cartagena/d/` at their phone boxes
+(island-1's, for one, at y 0.6467 and h 0.125 of the phone base against y
+0.6913 and h 0.18 of the desktop one); none of Cartagena's phone pieces needs
+a file of its own (62 do across the pack, under `w/`). The caption:
+"Cartagena de Indias: Island 2, Swamp 1, Plains 3, Mountain 1".
 
 **The walk with places.** `storyboard.test.ts` walks every state of 0–6
 lands a colour (three arrival orders, the duals) at both shapes, with the
-flag and without, on places-v1: every state with lands is its place alone,
+flag and without, on places-v2: every state with lands is its place alone,
 every colour on screen, and the caption names the place and every land. The
 caption is read from its land list only ("…: Island 2, Forest 1"), since a
 name may hold a land word: "Hawaii, the Big Island", "Cambodia's rice plains
@@ -3057,7 +3063,7 @@ out); a failed piece a hidden `[data-piece-failed]` mark.
 `base`, `pairFullHold`), `src/ambience/pack.ts` (`loadPlaces`; scenes only
 without places), `src/ambience/prefs.ts` (`FORGECOACH_PLACES_URL`,
 `placesUrlOf`, `?places=off`), SceneryStrip (`PlacePanel`,
-`PlaceLandPiece`); `places.test.ts`, `places-v1.test.ts`,
+`PlaceLandPiece`); `places.test.ts`, `places-v2.test.ts`,
 `placesDom.test.tsx`, `storyboard.test.ts` and `e2e/ambience.e2e.mjs`
 (step 8, the manifest and pictures served from disk) hold it.
 

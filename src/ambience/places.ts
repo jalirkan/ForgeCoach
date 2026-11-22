@@ -42,7 +42,7 @@ import { sceneKeyOf, sceneLands, type SceneHalf, type SceneLand } from './scenes
 export const PLACES_MANIFEST_FILE = 'places.json';
 /** The newest spec version this reader knows (1.22 added places). */
 export const PLACES_SPEC = '1.22';
-/** A places manifest longer than this is refused unread (places-v1's 31 places are about 270 KB). */
+/** A places manifest longer than this is refused unread (places-v2's 31 places are 214,280 bytes). */
 export const MAX_PLACES_MANIFEST_BYTES = 2 * 1024 * 1024;
 /** Declared files of one place (both bases and every piece at both shapes) past this get a warning. */
 export const MAX_PLACE_BYTES = 8 * 1024 * 1024;

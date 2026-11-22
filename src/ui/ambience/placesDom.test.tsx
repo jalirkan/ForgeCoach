@@ -26,7 +26,7 @@ import { PlaceLandView, PlacePanel, SceneryStrip } from './SceneryStrip.tsx';
 import { ScenePieces } from './ScenePieces.tsx';
 
 const BASE = 'https://example.org/pack/';
-const PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v1/';
+const PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v2/';
 const slot = (biome: Biome, index: number, weight: number): SlotState => ({ biome, index, weight, stage: Math.min(6, Math.ceil(weight)), peak: Math.min(6, Math.ceil(weight)) });
 const piece = (src: string) => ({ src, width: 600, height: 300 });
 const biomeStages = (b: string) => [1, 2, 3, 4, 5, 6].map((k) => ({ layers: [], half: { src: `${b}/s${k}-half.webp` } }));

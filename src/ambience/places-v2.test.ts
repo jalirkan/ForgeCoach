@@ -1,10 +1,12 @@
 /*
- * ForgeCoach — ambience/places-v1.test.ts
+ * ForgeCoach — ambience/places-v2.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Spec 1.22: `testdata/places-v1.places.json` is the places-v1 tag's
+ * Spec 1.22: `testdata/places-v2.places.json` is the places-v2 tag's
  * `places.json` byte for byte (2026-11-22: 31 places, pictures at the refs
- * places-v1-p1 and places-v1-p2, absolute URLs), hash-pinned as the scenes and
+ * places-v2-p1 (30 places) and places-v2-p2 (Istanbul), absolute URLs; every
+ * phone base 2.22:1, 2560 × 1152, most phone pieces the desktop piece files at
+ * their phone boxes), hash-pinned as the scenes and
  * pairs files are. A full parse: every colour set has its place, every land six
  * stages with a piece at both shapes, and the only null pieces are the five
  * homelands' stage 1 (their base is stage 1). Nothing here touches the network.
@@ -17,22 +19,22 @@ import { GEOGRAPHY } from './pairs.ts';
 import { FORGECOACH_PLACES_URL } from './prefs.ts';
 import { fetchPlaces, MAX_PLACES_MANIFEST_BYTES, placeFor, placesBytesByRef, validatePlaces } from './places.ts';
 
-const bytes = readFileSync(new URL('./testdata/places-v1.places.json', import.meta.url));
+const bytes = readFileSync(new URL('./testdata/places-v2.places.json', import.meta.url));
 const MANIFEST = `${FORGECOACH_PLACES_URL}places.json`;
 const r = validatePlaces(JSON.parse(bytes.toString('utf8')), MANIFEST);
 const PLACES = r.places!;
 
-describe('places-v1, the tagged file', () => {
+describe('places-v2, the tagged file', () => {
   it('is the tag’s file byte for byte (hash-pinned)', () => {
-    expect(bytes.length).toBe(213566);
-    expect(createHash('sha256').update(bytes).digest('hex')).toBe('cbf1b397e06a6e4bcd34c224ffe6adb257497111c523a8d98703ab0c810f3974');
+    expect(bytes.length).toBe(214280);
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe('bd7f64c74ac9e6cb37866a5bc5a26a5f6b1b8f67eece835d39f0051f50bb9acf');
     expect(bytes.length).toBeLessThan(MAX_PLACES_MANIFEST_BYTES);
   });
 
   it('validates clean: 31 places, one for every set of colours, spec 1.22', () => {
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual([]);
-    expect(PLACES).toMatchObject({ spec: '1.22', name: 'places-v1' });
+    expect(PLACES).toMatchObject({ spec: '1.22', name: 'places-v2' });
     const keys = Object.keys(PLACES.places);
     expect(keys).toHaveLength(31);
     for (let m = 1; m < 32; m++) expect(keys).toContain(GEOGRAPHY.filter((_, i) => m & (1 << i)).join('+'));
@@ -74,6 +76,16 @@ describe('places-v1, the tagged file', () => {
     expect(nulls.sort()).toEqual(GEOGRAPHY.flatMap((b) => [`${b}/${b}1/half`, `${b}/${b}1/phone`]).sort());
   });
 
+  it('the phone shape: every phone base 2560 × 1152 (2.22:1); the phone pieces are the desktop files at their phone boxes but 62 with a file of their own', () => {
+    let own = 0;
+    for (const p of Object.values(PLACES.places)) {
+      expect([p!.half.width, p!.half.height]).toEqual([2560, 800]);
+      expect([p!.half.phone.width, p!.half.phone.height]).toEqual([2560, 1152]);
+      for (const stages of Object.values(p!.layers)) for (const st of stages!) if (st.half && st.phone && st.phone.src !== st.half.src) own++;
+    }
+    expect(own).toBe(62);
+  });
+
   it('every state of every colour set has its place composed (16,806 states)', () => {
     let n = 0;
     for (let m = 1; m < 32; m++) {
@@ -91,7 +103,7 @@ describe('places-v1, the tagged file', () => {
 
   it('declares its files in two refs, each under jsDelivr’s 50 MB', () => {
     const refs = placesBytesByRef(PLACES);
-    expect([...refs.keys()].sort()).toEqual(['places-v1-p1', 'places-v1-p2']);
+    expect([...refs.keys()].sort()).toEqual(['places-v2-p1', 'places-v2-p2']);
     for (const b of refs.values()) expect(b).toBeLessThan(45 * 1024 * 1024);
   });
 

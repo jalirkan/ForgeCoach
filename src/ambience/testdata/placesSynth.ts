@@ -5,7 +5,7 @@
  * Spec 1.22 test data: a places manifest in places-v1's shape for all 31 colour
  * sets, with relative URLs (places/<slug>/<d|p>/base.webp, <land>-<k>.webp) and
  * the homelands' stage 1 null, for the shape tests (places.test.ts, the DOM
- * tests). The real tagged file is places-v1.places.json beside it.
+ * tests). The real tagged file is places-v2.places.json beside it.
  */
 import type { Biome } from '../model.ts';
 import { GEOGRAPHY } from '../pairs.ts';
