@@ -20,9 +20,10 @@
  * `pairs.json`, is fetched beside the first and carried as the pack's `pairs`
  * ({@link loadPairs}); it never holds the pack back. Spec 1.20: likewise
  * a third, `scenes.json` ({@link loadScenes}), carried as the pack's `scenes`.
- * Spec 1.22: and first `places.json` ({@link loadPlaces}), carried as the
- * pack's `places`; when it loads, `scenes.json` (2.6 MB of superseded
- * paintings) is not fetched at all.
+ * Spec 1.22: and `places.json` ({@link loadPlaces}), carried as the pack's
+ * `places`, fetched beside `scenes.json`; the scenes are kept only when the
+ * places gave none or refused one, and their fetch is cancelled once every
+ * place has loaded clean.
  *
  * Packs are served from the user's own machine (e.g. http://127.0.0.1:8650/,
  * see docs/scenery-pack-spec.md); nothing from a pack is ever stored here.
@@ -247,21 +248,29 @@ export async function resolveScenery(prefs: SceneryPrefs, deps: { fetch: FetchLi
   // Spec 1.9: the pair bands' manifest, fetched beside the pack's; it never holds the pack back, and a failure only means no bands.
   const pairsUrl = pairsUrlOf(prefs);
   const pairsP = pairsUrl ? loadPairs(pairsUrl, deps) : Promise.resolve(null);
-  // Spec 1.22: the places' manifest likewise; a failure only means no places.
+  // Spec 1.22: the places' manifest likewise, and the scenes' (1.20) beside it, both started together: the scenes are
+  // used only when the places gave none or refused one (a half whose place is missing then draws its scene, as
+  // before), and their fetch is cancelled the moment every place has loaded clean (a place is drawn before any scene,
+  // and scenes.json is 2.6 MB of superseded paintings). A failure of either only means none of it.
   const placesUrl = placesUrlOf(prefs);
-  const placesP = placesUrl ? loadPlaces(placesUrl, deps) : Promise.resolve(null);
-  // Spec 1.20: the scenes' manifest, only when no places loaded (a place is drawn before any scene); a failure only
-  // means no scenes.
   const scenesUrl = scenesUrlOf(prefs);
-  const scenesP = placesP.then((places) => (!places && scenesUrl ? loadScenes(scenesUrl, deps) : null));
+  const scenesAbort = new AbortController();
+  deps.signal?.addEventListener('abort', () => scenesAbort.abort());
+  const scenesP = scenesUrl ? loadScenes(scenesUrl, { ...deps, signal: scenesAbort.signal }) : Promise.resolve(null);
+  const placesP = placesUrl
+    ? loadPlaces(placesUrl, deps).then((r) => {
+        if (r.places && !r.refused) scenesAbort.abort();
+        return r;
+      })
+    : Promise.resolve({ places: null, refused: 0 });
   const m = await fetchManifest(prefs.packUrl, deps);
   if (!m.pack) {
     return { ...PROCEDURAL, note: `Scenery pack not loaded: ${m.errors[0] ?? 'unknown problem'} Showing the built-in scenery.`, errors: m.errors, warnings: m.warnings, manifestUrl: m.manifestUrl };
   }
-  const [pre, pairs, places, scenes] = await Promise.all([preloadPack(m.pack, deps.load), pairsP, placesP, scenesP]);
+  const [pre, pairs, pl, scenes] = await Promise.all([preloadPack(m.pack, deps.load), pairsP, placesP, scenesP]);
   if (pairs) m.pack = { ...m.pack, pairs };
-  if (places) m.pack = { ...m.pack, places };
-  else if (scenes) m.pack = { ...m.pack, scenes };
+  if (pl.places) m.pack = { ...m.pack, places: pl.places };
+  if (scenes && (!pl.places || pl.refused)) m.pack = { ...m.pack, scenes };
   const covered = BIOMES.filter((b) => m.pack!.biomes[b]);
   const loadOf = (failed: Biome[]): SceneryLoad => {
     const reasons = pre.reasons.filter((r) => failed.some((b) => r.startsWith(`${b}:`)));
@@ -306,6 +315,8 @@ export async function loadPairs(url: string, deps: { fetch: FetchLike; signal?: 
  */
 export async function loadScenes(url: string, deps: { fetch: FetchLike; signal?: AbortSignal }): Promise<ScenesPack | null> {
   const r = await fetchScenes(url, deps);
+  // Cancelled (spec 1.22: every place loaded clean): nothing to say.
+  if (deps.signal?.aborted) return null;
   if (typeof console !== 'undefined') {
     if (!r.scenes) console.info(`ForgeCoach scenery: scenes not loaded (${r.errors[0] ?? 'unknown problem'}); every half is drawn as before.`);
     else if (r.errors.length) console.info(`ForgeCoach scenery: ${r.errors.length} scene(s) refused (${r.errors[0]}).`);
@@ -320,15 +331,16 @@ export async function loadScenes(url: string, deps: { fetch: FetchLike; signal?:
  * are not preloaded here: a half warms its place's base and the pieces of its
  * state, and the next stage's pieces once it is drawn.
  */
-export async function loadPlaces(url: string, deps: { fetch: FetchLike; signal?: AbortSignal }): Promise<PlacesPack | null> {
+export async function loadPlaces(url: string, deps: { fetch: FetchLike; signal?: AbortSignal }): Promise<{ places: PlacesPack | null; refused: number }> {
   const r = await fetchPlaces(url, deps);
-  // A manifest every place of which was refused is no places too (the scenes are fetched instead).
+  // A manifest every place of which was refused is no places too (the scenes draw instead).
   const places = r.places && Object.keys(r.places.places).length ? r.places : null;
+  const refused = places ? r.errors.length : 0;
   if (typeof console !== 'undefined') {
     if (!places) console.info(`ForgeCoach scenery: places not loaded (${r.errors[0] ?? 'no place in the file'}); the halves are drawn by the scenes.`);
-    else if (r.errors.length) console.info(`ForgeCoach scenery: ${r.errors.length} place(s) refused (${r.errors[0]}).`);
+    else if (refused) console.info(`ForgeCoach scenery: ${refused} place(s) refused (${r.errors[0]}); those colours are drawn by the scenes.`);
   }
-  return places;
+  return { places, refused };
 }
 
 /** One load per prefs at a time, shared by every strip on the page. */

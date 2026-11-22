@@ -744,7 +744,8 @@ export function pairFullHold<L>(
   // Spec 1.22: the same place on screen (the same base picture) and a land's stage changed: drawn at once, its base
   // loaded -- the panel shows the land's new piece once it has loaded, the old one until then; nothing is held.
   const placeBase = cur.choice?.base;
-  if (cur.plan && placeBase?.place && hold.last?.shown?.place?.slug === placeBase.place.slug && hold.last.shown.art.picture!.src === placeBase.art.picture!.src) {
+  // Only while nothing is being waited for (`since` null): a draw kept from before a wait that ran out is not "on screen".
+  if (cur.plan && placeBase?.place && hold.since === null && hold.last?.shown?.place?.slug === placeBase.place.slug && hold.last.shown.art.picture!.src === placeBase.art.picture!.src) {
     const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.plan, shown: placeBase };
     return { draw, hold: { last: draw, since: null }, holding: false };
   }
@@ -767,7 +768,18 @@ export function pairFullHold<L>(
       const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.plan, shown: placeBase };
       return { draw, hold: { last: draw, since }, holding: false };
     }
-    if (cold) return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
+    // The panels drawn: they are what is on screen now (the review of #218: a held place kept as `last` was matched by
+    // the fast path above when its colours came back, and remounted with a land bare). Spec 1.22: a place whose base has
+    // loaded and waits on its pieces, with nothing drawn before, still reports `holding`, so the caller wakes when the
+    // hold runs out and draws the place rather than leave the panels up on a quiet board.
+    if (cold) {
+      const panels: PairFullDraw<L> = { layout: cur.layout, plan: null, shown: null };
+      const waitingOnPieces = !!placeBase && cur.choice!.want === placeBase && now - since < holdMs;
+      // After a wait that ran out, the panels start afresh (`since` cleared): what comes next -- even the place that was
+      // there before -- is waited for from them, whole, never drawn with a land bare.
+      if (hold.last) return { draw: panels, hold: { last: panels, since: null }, holding: false };
+      return { draw: panels, hold: { last: null, since }, holding: waitingOnPieces };
+    }
     // The painted (or grid) hold ran out: what has loaded (the base panorama), drawn below.
   }
   const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.choice?.show ? cur.plan : null, shown: cur.choice?.show ?? null };

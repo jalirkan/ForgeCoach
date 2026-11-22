@@ -2886,7 +2886,11 @@ pictures may live at other refs (places-v1 names each place's files at a ref
 of its own, `@places-v1-p<n>`, so no ref passes jsDelivr's 50 MB). A file
 that does not load or does not validate, or whose every place is refused,
 means **no places** -- never an error on the board -- and the halves are drawn
-as before (1.20 / 1.21: `scenes.json` is fetched then, and only then).
+as before (1.20 / 1.21). `scenes.json` is fetched beside `places.json`, never
+after it, so a failing places file holds nothing back; its result is kept
+only when the places gave none or refused one (a half whose colours have no
+usable place then draws its scene), and its fetch is cancelled the moment
+every place has loaded clean.
 
 ```json
 {
@@ -2908,7 +2912,7 @@ as before (1.20 / 1.21: `scenes.json` is fetched then, and only then).
         "focal": { "x": 0.5, "y": 0.5 }, "safe": { "x": 0, "y": 0, "w": 1, "h": 1 },
         "phone": {
           "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v1-p3/places/cartagena/p/base.webp",
-          "width": 1152, "height": 1440, "bytes": 140000,
+          "width": 2560, "height": 1152, "bytes": 200000,
           "subjectBand": [0.05, 0.64], "horizon": 0.54,
           "focal": { "x": 0.5, "y": 0.47 }, "safe": { "x": 0, "y": 0.03, "w": 1, "h": 0.89 }
         }
@@ -2916,7 +2920,7 @@ as before (1.20 / 1.21: `scenes.json` is fetched then, and only then).
       "layers": {
         "island": [
           { "half":  { "src": "…/places/cartagena/d/island-1.webp", "x": 0.20, "y": 0.56, "w": 0.05, "h": 0.14, "width": 124, "height": 108, "bytes": 4228 },
-            "phone": { "src": "…/places/cartagena/p/island-1.webp", "x": 0.26, "y": 0.31, "w": 0.09, "h": 0.06, "width": 100, "height": 90, "bytes": 2682 } },
+            "phone": { "src": "…/places/cartagena/d/island-1.webp", "x": 0.20, "y": 0.54, "w": 0.05, "h": 0.09, "width": 124, "height": 108, "bytes": 4228 } },
           "… five more: stages 2 to 6"
         ],
         "swamp": ["… six"], "plains": ["… six"], "mountain": ["… six"]
@@ -2929,15 +2933,26 @@ as before (1.20 / 1.21: `scenes.json` is fetched then, and only then).
 - **`half`** is the base, a 1.5 half picture read by the same reader
   (`src`, `subjectBand`, `horizon`, `focal`, `safe`, `hour`, `key`), and it
   **must carry its `phone` picture** (a place is drawn on a desktop and a phone
-  alike). The pictures come in one size (2560 × 800 and 1152 × 1440), so there
-  is no `src2x`.
+  alike). Both MUST declare `width` and `height` (every piece is placed in
+  fractions of its base, so a base without its pixel size is refused, never
+  given 1.5's default size). Nothing assumes the phone base's shape: places-v1's
+  were 4:5 (1152 × 1440); places-v2's are 2.22 : 1 (2560 × 1152), the desktop
+  panorama with sky above and ground below, since a phone's half of the board
+  is a ~2.1 : 1 strip. A phone base without a `subjectBand` takes the desktop
+  band mapped into it as a full-width outpainting. The pictures come in one
+  size, so there is no `src2x`.
 - **`layers`** holds exactly the place's lands, each with **exactly six**
   stages (index 0 = stage 1), each `{ "half": piece | null, "phone": piece |
   null }`.
 - **A piece** is a WebP (or AVIF, PNG) with alpha. `x`, `y`, `w`, `h` are
   fractions (0–1) of the base picture **of the same shape**, from its
   top-left: the piece is drawn stretched to exactly that box. `width` /
-  `height` are its pixel size (information); `bytes` its declared size.
+  `height` are its pixel size (information); `bytes` its declared size. A
+  phone piece may be the same file as the land's desktop piece at another
+  box (places-v2: the desktop pieces, placed in the taller phone base; a few
+  that touch the old top or bottom edge get a file of their own). The reader
+  keys a piece on screen by its file, box AND stage, and counts each file's
+  bytes once.
 - **`null`** means "this stage adds nothing to the base at this shape". It
   happens for stage 1 of the five homelands, whose base IS stage 1. The land
   still counts as drawn.
@@ -2947,7 +2962,8 @@ as before (1.20 / 1.21: `scenes.json` is fetched then, and only then).
 that is not a schema-1 places manifest is no places. A place is **refused**,
 with an error naming why, and the rest load, when its key is not its `lands`
 in the geography's order; a land is off the five (never `wastes`) or named
-twice; it has no `slug` or `name`; `half` does not read or has no `phone`;
+twice; it has no `slug` or `name`; `half` does not read, has no `phone`, or
+either base lacks a valid `width` and `height`;
 `layers` is not exactly its lands with six stages each, each stage with both
 `half` and `phone` keys; or a piece has no usable `src`, an `x` or `y` below
 0, a `w` or `h` of 0 or less, or a box past the picture (`x + w` or `y + h`
@@ -2964,7 +2980,9 @@ above 1.001: the painters' fractions are rounded).
    without.
 3. **Composed** = the base framed exactly as a scene is (1.5's crop about its
    focal point and safe rect, the phone base on a phone-shaped half by the
-   1.5 rule), never mirrored, never panned; and **inside the same frame**,
+   1.5 rule: the shape nearer the half's on a log scale, so with places-v2 a
+   desktop half narrower than about 2.67 : 1 draws the phone base too, which
+   fits it better), never mirrored, never panned; and **inside the same frame**,
    above the base, one picture per live land in the geography's order -- that
    land's piece at its stage (overlapping boxes: the later in the geography
    on top), placed at `left: x`, `top: y`, `width: w`,
@@ -3014,8 +3032,8 @@ from `cartagena/d/`, each at its own box. A third Island: the island's piece
 `island-3` fades in over `island-2` (1.2 s on ForgeCoach's pack), then
 `island-2` fades out over 0.6 s; the base and the other three pieces stay.
 A first Forest: the half holds Cartagena until Istanbul's base and its five
-pieces have loaded, then cross-fades to Istanbul. On a phone the same, from
-`cartagena/p/`. The caption: "Cartagena de Indias: Island 2, Swamp 1,
+pieces have loaded, then cross-fades to Istanbul. On a phone the same over the
+phone base, each piece at its phone box. The caption: "Cartagena de Indias: Island 2, Swamp 1,
 Plains 3, Mountain 1".
 
 **The walk with places.** `storyboard.test.ts` walks every state of 0–6

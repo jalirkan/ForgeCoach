@@ -24,18 +24,18 @@ import { BIOME_LABEL, dualsOf, sceneryFromLog, slotsOf, type Biome } from '../..
 import { BUILTIN_EFFECT, dominantBiome, resolveEffect, type EffectCue } from '../../ambience/effects.ts';
 import { sceneryEvents, type SceneryEvent } from '../../ambience/events.ts';
 import { SIM_PLAYERS, simLandCount, simLog, simSetLandCount, type SimLandName, type SimPlay } from '../../ambience/sim.ts';
-import { browserLoader, checkEffectFiles, fetchManifest, loadPairs, manifestUrlFor, pictureStatus, preloadPack, warmPicture, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
+import { browserLoader, checkEffectFiles, fetchManifest, loadPairs, manifestUrlFor, pictureFailed, pictureStatus, preloadPack, warmPicture, withoutBiomes, type EffectBudget, type EffectFileCheck } from '../../ambience/pack.ts';
 import { pairBands, pairPictures, pairsBytes, pairWords, type PairsPack } from '../../ambience/pairs.ts';
 import { halfLayout, PHONE_VIEWPORT_MAX } from '../../ambience/layout.ts';
 import { validateManifest, areaBytes, AREA_MIN_WIDTH_PX, EFFECT_EVENTS, hasAreaPieces, hasHalfArt, halfBytes, MAX_EFFECT_BYTES, MAX_LAYERS, MAX_OVERLAY_ANIMATED, MAX_OVERLAY_PIECES, overlayBytes, pieceUrls, type EffectEvent, type PackEffect, type PackPieces, type ScenePack } from '../../ambience/manifest.ts';
 import { currentPrefs, loadSceneryPrefs, pairFullOn, pairsUrlOf, placesUrlOf, saveSceneryPrefs, scenesUrlOf } from '../../ambience/prefs.ts';
 import { fetchScenes, scenePictures, type ScenesPack } from '../../ambience/scenes.ts';
-import { fetchPlaces, placesBytes, type PlacesPack } from '../../ambience/places.ts';
+import { fetchPlaces, placeCaptionLands, placeUsable, placesBytes, type PlacesPack } from '../../ambience/places.ts';
 import { gradeFor, type LightOutcome } from '../../ambience/light.ts';
 import { applyGrade } from './lightGrade.ts';
 import { useMediaQuery } from '../hooks.ts';
 import { SceneryStrip, useNarrowScreen } from './SceneryStrip.tsx';
-import { cutOutWords, pairFullCaption, pairFullPlan, planScene } from '../../ambience/pairfull.ts';
+import { cutOutWords, pairFullCaption, pairFullPlan } from '../../ambience/pairfull.ts';
 import { elementBiomes, phoneElementBiomes } from '../../ambience/pieces.ts';
 import { COLOUR_BIOME, pickFromSlots, sceneryWithShowing, type MakeupShowing } from '../../ambience/makeup.ts';
 import { SceneryOverlay } from './SceneryOverlay.tsx';
@@ -201,11 +201,18 @@ export default function AmbiencePage() {
     const pairsP = pairsUrl ? loadPairs(pairsUrl, { fetch: (x, i) => fetch(x, i) }) : Promise.resolve(null);
     // Spec 1.20: the scenes (ForgeCoach's own pack only), fetched here rather than through pack.ts so the status line can
     // name the file and say why there are none.
-    // Spec 1.22: the places first, likewise; when they load, the scenes are not fetched at all (pack.ts's rule).
+    // Spec 1.22: the places and the scenes together (pack.ts's rule): the scenes kept only when the places gave none or
+    // refused one, their fetch cancelled once every place has loaded clean.
     const placesUrl = placesUrlOf({ ...initial, mode: 'pack', packUrl: u });
-    const placesP = placesUrl ? fetchPlaces(placesUrl, { fetch: (x, i) => fetch(x, i) }) : Promise.resolve(null);
     const scenesUrl = scenesUrlOf({ ...initial, mode: 'pack', packUrl: u });
-    const scenesP = placesP.then((pl) => (pl?.places && Object.keys(pl.places.places).length ? null : scenesUrl ? fetchScenes(scenesUrl, { fetch: (x, i) => fetch(x, i) }) : null));
+    const scenesAbort = new AbortController();
+    const scenesP = scenesUrl ? fetchScenes(scenesUrl, { fetch: (x, i) => fetch(x, i), signal: scenesAbort.signal }) : Promise.resolve(null);
+    const placesP = placesUrl
+      ? fetchPlaces(placesUrl, { fetch: (x, i) => fetch(x, i) }).then((r) => {
+          if (r.places && Object.keys(r.places.places).length && !r.errors.length) scenesAbort.abort();
+          return r;
+        })
+      : Promise.resolve(null);
     const m = await fetchManifest(u, { fetch: (x, i) => fetch(x, i) });
     if (!m.pack) {
       setPackState({ status: 'failed', url: u, manifestUrl: m.manifestUrl, pack: null, errors: m.errors, warnings: m.warnings, note: 'Showing the built-in scenery.' });
@@ -213,6 +220,7 @@ export default function AmbiencePage() {
     }
     const [pre, pairs, pl, sc] = await Promise.all([preloadPack(m.pack, browserLoader(), { maxStage: 6 }), pairsP, placesP, scenesP]);
     const places = pl?.places && Object.keys(pl.places.places).length ? pl.places : null;
+    const scenesKept = !places || !!pl?.errors.length ? (sc ?? null) : null;
     const p = pre.failed.length ? withoutBiomes(m.pack, pre.failed) : m.pack;
     // A pack with effects and no stage art (spec 1.2) is usable too.
     const any = Object.keys(p.biomes).length > 0 || !!p.effects;
@@ -222,12 +230,12 @@ export default function AmbiencePage() {
       manifestUrl: m.manifestUrl,
       pack: any ? p : null,
       errors: any ? [] : ['No asset loaded.'],
-      warnings: [...m.warnings, ...pre.reasons, ...(places ? [...pl!.errors, ...pl!.warnings] : []), ...(sc?.scenes ? [...sc.errors, ...sc.warnings] : [])],
+      warnings: [...m.warnings, ...pre.reasons, ...(places ? [...pl!.errors, ...pl!.warnings] : []), ...(scenesKept?.scenes ? [...scenesKept.errors, ...scenesKept.warnings] : [])],
       note: pre.failed.length ? `${pre.failed.map((b) => BIOME_LABEL[b]).join(', ')} fell back to the built-in scenery.` : null,
       pairs,
-      scenes: sc?.scenes ?? null,
-      scenesUrl: sc?.manifestUrl ?? null,
-      scenesErrors: sc?.errors ?? [],
+      scenes: scenesKept?.scenes ?? null,
+      scenesUrl: scenesKept?.manifestUrl ?? null,
+      scenesErrors: scenesKept?.errors ?? [],
       places,
       placesUrl: pl?.manifestUrl ?? null,
       placesErrors: pl?.errors ?? [],
@@ -253,23 +261,25 @@ export default function AmbiencePage() {
   // Spec 1.17: the caption plans as the strip does, so a phone-width screen (no seam cell drawn) is not told of a seam.
   const narrow = useNarrowScreen();
   // Spec 1.20: the caption follows a scene's painting failing (re-rendered when a picture settles, only with scenes).
-  usePicturesVersion(!!pack?.scenes || !!pack?.places);
+  const placesPictures = usePicturesVersion(!!pack?.scenes || !!pack?.places);
   useEffect(() => {
     if (previewPieces) for (const src of pieceUrls(previewPieces, { phone: window.innerWidth < 700 })) warmPicture({ src, src2x: null });
   }, [previewPieces]);
   // The pair pictures the board warms as its lands change (SceneryLayer), so a Lands step here plays as on the board
   // (spec 1.17: a pair's first seam cell is warm before its second colour arrives). Spec 1.21: none with scenes loaded,
   // which draw a scene for every half of two or more colours.
+  // Spec 1.22: only for the sides whose place is not usable (none for their colours, or a base that failed).
+  const unplaced = (pk: ScenePack) => SIM_PLAYERS.map((p) => slotsOf(scenery, p)).filter((sl) => !placeUsable(pk.places, sl, pk.stageThresholds ?? null, pictureFailed));
   useEffect(() => {
-    if (!fill || !pack?.pairs || pack.scenes || pack.places) return;
+    if (!fill || !pack?.pairs || pack.scenes) return;
     const full = pairFull ? { thresholds: pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
-    for (const w of pairPictures(pack.pairs, SIM_PLAYERS.map((p) => slotsOf(scenery, p)), { phone: window.innerWidth < 700, full })) warmPicture(w);
-  }, [scenery, pack, fill, pairFull]);
+    for (const w of pairPictures(pack.pairs, unplaced(pack), { phone: window.innerWidth < 700, full })) warmPicture(w);
+  }, [scenery, pack, fill, pairFull, placesPictures]); // eslint-disable-line react-hooks/exhaustive-deps
   // Spec 1.20: each side's scene and those one land away, as the board warms them.
   useEffect(() => {
     if (!fill || !pack?.scenes) return;
-    for (const w of scenePictures(pack.scenes, SIM_PLAYERS.map((p) => slotsOf(scenery, p)), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: pack.stageThresholds, biomes: pack.biomes })) warmPicture(w);
-  }, [scenery, pack, fill]);
+    for (const w of scenePictures(pack.scenes, unplaced(pack), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: pack.stageThresholds, biomes: pack.biomes })) warmPicture(w);
+  }, [scenery, pack, fill, placesPictures]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
     SIM_PLAYERS.forEach((player, i) => {
@@ -650,17 +660,20 @@ function bandCaption(
   // Spec 1.22: a side drawn as its place says "Cartagena de Indias: Island 2, Swamp 1, Plains 3, Mountain 1".
   const places = pack?.places ?? null;
   // A scene whose painting failed is captioned as what the strip then draws: today's plan (pairfull.ts `sceneFailed`).
-  const plan = (pairFull && pack?.pairs) || scenes || places ? pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes, places, biomes: pack?.biomes ?? null, sceneFailed: (src) => pictureStatus(src) === 'failed' }) : null;
-  const full = plan ? pairFullCaption(plan, lands) : null;
-  // A scene ("Scene · …") and a place ("Cartagena de Indias: …") say what they are; everything else is a pair band's.
-  if (full) return planScene(plan) ? full : `Pair band · ${full}`;
+  const full = (pairFull && pack?.pairs) || scenes || places ? pairFullCaption(pairFullPlan(layout, pairFull ? (pack?.pairs ?? null) : null, { thresholds: pack?.stageThresholds, stageOverride, elements, phoneElements, showing, slots, narrow, scenes, places, biomes: pack?.biomes ?? null, sceneFailed: (src) => pictureStatus(src) === 'failed' }), lands) : null;
+  if (full) return full;
   if (!pack?.pairs) return null;
   const bands = pairBands(layout, pack.pairs, duals);
   if (!bands.length) return null;
   // Spec 1.19 a: the colours past the third, cut-outs on the pair's panels (a phone: those with a phone piece).
   const cut = narrow ? panelElements?.phone : panelElements?.desktop;
   const extras = pickFromSlots(slots, showing).extras.map((c) => COLOUR_BIOME[c]).filter((b) => !!cut?.has(b));
-  return `Pair band · ${bands.map((b) => `${pairWords(b.left, b.right, b.pair, lands)}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ')}${cutOutWords(extras)}`;
+  return `${bands.map((b) => `${pairWords(b.left, b.right, b.pair, lands)}: ${b.pair.kind === 'motif' ? 'motif ' : ''}${Math.round(b.width * 100)}% wide, ${b.duals} dual${b.duals === 1 ? '' : 's'}, pair stage ${b.stage}`).join('   ')}${cutOutWords(extras)}`;
+}
+
+/** A side's caption as printed: a scene's ("Scene · …") and (spec 1.22) a place's ("Cartagena de Indias: Island 2, …") as they are, any other prefixed "Pair band · ". */
+function bandsLine(bands: string): string {
+  return bands.startsWith('Scene · ') || placeCaptionLands(bands) ? bands : `Pair band · ${bands}`;
 }
 
 function MockSide({ title, player, top, slots, creatures, strip, plays, scrim, bands }: { title: string; player: number; top?: boolean; slots: ReturnType<typeof slotsOf>; creatures: number[]; strip: React.ReactNode; plays: SimPlay[]; scrim?: boolean; bands?: string | null }) {
@@ -691,8 +704,8 @@ function MockSide({ title, player, top, slots, creatures, strip, plays, scrim, b
         <b>{title}</b>
         <span className="amb-summary">{summary}</span>
         {bands && (
-          <span className="amb-summary amb-bands" data-amb-bands={player} title={bands}>
-            {bands}
+          <span className="amb-summary amb-bands" data-amb-bands={player} title={bandsLine(bands)}>
+            {bandsLine(bands)}
           </span>
         )}
       </div>

@@ -45,8 +45,14 @@ describe('places-v1, the tagged file', () => {
     const nulls: string[] = [];
     for (const p of Object.values(PLACES.places)) {
       expect(Object.keys(p!.layers).sort()).toEqual([...p!.lands].sort());
-      expect(p!.half.src).toMatch(/@places-v1-p[12]\/places\/[a-z-]+\/d\/base\.webp$/);
-      expect(p!.half.phone.src).toMatch(/@places-v1-p[12]\/places\/[a-z-]+\/p\/base\.webp$/);
+      // Shape-agnostic (places-v2 changes the phone base to 2.22:1 and reuses the desktop piece files for its phone
+      // pieces): each base declares its own pixel size, and every file lies in the place's own folder.
+      for (const b of [p!.half, p!.half.phone]) {
+        expect(b.width).toBeGreaterThanOrEqual(64);
+        expect(b.height).toBeGreaterThanOrEqual(64);
+        expect(b.src).toContain(`/places/${p!.slug}/`);
+      }
+      expect(p!.half.phone.src).not.toBe(p!.half.src);
       for (const land of p!.lands) {
         const stages = p!.layers[land as Biome]!;
         expect(stages).toHaveLength(6);
@@ -57,7 +63,8 @@ describe('places-v1, the tagged file', () => {
               nulls.push(`${p!.key}/${land}${i + 1}/${shape}`);
               continue;
             }
-            expect(pc.src).toMatch(new RegExp(`/places/${p!.slug}/${shape === 'half' ? 'd' : 'p'}/${land}-${i + 1}\\.webp$`));
+            expect(pc.src).toContain(`/places/${p!.slug}/`);
+            if (shape === 'half') expect(pc.src).toMatch(new RegExp(`/${land}-${i + 1}\\.webp$`));
             expect(pc.x + pc.w).toBeLessThanOrEqual(1.001);
             expect(pc.y + pc.h).toBeLessThanOrEqual(1.001);
           }

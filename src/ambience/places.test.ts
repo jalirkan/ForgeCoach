@@ -47,6 +47,10 @@ import {
   placesManifestUrl,
   placeWords,
   validatePlaces,
+  pieceKey,
+  placesBytes,
+  placeUsable,
+  type PieceEntry,
   type PlacePiece,
   type PlacesPack,
 } from './places.ts';
@@ -221,14 +225,51 @@ describe('spec 1.22: the loader', () => {
     }
   };
 
-  it('places loaded: carried as the pack’s `places`, and scenes.json is never fetched', async () => {
+  it('places loaded clean: carried as the pack’s `places`; the scenes fetch, started beside it, is cancelled and not carried', async () => {
     const asked: string[] = [];
-    const got = (await quietly(() => resolveScenery(DEFAULT_PREFS, { fetch: serve({ status: 200, body: JSON.stringify(synthPlaces()) }, asked), load })))!;
+    let scenesSignal: AbortSignal | undefined;
+    const base = serve({ status: 200, body: JSON.stringify(synthPlaces()) }, asked);
+    const fetch: FetchLike = async (u, init) => {
+      if (u.endsWith('scenes.json')) scenesSignal = init?.signal ?? undefined;
+      return base(u, init);
+    };
+    const got = (await quietly(() => resolveScenery(DEFAULT_PREFS, { fetch, load })))!;
     expect(got.source).toBe('pack');
     expect(Object.keys(got.pack!.places!.places)).toHaveLength(31);
     expect(got.pack!.scenes).toBeUndefined();
     expect(asked).toContain(MANIFEST);
-    expect(asked.some((u) => u.endsWith('scenes.json'))).toBe(false);
+    // Both started together (the review of #218: a failed places.json must not hold the scenes back), the scenes' cancelled.
+    expect(asked.filter((u) => u.endsWith('scenes.json'))).toHaveLength(1);
+    expect(scenesSignal?.aborted).toBe(true);
+  });
+
+  it('places with a place refused: the places AND the scenes carried (the refused colours draw their scenes)', async () => {
+    const asked: string[] = [];
+    const raw = synthPlaces();
+    raw.places.island.lands = ['wastes'];
+    const got = (await quietly(() => resolveScenery(DEFAULT_PREFS, { fetch: serve({ status: 200, body: JSON.stringify(raw) }, asked), load })))!;
+    expect(Object.keys(got.pack!.places!.places)).toHaveLength(30);
+    expect(Object.keys(got.pack!.scenes!.scenes)).toEqual(['island2+forest3+mountain2', 'plains2+forest4+mountain2']);
+  });
+
+  it('places.json slow and failing: the scenes were fetched beside it, not after it', async () => {
+    const order: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const base = serve({ status: 404, body: '' }, []);
+    const fetch: FetchLike = async (u, init) => {
+      order.push(u.split('/').pop()!);
+      if (u.endsWith('places.json')) {
+        await gate;
+        return { ok: false, status: 404, text: async () => '' };
+      }
+      return base(u, init);
+    };
+    const p = quietly(() => resolveScenery(DEFAULT_PREFS, { fetch, load }));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(order).toContain('scenes.json');
+    release();
+    expect(Object.keys((await p)!.pack!.scenes!.scenes)).toHaveLength(2);
   });
 
   for (const [why, places] of [
@@ -286,9 +327,10 @@ describe('spec 1.22: a state composed', () => {
 
   it('the pieces at a shape, the next stage’s to warm, and the caption', () => {
     const c = placeFor(PLACES, lands('island2+swamp1+plains3+mountain1'))!;
-    expect(placePieces(c.lands, false).map((p) => p.piece!.src.split('/').slice(-3).join('/'))).toEqual(['cartagena/d/island-2.webp', 'cartagena/d/swamp-1.webp', 'cartagena/d/plains-3.webp', 'cartagena/d/mountain-1.webp']);
-    expect(placePieces(c.lands, true).map((p) => p.piece!.src.split('/').slice(-2).join('/'))).toEqual(['p/island-2.webp', 'p/swamp-1.webp', 'p/plains-3.webp', 'p/mountain-1.webp']);
-    expect(nextPlacePieces(c.place, c.lands, true).map((p) => p.src.split('/').slice(-1)[0])).toEqual(['island-3.webp', 'swamp-2.webp', 'plains-4.webp', 'mountain-2.webp']);
+    const L = c.place.layers;
+    expect(placePieces(c.lands, false).map((p) => p.piece)).toEqual([L.island![1]!.half, L.swamp![0]!.half, L.plains![2]!.half, L.mountain![0]!.half]);
+    expect(placePieces(c.lands, true).map((p) => p.piece)).toEqual([L.island![1]!.phone, L.swamp![0]!.phone, L.plains![2]!.phone, L.mountain![0]!.phone]);
+    expect(nextPlacePieces(c.place, c.lands, true)).toEqual([L.island![2]!.phone, L.swamp![1]!.phone, L.plains![3]!.phone, L.mountain![1]!.phone]);
     expect(nextPlacePieces(c.place, [{ biome: 'island', stage: 6 }], false)).toEqual([]);
     expect(placeWords(c)).toBe('Cartagena de Indias: Island 2, Swamp 1, Plains 3, Mountain 1');
     // A homeland's stage 1: its piece is null (the base is stage 1), and the land is still listed.
@@ -346,7 +388,8 @@ describe('spec 1.22: the plan', () => {
     // Only the shape drawn counts: the phone base fine, a phone draws the place.
     expect(sceneOf(planOf(STATE_A, { failed, scenes: null, narrow: true }))!.place).toBeDefined();
     // A piece failing never changes the plan.
-    expect(sceneOf(planOf(STATE_A, { failed: (src) => src.endsWith('/d/island-2.webp') }))!.place).toBeDefined();
+    const piece = PLACES.places['island+forest+mountain']!.layers.island![1]!.half!.src;
+    expect(sceneOf(planOf(STATE_A, { failed: (src) => src === piece }))!.place).toBeDefined();
   });
 
   it('no cut-out, element or piece of 1.14 over a place; its caption names the place and the lands', () => {
@@ -366,11 +409,12 @@ describe('spec 1.22: the plan', () => {
     expect(desk).toHaveLength(1);
     expect(desk[0]!).toMatchObject({ scene: 'island2+forest3+mountain2', mirror: false, painted: null });
     expect(desk[0]!.art.source).toBe('half');
-    expect(desk[0]!.place!.pieces.map((p) => p.piece!.src.split('/').slice(-2).join('/'))).toEqual(['d/island-2.webp', 'd/forest-3.webp', 'd/mountain-2.webp']);
+    const L = PLACES.places['island+forest+mountain']!.layers;
+    expect(desk[0]!.place!.pieces.map((p) => p.piece)).toEqual([L.island![1]!.half, L.forest![2]!.half, L.mountain![1]!.half]);
     const phone = planCandidates(plan, 0.8, true)!;
     expect(phone[0]!.art.source).toBe('phone');
     expect(phone[0]!.art.picture!.src).toBe(PLACES.places['island+forest+mountain']!.half.phone.src);
-    expect(phone[0]!.place!.pieces.map((p) => p.piece!.src.split('/').slice(-2).join('/'))).toEqual(['p/island-2.webp', 'p/forest-3.webp', 'p/mountain-2.webp']);
+    expect(phone[0]!.place!.pieces.map((p) => p.piece)).toEqual([L.island![1]!.phone, L.forest![2]!.phone, L.mountain![1]!.phone]);
   });
 });
 
@@ -439,6 +483,51 @@ describe('spec 1.22: the load gate and the hold', () => {
     expect(r3.draw.shown).toBe(cb[0]);
   });
 
+  it('first paint, the base loaded and a piece hung: the panels, reported as holding (so the caller wakes), then the place past the hold', () => {
+    const b = planAt('island2+swamp1');
+    const cb = candOf(b);
+    const ready = new Set([cb[0]!.art.picture!.src]);
+    const r1 = pairFullHold({ layout: 'L', plan: b, choice: pairFullChoice(cb, status(ready)) }, { last: null, since: null }, 0);
+    expect(r1.draw.plan).toBeNull();
+    expect(r1.holding).toBe(true);
+    expect(r1.hold.since).toBe(0);
+    const r2 = pairFullHold({ layout: 'L', plan: b, choice: pairFullChoice(cb, status(ready)) }, r1.hold, PAIR_FULL_HOLD_MS);
+    expect(r2.draw.shown).toBe(cb[0]);
+  });
+
+  it('a stale draw is never taken for the place on screen: A, then B whose base hangs past the hold (panels), then A again with a piece pending -- A is not drawn by the fast path', () => {
+    const a = planAt('island2+swamp1');
+    const ca = candOf(a);
+    const ready = new Set(srcs(ca[0]!));
+    let hold: PairFullHold<string> = pairFullHold({ layout: 'L1', plan: a, choice: pairFullChoice(ca, status(ready)) }, { last: null, since: null }, 0).hold;
+    const b = planAt('island2+swamp1+plains1');
+    hold = pairFullHold({ layout: 'L2', plan: b, choice: pairFullChoice(candOf(b), status(ready)) }, hold, 10).hold;
+    const panels = pairFullHold({ layout: 'L2', plan: b, choice: pairFullChoice(candOf(b), status(ready)) }, hold, 10 + PAIR_FULL_HOLD_MS);
+    expect(panels.draw.plan).toBeNull();
+    // The panels are now what is on screen: `last` says so.
+    expect(panels.hold.last!.shown).toBeNull();
+    const a2 = planAt('island3+swamp1');
+    const r = pairFullHold({ layout: 'L3', plan: a2, choice: pairFullChoice(candOf(a2), status(ready)) }, panels.hold, 20 + PAIR_FULL_HOLD_MS);
+    // Not the fast path's "same place on screen" (that remounted A with the island bare): A is waited for from the
+    // panels, held, and drawn whole once its piece has loaded.
+    expect(r.draw.plan).toBeNull();
+    expect(r.holding).toBe(true);
+    for (const x of srcs(candOf(a2)[0]!)) ready.add(x);
+    const ca2 = candOf(a2);
+    const r2 = pairFullHold({ layout: 'L3', plan: a2, choice: pairFullChoice(ca2, status(ready)) }, r.hold, 30 + PAIR_FULL_HOLD_MS);
+    expect(r2.draw.shown).toBe(ca2[0]);
+  });
+
+  it('a half whose place is not usable (none for its colours, or a base that failed) is the one whose older pictures are warmed', () => {
+    const slots = slotsOf(['island', 2], ['swamp', 1]);
+    const c = PLACES.places['island+swamp']!;
+    expect(placeUsable(PLACES, slots, T, () => false)).toBe(true);
+    expect(placeUsable(PLACES, slots, T, (src) => src === c.half.src)).toBe(false);
+    expect(placeUsable(PLACES, slots, T, (src) => src === c.half.phone.src)).toBe(false);
+    expect(placeUsable(null, slots, T, () => false)).toBe(false);
+    expect(placeUsable(PLACES, [...slots, slot('wastes', 2, 1)], T, () => false)).toBe(false);
+  });
+
   it('nothing drawn before and the base not loaded: the panels meanwhile (never blank), as a scene', () => {
     const b = planAt('island2+swamp1');
     const r = pairFullHold({ layout: 'L', plan: b, choice: pairFullChoice(candOf(b), status(new Set())) }, { last: null, since: null }, 0);
@@ -446,30 +535,129 @@ describe('spec 1.22: the load gate and the hold', () => {
   });
 });
 
-describe('spec 1.22: a land’s piece across a stage change', () => {
-  const p = (k: number): PlacePiece => ({ src: `island-${k}.webp`, x: 0, y: 0, w: 0.1, h: 0.1, width: null, height: null, bytes: null });
-  it('first paint and reduced motion: at once', () => {
-    expect(pieceWant([], p(2), true, 2)).toEqual([{ key: 'island-2.webp', piece: p(2), role: 'cur', stage: 2, from: 1 }]);
+describe('spec 1.22: a land’s piece across a stage change (the pure state PlaceLandPiece keeps)', () => {
+  const p = (k: number, box: Partial<PlacePiece> = {}): PlacePiece => ({ src: `island-${k}.webp`, x: 0, y: 0, w: 0.1, h: 0.1, width: null, height: null, bytes: null, ...box });
+  /** A stack in words: file@stage role from. */
+  const words = (st: readonly PieceEntry[]) => st.map((e) => `${e.piece.src.replace('.webp', '')}@${e.stage} ${e.role} ${e.from}`);
+  /** What PlaceLandPiece does: a change arrives only once its piece has loaded; a pending one changes nothing. */
+  const step = (st: PieceEntry[], target: PlacePiece | null, stage: number, ready = true) => (ready || !target ? pieceWant(st, target, false, stage) : st);
+
+  it('first paint and reduced motion: the target alone, at once (a step under reduced motion too)', () => {
+    expect(words(pieceWant([], p(2), true, 2))).toEqual(['island-2@2 cur 1']);
     expect(pieceWant([], null, true)).toEqual([]);
+    const mid = pieceWant(pieceWant([], p(2), true, 2), p(3), false, 3);
+    expect(words(pieceWant(mid, p(4), true, 4))).toEqual(['island-4@4 cur 1']);
+    expect(pieceWant(mid, null, true)).toEqual([]);
   });
+
   it('a step: the new fades in on top, the old kept beneath; once in, the old fades out, then goes', () => {
     const a = pieceWant([], p(2), true, 2);
     const b = pieceWant(a, p(3), false, 3);
-    expect(b.map((e) => [e.key, e.role, e.from])).toEqual([['island-2.webp', 'under', 1], ['island-3.webp', 'in', 0]]);
+    expect(words(b)).toEqual(['island-2@2 under 1', 'island-3@3 in 0']);
     expect(pieceWant(b, p(3), false, 3)).toEqual(b);
     const c = pieceSettleIn(b);
-    expect(c.map((e) => [e.key, e.role])).toEqual([['island-2.webp', 'out'], ['island-3.webp', 'cur']]);
-    expect(pieceSettleOut(c).map((e) => [e.key, e.role])).toEqual([['island-3.webp', 'cur']]);
+    expect(words(c)).toEqual(['island-2@2 out 1', 'island-3@3 cur 1']);
+    expect(words(pieceSettleOut(c))).toEqual(['island-3@3 cur 1']);
+    // Settling with nothing fading is a no-op.
+    expect(pieceSettleIn(pieceSettleOut(c))).toEqual(pieceSettleOut(c));
   });
-  it('down a stage (a land destroyed), a null stage, and a second step mid-fade', () => {
+
+  it('a change arriving mid-fade: the piece fading in goes beneath too, the newest on top, at most three', () => {
     const a = pieceWant([], p(3), true, 3);
-    expect(pieceWant(a, p(2), false, 2).map((e) => [e.key, e.role])).toEqual([['island-3.webp', 'under'], ['island-2.webp', 'in']]);
-    expect(pieceWant(a, null, false).map((e) => [e.key, e.role])).toEqual([['island-3.webp', 'out']]);
     const mid = pieceWant(pieceWant(a, p(4), false, 4), p(5), false, 5);
-    expect(mid.map((e) => [e.key, e.role])).toEqual([['island-3.webp', 'under'], ['island-4.webp', 'under'], ['island-5.webp', 'in']]);
-    // Back to a piece still beneath: it comes in from where it is (no flash to nothing).
+    expect(words(mid)).toEqual(['island-3@3 under 1', 'island-4@4 under 0', 'island-5@5 in 0']);
+    // Once in, both beneath fade out together.
+    expect(words(pieceSettleIn(mid))).toEqual(['island-3@3 out 1', 'island-4@4 out 0', 'island-5@5 cur 1']);
+    // A fourth during the out-fade: the cap drops the oldest fading out first.
+    const four = pieceWant(pieceSettleIn(mid), p(6), false, 6);
+    expect(four.length).toBe(3);
+    expect(words(four).at(-1)).toBe('island-6@6 in 0');
+    expect(words(four)).toContain('island-5@5 under 1');
+  });
+
+  it('a step back down: a land destroyed fades its lower piece in over the higher; mid-fade, back to the one beneath comes in from full', () => {
+    const a = pieceWant([], p(3), true, 3);
+    expect(words(pieceWant(a, p(2), false, 2))).toEqual(['island-3@3 under 1', 'island-2@2 in 0']);
     const back = pieceWant(pieceWant(a, p(4), false, 4), p(3), false, 3);
-    expect(back.map((e) => [e.key, e.role, e.from])).toEqual([['island-4.webp', 'under', 0], ['island-3.webp', 'in', 1]]);
-    expect(pieceWant([...mid, { ...mid[0]!, key: 'x', role: 'out' }], p(6), false, 6).length).toBeLessThanOrEqual(3);
+    expect(words(back)).toEqual(['island-4@4 under 0', 'island-3@3 in 1']);
+    // Down to a stage that adds nothing (a homeland back to stage 1): what was shown fades out.
+    expect(words(pieceWant(a, null, false))).toEqual(['island-3@3 out 1']);
+    expect(pieceWant([], null, false)).toEqual([]);
+  });
+
+  it('pending, then ready: the land keeps its piece while the next loads, then fades the next in', () => {
+    const a = pieceWant([], p(2), true, 2);
+    const pending = step(a, p(3), 3, false);
+    expect(pending).toBe(a);
+    expect(words(step(pending, p(3), 3, true))).toEqual(['island-2@2 under 1', 'island-3@3 in 0']);
+    // A first piece arriving after the first paint (a homeland's stage 2, loaded late): it fades in from nothing.
+    expect(words(step([], p(2), 2))).toEqual(['island-2@2 in 0']);
+  });
+
+  it('the same file at another box or another stage is another entry; the same file, box and stage is the same', () => {
+    const a = pieceWant([], p(5), true, 5);
+    expect(pieceKey(p(5), 5)).not.toBe(pieceKey(p(5, { y: 0.2 }), 5));
+    expect(pieceKey(p(5), 5)).not.toBe(pieceKey(p(5), 6));
+    expect(words(pieceWant(a, p(5, { y: 0.2 }), false, 5))).toEqual(['island-5@5 under 1', 'island-5@5 in 0']);
+    expect(words(pieceWant(a, p(5), false, 6))).toEqual(['island-5@5 under 1', 'island-5@6 in 0']);
+    expect(pieceWant(a, { ...p(5) }, false, 5)).toEqual(a);
+  });
+});
+
+describe('spec 1.22: places-v2’s phone shape (a 2.22:1 phone base whose pieces reuse the desktop files)', () => {
+  const V2 = validatePlaces(synthPlaces('v2'), MANIFEST);
+  it('validates clean; the phone pieces are the desktop files at their own boxes (stage 6 a file of its own)', () => {
+    expect(V2.errors).toEqual([]);
+    const c = V2.places!.places['island+swamp+plains+mountain']!;
+    expect(c.half.phone).toMatchObject({ width: 2560, height: 1152 });
+    const st = c.layers.island![2]!;
+    expect(st.phone!.src).toBe(st.half!.src);
+    expect(st.phone!.y).not.toBe(st.half!.y);
+    expect(c.layers.island![5]!.phone!.src).not.toBe(c.layers.island![5]!.half!.src);
+  });
+  it('counts every file once, per place and per ref', () => {
+    const one = validatePlaces({ ...synthPlaces('v2'), places: { forest: synthPlaces('v2').places.forest } }, MANIFEST).places!;
+    // forest: two bases (180,000 + 200,000), desktop pieces at stages 2-6 (2,000..6,000 = 20,000), the phone's own stage 6 (777).
+    expect(placesBytes(one)).toBe(180000 + 200000 + 20000 + 777);
+    const fat = synthPlaces('v2');
+    fat.places.forest.half.bytes = 4 * 1048576;
+    // Five shared desktop pieces of 1.8 MB: counted once they stay under the 8 MB budget; counted twice they would not.
+    for (const st of fat.places.forest.layers.forest.slice(1, 5)) st.half.bytes = st.phone.bytes = 0.9 * 1048576;
+    expect(validatePlaces(fat, MANIFEST).warnings.filter((w) => w.startsWith('places.forest:'))).toEqual([]);
+  });
+  it('a phone half draws the phone base and those pieces at the phone boxes; a desktop half narrower than the cut-over (~2.67:1) draws them too', () => {
+    const slots = slotsOf(['mountain', 1], ['plains', 3], ['island', 2], ['swamp', 1]);
+    const plan = pairFullPlan(halfLayout(slots, PACK, null, null), null, { thresholds: T, slots, places: V2.places! });
+    const L = V2.places!.places['island+swamp+plains+mountain']!.layers;
+    const want = [L.island![1]!.phone, L.swamp![0]!.phone, L.plains![2]!.phone, L.mountain![0]!.phone];
+    const phone = planCandidates(plan, 2.1, true)![0]!;
+    expect(phone.art.source).toBe('phone');
+    expect(phone.place!.pieces.map((x) => x.piece)).toEqual(want);
+    expect(planCandidates(plan, 2.5, false)![0]!.art.source).toBe('phone');
+    expect(planCandidates(plan, 2.8, false)![0]!.art.source).toBe('half');
+  });
+  it('a base or phone base without its pixel size is refused (never the 16:5 or 4:5 defaults)', () => {
+    for (const [what, edit, re] of [
+      ['no width', (p: any) => delete p.half.width, /half: width and height are required/],
+      ['a bad height', (p: any) => (p.half.height = 'tall'), /half: width and height are required/],
+      ['a phone base with no height', (p: any) => delete p.half.phone.height, /half\.phone: width and height are required/],
+      ['a phone base 1:9', (p: any) => Object.assign(p.half.phone, { width: 100, height: 900 }), /half\.phone: width and height are required/],
+    ] as const) {
+      const raw = synthPlaces('v2');
+      edit(raw.places.island);
+      const r = validatePlaces(raw, MANIFEST);
+      expect(r.errors, what).toHaveLength(1);
+      expect(r.errors[0], what).toMatch(re);
+    }
+  });
+  it('a phone base with no subject band takes the desktop band mapped into it as a full-width outpainting, not the 4:5 default', () => {
+    const raw = synthPlaces('v2');
+    delete raw.places.island.half.phone.subjectBand;
+    delete raw.places.island.half.phone.focal;
+    delete raw.places.island.half.phone.safe;
+    const ph = validatePlaces(raw, MANIFEST).places!.places.island!.half.phone;
+    // k = (800/2560) / (1152/2560) = 0.6944: [0.05, 0.65] -> [0.1875, 0.6042].
+    expect(ph.subjectBand).toEqual([0.1875, 0.6042]);
+    expect(ph.focal).toEqual({ x: 0.5, y: 0.3958 });
   });
 });

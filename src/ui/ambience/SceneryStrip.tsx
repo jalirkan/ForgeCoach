@@ -98,7 +98,7 @@ import { useTween } from './useTween.ts';
 import { PAIR_FULL_HOLD_MS, pairFullChoice, pairFullFrameCss, pairFullHold, pairFullPlan, planCandidates, planScene, type PairFullCandidate, type PairFullHold, type PairFullPair, type PairFullScene } from '../../ambience/pairfull.ts';
 import type { MakeupShowing } from '../../ambience/makeup.ts';
 import { usePicturesVersion } from './usePictures.ts';
-import { nextPlacePieces, pieceSettleIn, pieceSettleOut, pieceWant, type PieceEntry, type PlacePiece } from '../../ambience/places.ts';
+import { nextPlacePieces, pieceKey, pieceSettleIn, pieceSettleOut, pieceWant, type PieceEntry, type PlacePiece } from '../../ambience/places.ts';
 import './scenery.css';
 
 export type { StripEffect } from './SceneryEffects.tsx';
@@ -857,7 +857,7 @@ function PlaceLandPiece({ biome, stage, piece, ms }: { biome: Biome; stage: numb
   // What the land shows now: the piece once loaded, nothing for a null piece; a piece loading or failed changes nothing.
   const st = useRef<{ sig: string | null; stack: PieceEntry[] }>({ sig: null, stack: [] });
   const [, bump] = useState(0);
-  const sig = !piece ? '' : status === 'ready' ? piece.src : (st.current.sig ?? '');
+  const sig = !piece ? '' : status === 'ready' ? pieceKey(piece, stage) : (st.current.sig ?? '');
   if (st.current.sig !== sig) st.current = { sig, stack: pieceWant(st.current.stack, sig ? piece : null, st.current.sig === null || ms <= 0, stage) };
   const stack = st.current.stack;
   const fading = stack.some((e) => e.role === 'in') ? 'in' : stack.some((e) => e.role === 'out') ? 'out' : null;

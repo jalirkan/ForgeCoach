@@ -47,7 +47,9 @@ import { applyGrade } from './lightGrade.ts';
 import { HalfScrim } from './HalfScrim.tsx';
 import { halfUrls } from '../../ambience/manifest.ts';
 import { effectGate } from '../../ambience/effects.ts';
-import { browserLoader, growthPictures, preloadEffects, preloadOverlays, warmPicture } from '../../ambience/pack.ts';
+import { browserLoader, growthPictures, pictureFailed, preloadEffects, preloadOverlays, warmPicture } from '../../ambience/pack.ts';
+import { placeUsable } from '../../ambience/places.ts';
+import { usePicturesVersion } from './usePictures.ts';
 import { useReducedMotion, useSceneryFx, useSceneryLoad, useSceneryPrefs, type PlaceCard } from './useScenery.ts';
 
 interface Target {
@@ -201,6 +203,8 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     })();
   }, [load?.pack, fill]);
 
+  // Spec 1.22: woken when a picture settles while places are loaded (a base that fails gives its half back).
+  const placesPictures = usePicturesVersion(!!load?.pack?.places);
   // Spec 1.6: each slot's current and next stage's pictures warm as it grows, so the next stage can fade in from the first land toward it.
   useEffect(() => {
     if (!load?.pack) return;
@@ -208,19 +212,21 @@ export default function SceneryLayer({ log, frameIndex, seat }: { log: GameLog; 
     for (const w of growthPictures(load.pack, scenery.players.flatMap((p) => p.slots), { half: fill, phone })) warmPicture(w);
     // Spec 1.21: with scenes loaded a half of two or more colours always draws a scene (its own, or the nearest), so
     // the bridges, pair bands, seam cells and panoramas are never drawn and nothing of them is warmed.
-    // Spec 1.22: likewise with places loaded (every half with a state draws its place).
-    const pairsDrawn = fill && !load.pack.scenes && !load.pack.places;
+    // Spec 1.22: a half that draws its place warms nothing of the rules before places; a half whose place is not usable
+    // (none for its colours, or its base failed) is drawn by them, and warms their pictures as before.
+    const unplaced = scenery.players.map((p) => p.slots).filter((sl) => !placeUsable(load.pack!.places, sl, load.pack!.stageThresholds ?? null, pictureFailed));
+    const pairsDrawn = fill && !load.pack.scenes;
     // Spec 1.8: a side's bridge warms with its split's pictures (the half board only).
-    if (pairsDrawn) for (const w of bridgePictures(load.pack, scenery.players.map((p) => p.slots), { phone })) warmPicture(w);
+    if (pairsDrawn) for (const w of bridgePictures(load.pack, unplaced, { phone })) warmPicture(w);
     // Spec 1.9: and its pair band's pictures (the stage its lower neighbour maps to, and the next); with spec 1.15 on
     // the whole-half panoramas and 1.16's painted-in elements too (review fault 4: the panorama was never warmed).
     // Spec 1.17: a phone-width screen draws no desktop-only seam cell, so none is fetched there (1.18: a cell with a phone
     // picture is, at that shape).
     const full = pairFull ? { thresholds: load.pack.stageThresholds, narrow: window.innerWidth <= PHONE_VIEWPORT_MAX } : null;
-    if (pairsDrawn) for (const w of pairPictures(load.pack.pairs, scenery.players.map((p) => p.slots), { phone, full })) warmPicture(w);
+    if (pairsDrawn) for (const w of pairPictures(load.pack.pairs, unplaced, { phone, full })) warmPicture(w);
     // Spec 1.20: each half's scene and the scenes one land away, at the shape a scene draws (its phone picture on a phone).
-    if (fill) for (const w of scenePictures(load.pack.scenes, scenery.players.map((p) => p.slots), { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: load.pack.stageThresholds, biomes: load.pack.biomes })) warmPicture(w);
-  }, [scenery, load?.pack, fill, pairFull]);
+    if (fill) for (const w of scenePictures(load.pack.scenes, unplaced, { phone: window.innerWidth <= PHONE_VIEWPORT_MAX, thresholds: load.pack.stageThresholds, biomes: load.pack.biomes })) warmPicture(w);
+  }, [scenery, load?.pack, fill, pairFull, placesPictures]); // placesPictures: a place's base failing hands its half back
 
   // Spec 1.14: the pieces that can appear at once (fronts, veils, landmarks, the empty table) warm in ScenePieces, at the
   // shape of the half it measures (review fault 3: warming by the window's width picked the wrong frames for a tall half).

@@ -21,9 +21,23 @@ const SLUGS: Record<string, string> = { 'island+swamp+plains+mountain': 'cartage
 const slugOf = (set: readonly Biome[]) => SLUGS[set.join('+')] ?? set.join('-');
 const pieceRaw = (slug: string, shape: 'd' | 'p', land: Biome, k: number) => ({ src: `places/${slug}/${shape}/${land}-${k}.webp`, x: 0.1 * GEOGRAPHY.indexOf(land), y: 0.4 - 0.05 * k, w: 0.1, h: 0.05 * k + 0.1, width: 100 + k, height: 80 + k, bytes: 1000 * k });
 
-/** A places manifest in places-v1's shape for all 31 colour sets (relative URLs; the homelands' stage 1 null). */
-export function synthPlaces(): any {
+/**
+ * A places manifest for all 31 colour sets (relative URLs; the homelands' stage 1 null). `v1` (the default): places-v1's
+ * shape -- a 4:5 phone base (1152 × 1440) and a phone piece file of its own in `p/`. `v2`: places-v2's -- a 2.22:1
+ * phone base (2560 × 1152, the desktop panorama with sky above and ground below) whose pieces are the DESKTOP piece
+ * files at another box (shifted down by the extra sky), except stage 6, which touches the old bottom edge and has a
+ * file of its own (`p6/`).
+ */
+export function synthPlaces(shape: 'v1' | 'v2' = 'v1'): any {
   const places: Record<string, unknown> = {};
+  const v2 = shape === 'v2';
+  // v2: the desktop base (800 px high) sits 176 px down a 1152 px phone base.
+  const phonePiece = (slug: string, land: Biome, k: number) => {
+    if (!v2) return pieceRaw(slug, 'p', land, k);
+    const d = pieceRaw(slug, 'd', land, k);
+    const s = 800 / 1152;
+    return { ...d, ...(k === 6 ? { src: `places/${slug}/p6/${land}-6.webp`, bytes: 777 } : {}), y: +((176 + d.y * 800) / 1152).toFixed(4), h: +(d.h * s).toFixed(4) };
+  };
   for (const set of colourSets()) {
     const slug = slugOf(set);
     places[set.join('+')] = {
@@ -33,11 +47,12 @@ export function synthPlaces(): any {
       lands: [...set],
       half: {
         src: `places/${slug}/d/base.webp`, width: 2560, height: 800, bytes: 180000, subjectBand: [0.05, 0.65], horizon: 0.55, focal: { x: 0.5, y: 0.5 }, safe: { x: 0, y: 0, w: 1, h: 1 },
-        phone: { src: `places/${slug}/p/base.webp`, width: 1152, height: 1440, bytes: 140000, subjectBand: [0.05, 0.64], horizon: 0.54, focal: { x: 0.5, y: 0.47 }, safe: { x: 0, y: 0.03, w: 1, h: 0.89 } },
+        phone: v2
+          ? { src: `places/${slug}/p/base.webp`, width: 2560, height: 1152, bytes: 200000, subjectBand: [0.19, 0.6], horizon: 0.54, focal: { x: 0.5, y: 0.5 }, safe: { x: 0, y: 0.15, w: 1, h: 0.7 } }
+          : { src: `places/${slug}/p/base.webp`, width: 1152, height: 1440, bytes: 140000, subjectBand: [0.05, 0.64], horizon: 0.54, focal: { x: 0.5, y: 0.47 }, safe: { x: 0, y: 0.03, w: 1, h: 0.89 } },
       },
-      layers: Object.fromEntries(set.map((land) => [land, [1, 2, 3, 4, 5, 6].map((k) => (set.length === 1 && k === 1 ? { half: null, phone: null } : { half: pieceRaw(slug, 'd', land, k), phone: pieceRaw(slug, 'p', land, k) }))])),
+      layers: Object.fromEntries(set.map((land) => [land, [1, 2, 3, 4, 5, 6].map((k) => (set.length === 1 && k === 1 ? { half: null, phone: null } : { half: pieceRaw(slug, 'd', land, k), phone: phonePiece(slug, land, k) }))])),
     };
   }
-  return { schema: 1, spec: '1.22', name: 'places-synth', author: 'test', license: 'CC BY 4.0', note: 'synthetic', places };
+  return { schema: 1, spec: '1.22', name: `places-synth-${shape}`, author: 'test', license: 'CC BY 4.0', note: 'synthetic', places };
 }
-

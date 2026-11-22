@@ -108,23 +108,31 @@ describe('spec 1.22: a place on the board', () => {
     expect(attrs(html, 'data-piece')).toEqual(['forest2']);
   });
 
-  it('the phone shape: the phone base and the phone pieces at their boxes', () => {
-    load(CARTAGENA, { island: 2, swamp: 1, plains: 3, mountain: 1 }, true);
-    const plan = pairFullPlan(halfLayout(SLOTS, pack), null, { thresholds: pack.stageThresholds, slots: SLOTS, narrow: true, places: PLACES });
-    const s = plan![0] as PairFullScene;
-    const shown = planCandidates(plan, 0.8, true)![0]!;
-    const html = renderToStaticMarkup(<PlacePanel s={s} shown={shown} first ms={0} reduced />);
-    expect(attrs(html, 'data-art')).toEqual(['phone']);
-    expect(html).toContain(`src="${CARTAGENA.half.phone.src}"`);
-    expect(html).not.toContain(`src="${CARTAGENA.half.src}"`);
-    expect(html).toContain(`style="${Object.entries(halfFrameCss(shown.art)).map(([k, v]) => `${k}:${v}`).join(';')}"`);
-    const isl = CARTAGENA.layers.island![1]!.phone!;
-    expect(html).toContain(`left:${+(isl.x * 100).toFixed(4)}%;top:${+(isl.y * 100).toFixed(4)}%`);
-    expect(attrs(html, 'src').filter((x) => x.includes('/p/'))).toHaveLength(5);
-    expect(attrs(html, 'src').filter((x) => x.includes('/d/'))).toHaveLength(0);
-  });
+  // The phone shape, on places-v1's (a 4:5 phone base, its own piece files) and places-v2's (a 2.22:1 phone base whose
+  // pieces are the desktop files at other boxes): the manifest's own phone files and phone boxes, never a folder name.
+  for (const [name, places, aspect] of [
+    ['places-v1’s shape', PLACES, 0.8],
+    ['places-v2’s shape', validatePlaces(synthPlaces('v2'), `${PLACES_URL}places.json`).places!, 2.1],
+  ] as const)
+    it(`the phone shape (${name}): the phone base and every land’s phone piece at its phone box`, () => {
+      const C = places.places['island+swamp+plains+mountain']!;
+      const want = ([['island', 2], ['swamp', 1], ['plains', 3], ['mountain', 1]] as const).map(([b, k]) => C.layers[b]![k - 1]!.phone!);
+      for (const p of [C.half.phone, ...want]) markPicture(p.src, true);
+      const plan = pairFullPlan(halfLayout(SLOTS, pack), null, { thresholds: pack.stageThresholds, slots: SLOTS, narrow: true, places });
+      const s = plan![0] as PairFullScene;
+      const shown = planCandidates(plan, aspect, true)![0]!;
+      const html = renderToStaticMarkup(<PlacePanel s={s} shown={shown} first ms={0} reduced />);
+      expect(attrs(html, 'data-art')).toEqual(['phone']);
+      expect(html).toContain(`src="${C.half.phone.src}"`);
+      expect(html).not.toContain(`src="${C.half.src}"`);
+      expect(html).toContain(`style="${Object.entries(halfFrameCss(shown.art)).map(([k, v]) => `${k}:${v}`).join(';')}"`);
+      expect(attrs(html, 'src')).toEqual([C.half.phone.src, ...want.map((p) => p.src)]);
+      for (const p of want) expect(html).toContain(`left:${+(p.x * 100).toFixed(4)}%;top:${+(p.y * 100).toFixed(4)}%;width:${+(p.w * 100).toFixed(4)}%;height:${+(p.h * 100).toFixed(4)}%`);
+    });
 
-  it('a stage step: only that land changes -- the new piece fades in from 0 on top, the old kept beneath at full; reduced motion at once', () => {
+  // What this renders is PlaceLandView's markup for stacks the pure functions give (their timing and the state across a
+  // change are places.test.ts's; the live fade is e2e/ambience.e2e.mjs step 8's).
+  it('PlaceLandView draws a stack as given: the piece fading in at 0 on top, the one beneath at full, an out-fade over half the time, a reduced-motion stack alone', () => {
     const old = CARTAGENA.layers.island![1]!.half!;
     const nxt = CARTAGENA.layers.island![2]!.half!;
     const step = pieceWant(pieceWant([], old, true, 2), nxt, false, 3);
@@ -143,14 +151,6 @@ describe('spec 1.22: a place on the board', () => {
     const now = renderToStaticMarkup(<PlaceLandView biome="island" stage={3} stack={pieceWant(step, nxt, true, 3)} failed={false} ms={0} />);
     expect(attrs(now, 'data-piece')).toEqual(['island3']);
     expect(attrs(now, 'style')[0]).toMatch(/opacity:1"?$/);
-    // The other lands are their own components with their own stacks: the strip's markup for the next state differs
-    // from this one only in the island's piece.
-    load();
-    const a = strip();
-    markPicture(nxt.src, true);
-    const b = strip([slot('mountain', 0, 1), slot('plains', 1, 3), slot('island', 2, 3), slot('swamp', 3, 1)]);
-    expect(attrs(b, 'data-piece')).toEqual(['island3', 'swamp1', 'plains3', 'mountain1']);
-    expect(b.replace(nxt.src, old.src).replace(/\b(left|top|width|height):[^;]*;/g, '').replaceAll('island3', 'island2')).toBe(a.replace(/\b(left|top|width|height):[^;]*;/g, ''));
   });
 
   it('a piece that failed to load is skipped and marked; the place is still drawn, never blank', () => {

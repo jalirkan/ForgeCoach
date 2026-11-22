@@ -595,8 +595,11 @@ async function captionLines(page) {
 // ---------------------------------------------------------------------------
 // Spec 1.22: places
 
-/** The places pack on disk (the manifest jsDelivr serves at @places-v1, and every place's pictures): PLACES_DIR, else the owner's. */
-const PLACES_DIR = path.resolve(env.PLACES_DIR ?? path.join(os.homedir(), 'scenery-packs', 'scenes-v1', 'pack-places-v1'));
+/**
+ * The places pack on disk (the manifest jsDelivr serves at FORGECOACH_PLACES_URL's tag, and every place's pictures):
+ * PLACES_DIR, else the owner's folder for that tag, ~/scenery-packs/scenes-v1/pack-<tag> (pack-places-v1, pack-places-v2).
+ */
+const PLACES_DIR = path.resolve(env.PLACES_DIR ?? path.join(os.homedir(), 'scenery-packs', 'scenes-v1', `pack-${/@(places-v[^/]+)\//.exec(placesUrl())?.[1] ?? 'places-v1'}`));
 /** ForgeCoach's places URL, read from prefs.ts (an .mjs cannot import it). */
 function placesUrl() {
   const prefs = readFileSync(new URL('../src/ambience/prefs.ts', import.meta.url), 'utf8');
@@ -619,8 +622,8 @@ async function routePlaces(ctx) {
   const served = [];
   const base = placesUrl();
   await ctx.route(`${base}places.json`, (route) => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: readFileSync(path.join(PLACES_DIR, 'index', 'places.json')) }));
-  await ctx.route(/^https:\/\/cdn\.jsdelivr\.net\/gh\/jalirkan\/forgecoach-scenery@places-v1[^/]*\/places\//, (route) => {
-    const rel = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^.*?@places-v1[^/]*\//, ''));
+  await ctx.route(/^https:\/\/cdn\.jsdelivr\.net\/gh\/jalirkan\/forgecoach-scenery@places-v\d[^/]*\/places\//, (route) => {
+    const rel = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^.*?@places-v\d[^/]*\//, ''));
     const file = path.normalize(path.join(PLACES_DIR, rel));
     if (!file.startsWith(path.join(PLACES_DIR, 'places'))) return route.fulfill({ status: 404, body: '' });
     try {
@@ -668,8 +671,13 @@ async function placesCheck(browser, origin, pairs, shape) {
   const forbidden = [];
   page.on('request', (r) => {
     const u = r.url();
-    if (/\/scenes\.json(\?|$)/.test(u) || /\/seams\/|\/pairs\/|@pairs-v[^/]*\/.*\.(webp|png|jpe?g)(\?|$)|@scenes-v/.test(u)) forbidden.push(u);
+    if (/\/seams\/|\/pairs\/|@pairs-v[^/]*\/.*\.(webp|png|jpe?g)(\?|$)|@scenes-v[^/]*\/.*\.(webp|png|jpe?g)(\?|$)/.test(u)) forbidden.push(u);
   });
+  // scenes.json is started beside places.json (a failing places file must not hold the scenes back) and cancelled
+  // once every place has loaded clean: it may be requested, never used (no scene picture, the scenes line says so).
+  const scenesManifest = { asked: 0, cancelled: 0 };
+  page.on('request', (r) => /\/scenes\.json(\?|$)/.test(r.url()) && scenesManifest.asked++);
+  page.on('requestfailed', (r) => /\/scenes\.json(\?|$)/.test(r.url()) && scenesManifest.cancelled++);
   let skipped = 0;
   try {
     await page.goto(`${origin}/${queryOf(pairs, false)}#ambience`);
@@ -715,18 +723,24 @@ async function placesCheck(browser, origin, pairs, shape) {
             }
           }, changedLand);
         await setLands(page, biome, counts[biome]);
-        const shapeDir = shape === 'phone' ? 'p' : 'd';
-        const want = GEOGRAPHY.filter((b) => counts[b]).map((b) => {
-          const st = Math.min(counts[b], 6);
-          const pc = place.layers[b][st - 1][shape === 'phone' ? 'phone' : 'half'];
-          return { biome: b, stage: st, piece: pc };
-        });
+        // What the half should hold, at each of the base's two shapes (the manifest's own files and boxes: a phone piece
+        // may be the desktop piece's file at another box, places-v2). Which base is drawn: the phone base on a phone; on a
+        // desktop, layout.ts's shape rule (a desktop half narrower than the cut-over draws the phone base) -- read from
+        // the panel's `data-art`, and every piece then checked against that shape's.
+        const wantAt = (key) =>
+          GEOGRAPHY.filter((b) => counts[b]).map((b) => {
+            const st = Math.min(counts[b], 6);
+            return { biome: b, stage: st, piece: place.layers[b][st - 1][key] };
+          });
+        const wantBoth = { half: wantAt('half'), phone: wantAt('phone') };
+        const want = wantBoth[shape === 'phone' ? 'phone' : 'half'];
         // A stage step: the new piece fades in over the old one, the old kept beneath, both on screen at once.
         if (sameStep && !checkedFade) {
           const old = `${biome}${Math.min(before[biome], 6)}`;
           const nu = `${biome}${Math.min(counts[biome], 6)}`;
           const nuPiece = want.find((w) => w.biome === biome).piece;
           const oldPiece = place.layers[biome][Math.min(before[biome], 6) - 1][shape === 'phone' ? 'phone' : 'half'];
+          // (On a desktop drawing the phone base, the same step's pieces are the phone's: both exist or neither, in places-v1 and v2.)
           if (nuPiece && oldPiece) {
             try {
               await page.waitForFunction(
@@ -759,11 +773,15 @@ async function placesCheck(browser, origin, pairs, shape) {
         let got;
         try {
           await page.waitForFunction(
-            ({ slug, state, want, base }) => {
+            ({ slug, state, wantBoth, bases: baseOf }) => {
               const root = document.querySelector('[data-amb-player="1"]');
               if (root.querySelectorAll('.scn-slot').length !== 1) return false;
               const el = root.querySelector('.scn-slot[data-place]');
               if (!el || el.getAttribute('data-place') !== slug || el.getAttribute('data-scene') !== state) return false;
+              const art = el.getAttribute('data-art');
+              const want = wantBoth[art];
+              const base = baseOf[art];
+              if (!want) return false;
               const bases = el.querySelectorAll('.scn-half-img');
               if (bases.length !== 1 || bases[0].getAttribute('src') !== base || !bases[0].complete || !(bases[0].naturalWidth > 0)) return false;
               const pieces = [...el.querySelectorAll('img[data-piece]')];
@@ -771,7 +789,7 @@ async function placesCheck(browser, origin, pairs, shape) {
               if (pieces.length !== live.length) return false;
               return live.every((w, i) => pieces[i].getAttribute('data-piece') === `${w.biome}${w.stage}` && pieces[i].getAttribute('src') === w.piece.src && pieces[i].complete && pieces[i].naturalWidth > 0 && pieces[i].getAttribute('data-piece-role') === 'cur' && getComputedStyle(pieces[i]).opacity === '1');
             },
-            { slug: place.slug, state, want, base: shape === 'phone' ? place.half.phone.src : place.half.src },
+            { slug: place.slug, state, wantBoth, bases: { half: place.half.src, phone: place.half.phone.src } },
             { timeout: TIMEOUT },
           );
           got = await page.evaluate(() => {
@@ -796,16 +814,16 @@ async function placesCheck(browser, origin, pairs, shape) {
           });
           throw new Fail(`${shape} ${seq.name}, step ${i + 1} (${state}): expected ${place.slug} composed for ${state}, its base and ${want.filter((w) => w.piece).map((w) => `${w.biome}${w.stage}`).join(' ')} loaded; saw ${seen}`);
         }
-        check(got.art === (shape === 'phone' ? 'phone' : 'half'), `${shape} ${seq.name}, step ${i + 1}: the base drawn is the ${got.art} picture`);
+        if (shape === 'phone') check(got.art === 'phone', `${shape} ${seq.name}, step ${i + 1}: a phone drew the ${got.art} base`);
+        const drawnWant = wantBoth[got.art];
         check(got.others === 0, `${shape} ${seq.name}, step ${i + 1}: something else drawn on the place half (${got.others})`);
         // Each piece at its box in the base's frame, to a pixel.
-        const live = want.filter((w) => w.piece);
+        const live = drawnWant.filter((w) => w.piece);
         live.forEach((w, k) => {
           const g = got.pieces[k];
           const exp = { x: got.frame.x + w.piece.x * got.frame.w, y: got.frame.y + w.piece.y * got.frame.h, w: w.piece.w * got.frame.w, h: w.piece.h * got.frame.h };
           const off = Math.max(Math.abs(g.x - exp.x), Math.abs(g.y - exp.y), Math.abs(g.w - exp.w), Math.abs(g.h - exp.h));
           check(off <= 1.5, `${shape} ${seq.name}, step ${i + 1}: ${g.piece} is ${off.toFixed(1)} px off its box`);
-          check(w.piece.src.includes(`/${shapeDir}/`), `${shape}: ${g.piece} is not the ${shapeDir} piece: ${w.piece.src}`);
         });
         if (sameStep) {
           check(got.baseKept, `${shape} ${seq.name}, step ${i + 1}: the base was replaced by a stage step`);
@@ -814,7 +832,7 @@ async function placesCheck(browser, origin, pairs, shape) {
         const caption = (await page.$('[data-amb-bands="1"]')) ? ((await page.textContent('[data-amb-bands="1"]')) ?? '') : '';
         const wantCaption = `${place.name}: ${want.map((w) => `${cap(w.biome)} ${w.stage}`).join(', ')}`;
         check(caption === wantCaption, `${shape} ${seq.name}, step ${i + 1}: the caption should be "${wantCaption}", is "${caption}"`);
-        log(`${shape} ${seq.name} ${i + 1}: ${state} -> ${place.slug} (${place.name}); pieces ${got.pieces.map((g) => g.piece).join(' ') || 'none (the base is stage 1)'}; caption: ${caption}`);
+        log(`${shape} ${seq.name} ${i + 1}: ${state} -> ${place.slug} (${place.name}), the ${got.art} base; pieces ${got.pieces.map((g) => g.piece).join(' ') || 'none (the base is stage 1)'}; caption: ${caption}`);
         prevPlace = place.slug;
       }
       check(errors.length === 0, `${shape}: page errors: ${errors.join('; ')}`);
@@ -824,12 +842,13 @@ async function placesCheck(browser, origin, pairs, shape) {
       log(`PASS: ${shape} ${seq.name}: the place composed for the state at every land${checkedFade ? ', a stage step faded over the old piece' : ''}${checkedStep ? ', a new colour cross-faded the half' : ''}`);
     }
     // A state with no place on disk is drawn by the 1.15–1.19 rules (no scenes are fetched): its pair pictures then load.
-    const scenesFetched = forbidden.filter((u) => /\/scenes\.json(\?|$)|@scenes-v/.test(u));
-    check(scenesFetched.length === 0, `${shape}: scenes fetched with places loaded: ${scenesFetched.slice(0, 5).join(', ')}`);
+    const scenesFetched = forbidden.filter((u) => /@scenes-v/.test(u));
+    check(scenesFetched.length === 0, `${shape}: scene pictures fetched with places loaded: ${scenesFetched.slice(0, 5).join(', ')}`);
+    log(`${shape}: scenes.json requested ${scenesManifest.asked}×, cancelled ${scenesManifest.cancelled}× (started beside places.json, unused)`);
     if (skipped === 0) check(forbidden.length === 0, `${shape}: ${forbidden.length} pair or seam file(s) fetched with every state a place: ${forbidden.slice(0, 5).join(', ')}`);
     else log(`${shape}: ${forbidden.length} pair or seam picture(s) fetched for the ${skipped} step(s) with no place on disk`);
     check(served.length > 0, `${shape}: no place picture was served from disk`);
-    log(`PASS: ${shape}: places drawn (${served.length} pictures served from ${PLACES_DIR}; ${skipped} step(s) skipped, no place on disk); no scenes.json fetched${skipped ? '' : ', no pair or seam picture'}`);
+    log(`PASS: ${shape}: places drawn (${served.length} pictures served from ${PLACES_DIR}; ${skipped} step(s) skipped, no place on disk); no scene picture fetched${skipped ? '' : ', no pair or seam picture'}`);
   } finally {
     await ctx.close();
   }

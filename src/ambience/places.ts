@@ -157,6 +157,16 @@ export function placeForSlots(places: PlacesPack | null | undefined, slots: read
   return places ? placeFor(places, sceneLands(slots, thresholds)) : null;
 }
 
+/**
+ * Does a half draw its place (spec 1.22)? It has one for its colours and neither base has failed to load (`failed`:
+ * pack.ts `pictureFailed`). A half that does not -- no place for its colours (refused, or a pack without one), or a base
+ * that failed -- is drawn by the rules before places, whose pictures its caller then warms.
+ */
+export function placeUsable(places: PlacesPack | null | undefined, slots: readonly Pick<SlotState, 'biome' | 'weight'>[], thresholds: readonly number[] | null, failed: (src: string) => boolean): boolean {
+  const c = placeForSlots(places, slots, thresholds);
+  return !!c && !failed(c.place.half.src) && !failed(c.place.half.phone.src);
+}
+
 /** One land's piece at the shape drawn: the desktop base's (`phone` false) or the phone base's. */
 export interface PlacedPiece {
   biome: Biome;
@@ -189,6 +199,17 @@ export function placeWords(c: { place: Pick<PackPlace, 'name'>; lands: readonly 
   return `${c.place.name}: ${c.lands.map((l) => `${cap(l.biome)} ${l.stage}`).join(', ')}`;
 }
 
+/**
+ * A {@link placeWords} caption's land list ("Island 2, Swamp 1, Plains 3, Mountain 1"), or null when the caption is
+ * not a place's. Read from the end, after the place's name: a name may hold a land word ("Hawaii, the Big Island",
+ * "Cambodia's rice plains around Angkor").
+ */
+export function placeCaptionLands(caption: string | null | undefined): string | null {
+  return (caption && PLACE_LANDS.exec(caption)?.[1]) ?? null;
+}
+const LAND_WORD = '(?:Island|Swamp|Plains|Forest|Mountain) [1-6]';
+const PLACE_LANDS = new RegExp(`: (${LAND_WORD}(?:, ${LAND_WORD})*)$`);
+
 // ---------------------------------------------------------------------------
 // A land's piece across a stage change (the drawing's state, pure)
 
@@ -209,6 +230,15 @@ export interface PieceEntry {
   from: number;
 }
 
+/**
+ * A piece's identity on screen: its file, its box and its stage. Places-v2's phone pieces reuse the desktop piece's
+ * file at another box, so the same file at another box or stage is another entry (a new element, faded in), while the
+ * picture store (loaded / failed) and the warm list stay keyed by the file alone.
+ */
+export function pieceKey(p: Pick<PlacePiece, 'src' | 'x' | 'y' | 'w' | 'h'>, stage: number): string {
+  return `${p.src}|${p.x},${p.y},${p.w},${p.h}|${stage}`;
+}
+
 /** The most pieces one land keeps on screen at once (a second step in the middle of a fade). */
 export const MAX_PIECE_ENTRIES = 3;
 
@@ -218,14 +248,15 @@ export const MAX_PIECE_ENTRIES = 3;
  * with what was shown kept beneath (`under`); a null target fades what was shown out. The same target: unchanged.
  */
 export function pieceWant(prev: readonly PieceEntry[], target: PlacePiece | null, instant: boolean, stage = 0): PieceEntry[] {
-  if (instant) return target ? [{ key: target.src, piece: target, role: 'cur', stage, from: 1 }] : [];
+  const key = target ? pieceKey(target, stage) : '';
+  if (instant) return target ? [{ key, piece: target, role: 'cur', stage, from: 1 }] : [];
   const live = prev.filter((e) => e.role !== 'out');
-  if (target && live[live.length - 1]?.key === target.src) return [...prev];
+  if (target && live[live.length - 1]?.key === key) return [...prev];
   if (!target) return live.length ? prev.map((e) => ({ ...e, role: 'out' as const })) : [...prev];
-  const was = prev.find((e) => e.key === target.src);
-  const rest = prev.filter((e) => e.key !== target.src).map((e): PieceEntry => (e.role === 'out' ? e : { ...e, role: 'under' }));
+  const was = prev.find((e) => e.key === key);
+  const rest = prev.filter((e) => e.key !== key).map((e): PieceEntry => (e.role === 'out' ? e : { ...e, role: 'under' }));
   // A piece already on screen (back down a stage mid-fade) comes in from where it is, never from nothing.
-  const all = [...rest, { key: target.src, piece: target, role: 'in' as const, stage, from: was && was.role !== 'out' ? 1 : 0 }];
+  const all = [...rest, { key, piece: target, role: 'in' as const, stage, from: was && was.role !== 'out' ? 1 : 0 }];
   while (all.length > MAX_PIECE_ENTRIES) {
     const i = all.findIndex((e) => e.role === 'out');
     all.splice(i >= 0 ? i : 0, 1);
@@ -278,6 +309,8 @@ function parsePiece(v: unknown, base: string, path: string): PlacePiece | null |
   return { src: u.url, x, y, w, h, width: pos(v.width), height: pos(v.height), bytes };
 }
 
+const pixels = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 64 && n <= 16384;
+
 /** One place, or null with the reason it is refused pushed to `errors`. */
 function parsePlace(rawKey: string, v: unknown, base: string, errors: string[], warnings: string[]): PackPlace | null {
   const path = `places.${cleanText(rawKey, 80) ?? '?'}`;
@@ -301,6 +334,10 @@ function parsePlace(rawKey: string, v: unknown, base: string, errors: string[], 
   const key = placeKeyOf(lands)!;
   if (key !== rawKey) return refuse(`the key does not match its lands, which make "${key}" (the lands in the order ${GEOGRAPHY.join(', ')}, joined by +, no stages)`);
   if (!isObj(v.half)) return refuse('half: missing (the base picture, a 1.5 half with its phone picture)');
+  // Every piece is placed in fractions of its base, so a base's real pixel shape is load-bearing: never the 1.5 defaults.
+  const size = (o: unknown) => isObj(o) && pixels(o.width) && pixels(o.height) && o.width / o.height >= 0.25 && o.width / o.height <= 8;
+  if (!size(v.half)) return refuse('half: width and height are required -- the base picture\'s pixels (64–16384, a shape between 1:4 and 8:1); every piece is placed in fractions of it');
+  if (isObj(v.half.phone) && !size(v.half.phone)) return refuse('half.phone: width and height are required -- the phone base\'s pixels (64–16384, a shape between 1:4 and 8:1); every phone piece is placed in fractions of it');
   const halfWarn: string[] = [];
   const half = parseHalf(v.half, base, `${path}.half`, halfWarn);
   if (!half) {
@@ -309,11 +346,24 @@ function parsePlace(rawKey: string, v: unknown, base: string, errors: string[], 
   }
   if (!half.phone) return refuse(`half.phone: missing or unusable${halfWarn.length ? ` (${halfWarn.join('; ')})` : ''} -- a place must look right on a desktop and a phone`);
   warnings.push(...halfWarn);
+  // A phone base that gives no subject band: the desktop band mapped into it as a full-width outpainting up and down
+  // (places-v2's 2.22:1 phone base is the desktop panorama with sky above and ground below), never manifest.ts's 4:5
+  // default; its focal point and safe rect follow the band when not given either.
+  if (isObj(v.half.phone) && (v.half.phone.subjectBand === undefined || v.half.phone.subjectBand === null)) {
+    const ph = half.phone;
+    const k = Math.min(1, (half.height / half.width) / (ph.height / ph.width));
+    const map = (y: number) => +((1 - k) / 2 + y * k).toFixed(4);
+    const band: [number, number] = [map(half.subjectBand[0]), map(half.subjectBand[1])];
+    const raw = v.half.phone;
+    half.phone = { ...ph, subjectBand: band, ...(raw.focal == null ? { focal: { x: 0.5, y: +((band[0] + band[1]) / 2).toFixed(4) } } : {}), ...(raw.safe == null ? { safe: { x: 0.25, y: band[0], w: 0.5, h: +(band[1] - band[0]).toFixed(4) } } : {}) };
+  }
   if (!isObj(v.layers)) return refuse('layers: missing (six stages for each of the place\'s lands)');
   const extra = Object.keys(v.layers).filter((k) => !lands.includes(k as Biome));
   if (extra.length) return refuse(`layers: ${cleanText(extra[0], 20)} is not one of the place's lands (${lands.join(', ')})`);
   const layers: Partial<Record<Biome, PlaceStage[]>> = {};
-  let bytes = (half.bytes ?? 0) + (half.phoneBytes ?? 0);
+  // Each file once (a phone piece may reuse its desktop piece's file).
+  const files = new Map<string, number>([[half.src, half.bytes ?? 0]]);
+  files.set(half.phone.src, Math.max(files.get(half.phone.src) ?? 0, half.phoneBytes ?? 0));
   for (const b of lands) {
     const list: unknown = v.layers[b];
     if (!Array.isArray(list) || list.length !== MAX_STAGES) return refuse(`layers.${b}: exactly ${MAX_STAGES} stages (stage 1 first), found ${Array.isArray(list) ? list.length : 'none'}`);
@@ -328,12 +378,13 @@ function parsePlace(rawKey: string, v: unknown, base: string, errors: string[], 
         const p = parsePiece(st[shape], base, `${at}.${shape}`);
         if (typeof p === 'string') return refuse(p);
         shapes.push(p);
-        bytes += p?.bytes ?? 0;
+        if (p) files.set(p.src, Math.max(files.get(p.src) ?? 0, p.bytes ?? 0));
       }
       stages.push({ half: shapes[0]!, phone: shapes[1]! });
     }
     layers[b] = stages;
   }
+  const bytes = [...files.values()].reduce((n, x) => n + x, 0);
   if (bytes > MAX_PLACE_BYTES) warnings.push(`${path}: ${(bytes / 1048576).toFixed(1)} MB declared; a place's budget is ${MAX_PLACE_BYTES / 1048576} MB (both bases and every piece; kept)`);
   return { key, slug, name, ref: cleanText(v.ref, 80), lands: [...lands].sort(byGeography), half: half as SceneHalf, layers };
 }
@@ -350,13 +401,11 @@ function refOf(src: string): string {
   }
 }
 
-/** The declared bytes of every file of the places, by the ref it lies in. */
+/** The declared bytes of every file of the places, by the ref it lies in -- each file once (a file named twice, e.g. a phone piece reusing its desktop piece's file, counts once, at the largest size declared). */
 export function placesBytesByRef(places: PlacesPack | null | undefined): Map<string, number> {
-  const out = new Map<string, number>();
+  const files = new Map<string, number>();
   const add = (src: string, n: number | null | undefined) => {
-    if (!n) return;
-    const r = refOf(src);
-    out.set(r, (out.get(r) ?? 0) + n);
+    if (n) files.set(src, Math.max(files.get(src) ?? 0, n));
   };
   for (const p of Object.values(places?.places ?? {})) {
     if (!p) continue;
@@ -364,6 +413,8 @@ export function placesBytesByRef(places: PlacesPack | null | undefined): Map<str
     add(p.half.phone.src, p.half.phoneBytes);
     for (const stages of Object.values(p.layers)) for (const st of stages ?? []) for (const piece of [st.half, st.phone]) if (piece) add(piece.src, piece.bytes);
   }
+  const out = new Map<string, number>();
+  for (const [src, n] of files) out.set(refOf(src), (out.get(refOf(src)) ?? 0) + n);
   return out;
 }
 
