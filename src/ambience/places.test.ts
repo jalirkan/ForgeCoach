@@ -4,9 +4,9 @@
  *
  * Spec 1.22, places (places.ts): the key, the file, the composition, the plan's
  * precedence, the load gate and hold, the caption, the piece fade's state and
- * the loader. `synthPlaces()` builds a places manifest in places-v1's or places-v2's shape for
+ * the loader. `synthPlaces()` builds a places manifest in places-v1's, places-v2's or places-v3's shape for
  * all 31 colour sets with relative URLs (the shape tests); the real tagged file
- * is `testdata/places-v2.places.json`, hash-pinned in places-v2.test.ts.
+ * is `testdata/places-v3.places.json`, hash-pinned in places-v3.test.ts.
  * Nothing here touches the network.
  */
 import { describe, expect, it } from 'vitest';
@@ -191,7 +191,7 @@ describe('spec 1.22: the file', () => {
   });
 
   it('is loaded with ForgeCoach’s own pack on the scenes’ condition; ?places=off and ?scenes=off load none', () => {
-    expect(FORGECOACH_PLACES_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v2/');
+    expect(FORGECOACH_PLACES_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v3/');
     expect(placesUrlOf(DEFAULT_PREFS)).toBe(FORGECOACH_PLACES_URL);
     expect(placesUrlOf({ ...DEFAULT_PREFS, pairFull: false })).toBe(FORGECOACH_PLACES_URL);
     expect(placesUrlOf({ ...DEFAULT_PREFS, packUrl: 'http://127.0.0.1:8650/' })).toBeNull();
@@ -659,5 +659,42 @@ describe('spec 1.22: places-v2’s phone shape (a 2.22:1 phone base whose pieces
     // k = (800/2560) / (1152/2560) = 0.6944: [0.05, 0.65] -> [0.1875, 0.6042].
     expect(ph.subjectBand).toEqual([0.1875, 0.6042]);
     expect(ph.focal).toEqual({ x: 0.5, y: 0.3958 });
+  });
+});
+
+describe('spec 1.22: places-v3’s phone shape (1.82:1, 2560 × 1408, the desktop base 320 px down it)', () => {
+  // Measured at 390 × 844: a phone's half is 376 × 176 (2.14:1) with one row of cards and 376 × 234 (1.61:1) with two;
+  // places-v2's 2.22:1 base was too wide for the second.
+  const V3 = validatePlaces(synthPlaces('v3'), MANIFEST);
+  const slots = slotsOf(['mountain', 1], ['plains', 3], ['island', 2], ['swamp', 1]);
+  const plan = pairFullPlan(halfLayout(slots, PACK, null, null), null, { thresholds: T, slots, places: V3.places! });
+  it('validates clean; a phone piece is its desktop piece’s file, its box moved 320 px down a 1408 px base', () => {
+    expect(V3.errors).toEqual([]);
+    const c = V3.places!.places['island+swamp+plains+mountain']!;
+    expect(c.half.phone).toMatchObject({ width: 2560, height: 1408 });
+    const st = c.layers.plains![2]!;
+    expect(st.phone!.src).toBe(st.half!.src);
+    expect(st.phone!.y).toBeCloseTo((320 + st.half!.y * 800) / 1408, 4);
+    expect(st.phone!.h).toBeCloseTo((st.half!.h * 800) / 1408, 4);
+  });
+  it('both measured phone halves draw the phone base and its pieces; on a desktop the cut-over is near 2.41:1', () => {
+    for (const aspect of [2.14, 1.61]) {
+      for (const narrow of [true, false]) {
+        const c = planCandidates(plan, aspect, narrow)![0]!;
+        expect(c.art.source, `${aspect} ${narrow}`).toBe('phone');
+        expect(c.art.picture!.height).toBe(1408);
+      }
+    }
+    expect(planCandidates(plan, 2.35, false)![0]!.art.source).toBe('phone');
+    expect(planCandidates(plan, 2.5, false)![0]!.art.source).toBe('half');
+  });
+  it('a phone base with no subject band: the desktop band mapped 320 px down (k = 800 / 1408)', () => {
+    const raw = synthPlaces('v3');
+    delete raw.places.island.half.phone.subjectBand;
+    delete raw.places.island.half.phone.focal;
+    delete raw.places.island.half.phone.safe;
+    const ph = validatePlaces(raw, MANIFEST).places!.places.island!.half.phone;
+    expect(ph.subjectBand).toEqual([0.2443, 0.5852]);
+    expect(ph.focal).toEqual({ x: 0.5, y: 0.4148 });
   });
 });

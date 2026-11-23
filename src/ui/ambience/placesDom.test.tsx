@@ -26,7 +26,7 @@ import { PlaceLandView, PlacePanel, SceneryStrip } from './SceneryStrip.tsx';
 import { ScenePieces } from './ScenePieces.tsx';
 
 const BASE = 'https://example.org/pack/';
-const PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v2/';
+const PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v3/';
 const slot = (biome: Biome, index: number, weight: number): SlotState => ({ biome, index, weight, stage: Math.min(6, Math.ceil(weight)), peak: Math.min(6, Math.ceil(weight)) });
 const piece = (src: string) => ({ src, width: 600, height: 300 });
 const biomeStages = (b: string) => [1, 2, 3, 4, 5, 6].map((k) => ({ layers: [], half: { src: `${b}/s${k}-half.webp` } }));
@@ -108,11 +108,12 @@ describe('spec 1.22: a place on the board', () => {
     expect(attrs(html, 'data-piece')).toEqual(['forest2']);
   });
 
-  // The phone shape, on places-v1's (a 4:5 phone base, its own piece files) and places-v2's (a 2.22:1 phone base whose
+  // The phone shape, on places-v1's (a 4:5 phone base, its own piece files), places-v2's and places-v3's (a 2.22:1 / 1.82:1 phone base whose
   // pieces are the desktop files at other boxes): the manifest's own phone files and phone boxes, never a folder name.
   for (const [name, places, aspect] of [
     ['places-v1’s shape', PLACES, 0.8],
     ['places-v2’s shape', validatePlaces(synthPlaces('v2'), `${PLACES_URL}places.json`).places!, 2.1],
+    ['places-v3’s shape', validatePlaces(synthPlaces('v3'), `${PLACES_URL}places.json`).places!, 1.61],
   ] as const)
     it(`the phone shape (${name}): the phone base and every land’s phone piece at its phone box`, () => {
       const C = places.places['island+swamp+plains+mountain']!;

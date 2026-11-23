@@ -139,13 +139,13 @@ export const FORGECOACH_SCENES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forge
 /**
  * Spec 1.22 (ambience/places.ts): ForgeCoach's places -- one real place for every set of mana colours, a base picture
  * and six pieces per land laid over it -- `places.json` at this folder's root (its pictures at the per-place refs it
- * names), loaded whenever the pack is ForgeCoach's own ({@link placesUrlOf}). `places-v2` (2026-11-22): each phone base is
- * 2.22:1 (2560 × 1152, the desktop panorama with more sky above and near ground below, because a phone's half of the
- * board is a 2.1:1 strip) and most phone pieces are the desktop piece files at their phone boxes; places-v1 (4:5 phone
- * bases) stays up, but nothing points at it. When it loads, `scenes.json` is not
+ * names), loaded whenever the pack is ForgeCoach's own ({@link placesUrlOf}). `places-v3` (2026-11-23): each phone base is
+ * 1.82:1 (2560 × 1408, the desktop panorama 320 px down it, sky above and 288 px of near ground below), because a
+ * phone's half measures 2.14:1 with one row of cards and 1.61:1 with two; most phone pieces are the desktop piece files
+ * at their phone boxes. places-v2 (2.22:1, too wide for two rows) and places-v1 (4:5) stay up; nothing points at them. When it loads, `scenes.json` is not
  * fetched at all.
  */
-export const FORGECOACH_PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v2/';
+export const FORGECOACH_PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v3/';
 /**
  * ForgeCoach's own pack at any tag: a stored URL that matches is the default
  * of the day it was saved, and {@link loadSceneryPrefs} replaces it with the

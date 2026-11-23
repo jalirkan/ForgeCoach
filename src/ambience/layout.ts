@@ -258,10 +258,11 @@ const shape = (p: HalfPicture) => Math.round((p.width / p.height) * 10000) / 100
  *
  * - The 1.5 packs' phone pictures are 4:5 (1024 × 1280) against a 16:5
  *   desktop: the cut-over is near 1.41 : 1.
- * - Spec 1.22's places-v2 phone bases are 2.22 : 1 (2560 × 1152, the desktop
- *   panorama with sky above and ground below) against 3.2 : 1: the cut-over is
- *   near 2.67 : 1, so a desktop half narrower than that draws the phone base,
- *   which fits it better -- intended.
+ * - Spec 1.22's places-v3 phone bases are 1.82 : 1 (2560 × 1408, the desktop
+ *   panorama with sky above and near ground below) against 3.2 : 1: the
+ *   cut-over is near 2.41 : 1, so a desktop half narrower than that draws the
+ *   phone base, which fits it better -- intended. (places-v2's 2.22 : 1 put it
+ *   near 2.67 : 1.)
  *
  * On a phone-width screen (`narrow`, {@link PHONE_VIEWPORT_MAX}) the phone
  * picture whatever the panel's shape: a phone's half of the board measures
