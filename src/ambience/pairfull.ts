@@ -125,6 +125,7 @@ import type { PackHalf, PieceColour } from './manifest.ts';
 import { geographyOrder, gridCellKey, pairElementAt, pairFor, pairGridGivesWay, pairGridPaintedAt, pairGridPick, pairHalfAt, pairPanoramaAt, pairStageFor, pairWords, type PackPair, type PairGridPick, type PairSide, type PairsPack } from './pairs.ts';
 import { BIOME_COLOUR, COLOUR_BIOME, pickFromSlots, type MakeupShowing } from './makeup.ts';
 import { heaviestMono, nearestScene, nearestWords, sceneLands, sceneWords, type MonoBiomes, type NearestScene, type PackScene, type ScenesPack } from './scenes.ts';
+import { placeFor, placePieces, placeWords, type PlaceComposition, type PlacedPiece, type PlacesPack } from './places.ts';
 
 /** The narrowest and widest the left biome's share of the frame gets: the lighter colour always keeps a fifth. */
 export const PAIR_FULL_SPLIT: readonly [number, number] = [0.2, 0.8];
@@ -234,6 +235,12 @@ export interface PairFullScene {
    * the colours dropped and the colours clamped, and whether it is the pack's own picture of one colour (`mono`).
    */
   nearest?: Pick<NearestScene, 'for' | 'dropped' | 'clamped' | 'mono' | 'failed'>;
+  /**
+   * Spec 1.22: the scene is a PLACE composed for the state -- `scene.half` is the place's base picture and `scene.lands`
+   * the state; `place` names the place and each live land's stage pieces (places.ts `placeFor`). `key` is the state's
+   * scene key. Every state of a place is exact: no `nearest`.
+   */
+  place?: PlaceComposition;
 }
 
 export type PairFullItem = PairFullPair | PairFullSlot | PairFullScene;
@@ -337,6 +344,12 @@ export function pairFullPlan(
     /** Spec 1.20: the scenes pack (scenes.ts); a scene for the half's exact state is the whole plan (spec 1.21: or its nearest). */
     scenes?: ScenesPack | null;
     /**
+     * Spec 1.22: the places pack (places.ts); when it has a place for the half's colours (one colour too), that place
+     * composed for the state is the whole plan, before any scene. Its base failing at this shape plans the half as if
+     * there were no places (`sceneFailed`).
+     */
+    places?: PlacesPack | null;
+    /**
      * Spec 1.21: the scenery pack's biomes, for the nearest scene's last step (one colour left: the pack's own 1.5
      * picture of it, drawn as a scene) and the stand-in for a painting that failed. Absent: that step draws nothing
      * and the half goes on to today's plan.
@@ -360,13 +373,21 @@ export function pairFullPlan(
   // would have been showing all along -- rather than from whatever the painting happened to contain.
   // Spec 1.21: no scene of its own, the nearest painted scene -- the same colours at the nearest stages, else fewer
   // colours, down to the pack's own picture of one -- drawn exactly as a scene; never the seam and its cut-outs.
-  const lands = opts.scenes ? sceneLands(opts.slots ?? layout.map((l) => l.slot), opts.thresholds ?? DEFAULT_STAGE_THRESHOLDS) : [];
+  const failed = (item: PairFullScene) => {
+    const chosen = sceneCandidates(item, pairFullPanelAspect(opts.halfAspect ?? null, 1), opts.narrow ?? false)[0];
+    return !!opts.sceneFailed && !!chosen && opts.sceneFailed(chosen.art.picture!.src);
+  };
+  // Spec 1.22: a place for the half's colours (any number, one included) wins before scenes and pairs: its base and each
+  // live land's piece at its stage. Its base failing at this shape: the half planned as if there were no places.
+  const lands = opts.scenes || opts.places ? sceneLands(opts.slots ?? layout.map((l) => l.slot), opts.thresholds ?? DEFAULT_STAGE_THRESHOLDS) : [];
+  const place = placeFor(opts.places, lands);
+  if (place) {
+    const item = placeItem(place);
+    if (!failed(item)) return [item];
+    return pairFullPlan(layout, pairs, { ...opts, places: null });
+  }
   const near = nearestScene(opts.scenes, lands, opts.biomes ?? null);
   if (near) {
-    const failed = (item: PairFullScene) => {
-      const chosen = sceneCandidates(item, pairFullPanelAspect(opts.halfAspect ?? null, 1), opts.narrow ?? false)[0];
-      return !!opts.sceneFailed && !!chosen && opts.sceneFailed(chosen.art.picture!.src);
-    };
     const item = sceneItem(near);
     if (!failed(item)) return [item];
     // The painting failed at this shape (the finding of the 1.20 review): spec 1.21, the heaviest colour's own picture
@@ -514,6 +535,11 @@ export interface PairFullCandidate {
   cell?: string;
   /** Spec 1.20: the scene this picture is (its key), when it is one. */
   scene?: string;
+  /**
+   * Spec 1.22: the picture is a place's base, and these are the pieces laid over it at the base's shape (the phone
+   * base's pieces over the phone base), in the geography's order.
+   */
+  place?: { slug: string; pieces: PlacedPiece[] };
 }
 
 /**
@@ -523,7 +549,10 @@ export interface PairFullCandidate {
  */
 export function sceneCandidates(s: PairFullScene, panelAspect: number | null, narrow: boolean, horizon = false): PairFullCandidate[] {
   const art = halfArtOf(s.scene.half, panelAspect, { narrow, horizon });
-  return art.picture ? [{ art, painted: null, mirror: false, scene: s.key }] : [];
+  if (!art.picture) return [];
+  // Spec 1.22: a place's pieces at the shape of the base drawn.
+  const place = s.place ? { place: { slug: s.place.place.slug, pieces: placePieces(s.place.lands, art.source === 'phone') } } : {};
+  return [{ art, painted: null, mirror: false, scene: s.key, ...place }];
 }
 
 /**
@@ -599,10 +628,26 @@ export function pairFullCandidates(p: PairFullPair, panelAspect: number | null, 
  * without the flag (its panels and band), never blank, while `want` (if
  * any) loads.
  */
-export function pairFullChoice(cands: readonly PairFullCandidate[], status: (src: string) => 'ready' | 'failed' | 'pending'): { show: PairFullCandidate | null; want: PairFullCandidate | null } {
+export function pairFullChoice(cands: readonly PairFullCandidate[], status: (src: string) => 'ready' | 'failed' | 'pending'): PairFullChoice {
   const want = cands.find((c) => status(c.art.picture!.src) !== 'failed') ?? null;
-  const show = cands.find((c) => status(c.art.picture!.src) === 'ready') ?? null;
-  return { show, want };
+  // Spec 1.22: a place is shown once its base has loaded AND every piece of its state has settled (loaded or failed),
+  // so a place never appears bare and then pops its buildings in.
+  const settled = (c: PairFullCandidate) => !c.place || c.place.pieces.every((p) => !p.piece || status(p.piece.src) !== 'pending');
+  const show = cands.find((c) => status(c.art.picture!.src) === 'ready' && settled(c)) ?? null;
+  // Its base loaded, pieces still loading: what the hold draws for a stage step of the place already shown.
+  const base = want?.place && want !== show && status(want.art.picture!.src) === 'ready' ? want : null;
+  return base ? { show, want, base } : { show, want };
+}
+
+/**
+ * The load gate's choice: `show` the best candidate drawn now, `want` the best not failed. Spec 1.22: `base`, a place
+ * wanted whose base has loaded while a piece of its state is still loading -- drawn at once when the same place is on
+ * screen (only the land whose stage changed waits, inside the panel), and when the hold runs out.
+ */
+export interface PairFullChoice {
+  show: PairFullCandidate | null;
+  want: PairFullCandidate | null;
+  base?: PairFullCandidate | null;
 }
 
 /**
@@ -685,7 +730,7 @@ export interface PairFullHold<L> {
  * Pure: `hold` in, the new memory out (SceneryStrip keeps it in a ref).
  */
 export function pairFullHold<L>(
-  cur: { layout: L; plan: PairFullItem[] | null; choice: { show: PairFullCandidate | null; want: PairFullCandidate | null } | null },
+  cur: { layout: L; plan: PairFullItem[] | null; choice: PairFullChoice | null },
   hold: PairFullHold<L>,
   now: number,
   holdMs = PAIR_FULL_HOLD_MS,
@@ -695,6 +740,14 @@ export function pairFullHold<L>(
     const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.plan, shown: null };
     const same = hold.last && hold.last.layout === draw.layout && hold.last.plan === draw.plan && !hold.last.shown;
     return { draw: same ? hold.last! : draw, hold: { last: same ? hold.last : draw, since: null }, holding: false };
+  }
+  // Spec 1.22: the same place on screen (the same base picture) and a land's stage changed: drawn at once, its base
+  // loaded -- the panel shows the land's new piece once it has loaded, the old one until then; nothing is held.
+  const placeBase = cur.choice?.base;
+  // Only while nothing is being waited for (`since` null): a draw kept from before a wait that ran out is not "on screen".
+  if (cur.plan && placeBase?.place && hold.since === null && hold.last?.shown?.place?.slug === placeBase.place.slug && hold.last.shown.art.picture!.src === placeBase.art.picture!.src) {
+    const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.plan, shown: placeBase };
+    return { draw, hold: { last: draw, since: null }, holding: false };
   }
   const cold = !!cur.plan && !!cur.choice && !cur.choice.show && !!cur.choice.want;
   // Spec 1.16.1 (the review of #199): a painted picture on screen and another painted one wanted but not loaded (the
@@ -710,7 +763,23 @@ export function pairFullHold<L>(
   if (cold || paintedNext || gridNext || gridFirst || sceneNext) {
     const since = hold.since ?? now;
     if (hold.last && now - since < holdMs) return { draw: hold.last, hold: { last: hold.last, since }, holding: true };
-    if (cold) return { draw: { layout: cur.layout, plan: null, shown: null }, hold: { last: hold.last, since }, holding: false };
+    // Spec 1.22: a place whose base has loaded and a piece never settles: the place, its pieces showing as they arrive.
+    if (cold && placeBase && cur.choice!.want === placeBase && now - since >= holdMs) {
+      const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.plan, shown: placeBase };
+      return { draw, hold: { last: draw, since }, holding: false };
+    }
+    // The panels drawn: they are what is on screen now (the review of #218: a held place kept as `last` was matched by
+    // the fast path above when its colours came back, and remounted with a land bare). Spec 1.22: a place whose base has
+    // loaded and waits on its pieces, with nothing drawn before, still reports `holding`, so the caller wakes when the
+    // hold runs out and draws the place rather than leave the panels up on a quiet board.
+    if (cold) {
+      const panels: PairFullDraw<L> = { layout: cur.layout, plan: null, shown: null };
+      const waitingOnPieces = !!placeBase && cur.choice!.want === placeBase && now - since < holdMs;
+      // After a wait that ran out, the panels start afresh (`since` cleared): what comes next -- even the place that was
+      // there before -- is waited for from them, whole, never drawn with a land bare.
+      if (hold.last) return { draw: panels, hold: { last: panels, since: null }, holding: false };
+      return { draw: panels, hold: { last: null, since }, holding: waitingOnPieces };
+    }
     // The painted (or grid) hold ran out: what has loaded (the base panorama), drawn below.
   }
   const draw: PairFullDraw<L> = { layout: cur.layout, plan: cur.choice?.show ? cur.plan : null, shown: cur.choice?.show ?? null };
@@ -721,6 +790,11 @@ export function pairFullHold<L>(
 /** Spec 1.19 c: is the plan's pair drawn apart (its two mono panels)? */
 export function planApart(plan: readonly PairFullItem[] | null | undefined): boolean {
   return !!plan?.some((x) => x.kind === 'pair' && !!x.apart);
+}
+
+/** Spec 1.22: the plan's scene item for a place composed for the state: the base as the scene's picture, the state's lands. */
+function placeItem(c: PlaceComposition): PairFullScene {
+  return { kind: 'scene', key: c.key, scene: { key: c.key, lands: c.lands.map((l) => ({ biome: l.biome, stage: l.stage })), half: c.place.half }, share: 1, place: c };
 }
 
 /** Spec 1.20 / 1.21: the plan's scene item for a scene drawn, exact or nearest (with what it stands in for). */
@@ -934,7 +1008,9 @@ export function pairFullCaption(items: readonly PairFullItem[] | null, lands: Re
  * none names the state, the scene drawn and what is missing -- "Scene · island 1, swamp 1, mountain 1 — nearest
  * painting: island 1, swamp 1, mountain 2 (mountain not yet painted at this stage)".
  */
-export function sceneCaption(s: Pick<PairFullScene, 'scene' | 'nearest'>): string {
+export function sceneCaption(s: Pick<PairFullScene, 'scene' | 'nearest' | 'place'>): string {
+  // Spec 1.22: "Cartagena de Indias: Island 2, Swamp 1, Plains 3, Mountain 1" (every state of a place is exact).
+  if (s.place) return placeWords(s.place);
   if (s.nearest) return nearestWords({ scene: s.scene, ...s.nearest });
   return `Scene · ${sceneWords(s.scene)} — one painting`;
 }

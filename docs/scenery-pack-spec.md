@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1, 1.19, 1.20 and 1.21 in draft)
+# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1, 1.19, 1.20, 1.21 and 1.22 in draft)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -2544,7 +2544,10 @@ a scene draws it; any other half is drawn by 1.5–1.19, unchanged. Nothing
 in a scene is cut out, stacked or panned. *(Amended in 1.21, 2026-11-08: a
 half of two or more colours with no scene of its own draws the nearest
 painted scene instead -- see *The nearest scene (1.21)*; only a half of one
-colour, and a board with no scenes, are drawn by 1.5–1.19.)*
+colour, and a board with no scenes, are drawn by 1.5–1.19.)* *(Amended in
+1.22, 2026-11-22: a pack with **places** draws them first -- see *Places
+(1.22)*; with ForgeCoach's own places loaded, `scenes.json` is not fetched at
+all, and scenes are what a pack with scenes and no places draws.)*
 
 **The key.** A half's state is the set of its live colours (a land weight
 above 0), each with its stage on the pack's own `stageThresholds` -- the
@@ -2700,7 +2703,10 @@ three-colour states, every two-colour state and every four- and five-colour
 state. The painting queue is filling the pairs and the three-colour gaps, but
 four and five colours will stay unpainted for a long time, and the board must
 not draw a seam with elements again. So a half with no scene of its own draws
-the **nearest painted scene**, alone, and says so.
+the **nearest painted scene**, alone, and says so. *(Amended in 1.22,
+2026-11-22: places come first -- every state of a colour set with a place is
+exact, so nothing is "nearest" there; this rule is what a pack with scenes
+and no places draws.)*
 
 **When.** A half of **two or more** live colours (1.20's key) whose key is not
 in the scenes manifest, with a scenes manifest loaded. A half of one colour
@@ -2841,6 +2847,228 @@ the scene drawn, so a scene held while the next loads keeps its own.
 `src/ambience/storyboard.ts` (`not-painted`); `scenes.test.ts`,
 `sceneryDom.test.tsx`, `storyboard.test.ts` and `e2e/ambience.e2e.mjs`
 (step 7) hold it.
+
+### Places (1.22, draft)
+
+**One real place for every set of colours, built land by land.** On 22
+November 2026 the owner's scenery became 31 places, one for every set of
+mana colours: five one-colour homelands, ten pairs, ten threes, five fours,
+and Istanbul for all five. Over a game a people rise there: each land of the
+place has a six-stage ladder. 1.20's scenes were one painting per exact
+state -- 1563 of them for an older map, and still four and five colours
+missing. A place is not painted per combination of stages: it is **one base
+picture** (the bare site) and, for each of its lands, **six small transparent
+pieces** (stages 1–6), each painted inside that land's own region of the
+picture. Any state of the place is the base with each live land's piece at
+its stage laid over it, and the reader stacks them at run time. The BOXES of
+neighbouring lands' pieces may overlap by their soft edges, but a piece's
+alpha never covers another land's built pixels, so the order they are
+stacked in (the geography's) changes nothing visible.
+
+**The key.** A place is keyed by its colours alone: its lands in the one
+geography's order (**island, swamp, plains, forest, mountain**, 1.17) joined
+by `+`, with **no stages**. A half's place is the one keyed by its live
+colours -- 1.20's state without the stages:
+
+    island+swamp+plains+mountain   Cartagena de Indias (four colours)
+    island+swamp+plains            Alexandria
+    forest                         a homeland (one colour)
+
+Board order and arrival order do not matter, and a place is drawn as painted,
+never mirrored. A half with a land the five do not name (a `wastes` slot,
+1.11) has no place and is drawn as before.
+
+**The file.** `places.json`, at the root of its own URL: ForgeCoach's is
+`https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v3/places.json`,
+loaded on 1.20's condition (the pack is ForgeCoach's own, with the
+whole-half flag and without; never with `?scenes=off`, nor `?places=off`). The
+pictures may live at other refs (places-v3 names its files at
+`@places-v3-p1`, 29 places, 39.9 MB, and `@places-v3-p2`, Kathmandu and
+Istanbul, 3.1 MB, so no ref passes jsDelivr's 50 MB, which is per ref). A file
+that does not load or does not validate, or whose every place is refused,
+means **no places** -- never an error on the board -- and the halves are drawn
+as before (1.20 / 1.21). `scenes.json` is fetched beside `places.json`, never
+after it, so a failing places file holds nothing back; its result is kept
+only when the places gave none or refused one (a half whose colours have no
+usable place then draws its scene), and its fetch is cancelled the moment
+every place has loaded clean.
+
+```json
+{
+  "schema": 1,
+  "spec": "1.22",
+  "name": "places-v3",
+  "author": "jalirkan",
+  "license": "CC BY 4.0",
+  "places": {
+    "island+swamp+plains+mountain": {
+      "slug": "cartagena",
+      "name": "Cartagena de Indias",
+      "ref": "places-v3-p1",
+      "lands": ["island", "swamp", "plains", "mountain"],
+      "half": {
+        "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v3-p1/places/cartagena/d/base.webp",
+        "width": 2560, "height": 800, "bytes": 205450,
+        "subjectBand": [0.05, 0.71], "horizon": 0.6098,
+        "focal": { "x": 0.4961, "y": 0.4563 }, "safe": { "x": 0, "y": 0.05, "w": 0.9922, "h": 0.8125 },
+        "phone": {
+          "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v3-p1/places/cartagena/w/base.webp",
+          "width": 2560, "height": 1408, "bytes": 330670,
+          "subjectBand": [0.2557, 0.6307], "horizon": 0.5737,
+          "focal": { "x": 0.4961, "y": 0.4865 }, "safe": { "x": 0, "y": 0.2557, "w": 0.9922, "h": 0.4616 }
+        }
+      },
+      "layers": {
+        "island": [
+          { "half":  { "src": "…/places/cartagena/d/island-1.webp", "x": 0.2738, "y": 0.6913, "w": 0.0859, "h": 0.18, "width": 220, "height": 144, "bytes": 6620 },
+            "phone": { "src": "…/places/cartagena/d/island-1.webp", "x": 0.2738, "y": 0.62, "w": 0.0859, "h": 0.1023, "width": 220, "height": 144, "bytes": 6620 } },
+          "… five more: stages 2 to 6"
+        ],
+        "swamp": ["… six"], "plains": ["… six"], "mountain": ["… six"]
+      }
+    }
+  }
+}
+```
+
+- **`half`** is the base, a 1.5 half picture read by the same reader
+  (`src`, `subjectBand`, `horizon`, `focal`, `safe`, `hour`, `key`), and it
+  **must carry its `phone` picture** (a place is drawn on a desktop and a phone
+  alike). Both MUST declare `width` and `height` (every piece is placed in
+  fractions of its base, so a base without its pixel size is refused, never
+  given 1.5's default size). Nothing assumes the phone base's shape. places-v3's
+  phone base is the desktop panorama with sky above and near ground below,
+  1.82 : 1 (2560 × 1408, the desktop base 320 px down it and 288 px of ground
+  under it), because a phone's half of the board measures 2.14 : 1 with one
+  row of cards and 1.61 : 1 with two (376 × 176 and 376 × 234 at 390 × 844),
+  and 1.82 : 1 crops well to both. (places-v2's 2.22 : 1, 2560 × 1152, was too
+  wide for two rows; places-v1's 4:5, 1152 × 1440, left a phone a thin middle
+  slice.) A phone base without a `subjectBand` takes the desktop
+  band mapped into it as a full-width outpainting. The pictures come in one
+  size, so there is no `src2x`.
+- **`layers`** holds exactly the place's lands, each with **exactly six**
+  stages (index 0 = stage 1), each `{ "half": piece | null, "phone": piece |
+  null }`.
+- **A piece** is a WebP (or AVIF, PNG) with alpha. `x`, `y`, `w`, `h` are
+  fractions (0–1) of the base picture **of the same shape**, from its
+  top-left: the piece is drawn stretched to exactly that box. `width` /
+  `height` are its pixel size (information); `bytes` its declared size. A
+  phone piece may be the same file as the land's desktop piece at another
+  box (places-v3: the desktop pieces, placed in the taller phone base; a few
+  that touch the old top or bottom edge get a file of their own). The reader
+  keys a piece on screen by its file, box AND stage, and counts each file's
+  bytes once.
+- **`null`** means "this stage adds nothing to the base at this shape". It
+  happens for stage 1 of the five homelands, whose base IS stage 1. The land
+  still counts as drawn.
+- Every URL is http(s) or relative to the manifest, as every other file.
+
+**Validation** (`places.ts` `validatePlaces`, in the style of 1.20's): a file
+that is not a schema-1 places manifest is no places. A place is **refused**,
+with an error naming why, and the rest load, when its key is not its `lands`
+in the geography's order; a land is off the five (never `wastes`) or named
+twice; it has no `slug` or `name`; `half` does not read, has no `phone`, or
+either base lacks a valid `width` and `height`;
+`layers` is not exactly its lands with six stages each, each stage with both
+`half` and `phone` keys; or a piece has no usable `src`, an `x` or `y` below
+0, a `w` or `h` of 0 or less, or a box past the picture (`x + w` or `y + h`
+above 1.001: the painters' fractions are rounded).
+
+**What a half draws.**
+
+1. The half's state is 1.20's: its live colours, each at its stage 1–6. A
+   half with a `wastes` slot has none.
+2. If the pack has places and the state's colours have one, the half draws
+   **that place, composed for the state** -- for **one colour too** (the
+   homelands) and for every number of colours. It comes before scenes (1.20),
+   the nearest scene (1.21), pairs and panels, with the whole-half flag or
+   without.
+3. **Composed** = the base framed exactly as a scene is (1.5's crop about its
+   focal point and safe rect, the phone base on a phone-shaped half by the
+   1.5 rule: the shape nearer the half's on a log scale, so with places-v3 a
+   desktop half narrower than about 2.41 : 1 draws the phone base too, which
+   fits it better), never mirrored, never panned; and **inside the same frame**,
+   above the base, one picture per live land in the geography's order -- that
+   land's piece at its stage (overlapping boxes: the later in the geography
+   on top), placed at `left: x`, `top: y`, `width: w`,
+   `height: h` of the frame -- so the base and its pieces scale and crop as
+   one picture. A null piece draws nothing.
+4. Nothing else is drawn on a place half: no pair, element, cut-out, band or
+   panel (as a scene). Everything that reads "the half's picture" -- the
+   scrim, the horizon, one horizon, the light key, the caption, the 1.14
+   pieces, the storyboard -- reads the base's.
+
+**Motion and loading.**
+
+- **A land's stage changes** (a land drop, a land destroyed), the place the
+  same: only that land's piece changes. The new piece fades in on top of the
+  old one over the pack's `growth.seconds`, the old kept beneath; once the new
+  one is fully in, the old fades out over half that time and is removed (a
+  higher stage does not always cover every pixel of the lower one). Reduced
+  motion: at once. The base and the other lands' pieces do not move, flash or
+  reload.
+- **A piece is shown only once it has loaded**: until then the land keeps the
+  piece it showed (or none). A piece that fails is skipped (marked
+  `data-piece-failed`); the half is never blank and never falls back because
+  of a piece.
+- **The place changes** (a colour arrives or leaves): the whole half
+  cross-fades to the new place as a scene step does, behind 1.15's load gate
+  and hold (at most 8 s): the new place is swapped in once its base **and**
+  the pieces of its state have settled (loaded or failed), so a place never
+  appears bare and then pops its buildings in. Past the hold with a piece
+  still out, the new place is drawn with its pieces arriving as they load.
+  With nothing drawn before, the panels meanwhile (never blank).
+- **The base fails**: the half is planned as if the pack had no places (1.20's
+  way: never bare panels flashing, never blank).
+- **Warm ahead**: once a place is drawn, the next stage's piece of every live
+  land (stage + 1, at the shape in use). Other places' bases are not warmed.
+
+**Budgets.** The manifest at most **2 MB** (refused unread past it; places-v3's
+is 214,262 bytes). As warnings: a place's declared files (both bases and every
+piece at both shapes) past **8 MB**, and any one ref's past **45 MB**
+(jsDelivr's 50 MB).
+
+**Worked example: Cartagena de Indias.** A half with one Mountain, three
+Plains, two Islands and one Swamp, in that order on the board, is the state
+`island2+swamp1+plains3+mountain1` of the place `island+swamp+plains+mountain`.
+On a desktop the half draws `cartagena/d/base.webp` cropped about its focal
+point and, in that frame, `island-2`, `swamp-1`, `plains-3` and `mountain-1`
+from `cartagena/d/`, each at its own box. A third Island: the island's piece
+`island-3` fades in over `island-2` (1.2 s on ForgeCoach's pack), then
+`island-2` fades out over 0.6 s; the base and the other three pieces stay.
+A first Forest: the half holds Cartagena until Istanbul's base and its five
+pieces have loaded, then cross-fades to Istanbul. On a phone the half draws
+`cartagena/w/base.webp` (2560 × 1408, the same panorama with sky above and
+near ground below) and the same four piece files from `cartagena/d/` at their phone boxes
+(island-1's, for one, at y 0.62 and h 0.1023 of the phone base against y
+0.6913 and h 0.18 of the desktop one: 320 + 0.6913 × 800 = 873 px of 1408); none of Cartagena's phone pieces needs
+a file of its own (62 do across the pack, under `w/`). The caption:
+"Cartagena de Indias: Island 2, Swamp 1, Plains 3, Mountain 1".
+
+**The walk with places.** `storyboard.test.ts` walks every state of 0–6
+lands a colour (three arrival orders, the duals) at both shapes, with the
+flag and without, on places-v3: every state with lands is its place alone,
+every colour on screen, and the caption names the place and every land. The
+caption is read from its land list only ("…: Island 2, Forest 1"), since a
+name may hold a land word: "Hawaii, the Big Island", "Cambodia's rice plains
+around Angkor".
+
+**The DOM.** The place slot is `.scn-slot.scn-scene.scn-place[data-place="<slug>"]`
+with `data-scene="<the state's key>"` and `data-art` (`half` / `phone`); each
+piece an `img.scn-place-piece[data-piece="<biome><stage>"]` with
+`data-piece-role` (`cur`, `in` fading in, `under` beneath it, `out` fading
+out); a failed piece a hidden `[data-piece-failed]` mark.
+
+`src/ambience/places.ts` (`validatePlaces`, `fetchPlaces`, `placeFor`,
+`placePieces`, `nextPlacePieces`, `placeWords`, `pieceWant` /
+`pieceSettleIn` / `pieceSettleOut`), `src/ambience/pairfull.ts`
+(`pairFullPlan`'s `places`, the scene item's `place`, `pairFullChoice`'s
+`base`, `pairFullHold`), `src/ambience/pack.ts` (`loadPlaces`; scenes only
+without places), `src/ambience/prefs.ts` (`FORGECOACH_PLACES_URL`,
+`placesUrlOf`, `?places=off`), SceneryStrip (`PlacePanel`,
+`PlaceLandPiece`); `places.test.ts`, `places-v3.test.ts`,
+`placesDom.test.tsx`, `storyboard.test.ts` and `e2e/ambience.e2e.mjs`
+(step 8, the manifest and pictures served from disk) hold it.
 
 ## 3. Files and budgets
 

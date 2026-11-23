@@ -250,16 +250,25 @@ const shape = (p: HalfPicture) => Math.round((p.width / p.height) * 10000) / 100
 
 /**
  * Which picture of a stage's `half` a panel of `panelAspect` (width / height)
- * shows: the phone picture when the panel's shape is nearer the phone's than
- * the desktop's (on a log scale: 1:1 is as far from 4:1 as from 1:4), else
- * the desktop picture. Unknown shape: the desktop picture.
+ * shows: the phone picture when the panel's shape is nearer the phone
+ * picture's OWN shape than the desktop picture's (on a log scale, so the
+ * cut-over is the geometric mean of the two shapes), else the desktop picture.
+ * Unknown shape: the desktop picture. Nothing here assumes what shape the phone
+ * picture is: each picture's declared `width` / `height` decides.
+ *
+ * - The 1.5 packs' phone pictures are 4:5 (1024 × 1280) against a 16:5
+ *   desktop: the cut-over is near 1.41 : 1.
+ * - Spec 1.22's places-v3 phone bases are 1.82 : 1 (2560 × 1408, the desktop
+ *   panorama with sky above and near ground below) against 3.2 : 1: the
+ *   cut-over is near 2.41 : 1, so a desktop half narrower than that draws the
+ *   phone base, which fits it better -- intended. (places-v2's 2.22 : 1 put it
+ *   near 2.67 : 1.)
  *
  * On a phone-width screen (`narrow`, {@link PHONE_VIEWPORT_MAX}) the phone
  * picture whatever the panel's shape: a phone's half of the board measures
- * about 2.1 : 1 (376 × 176 at 390 × 844), nearer the desktop's 16:5 than the
- * phone's 4:5, so the shape rule alone never showed the phone art on a phone.
- * The phone picture is outpainted into sky and calm ground around its subject
- * band precisely so that a wide crop of its middle still reads.
+ * about 2.1 : 1 (376 × 176 at 390 × 844), which a 4:5 phone picture never won
+ * by shape. A phone picture is outpainted into sky and calm ground around its
+ * subject band so that the crop of a phone's half still reads.
  */
 export function pickHalfPicture(h: PackHalf, panelAspect: number | null, opts?: { narrow?: boolean }): { picture: HalfPicture; phone: boolean } {
   if (h.phone && opts?.narrow === true) return { picture: h.phone, phone: true };
