@@ -28,7 +28,7 @@ import { synthPlaces } from '../../ambience/testdata/placesSynth.ts';
 import { PlaceLandView, PlacePanel, PlacePanelView, SceneryStrip, type PlacePayload } from './SceneryStrip.tsx';
 import { readFileSync } from 'node:fs';
 import { fadeStack, settleFades, type FadeEntry } from '../../ambience/growth.ts';
-import { CAMERA_IDLE, cameraMark, cameraStep, type CameraRun, type CameraState } from '../../ambience/placeCamera.ts';
+import { CAMERA_IDLE, cameraEnd, cameraMark, cameraStep, type CameraRun, type CameraState } from '../../ambience/placeCamera.ts';
 import { placePieces } from '../../ambience/places.ts';
 import { ScenePieces } from './ScenePieces.tsx';
 
@@ -265,6 +265,23 @@ describe('spec 1.23: the place change is a camera move', () => {
     expect(attrs(html, 'data-camera-frame')).toEqual([]);
     expect(frameStyles(html)).toEqual([frameCss(b.payload.art)]);
     expect(html).not.toMatch(/transform|mask/);
+  });
+
+  it('a change straight back mid-move (Cusco → Sicily → Cusco): Sicily stays drawn under the move to its end, then Cusco comes back by a plain cross-fade, no frame transformed or masked', () => {
+    const { a, b, st, stack } = change(CUSCO, SICILY);
+    // Back to Cusco while the move runs: held, Sicily still drawn, the move's three frames unchanged.
+    const held = cameraStep(st, a.drawn, MS);
+    expect([held.drawn!.key, held.run]).toEqual([b.key, st.run]);
+    expect(attrs(view(b, stack, { ...held.run!, phase: 'run' }), 'data-camera-frame')).toEqual(['under', 'to', 'from']);
+    // The move ends and the stack settles on Sicily; then the held change: no camera, the plain 1.22 cross-fade.
+    const after = cameraStep(cameraEnd(held), a.drawn, MS);
+    expect([after.drawn!.key, after.run]).toEqual([a.key, null]);
+    const back = fadeStack(settleFades(stack), { key: a.key, payload: a.payload }, null, 0, false);
+    expect(back.map((e) => [e.key, e.role])).toEqual([[a.key, 'cur'], [b.key, 'out']]);
+    const html = view(a, back, after.run);
+    expect(attrs(html, 'data-camera')).toEqual([]);
+    expect(frameStyles(html)).toEqual([frameCss(a.payload.art), frameCss(b.payload.art)]);
+    expect(html).not.toMatch(/transform|mask|data-camera/);
   });
 
   it('a refused change (no land shared: Venice → the swamp’s homeland) is exactly 1.22’s cross-fade: two frames, neither transformed, no data-camera', () => {

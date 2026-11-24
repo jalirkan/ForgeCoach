@@ -16,9 +16,10 @@
  *   of the frame, one uniform scale. Two or more shared lands: the
  *   least-squares line through their centres (cxA, cxB); one: the ratio of its
  *   widths, its centre carried. Vertically A's horizon goes to B's.
- * - Tracked lands ({@link trackedLands}): the largest subset of the shared
- *   lands standing in the same left-to-right order in both (on a tie, the one
- *   whose boxes cover the most width in A). A shared land left out (a flip:
+ * - Tracked lands ({@link trackedCandidates}): the largest subset of the
+ *   shared lands standing in the same left-to-right order in both (on a tie,
+ *   the one whose boxes cover the most width in A) whose map's scale is in
+ *   [0.5, 2]; when none of a size is, the next size down. A shared land left out (a flip:
  *   the pack is not yet re-laid everywhere, and two re-laid places keep one
  *   land out of order) simply cross-fades without being tracked.
  * - Refused (a plain cross-fade, as 1.22): no shared land, the two drawn at
@@ -34,6 +35,7 @@
 import type { Biome } from './model.ts';
 import type { PackPlace, PlacePiece } from './places.ts';
 import { halfFrameCss, type HalfArt } from './layout.ts';
+import type { PlacedPiece } from './places.ts';
 
 /** The scale a camera move may use; outside it the change is a plain cross-fade. */
 export const CAMERA_MIN_SCALE = 0.5;
@@ -97,7 +99,8 @@ const baseAspect = (place: CameraSide['place'], phone: boolean): number => (phon
  * The camera move for a place change from `a` to `b` (spec 1.23), or why it is refused (then the change is 1.22's plain
  * cross-fade): `reduced` motion, `shape` (drawn at different shapes, or bases of different shapes: a uniform map in
  * fractions of one is not uniform in the other), `none` (no land with a box in both), `scale` (`s` outside [0.5, 2], or
- * no line through them). The map is fitted on {@link trackedLands}; the other shared lands are not tracked.
+ * no line through them, for every candidate). The map is fitted on the first of {@link trackedCandidates} whose scale
+ * is in range; the other shared lands are not tracked.
  */
 export function placeCamera(a: CameraSide, b: CameraSide, opts: { reduced?: boolean } = {}): CameraMap | { refused: CameraRefusal } {
   if (opts.reduced) return { refused: 'reduced' };
@@ -110,58 +113,69 @@ export function placeCamera(a: CameraSide, b: CameraSide, opts: { reduced?: bool
     if (ba && bb) all.push({ land, a: ba, b: bb });
   }
   if (!all.length) return { refused: 'none' };
-  const kept = trackedLands(all);
-  const shared = kept.map((x) => x.land);
-  const untracked = all.filter((x) => !kept.includes(x)).map((x) => x.land);
-  const pa = kept.map((x) => x.a);
-  const pb = kept.map((x) => x.b);
-  let s: number;
-  let tx: number;
-  if (shared.length === 1) {
-    s = pb[0]!.w / pa[0]!.w;
-    tx = pb[0]!.cx - s * pa[0]!.cx;
-  } else {
-    const n = shared.length;
-    const ma = pa.reduce((t, p) => t + p.cx, 0) / n;
-    const mb = pb.reduce((t, p) => t + p.cx, 0) / n;
-    let sab = 0;
-    let saa = 0;
-    for (let i = 0; i < n; i++) {
-      sab += (pa[i]!.cx - ma) * (pb[i]!.cx - mb);
-      saa += (pa[i]!.cx - ma) ** 2;
-    }
-    if (!(saa > 0)) return { refused: 'scale' };
-    s = sab / saa;
-    tx = mb - s * ma;
+  // The in-order subsets, largest first (then the most width covered in A, then the geography's order): the first
+  // whose map's scale is inside [0.5, 2] is tracked.
+  for (const kept of trackedCandidates(all)) {
+    const fit = fitOf(kept.map((x) => x.a), kept.map((x) => x.b));
+    // (To the boxes' rounding: a box's width is the difference of two fractions.)
+    if (!fit || !(fit.s >= CAMERA_MIN_SCALE - 1e-9 && fit.s <= CAMERA_MAX_SCALE + 1e-9)) continue;
+    const { s, tx } = fit;
+    const shared = kept.map((x) => x.land);
+    const untracked = all.filter((x) => !kept.includes(x)).map((x) => x.land);
+    const ty = horizonOf(b.place, b.phone) - s * horizonOf(a.place, a.phone);
+    return { s, tx, ty, shared, untracked };
   }
-  // (To the boxes' rounding: a box's width is the difference of two fractions.)
-  if (!(s >= CAMERA_MIN_SCALE - 1e-9 && s <= CAMERA_MAX_SCALE + 1e-9)) return { refused: 'scale' };
-  const ty = horizonOf(b.place, b.phone) - s * horizonOf(a.place, a.phone);
-  return { s, tx, ty, shared, untracked };
+  return { refused: 'scale' };
+}
+
+/** The map's `s` and `tx` through the lands' centres: two or more, the least-squares line; one, its widths' ratio. Null: no line (one centre). */
+function fitOf(pa: readonly LandBox[], pb: readonly LandBox[]): { s: number; tx: number } | null {
+  if (pa.length === 1) {
+    const s = pb[0]!.w / pa[0]!.w;
+    return { s, tx: pb[0]!.cx - s * pa[0]!.cx };
+  }
+  const n = pa.length;
+  const ma = pa.reduce((t, p) => t + p.cx, 0) / n;
+  const mb = pb.reduce((t, p) => t + p.cx, 0) / n;
+  let sab = 0;
+  let saa = 0;
+  for (let i = 0; i < n; i++) {
+    sab += (pa[i]!.cx - ma) * (pb[i]!.cx - mb);
+    saa += (pa[i]!.cx - ma) ** 2;
+  }
+  if (!(saa > 0)) return null;
+  const s = sab / saa;
+  return { s, tx: mb - s * ma };
 }
 
 /**
- * The shared lands the map is fitted on: the largest subset whose left-to-right order by box centre is the same in A
- * and B (the longest common ordered subsequence; two lands at one centre in either are never both in it); on a tie, the
- * subset whose boxes cover the most width in A (the union's length); then the first in the geography's order. At most
- * five lands, so every subset is tried. Given in the geography's order, returned in it.
+ * The candidate sets of tracked lands, best first: every subset of the shared lands whose left-to-right order by box
+ * centre is the same in A and B (two lands at one centre in either are never both in one), largest first; within a
+ * size, the most width covered in A (the union's length) first; then the geography's order. {@link placeCamera} tracks
+ * the first whose map's scale is inside [0.5, 2]. At most five lands, so every subset is listed.
  */
-export function trackedLands<T extends { a: Pick<LandBox, 'x' | 'w' | 'cx'>; b: Pick<LandBox, 'cx'> }>(shared: readonly T[]): T[] {
+export function trackedCandidates<T extends { a: Pick<LandBox, 'x' | 'w' | 'cx'>; b: Pick<LandBox, 'cx'> }>(shared: readonly T[]): T[][] {
   const n = shared.length;
-  let best: T[] = [];
-  let bestCover = -1;
+  const out: { sub: T[]; cover: number; mask: number }[] = [];
   for (let mask = 1; mask < 1 << n; mask++) {
     const sub = shared.filter((_, i) => mask & (1 << i));
     let ok = true;
     for (let i = 0; ok && i < sub.length; i++) for (let j = i + 1; ok && j < sub.length; j++) ok = (sub[i]!.a.cx - sub[j]!.a.cx) * (sub[i]!.b.cx - sub[j]!.b.cx) > 0;
-    if (!ok || sub.length < best.length) continue;
-    const cover = coverOf(sub.map((x) => x.a));
-    if (sub.length > best.length || cover > bestCover + 1e-12) {
-      best = sub;
-      bestCover = cover;
-    }
+    if (ok) out.push({ sub, cover: coverOf(sub.map((x) => x.a)), mask });
   }
-  return best;
+  // The geography's order within a size and cover: the subset whose first differing land comes earlier (lower bits).
+  const geo = (p: number, q: number) => {
+    const d = p ^ q;
+    const low = d & -d;
+    return p & low ? -1 : 1;
+  };
+  out.sort((p, q) => q.sub.length - p.sub.length || (Math.abs(q.cover - p.cover) > 1e-12 ? q.cover - p.cover : p.mask === q.mask ? 0 : geo(p.mask, q.mask)));
+  return out.map((x) => x.sub);
+}
+
+/** The tracked lands when the scale allows the largest: {@link trackedCandidates}' first. */
+export function trackedLands<T extends { a: Pick<LandBox, 'x' | 'w' | 'cx'>; b: Pick<LandBox, 'cx'> }>(shared: readonly T[]): T[] {
+  return trackedCandidates(shared)[0] ?? [];
 }
 
 /** The length the union of boxes covers along x. */
@@ -247,6 +261,8 @@ export interface CameraDrawn {
   key: string;
   art: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo' | 'source'>;
   place: CameraSide['place'];
+  /** What the panel draws for it (its pieces, its marks), kept so a change held back can keep drawing it. */
+  view?: { art: HalfArt; pieces: PlacedPiece[]; slug: string; scene: string };
 }
 
 /** A camera move on screen: the old frame's key, the new one's, the map and both frames' CSS; `start` until its first paint, then `run`. */
@@ -264,24 +280,36 @@ export interface CameraState {
   run: CameraRun | null;
   /** The last run's id. */
   n: number;
+  /**
+   * A change back to the base a running move left, held: `drawn` stays the move's new place until the move ends, and
+   * the next base change after it is a plain cross-fade (never a move).
+   */
+  plain?: boolean;
 }
 
 export const CAMERA_IDLE: CameraState = { drawn: null, run: null, n: 0 };
+
+/** The move ended (the panel's timer, the cross-fade's time after it ran): the run goes; a held change stays plain. */
+export function cameraEnd(prev: CameraState): CameraState {
+  return { ...prev, run: null };
+}
 
 /**
  * The panel's camera after it drew `next` (`ms`: the place's cross-fade time; 0 under reduced motion). The same base
  * (a stage step, or nothing changed): no new move. Another base: a move from what was drawn when {@link placeCamera}
  * gives a map, else none (the plain cross-fade). The first paint never moves. A change while a move runs is a plain
  * cross-fade and leaves that move to finish (its frames keep their transitions), except a change back to the base it
- * left, which drops the move (its old frame is the one coming back, and must come back untransformed).
+ * left (A -> B -> A): that change is HELD -- `drawn` stays B and the move finishes undisturbed -- and once it has ended
+ * ({@link cameraEnd}) the change to A is a plain cross-fade from B at rest. Dropping the move instead would snap A's
+ * half-moved, half-faded frame to the identity: a visible pop.
  */
 export function cameraStep(prev: CameraState, next: CameraDrawn, ms: number, reduced = false): CameraState {
-  if (prev.drawn?.key === next.key) return { ...prev, drawn: next };
+  if (prev.drawn?.key === next.key) return { ...prev, drawn: next, plain: false };
   let run = prev.run;
-  if (run && next.key === run.from) run = null;
-  else if (!run && prev.drawn && ms > 0) {
+  if (run && next.key === run.from) return { ...prev, plain: true };
+  if (!run && prev.drawn && ms > 0 && !prev.plain) {
     const m = placeCamera({ place: prev.drawn.place, phone: prev.drawn.art.source === 'phone' }, { place: next.place, phone: next.art.source === 'phone' }, { reduced });
     if (isCamera(m)) run = { id: prev.n + 1, from: prev.drawn.key, to: next.key, map: m, css: cameraCss(m, prev.drawn.art, next.art), phase: 'start' };
   }
-  return { drawn: next, run, n: run?.id ?? prev.n };
+  return { drawn: next, run, n: run?.id ?? prev.n, plain: false };
 }

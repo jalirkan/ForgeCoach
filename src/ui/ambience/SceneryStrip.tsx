@@ -99,7 +99,7 @@ import { PAIR_FULL_HOLD_MS, pairFullChoice, pairFullFrameCss, pairFullHold, pair
 import type { MakeupShowing } from '../../ambience/makeup.ts';
 import { usePicturesVersion } from './usePictures.ts';
 import { nextPlacePieces, pieceKey, pieceSettleIn, pieceSettleOut, pieceWant, type PieceEntry, type PlacedPiece, type PlacePiece } from '../../ambience/places.ts';
-import { CAMERA_EASE, CAMERA_IDLE, CAMERA_MASK_IMAGE, cameraMark, cameraStep, type CameraFrameCss, type CameraRun, type CameraState } from '../../ambience/placeCamera.ts';
+import { CAMERA_EASE, CAMERA_IDLE, CAMERA_MASK_IMAGE, cameraEnd, cameraMark, cameraStep, type CameraFrameCss, type CameraRun, type CameraState } from '../../ambience/placeCamera.ts';
 import './scenery.css';
 
 export type { StripEffect } from './SceneryEffects.tsx';
@@ -822,12 +822,15 @@ export function PlacePanel({ s, shown, first, ms, reduced }: { s: PairFullScene;
   useEffect(() => {
     for (const p of ahead) warmPicture({ src: p.src, src2x: null });
   }, [aheadKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const stack = useFadeStack<PlacePayload>({ key: pic.src, payload: { art, pieces: shown.place!.pieces } }, null, 0, ms);
-  // Spec 1.23: the camera, stepped as the base drawn changes (placeCamera.ts `cameraStep`); painted at its start, then run.
+  // Spec 1.23: the camera, stepped as the base wanted changes (placeCamera.ts `cameraStep`); painted at its start, then
+  // run. What is drawn is the camera's `drawn`: a change back to the base a running move left is held until it ends.
   const cam = useRef<CameraState>(CAMERA_IDLE);
   const [, bump] = useState(0);
-  cam.current = cameraStep(cam.current, { key: pic.src, art, place }, ms, reduced);
+  cam.current = cameraStep(cam.current, { key: pic.src, art, place, view: { art, pieces: shown.place!.pieces, slug: place.slug, scene: s.key } }, ms, reduced);
   const run = cam.current.run;
+  const drawn = cam.current.drawn!;
+  const view = drawn.view!;
+  const stack = useFadeStack<PlacePayload>({ key: drawn.key, payload: { art: view.art, pieces: view.pieces } }, null, 0, ms);
   const host = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (run?.phase !== 'start') return;
@@ -841,12 +844,12 @@ export function PlacePanel({ s, shown, first, ms, reduced }: { s: PairFullScene;
     if (runId === null) return;
     const t = setTimeout(() => {
       if (cam.current.run?.id !== runId) return;
-      cam.current = { ...cam.current, run: null };
+      cam.current = cameraEnd(cam.current);
       bump((n) => n + 1);
     }, ms + 80);
     return () => clearTimeout(t);
   }, [runId, ms]);
-  return <PlacePanelView ref={host} slug={place.slug} sceneKey={s.key} source={art.source} stack={stack} camera={run} first={first} ms={ms} reduced={reduced} />;
+  return <PlacePanelView ref={host} slug={view.slug} sceneKey={view.scene} source={view.art.source} stack={stack} camera={run} first={first} ms={ms} reduced={reduced} />;
 }
 
 /** What one place frame draws: the base's art and the pieces over it. */

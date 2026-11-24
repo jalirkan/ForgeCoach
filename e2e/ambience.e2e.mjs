@@ -658,8 +658,9 @@ const PLACE_SEQUENCES = [
 
 /**
  * Spec 1.23's map, from the manifest on disk (placeCamera.ts `placeCamera`, again here: an .mjs cannot import it): each
- * land's box the union of its six pieces at the shape; the map fitted on the largest subset of the shared lands in one
- * left-to-right order (the rest untracked): two or more the least-squares line through their centres, one the ratio of
+ * land's box the union of its six pieces at the shape; the map fitted on the first subset of the shared lands in one
+ * left-to-right order (largest first, then most width in A, then geography) whose scale is in [0.5, 2], the rest
+ * untracked: two or more the least-squares line through their centres, one the ratio of
  * its widths; the horizon of A to B's (null 0.5); null when refused.
  */
 function cameraOf(a, b, shape) {
@@ -682,7 +683,8 @@ function cameraOf(a, b, shape) {
     if (ba && bb) shared.push({ land, a: ba, b: bb });
   }
   if (!shared.length) return null;
-  // The largest subset in one left-to-right order in both (on a tie, the most width covered in A, then the first found).
+  // The subsets in one left-to-right order in both, largest first (then the most width covered in A, then the
+  // geography's order); the first whose scale is inside [0.5, 2] is tracked.
   const cover = (xs) => {
     let total = 0;
     let end = -Infinity;
@@ -693,33 +695,37 @@ function cameraOf(a, b, shape) {
     }
     return total;
   };
-  let tracked = [];
-  let bestCover = -1;
+  const cands = [];
   for (let mask = 1; mask < 1 << shared.length; mask++) {
     const sub = shared.filter((_, i) => mask & (1 << i));
-    const ok = sub.every((p, i) => sub.every((q, j) => j <= i || (p.a.cx - q.a.cx) * (p.b.cx - q.b.cx) > 0));
-    if (!ok || sub.length < tracked.length) continue;
-    const c = cover(sub);
-    if (sub.length > tracked.length || c > bestCover + 1e-12) {
-      tracked = sub;
-      bestCover = c;
-    }
+    if (sub.every((p, i) => sub.every((q, j) => j <= i || (p.a.cx - q.a.cx) * (p.b.cx - q.b.cx) > 0))) cands.push({ sub, cover: cover(sub), mask });
   }
-  shared.splice(0, shared.length, ...tracked);
+  const geo = (p, q) => (p & ((p ^ q) & -(p ^ q)) ? -1 : 1);
+  cands.sort((p, q) => q.sub.length - p.sub.length || (Math.abs(q.cover - p.cover) > 1e-12 ? q.cover - p.cover : p.mask === q.mask ? 0 : geo(p.mask, q.mask)));
+  const fit = (xs) => {
+    if (xs.length === 1) {
+      const s = xs[0].b.w / xs[0].a.w;
+      return { s, tx: xs[0].b.cx - s * xs[0].a.cx };
+    }
+    const ma = xs.reduce((t, x) => t + x.a.cx, 0) / xs.length;
+    const mb = xs.reduce((t, x) => t + x.b.cx, 0) / xs.length;
+    const sab = xs.reduce((t, x) => t + (x.a.cx - ma) * (x.b.cx - mb), 0);
+    const saa = xs.reduce((t, x) => t + (x.a.cx - ma) ** 2, 0);
+    return saa > 0 ? { s: sab / saa, tx: mb - (sab / saa) * ma } : null;
+  };
   let s;
   let tx;
-  if (shared.length === 1) {
-    s = shared[0].b.w / shared[0].a.w;
-    tx = shared[0].b.cx - s * shared[0].a.cx;
-  } else {
-    const ma = shared.reduce((t, x) => t + x.a.cx, 0) / shared.length;
-    const mb = shared.reduce((t, x) => t + x.b.cx, 0) / shared.length;
-    const sab = shared.reduce((t, x) => t + (x.a.cx - ma) * (x.b.cx - mb), 0);
-    const saa = shared.reduce((t, x) => t + (x.a.cx - ma) ** 2, 0);
-    s = sab / saa;
-    tx = mb - s * ma;
+  let tracked = null;
+  for (const c of cands) {
+    const f = fit(c.sub);
+    if (f && f.s >= 0.5 - 1e-9 && f.s <= 2 + 1e-9) {
+      ({ s, tx } = f);
+      tracked = c.sub;
+      break;
+    }
   }
-  if (!(s >= 0.5 - 1e-9 && s <= 2 + 1e-9)) return null;
+  if (!tracked) return null;
+  shared.splice(0, shared.length, ...tracked);
   const hz = (p) => (shape === 'phone' ? p.half.phone.horizon : p.half.horizon) ?? 0.5;
   const ty = hz(b) - s * hz(a);
   return { s, tx, ty, shared, mark: [s, tx, ty].map((n) => n.toFixed(3)).join(',') };

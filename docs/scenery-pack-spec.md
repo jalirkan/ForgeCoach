@@ -3100,10 +3100,17 @@ its width `w`.
 
 **The map.** A change from place A to place B, both drawn at the same shape:
 S is the lands both have with a box in both. The map is fitted on the
-**tracked** lands T: the largest subset of S whose left-to-right order (by box
-centre) is the same in A and B -- the longest common ordered subsequence; on
-a tie, the subset whose boxes cover the most width in A (then the first in
-the geography's order); two lands at one centre are never both in it. A
+**tracked** lands T. The candidates are every subset of S whose left-to-right
+order (by box centre) is the same in A and B (two lands at one centre are
+never both in one), taken largest first; within a size, the one whose boxes
+cover the most width in A first, then the first in the geography's order. T
+is the **first candidate whose map's `s` is inside [0.5, 2]**: when no subset
+of a size passes, the next size down is tried, down to one land. (So the
+longest common ordered subsequence when its scale allows, else the best of
+the rest; *amended on 24 November 2026 after review*: a largest subset whose
+scale fell out of range had refused the move although another of the same
+size passed -- Kolkata → Zanzibar, {swamp, forest} at s ≈ 2.2 against
+{island, forest} at 0.792.) A
 shared land left out of T (a flip: places-v3 was not re-laid, and in
 places-v4 three four-land places, Cape Town, Zanzibar and Kathmandu, keep one
 land out of order because moving it broke the painting) simply cross-fades without being
@@ -3125,7 +3132,7 @@ fractions of the frame (the base picture's box), with one uniform scale:
   desktop base), or their bases at that shape differ in shape (a map uniform
   in fractions of one would not be uniform in the other);
 - reduced motion is on;
-- `s` is outside [0.5, 2] (to the boxes' rounding).
+- no candidate's `s` is inside [0.5, 2] (to the boxes' rounding).
 
 A flip is never refused and never animated: a land out of order is not in T,
 so it is never carried across the picture; it fades out where it stood in A
@@ -3182,20 +3189,28 @@ base and its state's pieces have settled), a stage step inside a place (only
 that land's piece changes; never a camera move), the `data-place`,
 `data-scene`, `data-art` and `data-piece` marks, the phone shape rule,
 `?places=off` and every other kind of half. A second place change while a
-move runs is a plain cross-fade, and lets the move finish under it; a change
-straight back to the place the move left drops the move (that frame comes
-back untransformed).
+move runs is a plain cross-fade, and lets the move finish under it. A change
+**straight back** to the place the move left (A → B → A while it runs) is
+**held**: B stays drawn and the move runs to its end undisturbed, then A comes
+back by 1.22's plain cross-fade from B at rest. (Dropping the move at once
+would snap A's half-moved, half-faded frame to its settled place: a visible
+pop. Holding is the simpler of the two soft ends and never leaves a frame
+with a transform or a mask; the cost is that the board shows B for at most
+the rest of one cross-fade after A is back.)
 
 **On places-v4** (the live pack, re-laid): of the 75 steps that add one
-colour, **72 move and 3 are refused**, all three for the scale (Alexandria →
-Zanzibar, Kolkata → Zanzibar, Valley of Mexico → Santorini), at both shapes;
-10 of the 72 leave a shared land untracked, every one of them a step into
-Cape Town, Kathmandu or Istanbul (Sicily → Cape Town, for one, moves on its
-island and plains, and its mountain cross-fades: s 1.317). Cusco → Sicily,
+colour, **74 move and 1 is refused**, for the scale (Valley of Mexico →
+Santorini: one shared land, 0.4 times as wide in Santorini), at both shapes;
+12 of the 74 leave a shared land untracked, every one of them a step into
+Cape Town, Zanzibar, Kathmandu or Istanbul (Sicily → Cape Town, for one,
+moves on its island and plains, and its mountain cross-fades: s 1.317;
+Kolkata → Zanzibar on its island and forest, s 0.792, and Alexandria →
+Zanzibar on its swamp and plains, s 1.359, each a subset of the largest size
+whose scale passes). Cusco → Sicily,
 Lisbon → Sicily, Angkor → Cambodia, Kyoto → Cambodia, Venice → Lisbon,
 Araucanía → Hawaii (s 0.837: the view pulls back and the sea opens on the
 left) and Tahiti → Hawaii move on every shared land. (On places-v3, not
-re-laid, it was 70 moving, 26 of them with a land untracked, and 5 refused.)
+re-laid, it is 74 moving, 30 of them with a land untracked, and 1 refused.)
 
 **Worked example: Cusco → Sicily.** A half with one Plains and one Mountain
 draws Cusco (`plains+mountain`); an Island arrives, and the place is Sicily

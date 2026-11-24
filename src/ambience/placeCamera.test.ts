@@ -16,7 +16,7 @@ import { GEOGRAPHY } from './pairs.ts';
 import { FORGECOACH_PLACES_URL } from './prefs.ts';
 import { validatePlaces, type PlacePiece, type PlaceStage } from './places.ts';
 import { halfFrameCss, type HalfArt } from './layout.ts';
-import { CAMERA_IDLE, cameraCss, cameraMark, cameraStep, isCamera, placeCamera, placeLandBox, type CameraDrawn, type CameraMap, type CameraSide } from './placeCamera.ts';
+import { CAMERA_IDLE, cameraCss, cameraEnd, cameraMark, cameraStep, isCamera, placeCamera, placeLandBox, type CameraDrawn, type CameraMap, type CameraSide } from './placeCamera.ts';
 
 type Box = [number, number, number, number] | null;
 const pc = (b: Box): PlacePiece | null => (b ? { src: `p${b.join('_')}.webp`, x: b[0], y: b[1], w: b[2], h: b[3], width: null, height: null, bytes: null } : null);
@@ -228,13 +228,35 @@ describe('spec 1.23: the move across renders', () => {
     expect(cameraStep(st, d('X', place({ island: at(0.3, 0.2) })), 1200).run).toBeNull();
   });
 
-  it('a change while a move runs is plain and lets the move finish; a change back to where it came from drops it', () => {
+  it('a change while a move runs is plain and lets the move finish', () => {
     let st = cameraStep(cameraStep(CAMERA_IDLE, d('A', a), 1200), d('B', b), 1200);
     const run = st.run;
     st = cameraStep(st, d('C', c), 1200);
     expect(st.run).toBe(run);
-    const back = cameraStep(cameraStep(cameraStep(CAMERA_IDLE, d('A', a), 1200), d('B', b), 1200), d('A', a), 1200);
-    expect(back.run).toBeNull();
+    expect(st.drawn!.key).toBe('C');
+  });
+
+  it('a change straight back mid-move (A -> B -> A) is held until the move ends, then a plain cross-fade from B at rest', () => {
+    let st = cameraStep(cameraStep(CAMERA_IDLE, d('A', a), 1200), d('B', b), 1200);
+    const run = st.run!;
+    expect(run).toMatchObject({ from: 'A', to: 'B' });
+    // Back to A while it runs: B stays drawn, the move runs on untouched.
+    st = cameraStep(st, d('A', a), 1200);
+    expect(st.drawn!.key).toBe('B');
+    expect(st.run).toBe(run);
+    expect(st.plain).toBe(true);
+    // Rendered again before the end (the same wish): still held.
+    st = cameraStep(st, d('A', a), 1200);
+    expect([st.drawn!.key, st.run]).toEqual(['B', run]);
+    // The move ends: then A is drawn, with no move (a plain cross-fade), and the next change may move again.
+    st = cameraStep(cameraEnd(st), d('A', a), 1200);
+    expect([st.drawn!.key, st.run, st.plain]).toEqual(['A', null, false]);
+    expect(cameraStep(st, d('B', b), 1200).run).toMatchObject({ from: 'A', to: 'B' });
+    // Back to B again before the end (A -> B -> A -> B): B is drawn as it was, the move unchanged, nothing held.
+    let st2 = cameraStep(cameraStep(CAMERA_IDLE, d('A', a), 1200), d('B', b), 1200);
+    const run2 = st2.run;
+    st2 = cameraStep(cameraStep(st2, d('A', a), 1200), d('B', b), 1200);
+    expect([st2.drawn!.key, st2.run, st2.plain]).toEqual(['B', run2, false]);
   });
 });
 
@@ -244,7 +266,7 @@ describe('spec 1.23 over the live pack (places-v4, re-laid)', () => {
   const bySlug = (slug: string) => Object.values(P.places).find((p) => p!.slug === slug)!;
   const step = (from: string, to: string, phone = false) => placeCamera({ place: bySlug(from), phone }, { place: bySlug(to), phone });
 
-  it('of the 75 one-land steps (one colour more), 72 move (10 with a shared land left untracked) and 3 are refused for the scale, at both shapes', () => {
+  it('of the 75 one-land steps (one colour more), 74 move (12 with a shared land left untracked) and 1 is refused for the scale, at both shapes', () => {
     for (const phone of [false, true]) {
       const tally: Record<string, number> = {};
       const partial: string[] = [];
@@ -263,12 +285,13 @@ describe('spec 1.23 over the live pack (places-v4, re-laid)', () => {
           n++;
         }
       expect(n).toBe(75);
-      expect(tally).toEqual({ move: 72, scale: 3 });
-      expect(refused.sort()).toEqual(['alexandria->zanzibar', 'kolkata->zanzibar', 'valley-of-mexico->santorini']);
-      // Every step that leaves a land untracked reaches Cape Town, Kathmandu or Istanbul (whose four-land neighbours
-      // Cape Town, Zanzibar and Kathmandu keep one land out of order).
-      expect(partial).toHaveLength(10);
-      for (const x of partial) expect(x).toMatch(/->(cape-town|kathmandu|istanbul)$/);
+      expect(tally).toEqual({ move: 74, scale: 1 });
+      // A homeland's one land, 0.4 times as wide in Santorini: no subset can pass.
+      expect(refused).toEqual(['valley-of-mexico->santorini']);
+      // Every step that leaves a land untracked reaches Cape Town, Zanzibar, Kathmandu (the three four-land places that
+      // keep one land out of order) or Istanbul.
+      expect(partial).toHaveLength(12);
+      for (const x of partial) expect(x).toMatch(/->(cape-town|zanzibar|kathmandu|istanbul)$/);
     }
   });
 
@@ -298,8 +321,19 @@ describe('spec 1.23 over the live pack (places-v4, re-laid)', () => {
     expect(cameraMark(m)).toBe('1.317,-0.085,-0.270');
   });
 
-  it('refused on the scale: Kolkata → Zanzibar, Valley of Mexico → Santorini', () => {
-    expect(step('kolkata', 'zanzibar')).toEqual({ refused: 'scale' });
+  it('a subset of the largest size out of scale gives way to another of that size: Kolkata → Zanzibar, Alexandria → Zanzibar', () => {
+    // Kolkata → Zanzibar: {swamp, forest} covers the most width but its s is about 2.2; {island, forest} gives 0.792.
+    let m = map(step('kolkata', 'zanzibar'));
+    expect([m.shared, m.untracked]).toEqual([['island', 'forest'], ['swamp']]);
+    expect(cameraMark(m)).toBe('0.792,0.213,0.087');
+    // Alexandria → Zanzibar: {island, plains} would be s 0.43; {swamp, plains} gives 1.359.
+    m = map(step('alexandria', 'zanzibar'));
+    expect([m.shared, m.untracked]).toEqual([['swamp', 'plains'], ['island']]);
+    expect(cameraMark(m)).toBe('1.359,-0.471,-0.227');
+  });
+
+  it('refused on the scale when no subset passes: Valley of Mexico → Santorini', () => {
     expect(step('valley-of-mexico', 'santorini')).toEqual({ refused: 'scale' });
+    expect(step('valley-of-mexico', 'santorini', true)).toEqual({ refused: 'scale' });
   });
 });
