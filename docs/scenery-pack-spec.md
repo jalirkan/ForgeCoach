@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1, 1.19, 1.20, 1.21 and 1.22 in draft)
+# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1, 1.19, 1.20, 1.21, 1.22 and 1.23 in draft)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -39,6 +39,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.19 (draft) | **Every colour, the base pair, no clamp** (§2, *Every colour, the base pair, no clamp (1.19)*), the owner's four rules of 2026-11-02 after the storyboard review (pc-results `scenery/STORYBOARD.md`), reader only, no new field: **(a) every colour visible** -- the fold to three is gone: a side with four or five colours keeps the pair's picture and the third colour's painted-in picture where it exists, and draws **every further colour as its 1.14 cut-out**, stacked on the pair's grounds (the heavier pair colour's holds two, side by side, the lighter's the rest), each faded by its share and never on the seam core, a phone drawing the phone pieces (1.18.1), the caption naming them; a third colour with nothing painted in draws its cut-out, else its 1.15 panel, never nothing; **(b) the pair is the base** -- the pair showing stays while both its colours are among the three heaviest, and changes only when one leaves the top three; **(c) no clamp** -- a seam grid with no cell for the two colours' own stages draws each colour's own mono picture side by side at the split, joined by the plain 1.10 seam, "island s1 \| forest s5, no seam cell", and a cell painted later is drawn with no code change; **(d) pack-v9.2 is ForgeCoach's default pack**, which turns on its batch-3 pieces -- five elements with phone pieces, fronts for W/U/B/G, the won/lost veils, the empty table -- on **every** board, with `?pairfull=1` and without. Every 1.0–1.18.1 pack and pairs manifest is read unchanged. *(Amended in 1.21, 2026-11-08: with a scenes manifest loaded, a half of two or more colours draws a scene -- its own or the nearest -- so (a) holds only on a board without scenes; on one with them a colour the nearest scene leaves out is not on the half, and the caption says "not yet painted in".)* |
 | 1.20 (draft) | **Scenes** (§2, *Scenes (1.20)*): a third, optional manifest, **`scenes.json`**, fetched beside `scenery.json` from a scenes URL of its own (ForgeCoach's at `@scenes-v1`, with ForgeCoach's pack only, with `?pairfull=0` too): per exact state of a half -- its colours, each at its own stage, keyed `island2+forest3+mountain2` in the geography's order -- **one whole-half painting**, a 1.5 `half` that must carry its `phone` picture. When the half's state has a scene, the half draws that scene and nothing else -- no pair, no element, no cut-out, no band, no panel, no piece -- at a desktop and on a phone alike, never mirrored; the pair rule's memory is left alone. A state with no scene is drawn by 1.5–1.19 unchanged. Every 1.0–1.19 pack and pairs manifest is read unchanged. |
 | 1.21 (draft) | **The nearest scene** (§2, *The nearest scene (1.21)*), reader only, no new field, the owner's ruling of 2026-11-08: a half of **two or more colours** whose state has no scene of its own draws the **nearest painted scene**, alone, exactly as a scene state draws (no pair, no seam cell, no cut-out, no element, no piece): the same colours at the nearest stages (the smallest largest move of any one colour; then the least total stage distance; then the heavier colours keep their stage; then below before above), else the **lightest** colour dropped and the search repeated, down to a pair and then one colour, whose own 1.5 picture is drawn as a scene. The caption names the state, the painting drawn and what is not painted yet; the scene slot carries `data-scene-for`. With a scenes manifest loaded the 1.15–1.19 pair picture, seam and cut-outs are no longer drawn for two or more colours; they stay for a board with no scenes (a pack of your own, `?scenery=procedural`, `?scenes=off`). A half of one colour is unchanged. Every 1.0–1.20 manifest is read unchanged. |
+| 1.23 (draft) | **The place change is a camera move** (§2, *The place change (1.23)*), reader only, no new field: when a half's place changes and the two places share lands standing in the same left-to-right order, the cross-fade zooms and slides the picture so every shared land travels from where it stands in the old place to where it stands in the new one; any other place change cross-fades as in 1.22. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -3018,6 +3019,8 @@ above 1.001: the painters' fractions are rounded).
   appears bare and then pops its buildings in. Past the hold with a piece
   still out, the new place is drawn with its pieces arriving as they load.
   With nothing drawn before, the panels meanwhile (never blank).
+  *(Amended in 1.23: where the two places share lands in one order, the
+  cross-fade is also a camera move -- see *The place change (1.23)*.)*
 - **The base fails**: the half is planned as if the pack had no places (1.20's
   way: never bare panels flashing, never blank).
 - **Warm ahead**: once a place is drawn, the next stage's piece of every live
@@ -3069,6 +3072,137 @@ without places), `src/ambience/prefs.ts` (`FORGECOACH_PLACES_URL`,
 `PlaceLandPiece`); `places.test.ts`, `places-v3.test.ts`,
 `placesDom.test.tsx`, `storyboard.test.ts` and `e2e/ambience.e2e.mjs`
 (step 8, the manifest and pictures served from disk) hold it.
+
+### The place change (1.23, draft)
+
+**A new mana evolves the landscape; it does not redraw it.** In 1.22 a land
+of a new colour (or the last of one leaving) changes the half's place --
+Araucanía and an Island make Hawaii -- and the whole half cross-fades between
+two paintings in which nothing lines up. 1.23 is the owner's ruling of
+23 November 2026: the change is a **camera move**. While the two pictures
+cross-fade, the picture zooms and slides so that every land both places have
+travels from where it stands in the old place to where it stands in the new
+one. One more land: the view pulls back (or opens) and the new land is
+revealed in its own zone. Reader only: no new field, and every 1.22 file is
+read unchanged. (The places are being re-laid so every place keeps its lands
+in the geography's order left to right, and each landform beside its land's
+site; the more of them are, the more changes move.)
+
+**Where a land stands.** In a place, at one shape (the desktop base or the
+phone base): the union of the boxes of its six pieces at that shape (`x`,
+`y`, `w`, `h`, fractions of that base). A null piece adds nothing; a land
+whose six pieces are all null at that shape has no box. Its centre is `cx`,
+its width `w`.
+
+**The map.** A change from place A to place B, both drawn at the same shape:
+S is the lands both have with a box in both. The map, in fractions of the
+frame (the base picture's box), with one uniform scale:
+
+    x' = s·x + tx        y' = s·y + ty
+
+- two or more shared lands: `s` and `tx` are the least-squares line through
+  the points (cxA, cxB);
+- one shared land: `s = wB / wA`, `tx = cxB − s·cxA`;
+- vertically, A's horizon goes to B's: `ty = hB − s·hA`, each the base's
+  declared `horizon` at that shape (none: 0.5).
+
+**Refused** -- the change is 1.22's plain cross-fade, unchanged -- when:
+
+- S is empty;
+- the two are drawn at different shapes (one on the phone base, one on the
+  desktop base), or their bases at that shape differ in shape (a map uniform
+  in fractions of one would not be uniform in the other);
+- reduced motion is on;
+- `s` is outside [0.5, 2] (to the boxes' rounding);
+- the shared lands stand in another left-to-right order in B than in A (or
+  two of them share a centre): a flip is never animated.
+
+**The move**, over the same time and easing as the place's cross-fade (the
+pack's `growth.seconds`, `cubic-bezier(0.4, 0, 0.2, 1)`), at progress e from
+0 to 1:
+
+- the old place's whole frame (its base and its pieces, one element) is
+  transformed by M(e), the map interpolated from the identity -- scale
+  `1 + (s − 1)·e`, translation `tx·e`, `ty·e` -- and fades out as in 1.22;
+- the new place's whole frame is transformed by M(e) composed with the
+  inverse of the full map, so at every moment each shared land of B lies on
+  the same land of A, and is drawn as in 1.22. At e = 1 that is the identity:
+  the settled picture is exactly 1.22's, with no transform left on it.
+
+Both are CSS transforms on the frame, from its top-left, each under one CSS
+transition: the old frame from the identity to `translate(tx·W, ty·H)
+scale(s)`, the new one from `translate(−tx·W/s, −ty·H/s) scale(1/s)` to the
+identity (W and H the frame's size). Both are linear in e, so the browser's
+own interpolation is the composition at every moment; no script runs per
+frame. Each base is cropped about its own focal point and safe rect (1.5), so
+two frames of one shape have the same size but may sit at different offsets:
+the translation also carries the difference of the two offsets (times e for
+the old frame, times e − 1 for the new), which is what puts a land of A on
+its place in B's frame as drawn, not in a frame at B's offset.
+
+**Edges.** A frame smaller than the half during the move must never show a
+hard border or a bare background. The frame drawn larger than the half
+covers it; the one drawn smaller -- the old frame when it shrinks (s < 1),
+else the new one, which starts at 1/s -- gets a soft edge while it moves: a
+mask fading its outer 8% (each side, both axes) to transparent. On a
+shrinking old frame the soft edge is there from the move's first frame: the
+new frame beneath it is larger and lies on it land for land, so what shows
+through the faded edge is the same view, and the border is soft at every
+moment. On a new frame the mask's own size moves with the transform, from the
+frame's edge to wholly outside it (120% of it) by the end, because once the
+old frame has faded the new one is the half and its edge must not stay soft;
+so removing the mask at the settle changes no pixel. Settled, the mask is
+gone. The half's own background stays behind both.
+
+**Unchanged.** The load gate and hold (the new place appears only once its
+base and its state's pieces have settled), a stage step inside a place (only
+that land's piece changes; never a camera move), the `data-place`,
+`data-scene`, `data-art` and `data-piece` marks, the phone shape rule,
+`?places=off` and every other kind of half. A second place change while a
+move runs is a plain cross-fade, and lets the move finish under it; a change
+straight back to the place the move left drops the move (that frame comes
+back untransformed).
+
+**On places-v3** (the live pack, which is not yet re-laid): of the 75 steps
+that add one colour, **44 move and 31 are refused** -- 30 for a flip, 1 for
+the scale -- at both shapes. Cusco → Sicily, Lisbon → Sicily, Angkor →
+Cambodia, Kyoto → Cambodia and Venice → Lisbon move; Tahiti → Hawaii (its
+forest left of its island, Hawaii's right of it) is a plain cross-fade.
+Araucanía → Hawaii moves: its two shared lands, the forest and the mountain,
+keep their order, and v3 Hawaii's disorder is its island standing between
+them, which is not a shared land.
+
+**Worked example: Cusco → Sicily.** A half with one Plains and one Mountain
+draws Cusco (`plains+mountain`); an Island arrives, and the place is Sicily
+(`island+plains+mountain`). On a desktop, the lands' boxes (union of six
+pieces): Cusco's plains 0.0199–0.4938 (cx 0.2569), its mountain
+0.4777–0.9816 (cx 0.7297); Sicily's plains 0.3355–0.6996 (cx 0.5175), its
+mountain 0.6832–0.9848 (cx 0.8340). Two shared lands: the line through
+(0.2569, 0.5175) and (0.7297, 0.8340) gives s = 0.3165 / 0.4728 = **0.669**
+and tx = 0.5175 − 0.669 × 0.2569 = **0.346**; the horizons 0.619 (Cusco) and
+0.5584 (Sicily) give ty = 0.5584 − 0.669 × 0.619 = **0.144**. The old frame
+goes from the identity to `scale(0.669)` moved 34.6% of its width right and
+14.4% of its height down -- the view pulls back -- and carries the soft edge
+(it shrinks); the new frame comes in from `scale(1.494)` moved 51.6% of its
+width left and 21.5% of its height up, and settles at the identity. Through
+the 1.2 s cross-fade the two plains and the two mountains lie on each other
+(the e2e measures 0.0 px apart part way), and Sicily's island opens on the
+left. `data-camera="0.669,0.346,0.144"` while it runs (on a phone, Sicily's
+and Cusco's phone horizons make it `0.669,0.346,0.157`).
+
+**The DOM.** While a move runs the place slot carries
+`data-camera="<s>,<tx>,<ty>"` (three decimals), and the two frames
+`data-camera-frame="from"` and `"to"`; settled, all three are gone and the
+frame's style is 1.22's.
+
+`src/ambience/placeCamera.ts` (`placeLandBox`, `placeCamera`, `cameraCss`,
+`cameraStep`), SceneryStrip (`PlacePanel`, `PlacePanelView`,
+`cameraFrameStyle`); `placeCamera.test.ts` (the box, the map for one, two and
+three lands, every refusal, the CSS, the steps across renders, the counts on
+places-v3), `placesDom.test.tsx` (both frames under the move, a refused change
+and a stage step untransformed, the settled frame bare) and
+`e2e/ambience.e2e.mjs` (step 8's `places-camera`: Plains, Mountain, Island,
+on the pack served from disk) hold it.
 
 ## 3. Files and budgets
 
