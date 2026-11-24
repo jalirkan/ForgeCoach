@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
-# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1, 1.19, 1.20, 1.21 and 1.22 in draft)
+# Scenery pack spec (schema 1, version 1.16.1; 1.17, 1.18, 1.18.1, 1.19, 1.20, 1.21, 1.22 and 1.23 in draft)
 
 This is the contract between ForgeCoach's board scenery and an **art pack**: a
 folder of images, sprite sheets and short loops, with one `scenery.json`
@@ -39,6 +39,7 @@ fields, so a pack written for an earlier version keeps working unchanged.
 | 1.19 (draft) | **Every colour, the base pair, no clamp** (§2, *Every colour, the base pair, no clamp (1.19)*), the owner's four rules of 2026-11-02 after the storyboard review (pc-results `scenery/STORYBOARD.md`), reader only, no new field: **(a) every colour visible** -- the fold to three is gone: a side with four or five colours keeps the pair's picture and the third colour's painted-in picture where it exists, and draws **every further colour as its 1.14 cut-out**, stacked on the pair's grounds (the heavier pair colour's holds two, side by side, the lighter's the rest), each faded by its share and never on the seam core, a phone drawing the phone pieces (1.18.1), the caption naming them; a third colour with nothing painted in draws its cut-out, else its 1.15 panel, never nothing; **(b) the pair is the base** -- the pair showing stays while both its colours are among the three heaviest, and changes only when one leaves the top three; **(c) no clamp** -- a seam grid with no cell for the two colours' own stages draws each colour's own mono picture side by side at the split, joined by the plain 1.10 seam, "island s1 \| forest s5, no seam cell", and a cell painted later is drawn with no code change; **(d) pack-v9.2 is ForgeCoach's default pack**, which turns on its batch-3 pieces -- five elements with phone pieces, fronts for W/U/B/G, the won/lost veils, the empty table -- on **every** board, with `?pairfull=1` and without. Every 1.0–1.18.1 pack and pairs manifest is read unchanged. *(Amended in 1.21, 2026-11-08: with a scenes manifest loaded, a half of two or more colours draws a scene -- its own or the nearest -- so (a) holds only on a board without scenes; on one with them a colour the nearest scene leaves out is not on the half, and the caption says "not yet painted in".)* |
 | 1.20 (draft) | **Scenes** (§2, *Scenes (1.20)*): a third, optional manifest, **`scenes.json`**, fetched beside `scenery.json` from a scenes URL of its own (ForgeCoach's at `@scenes-v1`, with ForgeCoach's pack only, with `?pairfull=0` too): per exact state of a half -- its colours, each at its own stage, keyed `island2+forest3+mountain2` in the geography's order -- **one whole-half painting**, a 1.5 `half` that must carry its `phone` picture. When the half's state has a scene, the half draws that scene and nothing else -- no pair, no element, no cut-out, no band, no panel, no piece -- at a desktop and on a phone alike, never mirrored; the pair rule's memory is left alone. A state with no scene is drawn by 1.5–1.19 unchanged. Every 1.0–1.19 pack and pairs manifest is read unchanged. |
 | 1.21 (draft) | **The nearest scene** (§2, *The nearest scene (1.21)*), reader only, no new field, the owner's ruling of 2026-11-08: a half of **two or more colours** whose state has no scene of its own draws the **nearest painted scene**, alone, exactly as a scene state draws (no pair, no seam cell, no cut-out, no element, no piece): the same colours at the nearest stages (the smallest largest move of any one colour; then the least total stage distance; then the heavier colours keep their stage; then below before above), else the **lightest** colour dropped and the search repeated, down to a pair and then one colour, whose own 1.5 picture is drawn as a scene. The caption names the state, the painting drawn and what is not painted yet; the scene slot carries `data-scene-for`. With a scenes manifest loaded the 1.15–1.19 pair picture, seam and cut-outs are no longer drawn for two or more colours; they stay for a board with no scenes (a pack of your own, `?scenery=procedural`, `?scenes=off`). A half of one colour is unchanged. Every 1.0–1.20 manifest is read unchanged. |
+| 1.23 (draft) | **The place change is a camera move** (§2, *The place change (1.23)*), reader only, no new field: when a half's place changes and the two places share lands, the cross-fade zooms and slides the picture so every shared land in the largest subset standing in one left-to-right order in both travels from where it stands in the old place to where it stands in the new one (the rest cross-fade untracked); refused only with no shared land, other shapes, reduced motion or a scale outside [0.5, 2]. |
 | 1.6 | **Growth between stages** (§2, *Growth between stages*): between two thresholds every land grows a biome a little toward its next stage — the next stage's still pictures cross-faded over the current ones by the progress, the accents thickened, the slot widened — with a short fade per land. On for every pack with no change; an optional top-level **`growth`** (`crossfade`, `seconds`) lets a pack opt out or tune the fade. |
 
 ## 1. How the scenery works
@@ -2879,12 +2880,16 @@ never mirrored. A half with a land the five do not name (a `wastes` slot,
 1.11) has no place and is drawn as before.
 
 **The file.** `places.json`, at the root of its own URL: ForgeCoach's is
-`https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v3/places.json`,
+`https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v4/places.json`,
 loaded on 1.20's condition (the pack is ForgeCoach's own, with the
 whole-half flag and without; never with `?scenes=off`, nor `?places=off`). The
-pictures may live at other refs (places-v3 names its files at
-`@places-v3-p1`, 29 places, 39.9 MB, and `@places-v3-p2`, Kathmandu and
-Istanbul, 3.1 MB, so no ref passes jsDelivr's 50 MB, which is per ref). A file
+pictures may live at other refs (places-v4 names its files at
+`@places-v4-p1`, 30 places, 39.3 MB, and `@places-v4-p2`, Istanbul, 1.8 MB,
+so no ref passes jsDelivr's 50 MB, which is per ref; places-v4
+(2026-11-24) is places-v3 re-laid -- 9 places re-laid and 5 mirrored so every
+place keeps its lands left to right in the geography's order (Cape Town,
+Zanzibar and Kathmandu keep one land out of order), for 1.23's camera move;
+its shapes are v3's). A file
 that does not load or does not validate, or whose every place is refused,
 means **no places** -- never an error on the board -- and the halves are drawn
 as before (1.20 / 1.21). `scenes.json` is fetched beside `places.json`, never
@@ -2897,31 +2902,31 @@ every place has loaded clean.
 {
   "schema": 1,
   "spec": "1.22",
-  "name": "places-v3",
+  "name": "places-v4",
   "author": "jalirkan",
   "license": "CC BY 4.0",
   "places": {
     "island+swamp+plains+mountain": {
       "slug": "cartagena",
       "name": "Cartagena de Indias",
-      "ref": "places-v3-p1",
+      "ref": "places-v4-p1",
       "lands": ["island", "swamp", "plains", "mountain"],
       "half": {
-        "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v3-p1/places/cartagena/d/base.webp",
-        "width": 2560, "height": 800, "bytes": 205450,
-        "subjectBand": [0.05, 0.71], "horizon": 0.6098,
-        "focal": { "x": 0.4961, "y": 0.4563 }, "safe": { "x": 0, "y": 0.05, "w": 0.9922, "h": 0.8125 },
+        "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v4-p1/places/cartagena/d/base.webp",
+        "width": 2560, "height": 800, "bytes": 208904,
+        "subjectBand": [0.05, 0.581], "horizon": 0.4805,
+        "focal": { "x": 0.4984, "y": 0.4875 }, "safe": { "x": 0, "y": 0.1525, "w": 0.9969, "h": 0.67 },
         "phone": {
-          "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v3-p1/places/cartagena/w/base.webp",
-          "width": 2560, "height": 1408, "bytes": 330670,
-          "subjectBand": [0.2557, 0.6307], "horizon": 0.5737,
-          "focal": { "x": 0.4961, "y": 0.4865 }, "safe": { "x": 0, "y": 0.2557, "w": 0.9922, "h": 0.4616 }
+          "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v4-p1/places/cartagena/w/base.webp",
+          "width": 2560, "height": 1408, "bytes": 341640,
+          "subjectBand": [0.2557, 0.5574], "horizon": 0.5003,
+          "focal": { "x": 0.4984, "y": 0.5043 }, "safe": { "x": 0, "y": 0.3139, "w": 0.9969, "h": 0.3807 }
         }
       },
       "layers": {
         "island": [
-          { "half":  { "src": "…/places/cartagena/d/island-1.webp", "x": 0.2738, "y": 0.6913, "w": 0.0859, "h": 0.18, "width": 220, "height": 144, "bytes": 6620 },
-            "phone": { "src": "…/places/cartagena/d/island-1.webp", "x": 0.2738, "y": 0.62, "w": 0.0859, "h": 0.1023, "width": 220, "height": 144, "bytes": 6620 } },
+          { "half":  { "src": "…/places/cartagena/d/island-1.webp", "x": 0.0051, "y": 0.6412, "w": 0.0922, "h": 0.2125, "width": 236, "height": 170, "bytes": 8102 },
+            "phone": { "src": "…/places/cartagena/d/island-1.webp", "x": 0.0051, "y": 0.5916, "w": 0.0922, "h": 0.1207, "width": 236, "height": 170, "bytes": 8102 } },
           "… five more: stages 2 to 6"
         ],
         "swamp": ["… six"], "plains": ["… six"], "mountain": ["… six"]
@@ -2936,7 +2941,7 @@ every place has loaded clean.
   **must carry its `phone` picture** (a place is drawn on a desktop and a phone
   alike). Both MUST declare `width` and `height` (every piece is placed in
   fractions of its base, so a base without its pixel size is refused, never
-  given 1.5's default size). Nothing assumes the phone base's shape. places-v3's
+  given 1.5's default size). Nothing assumes the phone base's shape. places-v3's (and v4's)
   phone base is the desktop panorama with sky above and near ground below,
   1.82 : 1 (2560 × 1408, the desktop base 320 px down it and 288 px of ground
   under it), because a phone's half of the board measures 2.14 : 1 with one
@@ -2954,7 +2959,7 @@ every place has loaded clean.
   top-left: the piece is drawn stretched to exactly that box. `width` /
   `height` are its pixel size (information); `bytes` its declared size. A
   phone piece may be the same file as the land's desktop piece at another
-  box (places-v3: the desktop pieces, placed in the taller phone base; a few
+  box (places-v3 and v4: the desktop pieces, placed in the taller phone base; a few
   that touch the old top or bottom edge get a file of their own). The reader
   keys a piece on screen by its file, box AND stage, and counts each file's
   bytes once.
@@ -2985,7 +2990,7 @@ above 1.001: the painters' fractions are rounded).
    without.
 3. **Composed** = the base framed exactly as a scene is (1.5's crop about its
    focal point and safe rect, the phone base on a phone-shaped half by the
-   1.5 rule: the shape nearer the half's on a log scale, so with places-v3 a
+   1.5 rule: the shape nearer the half's on a log scale, so with places-v4 a
    desktop half narrower than about 2.41 : 1 draws the phone base too, which
    fits it better), never mirrored, never panned; and **inside the same frame**,
    above the base, one picture per live land in the geography's order -- that
@@ -3018,13 +3023,15 @@ above 1.001: the painters' fractions are rounded).
   appears bare and then pops its buildings in. Past the hold with a piece
   still out, the new place is drawn with its pieces arriving as they load.
   With nothing drawn before, the panels meanwhile (never blank).
+  *(Amended in 1.23: where the two places share lands, the
+  cross-fade is also a camera move -- see *The place change (1.23)*.)*
 - **The base fails**: the half is planned as if the pack had no places (1.20's
   way: never bare panels flashing, never blank).
 - **Warm ahead**: once a place is drawn, the next stage's piece of every live
   land (stage + 1, at the shape in use). Other places' bases are not warmed.
 
-**Budgets.** The manifest at most **2 MB** (refused unread past it; places-v3's
-is 214,262 bytes). As warnings: a place's declared files (both bases and every
+**Budgets.** The manifest at most **2 MB** (refused unread past it; places-v4's
+is 214,472 bytes). As warnings: a place's declared files (both bases and every
 piece at both shapes) past **8 MB**, and any one ref's past **45 MB**
 (jsDelivr's 50 MB).
 
@@ -3040,14 +3047,14 @@ A first Forest: the half holds Cartagena until Istanbul's base and its five
 pieces have loaded, then cross-fades to Istanbul. On a phone the half draws
 `cartagena/w/base.webp` (2560 × 1408, the same panorama with sky above and
 near ground below) and the same four piece files from `cartagena/d/` at their phone boxes
-(island-1's, for one, at y 0.62 and h 0.1023 of the phone base against y
-0.6913 and h 0.18 of the desktop one: 320 + 0.6913 × 800 = 873 px of 1408); none of Cartagena's phone pieces needs
-a file of its own (62 do across the pack, under `w/`). The caption:
+(island-1's, for one, at y 0.5916 and h 0.1207 of the phone base against y
+0.6412 and h 0.2125 of the desktop one: 320 + 0.6412 × 800 = 833 px of 1408); none of Cartagena's phone pieces needs
+a file of its own (43 do across places-v4, under `w/`). The caption:
 "Cartagena de Indias: Island 2, Swamp 1, Plains 3, Mountain 1".
 
 **The walk with places.** `storyboard.test.ts` walks every state of 0–6
 lands a colour (three arrival orders, the duals) at both shapes, with the
-flag and without, on places-v3: every state with lands is its place alone,
+flag and without, on places-v4: every state with lands is its place alone,
 every colour on screen, and the caption names the place and every land. The
 caption is read from its land list only ("…: Island 2, Forest 1"), since a
 name may hold a land word: "Hawaii, the Big Island", "Cambodia's rice plains
@@ -3066,9 +3073,184 @@ out); a failed piece a hidden `[data-piece-failed]` mark.
 `base`, `pairFullHold`), `src/ambience/pack.ts` (`loadPlaces`; scenes only
 without places), `src/ambience/prefs.ts` (`FORGECOACH_PLACES_URL`,
 `placesUrlOf`, `?places=off`), SceneryStrip (`PlacePanel`,
-`PlaceLandPiece`); `places.test.ts`, `places-v3.test.ts`,
+`PlaceLandPiece`); `places.test.ts`, `places-v4.test.ts`,
 `placesDom.test.tsx`, `storyboard.test.ts` and `e2e/ambience.e2e.mjs`
 (step 8, the manifest and pictures served from disk) hold it.
+
+### The place change (1.23, draft)
+
+**A new mana evolves the landscape; it does not redraw it.** In 1.22 a land
+of a new colour (or the last of one leaving) changes the half's place --
+Araucanía and an Island make Hawaii -- and the whole half cross-fades between
+two paintings in which nothing lines up. 1.23 is the owner's ruling of
+23 November 2026: the change is a **camera move**. While the two pictures
+cross-fade, the picture zooms and slides so that every land both places have
+travels from where it stands in the old place to where it stands in the new
+one. One more land: the view pulls back (or opens) and the new land is
+revealed in its own zone. Reader only: no new field, and every 1.22 file is
+read unchanged. (The places are being re-laid so every place keeps its lands
+in the geography's order left to right, and each landform beside its land's
+site; the more of them are, the more changes move.)
+
+**Where a land stands.** In a place, at one shape (the desktop base or the
+phone base): the union of the boxes of its six pieces at that shape (`x`,
+`y`, `w`, `h`, fractions of that base). A null piece adds nothing; a land
+whose six pieces are all null at that shape has no box. Its centre is `cx`,
+its width `w`.
+
+**The map.** A change from place A to place B, both drawn at the same shape:
+S is the lands both have with a box in both. The map is fitted on the
+**tracked** lands T. The candidates are every subset of S whose left-to-right
+order (by box centre) is the same in A and B (two lands at one centre are
+never both in one), taken largest first; within a size, the one whose boxes
+cover the most width in A first, then the first in the geography's order. T
+is the **first candidate whose map's `s` is inside [0.5, 2]**: when no subset
+of a size passes, the next size down is tried, down to one land. (So the
+longest common ordered subsequence when its scale allows, else the best of
+the rest; *amended on 24 November 2026 after review*: a largest subset whose
+scale fell out of range had refused the move although another of the same
+size passed -- Kolkata → Zanzibar, {swamp, forest} at s ≈ 2.2 against
+{island, forest} at 0.792.) A
+shared land left out of T (a flip: places-v3 was not re-laid, and in
+places-v4 three four-land places, Cape Town, Zanzibar and Kathmandu, keep one
+land out of order because moving it broke the painting) simply cross-fades without being
+tracked, so a link still moves on the lands that do line up. The map, in
+fractions of the frame (the base picture's box), with one uniform scale:
+
+    x' = s·x + tx        y' = s·y + ty
+
+- two or more tracked lands: `s` and `tx` are the least-squares line through
+  the points (cxA, cxB);
+- one tracked land: `s = wB / wA`, `tx = cxB − s·cxA`;
+- vertically, A's horizon goes to B's: `ty = hB − s·hA`, each the base's
+  declared `horizon` at that shape (none: 0.5).
+
+**Refused** -- the change is 1.22's plain cross-fade, unchanged -- when:
+
+- S is empty;
+- the two are drawn at different shapes (one on the phone base, one on the
+  desktop base), or their bases at that shape differ in shape (a map uniform
+  in fractions of one would not be uniform in the other);
+- reduced motion is on;
+- no candidate's `s` is inside [0.5, 2] (to the boxes' rounding).
+
+A flip is never refused and never animated: a land out of order is not in T,
+so it is never carried across the picture; it fades out where it stood in A
+and in where it stands in B, as every land does in 1.22. *(Amended on 24
+November 2026, the lead's ruling: the first 1.23 refused a change whose
+shared lands were in another order, 31 of v3's 75 steps.)*
+
+**The move**, over the same time and easing as the place's cross-fade (the
+pack's `growth.seconds`, `cubic-bezier(0.4, 0, 0.2, 1)`), at progress e from
+0 to 1:
+
+- the old place's whole frame (its base and its pieces, one element) is
+  transformed by M(e), the map interpolated from the identity -- scale
+  `1 + (s − 1)·e`, translation `tx·e`, `ty·e` -- and fades out as in 1.22;
+- the new place's whole frame is transformed by M(e) composed with the
+  inverse of the full map, so at every moment each tracked land of B lies on
+  the same land of A, and is drawn as in 1.22. At e = 1 that is the identity:
+  the settled picture is exactly 1.22's, with no transform left on it.
+
+Both are CSS transforms on the frame, from its top-left, each under one CSS
+transition: the old frame from the identity to `translate(tx·W, ty·H)
+scale(s)`, the new one from `translate(−tx·W/s, −ty·H/s) scale(1/s)` to the
+identity (W and H the frame's size). Both are linear in e, so the browser's
+own interpolation is the composition at every moment; no script runs per
+frame. Each base is cropped about its own focal point and safe rect (1.5), so
+two frames of one shape have the same size but may sit at different offsets:
+the translation also carries the difference of the two offsets (times e for
+the old frame, times e − 1 for the new), which is what puts a land of A on
+its place in B's frame as drawn, not in a frame at B's offset.
+
+**Edges: three layers while a move runs.** With a pan in the map neither
+moving frame can cover the half for the whole move -- at e = 0.42 of
+Araucanía → Hawaii (s 0.837, tx 0.298) the incoming frame is drawn at
+0.42 + 0.58/0.837 = 1.112 times its size, shifted 0.125 − 1.112 × 0.298 =
+−0.206, so it spans −0.206 to 0.906 of the half, and right of it only the
+fading old frame stood over the half's dark background, a dark band with a
+hard edge. So while a move runs the half draws three layers, bottom to top:
+
+1. **the new place at its settled position** (no transform, no mask), fully
+   opaque from the first moment of the move: it always covers the half;
+2. **the new place moving**, as above (aligned with the old frame at every
+   moment), fully opaque, with a soft edge on all four sides for the whole
+   move -- a mask fading its outer 8% (each side, both axes) to transparent --
+   so wherever it ends it dissolves into layer 1 instead of showing an edge;
+3. **the old place moving and fading out**, with the same soft edge.
+
+At the settle layers 2 and 3 are removed and layer 1 is the one settled
+frame, 1.22's exactly: the pixels do not change, because layer 2 has reached
+the identity over it. Reduced motion and a refused change are unchanged:
+1.22's plain cross-fade, two layers.
+
+**Unchanged.** The load gate and hold (the new place appears only once its
+base and its state's pieces have settled), a stage step inside a place (only
+that land's piece changes; never a camera move), the `data-place`,
+`data-scene`, `data-art` and `data-piece` marks, the phone shape rule,
+`?places=off` and every other kind of half. A second place change while a
+move runs is a plain cross-fade, and lets the move finish under it. A change
+**straight back** to the place the move left (A → B → A while it runs) is
+**held**: B stays drawn and the move runs to its end undisturbed, then A comes
+back by 1.22's plain cross-fade from B at rest. (Dropping the move at once
+would snap A's half-moved, half-faded frame to its settled place: a visible
+pop. Holding is the simpler of the two soft ends and never leaves a frame
+with a transform or a mask; the cost is that the board shows B for at most
+the rest of one cross-fade after A is back.)
+
+**On places-v4** (the live pack, re-laid): of the 75 steps that add one
+colour, **74 move and 1 is refused**, for the scale (Valley of Mexico →
+Santorini: one shared land, 0.4 times as wide in Santorini), at both shapes;
+12 of the 74 leave a shared land untracked, every one of them a step into
+Cape Town, Zanzibar, Kathmandu or Istanbul (Sicily → Cape Town, for one,
+moves on its island and plains, and its mountain cross-fades: s 1.317;
+Kolkata → Zanzibar on its island and forest, s 0.792, and Alexandria →
+Zanzibar on its swamp and plains, s 1.359, each a subset of the largest size
+whose scale passes). Cusco → Sicily,
+Lisbon → Sicily, Angkor → Cambodia, Kyoto → Cambodia, Venice → Lisbon,
+Araucanía → Hawaii (s 0.837: the view pulls back and the sea opens on the
+left) and Tahiti → Hawaii move on every shared land. (On places-v3, not
+re-laid, it is 74 moving, 30 of them with a land untracked, and 1 refused.)
+
+**Worked example: Cusco → Sicily.** A half with one Plains and one Mountain
+draws Cusco (`plains+mountain`); an Island arrives, and the place is Sicily
+(`island+plains+mountain`). On a desktop, the lands' boxes (union of six
+pieces): Cusco's plains 0.0199–0.4938 (cx 0.2569), its mountain
+0.4777–0.9816 (cx 0.7297); Sicily's plains 0.3355–0.6996 (cx 0.5175), its
+mountain 0.6832–0.9848 (cx 0.8340). Two shared lands: the line through
+(0.2569, 0.5175) and (0.7297, 0.8340) gives s = 0.3165 / 0.4728 = **0.669**
+and tx = 0.5175 − 0.669 × 0.2569 = **0.346**; the horizons 0.619 (Cusco) and
+0.5584 (Sicily) give ty = 0.5584 − 0.669 × 0.619 = **0.144**. The old frame
+goes from the identity to `scale(0.669)` moved 34.6% of its width right and
+14.4% of its height down -- the view pulls back; the moving new frame comes in from `scale(1.494)` moved 51.6% of its
+width left and 21.5% of its height up, and settles at the identity. Through
+the 1.2 s cross-fade the two plains and the two mountains lie on each other
+(the e2e measures 0.0 px apart part way), Sicily settled beneath covers the
+half throughout, and Sicily's island opens on the left. `data-camera="0.669,0.346,0.144"` while it runs (on a phone, Sicily's
+and Cusco's phone horizons make it `0.669,0.346,0.157`).
+
+**One land out of order, by hand.** A: island 0.1–0.3 (cx 0.2), plains
+0.4–0.6 (cx 0.5), mountain 0.7–0.9 (cx 0.8). B: plains cx 0.3, mountain cx
+0.7, island cx 0.9 -- right of both. The island against either other land is
+in another order, plains and mountain agree: T = {plains, mountain}, s = 0.4 /
+0.3 = 1.333, tx = 0.3 − 1.333 × 0.5 = −0.367 and, with no horizons, ty = 0.5 −
+1.333 × 0.5 = −0.167; the island cross-fades untracked.
+
+**The DOM.** While a move runs the place slot carries
+`data-camera="<s>,<tx>,<ty>"` (three decimals), and the three frames
+`data-camera-frame="under"` (the new place settled), `"to"` (the new place
+moving) and `"from"` (the old place moving); settled, the under frame is the
+one frame, with no mark and 1.22's style, and `data-camera` is gone.
+
+`src/ambience/placeCamera.ts` (`placeLandBox`, `placeCamera`, `cameraCss`,
+`cameraStep`), SceneryStrip (`PlacePanel`, `PlacePanelView`,
+`cameraFrameStyle`); `placeCamera.test.ts` (the box, the map for one, two and
+three lands, one land out of order and a swapped pair, every refusal, the CSS, the steps across renders, the counts on
+places-v4), `placesDom.test.tsx` (both frames under the move, a refused change
+and a stage step untransformed, the settled frame bare) and
+`e2e/ambience.e2e.mjs` (step 8's `places-camera`: Plains, Mountain, Island --
+Cusco → Sicily -- and `places-camera-hawaii`: Forest ×4, Mountain ×5, Island
+-- Araucanía → Hawaii -- on the pack served from disk) hold it.
 
 ## 3. Files and budgets
 

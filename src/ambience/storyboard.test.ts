@@ -64,7 +64,7 @@ import { validateScenes } from './scenes.ts';
 import { addLand, captionColours, colourCount, enumerateStates, landCount, SHAPES, stateLabel, storyboardHalf, weightOf, type GapReason, type HalfStoryboard, type ManaState, type Shape, type StoryboardPacks } from './storyboard.ts';
 
 const json = (f: string) => JSON.parse(readFileSync(new URL(`./testdata/${f}`, import.meta.url), 'utf8'));
-const PLACES_RAW = (): unknown => json('places-v3.places.json');
+const PLACES_RAW = (): unknown => json('places-v4.places.json');
 const PIECE_COLOURS_OF = (bs: readonly string[]) => (['W', 'U', 'B', 'R', 'G'] as const).filter((c) => bs.includes({ W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' }[c]));
 const PACKS: StoryboardPacks = {
   pack: validateManifest(json('pack-v10.scenery.json'), `${FORGECOACH_PACK_URL}scenery.json`).pack!,
@@ -680,7 +680,7 @@ function reportMarkdown(w: Walk): string {
 }
 
 // ---------------------------------------------------------------------------
-// Spec 1.22: the walk with places (testdata/places-v3.places.json, the places-v3 tag's file byte for byte): a place is
+// Spec 1.22: the walk with places (testdata/places-v4.places.json, the places-v4 tag's file byte for byte): a place is
 // drawn for every state with lands, every colour on it -- its base and each live land's piece at its stage -- so no colour
 // is hidden in any state, at either shape, with the flag or without, and the caption names the place and every land.
 

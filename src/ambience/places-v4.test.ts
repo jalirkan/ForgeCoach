@@ -1,12 +1,14 @@
 /*
- * ForgeCoach — ambience/places-v3.test.ts
+ * ForgeCoach — ambience/places-v4.test.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Spec 1.22: `testdata/places-v3.places.json` is the places-v3 tag's
- * `places.json` byte for byte (2026-11-23: 31 places, pictures at the refs
- * places-v3-p1 (29 places) and places-v3-p2 (Kathmandu and Istanbul), absolute
- * URLs; every phone base 1.82:1, 2560 × 1408, the desktop base 320 px down it,
- * most phone pieces the desktop piece files at their phone boxes), hash-pinned as the scenes and
+ * Spec 1.22: `testdata/places-v4.places.json` is the places-v4 tag's
+ * `places.json` byte for byte (2026-11-24: places-v3 re-laid so every place keeps
+ * its lands left to right in the geography's order, for spec 1.23's camera move --
+ * 31 places, pictures at the refs places-v4-p1 (30 places) and places-v4-p2
+ * (Istanbul), absolute URLs; every phone base 1.82:1, 2560 × 1408, the desktop
+ * base 320 px down it, most phone pieces the desktop piece files at their phone
+ * boxes), hash-pinned as the scenes and
  * pairs files are. A full parse: every colour set has its place, every land six
  * stages with a piece at both shapes, and the only null pieces are the five
  * homelands' stage 1 (their base is stage 1). Nothing here touches the network.
@@ -19,22 +21,22 @@ import { GEOGRAPHY } from './pairs.ts';
 import { FORGECOACH_PLACES_URL } from './prefs.ts';
 import { fetchPlaces, MAX_PLACES_MANIFEST_BYTES, placeFor, placesBytesByRef, validatePlaces } from './places.ts';
 
-const bytes = readFileSync(new URL('./testdata/places-v3.places.json', import.meta.url));
+const bytes = readFileSync(new URL('./testdata/places-v4.places.json', import.meta.url));
 const MANIFEST = `${FORGECOACH_PLACES_URL}places.json`;
 const r = validatePlaces(JSON.parse(bytes.toString('utf8')), MANIFEST);
 const PLACES = r.places!;
 
-describe('places-v3, the tagged file', () => {
+describe('places-v4, the tagged file', () => {
   it('is the tag’s file byte for byte (hash-pinned)', () => {
-    expect(bytes.length).toBe(214262);
-    expect(createHash('sha256').update(bytes).digest('hex')).toBe('12c7b85898e868cdee7f664af93809212a64208f01712efb6570dcb387fd093a');
+    expect(bytes.length).toBe(214472);
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe('96d2b739225517f57008c7f3d32a65fd561b70a53f2251cee8433ee97ae06b82');
     expect(bytes.length).toBeLessThan(MAX_PLACES_MANIFEST_BYTES);
   });
 
   it('validates clean: 31 places, one for every set of colours, spec 1.22', () => {
     expect(r.errors).toEqual([]);
     expect(r.warnings).toEqual([]);
-    expect(PLACES).toMatchObject({ spec: '1.22', name: 'places-v3' });
+    expect(PLACES).toMatchObject({ spec: '1.22', name: 'places-v4' });
     const keys = Object.keys(PLACES.places);
     expect(keys).toHaveLength(31);
     for (let m = 1; m < 32; m++) expect(keys).toContain(GEOGRAPHY.filter((_, i) => m & (1 << i)).join('+'));
@@ -76,14 +78,14 @@ describe('places-v3, the tagged file', () => {
     expect(nulls.sort()).toEqual(GEOGRAPHY.flatMap((b) => [`${b}/${b}1/half`, `${b}/${b}1/phone`]).sort());
   });
 
-  it('the phone shape: every phone base 2560 × 1408 (1.82:1); the phone pieces are the desktop files at their phone boxes but 62 with a file of their own', () => {
+  it('the phone shape: every phone base 2560 × 1408 (1.82:1); the phone pieces are the desktop files at their phone boxes but 43 with a file of their own', () => {
     let own = 0;
     for (const p of Object.values(PLACES.places)) {
       expect([p!.half.width, p!.half.height]).toEqual([2560, 800]);
       expect([p!.half.phone.width, p!.half.phone.height]).toEqual([2560, 1408]);
       for (const stages of Object.values(p!.layers)) for (const st of stages!) if (st.half && st.phone && st.phone.src !== st.half.src) own++;
     }
-    expect(own).toBe(62);
+    expect(own).toBe(43);
     // A shared phone piece is its desktop box moved 320 px down the 1408 px phone base (to the file's rounding).
     const c = PLACES.places['island+swamp+plains+mountain']!.layers.island![0]!;
     expect(c.phone!.src).toBe(c.half!.src);
@@ -108,11 +110,11 @@ describe('places-v3, the tagged file', () => {
 
   it('declares its files in two refs, each under jsDelivr’s 50 MB', () => {
     const refs = placesBytesByRef(PLACES);
-    expect([...refs.keys()].sort()).toEqual(['places-v3-p1', 'places-v3-p2']);
+    expect([...refs.keys()].sort()).toEqual(['places-v4-p1', 'places-v4-p2']);
     const byRef = new Map<string, string[]>();
     for (const p of Object.values(PLACES.places)) byRef.set(p!.ref!, [...(byRef.get(p!.ref!) ?? []), p!.slug]);
-    expect(byRef.get('places-v3-p1')).toHaveLength(29);
-    expect(byRef.get('places-v3-p2')!.sort()).toEqual(['istanbul', 'kathmandu']);
+    expect(byRef.get('places-v4-p1')).toHaveLength(30);
+    expect(byRef.get('places-v4-p2')).toEqual(['istanbul']);
     for (const b of refs.values()) expect(b).toBeLessThan(45 * 1024 * 1024);
   });
 

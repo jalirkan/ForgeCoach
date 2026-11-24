@@ -4,9 +4,9 @@
  *
  * Spec 1.22, places (places.ts): the key, the file, the composition, the plan's
  * precedence, the load gate and hold, the caption, the piece fade's state and
- * the loader. `synthPlaces()` builds a places manifest in places-v1's, places-v2's or places-v3's shape for
+ * the loader. `synthPlaces()` builds a places manifest in places-v1's, places-v2's or places-v3's (places-v4's) shape for
  * all 31 colour sets with relative URLs (the shape tests); the real tagged file
- * is `testdata/places-v3.places.json`, hash-pinned in places-v3.test.ts.
+ * is `testdata/places-v4.places.json`, hash-pinned in places-v4.test.ts.
  * Nothing here touches the network.
  */
 import { describe, expect, it } from 'vitest';
@@ -191,7 +191,7 @@ describe('spec 1.22: the file', () => {
   });
 
   it('is loaded with ForgeCoach’s own pack on the scenes’ condition; ?places=off and ?scenes=off load none', () => {
-    expect(FORGECOACH_PLACES_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v3/');
+    expect(FORGECOACH_PLACES_URL).toBe('https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v4/');
     expect(placesUrlOf(DEFAULT_PREFS)).toBe(FORGECOACH_PLACES_URL);
     expect(placesUrlOf({ ...DEFAULT_PREFS, pairFull: false })).toBe(FORGECOACH_PLACES_URL);
     expect(placesUrlOf({ ...DEFAULT_PREFS, packUrl: 'http://127.0.0.1:8650/' })).toBeNull();
@@ -662,7 +662,7 @@ describe('spec 1.22: places-v2’s phone shape (a 2.22:1 phone base whose pieces
   });
 });
 
-describe('spec 1.22: places-v3’s phone shape (1.82:1, 2560 × 1408, the desktop base 320 px down it)', () => {
+describe('spec 1.22: places-v3’s and places-v4’s phone shape (1.82:1, 2560 × 1408, the desktop base 320 px down it)', () => {
   // Measured at 390 × 844: a phone's half is 376 × 176 (2.14:1) with one row of cards and 376 × 234 (1.61:1) with two;
   // places-v2's 2.22:1 base was too wide for the second.
   const V3 = validatePlaces(synthPlaces('v3'), MANIFEST);
