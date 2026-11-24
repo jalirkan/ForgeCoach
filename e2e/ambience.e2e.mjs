@@ -81,7 +81,7 @@
  *      whose colours have no place on disk is skipped and said so (while the pack is being built).
  *      Spec 1.23 (`places-camera`: Plains, Mountain, Island -- Cusco, then Sicily): the place change is a camera move:
  *      mid-move the panel's `data-camera` is the map this script computes from the manifest on disk for the shape
- *      drawn, both frames are on screen and each shared land's centre in the new frame lies on its centre in the old
+ *      drawn, both frames are on screen and each tracked land's centre in the new frame lies on its centre in the old
  *      one (to a few pixels); settled, `data-camera` is gone and the frame carries no transform and no mask.
  *
  *   Steps 2–6 run with `?scenes=off` (spec 1.21: no scenes for the page; it turns the places off too): with scenes
@@ -654,8 +654,9 @@ const PLACE_SEQUENCES = [
 
 /**
  * Spec 1.23's map, from the manifest on disk (placeCamera.ts `placeCamera`, again here: an .mjs cannot import it): each
- * land's box the union of its six pieces at the shape; two or more shared lands the least-squares line through their
- * centres, one the ratio of its widths; the horizon of A to B's (null 0.5); null when refused.
+ * land's box the union of its six pieces at the shape; the map fitted on the largest subset of the shared lands in one
+ * left-to-right order (the rest untracked): two or more the least-squares line through their centres, one the ratio of
+ * its widths; the horizon of A to B's (null 0.5); null when refused.
  */
 function cameraOf(a, b, shape) {
   const box = (p, land) => {
@@ -667,7 +668,7 @@ function cameraOf(a, b, shape) {
       x0 = Math.min(x0, pc.x);
       x1 = Math.max(x1, pc.x + pc.w);
     }
-    return x1 > x0 ? { cx: (x0 + x1) / 2, w: x1 - x0 } : null;
+    return x1 > x0 ? { cx: (x0 + x1) / 2, w: x1 - x0, x0, x1 } : null;
   };
   const shared = [];
   for (const land of GEOGRAPHY) {
@@ -677,7 +678,30 @@ function cameraOf(a, b, shape) {
     if (ba && bb) shared.push({ land, a: ba, b: bb });
   }
   if (!shared.length) return null;
-  for (let i = 0; i < shared.length; i++) for (let j = i + 1; j < shared.length; j++) if (!((shared[i].a.cx - shared[j].a.cx) * (shared[i].b.cx - shared[j].b.cx) > 0)) return null;
+  // The largest subset in one left-to-right order in both (on a tie, the most width covered in A, then the first found).
+  const cover = (xs) => {
+    let total = 0;
+    let end = -Infinity;
+    for (const [x0, x1] of xs.map((x) => [x.a.x0, x.a.x1]).sort((p, q) => p[0] - q[0])) {
+      if (x1 <= end) continue;
+      total += x1 - Math.max(x0, end);
+      end = x1;
+    }
+    return total;
+  };
+  let tracked = [];
+  let bestCover = -1;
+  for (let mask = 1; mask < 1 << shared.length; mask++) {
+    const sub = shared.filter((_, i) => mask & (1 << i));
+    const ok = sub.every((p, i) => sub.every((q, j) => j <= i || (p.a.cx - q.a.cx) * (p.b.cx - q.b.cx) > 0));
+    if (!ok || sub.length < tracked.length) continue;
+    const c = cover(sub);
+    if (sub.length > tracked.length || c > bestCover + 1e-12) {
+      tracked = sub;
+      bestCover = c;
+    }
+  }
+  shared.splice(0, shared.length, ...tracked);
   let s;
   let tx;
   if (shared.length === 1) {
@@ -699,7 +723,7 @@ function cameraOf(a, b, shape) {
 
 /**
  * Spec 1.23 in the browser: the change from `a` to `b` is running as a camera move -- `data-camera` is the map for the
- * shape drawn, both frames are on screen, and every shared land's centre in the new frame lies on its centre in the
+ * shape drawn, both frames are on screen, and every tracked land's centre in the new frame lies on its centre in the
  * old frame (each frame's on-screen box is its transformed box) -- then it settles with no transform and no mask.
  */
 async function cameraCheck(page, label, a, b) {

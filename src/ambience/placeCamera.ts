@@ -16,10 +16,13 @@
  *   of the frame, one uniform scale. Two or more shared lands: the
  *   least-squares line through their centres (cxA, cxB); one: the ratio of its
  *   widths, its centre carried. Vertically A's horizon goes to B's.
+ * - Tracked lands ({@link trackedLands}): the largest subset of the shared
+ *   lands standing in the same left-to-right order in both (on a tie, the one
+ *   whose boxes cover the most width in A). A shared land left out (a flip:
+ *   the pack is not yet re-laid everywhere, and two re-laid places keep one
+ *   land out of order) simply cross-fades without being tracked.
  * - Refused (a plain cross-fade, as 1.22): no shared land, the two drawn at
- *   different shapes or base shapes, reduced motion, `s` outside [0.5, 2], or
- *   the shared lands in another left-to-right order (the pack is not yet
- *   re-laid everywhere: a flip is never animated).
+ *   different shapes or base shapes, reduced motion, or `s` outside [0.5, 2].
  * - As CSS ({@link cameraCss}): the old frame goes from the identity to the
  *   full map, the new from the inverse of the full map to the identity, both
  *   `transform-origin: 0 0`, one CSS transition each over the place's
@@ -75,11 +78,13 @@ export interface CameraMap {
   s: number;
   tx: number;
   ty: number;
-  /** The lands both places have, with a box in both, in the geography's order. */
+  /** The lands the map is fitted on (tracked): the largest subset of the shared lands in one order, in the geography's order. */
   shared: Biome[];
+  /** Shared lands left out of the fit (out of order): they cross-fade without being tracked. */
+  untracked: Biome[];
 }
 
-export type CameraRefusal = 'reduced' | 'shape' | 'none' | 'order' | 'scale';
+export type CameraRefusal = 'reduced' | 'shape' | 'none' | 'scale';
 
 /** One side of a place change: the place and the shape it is drawn at. */
 export interface CameraSide {
@@ -93,27 +98,25 @@ const baseAspect = (place: CameraSide['place'], phone: boolean): number => (phon
 /**
  * The camera move for a place change from `a` to `b` (spec 1.23), or why it is refused (then the change is 1.22's plain
  * cross-fade): `reduced` motion, `shape` (drawn at different shapes, or bases of different shapes: a uniform map in
- * fractions of one is not uniform in the other), `none` (no land with a box in both), `order` (the shared lands stand
- * in another left-to-right order, or two at the same centre), `scale` (`s` outside [0.5, 2], or no line through them).
+ * fractions of one is not uniform in the other), `none` (no land with a box in both), `scale` (`s` outside [0.5, 2], or
+ * no line through them). The map is fitted on {@link trackedLands}; the other shared lands are not tracked.
  */
 export function placeCamera(a: CameraSide, b: CameraSide, opts: { reduced?: boolean } = {}): CameraMap | { refused: CameraRefusal } {
   if (opts.reduced) return { refused: 'reduced' };
   if (a.phone !== b.phone || Math.abs(baseAspect(a.place, a.phone) - baseAspect(b.place, b.phone)) > 1e-3) return { refused: 'shape' };
-  const shared: Biome[] = [];
-  const pa: LandBox[] = [];
-  const pb: LandBox[] = [];
+  const all: { land: Biome; a: LandBox; b: LandBox }[] = [];
   for (const land of a.place.lands) {
     if (!b.place.lands.includes(land)) continue;
     const ba = placeLandBox(a.place, land, a.phone);
     const bb = placeLandBox(b.place, land, b.phone);
-    if (!ba || !bb) continue;
-    shared.push(land);
-    pa.push(ba);
-    pb.push(bb);
+    if (ba && bb) all.push({ land, a: ba, b: bb });
   }
-  if (!shared.length) return { refused: 'none' };
-  for (let i = 0; i < shared.length; i++)
-    for (let j = i + 1; j < shared.length; j++) if (!((pa[i]!.cx - pa[j]!.cx) * (pb[i]!.cx - pb[j]!.cx) > 0)) return { refused: 'order' };
+  if (!all.length) return { refused: 'none' };
+  const kept = trackedLands(all);
+  const shared = kept.map((x) => x.land);
+  const untracked = all.filter((x) => !kept.includes(x)).map((x) => x.land);
+  const pa = kept.map((x) => x.a);
+  const pb = kept.map((x) => x.b);
   let s: number;
   let tx: number;
   if (shared.length === 1) {
@@ -136,7 +139,44 @@ export function placeCamera(a: CameraSide, b: CameraSide, opts: { reduced?: bool
   // (To the boxes' rounding: a box's width is the difference of two fractions.)
   if (!(s >= CAMERA_MIN_SCALE - 1e-9 && s <= CAMERA_MAX_SCALE + 1e-9)) return { refused: 'scale' };
   const ty = horizonOf(b.place, b.phone) - s * horizonOf(a.place, a.phone);
-  return { s, tx, ty, shared };
+  return { s, tx, ty, shared, untracked };
+}
+
+/**
+ * The shared lands the map is fitted on: the largest subset whose left-to-right order by box centre is the same in A
+ * and B (the longest common ordered subsequence; two lands at one centre in either are never both in it); on a tie, the
+ * subset whose boxes cover the most width in A (the union's length); then the first in the geography's order. At most
+ * five lands, so every subset is tried. Given in the geography's order, returned in it.
+ */
+export function trackedLands<T extends { a: Pick<LandBox, 'x' | 'w' | 'cx'>; b: Pick<LandBox, 'cx'> }>(shared: readonly T[]): T[] {
+  const n = shared.length;
+  let best: T[] = [];
+  let bestCover = -1;
+  for (let mask = 1; mask < 1 << n; mask++) {
+    const sub = shared.filter((_, i) => mask & (1 << i));
+    let ok = true;
+    for (let i = 0; ok && i < sub.length; i++) for (let j = i + 1; ok && j < sub.length; j++) ok = (sub[i]!.a.cx - sub[j]!.a.cx) * (sub[i]!.b.cx - sub[j]!.b.cx) > 0;
+    if (!ok || sub.length < best.length) continue;
+    const cover = coverOf(sub.map((x) => x.a));
+    if (sub.length > best.length || cover > bestCover + 1e-12) {
+      best = sub;
+      bestCover = cover;
+    }
+  }
+  return best;
+}
+
+/** The length the union of boxes covers along x. */
+function coverOf(boxes: readonly Pick<LandBox, 'x' | 'w'>[]): number {
+  const iv = boxes.map((b) => [b.x, b.x + b.w] as const).sort((p, q) => p[0] - q[0]);
+  let total = 0;
+  let end = -Infinity;
+  for (const [x0, x1] of iv) {
+    if (x1 <= end) continue;
+    total += x1 - Math.max(x0, end);
+    end = x1;
+  }
+  return total;
 }
 
 /** Is it a map (not a refusal)? */

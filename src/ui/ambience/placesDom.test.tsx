@@ -10,7 +10,7 @@
  * new fading in; a failed piece is skipped and marked; reduced motion is at
  * once; nothing stands over a place. Spec 1.23: a place change with a camera
  * draws both frames under the move's transforms (`data-camera` while it runs),
- * a refused one and a stage step none, the settled frame none and no mask. The
+ * a refused one (no land shared) and a stage step none, the settled frame none and no mask. The
  * timing itself (the fade in, the old
  * one out, the place's cross-fade) is played in a real browser by
  * e2e/ambience.e2e.mjs.
@@ -206,8 +206,9 @@ function drawnOf(slots: SlotState[]) {
 }
 const CUSCO = [slot('plains', 0, 1), slot('mountain', 1, 1)];
 const SICILY = [...CUSCO, slot('island', 2, 1)];
-const TAHITI = [slot('island', 0, 1), slot('forest', 1, 1)];
-const HAWAII = [...TAHITI, slot('mountain', 2, 1)];
+// Two homelands at stage 1: no land shared (and no piece), so no move.
+const VENICE = [slot('island', 0, 1)];
+const SWAMP_HOME = [slot('swamp', 0, 1)];
 const MS = 1200;
 /** The stack and the camera after a change from one place to the other (each first painted at once). */
 function change(from: SlotState[], to: SlotState[]) {
@@ -261,8 +262,8 @@ describe('spec 1.23: the place change is a camera move', () => {
     expect(html).not.toMatch(/transform|mask/);
   });
 
-  it('a refused change (Tahiti → Hawaii, a flip) is exactly 1.22’s cross-fade: two frames, neither transformed, no data-camera', () => {
-    const { a, b, run, stack } = change(TAHITI, HAWAII);
+  it('a refused change (no land shared: Venice → the swamp’s homeland) is exactly 1.22’s cross-fade: two frames, neither transformed, no data-camera', () => {
+    const { a, b, run, stack } = change(VENICE, SWAMP_HOME);
     expect(run).toBeNull();
     const html = view(b, stack, run);
     expect(attrs(html, 'data-camera')).toEqual([]);

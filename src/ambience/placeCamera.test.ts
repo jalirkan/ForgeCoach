@@ -93,10 +93,40 @@ describe('spec 1.23: the map', () => {
     expect(cameraMark(m)).toBe('0.833,0.117,0.050');
   });
 
+  it('one land out of order: the map is fitted on the largest subset in one order, the other left untracked', () => {
+    // A: island cx 0.2, plains cx 0.5, mountain cx 0.8; B: plains cx 0.3, mountain cx 0.7, island cx 0.9 (right of both,
+    // out of order). Largest subset in one order: plains, mountain. s = 0.4 / 0.3 = 4 / 3, tx = 0.3 - 4 / 3 * 0.5 = -0.36667;
+    // null horizons: ty = 0.5 - 4 / 3 * 0.5 = -0.16667.
+    const a = place({ island: at(0.1, 0.2), plains: at(0.4, 0.2), mountain: at(0.7, 0.2) });
+    const b = place({ island: at(0.85, 0.1), plains: at(0.2, 0.2), mountain: at(0.6, 0.2) });
+    const m = map(placeCamera(half(a), half(b)));
+    expect(m.shared).toEqual(['plains', 'mountain']);
+    expect(m.untracked).toEqual(['island']);
+    expect(m.s).toBeCloseTo(4 / 3, 12);
+    expect(m.tx).toBeCloseTo(0.3 - (4 / 3) * 0.5, 12);
+    expect(m.ty).toBeCloseTo(0.5 - (4 / 3) * 0.5, 12);
+    expect(cameraMark(m)).toBe('1.333,-0.367,-0.167');
+  });
+
+  it('two lands swapped: a tie of one land each, won by the box covering the most width in A (then the geography’s order)', () => {
+    // A: forest 0.1-0.4 (cx 0.25, w 0.3), mountain 0.6-0.7 (cx 0.65); B: forest 0.7-0.9 (cx 0.8, w 0.2), mountain cx 0.2.
+    // The forest covers more of A: one land, s = 0.2 / 0.3, tx = 0.8 - s * 0.25 = 0.63333, ty = 0.5 - s * 0.5 = 0.16667.
+    const a = place({ forest: at(0.1, 0.3), mountain: at(0.6, 0.1) });
+    const b = place({ forest: at(0.7, 0.2), mountain: at(0.15, 0.1) });
+    const m = map(placeCamera(half(a), half(b)));
+    expect([m.shared, m.untracked]).toEqual([['forest'], ['mountain']]);
+    expect(cameraMark(m)).toBe('0.667,0.633,0.167');
+    // Two lands at one centre in A are never both tracked; an equal cover goes to the first in the geography.
+    const tie = place({ forest: at(0.4, 0.2), mountain: at(0.4, 0.2) });
+    const m2 = map(placeCamera(half(tie), half(place({ forest: at(0.4, 0.2), mountain: at(0.7, 0.2) }))));
+    expect([m2.shared, m2.untracked]).toEqual([['forest'], ['mountain']]);
+  });
+
   it('a land with no box in one of them is not shared', () => {
     const a = place({ forest: at(0.2, 0.2), mountain: stages([null, null, null, null, null, null]) });
     const b = place({ forest: at(0.5, 0.3), mountain: at(0.8, 0.1) });
-    expect(map(placeCamera(half(a), half(b))).shared).toEqual(['forest']);
+    const m = map(placeCamera(half(a), half(b)));
+    expect([m.shared, m.untracked]).toEqual([['forest'], []]);
   });
 });
 
@@ -105,12 +135,6 @@ describe('spec 1.23: refused -- a plain cross-fade', () => {
   const b = place({ island: at(0.05, 0.25), forest: at(0.4, 0.2), mountain: at(0.7, 0.2) });
   it('no shared land', () => {
     expect(placeCamera(half(place({ island: at(0.2, 0.2) })), half(place({ swamp: at(0.2, 0.2) })))).toEqual({ refused: 'none' });
-  });
-  it('a flip: the shared lands in another left-to-right order (and two at one centre)', () => {
-    const flipped = place({ island: at(0.4, 0.2), forest: at(0.7, 0.2), mountain: at(0.1, 0.2) });
-    expect(placeCamera(half(a), half(flipped))).toEqual({ refused: 'order' });
-    const tie = place({ forest: at(0.4, 0.2), mountain: at(0.4, 0.2) });
-    expect(placeCamera(half(tie), half(b))).toEqual({ refused: 'order' });
   });
   it('s out of [0.5, 2]', () => {
     // One land: wB / wA = 0.08 / 0.2 = 0.4, and 0.45 / 0.2 = 2.25.
@@ -222,10 +246,11 @@ describe('spec 1.23 over the live pack (places-v3)', () => {
   const bySlug = (slug: string) => Object.values(P.places).find((p) => p!.slug === slug)!;
   const step = (from: string, to: string, phone = false) => placeCamera({ place: bySlug(from), phone }, { place: bySlug(to), phone });
 
-  it('of the 75 one-land steps (one colour more), 44 move and 31 are refused -- 30 a flip, 1 the scale -- at both shapes', () => {
+  it('of the 75 one-land steps (one colour more), 70 move (26 with a shared land left untracked) and 5 are refused for the scale, at both shapes', () => {
     for (const phone of [false, true]) {
       const tally: Record<string, number> = {};
       let n = 0;
+      let partial = 0;
       for (let m = 1; m < 32; m++)
         for (const extra of GEOGRAPHY) {
           const set = GEOGRAPHY.filter((_, i) => m & (1 << i));
@@ -233,10 +258,12 @@ describe('spec 1.23 over the live pack (places-v3)', () => {
           const c = placeCamera({ place: of(set), phone }, { place: of([...set, extra]), phone });
           const k = isCamera(c) ? 'move' : c.refused;
           tally[k] = (tally[k] ?? 0) + 1;
+          if (isCamera(c) && c.untracked.length) partial++;
           n++;
         }
       expect(n).toBe(75);
-      expect(tally).toEqual({ move: 44, order: 30, scale: 1 });
+      expect(tally).toEqual({ move: 70, scale: 5 });
+      expect(partial).toBe(26);
     }
   });
 
@@ -249,14 +276,21 @@ describe('spec 1.23 over the live pack (places-v3)', () => {
     expect(isCamera(step('cusco', 'sicily', true))).toBe(true);
   });
 
-  it('a flipped link stays a plain cross-fade: Tahiti → Hawaii (its forest left of its island; Hawaii’s right of it)', () => {
-    expect(step('tahiti', 'hawaii')).toEqual({ refused: 'order' });
-    expect(step('tahiti', 'hawaii', true)).toEqual({ refused: 'order' });
+  it('a flipped land is left untracked: Tahiti → Hawaii moves on its forest (its island left of the forest in Tahiti, right of it in Hawaii)', () => {
+    const m = map(step('tahiti', 'hawaii'));
+    expect([m.shared, m.untracked]).toEqual([['forest'], ['island']]);
+    expect(cameraMark(m)).toBe('0.802,-0.406,0.113');
+    expect(isCamera(step('tahiti', 'hawaii', true))).toBe(true);
+  });
+
+  it('refused on the scale: Kolkata → Zanzibar, Valley of Mexico → Santorini', () => {
+    expect(step('kolkata', 'zanzibar')).toEqual({ refused: 'scale' });
+    expect(step('valley-of-mexico', 'santorini')).toEqual({ refused: 'scale' });
   });
 
   it('Araucanía → Hawaii moves under the rule as written: its two shared lands (forest, mountain) keep their order; v3 Hawaii’s flip is its island, standing between them', () => {
     const m = map(step('araucania', 'hawaii'));
-    expect(m.shared).toEqual(['forest', 'mountain']);
+    expect([m.shared, m.untracked]).toEqual([['forest', 'mountain'], []]);
     expect(cameraMark(m)).toBe('1.653,-0.231,-0.448');
   });
 });
