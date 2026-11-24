@@ -9,7 +9,7 @@
  * state places.ts `pieceWant` gives PlaceLandPiece) keep the old beneath the
  * new fading in; a failed piece is skipped and marked; reduced motion is at
  * once; nothing stands over a place. Spec 1.23: a place change with a camera
- * draws both frames under the move's transforms (`data-camera` while it runs),
+ * draws three frames (the new place settled beneath, both moving frames under the move's transforms) (`data-camera` while it runs),
  * a refused one (no land shared) and a stage step none, the settled frame none and no mask. The
  * timing itself (the fade in, the old
  * one out, the place's cross-fade) is played in a real browser by
@@ -225,7 +225,7 @@ const frameStyles = (html: string) => [...html.matchAll(/<div class="scn-frame" 
 const frameCss = (art: PlacePayload['art']) => Object.entries(halfFrameCss(art)).map(([k, v]) => `${k}:${v}`).join(';');
 
 describe('spec 1.23: the place change is a camera move', () => {
-  it('Cusco → Sicily: both frames on screen under the move -- the old one from the identity, the new one from the inverse map -- then run to the end under the cross-fade’s transition, `data-camera` set; settled, gone, with no transform and no mask', () => {
+  it('Cusco → Sicily: three frames under the move -- the new place settled beneath (no transform, no mask), the new one moving from the inverse map and the old one from the identity, both with the soft edge -- then run to the end under the cross-fade’s transition, `data-camera` set; settled, one frame, gone, with no transform and no mask', () => {
     const { a, b, run, stack } = change(CUSCO, SICILY);
     expect(run).not.toBeNull();
     expect(cameraMark(run!.map)).toBe('0.669,0.346,0.144');
@@ -233,27 +233,32 @@ describe('spec 1.23: the place change is a camera move', () => {
     // The move's first paint: the start transforms, no transition yet.
     let html = view(b, stack, run);
     expect(attrs(html, 'data-camera')).toEqual(['0.669,0.346,0.144']);
-    expect(attrs(html, 'data-camera-frame')).toEqual(['to', 'from']);
-    let [nu, old] = frameStyles(html);
+    expect(attrs(html, 'data-camera-frame')).toEqual(['under', 'to', 'from']);
+    let [under, nu, old] = frameStyles(html);
+    // Beneath: exactly 1.22's settled frame of the new place.
+    expect(under).toBe(frameCss(b.payload.art));
     expect(nu).toContain(`transform:${run!.css.new.from.transform};transform-origin:0 0`);
     expect(old).toContain('transform:translate(0px, 0px) scale(1);transform-origin:0 0');
     expect(html).not.toContain('transition:transform');
-    // s < 1: the view pulls back; the old frame shrinks and carries the soft edge, at its edge from the start.
-    expect(old).toContain('mask-size:100% 100%, 100% 100%');
-    expect(old).toMatch(/mask-image:linear-gradient\(to right, transparent 0, #000 8%, #000 92%, transparent 100%\)/);
-    expect(nu).not.toContain('mask');
-    // Both frames hold their base and their pieces.
-    expect(html).toContain(`src="${a.key}"`);
-    expect(html).toContain(`src="${b.key}"`);
-    expect(attrs(html, 'data-piece')).toEqual(['island1', 'plains1', 'mountain1', 'plains1', 'mountain1']);
-    // Running: the end transforms, under the cross-fade's time and easing.
+    // Both moving frames carry the soft edge for the whole move.
+    for (const f of [nu, old]) {
+      expect(f).toContain('mask-size:100% 100%, 100% 100%');
+      expect(f).toMatch(/mask-image:linear-gradient\(to right, transparent 0, #000 8%, #000 92%, transparent 100%\)/);
+    }
+    // Every frame holds its base and its pieces: the new place twice (beneath and moving), the old once.
+    expect(attrs(html, 'src').filter((x) => x === b.key)).toHaveLength(2);
+    expect(attrs(html, 'src').filter((x) => x === a.key)).toHaveLength(1);
+    expect(attrs(html, 'data-piece')).toEqual(['island1', 'plains1', 'mountain1', 'island1', 'plains1', 'mountain1', 'plains1', 'mountain1']);
+    // Running: the end transforms, under the cross-fade's time and easing; the frame beneath never moves.
     html = view(b, stack, { ...run!, phase: 'run' });
-    [nu, old] = frameStyles(html);
+    [under, nu, old] = frameStyles(html);
+    expect(under).toBe(frameCss(b.payload.art));
     expect(nu).toContain('transform:translate(0px, 0px) scale(1)');
     expect(old).toContain(`transform:${run!.css.old.to.transform}`);
-    expect(old).toContain('mask-size:100% 100%, 100% 100%');
-    expect(old).toContain('transition:transform 1200ms cubic-bezier(0.4, 0, 0.2, 1), mask-size 1200ms cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-size 1200ms cubic-bezier(0.4, 0, 0.2, 1)');
-    expect(nu).toContain('transition:transform 1200ms cubic-bezier(0.4, 0, 0.2, 1)');
+    for (const f of [nu, old]) {
+      expect(f).toContain('mask-size:100% 100%, 100% 100%');
+      expect(f).toContain('transition:transform 1200ms cubic-bezier(0.4, 0, 0.2, 1)');
+    }
     // Settled: 1.22's frame byte for byte -- no transform, no mask, no data-camera.
     html = view(b, settleFades(stack), null);
     expect(attrs(html, 'data-camera')).toEqual([]);

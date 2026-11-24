@@ -82,8 +82,9 @@
  *      Spec 1.23 (`places-camera`: Plains, Mountain, Island -- Cusco, then Sicily; `places-camera-hawaii`: Forest ×4,
  *      Mountain ×5, Island -- Araucanía at forest 4 + mountain 5, then Hawaii): the place change is a camera move:
  *      mid-move the panel's `data-camera` is the map this script computes from the manifest on disk for the shape
- *      drawn, both frames are on screen and each tracked land's centre in the new frame lies on its centre in the old
- *      one (to a few pixels); settled, `data-camera` is gone and the frame carries no transform and no mask.
+ *      drawn, the moving frames are on screen and each tracked land's centre in the new frame lies on its centre in the
+ *      old one (to a few pixels), over the new place at its settled position, which covers every corner of the half,
+ *      opaque, untransformed and unmasked; settled, `data-camera` is gone and the frame carries no transform and no mask.
  *
  *   Steps 2–6 run with `?scenes=off` (spec 1.21: no scenes for the page; it turns the places off too): with scenes
  *   or places loaded a half of two or more colours never draws the pair logic they check, which still draws for a
@@ -757,7 +758,22 @@ async function cameraCheck(page, label, a, b) {
           if (Math.abs(a - 1) < 0.4 * Math.abs(s - 1)) return false;
           const ra = from.getBoundingClientRect();
           const rb = to.getBoundingClientRect();
+          // Beneath both: the new place at its settled position, untransformed, unmasked and opaque, covering the half.
+          const under = el.querySelector('[data-camera-frame="under"]');
+          const half = el.getBoundingClientRect();
+          const ru = under?.getBoundingClientRect();
+          let op = 1;
+          for (let n = under; n && n !== el; n = n.parentElement) op *= +getComputedStyle(n).opacity;
           return {
+            under: under
+              ? {
+                  covers: ru.left <= half.left + 0.5 && ru.top <= half.top + 0.5 && ru.right >= half.right - 0.5 && ru.bottom >= half.bottom - 0.5,
+                  opacity: op,
+                  transform: getComputedStyle(under).transform,
+                  mask: getComputedStyle(under).maskImage || getComputedStyle(under).webkitMaskImage || 'none',
+                  below: !!(under.compareDocumentPosition(to) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(under.compareDocumentPosition(from) & Node.DOCUMENT_POSITION_FOLLOWING),
+                }
+              : null,
             camera: el.getAttribute('data-camera'),
             progress: (a - 1) / (s - 1),
             fromTransform: tf,
@@ -778,6 +794,15 @@ async function cameraCheck(page, label, a, b) {
   if (!seen) return;
   log(`${label}: ${a.slug} -> ${b.slug}: data-camera ${seen.camera}; at ${Math.round(seen.progress * 100)}% of the move the shared lands are ${seen.offs.map((o) => `${o.land} ${o.off.toFixed(1)} px`).join(', ')} apart (the old frame ${seen.fromTransform})`);
   check(seen.fromTransform !== 'none', `${label}: the old frame carries no transform mid-move`);
+  const u = seen.under;
+  check(!!u, `${label}: no settled frame of ${b.slug} beneath the move (data-camera-frame="under")`);
+  if (u) {
+    log(`${label}: beneath the move, ${b.slug} settled: covers every corner of the half ${u.covers}, opacity ${u.opacity}, transform ${u.transform}, mask ${u.mask}, drawn below both moving frames ${u.below}`);
+    check(u.covers, `${label}: mid-move the settled frame of ${b.slug} does not cover every corner of the half`);
+    check(u.opacity === 1, `${label}: mid-move the settled frame of ${b.slug} is at opacity ${u.opacity}, not opaque`);
+    check(u.transform === 'none' && u.mask === 'none', `${label}: the settled frame beneath the move carries a transform (${u.transform}) or a mask (${u.mask})`);
+    check(u.below, `${label}: the settled frame is not beneath both moving frames`);
+  }
   for (const o of seen.offs) check(o.off <= 3, `${label}: mid-move the ${o.land} of ${b.slug} is ${o.off.toFixed(1)} px from the ${o.land} of ${a.slug}`);
   try {
     await page.waitForFunction(
@@ -915,12 +940,12 @@ async function placesCheck(browser, origin, pairs, shape) {
           await cameraCheck(page, `${shape} ${seq.name} ${i + 1}`, Object.values(manifest.places).find((p) => p.slug === prevPlace), place);
           checkedCamera = true;
         }
-        // A new colour: the whole half cross-fades (two bases in the panel at once).
+        // A new colour: the whole half cross-fades (two bases in the panel at once; three under a 1.23 camera move).
         else if (!sameStep && prevPlace && !checkedStep) {
           try {
-            await page.waitForFunction(() => document.querySelector('[data-amb-player="1"] [data-place]')?.querySelectorAll('.scn-half-img').length === 2, null, { timeout: 12_000, polling: 30 });
+            await page.waitForFunction(() => document.querySelector('[data-amb-player="1"] [data-place]')?.querySelectorAll('.scn-half-img').length >= 2, null, { timeout: 12_000, polling: 30 });
             checkedStep = true;
-            log(`${shape} ${seq.name} ${i + 1}: ${prevPlace} -> ${place.slug}: the whole half cross-fading (two bases)`);
+            log(`${shape} ${seq.name} ${i + 1}: ${prevPlace} -> ${place.slug}: the whole half cross-fading (two bases; three under a camera move)`);
           } catch {
             throw new Fail(`${shape} ${seq.name}, step ${i + 1}: no cross-fade from ${prevPlace} to ${place.slug} seen`);
           }

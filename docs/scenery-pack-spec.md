@@ -3156,19 +3156,26 @@ the translation also carries the difference of the two offsets (times e for
 the old frame, times e − 1 for the new), which is what puts a land of A on
 its place in B's frame as drawn, not in a frame at B's offset.
 
-**Edges.** A frame smaller than the half during the move must never show a
-hard border or a bare background. The frame drawn larger than the half
-covers it; the one drawn smaller -- the old frame when it shrinks (s < 1),
-else the new one, which starts at 1/s -- gets a soft edge while it moves: a
-mask fading its outer 8% (each side, both axes) to transparent. On a
-shrinking old frame the soft edge is there from the move's first frame: the
-new frame beneath it is larger and lies on it land for land, so what shows
-through the faded edge is the same view, and the border is soft at every
-moment. On a new frame the mask's own size moves with the transform, from the
-frame's edge to wholly outside it (120% of it) by the end, because once the
-old frame has faded the new one is the half and its edge must not stay soft;
-so removing the mask at the settle changes no pixel. Settled, the mask is
-gone. The half's own background stays behind both.
+**Edges: three layers while a move runs.** With a pan in the map neither
+moving frame can cover the half for the whole move -- at e = 0.42 of
+Araucanía → Hawaii (s 0.837, tx 0.298) the incoming frame is drawn at
+0.42 + 0.58/0.837 = 1.112 times its size, shifted 0.125 − 1.112 × 0.298 =
+−0.206, so it spans −0.206 to 0.906 of the half, and right of it only the
+fading old frame stood over the half's dark background, a dark band with a
+hard edge. So while a move runs the half draws three layers, bottom to top:
+
+1. **the new place at its settled position** (no transform, no mask), fully
+   opaque from the first moment of the move: it always covers the half;
+2. **the new place moving**, as above (aligned with the old frame at every
+   moment), fully opaque, with a soft edge on all four sides for the whole
+   move -- a mask fading its outer 8% (each side, both axes) to transparent --
+   so wherever it ends it dissolves into layer 1 instead of showing an edge;
+3. **the old place moving and fading out**, with the same soft edge.
+
+At the settle layers 2 and 3 are removed and layer 1 is the one settled
+frame, 1.22's exactly: the pixels do not change, because layer 2 has reached
+the identity over it. Reduced motion and a refused change are unchanged:
+1.22's plain cross-fade, two layers.
 
 **Unchanged.** The load gate and hold (the new place appears only once its
 base and its state's pieces have settled), a stage step inside a place (only
@@ -3200,12 +3207,11 @@ mountain 0.6832–0.9848 (cx 0.8340). Two shared lands: the line through
 and tx = 0.5175 − 0.669 × 0.2569 = **0.346**; the horizons 0.619 (Cusco) and
 0.5584 (Sicily) give ty = 0.5584 − 0.669 × 0.619 = **0.144**. The old frame
 goes from the identity to `scale(0.669)` moved 34.6% of its width right and
-14.4% of its height down -- the view pulls back -- and carries the soft edge
-(it shrinks); the new frame comes in from `scale(1.494)` moved 51.6% of its
+14.4% of its height down -- the view pulls back; the moving new frame comes in from `scale(1.494)` moved 51.6% of its
 width left and 21.5% of its height up, and settles at the identity. Through
 the 1.2 s cross-fade the two plains and the two mountains lie on each other
-(the e2e measures 0.0 px apart part way), and Sicily's island opens on the
-left. `data-camera="0.669,0.346,0.144"` while it runs (on a phone, Sicily's
+(the e2e measures 0.0 px apart part way), Sicily settled beneath covers the
+half throughout, and Sicily's island opens on the left. `data-camera="0.669,0.346,0.144"` while it runs (on a phone, Sicily's
 and Cusco's phone horizons make it `0.669,0.346,0.157`).
 
 **One land out of order, by hand.** A: island 0.1–0.3 (cx 0.2), plains
@@ -3216,9 +3222,10 @@ in another order, plains and mountain agree: T = {plains, mountain}, s = 0.4 /
 1.333 × 0.5 = −0.167; the island cross-fades untracked.
 
 **The DOM.** While a move runs the place slot carries
-`data-camera="<s>,<tx>,<ty>"` (three decimals), and the two frames
-`data-camera-frame="from"` and `"to"`; settled, all three are gone and the
-frame's style is 1.22's.
+`data-camera="<s>,<tx>,<ty>"` (three decimals), and the three frames
+`data-camera-frame="under"` (the new place settled), `"to"` (the new place
+moving) and `"from"` (the old place moving); settled, the under frame is the
+one frame, with no mark and 1.22's style, and `data-camera` is gone.
 
 `src/ambience/placeCamera.ts` (`placeLandBox`, `placeCamera`, `cameraCss`,
 `cameraStep`), SceneryStrip (`PlacePanel`, `PlacePanelView`,

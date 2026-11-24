@@ -807,9 +807,9 @@ function ScenePanel({ s, shown, first, growth, reduced }: { s: PairFullScene; sh
  * half over the growth time as a scene step does; within the place only a land whose stage changed moves
  * ({@link PlaceLandPiece}).
  *
- * Spec 1.23: a place change whose two places share lands standing in the same order is a camera move
- * (placeCamera.ts): during the cross-fade the old frame zooms and slides by the map and the new one comes in from its
- * inverse, so the shared lands travel together (`data-camera` while it runs); the settled frame is 1.22's, untouched.
+ * Spec 1.23: a place change whose two places share lands is a camera move (placeCamera.ts): during the cross-fade the
+ * old frame zooms and slides by the map and the new one comes in from its inverse, so the tracked lands travel
+ * together, over the new place at its settled position (`data-camera` while it runs); the settled frame is 1.22's.
  */
 export function PlacePanel({ s, shown, first, ms, reduced }: { s: PairFullScene; shown: PairFullCandidate; first: boolean; ms: number; reduced: boolean }) {
   const art = shown.art;
@@ -857,25 +857,35 @@ export interface PlacePayload {
 
 /**
  * What a place panel draws from its fade stack and its camera (pure: {@link PlacePanel} keeps both): each entry one
- * frame, the base and its pieces, in a Layer carrying the cross-fade's opacity. While a camera move runs, the frame it
- * moves from and the one it moves to carry its transform (the start one on the move's first paint, then the end one
- * under a transition of the cross-fade's time and easing) and, the one drawn smaller than the half, its soft edge; any
- * other frame, and every frame once settled, is exactly 1.22's.
+ * frame, the base and its pieces, in a Layer carrying the cross-fade's opacity. While a camera move runs it is three
+ * frames, bottom to top: the new place at its settled position (`data-camera-frame="under"`: no transform, no mask,
+ * opaque from the first moment, so the half is always covered), the new place moving (`"to"`, aligned with the old at
+ * every moment, opaque, its soft edge dissolving into the one beneath), and the old place moving and fading out
+ * (`"from"`, its soft edge). Each moving frame carries the start transform on the move's first paint, then the end one
+ * under a transition of the cross-fade's time and easing. Settled, the under frame is the one frame, exactly 1.22's
+ * (the same element: it is keyed as the settled frame is), and the moving new frame, at the identity by then, goes.
  */
 export const PlacePanelView = forwardRef<HTMLDivElement, { slug: string; sceneKey: string; source: HalfArt['source']; stack: readonly FadeEntry<PlacePayload>[]; camera: CameraRun | null; first: boolean; ms: number; reduced: boolean }>(function PlacePanelView({ slug, sceneKey, source, stack, camera, first, ms, reduced }, ref) {
+  const frame = (p: PlacePayload, key: string, style: CSSProperties, mark?: 'under' | 'to' | 'from') => (
+    <div key={key} className="scn-frame" style={style} data-camera-frame={mark}>
+      <img className="scn-half-img" src={p.art.picture!.src} srcSet={p.art.picture!.src2x ? `${p.art.picture!.src} 1x, ${p.art.picture!.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => markPicture(p.art.picture!.src, true)} onError={() => markPicture(p.art.picture!.src, false)} />
+      {p.pieces.map((pc) => (
+        <PlaceLandPiece key={pc.biome} biome={pc.biome} stage={pc.stage} piece={pc.piece} ms={ms} />
+      ))}
+    </div>
+  );
   return (
     <div ref={ref} className={['scn-slot', 'scn-pairfull', 'scn-scene', 'scn-place', first && 'is-first'].filter(Boolean).join(' ')} style={{ flexGrow: 1 }} data-place={slug} data-scene={sceneKey} data-art={source} data-camera={camera ? cameraMark(camera.map) : undefined}>
       <div className="scn-pairfull-art">
         {stack.map((e) => {
-          const move = camera ? (e.key === camera.from ? camera.css.old : e.key === camera.to ? camera.css.new : null) : null;
+          const into = !!camera && e.key === camera.to;
+          const from = !!camera && e.key === camera.from;
           return (
             <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
-              <div className="scn-frame" style={move ? cameraFrameStyle(e.payload.art, move, camera!.phase, ms) : halfFrameCss(e.payload.art)} data-camera-frame={move ? (move === camera!.css.old ? 'from' : 'to') : undefined}>
-                <img className="scn-half-img" src={e.payload.art.picture!.src} srcSet={e.payload.art.picture!.src2x ? `${e.payload.art.picture!.src} 1x, ${e.payload.art.picture!.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => markPicture(e.payload.art.picture!.src, true)} onError={() => markPicture(e.payload.art.picture!.src, false)} />
-                {e.payload.pieces.map((p) => (
-                  <PlaceLandPiece key={p.biome} biome={p.biome} stage={p.stage} piece={p.piece} ms={ms} />
-                ))}
-              </div>
+              {from
+                ? frame(e.payload, 'frame', cameraFrameStyle(e.payload.art, camera!.css.old, camera!.phase, ms), 'from')
+                : frame(e.payload, 'frame', halfFrameCss(e.payload.art), into ? 'under' : undefined)}
+              {into && frame(e.payload, 'move', cameraFrameStyle(e.payload.art, camera!.css.new, camera!.phase, ms), 'to')}
             </Layer>
           );
         })}
@@ -884,14 +894,13 @@ export const PlacePanelView = forwardRef<HTMLDivElement, { slug: string; sceneKe
   );
 });
 
-/** A frame in a camera move: 1.22's frame, plus the move's transform from its top-left (and its soft edge, when it carries it). */
+/** A moving frame of a camera move: 1.22's frame, plus the move's transform from its top-left and its soft edge. */
 export function cameraFrameStyle(art: HalfArt, move: CameraFrameCss, phase: CameraRun['phase'], ms: number): CSSProperties {
   const at = phase === 'start' ? move.from : move.to;
   const edge: CSSProperties = move.masked
     ? { maskImage: CAMERA_MASK_IMAGE, WebkitMaskImage: CAMERA_MASK_IMAGE, maskSize: at.maskSize!, WebkitMaskSize: at.maskSize!, maskPosition: 'center', WebkitMaskPosition: 'center', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat', maskComposite: 'intersect', WebkitMaskComposite: 'source-in' }
     : {};
-  const props = move.masked ? ['transform', 'mask-size', '-webkit-mask-size'] : ['transform'];
-  return { ...halfFrameCss(art), transform: at.transform, transformOrigin: '0 0', ...edge, transition: phase === 'run' && ms > 0 ? props.map((p) => `${p} ${ms}ms ${CAMERA_EASE}`).join(', ') : undefined };
+  return { ...halfFrameCss(art), transform: at.transform, transformOrigin: '0 0', ...edge, transition: phase === 'run' && ms > 0 ? `transform ${ms}ms ${CAMERA_EASE}` : undefined };
 }
 
 /**

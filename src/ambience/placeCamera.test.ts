@@ -184,14 +184,12 @@ describe('spec 1.23: the two frames’ CSS', () => {
     }
   });
 
-  it('the soft edge: on the old frame when it shrinks (at its edge throughout), else on the new one (moving out past its edge by the end)', () => {
-    const pull = cameraCss({ s: 0.6, tx: 0.35, ty: 0.2 }, ART, ART);
-    expect([pull.old.masked, pull.new.masked]).toEqual([true, false]);
-    expect([pull.old.from.maskSize, pull.old.to.maskSize]).toEqual(['100% 100%, 100% 100%', '100% 100%, 100% 100%']);
-    expect(pull.new.from.maskSize).toBeNull();
-    const zoom = cameraCss({ s: 1.5, tx: 0.2, ty: -0.4 }, ART, ART);
-    expect([zoom.old.masked, zoom.new.masked]).toEqual([false, true]);
-    expect([zoom.new.from.maskSize, zoom.new.to.maskSize]).toEqual(['100% 100%, 100% 100%', '120% 100%, 100% 120%']);
+  it('the soft edge: on both moving frames, at their edges, for the whole move (they lie over the new place settled)', () => {
+    for (const c of [{ s: 0.6, tx: 0.35, ty: 0.2 }, { s: 1.5, tx: 0.2, ty: -0.4 }]) {
+      const css = cameraCss(c, ART, ART);
+      expect([css.old.masked, css.new.masked]).toEqual([true, true]);
+      for (const f of [css.old.from, css.old.to, css.new.from, css.new.to]) expect(f.maskSize).toBe('100% 100%, 100% 100%');
+    }
   });
 
   it('two bases cropped differently: the translation carries the difference of the two frames’ offsets too', () => {
