@@ -8,7 +8,10 @@
  * shape draws the phone base and the phone pieces; a stage step's pieces (the
  * state places.ts `pieceWant` gives PlaceLandPiece) keep the old beneath the
  * new fading in; a failed piece is skipped and marked; reduced motion is at
- * once; nothing stands over a place. The timing itself (the fade in, the old
+ * once; nothing stands over a place. Spec 1.23: a place change with a camera
+ * draws both frames under the move's transforms (`data-camera` while it runs),
+ * a refused one and a stage step none, the settled frame none and no mask. The
+ * timing itself (the fade in, the old
  * one out, the place's cross-fade) is played in a real browser by
  * e2e/ambience.e2e.mjs.
  */
@@ -22,7 +25,11 @@ import { halfLayout, halfFrameCss } from '../../ambience/layout.ts';
 import { elementBiomes } from '../../ambience/pieces.ts';
 import { pieceWant, validatePlaces, type PlacesPack } from '../../ambience/places.ts';
 import { synthPlaces } from '../../ambience/testdata/placesSynth.ts';
-import { PlaceLandView, PlacePanel, SceneryStrip } from './SceneryStrip.tsx';
+import { PlaceLandView, PlacePanel, PlacePanelView, SceneryStrip, type PlacePayload } from './SceneryStrip.tsx';
+import { readFileSync } from 'node:fs';
+import { fadeStack, settleFades, type FadeEntry } from '../../ambience/growth.ts';
+import { CAMERA_IDLE, cameraMark, cameraStep, type CameraRun, type CameraState } from '../../ambience/placeCamera.ts';
+import { placePieces } from '../../ambience/places.ts';
 import { ScenePieces } from './ScenePieces.tsx';
 
 const BASE = 'https://example.org/pack/';
@@ -180,5 +187,98 @@ describe('spec 1.22: a place on the board', () => {
       const html = renderToStaticMarkup(<ScenePieces pack={pack} pieces={pack.pieces!} slots={SLOTS} landNames={[]} outcome="won" edge="bottom" reduced={true} pairFull={pairFull} initialBox={BOX} />);
       expect(attrs(html, 'data-pc-colour')).toEqual([]);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec 1.23: the place change is a camera move, on the live pack's file (places-v3).
+
+const V3: PlacesPack = validatePlaces(JSON.parse(readFileSync(new URL('../../ambience/testdata/places-v3.places.json', import.meta.url), 'utf8')), `${PLACES_URL}places.json`).places!;
+const packV3: ScenePack = { ...pack, places: V3 };
+/** A place's first paint for these slots, at the desktop shape: its key (the base's file), its payload and its camera input. */
+function drawnOf(slots: SlotState[]) {
+  const plan = pairFullPlan(halfLayout(slots, packV3), null, { thresholds: packV3.stageThresholds, slots, places: V3 });
+  const s = plan![0] as PairFullScene;
+  const shown = planCandidates(plan, 3.2, false)![0]!;
+  for (const p of placePieces(s.place!.lands, false)) if (p.piece) markPicture(p.piece.src, true);
+  const payload: PlacePayload = { art: shown.art, pieces: shown.place!.pieces };
+  return { key: shown.art.picture!.src, payload, slug: s.place!.place.slug, scene: s.key, drawn: { key: shown.art.picture!.src, art: shown.art, place: s.place!.place } };
+}
+const CUSCO = [slot('plains', 0, 1), slot('mountain', 1, 1)];
+const SICILY = [...CUSCO, slot('island', 2, 1)];
+const TAHITI = [slot('island', 0, 1), slot('forest', 1, 1)];
+const HAWAII = [...TAHITI, slot('mountain', 2, 1)];
+const MS = 1200;
+/** The stack and the camera after a change from one place to the other (each first painted at once). */
+function change(from: SlotState[], to: SlotState[]) {
+  const a = drawnOf(from);
+  const b = drawnOf(to);
+  const s0: CameraState = cameraStep(CAMERA_IDLE, a.drawn, MS);
+  const st: CameraState = cameraStep(s0, b.drawn, MS);
+  const stack: FadeEntry<PlacePayload>[] = fadeStack(fadeStack<PlacePayload>([], { key: a.key, payload: a.payload }, null, 0, true), { key: b.key, payload: b.payload }, null, 0, false);
+  return { a, b, run: st.run, stack, st };
+}
+const view = (b: ReturnType<typeof drawnOf>, stack: readonly FadeEntry<PlacePayload>[], camera: CameraRun | null) =>
+  renderToStaticMarkup(<PlacePanelView slug={b.slug} sceneKey={b.scene} source="half" stack={stack} camera={camera} first ms={MS} reduced={false} />);
+const frameStyles = (html: string) => [...html.matchAll(/<div class="scn-frame" style="([^"]*)"/g)].map((m) => m[1]!);
+const frameCss = (art: PlacePayload['art']) => Object.entries(halfFrameCss(art)).map(([k, v]) => `${k}:${v}`).join(';');
+
+describe('spec 1.23: the place change is a camera move', () => {
+  it('Cusco → Sicily: both frames on screen under the move -- the old one from the identity, the new one from the inverse map -- then run to the end under the cross-fade’s transition, `data-camera` set; settled, gone, with no transform and no mask', () => {
+    const { a, b, run, stack } = change(CUSCO, SICILY);
+    expect(run).not.toBeNull();
+    expect(cameraMark(run!.map)).toBe('0.669,0.346,0.144');
+    expect(stack.map((e) => [e.key, e.role])).toEqual([[b.key, 'cur'], [a.key, 'out']]);
+    // The move's first paint: the start transforms, no transition yet.
+    let html = view(b, stack, run);
+    expect(attrs(html, 'data-camera')).toEqual(['0.669,0.346,0.144']);
+    expect(attrs(html, 'data-camera-frame')).toEqual(['to', 'from']);
+    let [nu, old] = frameStyles(html);
+    expect(nu).toContain(`transform:${run!.css.new.from.transform};transform-origin:0 0`);
+    expect(old).toContain('transform:translate(0px, 0px) scale(1);transform-origin:0 0');
+    expect(html).not.toContain('transition:transform');
+    // s < 1: the view pulls back; the old frame shrinks and carries the soft edge, growing in from outside it.
+    expect(old).toContain('mask-size:120% 100%, 100% 120%');
+    expect(old).toMatch(/mask-image:linear-gradient\(to right, transparent 0, #000 8%, #000 92%, transparent 100%\)/);
+    expect(nu).not.toContain('mask');
+    // Both frames hold their base and their pieces.
+    expect(html).toContain(`src="${a.key}"`);
+    expect(html).toContain(`src="${b.key}"`);
+    expect(attrs(html, 'data-piece')).toEqual(['island1', 'plains1', 'mountain1', 'plains1', 'mountain1']);
+    // Running: the end transforms, under the cross-fade's time and easing.
+    html = view(b, stack, { ...run!, phase: 'run' });
+    [nu, old] = frameStyles(html);
+    expect(nu).toContain('transform:translate(0px, 0px) scale(1)');
+    expect(old).toContain(`transform:${run!.css.old.to.transform}`);
+    expect(old).toContain('mask-size:100% 100%, 100% 100%');
+    expect(old).toContain('transition:transform 1200ms cubic-bezier(0.4, 0, 0.2, 1), mask-size 1200ms cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-size 1200ms cubic-bezier(0.4, 0, 0.2, 1)');
+    expect(nu).toContain('transition:transform 1200ms cubic-bezier(0.4, 0, 0.2, 1)');
+    // Settled: 1.22's frame byte for byte -- no transform, no mask, no data-camera.
+    html = view(b, settleFades(stack), null);
+    expect(attrs(html, 'data-camera')).toEqual([]);
+    expect(attrs(html, 'data-camera-frame')).toEqual([]);
+    expect(frameStyles(html)).toEqual([frameCss(b.payload.art)]);
+    expect(html).not.toMatch(/transform|mask/);
+  });
+
+  it('a refused change (Tahiti → Hawaii, a flip) is exactly 1.22’s cross-fade: two frames, neither transformed, no data-camera', () => {
+    const { a, b, run, stack } = change(TAHITI, HAWAII);
+    expect(run).toBeNull();
+    const html = view(b, stack, run);
+    expect(attrs(html, 'data-camera')).toEqual([]);
+    expect(frameStyles(html)).toEqual([frameCss(b.payload.art), frameCss(a.payload.art)]);
+    expect(html).not.toMatch(/transform|mask/);
+  });
+
+  it('a stage step inside a place never sets a transform', () => {
+    const one = drawnOf(SICILY);
+    const two = drawnOf([slot('plains', 0, 2), slot('mountain', 1, 1), slot('island', 2, 1)]);
+    expect(two.key).toBe(one.key);
+    const st = cameraStep(cameraStep(CAMERA_IDLE, one.drawn, MS), two.drawn, MS);
+    expect(st.run).toBeNull();
+    const stack = fadeStack(fadeStack<PlacePayload>([], { key: one.key, payload: one.payload }, null, 0, true), { key: two.key, payload: two.payload }, null, 0, false);
+    const html = view(two, stack, st.run);
+    expect(frameStyles(html)).toHaveLength(1);
+    expect(html).not.toMatch(/transform|mask|data-camera/);
   });
 });

@@ -82,7 +82,7 @@
  * built-in scenery). Both halves upright; each fades into a mist band along
  * the centre line. The effects keep their strip-sized box at the outer edge.
  */
-import { createContext, Fragment, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, forwardRef, Fragment, memo, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { Biome, SlotState } from '../../ambience/model.ts';
 import { DEFAULT_HALF_LAYOUT, DEFAULT_STRIP, growthOf, halfAt, layersAt, type PackBiome, type PackGrowth, type PackHalf, type PackLayer, type PackStrip, type ScenePack } from '../../ambience/manifest.ts';
 import { growthMs, slotStageFade, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
@@ -98,7 +98,8 @@ import { useTween } from './useTween.ts';
 import { PAIR_FULL_HOLD_MS, pairFullChoice, pairFullFrameCss, pairFullHold, pairFullPlan, planCandidates, planScene, type PairFullCandidate, type PairFullHold, type PairFullPair, type PairFullScene } from '../../ambience/pairfull.ts';
 import type { MakeupShowing } from '../../ambience/makeup.ts';
 import { usePicturesVersion } from './usePictures.ts';
-import { nextPlacePieces, pieceKey, pieceSettleIn, pieceSettleOut, pieceWant, type PieceEntry, type PlacePiece } from '../../ambience/places.ts';
+import { nextPlacePieces, pieceKey, pieceSettleIn, pieceSettleOut, pieceWant, type PieceEntry, type PlacedPiece, type PlacePiece } from '../../ambience/places.ts';
+import { CAMERA_EASE, CAMERA_IDLE, CAMERA_MASK_IMAGE, cameraMark, cameraStep, type CameraFrameCss, type CameraRun, type CameraState } from '../../ambience/placeCamera.ts';
 import './scenery.css';
 
 export type { StripEffect } from './SceneryEffects.tsx';
@@ -805,6 +806,10 @@ function ScenePanel({ s, shown, first, growth, reduced }: { s: PairFullScene; sh
  * the frame), so base and pieces scale and crop as one picture. A place change (another base) cross-fades the whole
  * half over the growth time as a scene step does; within the place only a land whose stage changed moves
  * ({@link PlaceLandPiece}).
+ *
+ * Spec 1.23: a place change whose two places share lands standing in the same order is a camera move
+ * (placeCamera.ts): during the cross-fade the old frame zooms and slides by the map and the new one comes in from its
+ * inverse, so the shared lands travel together (`data-camera` while it runs); the settled frame is 1.22's, untouched.
  */
 export function PlacePanel({ s, shown, first, ms, reduced }: { s: PairFullScene; shown: PairFullCandidate; first: boolean; ms: number; reduced: boolean }) {
   const art = shown.art;
@@ -817,28 +822,76 @@ export function PlacePanel({ s, shown, first, ms, reduced }: { s: PairFullScene;
   useEffect(() => {
     for (const p of ahead) warmPicture({ src: p.src, src2x: null });
   }, [aheadKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const stack = useFadeStack<PlacePayload>({ key: pic.src, payload: { art, pieces: shown.place!.pieces } }, null, 0, ms);
+  // Spec 1.23: the camera, stepped as the base drawn changes (placeCamera.ts `cameraStep`); painted at its start, then run.
+  const cam = useRef<CameraState>(CAMERA_IDLE);
+  const [, bump] = useState(0);
+  cam.current = cameraStep(cam.current, { key: pic.src, art, place }, ms, reduced);
+  const run = cam.current.run;
+  const host = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (run?.phase !== 'start') return;
+    // The start transforms are in the DOM: flush them, so the change to the end is a transition (useFadeIn's trick).
+    host.current?.getBoundingClientRect();
+    cam.current = { ...cam.current, run: { ...run, phase: 'run' } };
+    bump((n) => n + 1);
+  }, [run]);
+  const runId = run?.phase === 'run' ? run.id : null;
+  useEffect(() => {
+    if (runId === null) return;
+    const t = setTimeout(() => {
+      if (cam.current.run?.id !== runId) return;
+      cam.current = { ...cam.current, run: null };
+      bump((n) => n + 1);
+    }, ms + 80);
+    return () => clearTimeout(t);
+  }, [runId, ms]);
+  return <PlacePanelView ref={host} slug={place.slug} sceneKey={s.key} source={art.source} stack={stack} camera={run} first={first} ms={ms} reduced={reduced} />;
+}
+
+/** What one place frame draws: the base's art and the pieces over it. */
+export interface PlacePayload {
+  art: HalfArt;
+  pieces: PlacedPiece[];
+}
+
+/**
+ * What a place panel draws from its fade stack and its camera (pure: {@link PlacePanel} keeps both): each entry one
+ * frame, the base and its pieces, in a Layer carrying the cross-fade's opacity. While a camera move runs, the frame it
+ * moves from and the one it moves to carry its transform (the start one on the move's first paint, then the end one
+ * under a transition of the cross-fade's time and easing) and, the one drawn smaller than the half, its soft edge; any
+ * other frame, and every frame once settled, is exactly 1.22's.
+ */
+export const PlacePanelView = forwardRef<HTMLDivElement, { slug: string; sceneKey: string; source: HalfArt['source']; stack: readonly FadeEntry<PlacePayload>[]; camera: CameraRun | null; first: boolean; ms: number; reduced: boolean }>(function PlacePanelView({ slug, sceneKey, source, stack, camera, first, ms, reduced }, ref) {
   return (
-    <div className={['scn-slot', 'scn-pairfull', 'scn-scene', 'scn-place', first && 'is-first'].filter(Boolean).join(' ')} style={{ flexGrow: 1 }} data-place={place.slug} data-scene={s.key} data-art={art.source}>
+    <div ref={ref} className={['scn-slot', 'scn-pairfull', 'scn-scene', 'scn-place', first && 'is-first'].filter(Boolean).join(' ')} style={{ flexGrow: 1 }} data-place={slug} data-scene={sceneKey} data-art={source} data-camera={camera ? cameraMark(camera.map) : undefined}>
       <div className="scn-pairfull-art">
-        <FadeGroup
-          cur={{ key: pic.src, payload: { art, pieces: shown.place!.pieces } }}
-          next={null}
-          fade={0}
-          ms={ms}
-          render={(e) => (
+        {stack.map((e) => {
+          const move = camera ? (e.key === camera.from ? camera.css.old : e.key === camera.to ? camera.css.new : null) : null;
+          return (
             <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
-              <div className="scn-frame" style={halfFrameCss(e.payload.art)}>
+              <div className="scn-frame" style={move ? cameraFrameStyle(e.payload.art, move, camera!.phase, ms) : halfFrameCss(e.payload.art)} data-camera-frame={move ? (move === camera!.css.old ? 'from' : 'to') : undefined}>
                 <img className="scn-half-img" src={e.payload.art.picture!.src} srcSet={e.payload.art.picture!.src2x ? `${e.payload.art.picture!.src} 1x, ${e.payload.art.picture!.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => markPicture(e.payload.art.picture!.src, true)} onError={() => markPicture(e.payload.art.picture!.src, false)} />
                 {e.payload.pieces.map((p) => (
                   <PlaceLandPiece key={p.biome} biome={p.biome} stage={p.stage} piece={p.piece} ms={ms} />
                 ))}
               </div>
             </Layer>
-          )}
-        />
+          );
+        })}
       </div>
     </div>
   );
+});
+
+/** A frame in a camera move: 1.22's frame, plus the move's transform from its top-left (and its soft edge, when it carries it). */
+export function cameraFrameStyle(art: HalfArt, move: CameraFrameCss, phase: CameraRun['phase'], ms: number): CSSProperties {
+  const at = phase === 'start' ? move.from : move.to;
+  const edge: CSSProperties = move.masked
+    ? { maskImage: CAMERA_MASK_IMAGE, WebkitMaskImage: CAMERA_MASK_IMAGE, maskSize: at.maskSize!, WebkitMaskSize: at.maskSize!, maskPosition: 'center', WebkitMaskPosition: 'center', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat', maskComposite: 'intersect', WebkitMaskComposite: 'source-in' }
+    : {};
+  const props = move.masked ? ['transform', 'mask-size', '-webkit-mask-size'] : ['transform'];
+  return { ...halfFrameCss(art), transform: at.transform, transformOrigin: '0 0', ...edge, transition: phase === 'run' && ms > 0 ? props.map((p) => `${p} ${ms}ms ${CAMERA_EASE}`).join(', ') : undefined };
 }
 
 /**
