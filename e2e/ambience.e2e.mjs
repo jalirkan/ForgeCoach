@@ -79,6 +79,10 @@
  *      beneath) and leaves the base and the other pieces the same elements; a new colour cross-fades the whole half;
  *      the caption is "<place>: Island 2, Swamp 1, …"; scenes.json is never fetched (e2e/out/places-*.png). A state
  *      whose colours have no place on disk is skipped and said so (while the pack is being built).
+ *      Spec 1.23 (`places-camera`: Plains, Mountain, Island -- Cusco, then Sicily): the place change is a camera move:
+ *      mid-move the panel's `data-camera` is the map this script computes from the manifest on disk for the shape
+ *      drawn, both frames are on screen and each shared land's centre in the new frame lies on its centre in the old
+ *      one (to a few pixels); settled, `data-camera` is gone and the frame carries no transform and no mask.
  *
  *   Steps 2–6 run with `?scenes=off` (spec 1.21: no scenes for the page; it turns the places off too): with scenes
  *   or places loaded a half of two or more colours never draws the pair logic they check, which still draws for a
@@ -644,7 +648,125 @@ const PLACE_SEQUENCES = [
   { name: 'places-seq-5', lands: 'I S M M I S F F F' },
   { name: 'places-seq-6', lands: 'P I S M F P I S M F F I' },
   { name: 'places-alexandria', lands: 'I S P I I', down: 'island' },
+  // Spec 1.23: Cusco (plains+mountain) -> Sicily (island+plains+mountain), a camera move on places-v3.
+  { name: 'places-camera', lands: 'P M I', camera: 2 },
 ];
+
+/**
+ * Spec 1.23's map, from the manifest on disk (placeCamera.ts `placeCamera`, again here: an .mjs cannot import it): each
+ * land's box the union of its six pieces at the shape; two or more shared lands the least-squares line through their
+ * centres, one the ratio of its widths; the horizon of A to B's (null 0.5); null when refused.
+ */
+function cameraOf(a, b, shape) {
+  const box = (p, land) => {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    for (const st of p.layers[land] ?? []) {
+      const pc = st[shape];
+      if (!pc) continue;
+      x0 = Math.min(x0, pc.x);
+      x1 = Math.max(x1, pc.x + pc.w);
+    }
+    return x1 > x0 ? { cx: (x0 + x1) / 2, w: x1 - x0 } : null;
+  };
+  const shared = [];
+  for (const land of GEOGRAPHY) {
+    if (!a.layers[land] || !b.layers[land]) continue;
+    const ba = box(a, land);
+    const bb = box(b, land);
+    if (ba && bb) shared.push({ land, a: ba, b: bb });
+  }
+  if (!shared.length) return null;
+  for (let i = 0; i < shared.length; i++) for (let j = i + 1; j < shared.length; j++) if (!((shared[i].a.cx - shared[j].a.cx) * (shared[i].b.cx - shared[j].b.cx) > 0)) return null;
+  let s;
+  let tx;
+  if (shared.length === 1) {
+    s = shared[0].b.w / shared[0].a.w;
+    tx = shared[0].b.cx - s * shared[0].a.cx;
+  } else {
+    const ma = shared.reduce((t, x) => t + x.a.cx, 0) / shared.length;
+    const mb = shared.reduce((t, x) => t + x.b.cx, 0) / shared.length;
+    const sab = shared.reduce((t, x) => t + (x.a.cx - ma) * (x.b.cx - mb), 0);
+    const saa = shared.reduce((t, x) => t + (x.a.cx - ma) ** 2, 0);
+    s = sab / saa;
+    tx = mb - s * ma;
+  }
+  if (!(s >= 0.5 - 1e-9 && s <= 2 + 1e-9)) return null;
+  const hz = (p) => (shape === 'phone' ? p.half.phone.horizon : p.half.horizon) ?? 0.5;
+  const ty = hz(b) - s * hz(a);
+  return { s, tx, ty, shared, mark: [s, tx, ty].map((n) => n.toFixed(3)).join(',') };
+}
+
+/**
+ * Spec 1.23 in the browser: the change from `a` to `b` is running as a camera move -- `data-camera` is the map for the
+ * shape drawn, both frames are on screen, and every shared land's centre in the new frame lies on its centre in the
+ * old frame (each frame's on-screen box is its transformed box) -- then it settles with no transform and no mask.
+ */
+async function cameraCheck(page, label, a, b) {
+  const art = await page.evaluate(() => document.querySelector('[data-amb-player="1"] [data-place]')?.getAttribute('data-art'));
+  const cam = cameraOf(a, b, art === 'phone' ? 'phone' : 'half');
+  if (!cam) throw new Fail(`${label}: ${a.slug} -> ${b.slug} should be a camera move on this pack, but the map is refused`);
+  let seen;
+  try {
+    await page.waitForFunction(
+      (mark) => {
+        const el = document.querySelector('[data-amb-player="1"] [data-place]');
+        return el?.getAttribute('data-camera') === mark && el.querySelector('[data-camera-frame="from"]') && el.querySelector('[data-camera-frame="to"]');
+      },
+      cam.mark,
+      { timeout: 12_000, polling: 'raf' },
+    );
+    // Measured once the old frame has gone at least 40% of the way to its end scale (the eased transition is under
+    // way, not at its first frame), in the same frame as both boxes are read.
+    seen = await (
+      await page.waitForFunction(
+        ({ shared, s }) => {
+          const el = document.querySelector('[data-amb-player="1"] [data-place]');
+          const from = el?.querySelector('[data-camera-frame="from"]');
+          const to = el?.querySelector('[data-camera-frame="to"]');
+          if (!from || !to) return { gone: true };
+          const tf = getComputedStyle(from).transform;
+          const a = tf === 'none' ? 1 : new DOMMatrixReadOnly(tf).a;
+          if (Math.abs(a - 1) < 0.4 * Math.abs(s - 1)) return false;
+          const ra = from.getBoundingClientRect();
+          const rb = to.getBoundingClientRect();
+          return {
+            camera: el.getAttribute('data-camera'),
+            progress: (a - 1) / (s - 1),
+            fromTransform: tf,
+            offs: shared.map((x) => ({ land: x.land, off: Math.abs(rb.x + x.b.cx * rb.width - (ra.x + x.a.cx * ra.width)) })),
+          };
+        },
+        { shared: cam.shared, s: cam.s },
+        { timeout: 12_000, polling: 'raf' },
+      )
+    ).jsonValue();
+    if (seen?.gone) seen = null;
+    // What the move looks like part way (e2e/out/places-camera-mid-<shape>.png).
+    if (seen) await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `places-camera-mid-${label.split(' ')[0]}.png`) });
+  } catch {
+    throw new Fail(`${label}: no camera move ${cam.mark} seen from ${a.slug} to ${b.slug}`);
+  }
+  check(!!seen, `${label}: the move ended before it could be measured`);
+  if (!seen) return;
+  log(`${label}: ${a.slug} -> ${b.slug}: data-camera ${seen.camera}; at ${Math.round(seen.progress * 100)}% of the move the shared lands are ${seen.offs.map((o) => `${o.land} ${o.off.toFixed(1)} px`).join(', ')} apart (the old frame ${seen.fromTransform})`);
+  check(seen.fromTransform !== 'none', `${label}: the old frame carries no transform mid-move`);
+  for (const o of seen.offs) check(o.off <= 3, `${label}: mid-move the ${o.land} of ${b.slug} is ${o.off.toFixed(1)} px from the ${o.land} of ${a.slug}`);
+  try {
+    await page.waitForFunction(
+      () => {
+        const el = document.querySelector('[data-amb-player="1"] [data-place]');
+        const frames = el?.querySelectorAll('.scn-frame') ?? [];
+        return !!el && !el.hasAttribute('data-camera') && frames.length === 1 && getComputedStyle(frames[0]).transform === 'none' && !frames[0].style.transform && !frames[0].style.maskImage && !frames[0].style.webkitMaskImage && !frames[0].hasAttribute('data-camera-frame');
+      },
+      null,
+      { timeout: 12_000, polling: 50 },
+    );
+  } catch {
+    throw new Fail(`${label}: the camera move from ${a.slug} to ${b.slug} never settled (data-camera gone, one frame, no transform, no mask)`);
+  }
+  log(`${label}: settled -- no data-camera, one frame, no transform, no mask`);
+}
 const cap = (b) => b.charAt(0).toUpperCase() + b.slice(1);
 
 /**
@@ -697,6 +819,7 @@ async function placesCheck(browser, origin, pairs, shape) {
       let prevPlace = null;
       let checkedStep = false;
       let checkedFade = false;
+      let checkedCamera = false;
       for (let i = 0; i < steps.length; i++) {
         const { biome, delta } = steps[i];
         const before = { ...counts };
@@ -760,8 +883,13 @@ async function placesCheck(browser, origin, pairs, shape) {
             }
           }
         }
+        // Spec 1.23: the camera step of the sequence.
+        if (seq.camera === i && prevPlace) {
+          await cameraCheck(page, `${shape} ${seq.name} ${i + 1}`, Object.values(manifest.places).find((p) => p.slug === prevPlace), place);
+          checkedCamera = true;
+        }
         // A new colour: the whole half cross-fades (two bases in the panel at once).
-        if (!sameStep && prevPlace && !checkedStep) {
+        else if (!sameStep && prevPlace && !checkedStep) {
           try {
             await page.waitForFunction(() => document.querySelector('[data-amb-player="1"] [data-place]')?.querySelectorAll('.scn-half-img').length === 2, null, { timeout: 12_000, polling: 30 });
             checkedStep = true;
@@ -839,7 +967,8 @@ async function placesCheck(browser, origin, pairs, shape) {
       // (A sequence every step of which was skipped may end on a side with no caption.)
       if (shape === 'phone' && (await page.$('[data-amb-bands="1"]'))) await captionLines(page);
       await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `${seq.name}-${shape}.png`) });
-      log(`PASS: ${shape} ${seq.name}: the place composed for the state at every land${checkedFade ? ', a stage step faded over the old piece' : ''}${checkedStep ? ', a new colour cross-faded the half' : ''}`);
+      if (seq.camera !== undefined) check(checkedCamera, `${shape} ${seq.name}: the camera step was not reached`);
+      log(`PASS: ${shape} ${seq.name}: the place composed for the state at every land${checkedFade ? ', a stage step faded over the old piece' : ''}${checkedStep ? ', a new colour cross-faded the half' : ''}${checkedCamera ? ', a new colour moved the camera' : ''}`);
     }
     // A state with no place on disk is drawn by the 1.15–1.19 rules (no scenes are fetched): its pair pictures then load.
     const scenesFetched = forbidden.filter((u) => /@scenes-v/.test(u));
