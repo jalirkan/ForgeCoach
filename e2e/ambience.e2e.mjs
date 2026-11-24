@@ -70,7 +70,7 @@
  *      stands in (e2e/out/nearest-*.png).
  *
  *   8. Spec 1.22, places, on a bare page (ForgeCoach's default draws them), the places manifest and every place
- *      picture served from disk (PLACES_DIR, default ~/scenery-packs/scenes-v1/pack-<the places tag>, pack-places-v3: `index/places.json`
+ *      picture served from disk (PLACES_DIR, default ~/scenery-packs/scenes-v1/pack-<the places tag>, pack-places-v4: `index/places.json`
  *      and `places/<slug>/<d|p>/…`) through the browser context's routing, never the network; on the desktop and the
  *      phone, land by land (Cartagena's four, a homeland from stage 1, the storyboard's 5 and 6, a land destroyed):
  *      your half is exactly one place panel for the half's colours (`data-place`) and state (`data-scene`), its base
@@ -79,7 +79,8 @@
  *      beneath) and leaves the base and the other pieces the same elements; a new colour cross-fades the whole half;
  *      the caption is "<place>: Island 2, Swamp 1, …"; scenes.json is never fetched (e2e/out/places-*.png). A state
  *      whose colours have no place on disk is skipped and said so (while the pack is being built).
- *      Spec 1.23 (`places-camera`: Plains, Mountain, Island -- Cusco, then Sicily): the place change is a camera move:
+ *      Spec 1.23 (`places-camera`: Plains, Mountain, Island -- Cusco, then Sicily; `places-camera-hawaii`: Forest ×4,
+ *      Mountain ×5, Island -- Araucanía at forest 4 + mountain 5, then Hawaii): the place change is a camera move:
  *      mid-move the panel's `data-camera` is the map this script computes from the manifest on disk for the shape
  *      drawn, both frames are on screen and each tracked land's centre in the new frame lies on its centre in the old
  *      one (to a few pixels); settled, `data-camera` is gone and the frame carries no transform and no mask.
@@ -601,7 +602,7 @@ async function captionLines(page) {
 
 /**
  * The places pack on disk (the manifest jsDelivr serves at FORGECOACH_PLACES_URL's tag, and every place's pictures):
- * PLACES_DIR, else the owner's folder for that tag, ~/scenery-packs/scenes-v1/pack-<tag> (pack-places-v1, pack-places-v2, pack-places-v3).
+ * PLACES_DIR, else the owner's folder for that tag, ~/scenery-packs/scenes-v1/pack-<tag> (pack-places-v1 to pack-places-v4).
  */
 const PLACES_DIR = path.resolve(env.PLACES_DIR ?? path.join(os.homedir(), 'scenery-packs', 'scenes-v1', `pack-${/@(places-v[^/]+)\//.exec(placesUrl())?.[1] ?? 'places-v1'}`));
 /** ForgeCoach's places URL, read from prefs.ts (an .mjs cannot import it). */
@@ -648,8 +649,10 @@ const PLACE_SEQUENCES = [
   { name: 'places-seq-5', lands: 'I S M M I S F F F' },
   { name: 'places-seq-6', lands: 'P I S M F P I S M F F I' },
   { name: 'places-alexandria', lands: 'I S P I I', down: 'island' },
-  // Spec 1.23: Cusco (plains+mountain) -> Sicily (island+plains+mountain), a camera move on places-v3.
+  // Spec 1.23: Cusco (plains+mountain) -> Sicily (island+plains+mountain), and Araucanía at forest 4 + mountain 5 ->
+  // Hawaii (one Island: the sea opens on the left), camera moves on places-v4 with every shared land tracked.
   { name: 'places-camera', lands: 'P M I', camera: 2 },
+  { name: 'places-camera-hawaii', lands: 'F F F F M M M M M I', camera: 9 },
 ];
 
 /**
@@ -766,8 +769,8 @@ async function cameraCheck(page, label, a, b) {
       )
     ).jsonValue();
     if (seen?.gone) seen = null;
-    // What the move looks like part way (e2e/out/places-camera-mid-<shape>.png).
-    if (seen) await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `places-camera-mid-${label.split(' ')[0]}.png`) });
+    // What the move looks like part way (e2e/out/places-camera-mid-<from>-<to>-<shape>.png).
+    if (seen) await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `places-camera-mid-${a.slug}-${b.slug}-${label.split(' ')[0]}.png`) });
   } catch {
     throw new Fail(`${label}: no camera move ${cam.mark} seen from ${a.slug} to ${b.slug}`);
   }
@@ -802,7 +805,7 @@ const cap = (b) => b.charAt(0).toUpperCase() + b.slice(1);
  * in over its old one (both on screen at once, the old beneath), then the old goes; the base and the other lands'
  * pieces stay the same elements. A new colour: the whole half cross-fades (two bases on screen during the fade). The
  * caption: "<name>: Island 2, Swamp 1, …". States whose colours have no place in the manifest on disk are skipped
- * (said so): with places-v3's 31 none is.
+ * (said so): with places-v4's 31 none is.
  */
 async function placesCheck(browser, origin, pairs, shape) {
   const manifest = diskPlaces();

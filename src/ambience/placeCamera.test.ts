@@ -6,7 +6,7 @@
  * stands, the map for one and for several shared lands (hand-computed), every
  * refusal, the two frames' CSS (the new frame's shared land on the old one's at
  * every moment), the move across renders, and over the live pack's real file
- * (places-v3) how many of the 75 one-land steps move and how many are refused.
+ * (places-v4) how many of the 75 one-land steps move and how many are refused.
  * Nothing here touches the network.
  */
 import { readFileSync } from 'node:fs';
@@ -240,57 +240,68 @@ describe('spec 1.23: the move across renders', () => {
   });
 });
 
-describe('spec 1.23 over the live pack (places-v3)', () => {
-  const P = validatePlaces(JSON.parse(readFileSync(new URL('./testdata/places-v3.places.json', import.meta.url), 'utf8')), `${FORGECOACH_PLACES_URL}places.json`).places!;
+describe('spec 1.23 over the live pack (places-v4, re-laid)', () => {
+  const P = validatePlaces(JSON.parse(readFileSync(new URL('./testdata/places-v4.places.json', import.meta.url), 'utf8')), `${FORGECOACH_PLACES_URL}places.json`).places!;
   const of = (lands: Biome[]) => P.places[GEOGRAPHY.filter((b) => lands.includes(b)).join('+')]!;
   const bySlug = (slug: string) => Object.values(P.places).find((p) => p!.slug === slug)!;
   const step = (from: string, to: string, phone = false) => placeCamera({ place: bySlug(from), phone }, { place: bySlug(to), phone });
 
-  it('of the 75 one-land steps (one colour more), 70 move (26 with a shared land left untracked) and 5 are refused for the scale, at both shapes', () => {
+  it('of the 75 one-land steps (one colour more), 72 move (10 with a shared land left untracked) and 3 are refused for the scale, at both shapes', () => {
     for (const phone of [false, true]) {
       const tally: Record<string, number> = {};
+      const partial: string[] = [];
+      const refused: string[] = [];
       let n = 0;
-      let partial = 0;
       for (let m = 1; m < 32; m++)
         for (const extra of GEOGRAPHY) {
           const set = GEOGRAPHY.filter((_, i) => m & (1 << i));
           if (set.includes(extra)) continue;
-          const c = placeCamera({ place: of(set), phone }, { place: of([...set, extra]), phone });
+          const [a, b] = [of(set), of([...set, extra])];
+          const c = placeCamera({ place: a, phone }, { place: b, phone });
           const k = isCamera(c) ? 'move' : c.refused;
           tally[k] = (tally[k] ?? 0) + 1;
-          if (isCamera(c) && c.untracked.length) partial++;
+          if (isCamera(c) && c.untracked.length) partial.push(`${a.slug}->${b.slug}`);
+          if (!isCamera(c)) refused.push(`${a.slug}->${b.slug}`);
           n++;
         }
       expect(n).toBe(75);
-      expect(tally).toEqual({ move: 70, scale: 5 });
-      expect(partial).toBe(26);
+      expect(tally).toEqual({ move: 72, scale: 3 });
+      expect(refused.sort()).toEqual(['alexandria->zanzibar', 'kolkata->zanzibar', 'valley-of-mexico->santorini']);
+      // Every step that leaves a land untracked reaches Cape Town, Kathmandu or Istanbul (whose four-land neighbours
+      // Cape Town, Zanzibar and Kathmandu keep one land out of order).
+      expect(partial).toHaveLength(10);
+      for (const x of partial) expect(x).toMatch(/->(cape-town|kathmandu|istanbul)$/);
     }
   });
 
-  it('links in one order move: Cusco → Sicily, Lisbon → Sicily, Angkor → Cambodia, Kyoto → Cambodia, Venice → Lisbon', () => {
-    expect(cameraMark(map(step('cusco', 'sicily')))).toBe('0.669,0.346,0.144');
-    expect(cameraMark(map(step('lisbon', 'sicily')))).toBe('0.741,-0.021,0.084');
-    expect(cameraMark(map(step('angkor', 'cambodia')))).toBe('1.593,-0.337,-0.501');
-    expect(cameraMark(map(step('kyoto', 'cambodia')))).toBe('0.594,0.373,0.036');
-    expect(cameraMark(map(step('venice', 'lisbon')))).toBe('0.545,-0.023,0.312');
-    expect(isCamera(step('cusco', 'sicily', true))).toBe(true);
+  it('links in one order move on every shared land: Cusco → Sicily, Lisbon → Sicily, Angkor → Cambodia, Kyoto → Cambodia, Venice → Lisbon, Araucanía → Hawaii, Tahiti → Hawaii', () => {
+    const marks: [string, string, string][] = [
+      ['cusco', 'sicily', '0.669,0.346,0.144'],
+      ['lisbon', 'sicily', '0.741,-0.021,0.084'],
+      ['angkor', 'cambodia', '1.593,-0.337,-0.501'],
+      ['kyoto', 'cambodia', '0.594,0.373,0.036'],
+      ['venice', 'lisbon', '0.545,-0.023,0.312'],
+      ['araucania', 'hawaii', '0.837,0.298,-0.196'],
+      ['tahiti', 'hawaii', '0.817,-0.088,-0.177'],
+    ];
+    for (const [a, b, mark] of marks) {
+      const m = map(step(a, b));
+      expect(cameraMark(m), `${a} -> ${b}`).toBe(mark);
+      expect(m.untracked, `${a} -> ${b}`).toEqual([]);
+    }
+    // The phone base's own horizons: Cusco → Sicily 0.157, Araucanía → Hawaii -0.074.
+    expect(cameraMark(map(step('cusco', 'sicily', true)))).toBe('0.669,0.346,0.157');
+    expect(cameraMark(map(step('araucania', 'hawaii', true)))).toBe('0.837,0.298,-0.074');
   });
 
-  it('a flipped land is left untracked: Tahiti → Hawaii moves on its forest (its island left of the forest in Tahiti, right of it in Hawaii)', () => {
-    const m = map(step('tahiti', 'hawaii'));
-    expect([m.shared, m.untracked]).toEqual([['forest'], ['island']]);
-    expect(cameraMark(m)).toBe('0.802,-0.406,0.113');
-    expect(isCamera(step('tahiti', 'hawaii', true))).toBe(true);
+  it('a land kept out of order is left untracked: Sicily → Cape Town moves on its island and plains, its mountain cross-fades', () => {
+    const m = map(step('sicily', 'cape-town'));
+    expect([m.shared, m.untracked]).toEqual([['island', 'plains'], ['mountain']]);
+    expect(cameraMark(m)).toBe('1.317,-0.085,-0.270');
   });
 
   it('refused on the scale: Kolkata → Zanzibar, Valley of Mexico → Santorini', () => {
     expect(step('kolkata', 'zanzibar')).toEqual({ refused: 'scale' });
     expect(step('valley-of-mexico', 'santorini')).toEqual({ refused: 'scale' });
-  });
-
-  it('Araucanía → Hawaii moves under the rule as written: its two shared lands (forest, mountain) keep their order; v3 Hawaii’s flip is its island, standing between them', () => {
-    const m = map(step('araucania', 'hawaii'));
-    expect([m.shared, m.untracked]).toEqual([['forest', 'mountain'], []]);
-    expect(cameraMark(m)).toBe('1.653,-0.231,-0.448');
   });
 });
