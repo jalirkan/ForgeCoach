@@ -237,8 +237,8 @@ describe('spec 1.23: the place change is a camera move', () => {
     expect(nu).toContain(`transform:${run!.css.new.from.transform};transform-origin:0 0`);
     expect(old).toContain('transform:translate(0px, 0px) scale(1);transform-origin:0 0');
     expect(html).not.toContain('transition:transform');
-    // s < 1: the view pulls back; the old frame shrinks and carries the soft edge, growing in from outside it.
-    expect(old).toContain('mask-size:120% 100%, 100% 120%');
+    // s < 1: the view pulls back; the old frame shrinks and carries the soft edge, at its edge from the start.
+    expect(old).toContain('mask-size:100% 100%, 100% 100%');
     expect(old).toMatch(/mask-image:linear-gradient\(to right, transparent 0, #000 8%, #000 92%, transparent 100%\)/);
     expect(nu).not.toContain('mask');
     // Both frames hold their base and their pieces.

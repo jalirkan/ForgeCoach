@@ -37,7 +37,7 @@ export const CAMERA_MIN_SCALE = 0.5;
 export const CAMERA_MAX_SCALE = 2;
 /** The soft edge a frame in motion fades out over, a fraction of its width and height at each side. */
 export const CAMERA_EDGE = 0.08;
-/** The mask's size once its soft edge lies wholly outside the frame (`(k - 1) / 2 >= CAMERA_EDGE * k`, so k >= 1.19). */
+/** The mask's size once its soft edge lies wholly outside the frame (`(k - 1) / 2 >= CAMERA_EDGE * k`, so k >= 1.19): a growing new frame's at the end. */
 export const CAMERA_EDGE_OFF = 1.2;
 /** The easing of the place's cross-fade (SceneryStrip's `Layer`), so the move and the fade run as one. */
 export const CAMERA_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
@@ -179,9 +179,11 @@ const edgeSize = (k: number) => `${pct(k)} 100%, 100% ${pct(k)}`;
  * - B, the new: from the inverse of the full map, `translate(-(OB - OA) - tx*W/s, -(TB - TA) - ty*H/s) scale(1/s)`, to
  *   the identity. Its translation and scale at progress e are exactly linear in e, so the transition's interpolation is
  *   the composition M(e) ∘ map⁻¹ at every moment, and the settled frame has no transform left.
- * The soft edge goes on the layer smaller than the half: the old when it shrinks (s < 1; its mask grows in from fully
- * outside it), else the new (its mask starts at the frame's edge and moves wholly outside it by the end), so neither
- * edge pops when the mask comes or goes.
+ * The soft edge goes on the layer smaller than the half: the old when it shrinks (s < 1), at the frame's edge for the
+ * whole move (from its first frame the new frame, larger and aligned on the shared lands, shows through the faded
+ * edge, so nothing pops, and its border is soft at every moment); else the new, whose mask starts at the frame's edge
+ * and moves wholly outside it by the end (once the old has faded the new is the half, and its edge must not be soft
+ * then), so its removal at the settle changes no pixel.
  */
 export function cameraCss(c: Pick<CameraMap, 's' | 'tx' | 'ty'>, artA: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo'>, artB: Pick<HalfArt, 'aspect' | 'focal' | 'safe' | 'focalTo'>): { old: CameraFrameCss; new: CameraFrameCss } {
   const fa = halfFrameCss(artA);
@@ -191,7 +193,7 @@ export function cameraCss(c: Pick<CameraMap, 's' | 'tx' | 'ty'>, artA: Pick<Half
   const newFrom = `translate(${shift(fa.left, fb.left, -1, -c.tx / c.s)}, ${shift(fa.top, fb.top, -1, -c.ty / c.s)}) scale(${num(1 / c.s)})`;
   const oldMasked = c.s < 1;
   return {
-    old: { from: { transform: identity, maskSize: oldMasked ? edgeSize(CAMERA_EDGE_OFF) : null }, to: { transform: oldTo, maskSize: oldMasked ? edgeSize(1) : null }, masked: oldMasked },
+    old: { from: { transform: identity, maskSize: oldMasked ? edgeSize(1) : null }, to: { transform: oldTo, maskSize: oldMasked ? edgeSize(1) : null }, masked: oldMasked },
     new: { from: { transform: newFrom, maskSize: oldMasked ? null : edgeSize(1) }, to: { transform: identity, maskSize: oldMasked ? null : edgeSize(CAMERA_EDGE_OFF) }, masked: !oldMasked },
   };
 }
