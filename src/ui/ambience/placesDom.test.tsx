@@ -33,7 +33,7 @@ import { placePieces } from '../../ambience/places.ts';
 import { ScenePieces } from './ScenePieces.tsx';
 
 const BASE = 'https://example.org/pack/';
-const PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v4/';
+const PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v5/';
 const slot = (biome: Biome, index: number, weight: number): SlotState => ({ biome, index, weight, stage: Math.min(6, Math.ceil(weight)), peak: Math.min(6, Math.ceil(weight)) });
 const piece = (src: string) => ({ src, width: 600, height: 300 });
 const biomeStages = (b: string) => [1, 2, 3, 4, 5, 6].map((k) => ({ layers: [], half: { src: `${b}/s${k}-half.webp` } }));
@@ -191,13 +191,13 @@ describe('spec 1.22: a place on the board', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Spec 1.23: the place change is a camera move, on the live pack's file (places-v4).
+// Spec 1.23: the place change is a camera move, on the live pack's file (places-v5).
 
-const V4: PlacesPack = validatePlaces(JSON.parse(readFileSync(new URL('../../ambience/testdata/places-v4.places.json', import.meta.url), 'utf8')), `${PLACES_URL}places.json`).places!;
-const packV4: ScenePack = { ...pack, places: V4 };
+const V5: PlacesPack = validatePlaces(JSON.parse(readFileSync(new URL('../../ambience/testdata/places-v5.places.json', import.meta.url), 'utf8')), `${PLACES_URL}places.json`).places!;
+const packV5: ScenePack = { ...pack, places: V5 };
 /** A place's first paint for these slots, at the desktop shape: its key (the base's file), its payload and its camera input. */
 function drawnOf(slots: SlotState[]) {
-  const plan = pairFullPlan(halfLayout(slots, packV4), null, { thresholds: packV4.stageThresholds, slots, places: V4 });
+  const plan = pairFullPlan(halfLayout(slots, packV5), null, { thresholds: packV5.stageThresholds, slots, places: V5 });
   const s = plan![0] as PairFullScene;
   const shown = planCandidates(plan, 3.2, false)![0]!;
   for (const p of placePieces(s.place!.lands, false)) if (p.piece) markPicture(p.piece.src, true);
@@ -228,11 +228,11 @@ describe('spec 1.23: the place change is a camera move', () => {
   it('Cusco → Sicily: three frames under the move -- the new place settled beneath (no transform, no mask), the new one moving from the inverse map and the old one from the identity, both with the soft edge -- then run to the end under the cross-fade’s transition, `data-camera` set; settled, one frame, gone, with no transform and no mask', () => {
     const { a, b, run, stack } = change(CUSCO, SICILY);
     expect(run).not.toBeNull();
-    expect(cameraMark(run!.map)).toBe('0.669,0.346,0.144');
+    expect(cameraMark(run!.map)).toBe('0.648,0.358,0.110');
     expect(stack.map((e) => [e.key, e.role])).toEqual([[b.key, 'cur'], [a.key, 'out']]);
     // The move's first paint: the start transforms, no transition yet.
     let html = view(b, stack, run);
-    expect(attrs(html, 'data-camera')).toEqual(['0.669,0.346,0.144']);
+    expect(attrs(html, 'data-camera')).toEqual(['0.648,0.358,0.110']);
     expect(attrs(html, 'data-camera-frame')).toEqual(['under', 'to', 'from']);
     let [under, nu, old] = frameStyles(html);
     // Beneath: exactly 1.22's settled frame of the new place.

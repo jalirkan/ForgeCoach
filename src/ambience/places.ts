@@ -42,7 +42,7 @@ import { sceneKeyOf, sceneLands, type SceneHalf, type SceneLand } from './scenes
 export const PLACES_MANIFEST_FILE = 'places.json';
 /** The newest spec version this reader knows (1.22 added places). */
 export const PLACES_SPEC = '1.22';
-/** A places manifest longer than this is refused unread (places-v4's 31 places are 214,472 bytes). */
+/** A places manifest longer than this is refused unread (places-v5's 31 places are 214,359 bytes). */
 export const MAX_PLACES_MANIFEST_BYTES = 2 * 1024 * 1024;
 /** Declared files of one place (both bases and every piece at both shapes) past this get a warning. */
 export const MAX_PLACE_BYTES = 8 * 1024 * 1024;
@@ -347,7 +347,7 @@ function parsePlace(rawKey: string, v: unknown, base: string, errors: string[], 
   if (!half.phone) return refuse(`half.phone: missing or unusable${halfWarn.length ? ` (${halfWarn.join('; ')})` : ''} -- a place must look right on a desktop and a phone`);
   warnings.push(...halfWarn);
   // A phone base that gives no subject band: the desktop band mapped into it as a full-width outpainting up and down
-  // (places-v3's and places-v4's 1.82:1 phone base is the desktop panorama 320 px down a 1408 px picture, sky above and near ground below), never manifest.ts's 4:5
+  // (places-v3's, places-v4's and places-v5's 1.82:1 phone base is the desktop panorama 320 px down a 1408 px picture, sky above and near ground below), never manifest.ts's 4:5
   // default; its focal point and safe rect follow the band when not given either.
   if (isObj(v.half.phone) && (v.half.phone.subjectBand === undefined || v.half.phone.subjectBand === null)) {
     const ph = half.phone;
