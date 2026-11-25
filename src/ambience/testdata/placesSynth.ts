@@ -5,7 +5,7 @@
  * Spec 1.22 test data: a places manifest in places-v1's shape for all 31 colour
  * sets, with relative URLs (places/<slug>/<d|p>/base.webp, <land>-<k>.webp) and
  * the homelands' stage 1 null, for the shape tests (places.test.ts, the DOM
- * tests). The real tagged file is places-v4.places.json beside it.
+ * tests). The real tagged file is places-v5.places.json beside it.
  */
 import type { Biome } from '../model.ts';
 import { GEOGRAPHY } from '../pairs.ts';
@@ -26,14 +26,14 @@ const pieceRaw = (slug: string, shape: 'd' | 'p', land: Biome, k: number) => ({ 
  * shape -- a 4:5 phone base (1152 × 1440) and a phone piece file of its own in `p/`. `v2`: places-v2's -- a 2.22:1
  * phone base (2560 × 1152, the desktop panorama with sky above and ground below) whose pieces are the DESKTOP piece
  * files at another box (shifted down by the extra sky), except stage 6, which touches the old bottom edge and has a
- * file of its own (`p6/`). `v3` (or `v4`, the current pack, whose shape is v3's): places-v3's -- the same, the phone base 1.82:1 (2560 × 1408), the
+ * file of its own (`p6/`). `v3` (or `v4` or `v5`, the current pack, whose shape is v3's): places-v3's -- the same, the phone base 1.82:1 (2560 × 1408), the
  * desktop base 320 px down it (sky above, 288 px of near ground below).
  */
-export function synthPlaces(shape: 'v1' | 'v2' | 'v3' | 'v4' = 'v1'): any {
+export function synthPlaces(shape: 'v1' | 'v2' | 'v3' | 'v4' | 'v5' = 'v1'): any {
   const places: Record<string, unknown> = {};
   const v2 = shape !== 'v1';
   // The desktop base (800 px high) sits `top` px down a phone base `high` px high: v2 176 of 1152, v3 320 of 1408.
-  const [top, high] = shape === 'v3' || shape === 'v4' ? [320, 1408] : [176, 1152];
+  const [top, high] = shape === 'v3' || shape === 'v4' || shape === 'v5' ? [320, 1408] : [176, 1152];
   const phonePiece = (slug: string, land: Biome, k: number) => {
     if (!v2) return pieceRaw(slug, 'p', land, k);
     const d = pieceRaw(slug, 'd', land, k);

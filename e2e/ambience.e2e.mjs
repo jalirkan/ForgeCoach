@@ -70,7 +70,7 @@
  *      stands in (e2e/out/nearest-*.png).
  *
  *   8. Spec 1.22, places, on a bare page (ForgeCoach's default draws them), the places manifest and every place
- *      picture served from disk (PLACES_DIR, default ~/scenery-packs/scenes-v1/pack-<the places tag>, pack-places-v4: `index/places.json`
+ *      picture served from disk (PLACES_DIR, default ~/scenery-packs/scenes-v1/pack-<the places tag>, pack-places-v5: `index/places.json`
  *      and `places/<slug>/<d|p>/…`) through the browser context's routing, never the network; on the desktop and the
  *      phone, land by land (Cartagena's four, a homeland from stage 1, the storyboard's 5 and 6, a land destroyed):
  *      your half is exactly one place panel for the half's colours (`data-place`) and state (`data-scene`), its base
@@ -603,7 +603,7 @@ async function captionLines(page) {
 
 /**
  * The places pack on disk (the manifest jsDelivr serves at FORGECOACH_PLACES_URL's tag, and every place's pictures):
- * PLACES_DIR, else the owner's folder for that tag, ~/scenery-packs/scenes-v1/pack-<tag> (pack-places-v1 to pack-places-v4).
+ * PLACES_DIR, else the owner's folder for that tag, ~/scenery-packs/scenes-v1/pack-<tag> (pack-places-v1 to pack-places-v5).
  */
 const PLACES_DIR = path.resolve(env.PLACES_DIR ?? path.join(os.homedir(), 'scenery-packs', 'scenes-v1', `pack-${/@(places-v[^/]+)\//.exec(placesUrl())?.[1] ?? 'places-v1'}`));
 /** ForgeCoach's places URL, read from prefs.ts (an .mjs cannot import it). */
@@ -651,7 +651,7 @@ const PLACE_SEQUENCES = [
   { name: 'places-seq-6', lands: 'P I S M F P I S M F F I' },
   { name: 'places-alexandria', lands: 'I S P I I', down: 'island' },
   // Spec 1.23: Cusco (plains+mountain) -> Sicily (island+plains+mountain), and Araucanía at forest 4 + mountain 5 ->
-  // Hawaii (one Island: the sea opens on the left), camera moves on places-v4 with every shared land tracked.
+  // Hawaii (one Island: the sea opens on the left), camera moves on places-v5 with every shared land tracked.
   { name: 'places-camera', lands: 'P M I', camera: 2 },
   { name: 'places-camera-hawaii', lands: 'F F F F M M M M M I', camera: 9 },
 ];
@@ -836,7 +836,7 @@ const cap = (b) => b.charAt(0).toUpperCase() + b.slice(1);
  * in over its old one (both on screen at once, the old beneath), then the old goes; the base and the other lands'
  * pieces stay the same elements. A new colour: the whole half cross-fades (two bases on screen during the fade). The
  * caption: "<name>: Island 2, Swamp 1, …". States whose colours have no place in the manifest on disk are skipped
- * (said so): with places-v4's 31 none is.
+ * (said so): with places-v5's 31 none is.
  */
 async function placesCheck(browser, origin, pairs, shape) {
   const manifest = diskPlaces();
