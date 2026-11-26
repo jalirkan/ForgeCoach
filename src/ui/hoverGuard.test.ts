@@ -20,8 +20,7 @@ import {
   overCardTile,
   shouldClearHover,
   type AnchorLike,
-  type ClosestLike,
-} from './hoverGuard.ts';
+  type ClosestLike, PREVIEW, previewPlace } from './hoverGuard.ts';
 
 const tile: ClosestLike = { closest: (sel) => (sel === CARD_TILE_SELECTOR ? {} : null) };
 const bare: ClosestLike = { closest: () => null };
@@ -134,5 +133,48 @@ describe('a preview that outlives its card (the frame check)', () => {
     expect(hoverOutlived(hoverOf('Shock', RECT), (id) => cardRendered(id, p))).toBe(false);
     expect(hoverOutlived(NO_HOVER, (id) => cardRendered(id, p))).toBe(false);
     expect(hoverOf(null, RECT, { cardId: 41, el: tileEl() })).toBe(NO_HOVER);
+  });
+});
+
+describe('previewPlace', () => {
+  const vw = 1920;
+  const vh = 1080;
+  const box = (left: number, top: number, w: number, h: number) => ({ left, top, right: left + w, bottom: top + h });
+
+  test('a card on the table: beside its tile, to the right while there is room, centred on it', () => {
+    const tile = box(700, 400, 130, 182);
+    expect(previewPlace(tile, null, vw, vh)).toEqual({ left: tile.right + PREVIEW.gap, top: 491 - PREVIEW.h / 2 });
+    const far = box(1700, 400, 130, 182);
+    expect(previewPlace(far, null, vw, vh).left).toBe(far.left - PREVIEW.gap - PREVIEW.w);
+  });
+
+  test('stays on the screen', () => {
+    expect(previewPlace(box(700, 0, 130, 60), null, vw, vh).top).toBe(PREVIEW.edge);
+    expect(previewPlace(box(700, 1040, 130, 40), null, vw, vh).top).toBe(vh - PREVIEW.h - PREVIEW.edge);
+  });
+
+  test('a land in your lands bar: above the whole bar, over its own tab, so no other land is covered', () => {
+    const bar = box(160, 590, 320, 165); // its cards up
+    const tab = box(270, 727, 100, 24);
+    const p = previewPlace(tab, bar, vw, vh);
+    expect(p.top + PREVIEW.h).toBe(bar.top - PREVIEW.gap);
+    expect(p.left + PREVIEW.w / 2).toBe(320);
+    // the first tab sits near the rail: the preview is still above the bar, not beside it
+    const first = previewPlace(box(166, 727, 100, 24), bar, 600, vh);
+    expect(first.top + PREVIEW.h).toBe(bar.top - PREVIEW.gap);
+    expect(first.left).toBeGreaterThanOrEqual(PREVIEW.edge);
+  });
+
+  test('a land in their bar (the upper half: no room for a card above its lands): below the bar', () => {
+    const bar = box(160, 210, 320, 165);
+    const p = previewPlace(box(270, 347, 100, 24), bar, vw, vh);
+    expect(p.top).toBe(bar.bottom + PREVIEW.gap);
+  });
+
+  test('no room above or below (a very short window): beside the bar', () => {
+    const bar = box(160, 200, 320, 165);
+    const p = previewPlace(box(270, 337, 100, 24), bar, vw, 560);
+    expect(p.left).toBe(bar.right + PREVIEW.gap);
+    expect(p.top).toBeGreaterThanOrEqual(PREVIEW.edge);
   });
 });

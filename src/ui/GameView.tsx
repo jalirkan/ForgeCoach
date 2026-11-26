@@ -441,7 +441,7 @@ export function GameView({
         </div>
         <LogDrawer log={log} upTo={frameIndex} open={logOpen} onClose={closeLog} />
         <CardDetail card={detail?.card ?? null} state={detail?.state ?? null} seat={log.seat} onClose={() => setDetail(null)} />
-        {wide && <HoverPreview name={hover.name} rect={hover.rect} />}
+        {wide && <HoverPreview name={hover.name} rect={hover.rect} anchor={hover.anchor} />}
         <GuideSheet open={guidesOpen} onClose={() => setGuidesOpen(false)} onChange={() => setGuideName(guideNameNow())} />
       </BoardStateRef.Provider>
     </CardActionsContext.Provider>
