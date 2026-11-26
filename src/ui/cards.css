@@ -171,6 +171,47 @@
     flex-basis: 100%;
     text-align: center;
   }
+  /* What a land builds sits in the lower middle of its place's picture; the top
+     third is sky. So while a side's cards fit one line at (nearly) their
+     two-row size (Board sets `is-line`, ui/boardFit.ts `deskSideLine`), they
+     sit in ONE LINE along the top of the half, in the sky: the lands at the
+     left, a little smaller, the other permanents in the middle of the half.
+     A card there is never bigger than two rows of both kinds would make it (a
+     lone row used to fill the half), so nothing grows into the picture. */
+  .game.play.is-wide .play-board .battlefield.is-line {
+    --line-land-k: 0.66;
+    display: grid;
+    grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(0, 1fr);
+    grid-template-rows: auto;
+    /* the same gap on both sides of the permanents keeps them in the middle of the half */
+    column-gap: 24px;
+    align-content: start;
+    align-items: start;
+  }
+  /* The line fits exactly: Board gives the pixels that are not cards (--line-fixed) and the cards' width in card
+     widths (--line-units). A card may get narrower than the two-row floor while the stack panel takes room from
+     the board; the choice is made from the side's width with no spell on the stack. */
+  .game.play.is-wide .play-board .battlefield.is-line .bf-row {
+    --rows-h: calc(var(--land-k) + 1);
+    --cw-w: calc((100cqw - var(--line-fixed, 72px)) / var(--line-units, 8));
+    --cw-fit: clamp(40px, min(var(--cw-h), var(--cw-w)), 200px);
+    grid-row: 1;
+  }
+  .game.play.is-wide .play-board .battlefield.is-line .bf-row-permanents {
+    grid-column: 2;
+  }
+  .game.play.is-wide .play-board .battlefield.is-line .bf-row-lands {
+    --cw: calc(var(--cw-fit) * var(--line-land-k));
+    grid-column: 1;
+    justify-self: start;
+  }
+  .game.play.is-wide .play-board .battlefield.is-line .bf-row + .bf-row {
+    border-top: 0;
+  }
+  /* Two rows (a fuller side): the lands start at the rail, so the middle of their row stays open. */
+  .game.play.is-wide .play-board .battlefield:not(.is-line) .bf-row-lands > .bf-cards {
+    justify-content: flex-start;
+  }
 }
 @container side (max-height: 250px) {
   .game.play.is-wide .play-board .battlefield {

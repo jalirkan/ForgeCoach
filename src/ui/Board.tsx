@@ -5,7 +5,7 @@
  * The table at one state: opponent on top, you at the bottom, with the turn
  * header, stack and combat between them.
  */
-import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import type { Card, GameStateBody, PlayerState } from '../protocol.ts';
 import { isHidden, MANA_COLORS } from '../protocol.ts';
 import type { GameLog } from '../log.ts';
@@ -25,7 +25,7 @@ import { IconHeart } from './Icons.tsx';
 import { Pip } from './Mana.tsx';
 import { ZoneViewer, type ViewableZone } from './ZoneViewer.tsx';
 import { groupLands, pileWeight } from './landPiles.ts';
-import { edgeFade, phoneSideFit } from './boardFit.ts';
+import { DESK_FIT, deskSideLine, edgeFade, lineMeasure, phoneSideFit } from './boardFit.ts';
 import { cx, stateCardNames, typeKind } from './util.ts';
 import { seatDisplayName, seatNamer } from '../play/aiName.ts';
 
@@ -125,6 +125,61 @@ function density(weight: number): string | undefined {
   return undefined;
 }
 
+/**
+ * A side's lands as `deskSideLine` counts them: how many each plain basic name has, and the lands that stand
+ * alone (a nonbasic; a basic with something on it, in combat or face down — landPiles.ts `groupLands`).
+ */
+function landShape(piles: Card[][]): { basics: number[]; others: number } {
+  const basics = new Map<string, number>();
+  let others = 0;
+  for (const g of piles) {
+    const c = g[0]!;
+    const plain = g.length > 1 || (/\bbasic\b/i.test(c.types) && !!c.name && !c.faceDown && !c.attacking && !c.blocking && c.attachmentIds.length === 0 && c.damage === 0 && Object.keys(c.counters ?? {}).length === 0);
+    if (plain) basics.set(c.name, (basics.get(c.name) ?? 0) + g.length);
+    else others += 1;
+  }
+  return { basics: [...basics.values()], others };
+}
+
+/**
+ * An element's content box, measured before paint and again whenever it resizes ({0, 0} until then, and where
+ * nothing lays out), and `wide`: the widest it has been since the window last changed size. The play screen's
+ * stack panel takes room from the board while a spell is on the stack; a side's layout is chosen from `wide`,
+ * so it does not change when a spell is cast (its cards take the room that is left, as they always did).
+ */
+function useContentBox(ref: RefObject<HTMLElement | null>): { w: number; h: number; wide: number } {
+  const [box, setBox] = useState({ w: 0, h: 0, wide: 0 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let fresh = false; // the window changed size: the widest starts over
+    const read = () => {
+      const cs = getComputedStyle(el);
+      const w = Math.max(0, el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0));
+      const h = Math.max(0, el.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0));
+      const startOver = fresh;
+      fresh = false;
+      setBox((p) => {
+        const wide = startOver ? w : Math.max(p.wide, w);
+        return p.w === w && p.h === h && p.wide === wide ? p : { w, h, wide };
+      });
+    };
+    const onWindow = () => {
+      fresh = true;
+      read();
+    };
+    read();
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(read);
+    ro?.observe(el);
+    window.addEventListener('resize', onWindow);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', onWindow);
+    };
+  }, [ref]);
+  return box;
+}
+
 const PlayerArea = memo(function PlayerArea({
   player,
   state,
@@ -181,6 +236,27 @@ const PlayerArea = memo(function PlayerArea({
   ].filter(Boolean);
   if (top) rows.reverse();
   const empty = rows.length === 0;
+  // The desktop table: one line along the top of the half (the sky of its place's picture) while the cards fit (ui/boardFit.ts).
+  const field = useRef<HTMLDivElement>(null);
+  const box = useContentBox(field);
+  const attachPx = permanents.some((p) => p.att.length > 0) ? 34 : 0;
+  const shape = useMemo(() => landShape(lands), [lands]);
+  const line = deskSideLine({
+    w: box.wide,
+    h: box.h,
+    permanents: permanents.length,
+    mixed: creatures.length > 0 && other.length > 0,
+    basics: shape.basics,
+    others: shape.others,
+    attachPx,
+  });
+  const lineFit = lineMeasure({
+    permUnits: rowWeight(permanents.map((p) => p.card)),
+    permTiles: permanents.length,
+    mixed: creatures.length > 0 && other.length > 0,
+    landUnits: landWeight,
+    landPiles: lands.length,
+  });
   // Portrait phones: the rows' height and the side's floor (ui/boardFit.ts, play.css).
   const fit = phoneSideFit({ permanents: permanents.length > 0, lands: lands.length > 0, maxAttach: Math.max(0, ...permanents.map((p) => p.att.length)) });
   return (
@@ -191,17 +267,21 @@ const PlayerArea = memo(function PlayerArea({
     >
       {top && <PlayerHeader player={player} state={state} log={log} frameIndex={frameIndex} seat={seat} />}
       <div
-        className="battlefield"
+        ref={field}
+        className={cx('battlefield', line && 'is-line')}
         style={
           {
             // Card widths in the widest row (lands are ~0.8 of a card), and which rows there are
             // (desktop play sizing, ui/cards.css).
-            '--slots-row': Math.max(5, permWeight, landWeight * 0.8).toFixed(2),
+            '--slots-row': Math.max(DESK_FIT.minSlots, permWeight, landWeight * DESK_FIT.rowLandSlot).toFixed(2),
             // Both rows side by side (a short side on desktop).
             '--slots': Math.max(5, permWeight + landWeight * 0.8 + (permanents.length && lands.length ? 0.6 : 0)).toFixed(2),
+            // One line along the top: the pixels that are not cards, and the cards' width in card widths.
+            '--line-fixed': `${lineFit.fixedPx}px`,
+            '--line-units': lineFit.units.toFixed(2),
             '--ch-lands': lands.length ? 1 : 0,
             '--ch-perm': permanents.length ? 1 : 0,
-            '--attach-h': permanents.some((p) => p.att.length > 0) ? '34px' : '0px',
+            '--attach-h': `${attachPx}px`,
           } as CSSProperties
         }
       >

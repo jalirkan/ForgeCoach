@@ -526,6 +526,11 @@ squarer on a phone or with the coach panel open, so the picture is fitted:
 cards are drawn over it wherever they sit. Steer the marks round the usual
 card rows (the middle of the area, and the land row near the outer edge) and
 keep them at the rim and in the gaps, as the mock-ups do.
+*Since 2026-11-25, on a desktop:* while a side's cards fit one line they sit
+along the **top** of its half (lands at the left, the other permanents in the
+middle), over the sky of a place's picture, and the lower two thirds of the
+half is clear; a fuller side has two rows that fill the half, as before
+(`ui/boardFit.ts` `deskSideLine`). A phone's rows are as they were.
 
 **The piece.**
 
