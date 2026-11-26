@@ -32,6 +32,9 @@
  *   --max-shots N            screenshots in all (default 300; each finding's first ones)
  *   --key-shots N            also N screenshots per game of each key moment: the stack, a block
  *                            declaration, the combat damage dialog, the coach's steps (default 0)
+ *   --turn-shots 1           also one screenshot per seat at the first decision of every turn (the
+ *                            board as the turn before left it), for a person to look at (default 0;
+ *                            at most 600 in a run, counted apart from --max-shots)
  *   --port-base N            the engine on N, its helper on N+1, the draft room on N+2, the
  *                            table on N+4 (default 8642, play.sh's own; the PC job uses another
  *                            so it never meets a game Justin is playing)
@@ -39,6 +42,7 @@
  * Environment: PLAYTEST_DEBUG_CLICKS=1 prints every click the page receives (what the monkey hit);
  * PLAYTEST_SCRYFALL=1 lets the page reach Scryfall through Node's fetch (card art and oracle
  * text, as a player sees them; off by default so a run never depends on it);
+ * PLAYTEST_SCENERY=1 lets it reach the scenery pack (cdn.jsdelivr.net) the same way;
  * PLAYTEST_DESKTOP=WxH the desktop window;
  * PLAYTEST_COACH_MS=N makes the fake coach take N ms per answer (default 50: a slow coach checks
  * that the last plan stays in view while the next is written);
@@ -74,7 +78,7 @@ const FAKE_COACH_MS = Number(process.env.PLAYTEST_COACH_MS) || 50;
 // Options
 
 function parseArgs(argv) {
-  const o = { mode: 'fake', games: 3, seed: 1, decks: null, turnCap: 40, coach: 'off', reload: 1, out: null, headless: true, stallS: 150, gameMinutes: 75, aiProfile: null, portBase: 8642, maxShots: 300, viewport: 'desktop', keyShots: 0 };
+  const o = { mode: 'fake', games: 3, seed: 1, decks: null, turnCap: 40, coach: 'off', reload: 1, out: null, headless: true, stallS: 150, gameMinutes: 75, aiProfile: null, portBase: 8642, maxShots: 300, viewport: 'desktop', keyShots: 0, turnShots: 0 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const v = () => argv[++i];
@@ -94,6 +98,7 @@ function parseArgs(argv) {
     else if (a === '--max-shots') o.maxShots = Number(v());
     else if (a === '--viewport') o.viewport = v();
     else if (a === '--key-shots') o.keyShots = Number(v());
+    else if (a === '--turn-shots') o.turnShots = Number(v());
     else if (a === '--help' || a === '-h') {
       console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('*/')[0]);
       process.exit(0);
@@ -175,6 +180,8 @@ async function startPlaySh(extra) {
 
 const report = { started: new Date().toISOString(), options: opts, games: [], matches: [], env: {} };
 let shotN = 0;
+let turnShotN = 0;
+const TURN_SHOTS_MAX = 600;
 
 function makeFinding(game, seat) {
   return async (rec) => {
@@ -237,6 +244,18 @@ async function keyShots(game, seat) {
     shotN++;
     log(`  key shot ${file}`);
   }
+}
+
+/** --turn-shots: the board at the first decision of every turn, saved beside the findings' shots. */
+async function turnShot(game, seat) {
+  const t = seat.tap.state?.turn;
+  if (t == null || turnShotN >= TURN_SHOTS_MAX) return;
+  game.turnShot ??= {};
+  if (game.turnShot[seat.label] === t) return;
+  game.turnShot[seat.label] = t;
+  const file = `g${game.id}-${seat.label}-turn-${String(t).padStart(2, '0')}.png`;
+  await seat.page.screenshot({ path: path.join(SHOTS, file) }).catch(() => {});
+  turnShotN++; // a count of their own: they never take a finding's screenshot (--max-shots)
 }
 
 function watchPage(game, seat) {
@@ -304,6 +323,8 @@ async function newSeatPage(label, appOrigin, phone = false) {
     if (u.hostname === 'fonts.googleapis.com') return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
     // PLAYTEST_SCRYFALL=1: card art and text from Scryfall, as a player sees them (screenshots for a person)
     if (/scryfall\.(com|io)$/.test(u.hostname) && env.PLAYTEST_SCRYFALL === '1') return viaNode(route);
+    // PLAYTEST_SCENERY=1: the scenery pack's index and pictures, as a player sees them
+    if (u.hostname === 'cdn.jsdelivr.net' && env.PLAYTEST_SCENERY === '1') return viaNode(route);
     if (/scryfall\.(com|io)$/.test(u.hostname)) return route.fulfill({ status: 404, contentType: 'application/json', body: '{"object":"error","code":"not_found","status":404,"details":"playtest"}' });
     return route.abort('connectionrefused');
   });
@@ -432,6 +453,7 @@ async function playGame(game, seats, { scripts, askModel, rand, hiddenFor, allow
         for (const p of await engineIds(s.page, s.tap)) await s.finding({ kind: 'engine-id', what: p });
       }
       if (opts.keyShots > 0) await keyShots(game, s);
+      if (opts.turnShots > 0) await turnShot(game, s);
       if (s.monkey.decisions - lastLeak >= 12) {
         lastLeak = s.monkey.decisions;
         for (const p of await hiddenLeaks(s.page, () => hiddenFor(s), () => allowedFor(s), { tap: s.tap })) await s.finding({ kind: 'hidden-info', what: p });
