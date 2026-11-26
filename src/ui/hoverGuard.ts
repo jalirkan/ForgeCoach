@@ -130,3 +130,41 @@ export function useHoverOutlived(hover: HoverState, clear: () => void, frame: un
     if (hoverOutlived(current.current, (id) => cardRendered(id))) clear();
   }, [frame, clear]);
 }
+
+/** A box on the screen (px, viewport): what the preview's place is worked out from. */
+export interface ScreenBox {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** The preview's size (px): a card, big enough to read. */
+export const PREVIEW = { w: 244, h: 340, gap: 12, edge: 8 } as const;
+
+/**
+ * Where the hover preview goes: beside its tile (to the right while there is room, else to the left), centred
+ * on it and kept on the screen.
+ *
+ * A land in the desktop table's lands bar (ui/cards.css; `bar` is the bar's box, its land cards up) is
+ * different: its neighbours are the other lands, and the bar is pointed at to see them. So there the preview
+ * stays clear of the whole bar: above it, over its own land, while it fits on the screen; else below it (the
+ * opponent's bar: theirs is the upper half, with no room for a card above its lands); else beside it.
+ */
+export function previewPlace(tile: ScreenBox, bar: ScreenBox | null, vw: number, vh: number, k: { w: number; h: number; gap: number; edge: number } = PREVIEW): { left: number; top: number } {
+  const clampTop = (top: number) => Math.min(Math.max(k.edge, top), vh - k.h - k.edge);
+  if (bar) {
+    const left = Math.min(Math.max(k.edge, (tile.left + tile.right) / 2 - k.w / 2), vw - k.w - k.edge);
+    const above = bar.top - k.gap - k.h;
+    if (above >= k.edge) return { left, top: above };
+    const below = bar.bottom + k.gap;
+    if (below + k.h <= vh - k.edge) return { left, top: below };
+    if (bar.right + k.gap + k.w < vw) return { left: bar.right + k.gap, top: clampTop((bar.top + bar.bottom) / 2 - k.h / 2) };
+  }
+  const right = tile.right + k.gap + k.w < vw;
+  const left = right ? tile.right + k.gap : Math.max(k.edge, tile.left - k.gap - k.w);
+  return { left, top: clampTop((tile.top + tile.bottom) / 2 - k.h / 2) };
+}
+
+/** The desktop table's lands bar a tile stands in (ui/cards.css), if it does. */
+export const LANDS_BAR = '.game.play.is-wide .play-board .bf-row-lands';

@@ -34,7 +34,8 @@
  *                            declaration, the combat damage dialog, the coach's steps (default 0)
  *   --turn-shots 1           also one screenshot per seat at the first decision of every turn (the
  *                            board as the turn before left it), for a person to look at (default 0;
- *                            at most 600 in a run, counted apart from --max-shots)
+ *                            at most 600 in a run, counted apart from --max-shots). 2: and one more
+ *                            of each side's lands bar with the pointer on it (the desktop table)
  *   --port-base N            the engine on N, its helper on N+1, the draft room on N+2, the
  *                            table on N+4 (default 8642, play.sh's own; the PC job uses another
  *                            so it never meets a game Justin is playing)
@@ -256,6 +257,23 @@ async function turnShot(game, seat) {
   const file = `g${game.id}-${seat.label}-turn-${String(t).padStart(2, '0')}.png`;
   await seat.page.screenshot({ path: path.join(SHOTS, file) }).catch(() => {});
   turnShotN++; // a count of their own: they never take a finding's screenshot (--max-shots)
+  if (opts.turnShots >= 2) await landsShot(seat, file.replace(/\.png$/, ''));
+}
+
+/**
+ * --turn-shots 2: the desktop table's lands bar with the pointer on it, each side in turn (the land cards come
+ * up over their tabs, ui/cards.css), then the pointer is moved off the board again.
+ */
+async function landsShot(seat, base) {
+  for (const [who, sel] of [['me', '.player-me .bf-row-lands .land-tab'], ['opp', '.player-top .bf-row-lands .land-tab']]) {
+    const box = await seat.page.locator(sel).first().boundingBox().catch(() => null);
+    if (!box || box.height < 4) continue;
+    await seat.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2).catch(() => {});
+    await sleep(500);
+    await seat.page.screenshot({ path: path.join(SHOTS, `${base}-lands-${who}.png`) }).catch(() => {});
+  }
+  await seat.page.mouse.move(2, 2).catch(() => {});
+  await sleep(400);
 }
 
 function watchPage(game, seat) {

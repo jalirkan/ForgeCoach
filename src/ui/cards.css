@@ -127,33 +127,40 @@
   }
 }
 
-/* Desktop play, laid out like a table (endstep): each side is its permanents
-   row and its lands row, stacked (theirs: lands at the top edge; yours: lands
-   at the bottom edge). The card width follows the side's height (both rows
-   fit) and the widest row's width (--slots-row, in card widths, set by Board),
-   between a legible floor and a generous ceiling; past the floor a row scrolls
-   sideways instead of shrinking further. Lands are --land-k of a creature.
-   When a side is short (a big stack or combat panel between the sides), its
-   two rows sit side by side instead (lands at the outer edge). */
+/* Desktop play, laid out like a table. A place's picture fills a side, and
+   what a land builds sits in the picture's lower middle (the top third is
+   sky). So a side's creatures and other permanents sit in ONE ROW along the
+   top of the half, in the sky, and its lands are tucked into a thin bar along
+   the bottom edge: a tab a pile, with the land's name and how many it holds.
+   Pointing at the bar brings the land cards up over the picture while the
+   pointer stays; a click on a tab is a click on its land either way. (Never
+   the focus: a land that was clicked keeps it, and the next key, Space to
+   pass, would bring the cards up and hold them there. The keyboard reaches a
+   tab, which carries the name and the focus ring.) They also come up while
+   the game asks you to choose among them. The permanents'
+   width follows the side's height (--perm-rows: sized so that the lands, when
+   they come up, stand clear of the row above them) and the
+   row's width (--slots-row, in card widths, set by Board), between a legible
+   floor and a generous ceiling; past the floor the row scrolls sideways. A
+   side too short for that (a big stack or combat panel between the sides)
+   gives its row the height it has. The numbers mirror ui/boardFit.ts DESK_FIT. */
 @media (min-width: 1024px) {
   .game.play.is-wide .play-board .battlefield {
     container: side / size;
-    --land-k: 0.76;
+    --land-k: 0.66;
+    --bar-h: 28px;
+    position: relative;
     gap: 0;
-    padding: 0 8px;
-    justify-content: safe center;
+    padding: 0 8px var(--bar-h);
+    justify-content: flex-start;
   }
   .game.play.is-wide .play-board .bf-row {
-    --rows-h: calc(var(--ch-lands, 1) * var(--land-k) + var(--ch-perm, 1));
-    --cw-h: calc((100cqh - 18px - var(--attach-h, 0px)) / var(--rows-h) * 63 / 88);
-    --cw-w: calc((100cqw - 24px) / var(--slots-row, 6) - 9px);
-    --cw-fit: clamp(58px, min(var(--cw-h), var(--cw-w)), 200px);
-    --cw: var(--cw-fit);
+    --perm-rows: 1.75;
+    --cw-h: calc((100cqh - 18px - var(--attach-h, 0px)) / var(--perm-rows) * 63 / 88);
+    --cw-w: calc((100cqw - 24px) / var(--slots-row, 5) - 9px);
+    --cw: clamp(58px, min(var(--cw-h), var(--cw-w)), 200px);
     flex: none;
     min-width: 0;
-  }
-  .game.play.is-wide .play-board .bf-row-lands {
-    --cw: calc(var(--cw-fit) * var(--land-k));
   }
   .game.play.is-wide .play-board .bf-cards {
     flex-wrap: nowrap;
@@ -165,70 +172,222 @@
     padding: 5px 6px 4px;
   }
   .game.play.is-wide .play-board .bf-row + .bf-row {
+    border-top: 0;
     padding-top: 0;
   }
   .game.play.is-wide .play-board .bf-empty {
     flex-basis: 100%;
     text-align: center;
   }
-  /* What a land builds sits in the lower middle of its place's picture; the top
-     third is sky. So while a side's cards fit one line at (nearly) their
-     two-row size (Board sets `is-line`, ui/boardFit.ts `deskSideLine`), they
-     sit in ONE LINE along the top of the half, in the sky: the lands at the
-     left, a little smaller, the other permanents in the middle of the half.
-     A card there is never bigger than two rows of both kinds would make it (a
-     lone row used to fill the half), so nothing grows into the picture. */
-  .game.play.is-wide .play-board .battlefield.is-line {
-    --line-land-k: 0.66;
-    display: grid;
-    grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(0, 1fr);
-    grid-template-rows: auto;
-    /* the same gap on both sides of the permanents keeps them in the middle of the half */
-    column-gap: 24px;
-    align-content: start;
-    align-items: start;
+
+  /* The lands bar. The row lies over the bottom edge of the side and grows
+     upward: each land is its tab with its card standing on it, and the card's
+     slot has no height (and is not drawn) until the lands come up. A tab does
+     not move when they do, so what is under the pointer stays the same land.
+     A tab is as wide as its name needs, and never narrower than its card; a
+     bar too full for the side squeezes the names first (to an ellipsis), then
+     scrolls sideways, its cut edge faded (Board's useEdgeFade). */
+  .game.play.is-wide .play-board .bf-row-lands {
+    --cw-h: calc((100cqh - 18px) / var(--perm-rows) * 63 / 88);
+    --cw-w: calc((100cqw - 24px) / var(--slots-lands, 5) - 9px);
+    --cw: clamp(48px, min(calc(var(--cw-h) * var(--land-k)), var(--cw-w)), 132px);
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    max-width: 100%;
+    z-index: 4;
   }
-  /* The line fits exactly: Board gives the pixels that are not cards (--line-fixed) and the cards' width in card
-     widths (--line-units). A card may get narrower than the two-row floor while the stack panel takes room from
-     the board; the choice is made from the side's width with no spell on the stack. */
-  .game.play.is-wide .play-board .battlefield.is-line .bf-row {
-    --rows-h: calc(var(--land-k) + 1);
-    --cw-w: calc((100cqw - var(--line-fixed, 72px)) / var(--line-units, 8));
-    --cw-fit: clamp(40px, min(var(--cw-h), var(--cw-w)), 200px);
-    grid-row: 1;
-  }
-  .game.play.is-wide .play-board .battlefield.is-line .bf-row-permanents {
-    grid-column: 2;
-  }
-  .game.play.is-wide .play-board .battlefield.is-line .bf-row-lands {
-    --cw: calc(var(--cw-fit) * var(--line-land-k));
-    grid-column: 1;
-    justify-self: start;
-  }
-  .game.play.is-wide .play-board .battlefield.is-line .bf-row + .bf-row {
-    border-top: 0;
-  }
-  /* Two rows (a fuller side): the lands start at the rail, so the middle of their row stays open. */
-  .game.play.is-wide .play-board .battlefield:not(.is-line) .bf-row-lands > .bf-cards {
+  .game.play.is-wide .play-board .bf-row-lands > .bf-cards {
     justify-content: flex-start;
+    align-items: flex-end;
+    gap: 0 6px;
+    padding: 6px 8px 4px;
+    scrollbar-width: none;
+  }
+  .game.play.is-wide .play-board .bf-row-lands > .bf-cards::-webkit-scrollbar {
+    display: none;
+  }
+  .game.play.is-wide .play-board .bf-row-lands > .bf-cards[data-fade='start'] {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px);
+    mask-image: linear-gradient(90deg, transparent, #000 28px);
+  }
+  .game.play.is-wide .play-board .bf-row-lands > .bf-cards[data-fade='end'] {
+    -webkit-mask-image: linear-gradient(270deg, transparent, #000 28px);
+    mask-image: linear-gradient(270deg, transparent, #000 28px);
+  }
+  .game.play.is-wide .play-board .bf-row-lands > .bf-cards[data-fade='start end'] {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile {
+    flex: 0 1 auto;
+    min-width: var(--cw);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-tapped {
+    min-width: var(--ch);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .land-pile {
+    min-width: calc(var(--cw) + var(--pile) * var(--off));
+  }
+  .game.play.is-wide .play-board .bf-row-lands .land-pile.is-tapped {
+    min-width: calc(var(--ch) + var(--pile) * var(--off));
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile-slot {
+    height: 0;
+    visibility: hidden;
+    /* going down: a moment's grace, so a pointer that slips off comes back to the same cards */
+    transition: height 0.16s ease 0.18s, visibility 0s linear 0.34s;
+  }
+  /* The lands come up by themselves while the game is asking you to choose among them (a target, a sacrifice):
+     which land is offered, which is chosen and how many of a pile are picked is drawn on the cards. */
+  .game.play.is-wide .play-board .bf-row-lands:has(.tile.is-select, .tile.is-chosen) .tile-slot {
+    height: calc(var(--ch) + 3px);
+    visibility: visible;
+    transition: height 0.16s ease, visibility 0s;
+  }
+  .game.play.is-wide .play-board .bf-row-lands:has(.tile.is-select, .tile.is-chosen) .tile.is-tapped .tile-slot {
+    height: calc(var(--cw) + 3px);
+  }
+  /* ... and for a pointer that can hover. (A finger cannot: there a tap on a tab is a tap on its land, as
+     everywhere, and a long press opens its details.) */
+  @media (hover: hover) {
+    .game.play.is-wide .play-board .bf-row-lands:hover .tile-slot {
+      height: calc(var(--ch) + 3px);
+      visibility: visible;
+      /* coming up: only for a pointer that stays (one crossing the bar on its way to the hand brings nothing
+         up: nothing of a card is drawn before the wait is over) */
+      transition: height 0.16s ease 0.14s, visibility 0s linear 0.14s;
+    }
+    /* A tapped land lies down on its tab. */
+    .game.play.is-wide .play-board .bf-row-lands:hover .tile.is-tapped .tile-slot {
+      height: calc(var(--cw) + 3px);
+    }
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile-card {
+    top: calc(50% - 1.5px);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-tapped .tile-ovl {
+    top: 0;
+    bottom: 3px;
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile-ovl {
+    bottom: 3px;
+  }
+  .game.play.is-wide .play-board .bf-row-lands .land-tab {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    align-self: stretch;
+    box-sizing: border-box;
+    height: 24px;
+    min-width: 0;
+    padding: 0 7px 0 6px;
+    border-radius: 6px 6px 3px 3px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    color: #f4f0e6;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 40%, #1b1e24), color-mix(in srgb, var(--tc) 20%, #121317));
+    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 1px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.5);
+    transition: filter 0.12s, box-shadow 0.12s;
+  }
+  /* The little card at the tab's left: standing while the land is untapped, lying down (and the tab dimmed) once tapped. */
+  .game.play.is-wide .play-board .bf-row-lands .land-tab::before {
+    content: '';
+    flex: none;
+    width: 7px;
+    height: 10px;
+    border-radius: 1.5px;
+    background: color-mix(in srgb, var(--tc) 85%, #fff);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-tapped > .land-tab {
+    color: rgba(244, 240, 230, 0.6);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 16%, #17191e), color-mix(in srgb, var(--tc) 8%, #101114));
+    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 35%, #000), 0 0 0 1px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.5);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-tapped > .land-tab::before {
+    width: 10px;
+    height: 7px;
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tc) 55%, #9a9a9a);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-count {
+    flex: none;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+  }
+  /* The tab already says how many; the badge on the card would say it twice. */
+  .game.play.is-wide .play-board .bf-row-lands .pile-count {
+    display: none;
+  }
+  /* What a click does, on the tab as on the card (`act` you may click, `select` the engine is asking for it). */
+  .game.play.is-wide .play-board .bf-row-lands .tile:hover > .land-tab {
+    filter: brightness(1.15);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile:focus-visible > .land-tab {
+    outline: 2px solid var(--accent-2);
+    outline-offset: 1px;
+  }
+  .game.play.is-wide.mode-pay .play-board .bf-row-lands .tile.is-act > .land-tab,
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-act:hover > .land-tab {
+    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px var(--accent), 0 0 10px rgba(227, 178, 95, 0.45);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-select > .land-tab {
+    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px var(--accent-2), 0 0 12px rgba(240, 199, 127, 0.6);
+  }
+  /* Already chosen in the open input: the solid ring a chosen card has. */
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-chosen > .land-tab {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-stack-target > .land-tab {
+    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px color-mix(in srgb, var(--accent) 80%, transparent), 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-coach-focus > .land-tab {
+    outline: 3px solid var(--gold, #e0b04a);
+    outline-offset: 1px;
+  }
+  /* A land that is the source of something on the stack, one the coach's hint can afford, one the search AI's pick names. */
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-stack-source > .land-tab {
+    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px color-mix(in srgb, var(--accent-2) 70%, transparent);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile.is-hint > .land-tab {
+    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px #5cc49a, 0 0 12px rgba(92, 196, 154, 0.4);
+  }
+  .game.play.is-wide .play-board .bf-row-lands [data-search-pick] .land-tab {
+    outline: 2px dashed var(--accent);
+    outline-offset: 1px;
+  }
+  /* Selecting (attackers, targets, paying): a land that is no answer is dimmed, as its card is (play/board.css). */
+  .game.play.is-wide.is-selecting .play-board .bf-row-lands .tile:not(.is-act):not(.is-select) > .land-tab {
+    filter: brightness(0.5) saturate(0.6);
   }
 }
 @container side (max-height: 250px) {
-  .game.play.is-wide .play-board .battlefield {
-    flex-direction: row;
-    align-items: center;
-    justify-content: safe center;
-    column-gap: 24px;
-  }
   .game.play.is-wide .play-board .bf-row {
-    --rows-h: 1;
-    --cw-w: calc((100cqw - 48px) / var(--slots, 8) - 9px);
-    flex: 0 1 auto;
+    --perm-rows: 1;
   }
-  .game.play.is-wide .play-board .bf-row + .bf-row {
-    border-top: 0;
-    padding-top: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .game.play.is-wide .play-board .bf-row-lands .tile-slot {
+    transition-duration: 0s, 0s !important;
   }
+}
+
+/* A land's name tab belongs to the desktop table's lands bar (above); nowhere else. */
+.land-tab {
+  display: none;
 }
 
 /* The two sides read as two places at the table. */

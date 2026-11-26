@@ -5,13 +5,14 @@
  * The card sheet (Scryfall image + oracle text + what it is doing right now)
  * and the desktop hover preview.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import type { AnyCard, Card, GameStateBody } from '../protocol.ts';
 import { altFace, isHidden, keywordsOf } from '../protocol.ts';
 import { cardIndex, cardName } from '../decisions.ts';
 import type { CardInfo } from '../cards.ts';
 import { imageForFace, isLookupName } from '../cards.ts';
 import { useCardInfo } from './cardData.ts';
+import { LANDS_BAR, PREVIEW, previewPlace, type AnchorLike } from './hoverGuard.ts';
 import { displayName } from './CardTile.tsx';
 import { IconExternal } from './Icons.tsx';
 import { ManaCost, SymbolText } from './Mana.tsx';
@@ -220,12 +221,27 @@ function TextCard({ card, info }: { card: Card; info: CardInfo | undefined }) {
 }
 
 /** Desktop-only floating image preview next to the hovered tile. */
-export function HoverPreview({ name, rect }: { name: string | null; rect: DOMRect | null }) {
+/** The lands bar `anchor` stands in (hoverGuard.ts `LANDS_BAR`), followed while it changes size: its land cards come up a moment after the pointer arrives. */
+function useLandsBar(anchor: AnchorLike | null | undefined): Element | null {
+  const el = anchor && typeof (anchor as Element).closest === 'function' ? (anchor as Element) : null;
+  const bar = el && window.matchMedia?.('(min-width: 1024px)').matches ? el.closest(LANDS_BAR) : null;
+  const [, tick] = useState(0);
+  useLayoutEffect(() => {
+    if (!bar || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => tick((n) => n + 1));
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, [bar]);
+  return bar;
+}
+
+export function HoverPreview({ name, rect, anchor }: { name: string | null; rect: DOMRect | null; anchor?: AnchorLike | null }) {
   const info = useCardInfo(name);
   const img = imageForFace(info, name)?.normal;
   const [shown, setShown] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
+  const bar = useLandsBar(name ? anchor : null);
   useEffect(() => {
     setShown(false);
     if (!name) return;
@@ -239,11 +255,9 @@ export function HoverPreview({ name, rect }: { name: string | null; rect: DOMRec
   if (!name || !rect || !shown) return null;
   // Tokens and other names Scryfall cannot have: nothing to preview beyond the tile itself.
   if (!isLookupName(name) || (info && !info.found)) return null;
-  const W = 244;
-  const H = 340;
-  const right = rect.right + 12 + W < window.innerWidth;
-  const left = right ? rect.right + 12 : Math.max(8, rect.left - 12 - W);
-  const top = Math.min(Math.max(8, rect.top + rect.height / 2 - H / 2), window.innerHeight - H - 8);
+  const W = PREVIEW.w;
+  const H = PREVIEW.h;
+  const { left, top } = previewPlace(rect, bar?.getBoundingClientRect() ?? null, window.innerWidth, window.innerHeight);
   const showImg = img && !failed;
   return (
     <div className="hover-preview" style={{ left, top, width: W, height: H }} aria-hidden="true">

@@ -1019,7 +1019,7 @@ export function PlayView({
           {!wide && askNode}
           <LogDrawer log={log} open={logOpen} onClose={closeLog} />
           <CardDetail card={detail?.card ?? null} state={detail?.state ?? null} seat={seat ?? 0} onClose={() => setDetail(null)} />
-          {wide && <HoverPreview name={hover.name} rect={hover.rect} />}
+          {wide && <HoverPreview name={hover.name} rect={hover.rect} anchor={hover.anchor} />}
           <GuideSheet open={guidesOpen} onClose={() => setGuidesOpen(false)} onChange={() => setGuideName(guideNameNow())} />
           <Sheet open={help} onClose={() => setHelp(false)} title="Keyboard" width={460}>
             <dl className="keys-list">

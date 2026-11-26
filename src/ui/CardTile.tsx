@@ -306,6 +306,8 @@ interface TileProps {
   side?: TileSide;
   /** The engine says this hand card is not a legal answer now (handAffordance.ts): drawn faded, still clickable. */
   dim?: boolean;
+  /** A land on the desktop table: its name tab for the lands bar (ui/cards.css `.land-tab`; hidden everywhere else). */
+  landTab?: boolean;
 }
 
 function counterText(k: string, n: number): string {
@@ -340,7 +342,7 @@ function mergeMarks(all: (CardStackMarks | undefined)[]): CardStackMarks | undef
   return { sources: [...new Set(got.flatMap((m) => m.sources))].sort((a, b) => a - b), targets: [...new Set(got.flatMap((m) => m.targets))].sort((a, b) => a - b) };
 }
 
-function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
+function TileInner({ card, attachments, inHand, side, dim, landTab }: TileProps) {
   const boardMarks = useBoardMarks();
   const stackMarks = inHand ? undefined : boardMarks?.stack.get(card.id);
   const combat = inHand ? undefined : boardMarks?.combat?.get(card.id);
@@ -457,6 +459,7 @@ function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
           )}
         </div>
       </div>
+      {landTab && <LandTab name={displayName(card)} count={1} />}
       {attachments && attachments.length > 0 && (
         <div className="tile-attach">
           {attachments.map((a) => (
@@ -469,7 +472,7 @@ function TileInner({ card, attachments, inHand, side, dim }: TileProps) {
 }
 
 export const CardTile = memo(TileInner, (a, b) => {
-  if (a.inHand !== b.inHand || a.side !== b.side || !!a.dim !== !!b.dim) return false;
+  if (a.inHand !== b.inHand || a.side !== b.side || !!a.dim !== !!b.dim || !!a.landTab !== !!b.landTab) return false;
   if (tileSig(a.card) !== tileSig(b.card)) return false;
   const aa = a.attachments ?? [];
   const bb = b.attachments ?? [];
@@ -559,14 +562,28 @@ const AttachmentChip = memo(
  * `data-card-id` is the land the next tap goes to.
  */
 export const LandPile = memo(
-  function LandPile({ cards, side }: { cards: Card[]; side?: TileSide }) {
-    if (cards.length === 1) return <CardTile card={cards[0]!} side={side} />;
-    return <PileStack cards={cards} side={side} />;
+  function LandPile({ cards, side, tab }: { cards: Card[]; side?: TileSide; tab?: boolean }) {
+    if (cards.length === 1) return <CardTile card={cards[0]!} side={side} landTab={tab} />;
+    return <PileStack cards={cards} side={side} tab={tab} />;
   },
-  (a, b) => a.side === b.side && a.cards.length === b.cards.length && a.cards.every((c, i) => tileSig(c) === tileSig(b.cards[i])),
+  (a, b) => a.side === b.side && !!a.tab === !!b.tab && a.cards.length === b.cards.length && a.cards.every((c, i) => tileSig(c) === tileSig(b.cards[i])),
 );
 
-function PileStack({ cards, side }: { cards: Card[]; side?: TileSide }) {
+/**
+ * A land's tab in the desktop table's lands bar: its name and how many the pile holds. The bar shows the tabs
+ * alone; the cards come up over them while the pointer is on the bar (ui/cards.css). The tab is part of the
+ * tile, so a click on it is a click on the land. Hidden for screen readers: the tile's own label says it all.
+ */
+function LandTab({ name, count }: { name: string; count: number }) {
+  return (
+    <span className="land-tab" aria-hidden="true">
+      <span className="land-tab-name">{name}</span>
+      {count > 1 && <span className="land-tab-count">×{count}</span>}
+    </span>
+  );
+}
+
+function PileStack({ cards, side, tab }: { cards: Card[]; side?: TileSide; tab?: boolean }) {
   const play = usePlay();
   const ids = cards.map((c) => c.id);
   const marks = cards.map((c) => (play ? play.mark(c) : null));
@@ -624,6 +641,7 @@ function PileStack({ cards, side }: { cards: Card[]; side?: TileSide }) {
           )}
         </div>
       </div>
+      {tab && <LandTab name={displayName(top)} count={cards.length} />}
     </div>
   );
 }
