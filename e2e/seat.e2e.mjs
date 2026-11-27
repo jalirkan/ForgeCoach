@@ -1734,10 +1734,13 @@ function readBarNames(page, sel) {
 // together (they shared one 180 px slot: Stomping Ground left "+ Underworl…" of Underworld Connections, with a
 // hundred pixels of bar unused). The e2e browser never gets the app's fonts (the run answers the font server with
 // nothing), and in the fallback font these three names are a few pixels more than a 390 px phone's bar: there the
-// bar must be used to its end before a name is cut, and no name cut under its least width.
-for (const viewport of [{ width: 430, height: 932 }, { width: 390, height: 844 }]) {
+// bar must be used to its end before a name is cut, and no name cut under its least width. Which fallback font a
+// machine has decides how wide they are (404 px on CI's runner, 365 on the PC), so the size that must have room
+// whatever the font is a small tablet's, upright (the same layout: the phone board is every upright screen under
+// 1024 px).
+for (const viewport of [{ width: 600, height: 960 }, { width: 390, height: 844 }]) {
   scenarios.push({
-    name: `an aura on a land, an upright phone (${viewport.width}×${viewport.height}): a long name on a land with a long name, whole while the bar has room, cut only when it has none`,
+    name: `an aura on a land, an upright ${viewport.width >= 600 ? 'tablet' : 'phone'} (${viewport.width}×${viewport.height}): a long name on a land with a long name, whole while the bar has room, cut only when it has none`,
     engine: { scene: 'main3', landAura: 'long' },
     context: { viewport, hasTouch: true },
     async run({ page, engine, app }) {
@@ -1750,7 +1753,7 @@ for (const viewport of [{ width: 430, height: 932 }, { width: 390, height: 844 }
         check(b.joined, `${who} attached card's tab is joined to its land's tab`);
         const cut = b.names.filter((x) => x.cut).map((x) => x.text);
         const fits = b.need <= b.room;
-        if (viewport.width >= 430) check(fits, `the whole names fit a ${viewport.width} px phone's bar (they need ${b.need.toFixed(0)} px of ${b.room.toFixed(0)})`);
+        if (viewport.width >= 600) check(fits, `the whole names fit a ${viewport.width} px screen's bar (they need ${b.need.toFixed(0)} px of ${b.room.toFixed(0)})`);
         if (fits) check(cut.length === 0 && !b.scrolls, `no name is cut in ${who} bar while it has room (cut: ${cut.join(', ') || 'none'}; the names need ${b.need.toFixed(0)} px of ${b.room.toFixed(0)}, ${b.used.toFixed(0)} used)`);
         else {
           check(b.used >= b.room - 1.5, `${who} bar is used to its end before a name is cut (${b.used.toFixed(0)} of ${b.room.toFixed(0)} px; the names need ${b.need.toFixed(0)})`);
