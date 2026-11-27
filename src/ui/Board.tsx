@@ -100,8 +100,10 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackEl
 
 const NO_LABELS: ReadonlyMap<string, string> = new Map();
 
-function groupBattlefield(player: PlayerState, byId: Map<number, Card>, marked?: { has(id: number): boolean }) {
+/** A side's battlefield as the board draws it: lands in piles, creatures, the rest; what is attached to a card is drawn with its host. (Exported for its test.) */
+export function groupBattlefield(player: PlayerState, byId: Map<number, Card>, marked?: { has(id: number): boolean }) {
   const landCards: { card: Card; attachments: number }[] = [];
+  const landAtt = new Map<number, Card[]>(); // what is attached to a land (an aura, a fortification), by the land's id
   const creatures: { card: Card; att: Card[] }[] = [];
   const other: { card: Card; att: Card[] }[] = [];
   for (const any of player.zones.battlefield.cards) {
@@ -110,11 +112,14 @@ function groupBattlefield(player: PlayerState, byId: Map<number, Card>, marked?:
     if (c.attachedToId !== null && byId.has(c.attachedToId)) continue; // drawn on its host
     const att = c.attachmentIds.map((id) => byId.get(id)).filter((x): x is Card => !!x);
     const kind = typeKind(c.types);
-    if (kind === 'land') landCards.push({ card: c, attachments: att.length });
+    if (kind === 'land') {
+      landCards.push({ card: c, attachments: att.length });
+      if (att.length > 0) landAtt.set(c.id, att);
+    }
     else if (kind === 'creature') creatures.push({ card: c, att });
     else other.push({ card: c, att });
   }
-  return { lands: groupLands(landCards, marked), creatures, other };
+  return { lands: groupLands(landCards, marked), landAtt, creatures, other };
 }
 
 /** How crowded a row is, in card widths (a tapped card is a card lying down, ~1.4 wide). */
@@ -150,13 +155,15 @@ const PlayerArea = memo(function PlayerArea({
 }) {
   // A land something on the stack points at (or comes from) stands apart from its pile, so the mark is on it alone.
   const stackMarked = useBoardMarks()?.stack;
-  const { lands, creatures, other } = useMemo(() => groupBattlefield(player, byId, stackMarked), [player, byId, stackMarked]);
+  const { lands, landAtt, creatures, other } = useMemo(() => groupBattlefield(player, byId, stackMarked), [player, byId, stackMarked]);
   // What a phone's lands bar, when it is too full for whole names, calls a land whose name would be cut to the
   // same text as another's (ui/landPiles.ts).
   const labels = useMemo(() => {
     const tabs = lands.map((g) => ({ name: displayName(g[0]!), count: g.length }));
-    return barIsFull(tabs) ? tabLabels(tabs.map((t) => t.name)) : NO_LABELS;
-  }, [lands]);
+    // What is attached to a land has a tab of its own beside the land's, and takes room in the bar like one.
+    const attached = [...landAtt.values()].flat().map((a) => ({ name: displayName(a), count: 1 }));
+    return barIsFull([...tabs, ...attached]) ? tabLabels(tabs.map((t) => t.name)) : NO_LABELS;
+  }, [lands, landAtt]);
   const mine = player.id === seat;
   const side = mine ? 'me' : 'opp';
   const chipped = (card: Card, att: Card[]) => {
@@ -165,7 +172,8 @@ const PlayerArea = memo(function PlayerArea({
     return t ? <TargetChip key={card.id} target={t}>{tile}</TargetChip> : tile;
   };
   const permanents = [...creatures, ...other];
-  const landWeight = lands.reduce((n, g) => n + pileWeight(g), 0);
+  // (a land with something attached stands alone, landPiles.ts; each attached card's tab is about 0.7 of a card wide)
+  const landWeight = lands.reduce((n, g) => n + pileWeight(g) + 0.7 * (landAtt.get(g[0]!.id)?.length ?? 0), 0);
   const permWeight = rowWeight(permanents.map((p) => p.card)) + (creatures.length && other.length ? 0.15 : 0);
   const rows = [
     permanents.length > 0 && (
@@ -184,7 +192,7 @@ const PlayerArea = memo(function PlayerArea({
     lands.length > 0 && (
       <Row key="l" kind="lands" label="Lands" count={lands.reduce((n, g) => n + g.length, 0)} dense={density(landWeight)}>
         {lands.map((g) => (
-          <LandPile key={g[0]!.id} cards={g} side={side} tab tabName={labels.get(displayName(g[0]!))} />
+          <LandPile key={g[0]!.id} cards={g} attachments={landAtt.get(g[0]!.id)} side={side} tab tabName={labels.get(displayName(g[0]!))} />
         ))}
       </Row>
     ),

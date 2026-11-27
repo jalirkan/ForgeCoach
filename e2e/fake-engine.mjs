@@ -102,6 +102,9 @@ const DEFS = {
   // A flyer, for the block declaration's refusals (scene `blocks`).
   'Storm Crow': { setCode: '9ED', manaCost: '{1}{U}', types: 'Creature - Bird', power: '1', toughness: '2', keywords: ['FLYING'], cost: 2 },
   Shock: { setCode: 'M21', manaCost: '{R}', types: 'Instant', cost: 1, burn: 2 },
+  // Auras on lands (landAura: true): the model never reads them; the board must draw them with their lands.
+  'Wild Growth': { setCode: 'M10', manaCost: '{G}', types: 'Enchantment - Aura', cost: 1 },
+  'Spreading Seas': { setCode: 'ZEN', manaCost: '{1}{U}', types: 'Enchantment - Aura', cost: 2 },
   // A death trigger with a mandatory player target (deathTrigger: true).
   'Blood Artist': { setCode: 'DKA', manaCost: '{1}{B}', types: 'Creature - Vampire', power: '0', toughness: '1', keywords: [], cost: 2, drain: true },
   // An activated ability from the graveyard that is no keyword (the full-game playtest's finding).
@@ -142,8 +145,8 @@ function wire(c) {
     faceDown: false,
     token: false,
     alt: null,
-    attachedToId: null,
-    attachmentIds: [],
+    attachedToId: c.attachedTo ?? null,
+    attachmentIds: c.attachments ?? [],
     controller: c.owner,
     owner: c.owner,
     zone: c.zone,
@@ -182,8 +185,10 @@ function inputBody(prompt, ok, cancel, extra = {}) {
 // One game: the rules model and its script. `out(type, body)` puts a frame on the wire.
 
 class Game {
-  constructor({ out, aiLife = 3, scene = 'pregame', playable = false, deathTrigger = false, selection = false }) {
+  constructor({ out, aiLife = 3, scene = 'pregame', playable = false, deathTrigger = false, selection = false, landAura = false }) {
     this.out = out;
+    /** Scene `main3` with your Wild Growth on your Mountain and your Spreading Seas on the AI's Mountain. */
+    this.landAura = landAura;
     /** Amendments M64–M66: `selectable.playerIds` / `chosen` on every input, and the `endStepOrOpponent` yield. */
     this.selectionOn = selection;
     this.yieldState = null;
@@ -456,6 +461,15 @@ class Game {
     for (const n of ['Mountain', 'Shock', 'Hill Giant', 'Mountain', 'Hill Giant']) put(take(me, n), 'hand');
     put(take(ai, 'Mountain'), 'battlefield');
     put(take(ai, 'Goblin Guide'), 'battlefield');
+    if (this.landAura) {
+      // Both auras are yours (they sit in YOUR battlefield zone); each names the land it is on, whoever controls it.
+      for (const [aura, host] of [['Wild Growth', me.battlefield.find((c) => c.name === 'Mountain')], ['Spreading Seas', ai.battlefield.find((c) => c.name === 'Mountain')]]) {
+        const a = this.make(aura, HUMAN, 'battlefield');
+        a.attachedTo = host.id;
+        host.attachments = [a.id];
+        me.battlefield.push(a);
+      }
+    }
     this.draw(AI, 5);
     me.life = 18;
     ai.life = 2;
@@ -1234,8 +1248,9 @@ class Game {
 // The bridge: sockets, the session's frames, catch-ups.
 
 export class FakeEngine {
-  constructor({ gameId = 'human-ws-0', gameCount = 3, scene = 'pregame', dropMode = 'default', aiLife = 3, verbose = false, playable = false, deathTrigger = false, selection = false, table = false } = {}) {
+  constructor({ gameId = 'human-ws-0', gameCount = 3, scene = 'pregame', dropMode = 'default', aiLife = 3, verbose = false, playable = false, deathTrigger = false, selection = false, table = false, landAura = false } = {}) {
     this.baseGameId = gameId;
+    this.landAura = landAura;
     /** A table of two's handshake (mtg-table M59): `match.opponent: "human"`; the other seat is still played by the fake. */
     this.table = table;
     this.playable = playable;
@@ -1299,7 +1314,7 @@ export class FakeEngine {
         ? { yourDeck: { name: 'Mono-Red Test', path: 'decks/e2e-red.dck', cards: 40 }, opponentDeck: { name: 'Red Probe', cards: 40 }, opponent: 'human', games: this.gameCount }
         : { yourDeck: { name: 'Mono-Red Test', path: 'decks/e2e-red.dck', cards: 40 }, aiDeck: { name: 'Red Probe', cards: 40 }, aiProfile: 'Default', games: this.gameCount },
     });
-    const game = new Game({ out: (type, body) => this.emit(type, body), aiLife: this.aiLife, scene: 'none', playable: this.playable, deathTrigger: this.deathTrigger, selection: this.selection });
+    const game = new Game({ out: (type, body) => this.emit(type, body), aiLife: this.aiLife, scene: 'none', playable: this.playable, deathTrigger: this.deathTrigger, selection: this.selection, landAura: this.landAura });
     this.game = game;
     game.gameId = this.gameId;
     game.matchOverIf = (winner) => {

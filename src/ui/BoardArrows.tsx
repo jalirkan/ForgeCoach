@@ -62,7 +62,12 @@ export function domLookup(key: RectKey): RectBox | undefined {
     case 's':
       return badgeRect(id);
     case 'c':
-      return cardRect(document.querySelector(`.board .tile[data-card-id="${id}"]`) ?? document.querySelector(`.board [data-card-ids~="${id}"]`));
+      return cardRect(
+        document.querySelector(`.board .tile[data-card-id="${id}"]`) ??
+          document.querySelector(`.board [data-card-ids~="${id}"]`) ??
+          // an attached card (an aura, an equipment) is a chip on its host, not a tile
+          document.querySelector(`.board .attach-chip[data-card-id="${id}"]`),
+      );
     case 'p':
       return rectOf(document.querySelector(`.board [data-phead-player="${id}"] .life`) ?? document.querySelector(`.board [data-phead-player="${id}"]`));
   }

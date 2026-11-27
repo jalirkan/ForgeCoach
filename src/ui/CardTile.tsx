@@ -564,11 +564,21 @@ const AttachmentChip = memo(
  * `data-card-id` is the land the next tap goes to.
  */
 export const LandPile = memo(
-  function LandPile({ cards, side, tab, tabName }: { cards: Card[]; side?: TileSide; tab?: boolean; tabName?: string }) {
-    if (cards.length === 1) return <CardTile card={cards[0]!} side={side} landTab={tab} tabName={tabName} />;
+  function LandPile({ cards, attachments, side, tab, tabName }: { cards: Card[]; attachments?: Card[]; side?: TileSide; tab?: boolean; tabName?: string }) {
+    // A land with something attached is never in a pile (landPiles.ts `groupLands`), so what is attached to it
+    // (an aura such as Wild Growth or Spreading Seas, a fortification) is drawn with the one land it is on:
+    // under the card where lands are cards, as a tab joined to the land's tab in a lands bar (ui/cards.css).
+    if (cards.length === 1) return <CardTile card={cards[0]!} attachments={attachments} side={side} landTab={tab} tabName={tabName} />;
     return <PileStack cards={cards} side={side} tab={tab} tabName={tabName} />;
   },
-  (a, b) => a.side === b.side && !!a.tab === !!b.tab && a.tabName === b.tabName && a.cards.length === b.cards.length && a.cards.every((c, i) => tileSig(c) === tileSig(b.cards[i])),
+  (a, b) =>
+    a.side === b.side &&
+    !!a.tab === !!b.tab &&
+    a.tabName === b.tabName &&
+    a.cards.length === b.cards.length &&
+    a.cards.every((c, i) => tileSig(c) === tileSig(b.cards[i])) &&
+    (a.attachments?.length ?? 0) === (b.attachments?.length ?? 0) &&
+    (a.attachments ?? []).every((c, i) => tileSig(c) === tileSig(b.attachments![i]!)),
 );
 
 /**
