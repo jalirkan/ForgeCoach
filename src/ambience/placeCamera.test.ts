@@ -6,7 +6,7 @@
  * stands, the map for one and for several shared lands (hand-computed), every
  * refusal, the two frames' CSS (the new frame's shared land on the old one's at
  * every moment), the move across renders, and over the live pack's real file
- * (places-v6) how many of the 75 one-land steps move and how many are refused.
+ * (places-v7) how many of the 75 one-land steps move and how many are refused.
  * Nothing here touches the network.
  */
 import { readFileSync } from 'node:fs';
@@ -126,7 +126,7 @@ describe('spec 1.23: the map', () => {
     // A: island cx 0.2 (w 0.2), swamp cx 0.5 (w 0.3), forest cx 0.8; B: swamp cx 0.1 (left of the island, out of order),
     // island cx 0.4, forest cx 0.85. In one order, two lands each: {swamp, forest} covers more of A but its line gives
     // s = 0.75 / 0.3 = 2.5; {island, forest} gives s = 0.45 / 0.6 = 0.75, tx = 0.4 - 0.75 * 0.2 = 0.25, ty = 0.125.
-    // (On places-v5, Kolkata → Zanzibar and Alexandria → Zanzibar did this; places-v6's Zanzibar is in order.)
+    // (On places-v5, Kolkata → Zanzibar and Alexandria → Zanzibar did this; places-v6's and places-v7's Zanzibar are in order.)
     const a = place({ island: at(0.1, 0.2), swamp: at(0.35, 0.3), forest: at(0.7, 0.2) });
     const b = place({ island: at(0.3, 0.2), swamp: at(0.05, 0.1), forest: at(0.75, 0.2) });
     const m = map(placeCamera(half(a), half(b)));
@@ -272,13 +272,13 @@ describe('spec 1.23: the move across renders', () => {
   });
 });
 
-describe('spec 1.23 over the live pack (places-v6, every place in the geography’s order)', () => {
-  const P = validatePlaces(JSON.parse(readFileSync(new URL('./testdata/places-v6.places.json', import.meta.url), 'utf8')), `${FORGECOACH_PLACES_URL}places.json`).places!;
+describe('spec 1.23 over the live pack (places-v7, places-v4’s boards in the repaint’s light, every place in the geography’s order)', () => {
+  const P = validatePlaces(JSON.parse(readFileSync(new URL('./testdata/places-v7.places.json', import.meta.url), 'utf8')), `${FORGECOACH_PLACES_URL}places.json`).places!;
   const of = (lands: Biome[]) => P.places[GEOGRAPHY.filter((b) => lands.includes(b)).join('+')]!;
   const bySlug = (slug: string) => Object.values(P.places).find((p) => p!.slug === slug)!;
   const step = (from: string, to: string, phone = false) => placeCamera({ place: bySlug(from), phone }, { place: bySlug(to), phone });
 
-  it('of the 75 one-land steps (one colour more), all 75 move (3 with a shared land left untracked, all into Istanbul) and none is refused, at both shapes', () => {
+  it('of the 75 one-land steps (one colour more), 74 move (3 with a shared land left untracked, all into Istanbul) and one is refused on the scale, Valley of Mexico → Santorini, at both shapes', () => {
     for (const phone of [false, true]) {
       const tally: Record<string, number> = {};
       const partial: string[] = [];
@@ -297,43 +297,45 @@ describe('spec 1.23 over the live pack (places-v6, every place in the geography�
           n++;
         }
       expect(n).toBe(75);
-      // places-v4 refused one, Valley of Mexico → Santorini, at s 0.498; places-v5's repainted boxes give 0.516, as v6's.
-      expect(tally).toEqual({ move: 75 });
-      expect(refused).toEqual([]);
+      // places-v4 refused one, Valley of Mexico → Santorini, at s 0.498; places-v5's and v6's repainted boxes gave 0.516.
+      // places-v7's pieces are cut from the boards before the repaint, so the step is refused again, as on v4.
+      expect(tally).toEqual({ move: 74, scale: 1 });
+      expect(refused).toEqual(['valley-of-mexico->santorini']);
       // places-v5 left 12 untracked, each a step into Cape Town, Zanzibar, Kathmandu (then one land out of order) or
       // Istanbul. On places-v6 those three are in order, and only Istanbul's stacked island and swamp (both from the left
-      // edge, the swamp's centre left of the island's) still flip: the three four-land places that hold both.
+      // edge, the swamp's centre left of the island's) still flip: the three four-land places that hold both. So on v7.
       expect(partial).toEqual(['zanzibar->istanbul', 'cartagena->istanbul', 'sabah->istanbul']);
     }
   });
 
   it('links in one order move on every shared land: Cusco → Sicily, Lisbon → Sicily, Angkor → Cambodia, Kyoto → Cambodia, Venice → Lisbon, Araucanía → Hawaii, Tahiti → Hawaii', () => {
     const marks: [string, string, string][] = [
-      ['cusco', 'sicily', '0.648,0.358,0.110'],
-      ['lisbon', 'sicily', '0.715,-0.002,0.096'],
-      ['angkor', 'cambodia', '1.570,-0.320,-0.364'],
-      ['kyoto', 'cambodia', '0.605,0.369,0.088'],
-      ['venice', 'lisbon', '0.614,-0.087,0.217'],
-      ['araucania', 'hawaii', '0.833,0.302,-0.217'],
-      ['tahiti', 'hawaii', '0.789,-0.067,-0.152'],
+      ['cusco', 'sicily', '0.669,0.346,0.144'],
+      ['lisbon', 'sicily', '0.741,-0.021,0.130'],
+      ['angkor', 'cambodia', '1.593,-0.337,-0.473'],
+      ['kyoto', 'cambodia', '0.594,0.373,0.121'],
+      ['venice', 'lisbon', '0.545,-0.023,0.253'],
+      ['araucania', 'hawaii', '0.837,0.298,-0.196'],
+      ['tahiti', 'hawaii', '0.817,-0.088,-0.177'],
     ];
     for (const [a, b, mark] of marks) {
       const m = map(step(a, b));
       expect(cameraMark(m), `${a} -> ${b}`).toBe(mark);
       expect(m.untracked, `${a} -> ${b}`).toEqual([]);
     }
-    // The phone base's own horizons: Cusco → Sicily 0.143, Araucanía → Hawaii -0.086.
-    expect(cameraMark(map(step('cusco', 'sicily', true)))).toBe('0.648,0.358,0.143');
-    expect(cameraMark(map(step('araucania', 'hawaii', true)))).toBe('0.833,0.302,-0.086');
+    // The phone base's own horizons: Cusco → Sicily 0.157, Araucanía → Hawaii -0.074.
+    expect(cameraMark(map(step('cusco', 'sicily', true)))).toBe('0.669,0.346,0.157');
+    expect(cameraMark(map(step('araucania', 'hawaii', true)))).toBe('0.837,0.298,-0.074');
   });
 
-  it('the three places re-cut into order track every shared land: Sicily → Cape Town, Kolkata → Zanzibar, Alexandria → Zanzibar, Tenochtitlan → Kathmandu', () => {
+  it('the three places rolled into order track every shared land: Sicily → Cape Town, Kolkata → Zanzibar, Alexandria → Zanzibar, Tenochtitlan → Kathmandu', () => {
     // On places-v5 each left one land to cross-fade: Cape Town's mountain, Zanzibar's swamp and island, Kathmandu's mountain.
+    // places-v6 re-cut them into order; places-v7 rolls them again from the boards before the repaint, still in order.
     const marks: [string, string, Biome[], string, string][] = [
-      ['sicily', 'cape-town', ['island', 'plains', 'mountain'], '1.161,-0.142,-0.065', '1.161,-0.142,-0.074'],
-      ['kolkata', 'zanzibar', ['island', 'swamp', 'forest'], '1.096,-0.092,-0.091', '1.096,-0.092,-0.074'],
-      ['alexandria', 'zanzibar', ['island', 'swamp', 'plains'], '0.804,0.000,0.028', '0.804,0.000,0.061'],
-      ['tenochtitlan', 'kathmandu', ['swamp', 'plains', 'mountain'], '1.126,-0.103,0.031', '1.126,-0.103,-0.011'],
+      ['sicily', 'cape-town', ['island', 'plains', 'mountain'], '1.168,-0.146,-0.113', '1.168,-0.146,-0.103'],
+      ['kolkata', 'zanzibar', ['island', 'swamp', 'forest'], '1.094,-0.090,-0.049', '1.094,-0.090,-0.049'],
+      ['alexandria', 'zanzibar', ['island', 'swamp', 'plains'], '0.791,0.003,0.082', '0.791,0.003,0.094'],
+      ['tenochtitlan', 'kathmandu', ['swamp', 'plains', 'mountain'], '1.117,-0.095,-0.015', '1.117,-0.095,-0.035'],
     ];
     for (const [a, b, shared, desk, phone] of marks) {
       const m = map(step(a, b));
@@ -346,16 +348,17 @@ describe('spec 1.23 over the live pack (places-v6, every place in the geography�
   it('Istanbul’s stacked island and swamp: Zanzibar → Istanbul moves on its island, plains and forest, its swamp cross-fades', () => {
     const m = map(step('zanzibar', 'istanbul'));
     expect([m.shared, m.untracked]).toEqual([['island', 'plains', 'forest'], ['swamp']]);
-    expect(cameraMark(m)).toBe('0.753,0.106,0.290');
-    expect(cameraMark(map(step('zanzibar', 'istanbul', true)))).toBe('0.753,0.106,0.221');
+    expect(cameraMark(m)).toBe('0.749,0.108,0.167');
+    expect(cameraMark(map(step('zanzibar', 'istanbul', true)))).toBe('0.749,0.108,0.152');
   });
 
-  it('Valley of Mexico → Santorini, refused on places-v4 (s 0.498), moves on places-v5 and places-v6 on its one shared land: s 0.516, just inside [0.5, 2]', () => {
-    // The mountain's box (the union of its six pieces) is 0.7336 of the frame wide in Valley of Mexico and 0.3785 in
-    // Santorini (v4: 0.7375 and 0.3676); places-v6 did not touch either place.
-    const m = map(step('valley-of-mexico', 'santorini'));
-    expect([m.shared, m.untracked]).toEqual([['mountain'], []]);
-    expect(cameraMark(m)).toBe('0.516,0.536,0.269');
-    expect(cameraMark(map(step('valley-of-mexico', 'santorini', true)))).toBe('0.516,0.536,0.263');
+  it('Valley of Mexico → Santorini, refused on places-v4 (s 0.498), moved on places-v5 and places-v6 (s 0.516), refused again on places-v7: s 0.498, just outside [0.5, 2]', () => {
+    // The mountain's box (the union of its six pieces) is 0.7375 of the frame wide in Valley of Mexico and 0.3676 in
+    // Santorini, v4's boxes (v5's and v6's repaint: 0.7336 and 0.3785); a homeland's one land, no other subset to try.
+    const P7 = (slug: string, land: Biome) => placeLandBox(bySlug(slug), land, false)!;
+    expect(P7('valley-of-mexico', 'mountain').w).toBeCloseTo(0.7375, 4);
+    expect(P7('santorini', 'mountain').w).toBeCloseTo(0.3676, 4);
+    expect(step('valley-of-mexico', 'santorini')).toEqual({ refused: 'scale' });
+    expect(step('valley-of-mexico', 'santorini', true)).toEqual({ refused: 'scale' });
   });
 });
