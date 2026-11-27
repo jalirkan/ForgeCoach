@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import type { Card } from '../protocol.ts';
 import { BoardMarksContext, type BoardMarks } from './cardContext.ts';
 import { cardRect } from './BoardArrows.tsx';
+import { groupBattlefield } from './Board.tsx';
 import { LandPile, LandTab } from './CardTile.tsx';
 import { groupLands, TAB_LETTERS } from './landPiles.ts';
 
@@ -104,5 +105,37 @@ describe('cardRect (where an arrow finds a card)', () => {
     expect(cardRect(t, rectBy({ slot: [0, 0], tab: [80, 30], tile: [80, 40] }))).toEqual(box(80, 30));
     expect(cardRect(tile({ '.tile-slot': el('slot') }), rectBy({ slot: [0, 0], tile: [80, 40] }))).toEqual(box(80, 40));
     expect(cardRect(null)).toBeUndefined();
+  });
+});
+
+describe('what is attached to a land (an aura, a fortification) is drawn with it', () => {
+  const forest = land(10, 'Forest', { attachmentIds: [11] });
+  const growth = land(11, 'Wild Growth', { types: 'Enchantment - Aura', attachedToId: 10 });
+  const plain = land(12, 'Forest');
+  const byId = new Map([forest, growth, plain].map((c) => [c.id, c]));
+  const player = { id: 0, zones: { battlefield: { cards: [forest, growth, plain] } } } as unknown as Parameters<typeof groupBattlefield>[0];
+
+  it('the board hands the aura to its land: it is in no row of its own, and the land stands apart from its pile', () => {
+    const g = groupBattlefield(player, byId);
+    expect(g.other).toEqual([]);
+    expect(g.creatures).toEqual([]);
+    expect(g.lands.map((p) => p.map((c) => c.id))).toEqual([[10], [12]]);
+    expect(g.landAtt.get(10)!.map((c) => c.id)).toEqual([11]);
+    expect(g.landAtt.has(12)).toBe(false);
+  });
+  it('in a lands bar it is a chip after the land\'s tab, with its own id; where lands are cards, under the card', () => {
+    for (const tab of [true, false]) {
+      const html = renderToStaticMarkup(<LandPile cards={[forest]} attachments={[growth]} side="me" tab={tab} />);
+      expect(html).toContain('has-attach');
+      expect(html).toMatch(/class="tile-attach"><span class="attach-chip[^"]*"[^>]*aria-label="Attached: Wild Growth[^"]*"[^>]*data-card-id="11"/);
+      if (tab) expect(html.indexOf('land-tab')).toBeLessThan(html.indexOf('tile-attach'));
+      else expect(html).not.toContain('land-tab');
+    }
+    expect(renderToStaticMarkup(<LandPile cards={[plain]} side="me" tab />)).not.toContain('attach');
+  });
+  it('a stack line to an attached card ends on its chip (it has no tile of its own)', () => {
+    const box = { x: 1, y: 2, width: 60, height: 24 };
+    const chip = { querySelector: () => null } as unknown as Element;
+    expect(cardRect(chip, (el) => (el === chip ? box : undefined))).toEqual(box);
   });
 });

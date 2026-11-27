@@ -445,6 +445,68 @@
   outline-offset: 1px;
 }
 /* Selecting (attackers, targets, paying): a land that is no answer is dimmed, as its card is (play/board.css). */
+/* What is attached to a land (an aura such as Wild Growth or Spreading Seas, a fortification). In a lands bar the
+   land's card is down (on a phone it is not drawn at all), so the attached card cannot hang under it as it does
+   under a creature: it is a tab of its own, joined to the right of its land's tab, with its name in its own
+   colour and a "+" before it. A click or tap on it goes to that card (CardTile's AttachmentChip), not the land.
+   Only where there IS a lands bar (the desktop table, min-width 1024px as PlayView's `wide`; the upright phone,
+   play/play.css): a phone lying down draws lands as cards, and there the attached card hangs under its land's. */
+@media (min-width: 1024px), (max-width: 1023px) and (orientation: portrait) {
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.has-attach {
+    display: grid;
+    grid-template-columns: minmax(var(--host-min, min-content), 1fr) auto;
+    align-items: end;
+    justify-items: center;
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile.has-attach {
+    --host-min: var(--cw);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .tile.has-attach.is-tapped {
+    --host-min: var(--ch);
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.has-attach > .tile-slot {
+    grid-area: 1 / 1;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.has-attach > .land-tab {
+    grid-area: 2 / 1;
+    justify-self: stretch;
+    border-radius: 6px 0 0 3px;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.has-attach > .tile-attach {
+    grid-area: 2 / 2;
+    z-index: 2;
+    flex-direction: row;
+    gap: 0;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach > .attach-chip {
+    flex-direction: row;
+    align-items: center;
+    box-sizing: border-box;
+    height: var(--tab-h, 24px);
+    max-width: 11em;
+    padding: 0 7px 0 5px;
+    border-radius: 0;
+    font-size: calc(var(--tab-font, 12px) - 1px);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach > .attach-chip:last-child {
+    border-radius: 0 6px 3px 0;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach > .attach-chip::before {
+    content: '+';
+    flex: none;
+    margin-right: 3px;
+    font-weight: 700;
+    opacity: 0.75;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach .attach-effect {
+    display: none;
+  }
+}
 .game.play.is-selecting :is(.play-board, .play-phone-main) .bf-row-lands .tile:not(.is-act):not(.is-select) > .land-tab {
   filter: brightness(0.5) saturate(0.6);
 }

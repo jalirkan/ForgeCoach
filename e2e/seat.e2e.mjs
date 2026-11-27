@@ -1550,6 +1550,109 @@ scenarios.push(
   cubeBuilderScenario({ name: 'the cube builder, a phone (390×844): the same, between the Library and Your cube tabs', viewport: { width: 390, height: 844 }, tag: 'phone' }),
 );
 
+// An aura on a land (Wild Growth on yours, your Spreading Seas on the opponent's): a land's card is down in a lands
+// bar (not drawn at all on a phone), so the aura is a tab joined to the right of its land's tab, on the land's side.
+function landAuraScenario({ name, viewport, tag, wide }) {
+  return {
+    name,
+    engine: { scene: 'main3', landAura: true },
+    context: { viewport, hasTouch: !wide },
+    async run({ page, engine, app }) {
+      const u = ui(page);
+      await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+      await u.mode('main');
+      const read = () =>
+        page.evaluate(() => {
+          const box = (el) => {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { x: r.x, y: r.y, w: r.width, h: r.height, r: r.right, b: r.bottom };
+          };
+          const side = (sel) => {
+            const chip = document.querySelector(`${sel} .bf-row-lands .tile.has-attach .attach-chip`);
+            const tile = chip?.closest('.tile');
+            return {
+              text: chip?.textContent ?? null,
+              chip: box(chip),
+              tab: box(tile?.querySelector('.land-tab')),
+              host: tile?.getAttribute('aria-label') ?? null,
+              bar: box(document.querySelector(`${sel} .bf-row-lands > .bf-cards`)),
+              field: box(document.querySelector(`${sel} .battlefield`)),
+              elsewhere: document.querySelectorAll(`${sel} .bf-row-permanents .attach-chip, ${sel} .bf-row-permanents .tile[aria-label*="Wild Growth"], ${sel} .bf-row-permanents .tile[aria-label*="Spreading Seas"]`).length,
+            };
+          };
+          return { me: side('.player-me'), opp: side('.player-top') };
+        });
+      const s = await read();
+      for (const [who, aura, v] of [['your', 'Wild Growth', s.me], ["the opponent's", 'Spreading Seas', s.opp]]) {
+        check(v.text === aura, `${aura} is a chip on ${who} Mountain in the lands bar (found ${JSON.stringify(v.text)} on ${JSON.stringify(v.host)})`);
+        check(/Mountain/.test(v.host ?? ''), `${aura}'s host tile is the Mountain (${v.host})`);
+        check(v.elsewhere === 0, `${aura} is drawn nowhere else on that side`);
+        check(v.chip.w >= 30 && Math.abs(v.chip.h - v.tab.h) <= 1.5, `${aura}'s chip is as tall as the land's tab (${v.chip.w.toFixed(1)}x${v.chip.h.toFixed(1)} against a ${v.tab.h.toFixed(1)} px tab)`);
+        check(Math.abs(v.chip.x - v.tab.r) <= 2 && Math.abs(v.chip.y - v.tab.y) <= 1.5, `${aura}'s chip is joined to the right of its land's tab (chip at ${v.chip.x.toFixed(1)},${v.chip.y.toFixed(1)}; the tab ends at ${v.tab.r.toFixed(1)}, top ${v.tab.y.toFixed(1)})`);
+        check(v.chip.r <= v.field.r + 0.5 && v.chip.b <= v.field.b + 0.5 && v.chip.x >= v.field.x - 0.5, `${aura}'s chip lies inside its half`);
+      }
+      await shot(page, `land-aura-${tag}`);
+      if (wide) {
+        // The cards come up under the pointer: the chip stays on the tabs' line, beside the card and not under it.
+        const before = s.me.chip;
+        await page.mouse.move(s.me.tab.x + s.me.tab.w / 2, s.me.tab.y + s.me.tab.h / 2);
+        await page.waitForFunction(() => {
+          const el = document.querySelector('.player-me .bf-row-lands .tile.has-attach .tile-slot');
+          return !!el && el.getBoundingClientRect().height > 40 && getComputedStyle(el).visibility === 'visible';
+        }, null, { timeout: STEP_MS });
+        await page.waitForTimeout(250);
+        const up = (await read()).me;
+        const slot = await page.evaluate(() => {
+          const r = document.querySelector('.player-me .bf-row-lands .tile.has-attach .tile-slot').getBoundingClientRect();
+          return { x: r.x, r: r.right, b: r.bottom };
+        });
+        check(Math.abs(up.chip.y - before.y) <= 1.5 && Math.abs(up.chip.x - before.x) <= 1.5, `the chip does not move when the cards come up (${JSON.stringify(before)} -> ${JSON.stringify(up.chip)})`);
+        check(slot.b <= up.chip.y + 1.5, `the land's card stands above the tabs' line (card bottom ${slot.b.toFixed(1)}, chip top ${up.chip.y.toFixed(1)})`);
+        await shot(page, `land-aura-${tag}-up`);
+        await page.mouse.move(5, 5);
+      }
+    },
+  };
+}
+
+// Where lands are cards (a phone lying down has no lands bar), the aura hangs under its land's card, as under a creature.
+scenarios.push({
+  name: 'an aura on a land, a phone lying down (844×390): it hangs under its land\'s card',
+  engine: { scene: 'main3', landAura: true },
+  context: { viewport: { width: 844, height: 390 }, hasTouch: true },
+  async run({ page, engine, app }) {
+    const u = ui(page);
+    await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+    await u.mode('main');
+    const v = await page.evaluate(() =>
+      ['.player-me', '.player-top'].map((sel) => {
+        const chip = document.querySelector(`${sel} .bf-row-lands .tile.has-attach .attach-chip`);
+        const tile = chip?.closest('.tile');
+        const b = (el) => {
+          const r = el?.getBoundingClientRect();
+          return r ? { x: r.x, y: r.y, w: r.width, h: r.height, r: r.right, b: r.bottom } : null;
+        };
+        const tab = tile?.querySelector('.land-tab');
+        return { text: chip?.textContent ?? null, chip: b(chip), slot: b(tile?.querySelector('.tile-slot')), tab: tab ? getComputedStyle(tab).display : null };
+      }),
+    );
+    for (const [i, aura] of ['Wild Growth', 'Spreading Seas'].entries()) {
+      const s = v[i];
+      check((s.text ?? '').startsWith(aura), `${aura} is a chip on its Mountain (${JSON.stringify(s.text)})`);
+      check(s.tab === 'none', `no lands bar on a phone lying down (the tab's display is ${s.tab})`);
+      check(s.slot.h > 30 && s.chip.w > 20 && s.chip.h > 8, `the land's card and the chip are both drawn (${JSON.stringify(s.slot)}, ${JSON.stringify(s.chip)})`);
+      check(s.chip.y >= s.slot.b - 6 && s.chip.x >= s.slot.x - 2 && s.chip.r <= s.slot.r + 2, `${aura}'s chip hangs under its land's card (${JSON.stringify(s.chip)} under ${JSON.stringify(s.slot)})`);
+    }
+    await shot(page, 'land-aura-landscape');
+  },
+});
+
+scenarios.push(
+  landAuraScenario({ name: 'an aura on a land, the desktop table: a tab joined to its land\'s tab, on both sides; it stays put when the cards come up', viewport: { width: 1440, height: 900 }, tag: 'desktop', wide: true }),
+  landAuraScenario({ name: 'an aura on a land, an upright phone (390×844): a tab joined to its land\'s tab, on both sides', viewport: { width: 390, height: 844 }, tag: 'phone', wide: false }),
+);
+
 // ---------------------------------------------------------------------------
 // Runner
 
