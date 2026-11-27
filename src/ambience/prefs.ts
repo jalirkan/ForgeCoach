@@ -139,17 +139,21 @@ export const FORGECOACH_SCENES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forge
 /**
  * Spec 1.22 (ambience/places.ts): ForgeCoach's places -- one real place for every set of mana colours, a base picture
  * and six pieces per land laid over it -- `places.json` at this folder's root (its pictures at the per-place refs it
- * names), loaded whenever the pack is ForgeCoach's own ({@link placesUrlOf}). `places-v5` (2026-11-25): the same 31
- * places, layout and shapes as places-v4, every picture repainted by one hand in one light, all at one ref. places-v4
+ * names), loaded whenever the pack is ForgeCoach's own ({@link placesUrlOf}). `places-v6` (2026-11-26): places-v5's
+ * 31 places with Cape Town, Zanzibar and Kathmandu re-cut into the geography's order (their accepted paintings cut into
+ * upright blocks and re-ordered, only the joins painted), so every place now keeps its lands left to right in order, and
+ * every phone base's sky and ground bands tone-matched to the desktop picture at the joins; the other 28 places'
+ * desktop bases and pieces are v5's, all at one ref. places-v5 (2026-11-25): the same 31 places, layout and shapes as
+ * places-v4, every picture repainted by one hand in one light, all at one ref. places-v4
  * (2026-11-24) was places-v3's pictures re-laid so every place keeps its lands left to right in the geography's order
  * (island, swamp, plains, forest, mountain; Cape Town, Zanzibar and Kathmandu keep one land out of order), for spec
  * 1.23's camera move; the shape is v3's (2026-11-23): each phone base is
  * 1.82:1 (2560 × 1408, the desktop panorama 320 px down it, sky above and 288 px of near ground below), because a
  * phone's half measures 2.14:1 with one row of cards and 1.61:1 with two; most phone pieces are the desktop piece files
- * at their phone boxes. places-v4, places-v3, places-v2 (2.22:1, too wide for two rows) and places-v1 (4:5) stay up; nothing points at them. When it loads, `scenes.json` is not
+ * at their phone boxes. places-v5, places-v4, places-v3, places-v2 (2.22:1, too wide for two rows) and places-v1 (4:5) stay up; nothing points at them. When it loads, `scenes.json` is not
  * fetched at all.
  */
-export const FORGECOACH_PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v5/';
+export const FORGECOACH_PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v6/';
 /**
  * ForgeCoach's own pack at any tag: a stored URL that matches is the default
  * of the day it was saved, and {@link loadSceneryPrefs} replaces it with the

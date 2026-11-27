@@ -2887,18 +2887,24 @@ never mirrored. A half with a land the five do not name (a `wastes` slot,
 1.11) has no place and is drawn as before.
 
 **The file.** `places.json`, at the root of its own URL: ForgeCoach's is
-`https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v5/places.json`,
+`https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v6/places.json`,
 loaded on 1.20's condition (the pack is ForgeCoach's own, with the
 whole-half flag and without; never with `?scenes=off`, nor `?places=off`). The
-pictures may live at other refs (places-v5 names its files at one,
-`@places-v5-p1`, all 31 places, 38.4 MB, under jsDelivr's 50 MB, which is per
-ref; places-v4 named two, `@places-v4-p1`, 30 places, 39.3 MB, and
-`@places-v4-p2`, Istanbul, 1.8 MB. places-v5 (2026-11-25) is places-v4's 31
+pictures may live at other refs (places-v6 names its files at one,
+`@places-v6-p1`, all 31 places, 38.0 MB, under jsDelivr's 50 MB, which is per
+ref, as places-v5 did at `@places-v5-p1`, 38.4 MB; places-v4 named two,
+`@places-v4-p1`, 30 places, 39.3 MB, and `@places-v4-p2`, Istanbul, 1.8 MB.
+places-v6 (2026-11-26) is places-v5 with Cape Town, Zanzibar and Kathmandu
+re-cut into the geography's order -- each accepted painting cut into upright
+blocks, the blocks re-ordered (Zanzibar's left block mirrored) and only the
+joins painted -- and every phone base's sky and ground bands tone-matched to
+the desktop picture at the joins; the other 28 places' desktop bases and
+pieces are v5's. places-v5 (2026-11-25) is places-v4's 31
 places, layout and shapes with every picture repainted by one hand in one
 light; places-v4 (2026-11-24) is places-v3 re-laid -- 9 places re-laid and 5
 mirrored so every place keeps its lands left to right in the geography's
-order (Cape Town, Zanzibar and Kathmandu keep one land out of order), for
-1.23's camera move; its shapes are v3's). A file
+order (Cape Town, Zanzibar and Kathmandu kept one land out of order until
+places-v6), for 1.23's camera move; its shapes are v3's). A file
 that does not load or does not validate, or whose every place is refused,
 means **no places** -- never an error on the board -- and the halves are drawn
 as before (1.20 / 1.21). `scenes.json` is fetched beside `places.json`, never
@@ -2911,23 +2917,23 @@ every place has loaded clean.
 {
   "schema": 1,
   "spec": "1.22",
-  "name": "places-v5",
+  "name": "places-v6",
   "author": "jalirkan",
   "license": "CC BY 4.0",
   "places": {
     "island+swamp+plains+mountain": {
       "slug": "cartagena",
       "name": "Cartagena de Indias",
-      "ref": "places-v5-p1",
+      "ref": "places-v6-p1",
       "lands": ["island", "swamp", "plains", "mountain"],
       "half": {
-        "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v5-p1/places/cartagena/d/base.webp",
+        "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v6-p1/places/cartagena/d/base.webp",
         "width": 2560, "height": 800, "bytes": 193906,
         "subjectBand": [0.05, 0.714], "horizon": 0.6144,
         "focal": { "x": 0.5, "y": 0.4713 }, "safe": { "x": 0, "y": 0.07, "w": 1, "h": 0.8025 },
         "phone": {
-          "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v5-p1/places/cartagena/w/base.webp",
-          "width": 2560, "height": 1408, "bytes": 335948,
+          "src": "https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v6-p1/places/cartagena/w/base.webp",
+          "width": 2560, "height": 1408, "bytes": 331076,
           "subjectBand": [0.2557, 0.633], "horizon": 0.5764,
           "focal": { "x": 0.5, "y": 0.495 }, "safe": { "x": 0, "y": 0.267, "w": 1, "h": 0.456 }
         }
@@ -2999,7 +3005,7 @@ above 1.001: the painters' fractions are rounded).
    without.
 3. **Composed** = the base framed exactly as a scene is (1.5's crop about its
    focal point and safe rect, the phone base on a phone-shaped half by the
-   1.5 rule: the shape nearer the half's on a log scale, so with places-v5 a
+   1.5 rule: the shape nearer the half's on a log scale, so with places-v6 a
    desktop half narrower than about 2.41 : 1 draws the phone base too, which
    fits it better), never mirrored, never panned; and **inside the same frame**,
    above the base, one picture per live land in the geography's order -- that
@@ -3039,8 +3045,8 @@ above 1.001: the painters' fractions are rounded).
 - **Warm ahead**: once a place is drawn, the next stage's piece of every live
   land (stage + 1, at the shape in use). Other places' bases are not warmed.
 
-**Budgets.** The manifest at most **2 MB** (refused unread past it; places-v5's
-is 214,359 bytes). As warnings: a place's declared files (both bases and every
+**Budgets.** The manifest at most **2 MB** (refused unread past it; places-v6's
+is 214,412 bytes). As warnings: a place's declared files (both bases and every
 piece at both shapes) past **8 MB**, and any one ref's past **45 MB**
 (jsDelivr's 50 MB).
 
@@ -3058,12 +3064,12 @@ pieces have loaded, then cross-fades to Istanbul. On a phone the half draws
 near ground below) and the same four piece files from `cartagena/d/` at their phone boxes
 (island-1's, for one, at y 0.5774 and h 0.1506 of the phone base against y
 0.6162 and h 0.265 of the desktop one: 320 + 0.6162 × 800 = 813 px of 1408); none of Cartagena's phone pieces needs
-a file of its own (54 do across places-v5, under `w/`). The caption:
+a file of its own (52 do across places-v6, under `w/`; 54 on places-v5). The caption:
 "Cartagena de Indias: Island 2, Swamp 1, Plains 3, Mountain 1".
 
 **The walk with places.** `storyboard.test.ts` walks every state of 0–6
 lands a colour (three arrival orders, the duals) at both shapes, with the
-flag and without, on places-v5: every state with lands is its place alone,
+flag and without, on places-v6: every state with lands is its place alone,
 every colour on screen, and the caption names the place and every land. The
 caption is read from its land list only ("…: Island 2, Forest 1"), since a
 name may hold a land word: "Hawaii, the Big Island", "Cambodia's rice plains
@@ -3082,7 +3088,7 @@ out); a failed piece a hidden `[data-piece-failed]` mark.
 `base`, `pairFullHold`), `src/ambience/pack.ts` (`loadPlaces`; scenes only
 without places), `src/ambience/prefs.ts` (`FORGECOACH_PLACES_URL`,
 `placesUrlOf`, `?places=off`), SceneryStrip (`PlacePanel`,
-`PlaceLandPiece`); `places.test.ts`, `places-v5.test.ts`,
+`PlaceLandPiece`); `places.test.ts`, `places-v6.test.ts`,
 `placesDom.test.tsx`, `storyboard.test.ts` and `e2e/ambience.e2e.mjs`
 (step 8, the manifest and pictures served from disk) hold it.
 
@@ -3120,9 +3126,11 @@ the rest; *amended on 24 November 2026 after review*: a largest subset whose
 scale fell out of range had refused the move although another of the same
 size passed -- Kolkata → Zanzibar, {swamp, forest} at s ≈ 2.2 against
 {island, forest} at 0.792.) A
-shared land left out of T (a flip: places-v3 was not re-laid, and in
-places-v4 and places-v5 three four-land places, Cape Town, Zanzibar and Kathmandu, keep one
-land out of order because moving it broke the painting) simply cross-fades without being
+shared land left out of T (a flip: places-v3 was not re-laid; in places-v4
+and places-v5 three four-land places, Cape Town, Zanzibar and Kathmandu, kept
+one land out of order because moving it broke the painting, and places-v6
+re-cut those three into order; Istanbul's island and swamp still stand one
+over the other, both from the left edge) simply cross-fades without being
 tracked, so a link still moves on the lands that do line up. The map, in
 fractions of the frame (the base picture's box), with one uniform scale:
 
@@ -3174,7 +3182,7 @@ its place in B's frame as drawn, not in a frame at B's offset.
 
 **Edges: three layers while a move runs.** With a pan in the map neither
 moving frame can cover the half for the whole move -- at e = 0.42 of
-Araucanía → Hawaii (places-v5: s 0.833, tx 0.302) the incoming frame is drawn at
+Araucanía → Hawaii (places-v6, as v5: s 0.833, tx 0.302) the incoming frame is drawn at
 0.42 + 0.58/0.833 = 1.116 times its size, shifted 0.127 − 1.116 × 0.302 =
 −0.210, so it spans −0.210 to 0.906 of the half, and right of it only the
 fading old frame stood over the half's dark background, a dark band with a
@@ -3207,18 +3215,33 @@ pop. Holding is the simpler of the two soft ends and never leaves a frame
 with a transform or a mask; the cost is that the board shows B for at most
 the rest of one cross-fade after A is back.)
 
-**On places-v5** (the live pack, places-v4's layout repainted): of the 75
-steps that add one colour, **all 75 move and none is refused**, at both
-shapes; 12 of the 75 leave a shared land untracked, every one of them a step
-into Cape Town, Zanzibar, Kathmandu or Istanbul (Sicily → Cape Town, for one,
-moves on its island and plains, and its mountain cross-fades: s 1.321;
-Kolkata → Zanzibar on its island and forest, s 0.788, and Alexandria →
-Zanzibar on its swamp and plains, s 1.397, each a subset of the largest size
-whose scale passes). Cusco → Sicily,
+**On places-v6** (the live pack, every place in the geography's order): of
+the 75 steps that add one colour, **all 75 move and none is refused**, at
+both shapes; **3** of the 75 leave a shared land untracked, Zanzibar,
+Cartagena and Sabah → Istanbul -- the three four-land places that hold both
+an island and a swamp, because Istanbul's swamp stands over its island, both
+from the left edge, with the swamp's centre (0.158) left of the island's
+(0.237): Zanzibar → Istanbul moves on its island, plains and forest and its
+swamp cross-fades (s 0.753), Cartagena → Istanbul on its swamp, plains and
+mountain with its island untracked (s 1.433), Sabah → Istanbul on its
+island, forest and mountain with its swamp untracked (s 0.878). The steps
+into the three re-cut places now track every shared land: Sicily → Cape Town
+on its island, plains and mountain (s 1.161), Kolkata → Zanzibar on its
+island, swamp and forest (s 1.096), Alexandria → Zanzibar on its island,
+swamp and plains (s 0.804), Tenochtitlan → Kathmandu on its swamp, plains and
+mountain (s 1.126). (On places-v5 the same 75 moved, **12** with a land
+untracked, every one a step into Cape Town, Zanzibar, Kathmandu or Istanbul:
+Sicily → Cape Town on its island and plains with its mountain cross-fading,
+s 1.321; Kolkata → Zanzibar on its island and forest, s 0.788, and
+Alexandria → Zanzibar on its swamp and plains, s 1.397, each a subset of the
+largest size whose scale passes. Zanzibar → Istanbul was tracked whole then,
+because v5's Zanzibar kept its swamp left of its island as Istanbul does.)
+Cusco → Sicily,
 Lisbon → Sicily, Angkor → Cambodia, Kyoto → Cambodia, Venice → Lisbon,
 Araucanía → Hawaii (s 0.833: the view pulls back and the sea opens on the
 left) and Tahiti → Hawaii move on every shared land. Valley of Mexico →
-Santorini, refused on places-v4, moves on places-v5 on its one shared land,
+Santorini, refused on places-v4, moves on places-v5 and places-v6 (which did
+not touch either place) on its one shared land,
 the mountain, at s 0.516, just inside the range: the repainted pieces' boxes
 make the mountain 0.7336 of the frame wide in Valley of Mexico and 0.3785 in
 Santorini, against 0.7375 and 0.3676 (s 0.498) on places-v4. (On places-v4 it
@@ -3229,7 +3252,7 @@ land untracked, and 1 refused.)
 **Worked example: Cusco → Sicily.** A half with one Plains and one Mountain
 draws Cusco (`plains+mountain`); an Island arrives, and the place is Sicily
 (`island+plains+mountain`). On a desktop, the lands' boxes (union of six
-pieces, places-v5): Cusco's plains 0.0059–0.4930 (cx 0.2495), its mountain
+pieces, places-v6, as v5): Cusco's plains 0.0059–0.4930 (cx 0.2495), its mountain
 0.4707–1.0000 (cx 0.7353); Sicily's plains 0.3293–0.7105 (cx 0.5199), its
 mountain 0.6738–0.9957 (cx 0.8347). Two shared lands: the line through
 (0.2495, 0.5199) and (0.7353, 0.8347) gives s = 0.3148 / 0.4858 = **0.648**
@@ -3260,7 +3283,7 @@ one frame, with no mark and 1.22's style, and `data-camera` is gone.
 `cameraStep`), SceneryStrip (`PlacePanel`, `PlacePanelView`,
 `cameraFrameStyle`); `placeCamera.test.ts` (the box, the map for one, two and
 three lands, one land out of order and a swapped pair, every refusal, the CSS, the steps across renders, the counts on
-places-v5), `placesDom.test.tsx` (both frames under the move, a refused change
+places-v6), `placesDom.test.tsx` (both frames under the move, a refused change
 and a stage step untransformed, the settled frame bare) and
 `e2e/ambience.e2e.mjs` (step 8's `places-camera`: Plains, Mountain, Island --
 Cusco → Sicily -- and `places-camera-hawaii`: Forest ×4, Mountain ×5, Island
