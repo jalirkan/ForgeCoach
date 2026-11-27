@@ -7,51 +7,108 @@ import { readFileSync } from 'node:fs';
 import { CARD_RATIO, DESK_FIT, deskCardWidths, edgeFade, PHONE_FIT, phoneCardWidth, phoneSideFit } from './boardFit.ts';
 
 describe('phoneSideFit', () => {
-  it('counts a lands row as landK of a creature row', () => {
-    expect(phoneSideFit({ permanents: true, lands: true, maxAttach: 0 }).rowsH).toBeCloseTo(1 + PHONE_FIT.landK);
+  const both = { permanents: true, lands: true, maxAttach: 0 };
+
+  it('the lands are a bar, not a row: only the permanents count as a row of cards', () => {
+    expect(phoneSideFit(both).rowsH).toBe(1);
     expect(phoneSideFit({ permanents: true, lands: false, maxAttach: 0 }).rowsH).toBe(1);
-    expect(phoneSideFit({ permanents: false, lands: true, maxAttach: 0 }).rowsH).toBeCloseTo(PHONE_FIT.landK);
+    expect(phoneSideFit({ permanents: false, lands: true, maxAttach: 0 }).rowsH).toBe(0);
   });
 
-  it('adds row paddings, the separator and the side padding', () => {
+  it('adds the row padding, the side padding and the lands bar', () => {
     const k = PHONE_FIT;
-    expect(phoneSideFit({ permanents: true, lands: true, maxAttach: 0 }).padPx).toBe(k.sidePad + 2 * k.rowPad + k.rowSep);
-    expect(phoneSideFit({ permanents: false, lands: true, maxAttach: 0 }).padPx).toBe(k.sidePad + k.rowPad);
+    expect(phoneSideFit(both).padPx).toBe(k.sidePad + k.rowPad + k.barPx);
+    expect(phoneSideFit({ permanents: true, lands: false, maxAttach: 0 }).padPx).toBe(k.sidePad + k.rowPad);
+    expect(phoneSideFit({ permanents: false, lands: true, maxAttach: 0 }).padPx).toBe(k.sidePad + k.barPx);
   });
 
   it('leaves room for the deepest pile of auras and equipment', () => {
-    const none = phoneSideFit({ permanents: true, lands: true, maxAttach: 0 });
-    const two = phoneSideFit({ permanents: true, lands: true, maxAttach: 2 });
-    expect(two.padPx - none.padPx).toBe(2 * PHONE_FIT.attachPx);
+    const two = phoneSideFit({ ...both, maxAttach: 2 });
+    expect(two.padPx - phoneSideFit(both).padPx).toBe(2 * PHONE_FIT.attachPx);
     // Attachments hang under permanents; a lands-only side has none.
-    expect(phoneSideFit({ permanents: false, lands: true, maxAttach: 2 }).padPx).toBe(PHONE_FIT.sidePad + PHONE_FIT.rowPad);
+    expect(phoneSideFit({ permanents: false, lands: true, maxAttach: 2 }).padPx).toBe(PHONE_FIT.sidePad + PHONE_FIT.barPx);
   });
 
-  it('gives a side its rows at the floor size as its minimum', () => {
-    const fit = phoneSideFit({ permanents: true, lands: true, maxAttach: 1 });
-    const floorH = PHONE_FIT.floor * CARD_RATIO;
-    expect(fit.minPx).toBe(Math.ceil(fit.padPx + floorH + PHONE_FIT.landK * floorH));
-    // At that height the cards are exactly at the floor, never smaller.
-    expect(phoneCardWidth(fit, fit.minPx)).toBeCloseTo(PHONE_FIT.floor, 0);
+  it('gives a side its row at the floor size, and the bar, as its minimum', () => {
+    const fit = phoneSideFit({ ...both, maxAttach: 1 });
+    expect(fit.minPx).toBe(Math.ceil(fit.padPx + PHONE_FIT.floor * CARD_RATIO));
+    // play.css sums --fit-pad + --fit-rows × floor height: the same number.
+    expect(Math.ceil(fit.padPx + fit.rowsH * PHONE_FIT.floor * CARD_RATIO)).toBe(fit.minPx);
+    // At that height (and under it) the cards are at the floor, never smaller.
+    expect(phoneCardWidth(fit, fit.minPx)).toBe(PHONE_FIT.floor);
     expect(phoneCardWidth(fit, fit.minPx - 40)).toBe(PHONE_FIT.floor);
+    // A lands-only side is its bar.
+    expect(phoneSideFit({ permanents: false, lands: true, maxAttach: 0 }).minPx).toBe(PHONE_FIT.sidePad + PHONE_FIT.barPx);
   });
 
   it('an empty side keeps one line for "No permanents"', () => {
     const fit = phoneSideFit({ permanents: false, lands: false, maxAttach: 0 });
     expect(fit.minPx).toBe(PHONE_FIT.sidePad + PHONE_FIT.emptyPx);
-    // play.css sums --fit-pad + --fit-rows × floor height: the same number.
     expect(fit.padPx + fit.rowsH * PHONE_FIT.floor * CARD_RATIO).toBe(fit.minPx);
   });
 
   it('grows cards with the height up to the ceiling', () => {
-    const fit = phoneSideFit({ permanents: true, lands: true, maxAttach: 0 });
-    expect(phoneCardWidth(fit, 260)).toBeGreaterThan(phoneCardWidth(fit, 200));
+    const fit = phoneSideFit(both);
+    expect(phoneCardWidth(fit, 260)).toBeGreaterThan(phoneCardWidth(fit, 232));
+    expect(phoneCardWidth(fit, 232)).toBeCloseTo((232 - fit.padPx) / PHONE_FIT.permRows / CARD_RATIO, 5);
     expect(phoneCardWidth(fit, 2000)).toBe(PHONE_FIT.ceil);
   });
 
   it('takes a smaller floor (short phones)', () => {
-    const shape = { permanents: true, lands: true, maxAttach: 0 };
-    expect(phoneSideFit(shape, { ...PHONE_FIT, floor: 48 }).minPx).toBeLessThan(phoneSideFit(shape).minPx);
+    expect(phoneSideFit(both, { ...PHONE_FIT, floor: 48 }).minPx).toBeLessThan(phoneSideFit(both).minPx);
+  });
+
+  it('leaves the middle of the picture, where the place is built, open', () => {
+    // What the lands build sits at about 44% to 71% of a side's height (the phone picture, scenery spec). The
+    // row (the side's 2 px, its 5 px above the cards, the cards) ends above the middle of that band, and the
+    // tabs (30 px and 3 under them) start below it, at every height from a phone's side with the hand open
+    // (176 px at 390x844) to a tablet's.
+    for (let h = 176; h <= 420; h += 4) {
+      const fit = phoneSideFit(both);
+      const rowEnd = 2 + 5 + phoneCardWidth(fit, h) * CARD_RATIO;
+      expect(rowEnd / h, `row, a side ${h} px high`).toBeLessThan(0.52);
+      expect((h - PHONE_FIT.tabPx - 3) / h, `bar, a side ${h} px high`).toBeGreaterThan(0.71);
+    }
+  });
+
+  it('play.css and cards.css carry the same numbers', () => {
+    const play = readFileSync(new URL('./play/play.css', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('./cards.css', import.meta.url), 'utf8');
+    const k = PHONE_FIT;
+    const phone = play.slice(play.indexOf('@media (max-width: 1023px) and (orientation: portrait) {'), play.indexOf('/* ---- phone in landscape'));
+    expect(phone).toContain(`--fit-floor: ${k.floor}px;`);
+    expect(phone).toContain(`--perm-rows: ${k.permRows};`);
+    // 100cqh is the side's content box and --fit-pad counts the side's own padding: the CSS adds it back, so
+    // the card is (border-box height - padPx) / permRows, which is phoneCardWidth
+    expect(phone).toContain(`--cw-fit: clamp(var(--fit-floor), calc((100cqh + ${k.sidePad}px - var(--fit-pad, 13px)) / var(--perm-rows) * 63 / 88), ${k.ceil}px);`);
+    expect(readFileSync(new URL('./styles.css', import.meta.url), 'utf8')).toMatch(/box-sizing: border-box;/);
+    expect(phone).toContain('min-height: calc(var(--fit-pad, 13px) + var(--fit-rows, 1) * var(--fit-floor) * 88 / 63);');
+    expect(k.sidePad + k.rowPad).toBe(13);
+    expect(phone).toMatch(/\.play-phone-main \.battlefield,\s*\.play-phone-main \.player-top \.battlefield \{\s*padding: 2px 8px;/);
+    expect(phone).toMatch(/\.play-phone-main \.bf-cards \{\s*padding-top: 5px;\s*padding-bottom: 4px;/);
+    // the bar: a tab, 3 px under it, and the 10 px above it that still take a finger
+    expect(phone).toContain(`--tab-h: ${k.tabPx}px;`);
+    expect(phone).toMatch(/\.bf-row-lands > \.bf-cards \{[^}]*padding: 0 8px 3px;/);
+    expect(phone).toMatch(/\.bf-row-lands \.tile \{[^}]*padding-top: 10px;/);
+    expect(k.barPx).toBe(k.tabPx + 3 + 10);
+    // the land cards never come up on a phone; the tab is turned on here and on the desktop table, nowhere else
+    expect(phone).toMatch(/\.play-phone-main \.bf-row-lands \.tile-slot \{\s*display: none;/);
+    expect(phone).toMatch(/\.play-phone-main \.bf-row-lands \.land-tab \{\s*display: flex;/);
+    expect(css).toMatch(/\n\.land-tab \{\s*display: none;\s*\}/);
+    expect([...(play + css).matchAll(/\.land-tab \{\s*display: flex;/g)].length).toBe(2);
+    // a tab's least width is measured by the browser from the name's sizer; neither the sizer nor the name may be
+    // a scroll box (it would have no least width), and outside the phone's bar the sizer is not there at all
+    expect(phone).toMatch(/\.land-tab-size \{\s*grid-area: 1 \/ 1;\s*display: block;\s*height: 0;\s*visibility: hidden;\s*white-space: normal;\s*overflow-wrap: anywhere;\s*\}/);
+    expect(phone).toMatch(/\.land-tab-text,\s*\.play-phone-main \.bf-row-lands \.land-tab-short \{\s*display: block;\s*grid-area: 1 \/ 1;\s*width: 0;\s*min-width: 100%;/);
+    expect(phone).toMatch(/\.land-tab-name\.has-short \.land-tab-text \{\s*display: none;/);
+    expect(phone).toMatch(/\.land-tab-name \{\s*display: grid;\s*grid-template-columns: 1fr;\s*min-width: auto;\s*overflow: clip;/);
+    expect(phone).toMatch(/\.bf-row-lands \.tile \{\s*min-width: auto;/);
+    expect(css).toMatch(/\n\.land-tab-size,\s*\.land-tab-short \{\s*display: none;\s*\}/);
+    // an empty side's line is centred again
+    expect(phone).toMatch(/\.battlefield > \.bf-empty \{\s*margin-block: auto;/);
+    // attachments: one line each (attachPx = the chip and its gap)
+    expect(phone).toMatch(/\.play-phone-main \.attach-chip \{\s*height: 18px;/);
+    expect(k.attachPx).toBe(18 + 1);
   });
 });
 
@@ -131,7 +188,7 @@ describe('the desktop table (deskCardWidths)', () => {
     expect(css).toContain(`calc((100cqh - ${DESK_FIT.vPad}px - var(--attach-h, 0px)) / var(--perm-rows) * 63 / 88)`);
     expect(css).toContain(`calc((100cqh - ${DESK_FIT.vPad}px) / var(--perm-rows) * 63 / 88)`);
     // the bar: a tab and the row's padding under it
-    expect(css).toMatch(/\.bf-row-lands \.land-tab \{[^}]*height: 24px;/);
+    expect(css).toMatch(/\.bf-row-lands \.land-tab \{[^}]*height: var\(--tab-h, 24px\);/);
     expect(css).toMatch(/\.bf-row-lands > \.bf-cards \{[^}]*padding: 6px 8px 4px;/);
     expect(DESK_FIT.barPx).toBe(24 + 4);
     // the lands come up for the pointer only (a clicked land keeps the focus; the next key would hold them up)
@@ -141,7 +198,7 @@ describe('the desktop table (deskCardWidths)', () => {
     expect(css).toContain('.bf-row-lands:has(.tile.is-select, .tile.is-chosen) .tile-slot {');
     expect(css).toMatch(/\.bf-row-lands \.tile-slot \{\s*height: 0;\s*visibility: hidden;/);
     expect(board).not.toMatch(/--ch-lands|--ch-perm|is-line/);
-    // outside the desktop table a land has no tab
+    // outside the two lands bars (this one and the upright phone board's) a land has no tab
     expect(css).toMatch(/\n\.land-tab \{\s*display: none;\s*\}/);
     expect(board).toContain("'--slots-row': Math.max(DESK_FIT.minSlots, permWeight)");
     expect(board).toContain("'--slots-lands': Math.max(DESK_FIT.minSlots, landWeight)");

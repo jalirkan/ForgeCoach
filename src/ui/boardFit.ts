@@ -2,34 +2,57 @@
  * ForgeCoach — ui/boardFit.ts
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * How one side of the phone board fits its height (portrait phones, play.css).
- * Each side is a size container; its cards take the height it has, between a
- * legible floor and a ceiling. Past the floor the side must not shrink further
- * (its cards would spill onto the life bar under it), so the side gets a
- * minimum height — the rows at the floor size — and the board scrolls instead.
- * (play.css computes that minimum from --fit-pad and --fit-rows, because the
- * floor is smaller on short phones; `minPx` is the same sum.)
+ * How one side of the board fits its box: the upright phone board (play.css)
+ * and the desktop table (cards.css). Both lay a side out the same way, because
+ * a place's picture fills it and what the lands build sits in its middle: the
+ * creatures and other permanents in ONE ROW along the top, the lands as a thin
+ * bar of name tabs along the bottom edge.
+ *
+ * The phone: each side is a size container; its row takes a share of the
+ * height it has, between a legible floor and a ceiling. Past the floor the
+ * side must not shrink further (its cards would spill onto the life bar under
+ * it), so the side gets a minimum height (the row at the floor size, plus the
+ * bar) and the board scrolls instead. (play.css computes that minimum from
+ * --fit-pad and --fit-rows, because the floor is smaller on short phones;
+ * `minPx` is the same sum.)
+ *
+ * Every height here is the side's BORDER box: the `.battlefield` element as
+ * it is measured, its own 2 + 2 px of padding included (`sidePad`, which
+ * `padPx` counts). The CSS sizes the cards from `100cqh`, which is the
+ * content box, so it adds those 4 px back before taking `--fit-pad` off:
+ * `(100cqh + 4px - --fit-pad) / --perm-rows` is `(height - padPx) / permRows`.
+ * The lands bar lies over the bottom padding, so at the minimum height the
+ * row and the bar's strip are 2 px apart rather than touching.
  *
  * DOM-free so it is tested in node (boardFit.test.ts). The pixel constants
- * mirror play.css; change them together.
+ * mirror play.css and cards.css; change them together.
  */
 
 /** Card aspect: height over width. */
 export const CARD_RATIO = 88 / 63;
 
 export const PHONE_FIT = {
-  /** Narrowest legible card width (px); lands are `landK` of it. */
+  /** Narrowest legible card width (px). */
   floor: 54,
   /** Widest card (px). */
   ceil: 104,
-  /** A land is this much of a creature (lands sit in piles with count badges). */
-  landK: 0.8,
-  /** Each row's padding above and below its cards (.bf-cards: 5 + 4). */
+  /**
+   * The permanents' row is sized as if it shared the side with three quarters of another (play.css
+   * `--perm-rows`, the desktop table's number): it ends a little under halfway down, and the middle of the
+   * picture, where the place is built, stays open above the lands bar.
+   */
+  permRows: 1.75,
+  /** The row's padding above and below its cards (.bf-cards: 5 + 4). */
   rowPad: 9,
-  /** Between two rows: the dashed rule and its padding (1 + 4). */
-  rowSep: 5,
   /** The side's own padding (.battlefield: 2 + 2). */
   sidePad: 4,
+  /** A land's tab (play.css `--tab-h`): its name, how many, and the whole of what a finger needs to see. */
+  tabPx: 30,
+  /**
+   * What the lands bar takes from the side's height (px): the tab, 3 px under it, and the 10 px strip above it
+   * where a finger still lands on the tab (.tile's padding-top), so no permanent ever stands in that strip.
+   */
+  barPx: 43,
   /** One aura or equipment chip under its host, one line on phones. */
   attachPx: 19,
   /** An empty side: the "No permanents" line. */
@@ -47,31 +70,31 @@ export interface SideShape {
 }
 
 export interface SideFit {
-  /** The rows' height in creature-card heights (a lands row counts `landK`). */
+  /** The rows of cards the side must hold at the floor size: 1 with permanents, else 0 (the lands are a bar). */
   rowsH: number;
-  /** Fixed pixels inside the side that are not cards. */
+  /** Fixed pixels of the side's border box that are not cards (its own padding, the row's, the lands bar, the chips under a host). */
   padPx: number;
-  /** The side's minimum height (px): every row at the floor size. */
+  /** The side's minimum height (px, border box): the row at the floor size, and the bar. */
   minPx: number;
 }
 
 export function phoneSideFit({ permanents, lands, maxAttach }: SideShape, k: FitConstants = PHONE_FIT): SideFit {
-  const rows = Number(permanents) + Number(lands);
-  if (rows === 0) return { rowsH: 0, padPx: k.sidePad + k.emptyPx, minPx: k.sidePad + k.emptyPx };
-  const rowsH = Number(permanents) + Number(lands) * k.landK;
+  if (!permanents && !lands) return { rowsH: 0, padPx: k.sidePad + k.emptyPx, minPx: k.sidePad + k.emptyPx };
+  const rowsH = Number(permanents);
   const attach = permanents ? Math.max(0, maxAttach) * k.attachPx : 0;
-  const padPx = k.sidePad + rows * k.rowPad + (rows - 1) * k.rowSep + attach;
+  const padPx = k.sidePad + (permanents ? k.rowPad : 0) + (lands ? k.barPx : 0) + attach;
   const minPx = Math.ceil(padPx + rowsH * k.floor * CARD_RATIO);
   return { rowsH, padPx, minPx };
 }
 
 /**
- * The card width a side of `heightPx` gives (what the CSS clamp computes), for
- * checking the formula: the rows' card heights fill what the padding leaves.
+ * The card width a side `heightPx` high (its border box) gives: what the CSS
+ * clamp computes. The row takes its share (`permRows`) of what the fixed
+ * pixels leave.
  */
 export function phoneCardWidth(fit: SideFit, heightPx: number, k: FitConstants = PHONE_FIT): number {
   if (fit.rowsH <= 0) return k.floor;
-  const w = (heightPx - fit.padPx) / fit.rowsH / CARD_RATIO;
+  const w = (heightPx - fit.padPx) / k.permRows / CARD_RATIO;
   return Math.min(k.ceil, Math.max(k.floor, w));
 }
 

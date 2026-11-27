@@ -12,7 +12,7 @@ import type { GameLog } from '../log.ts';
 import { phaseLabel } from '../decisions.ts';
 import { chosenColors, manaSummary, turnFacts, type ManaSource } from '../state.ts';
 import { cachedMap, useCardsVersion } from './cardData.ts';
-import { BoardMarksContext, usePlay, type BoardMarks, type CardCombatMark } from './cardContext.ts';
+import { BoardMarksContext, useBoardMarks, usePlay, type BoardMarks, type CardCombatMark } from './cardContext.ts';
 import { combatMarks } from './play/combatLines.ts';
 import { combatLayout, hideSickMark, type CombatLayout, type LaneTarget } from './play/combatLayout.ts';
 import './play/lane.css';
@@ -20,11 +20,11 @@ import { CombatArrows } from './play/CombatArrows.tsx';
 import { StackPanel } from './StackPanel.tsx';
 import { BoardArrows } from './BoardArrows.tsx';
 import { stackEntries, stackMarks, type StackEntry } from './stackModel.ts';
-import { CardBack, CardTile, LandPile } from './CardTile.tsx';
+import { CardBack, CardTile, displayName, LandPile } from './CardTile.tsx';
 import { IconHeart } from './Icons.tsx';
 import { Pip } from './Mana.tsx';
 import { ZoneViewer, type ViewableZone } from './ZoneViewer.tsx';
-import { groupLands, pileWeight } from './landPiles.ts';
+import { barIsFull, groupLands, pileWeight, tabLabels } from './landPiles.ts';
 import { DESK_FIT, edgeFade, phoneSideFit } from './boardFit.ts';
 import { cx, stateCardNames, typeKind } from './util.ts';
 import { seatDisplayName, seatNamer } from '../play/aiName.ts';
@@ -98,7 +98,9 @@ export function Board({ log, state, frameIndex, seat, hideHand, overlay, stackEl
 
 // ---------------------------------------------------------------------------
 
-function groupBattlefield(player: PlayerState, byId: Map<number, Card>) {
+const NO_LABELS: ReadonlyMap<string, string> = new Map();
+
+function groupBattlefield(player: PlayerState, byId: Map<number, Card>, marked?: { has(id: number): boolean }) {
   const landCards: { card: Card; attachments: number }[] = [];
   const creatures: { card: Card; att: Card[] }[] = [];
   const other: { card: Card; att: Card[] }[] = [];
@@ -112,7 +114,7 @@ function groupBattlefield(player: PlayerState, byId: Map<number, Card>) {
     else if (kind === 'creature') creatures.push({ card: c, att });
     else other.push({ card: c, att });
   }
-  return { lands: groupLands(landCards), creatures, other };
+  return { lands: groupLands(landCards, marked), creatures, other };
 }
 
 /** How crowded a row is, in card widths (a tapped card is a card lying down, ~1.4 wide). */
@@ -146,7 +148,15 @@ const PlayerArea = memo(function PlayerArea({
   top?: boolean;
   hideHand?: boolean;
 }) {
-  const { lands, creatures, other } = useMemo(() => groupBattlefield(player, byId), [player, byId]);
+  // A land something on the stack points at (or comes from) stands apart from its pile, so the mark is on it alone.
+  const stackMarked = useBoardMarks()?.stack;
+  const { lands, creatures, other } = useMemo(() => groupBattlefield(player, byId, stackMarked), [player, byId, stackMarked]);
+  // What a phone's lands bar, when it is too full for whole names, calls a land whose name would be cut to the
+  // same text as another's (ui/landPiles.ts).
+  const labels = useMemo(() => {
+    const tabs = lands.map((g) => ({ name: displayName(g[0]!), count: g.length }));
+    return barIsFull(tabs) ? tabLabels(tabs.map((t) => t.name)) : NO_LABELS;
+  }, [lands]);
   const mine = player.id === seat;
   const side = mine ? 'me' : 'opp';
   const chipped = (card: Card, att: Card[]) => {
@@ -174,7 +184,7 @@ const PlayerArea = memo(function PlayerArea({
     lands.length > 0 && (
       <Row key="l" kind="lands" label="Lands" count={lands.reduce((n, g) => n + g.length, 0)} dense={density(landWeight)}>
         {lands.map((g) => (
-          <LandPile key={g[0]!.id} cards={g} side={side} tab />
+          <LandPile key={g[0]!.id} cards={g} side={side} tab tabName={labels.get(displayName(g[0]!))} />
         ))}
       </Row>
     ),
@@ -182,7 +192,7 @@ const PlayerArea = memo(function PlayerArea({
   if (top) rows.reverse();
   const empty = rows.length === 0;
   const attachPx = permanents.some((p) => p.att.length > 0) ? 34 : 0;
-  // Portrait phones: the rows' height and the side's floor (ui/boardFit.ts, play.css).
+  // Portrait phones: the side's floor and what its lands bar and paddings take (ui/boardFit.ts, play.css).
   const fit = phoneSideFit({ permanents: permanents.length > 0, lands: lands.length > 0, maxAttach: Math.max(0, ...permanents.map((p) => p.att.length)) });
   return (
     <section

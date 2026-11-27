@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { Card } from '../protocol.ts';
-import { groupLands, pilePlan, pileWeight } from './landPiles.ts';
+import { barIsFull, groupLands, pilePlan, pileWeight, TAB_LETTERS, tabLabels } from './landPiles.ts';
 
 function land(id: number, name: string, extra: Partial<Card> = {}): Card {
   const basic = ['Island', 'Plains', 'Swamp', 'Mountain', 'Forest'].includes(name);
@@ -65,6 +65,62 @@ describe('groupLands', () => {
       plain(land(5, 'Forest')),
     ]);
     expect(g.map((p) => p.map((c) => c.id)).sort()).toEqual([[1, 5], [2], [3], [4]].sort());
+  });
+});
+
+describe('groupLands, a land the stack points at', () => {
+  it('stands apart from its pile, so the mark and the arrow are on that land alone', () => {
+    const lands = [land(1, 'Forest'), land(2, 'Forest'), land(3, 'Forest'), land(4, 'Island')].map((card) => ({ card, attachments: 0 }));
+    expect(groupLands(lands).map((g) => g.map((c) => c.id))).toEqual([[1, 2, 3], [4]]);
+    expect(groupLands(lands, new Set([2])).map((g) => g.map((c) => c.id))).toEqual([[1, 3], [2], [4]]);
+    // a Map of marks (Board's) answers `has` the same way
+    expect(groupLands(lands, new Map([[3, {}]])).map((g) => g.map((c) => c.id))).toEqual([[1, 2], [3], [4]]);
+  });
+});
+
+describe('tabLabels', () => {
+  it('leaves names alone that a cut tab would still tell apart', () => {
+    expect(tabLabels(['Forest', 'Mountain', 'Thriving Heath', 'Sunpetal Grove', 'Dark Barony', 'Dragonskull Summit']).size).toBe(0);
+    expect('Mountain'.length).toBe(TAB_LETTERS);
+    // one name twice (two piles of it, or two copies of a nonbasic) is one land: nothing to tell apart
+    expect(tabLabels(['Snow-Covered Forest', 'Snow-Covered Forest']).size).toBe(0);
+  });
+  it('names that would be cut to the same text say the words they differ in', () => {
+    const snow = tabLabels(['Snow-Covered Forest', 'Snow-Covered Island', 'Forest']);
+    expect(snow.get('Snow-Covered Forest')).toBe('…Forest');
+    expect(snow.get('Snow-Covered Island')).toBe('…Island');
+    expect(snow.has('Forest')).toBe(false);
+    const temples = tabLabels(['Temple of Malady', 'Temple of Mystery', 'Temple of the False God']);
+    expect([...temples.values()].sort()).toEqual(['…Malady', '…Mystery', '…the False God']);
+    // the short names are told apart within the letters a tab keeps
+    expect(new Set([...temples.values()].map((v) => v.slice(0, TAB_LETTERS))).size).toBe(3);
+  });
+  it('two Thriving lands are told apart by their second word', () => {
+    const t = tabLabels(['Thriving Isle', 'Thriving Moor', 'Island']);
+    expect(t.get('Thriving Isle')).toBe('…Isle');
+    expect(t.get('Thriving Moor')).toBe('…Moor');
+  });
+  it('keeps a name whole when the names share no whole first word, or nothing would be left', () => {
+    expect(tabLabels(['Underground River', 'Undergrowth Stadium']).size).toBe(0);
+    expect(tabLabels(['Reflecting Pool', 'Reflecting Pool Annex']).get('Reflecting Pool')).toBe('…Pool');
+  });
+});
+
+describe('barIsFull', () => {
+  const tab = (name: string, count = 1) => ({ name, count });
+  it('a bar whose names fit says them whole (the short names are for a full bar only)', () => {
+    // seen in a real game at 390 px: all four whole
+    expect(barIsFull([tab('Island'), tab('Swamp', 2), tab('Thriving Isle'), tab('Thriving Moor')])).toBe(false);
+    expect(barIsFull([tab('Forest', 2), tab('Mountain', 3), tab('Forest', 2), tab('Mountain')])).toBe(false);
+    expect(barIsFull([])).toBe(false);
+  });
+  it('five piles with long names, or four long ones, are a full bar', () => {
+    expect(barIsFull([tab('Island'), tab('Swamp', 2), tab('Thriving Isle'), tab('Thriving Moor'), tab('Plains')])).toBe(true);
+    expect(barIsFull([tab('Snow-Covered Forest', 3), tab('Snow-Covered Island', 2), tab('Snow-Covered Forest'), tab('Snow-Covered Island')])).toBe(true);
+  });
+  it('a wider bar holds more', () => {
+    const five = [tab('Island'), tab('Swamp', 2), tab('Thriving Isle'), tab('Thriving Moor'), tab('Plains')];
+    expect(barIsFull(five, 700)).toBe(false);
   });
 });
 
