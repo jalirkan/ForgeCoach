@@ -185,7 +185,9 @@
      slot has no height (and is not drawn) until the lands come up. A tab does
      not move when they do, so what is under the pointer stays the same land.
      A tab is as wide as its name needs, and never narrower than its card; a
-     bar too full for the side squeezes the names first (to an ellipsis), then
+     bar too full for the side squeezes the names first (to an ellipsis), but
+     none under the first 8 letters of what it says (the five basic lands'
+     whole names; the name's sizer below, as on the upright phone), then
      scrolls sideways, its cut edge faded (Board's useEdgeFade). */
   .game.play.is-wide .play-board .bf-row-lands {
     --cw-h: calc((100cqh - 18px) / var(--perm-rows) * 63 / 88);
@@ -219,18 +221,58 @@
     -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
     mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
   }
+  /* A tile's least width is its content's: its card's slot (a card standing, lying down, or a pile; the slot keeps
+     its width while it has no height) or its tab at the name's least width, whichever is wider. It was the card's
+     alone, and on a narrow table (a 480 px side at 1024) a card is narrower than "Mountain": five lands and two
+     auras read "Moun…" and "+ W…" in a bar that never scrolled. */
   .game.play.is-wide .play-board .bf-row-lands .tile {
     flex: 0 1 auto;
-    min-width: var(--cw);
+    min-width: min-content;
   }
-  .game.play.is-wide .play-board .bf-row-lands .tile.is-tapped {
-    min-width: var(--ch);
+  /* The name's least width, measured by the browser in the tab's own font: the sizer (never drawn, no height)
+     holds the first 8 letters in one piece and the rest breakable at every letter, so the narrowest the name can
+     be laid out is those 8 letters, and the widest is the whole name. The name that is read lies over it and takes
+     whatever width the tab was given (width 0 and min-width 100%: it asks for none itself). (overflow: clip, not
+     hidden, and none on the sizer: a box that scrolls has no least width of its own.) The same rule as the upright
+     phone's bar (play/play.css), which says a short name in a full bar for two names that would be cut to the same
+     text (Snow-Covered Forest, Snow-Covered Island). This table always says the name, so such a name is never
+     cut here, however narrow the bar (a stack panel beside it): its sizer is the whole name in one piece
+     (data-name, set whether or not the bar is full), and the bar scrolls sooner instead. */
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-name {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-width: auto;
+    overflow: clip;
   }
-  .game.play.is-wide .play-board .bf-row-lands .land-pile {
-    min-width: calc(var(--cw) + var(--pile) * var(--off));
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-text {
+    display: block;
+    grid-area: 1 / 1;
+    width: 0;
+    min-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .game.play.is-wide .play-board .bf-row-lands .land-pile.is-tapped {
-    min-width: calc(var(--ch) + var(--pile) * var(--off));
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-size {
+    grid-area: 1 / 1;
+    display: block;
+    height: 0;
+    visibility: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-size::before {
+    content: attr(data-head);
+    white-space: nowrap;
+  }
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-size::after {
+    content: '\200b' attr(data-rest);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-size[data-name]::before {
+    content: attr(data-name);
+  }
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-size[data-name]::after {
+    content: none;
   }
   .game.play.is-wide .play-board .bf-row-lands .tile-slot {
     height: 0;
@@ -248,9 +290,11 @@
   .game.play.is-wide .play-board .bf-row-lands:has(.tile.is-select, .tile.is-chosen) .tile.is-tapped .tile-slot {
     height: calc(var(--cw) + 3px);
   }
-  /* While the cards are up they say it themselves: the counters and the stack numbers leave the tabs. */
+  /* While the cards are up they say it themselves: the counters and the stack numbers leave the tabs. (Not drawn,
+     but their room is kept: they count in a tab's least width, and a tab that gave it up would move every tab to
+     its right from under the pointer.) */
   .game.play.is-wide .play-board .bf-row-lands:has(.tile.is-select, .tile.is-chosen) :is(.land-tab-marks, .land-tab-stack) {
-    display: none;
+    visibility: hidden;
   }
   /* ... and for a pointer that can hover. (A finger cannot: there a tap on a tab is a tap on its land, as
      everywhere, and a long press opens its details.) */
@@ -267,7 +311,7 @@
       height: calc(var(--cw) + 3px);
     }
     .game.play.is-wide .play-board .bf-row-lands:hover :is(.land-tab-marks, .land-tab-stack) {
-      display: none;
+      visibility: hidden;
     }
   }
   .game.play.is-wide .play-board .bf-row-lands .tile-card {
@@ -353,7 +397,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* (the name's sizer and the short name a full bar says: the upright phone board's, play/play.css) */
+/* (the name's sizer: the two lands bars', each laid out by its own layout; the short name a full bar says: the
+   upright phone board's, play/play.css) */
 .land-tab-size,
 .land-tab-short {
   display: none;
@@ -454,22 +499,13 @@
    play/play.css): a phone lying down draws lands as cards, and there the attached card hangs under its land's. */
 @media (min-width: 1024px), (max-width: 1023px) and (orientation: portrait) {
   .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.has-attach {
-    /* Two tabs, each with a least width (the land's: its card's width on the desktop, its 8 letters on a phone;
-       the attached card's: --att-min, 46 px on the desktop and the width of its own first 8 letters on a phone, play/play.css), and
+    /* Two tabs, each with a least width of its own (the land's: its 8 letters, and on the desktop never less than
+       its card; the attached card's: the width of its own first 8 letters after the "+", .attach-size below), and
        a squeezed bar takes from both names alike, never the land's alone. */
-    --att-min: 46px;
     display: grid;
-    grid-template-columns: minmax(var(--host-min, min-content), max-content) minmax(var(--att-min), max-content);
+    grid-template-columns: minmax(min-content, max-content) minmax(min-content, max-content);
     align-items: end;
     justify-items: center;
-  }
-  .game.play.is-wide .play-board .bf-row-lands .tile.has-attach {
-    --host-min: var(--cw);
-    min-width: calc(var(--cw) + var(--att-min));
-  }
-  .game.play.is-wide .play-board .bf-row-lands .tile.has-attach.is-tapped {
-    --host-min: var(--ch);
-    min-width: calc(var(--ch) + var(--att-min));
   }
   .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.has-attach > .tile-slot {
     grid-area: 1 / 1;
@@ -514,6 +550,44 @@
   }
   .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach .attach-effect {
     display: none;
+  }
+  /* An attached card's name has a least width as a land's has: the width of its first 8 letters after the "+",
+     from its own sizer (.attach-size, as .land-tab-size; the ellipsis is drawn inside that width, so about six
+     letters are read). 46 px, as it was, left "+ W…". With two or three cards on one land each chip keeps that
+     width too (min-width: auto: the base chip's 0 let the row take a short name's chip from under its name). */
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach > .attach-chip {
+    min-width: auto;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach .attach-name {
+    display: grid;
+    grid-template-columns: 1fr;
+    flex: 1 1 auto;
+    min-width: auto;
+    overflow: clip;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach .attach-text {
+    display: block;
+    grid-area: 1 / 1;
+    width: 0;
+    min-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach .attach-size {
+    grid-area: 1 / 1;
+    display: block;
+    height: 0;
+    visibility: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach .attach-size::before {
+    content: '+\00a0' attr(data-head);
+    white-space: nowrap;
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach .attach-size::after {
+    content: '\200b' attr(data-rest);
   }
 }
 .game.play.is-selecting :is(.play-board, .play-phone-main) .bf-row-lands .tile:not(.is-act):not(.is-select) > .land-tab {
@@ -979,7 +1053,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* (a phone's lands bar alone lays it out: play/play.css) */
+/* (the two lands bars alone lay it out: the shared block above) */
 .attach-size {
   display: none;
 }

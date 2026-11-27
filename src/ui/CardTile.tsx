@@ -310,6 +310,8 @@ interface TileProps {
   landTab?: boolean;
   /** What a phone's full lands bar calls this land, when its own name would be cut to the same text as another's (`tabLabels`). */
   tabName?: string;
+  /** This land's name would be cut to the same text as another's in its bar, full or not: the desktop table never cuts it. */
+  tabTwin?: boolean;
 }
 
 function counterText(k: string, n: number): string {
@@ -344,7 +346,7 @@ function mergeMarks(all: (CardStackMarks | undefined)[]): CardStackMarks | undef
   return { sources: [...new Set(got.flatMap((m) => m.sources))].sort((a, b) => a - b), targets: [...new Set(got.flatMap((m) => m.targets))].sort((a, b) => a - b) };
 }
 
-function TileInner({ card, attachments, inHand, side, dim, landTab, tabName }: TileProps) {
+function TileInner({ card, attachments, inHand, side, dim, landTab, tabName, tabTwin }: TileProps) {
   const boardMarks = useBoardMarks();
   const stackMarks = inHand ? undefined : boardMarks?.stack.get(card.id);
   const combat = inHand ? undefined : boardMarks?.combat?.get(card.id);
@@ -461,7 +463,7 @@ function TileInner({ card, attachments, inHand, side, dim, landTab, tabName }: T
           )}
         </div>
       </div>
-      {landTab && <LandTab name={displayName(card)} short={tabName} count={1} marks={stackMarks} counters={counters} />}
+      {landTab && <LandTab name={displayName(card)} short={tabName} twin={tabTwin} count={1} marks={stackMarks} counters={counters} />}
       {attachments && attachments.length > 0 && (
         <div className="tile-attach">
           {attachments.map((a) => (
@@ -474,7 +476,7 @@ function TileInner({ card, attachments, inHand, side, dim, landTab, tabName }: T
 }
 
 export const CardTile = memo(TileInner, (a, b) => {
-  if (a.inHand !== b.inHand || a.side !== b.side || !!a.dim !== !!b.dim || !!a.landTab !== !!b.landTab || a.tabName !== b.tabName) return false;
+  if (a.inHand !== b.inHand || a.side !== b.side || !!a.dim !== !!b.dim || !!a.landTab !== !!b.landTab || a.tabName !== b.tabName || !!a.tabTwin !== !!b.tabTwin) return false;
   if (tileSig(a.card) !== tileSig(b.card)) return false;
   const aa = a.attachments ?? [];
   const bb = b.attachments ?? [];
@@ -541,8 +543,8 @@ const AttachmentChip = memo(
         onPointerCancel={stop(handlers.onPointerCancel)}
         onContextMenu={stop(handlers.onContextMenu)}
       >
-        {/* The sizer is never drawn: in a phone's lands bar it gives the name its least width, as a land's tab
-            does (LandTab: the first letters in one piece, the rest breakable anywhere; play/play.css). */}
+        {/* The sizer is never drawn: in a lands bar it gives the name its least width, as a land's tab
+            does (LandTab: the first letters in one piece, the rest breakable anywhere; ui/cards.css). */}
         <span className="attach-name">
           <span className="attach-text">{said}</span>
           <span className="attach-size" data-head={said.slice(0, TAB_LETTERS).replace(/ /g, '\u00a0')} data-rest={said.slice(TAB_LETTERS)} />
@@ -570,17 +572,18 @@ const AttachmentChip = memo(
  * `data-card-id` is the land the next tap goes to.
  */
 export const LandPile = memo(
-  function LandPile({ cards, attachments, side, tab, tabName }: { cards: Card[]; attachments?: Card[]; side?: TileSide; tab?: boolean; tabName?: string }) {
+  function LandPile({ cards, attachments, side, tab, tabName, tabTwin }: { cards: Card[]; attachments?: Card[]; side?: TileSide; tab?: boolean; tabName?: string; tabTwin?: boolean }) {
     // A land with something attached is never in a pile (landPiles.ts `groupLands`), so what is attached to it
     // (an aura such as Wild Growth or Spreading Seas, a fortification) is drawn with the one land it is on:
     // under the card where lands are cards, as a tab joined to the land's tab in a lands bar (ui/cards.css).
-    if (cards.length === 1) return <CardTile card={cards[0]!} attachments={attachments} side={side} landTab={tab} tabName={tabName} />;
-    return <PileStack cards={cards} side={side} tab={tab} tabName={tabName} />;
+    if (cards.length === 1) return <CardTile card={cards[0]!} attachments={attachments} side={side} landTab={tab} tabName={tabName} tabTwin={tabTwin} />;
+    return <PileStack cards={cards} side={side} tab={tab} tabName={tabName} tabTwin={tabTwin} />;
   },
   (a, b) =>
     a.side === b.side &&
     !!a.tab === !!b.tab &&
     a.tabName === b.tabName &&
+    !!a.tabTwin === !!b.tabTwin &&
     a.cards.length === b.cards.length &&
     a.cards.every((c, i) => tileSig(c) === tileSig(b.cards[i])) &&
     (a.attachments?.length ?? 0) === (b.attachments?.length ?? 0) &&
@@ -599,6 +602,7 @@ export const LandPile = memo(
 export function LandTab({
   name,
   short,
+  twin = short !== undefined,
   count,
   sent = 0,
   marks,
@@ -607,13 +611,17 @@ export function LandTab({
   name: string;
   /** A phone's full bar says this instead of the name (`tabLabels`: names that would be cut to the same text). */
   short?: string;
+  /** The name would be cut to the same text as another's in this bar (whether or not the bar is full). */
+  twin?: boolean;
   count: number;
   sent?: number;
   marks?: CardStackMarks;
   counters?: [string, number][];
 }) {
-  // The sizer is never drawn. On a phone it gives the tab its least width: the first letters of what the tab
+  // The sizer is never drawn. In a lands bar it gives the tab its least width: the first letters of what the tab
   // says in one piece (their spaces unbreakable), the rest breakable anywhere. Its text is CSS content.
+  // The desktop table's bar always says the name. A name that would read the same as another's once cut (`twin`)
+  // is never cut there: the whole name rides along (data-name) and is that tab's least width.
   const said = short ?? name;
   const head = said.slice(0, TAB_LETTERS).replace(/ /g, '\u00a0');
   return (
@@ -621,7 +629,7 @@ export function LandTab({
       <span className={cx('land-tab-name', short && 'has-short')}>
         <span className="land-tab-text">{name}</span>
         {short && <span className="land-tab-short">{short}</span>}
-        <span className="land-tab-size" data-head={head} data-rest={said.slice(TAB_LETTERS)} />
+        <span className="land-tab-size" data-head={head} data-rest={said.slice(TAB_LETTERS)} data-name={twin ? name.replace(/ /g, '\u00a0') : undefined} />
       </span>
       {count > 1 && <span className="land-tab-count">×{count}</span>}
       {counters && counters.length > 0 && (
@@ -652,7 +660,7 @@ export function LandTab({
   );
 }
 
-function PileStack({ cards, side, tab, tabName }: { cards: Card[]; side?: TileSide; tab?: boolean; tabName?: string }) {
+function PileStack({ cards, side, tab, tabName, tabTwin }: { cards: Card[]; side?: TileSide; tab?: boolean; tabName?: string; tabTwin?: boolean }) {
   const play = usePlay();
   const ids = cards.map((c) => c.id);
   const marks = cards.map((c) => (play ? play.mark(c) : null));
@@ -725,7 +733,7 @@ function PileStack({ cards, side, tab, tabName }: { cards: Card[]; side?: TileSi
           )}
         </div>
       </div>
-      {tab && <LandTab name={displayName(top)} short={tabName} count={cards.length} sent={sent} marks={stackMarks} counters={pileCounters} />}
+      {tab && <LandTab name={displayName(top)} short={tabName} twin={tabTwin} count={cards.length} sent={sent} marks={stackMarks} counters={pileCounters} />}
     </div>
   );
 }

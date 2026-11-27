@@ -161,8 +161,16 @@ export class Monkey {
       };
       const where = (el) =>
         el.closest('.hand-dock') ? 'hand' : el.closest('[data-zone-pick]') ? 'zpick' : el.closest('.zone-viewer') ? 'viewer' : el.classList.contains('attach-chip') ? 'chip' : el.closest('.ask-layer') ? 'ask' : 'board';
+      // A land with something attached, in a lands bar: its box is two tabs (the land's, then the attached
+      // card's), and the middle of the box can lie on the attached card's tab, which is that card's own control.
+      // A click meant for the land goes to the land's tab, as a player's does.
+      const target = (el) => {
+        if (!el.matches('.bf-row-lands .tile.has-attach')) return el;
+        const tab = el.querySelector(':scope > .land-tab');
+        return tab && tab.getBoundingClientRect().width >= 2 ? tab : el;
+      };
       const cards = [...document.querySelectorAll('[data-card-id]')].map((el) => ({
-        t: tag(el),
+        t: tag(target(el)),
         id: Number(el.getAttribute('data-card-id')),
         ids: (el.getAttribute('data-card-ids') ?? el.getAttribute('data-card-id')).split(',').map(Number),
         mark: el.getAttribute('data-mark'),

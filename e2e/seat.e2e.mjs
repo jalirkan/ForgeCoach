@@ -1687,7 +1687,7 @@ scenarios.push({
   },
 });
 
-// The names in a phone's lands bar when a land has something attached. Read from the page: every tab on a side
+// The names in a lands bar (the upright phone's, the desktop table's) when a land has something attached. Read from the page: every tab on a side
 // (a land's or an attached card's) with the width its name has, the width the whole name needs, and the width of
 // the first 8 letters of what it says, each measured in the tab's own font; and whether the bar has room to spare.
 function readBarNames(page, sel) {
@@ -1807,6 +1807,58 @@ for (const kind of ['full', 'two']) scenarios.push({
     await page.touchscreen.tap(r.x + r.w / 2, r.y + r.h / 2);
     await engine.waitFor(() => engine.acts().filter((x) => x.cardId === aura).length > sent, 'an act on the scrolled-to aura', STEP_MS);
     await shot(page, `land-aura-${kind}-phone-end`);
+  },
+});
+
+// The desktop table at its narrowest window (1024 px wide: a side of 480 with no stack panel beside it), a full bar. A tab's least width was its card's
+// alone, and a card there is narrower than "Mountain": five lands and two auras read "Moun…" and "+ W…" in a bar
+// that never scrolled. Now a tab is never narrower than its card NOR than the first 8 letters of what it says, an
+// attached card's name keeps its own 8 letters, and a bar past that scrolls sideways ('six': it must, whatever
+// the font).
+// 'snow': two names that would be cut to the same text (Snow-Covered Forest, Snow-Covered Island) are never cut.
+for (const kind of ['full', 'two', 'six', 'snow']) scenarios.push({
+  name: `the desktop table at 1024×768, a full lands bar (${kind === 'full' ? 'five lands, two of them enchanted' : kind === 'two' ? 'five lands, two auras on one' : kind === 'six' ? 'six lands, two of them enchanted' : 'two snow lands among five'}): no name is cut under its first 8 letters, the basic lands are said whole, and the bar scrolls when it must`,
+  engine: { scene: 'main3', landAura: kind },
+  context: { viewport: { width: 1024, height: 768 } },
+  async run({ page, engine, app }) {
+    const u = ui(page);
+    await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
+    await u.mode('main');
+    const lands = kind === 'six' ? 6 : 5;
+    const b = await readBarNames(page, '.player-me');
+    check(b.names.length === lands + 2 && b.names.filter((x) => x.attached).length === 2, `${lands} lands and two attached cards in your bar (${b.names.map((x) => x.text).join(', ')})`);
+    check(b.joined, 'each attached card\'s tab is joined to the tab before it');
+    for (const x of b.names) check(x.has >= Math.min(x.least, x.whole) - 1.5, `${x.text} keeps the width of its first 8 letters (${x.has.toFixed(1)} px; they need ${x.least.toFixed(1)})`);
+    for (const x of b.names) check(x.inside, `${x.text} lies inside its own tab`);
+    for (const x of b.names.filter((x) => !x.attached && x.text.length <= 8)) check(!x.cut, `${x.text}, a basic land, is said whole (${x.has.toFixed(1)} px of ${x.whole.toFixed(1)})`);
+    if (kind === 'six' || kind === 'snow') check(b.scrolls, `more than a 480 px side holds: the bar scrolls (${b.used.toFixed(0)} px of tabs in ${b.room.toFixed(0)})`);
+    if (kind === 'snow') for (const x of b.names.filter((x) => x.text.startsWith('Snow-Covered'))) check(!x.cut, `${x.text} is said whole: cut, it would read as the other snow land does (${x.has.toFixed(1)} px of ${x.whole.toFixed(1)})`);
+    // A tab is still never narrower than its card (the card stands on it when the lands come up).
+    const tiles = await page.evaluate(() => [...document.querySelectorAll('.player-me .bf-row-lands .tile')].map((t) => {
+      const tab = t.querySelector(':scope > .land-tab').getBoundingClientRect();
+      const slot = t.querySelector(':scope > .tile-slot').getBoundingClientRect();
+      return { name: t.querySelector('.land-tab-text').textContent, tab: tab.width, card: slot.width };
+    }));
+    for (const t of tiles) check(t.tab >= t.card - 0.5, `${t.name}'s tab is no narrower than its card (${t.tab.toFixed(1)} px; the card ${t.card.toFixed(1)})`);
+    await shot(page, `desk-bar-${kind}`);
+    // Scrolled to its end, the bar shows its last tab whole, and the cards still come up over their tabs.
+    const end = await page.evaluate(() => {
+      const bar = document.querySelector('.player-me .bf-row-lands > .bf-cards');
+      bar.scrollLeft = bar.scrollWidth;
+      const last = [...bar.querySelectorAll('.land-tab, .attach-chip')].at(-1).getBoundingClientRect();
+      const box = bar.getBoundingClientRect();
+      return { right: last.right, x: last.x, y: last.y, w: last.width, h: last.height, barRight: box.right };
+    });
+    check(end.right <= end.barRight + 0.5, `scrolled to its end, the bar shows its last tab whole (${end.right.toFixed(1)} of ${end.barRight.toFixed(1)})`);
+    await page.mouse.move(end.x + end.w / 2, end.y + end.h / 2);
+    await page.waitForTimeout(600);
+    const up = await page.evaluate(() => [...document.querySelectorAll('.player-me .bf-row-lands .tile')].map((t) => {
+      const slot = t.querySelector(':scope > .tile-slot').getBoundingClientRect();
+      const tab = t.querySelector(':scope > .land-tab').getBoundingClientRect();
+      return { h: slot.height, over: slot.x >= tab.x - 0.5 && slot.right <= tab.right + 0.5 };
+    }));
+    check(up.every((t) => t.h > 40 && t.over), `with the pointer on the bar every land's card stands on its own tab (${JSON.stringify(up)})`);
+    await shot(page, `desk-bar-${kind}-up`);
   },
 });
 
