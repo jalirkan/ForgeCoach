@@ -736,7 +736,96 @@ function cameraOf(a, b, shape) {
  * shape drawn, both frames are on screen, and every tracked land's centre in the new frame lies on its centre in the
  * old frame (each frame's on-screen box is its transformed box) -- then it settles with no transform and no mask.
  */
+/** src/ambience/placeCamera.ts `PLACE_CHANGE_CAMERA`: the place change is a wipe since 2026-11-27, not the camera move. */
+const PLACE_CHANGE_CAMERA = false;
+
+/**
+ * The place change as a wipe (SceneryStrip `PlacePanelView`, scenery.css `.scn-reveal-out`): part way, the new place
+ * is whole beneath (one settled frame: no transform, no mask, opaque, covering the half) and the old one lies above
+ * it, still opaque, every piece of it still drawn at full, being wiped away (its radius between its ends); never a
+ * transform, never a lowered opacity (two paintings are not laid over each other). Then one frame, no wipe.
+ */
+async function wipeCheck(page, label, a, b) {
+  let seen;
+  try {
+    seen = await (
+      await page.waitForFunction(
+        () => {
+          const el = document.querySelector('[data-amb-player="1"] [data-place]');
+          const old = el?.querySelector('.scn-frame.scn-reveal-out');
+          if (!old) return false;
+          const r = parseFloat(getComputedStyle(old).getPropertyValue('--scn-reveal'));
+          if (!(r > 8 && r < 100)) return false;
+          const under = [...el.querySelectorAll('.scn-frame')].find((f) => f !== old);
+          const half = el.getBoundingClientRect();
+          const ru = under?.getBoundingClientRect();
+          const chain = (n) => {
+            let op = 1;
+            for (; n && n !== el; n = n.parentElement) op *= +getComputedStyle(n).opacity;
+            return op;
+          };
+          return {
+            radius: r,
+            frames: el.querySelectorAll('.scn-frame').length,
+            place: el.getAttribute('data-place'),
+            camera: el.getAttribute('data-camera'),
+            old: {
+              opacity: chain(old),
+              transform: getComputedStyle(old).transform,
+              mask: getComputedStyle(old).maskImage || getComputedStyle(old).webkitMaskImage || 'none',
+              pieces: [...old.querySelectorAll('img')].map((i) => +getComputedStyle(i).opacity),
+              above: !!under && !!(under.compareDocumentPosition(old) & Node.DOCUMENT_POSITION_FOLLOWING),
+            },
+            under: under
+              ? {
+                  covers: ru.left <= half.left + 0.5 && ru.top <= half.top + 0.5 && ru.right >= half.right - 0.5 && ru.bottom >= half.bottom - 0.5,
+                  opacity: chain(under),
+                  transform: getComputedStyle(under).transform,
+                  mask: getComputedStyle(under).maskImage || getComputedStyle(under).webkitMaskImage || 'none',
+                }
+              : null,
+          };
+        },
+        null,
+        { timeout: 12_000, polling: 'raf' },
+      )
+    ).jsonValue();
+    await (await page.$('[data-amb-player="1"]')).screenshot({ path: path.join(OUT, `places-wipe-mid-${a.slug}-${b.slug}-${label.split(' ')[0]}.png`) });
+  } catch {
+    throw new Fail(`${label}: no wipe seen from ${a.slug} to ${b.slug} (the old place's frame with .scn-reveal-out, its radius under way)`);
+  }
+  log(`${label}: ${a.slug} -> ${b.slug}: a wipe, radius ${seen.radius.toFixed(0)}% when read; the old place at opacity ${seen.old.opacity}, its pictures ${seen.old.pieces.join(' ')}; ${b.slug} beneath at opacity ${seen.under?.opacity}`);
+  check(seen.place === b.slug && seen.frames === 2, `${label}: part way the panel is ${seen.place} with ${seen.frames} frames (wanted ${b.slug}, the new place beneath and the old above)`);
+  check(!seen.camera, `${label}: a wipe carries no data-camera (${seen.camera})`);
+  check(seen.old.opacity === 1 && seen.old.pieces.every((o) => o === 1), `${label}: the old place is being faded (opacity ${seen.old.opacity}; its pictures ${seen.old.pieces.join(' ')}): two paintings laid over each other`);
+  check(seen.old.transform === 'none', `${label}: the old place carries a transform (${seen.old.transform})`);
+  check(/radial-gradient/.test(seen.old.mask), `${label}: the old place is not being wiped (its mask: ${seen.old.mask})`);
+  check(seen.old.above, `${label}: the old place is not above the new one`);
+  const u = seen.under;
+  check(!!u, `${label}: no settled frame of ${b.slug} beneath the wipe`);
+  if (u) {
+    check(u.covers, `${label}: part way the settled frame of ${b.slug} does not cover every corner of the half`);
+    check(u.opacity === 1, `${label}: part way the settled frame of ${b.slug} is at opacity ${u.opacity}, not opaque`);
+    check(u.transform === 'none' && u.mask === 'none', `${label}: the settled frame beneath the wipe carries a transform (${u.transform}) or a mask (${u.mask})`);
+  }
+  try {
+    await page.waitForFunction(
+      () => {
+        const el = document.querySelector('[data-amb-player="1"] [data-place]');
+        const frames = el?.querySelectorAll('.scn-frame') ?? [];
+        return !!el && frames.length === 1 && !frames[0].classList.contains('scn-reveal-out') && getComputedStyle(frames[0]).transform === 'none';
+      },
+      null,
+      { timeout: 12_000, polling: 50 },
+    );
+  } catch {
+    throw new Fail(`${label}: the wipe from ${a.slug} to ${b.slug} never settled (one frame, no wipe)`);
+  }
+  log(`${label}: settled -- one frame, no wipe, no transform`);
+}
+
 async function cameraCheck(page, label, a, b) {
+  if (!PLACE_CHANGE_CAMERA) return wipeCheck(page, label, a, b);
   const art = await page.evaluate(() => document.querySelector('[data-amb-player="1"] [data-place]')?.getAttribute('data-art'));
   const cam = cameraOf(a, b, art === 'phone' ? 'phone' : 'half');
   if (!cam) throw new Fail(`${label}: ${a.slug} -> ${b.slug} should be a camera move on this pack, but the map is refused`);

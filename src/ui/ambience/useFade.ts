@@ -20,7 +20,17 @@ export function useFadeStack<T>(cur: FadeWant<T> | null, next: FadeWant<T> | nul
   const sig = `${cur?.key ?? ''}\n${next?.key ?? ''}\n${fade}`;
   const st = useRef<{ sig: string | null; stack: FadeEntry<T>[] }>({ sig: null, stack: [] });
   const [, bump] = useState(0);
-  if (st.current.sig !== sig) st.current = { sig, stack: fadeStack(st.current.stack, cur, next, fade, st.current.sig === null || ms <= 0) };
+  // What each wanted picture was last given. A picture that stops being wanted leaves as it was last DRAWN: the stack
+  // kept the payload from the render that first wanted it, so a place fading out fell back to how it looked when it was
+  // first drawn (a town of three lands thinned to its first hut while its place left: a ghost of its own).
+  const last = useRef(new Map<string, T>());
+  if (st.current.sig !== sig) {
+    const prev = st.current.stack.map((e) => (last.current.has(e.key) ? { ...e, payload: last.current.get(e.key)! } : e));
+    st.current = { sig, stack: fadeStack(prev, cur, next, fade, st.current.sig === null || ms <= 0) };
+    for (const k of [...last.current.keys()]) if (!st.current.stack.some((e) => e.key === k)) last.current.delete(k);
+  }
+  if (cur) last.current.set(cur.key, cur.payload);
+  if (next) last.current.set(next.key, next.payload);
   const stack = st.current.stack;
   const busy = fadeBusy(stack);
   useEffect(() => {

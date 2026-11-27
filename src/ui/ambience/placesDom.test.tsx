@@ -25,7 +25,7 @@ import { halfLayout, halfFrameCss } from '../../ambience/layout.ts';
 import { elementBiomes } from '../../ambience/pieces.ts';
 import { pieceWant, validatePlaces, type PlacesPack } from '../../ambience/places.ts';
 import { synthPlaces } from '../../ambience/testdata/placesSynth.ts';
-import { PlaceLandView, PlacePanel, PlacePanelView, SceneryStrip, type PlacePayload } from './SceneryStrip.tsx';
+import { PlaceLandView, PlacePanel, PlacePanelView, revealStyle, SceneryStrip, type PlacePayload } from './SceneryStrip.tsx';
 import { readFileSync } from 'node:fs';
 import { fadeStack, settleFades, type FadeEntry } from '../../ambience/growth.ts';
 import { CAMERA_IDLE, cameraEnd, cameraMark, cameraStep, type CameraRun, type CameraState } from '../../ambience/placeCamera.ts';
@@ -222,6 +222,8 @@ function change(from: SlotState[], to: SlotState[]) {
 const view = (b: ReturnType<typeof drawnOf>, stack: readonly FadeEntry<PlacePayload>[], camera: CameraRun | null) =>
   renderToStaticMarkup(<PlacePanelView slug={b.slug} sceneKey={b.scene} source="half" stack={stack} camera={camera} first ms={MS} reduced={false} />);
 const frameStyles = (html: string) => [...html.matchAll(/<div class="scn-frame" style="([^"]*)"/g)].map((m) => m[1]!);
+/** The frames being wiped away (a place leaving with no camera move): their styles. */
+const wipedStyles = (html: string) => [...html.matchAll(/<div class="scn-frame scn-reveal-out" style="([^"]*)"/g)].map((m) => m[1]!);
 const frameCss = (art: PlacePayload['art']) => Object.entries(halfFrameCss(art)).map(([k, v]) => `${k}:${v}`).join(';');
 
 describe('spec 1.23: the place change is a camera move', () => {
@@ -280,17 +282,44 @@ describe('spec 1.23: the place change is a camera move', () => {
     expect(back.map((e) => [e.key, e.role])).toEqual([[a.key, 'cur'], [b.key, 'out']]);
     const html = view(a, back, after.run);
     expect(attrs(html, 'data-camera')).toEqual([]);
-    expect(frameStyles(html)).toEqual([frameCss(a.payload.art), frameCss(b.payload.art)]);
-    expect(html).not.toMatch(/transform|mask|data-camera/);
+    // (the place leaving is wiped away, below: its frame carries the wipe, never a transform)
+    expect(frameStyles(html)).toEqual([frameCss(a.payload.art)]);
+    expect(wipedStyles(html)).toHaveLength(1);
+    expect(html).not.toMatch(/transform|data-camera/);
+  });
+
+  it('a change with no camera is a wipe (2026-11-27): the new place whole beneath, the old one opaque above it and wiped away from the new land’s site, neither transformed', () => {
+    // Cusco (plains, mountain) → Sicily (island, plains, mountain): the island is the new land.
+    const a = drawnOf(CUSCO);
+    const b = drawnOf(SICILY);
+    const stack = fadeStack(fadeStack<PlacePayload>([], { key: a.key, payload: a.payload }, null, 0, true), { key: b.key, payload: b.payload }, null, 0, false);
+    expect(stack.map((e) => [e.key, e.role])).toEqual([[b.key, 'cur'], [a.key, 'out']]);
+    const html = view(b, stack, null);
+    expect(frameStyles(html)).toEqual([frameCss(b.payload.art)]);
+    const [old] = wipedStyles(html);
+    const island = b.payload.pieces.find((p) => p.biome === 'island')!.piece!;
+    const pct = (v: number) => `${Math.round(v * 1000) / 10}%`;
+    expect(old).toBe(`${frameCss(a.payload.art)};--scn-rx:${pct(island.x + island.w / 2)};--scn-ry:${pct(island.y + island.h / 2)};animation-duration:${MS}ms`);
+    expect(revealStyle(a.payload, b.payload, MS)).toMatchObject({ animationDuration: `${MS}ms` });
+    // Neither layer fades: every point shows one painting or the other (the old one's opacity is never lowered).
+    expect(html).not.toMatch(/opacity:0/);
+    expect(html).not.toMatch(/transform|data-camera/);
+    // A land that left starts the wipe where it stood in the old place; no land changed: the middle.
+    const left = a.payload.pieces.find((p) => p.biome === 'plains')!.piece!;
+    expect(revealStyle(a.payload, { ...a.payload, pieces: a.payload.pieces.filter((p) => p.biome !== 'plains') }, MS)).toMatchObject({ '--scn-rx': pct(left.x + left.w / 2) });
+    expect(revealStyle(a.payload, a.payload, MS)).toMatchObject({ '--scn-rx': '50%', '--scn-ry': '60%' });
+    // Reduced motion (no time): the old place is not drawn at all.
+    expect(wipedStyles(renderToStaticMarkup(<PlacePanelView slug={b.slug} sceneKey={b.scene} source="half" stack={fadeStack(fadeStack<PlacePayload>([], { key: a.key, payload: a.payload }, null, 0, true), { key: b.key, payload: b.payload }, null, 0, true)} camera={null} first ms={0} reduced />))).toEqual([]);
   });
 
   it('a refused change (no land shared: Venice → the swamp’s homeland) is exactly 1.22’s cross-fade: two frames, neither transformed, no data-camera', () => {
-    const { a, b, run, stack } = change(VENICE, SWAMP_HOME);
+    const { b, run, stack } = change(VENICE, SWAMP_HOME);
     expect(run).toBeNull();
     const html = view(b, stack, run);
     expect(attrs(html, 'data-camera')).toEqual([]);
-    expect(frameStyles(html)).toEqual([frameCss(b.payload.art), frameCss(a.payload.art)]);
-    expect(html).not.toMatch(/transform|mask/);
+    expect(frameStyles(html)).toEqual([frameCss(b.payload.art)]);
+    expect(wipedStyles(html)).toHaveLength(1);
+    expect(html).not.toMatch(/transform/);
   });
 
   it('a stage step inside a place never sets a transform', () => {

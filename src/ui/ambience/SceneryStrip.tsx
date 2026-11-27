@@ -98,8 +98,8 @@ import { useTween } from './useTween.ts';
 import { PAIR_FULL_HOLD_MS, pairFullChoice, pairFullFrameCss, pairFullHold, pairFullPlan, planCandidates, planScene, type PairFullCandidate, type PairFullHold, type PairFullPair, type PairFullScene } from '../../ambience/pairfull.ts';
 import type { MakeupShowing } from '../../ambience/makeup.ts';
 import { usePicturesVersion } from './usePictures.ts';
-import { nextPlacePieces, pieceKey, pieceSettleIn, pieceSettleOut, pieceWant, type PieceEntry, type PlacedPiece, type PlacePiece } from '../../ambience/places.ts';
-import { CAMERA_EASE, CAMERA_IDLE, CAMERA_MASK_IMAGE, cameraEnd, cameraMark, cameraStep, type CameraFrameCss, type CameraRun, type CameraState } from '../../ambience/placeCamera.ts';
+import { neighbourPlaces, nextPlacePieces, placePieces, pieceKey, pieceSettleIn, pieceSettleOut, pieceWant, type PieceEntry, type PlacedPiece, type PlacePiece } from '../../ambience/places.ts';
+import { CAMERA_EASE, CAMERA_IDLE, CAMERA_MASK_IMAGE, PLACE_CHANGE_CAMERA, cameraEnd, cameraMark, cameraStep, type CameraFrameCss, type CameraRun, type CameraState } from '../../ambience/placeCamera.ts';
 import './scenery.css';
 
 export type { StripEffect } from './SceneryEffects.tsx';
@@ -204,6 +204,22 @@ export const SceneryStrip = memo(function SceneryStrip({ slots, pack, edge = 'bo
     if (wantPic) warmPicture(wantPic);
     for (const p of wantPieces) if (p.piece) warmPicture({ src: p.piece.src, src2x: null });
   }, [wantPic?.src, wantPiecesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A place drawn warms the places one land away (places.ts `neighbourPlaces`: a first land of each colour it lacks),
+  // at the shape drawn: the change of place then starts with the land, not a second or two later when its pictures
+  // have come down. Four places at most, a base and a few pieces each.
+  const shownPlace = fullGate?.show?.place ? fullGate.show : null;
+  const aheadPhone = shownPlace?.art.source === 'phone';
+  const aheadPlaces = useMemo(
+    () => (shownPlace ? neighbourPlaces(placesPack, shownPlace.place!.pieces.map((p) => ({ biome: p.biome, stage: p.stage }))) : []),
+    [placesPack, shownPlace?.scene], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const aheadPlacesKey = `${aheadPhone ? 'p' : 'd'} ${aheadPlaces.map((c) => c.key).join(' ')}`;
+  useEffect(() => {
+    for (const c of aheadPlaces) {
+      warmPicture(aheadPhone ? c.place.half.phone : c.place.half);
+      for (const p of placePieces(c.lands, aheadPhone)) if (p.piece) warmPicture({ src: p.piece.src, src2x: null });
+    }
+  }, [aheadPlacesKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const holdRef = useRef<PairFullHold<SlotLayout[]>>({ last: null, since: null });
   const held = pairFullHold({ layout: layout as SlotLayout[], plan: plannedFull, choice: fullGate }, holdRef.current, Date.now());
   holdRef.current = held.hold;
@@ -826,7 +842,7 @@ export function PlacePanel({ s, shown, first, ms, reduced }: { s: PairFullScene;
   // run. What is drawn is the camera's `drawn`: a change back to the base a running move left is held until it ends.
   const cam = useRef<CameraState>(CAMERA_IDLE);
   const [, bump] = useState(0);
-  cam.current = cameraStep(cam.current, { key: pic.src, art, place, view: { art, pieces: shown.place!.pieces, slug: place.slug, scene: s.key } }, ms, reduced);
+  cam.current = cameraStep(cam.current, { key: pic.src, art, place, view: { art, pieces: shown.place!.pieces, slug: place.slug, scene: s.key } }, PLACE_CHANGE_CAMERA ? ms : 0, reduced);
   const run = cam.current.run;
   const drawn = cam.current.drawn!;
   const view = drawn.view!;
@@ -869,8 +885,13 @@ export interface PlacePayload {
  * (the same element: it is keyed as the settled frame is), and the moving new frame, at the identity by then, goes.
  */
 export const PlacePanelView = forwardRef<HTMLDivElement, { slug: string; sceneKey: string; source: HalfArt['source']; stack: readonly FadeEntry<PlacePayload>[]; camera: CameraRun | null; first: boolean; ms: number; reduced: boolean }>(function PlacePanelView({ slug, sceneKey, source, stack, camera, first, ms, reduced }, ref) {
-  const frame = (p: PlacePayload, key: string, style: CSSProperties, mark?: 'under' | 'to' | 'from') => (
-    <div key={key} className="scn-frame" style={style} data-camera-frame={mark}>
+  // The place change (2026-11-27, replacing the camera move's cross-fade, which laid two unrelated paintings over each
+  // other: a ghost town over a river): the new place is whole beneath from the first moment, and the old one, still
+  // opaque, is wiped away from the new land's site outward by a soft-edged circle (scenery.css `.scn-reveal-out`).
+  // Every point shows one painting or the other, never both, except in the circle's soft rim.
+  const cur = stack.find((e) => e.role === 'cur') ?? null;
+  const frame = (p: PlacePayload, key: string, style: CSSProperties, mark?: 'under' | 'to' | 'from', reveal?: CSSProperties) => (
+    <div key={key} className={reveal ? 'scn-frame scn-reveal-out' : 'scn-frame'} style={reveal ? { ...style, ...reveal } : style} data-camera-frame={mark}>
       <img className="scn-half-img" src={p.art.picture!.src} srcSet={p.art.picture!.src2x ? `${p.art.picture!.src} 1x, ${p.art.picture!.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => markPicture(p.art.picture!.src, true)} onError={() => markPicture(p.art.picture!.src, false)} />
       {p.pieces.map((pc) => (
         <PlaceLandPiece key={pc.biome} biome={pc.biome} stage={pc.stage} piece={pc.piece} ms={ms} />
@@ -883,11 +904,12 @@ export const PlacePanelView = forwardRef<HTMLDivElement, { slug: string; sceneKe
         {stack.map((e) => {
           const into = !!camera && e.key === camera.to;
           const from = !!camera && e.key === camera.from;
+          const wiped = !camera && e.role === 'out' && ms > 0 && !!cur;
           return (
-            <Layer key={e.key} z={-100} depth={0} fade={e.opacity} from={e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
+            <Layer key={e.key} z={-100} depth={0} fade={wiped ? 1 : e.opacity} from={wiped ? 1 : e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
               {from
                 ? frame(e.payload, 'frame', cameraFrameStyle(e.payload.art, camera!.css.old, camera!.phase, ms), 'from')
-                : frame(e.payload, 'frame', halfFrameCss(e.payload.art), into ? 'under' : undefined)}
+                : frame(e.payload, 'frame', halfFrameCss(e.payload.art), into ? 'under' : undefined, wiped ? revealStyle(e.payload, cur!.payload, ms) : undefined)}
               {into && frame(e.payload, 'move', cameraFrameStyle(e.payload.art, camera!.css.new, camera!.phase, ms), 'to')}
             </Layer>
           );
@@ -896,6 +918,20 @@ export const PlacePanelView = forwardRef<HTMLDivElement, { slug: string; sceneKe
     </div>
   );
 });
+
+/**
+ * Where a place change's wipe starts and how long it runs: the centre of the land the new place has and the old one
+ * lacked (its piece's box in the new frame; the first such land), else of the land that left (its box in the old
+ * frame), else the middle of the picture, a little under half way down, where the lands build.
+ */
+export function revealStyle(old: PlacePayload, now: PlacePayload, ms: number): CSSProperties {
+  const centre = (p: PlacedPiece | undefined) => (p?.piece ? { x: p.piece.x + p.piece.w / 2, y: p.piece.y + p.piece.h / 2 } : null);
+  const was = new Set(old.pieces.map((p) => p.biome));
+  const is = new Set(now.pieces.map((p) => p.biome));
+  const at = centre(now.pieces.find((p) => !was.has(p.biome))) ?? centre(old.pieces.find((p) => !is.has(p.biome))) ?? { x: 0.5, y: 0.6 };
+  const pct = (v: number) => `${Math.round(Math.min(1, Math.max(0, v)) * 1000) / 10}%`;
+  return { '--scn-rx': pct(at.x), '--scn-ry': pct(at.y), animationDuration: `${ms}ms` } as CSSProperties;
+}
 
 /** A moving frame of a camera move: 1.22's frame, plus the move's transform from its top-left and its soft edge. */
 export function cameraFrameStyle(art: HalfArt, move: CameraFrameCss, phase: CameraRun['phase'], ms: number): CSSProperties {

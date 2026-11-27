@@ -44,6 +44,13 @@ export const CAMERA_MAX_SCALE = 2;
 export const CAMERA_EDGE = 0.08;
 /** The easing of the place's cross-fade (SceneryStrip's `Layer`), so the move and the fade run as one. */
 export const CAMERA_EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
+/**
+ * Is a place change drawn as the camera move? No, since 2026-11-27: the move ran under a cross-fade, and two
+ * unrelated paintings laid over each other read as a ghost of the old town over the new river whatever the camera
+ * did (Justin, on the scenery page: "the transitions between lands suck"). The change is a wipe from the new land's
+ * site now (SceneryStrip's `PlacePanelView`, `revealStyle`). The move's maths stays, pure and tested, behind this.
+ */
+export const PLACE_CHANGE_CAMERA = false;
 
 /** A land's box in a place at one shape: fractions of the base of that shape. */
 export interface LandBox {
