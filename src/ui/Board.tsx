@@ -158,11 +158,13 @@ const PlayerArea = memo(function PlayerArea({
   const { lands, landAtt, creatures, other } = useMemo(() => groupBattlefield(player, byId, stackMarked), [player, byId, stackMarked]);
   // What a phone's lands bar, when it is too full for whole names, calls a land whose name would be cut to the
   // same text as another's (ui/landPiles.ts).
-  const labels = useMemo(() => {
+  const { labels, twins } = useMemo(() => {
     const tabs = lands.map((g) => ({ name: displayName(g[0]!), count: g.length }));
     // What is attached to a land has a tab of its own beside the land's, and takes room in the bar like one.
     const attached = [...landAtt.values()].flat().map((a) => ({ name: displayName(a), count: 1 }));
-    return barIsFull([...tabs, ...attached]) ? tabLabels(tabs.map((t) => t.name)) : NO_LABELS;
+    // (`twins`: the same names whether or not the bar is full. The desktop table always says the name, and never cuts one of these.)
+    const twins = tabLabels(tabs.map((t) => t.name));
+    return { twins, labels: barIsFull([...tabs, ...attached]) ? twins : NO_LABELS };
   }, [lands, landAtt]);
   const mine = player.id === seat;
   const side = mine ? 'me' : 'opp';
@@ -192,7 +194,7 @@ const PlayerArea = memo(function PlayerArea({
     lands.length > 0 && (
       <Row key="l" kind="lands" label="Lands" count={lands.reduce((n, g) => n + g.length, 0)} dense={density(landWeight)}>
         {lands.map((g) => (
-          <LandPile key={g[0]!.id} cards={g} attachments={landAtt.get(g[0]!.id)} side={side} tab tabName={labels.get(displayName(g[0]!))} />
+          <LandPile key={g[0]!.id} cards={g} attachments={landAtt.get(g[0]!.id)} side={side} tab tabName={labels.get(displayName(g[0]!))} tabTwin={twins.has(displayName(g[0]!))} />
         ))}
       </Row>
     ),

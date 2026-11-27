@@ -110,7 +110,10 @@ describe('phoneSideFit', () => {
     expect(desk).toMatch(/\.is-wide \.play-board \.bf-row-lands \.tile \{\s*flex: 0 1 auto;\s*min-width: min-content;\s*\}/);
     expect(desk).not.toMatch(/\.bf-row-lands [^{]*\{[^}]*min-width: (var|calc)\(/);
     expect(desk).toMatch(/\.is-wide \.play-board \.bf-row-lands \.land-tab-size \{\s*grid-area: 1 \/ 1;\s*display: block;\s*height: 0;\s*visibility: hidden;\s*white-space: normal;\s*overflow-wrap: anywhere;\s*\}/);
-    expect(desk).toMatch(/\.land-tab-name\.has-short \.land-tab-size::before \{\s*content: attr\(data-name\);/);
+    expect(desk).toMatch(/\.land-tab-size\[data-name\]::before \{\s*content: attr\(data-name\);/);
+    // while the cards are up the marks are not drawn but keep their room (a tab that shrank would move its neighbours)
+    expect(desk).not.toMatch(/:is\(\.land-tab-marks, \.land-tab-stack\) \{\s*display: none;/);
+    expect([...desk.matchAll(/:is\(\.land-tab-marks, \.land-tab-stack\) \{\s*visibility: hidden;/g)].length).toBe(2);
     expect(css).toMatch(/:is\(\.play-board, \.play-phone-main\) \.bf-row-lands \.tile-attach \.attach-size \{\s*grid-area: 1 \/ 1;\s*display: block;\s*height: 0;/);
     expect(css).toMatch(/grid-template-columns: minmax\(min-content, max-content\) minmax\(min-content, max-content\);/);
     // an empty side's line is centred again

@@ -77,6 +77,10 @@ describe('land pile badge', () => {
     // ... and carries the whole name for the desktop table, which always says the name and never cuts this one (ui/cards.css)
     expect(short).toContain('data-name="Snow-Covered Forest"');
     expect(plain).not.toContain('data-name');
+    // ... in a bar that is not full too: no short name then, and the sizer still measures the first 8 letters for the phone
+    const twin = renderToStaticMarkup(<LandTab name="Snow-Covered Forest" twin count={1} />);
+    expect(twin).toContain('<span class="land-tab-size" data-head="Snow-Cov" data-rest="ered Forest" data-name="Snow-Covered Forest"></span>');
+    expect(twin).not.toMatch(/land-tab-short|has-short/);
   });
   it('a pile shows that the stack points at it, and a land with counters says so on its tab', () => {
     const pile = piles.find((p) => p.length === 2)!;

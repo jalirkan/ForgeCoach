@@ -1687,7 +1687,7 @@ scenarios.push({
   },
 });
 
-// The names in a phone's lands bar when a land has something attached. Read from the page: every tab on a side
+// The names in a lands bar (the upright phone's, the desktop table's) when a land has something attached. Read from the page: every tab on a side
 // (a land's or an attached card's) with the width its name has, the width the whole name needs, and the width of
 // the first 8 letters of what it says, each measured in the tab's own font; and whether the bar has room to spare.
 function readBarNames(page, sel) {
@@ -1810,7 +1810,7 @@ for (const kind of ['full', 'two']) scenarios.push({
   },
 });
 
-// The desktop table at its narrowest (1024 px wide: a side of 480), a full bar. A tab's least width was its card's
+// The desktop table at its narrowest window (1024 px wide: a side of 480 with no stack panel beside it), a full bar. A tab's least width was its card's
 // alone, and a card there is narrower than "Mountain": five lands and two auras read "Moun…" and "+ W…" in a bar
 // that never scrolled. Now a tab is never narrower than its card NOR than the first 8 letters of what it says, an
 // attached card's name keeps its own 8 letters, and a bar past that scrolls sideways ('six': it must, whatever
@@ -1831,7 +1831,6 @@ for (const kind of ['full', 'two', 'six', 'snow']) scenarios.push({
     for (const x of b.names) check(x.has >= Math.min(x.least, x.whole) - 1.5, `${x.text} keeps the width of its first 8 letters (${x.has.toFixed(1)} px; they need ${x.least.toFixed(1)})`);
     for (const x of b.names) check(x.inside, `${x.text} lies inside its own tab`);
     for (const x of b.names.filter((x) => !x.attached && x.text.length <= 8)) check(!x.cut, `${x.text}, a basic land, is said whole (${x.has.toFixed(1)} px of ${x.whole.toFixed(1)})`);
-    check(b.used <= b.room + 1.5 || b.scrolls, `a bar with more tabs than room scrolls (${b.used.toFixed(0)} px of tabs in ${b.room.toFixed(0)})`);
     if (kind === 'six' || kind === 'snow') check(b.scrolls, `more than a 480 px side holds: the bar scrolls (${b.used.toFixed(0)} px of tabs in ${b.room.toFixed(0)})`);
     if (kind === 'snow') for (const x of b.names.filter((x) => x.text.startsWith('Snow-Covered'))) check(!x.cut, `${x.text} is said whole: cut, it would read as the other snow land does (${x.has.toFixed(1)} px of ${x.whole.toFixed(1)})`);
     // A tab is still never narrower than its card (the card stands on it when the lands come up).

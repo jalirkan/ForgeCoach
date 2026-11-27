@@ -236,7 +236,8 @@
      hidden, and none on the sizer: a box that scrolls has no least width of its own.) The same rule as the upright
      phone's bar (play/play.css), which says a short name in a full bar for two names that would be cut to the same
      text (Snow-Covered Forest, Snow-Covered Island). This table always says the name, so such a name is never
-     cut here: its sizer is the whole name in one piece (data-name), and the bar scrolls sooner instead. */
+     cut here, however narrow the bar (a stack panel beside it): its sizer is the whole name in one piece
+     (data-name, set whether or not the bar is full), and the bar scrolls sooner instead. */
   .game.play.is-wide .play-board .bf-row-lands .land-tab-name {
     display: grid;
     grid-template-columns: 1fr;
@@ -267,10 +268,10 @@
   .game.play.is-wide .play-board .bf-row-lands .land-tab-size::after {
     content: '\200b' attr(data-rest);
   }
-  .game.play.is-wide .play-board .bf-row-lands .land-tab-name.has-short .land-tab-size::before {
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-size[data-name]::before {
     content: attr(data-name);
   }
-  .game.play.is-wide .play-board .bf-row-lands .land-tab-name.has-short .land-tab-size::after {
+  .game.play.is-wide .play-board .bf-row-lands .land-tab-size[data-name]::after {
     content: none;
   }
   .game.play.is-wide .play-board .bf-row-lands .tile-slot {
@@ -289,9 +290,11 @@
   .game.play.is-wide .play-board .bf-row-lands:has(.tile.is-select, .tile.is-chosen) .tile.is-tapped .tile-slot {
     height: calc(var(--cw) + 3px);
   }
-  /* While the cards are up they say it themselves: the counters and the stack numbers leave the tabs. */
+  /* While the cards are up they say it themselves: the counters and the stack numbers leave the tabs. (Not drawn,
+     but their room is kept: they count in a tab's least width, and a tab that gave it up would move every tab to
+     its right from under the pointer.) */
   .game.play.is-wide .play-board .bf-row-lands:has(.tile.is-select, .tile.is-chosen) :is(.land-tab-marks, .land-tab-stack) {
-    display: none;
+    visibility: hidden;
   }
   /* ... and for a pointer that can hover. (A finger cannot: there a tap on a tab is a tap on its land, as
      everywhere, and a long press opens its details.) */
@@ -308,7 +311,7 @@
       height: calc(var(--cw) + 3px);
     }
     .game.play.is-wide .play-board .bf-row-lands:hover :is(.land-tab-marks, .land-tab-stack) {
-      display: none;
+      visibility: hidden;
     }
   }
   .game.play.is-wide .play-board .bf-row-lands .tile-card {
@@ -394,7 +397,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* (the name's sizer and the short name a full bar says: the upright phone board's, play/play.css) */
+/* (the name's sizer: the two lands bars', each laid out by its own layout; the short name a full bar says: the
+   upright phone board's, play/play.css) */
 .land-tab-size,
 .land-tab-short {
   display: none;
@@ -1049,7 +1053,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* (a phone's lands bar alone lays it out: play/play.css) */
+/* (the two lands bars alone lay it out: the shared block above) */
 .attach-size {
   display: none;
 }
