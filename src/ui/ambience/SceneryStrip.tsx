@@ -93,7 +93,7 @@ import { bridgePlacements, halfSeams, phoneHalf, seamCentreCss, type BridgePlace
 import { bandedSeams, halfRow, motifBands, motifWidth, pairBands, pairHalfAt, pairMotifAt, pairPanoramaAt, panelBands, rowCentreCss, type PairBandPlacement, type PairMotif, type RowItem } from '../../ambience/pairs.ts';
 import { proceduralLayers, type DrawLayer } from './procedural.tsx';
 import { EffectView, type StripEffect } from './SceneryEffects.tsx';
-import { useFadeIn, useFadeStack } from './useFade.ts';
+import { useFadeIn, useFadeStack, useHeldChange } from './useFade.ts';
 import { useTween } from './useTween.ts';
 import { PAIR_FULL_HOLD_MS, pairFullChoice, pairFullFrameCss, pairFullHold, pairFullPlan, planCandidates, planScene, type PairFullCandidate, type PairFullHold, type PairFullPair, type PairFullScene } from '../../ambience/pairfull.ts';
 import type { MakeupShowing } from '../../ambience/makeup.ts';
@@ -819,13 +819,13 @@ function ScenePanel({ s, shown, first, growth, reduced }: { s: PairFullScene; sh
  * Spec 1.22: a place across the whole half -- its base picture framed exactly as a scene is (layout.ts `halfFrameCss`,
  * the phone base on a phone-shaped half, never mirrored, never panned) and, INSIDE THE SAME FRAME above the base, one
  * picture per live land in the geography's order, that land's piece at its stage stretched to its box (fractions of
- * the frame), so base and pieces scale and crop as one picture. A place change (another base) cross-fades the whole
- * half over the growth time as a scene step does; within the place only a land whose stage changed moves
- * ({@link PlaceLandPiece}).
+ * the frame), so base and pieces scale and crop as one picture. Within the place only a land whose stage changed
+ * moves ({@link PlaceLandPiece}).
  *
- * Spec 1.23: a place change whose two places share lands is a camera move (placeCamera.ts): during the cross-fade the
- * old frame zooms and slides by the map and the new one comes in from its inverse, so the tracked lands travel
- * together, over the new place at its settled position (`data-camera` while it runs); the settled frame is 1.22's.
+ * A place change (another base) is a wipe since 2026-11-27 ({@link PlacePanelView}): the new place whole beneath, the
+ * old one wiped away from the new land's site over the growth time; one change at a time (`useHeldChange`). Spec
+ * 1.23's camera move (placeCamera.ts: while the two cross-faded, the old frame zoomed and slid by a map and the new
+ * came in from its inverse) is off behind `PLACE_CHANGE_CAMERA`; its frames below are drawn only when it is on.
  */
 export function PlacePanel({ s, shown, first, ms, reduced }: { s: PairFullScene; shown: PairFullCandidate; first: boolean; ms: number; reduced: boolean }) {
   const art = shown.art;
@@ -844,8 +844,12 @@ export function PlacePanel({ s, shown, first, ms, reduced }: { s: PairFullScene;
   const [, bump] = useState(0);
   cam.current = cameraStep(cam.current, { key: pic.src, art, place, view: { art, pieces: shown.place!.pieces, slug: place.slug, scene: s.key } }, PLACE_CHANGE_CAMERA ? ms : 0, reduced);
   const run = cam.current.run;
-  const drawn = cam.current.drawn!;
-  const view = drawn.view!;
+  // The wipe: one change of place at a time. A change that comes while the wipe to the place drawn still runs (a
+  // second new colour, or the land taken straight back) waits for its end (useFade.ts `useHeldChange`), so the place
+  // being wiped away is never dropped part way and the old place never snaps back whole.
+  const held = useHeldChange({ key: cam.current.drawn!.key, value: cam.current.drawn!.view! }, PLACE_CHANGE_CAMERA ? 0 : ms);
+  const drawn = { key: held.key };
+  const view = held.value;
   const stack = useFadeStack<PlacePayload>({ key: drawn.key, payload: { art: view.art, pieces: view.pieces } }, null, 0, ms);
   const host = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -890,6 +894,13 @@ export const PlacePanelView = forwardRef<HTMLDivElement, { slug: string; sceneKe
   // opaque, is wiped away from the new land's site outward by a soft-edged circle (scenery.css `.scn-reveal-out`).
   // Every point shows one painting or the other, never both, except in the circle's soft rim.
   const cur = stack.find((e) => e.role === 'cur') ?? null;
+  // Where a wipe starts is decided once, when it starts (a stage step in the new place while it runs would move it).
+  const wipeAt = useRef<{ k: string; style: CSSProperties } | null>(null);
+  const wipeOf = (old: FadeEntry<PlacePayload>, now: FadeEntry<PlacePayload>): CSSProperties => {
+    const k = `${old.key}\n${now.key}\n${ms}`;
+    if (wipeAt.current?.k !== k) wipeAt.current = { k, style: revealStyle(old.payload, now.payload, ms) };
+    return wipeAt.current.style;
+  };
   const frame = (p: PlacePayload, key: string, style: CSSProperties, mark?: 'under' | 'to' | 'from', reveal?: CSSProperties) => (
     <div key={key} className={reveal ? 'scn-frame scn-reveal-out' : 'scn-frame'} style={reveal ? { ...style, ...reveal } : style} data-camera-frame={mark}>
       <img className="scn-half-img" src={p.art.picture!.src} srcSet={p.art.picture!.src2x ? `${p.art.picture!.src} 1x, ${p.art.picture!.src2x} 2x` : undefined} alt="" decoding="async" draggable={false} onLoad={() => markPicture(p.art.picture!.src, true)} onError={() => markPicture(p.art.picture!.src, false)} />
@@ -909,7 +920,7 @@ export const PlacePanelView = forwardRef<HTMLDivElement, { slug: string; sceneKe
             <Layer key={e.key} z={-100} depth={0} fade={wiped ? 1 : e.opacity} from={wiped ? 1 : e.from} ms={ms} bloom={NO_BLOOM} order={0} reduced={reduced}>
               {from
                 ? frame(e.payload, 'frame', cameraFrameStyle(e.payload.art, camera!.css.old, camera!.phase, ms), 'from')
-                : frame(e.payload, 'frame', halfFrameCss(e.payload.art), into ? 'under' : undefined, wiped ? revealStyle(e.payload, cur!.payload, ms) : undefined)}
+                : frame(e.payload, 'frame', halfFrameCss(e.payload.art), into ? 'under' : undefined, wiped ? wipeOf(e, cur!) : undefined)}
               {into && frame(e.payload, 'move', cameraFrameStyle(e.payload.art, camera!.css.new, camera!.phase, ms), 'to')}
             </Layer>
           );
