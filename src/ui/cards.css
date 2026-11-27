@@ -248,6 +248,10 @@
   .game.play.is-wide .play-board .bf-row-lands:has(.tile.is-select, .tile.is-chosen) .tile.is-tapped .tile-slot {
     height: calc(var(--cw) + 3px);
   }
+  /* While the cards are up they say it themselves: the counters and the stack numbers leave the tabs. */
+  .game.play.is-wide .play-board .bf-row-lands:has(.tile.is-select, .tile.is-chosen) :is(.land-tab-marks, .land-tab-stack) {
+    display: none;
+  }
   /* ... and for a pointer that can hover. (A finger cannot: there a tap on a tab is a tap on its land, as
      everywhere, and a long press opens its details.) */
   @media (hover: hover) {
@@ -261,6 +265,9 @@
     /* A tapped land lies down on its tab. */
     .game.play.is-wide .play-board .bf-row-lands:hover .tile.is-tapped .tile-slot {
       height: calc(var(--cw) + 3px);
+    }
+    .game.play.is-wide .play-board .bf-row-lands:hover :is(.land-tab-marks, .land-tab-stack) {
+      display: none;
     }
   }
   .game.play.is-wide .play-board .bf-row-lands .tile-card {
@@ -346,9 +353,33 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* (the name's sizer: the upright phone board's, play/play.css) */
-.land-tab-size {
+/* (the name's sizer and the short name a full bar says: the upright phone board's, play/play.css) */
+.land-tab-size,
+.land-tab-short {
   display: none;
+}
+/* What only the card showed, on the tab while the card is not there: the land's counters, and the numbers of the
+   stack items that come from it (filled) or point at it (ringed), as on a card (stack.css). */
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .land-tab-marks,
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .land-tab-stack {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .land-tab .mk {
+  height: 16px;
+  padding: 0 3px;
+  font-size: 10px;
+  box-shadow: none;
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .land-tab .smk {
+  min-width: 17px;
+  height: 17px;
+  padding: 0 3px;
+  border-width: 1.5px;
+  font-size: 10.5px;
+  box-shadow: none;
 }
 .game.play :is(.play-board, .play-phone-main) .bf-row-lands .land-tab-count {
   flex: none;

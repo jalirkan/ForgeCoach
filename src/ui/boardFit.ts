@@ -16,6 +16,14 @@
  * --fit-pad and --fit-rows, because the floor is smaller on short phones;
  * `minPx` is the same sum.)
  *
+ * Every height here is the side's BORDER box: the `.battlefield` element as
+ * it is measured, its own 2 + 2 px of padding included (`sidePad`, which
+ * `padPx` counts). The CSS sizes the cards from `100cqh`, which is the
+ * content box, so it adds those 4 px back before taking `--fit-pad` off:
+ * `(100cqh + 4px - --fit-pad) / --perm-rows` is `(height - padPx) / permRows`.
+ * The lands bar lies over the bottom padding, so at the minimum height the
+ * row and the bar's strip are 2 px apart rather than touching.
+ *
  * DOM-free so it is tested in node (boardFit.test.ts). The pixel constants
  * mirror play.css and cards.css; change them together.
  */
@@ -64,9 +72,9 @@ export interface SideShape {
 export interface SideFit {
   /** The rows of cards the side must hold at the floor size: 1 with permanents, else 0 (the lands are a bar). */
   rowsH: number;
-  /** Fixed pixels inside the side that are not cards (the paddings, the lands bar, the chips under a host). */
+  /** Fixed pixels of the side's border box that are not cards (its own padding, the row's, the lands bar, the chips under a host). */
   padPx: number;
-  /** The side's minimum height (px): the row at the floor size, and the bar. */
+  /** The side's minimum height (px, border box): the row at the floor size, and the bar. */
   minPx: number;
 }
 
@@ -80,8 +88,8 @@ export function phoneSideFit({ permanents, lands, maxAttach }: SideShape, k: Fit
 }
 
 /**
- * The card width a side of `heightPx` gives (what the CSS clamp computes), for
- * checking the formula: the row takes its share (`permRows`) of what the fixed
+ * The card width a side `heightPx` high (its border box) gives: what the CSS
+ * clamp computes. The row takes its share (`permRows`) of what the fixed
  * pixels leave.
  */
 export function phoneCardWidth(fit: SideFit, heightPx: number, k: FitConstants = PHONE_FIT): number {

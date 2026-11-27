@@ -953,6 +953,18 @@ button.ask-card.is-previewable:hover {
   font-weight: 650;
 }
 
+/* An upright phone: the minimised question sits low and slim on the strip with your life total, under your
+   lands bar (the bar is the bottom edge of your half, play.css; 12 px up and 46 tall it lay across the tabs). */
+@media (max-width: 1023px) and (orientation: portrait) {
+  .ask-peek {
+    bottom: calc(4px + var(--play-dock-h, calc(var(--dock-h) + env(safe-area-inset-bottom))));
+    height: 40px;
+  }
+  .ask-peek-cta {
+    height: 30px;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* phones: a bottom sheet */
 

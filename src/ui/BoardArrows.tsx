@@ -28,6 +28,15 @@ function rectOf(el: Element | null): RectBox | undefined {
   return { x: r.left, y: r.top, width: r.width, height: r.height };
 }
 
+/**
+ * A card on the board: its slot, or, where the slot is not laid out (a land in the upright phone board's lands
+ * bar is its name tab alone, play/play.css), its tab, or the tile itself.
+ */
+export function cardRect(tile: Element | null, rect: (el: Element | null) => RectBox | undefined = rectOf): RectBox | undefined {
+  if (!tile) return undefined;
+  return rect(tile.querySelector('.tile-slot')) ?? rect(tile.querySelector('.land-tab')) ?? rect(tile);
+}
+
 /** A stack item's badge, if it can be seen: inside its list's scrolled box and not under another item of the panel. */
 function badgeRect(id: string): RectBox | undefined {
   const row = document.querySelector(`[data-stack-item="${id}"]`);
@@ -53,7 +62,7 @@ export function domLookup(key: RectKey): RectBox | undefined {
     case 's':
       return badgeRect(id);
     case 'c':
-      return rectOf(document.querySelector(`.board .tile[data-card-id="${id}"] .tile-slot`) ?? document.querySelector(`.board [data-card-ids~="${id}"] .tile-slot`));
+      return cardRect(document.querySelector(`.board .tile[data-card-id="${id}"]`) ?? document.querySelector(`.board [data-card-ids~="${id}"]`));
     case 'p':
       return rectOf(document.querySelector(`.board [data-phead-player="${id}"] .life`) ?? document.querySelector(`.board [data-phead-player="${id}"]`));
   }

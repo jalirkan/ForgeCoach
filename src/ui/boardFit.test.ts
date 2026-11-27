@@ -65,7 +65,7 @@ describe('phoneSideFit', () => {
     // (176 px at 390x844) to a tablet's.
     for (let h = 176; h <= 420; h += 4) {
       const fit = phoneSideFit(both);
-      const rowEnd = 2 + 5 + phoneCardWidth(fit, h - PHONE_FIT.sidePad) * CARD_RATIO;
+      const rowEnd = 2 + 5 + phoneCardWidth(fit, h) * CARD_RATIO;
       expect(rowEnd / h, `row, a side ${h} px high`).toBeLessThan(0.52);
       expect((h - PHONE_FIT.tabPx - 3) / h, `bar, a side ${h} px high`).toBeGreaterThan(0.71);
     }
@@ -78,7 +78,10 @@ describe('phoneSideFit', () => {
     const phone = play.slice(play.indexOf('@media (max-width: 1023px) and (orientation: portrait) {'), play.indexOf('/* ---- phone in landscape'));
     expect(phone).toContain(`--fit-floor: ${k.floor}px;`);
     expect(phone).toContain(`--perm-rows: ${k.permRows};`);
-    expect(phone).toContain(`--cw-fit: clamp(var(--fit-floor), calc((100cqh - var(--fit-pad, 13px)) / var(--perm-rows) * 63 / 88), ${k.ceil}px);`);
+    // 100cqh is the side's content box and --fit-pad counts the side's own padding: the CSS adds it back, so
+    // the card is (border-box height - padPx) / permRows, which is phoneCardWidth
+    expect(phone).toContain(`--cw-fit: clamp(var(--fit-floor), calc((100cqh + ${k.sidePad}px - var(--fit-pad, 13px)) / var(--perm-rows) * 63 / 88), ${k.ceil}px);`);
+    expect(readFileSync(new URL('./styles.css', import.meta.url), 'utf8')).toMatch(/box-sizing: border-box;/);
     expect(phone).toContain('min-height: calc(var(--fit-pad, 13px) + var(--fit-rows, 1) * var(--fit-floor) * 88 / 63);');
     expect(k.sidePad + k.rowPad).toBe(13);
     expect(phone).toMatch(/\.play-phone-main \.battlefield,\s*\.play-phone-main \.player-top \.battlefield \{\s*padding: 2px 8px;/);
@@ -96,9 +99,13 @@ describe('phoneSideFit', () => {
     // a tab's least width is measured by the browser from the name's sizer; neither the sizer nor the name may be
     // a scroll box (it would have no least width), and outside the phone's bar the sizer is not there at all
     expect(phone).toMatch(/\.land-tab-size \{\s*grid-area: 1 \/ 1;\s*display: block;\s*height: 0;\s*visibility: hidden;\s*white-space: normal;\s*overflow-wrap: anywhere;\s*\}/);
+    expect(phone).toMatch(/\.land-tab-text,\s*\.play-phone-main \.bf-row-lands \.land-tab-short \{\s*display: block;\s*grid-area: 1 \/ 1;\s*width: 0;\s*min-width: 100%;/);
+    expect(phone).toMatch(/\.land-tab-name\.has-short \.land-tab-text \{\s*display: none;/);
     expect(phone).toMatch(/\.land-tab-name \{\s*display: grid;\s*grid-template-columns: 1fr;\s*min-width: auto;\s*overflow: clip;/);
     expect(phone).toMatch(/\.bf-row-lands \.tile \{\s*min-width: auto;/);
-    expect(css).toMatch(/\n\.land-tab-size \{\s*display: none;\s*\}/);
+    expect(css).toMatch(/\n\.land-tab-size,\s*\.land-tab-short \{\s*display: none;\s*\}/);
+    // an empty side's line is centred again
+    expect(phone).toMatch(/\.battlefield > \.bf-empty \{\s*margin-block: auto;/);
     // attachments: one line each (attachPx = the chip and its gap)
     expect(phone).toMatch(/\.play-phone-main \.attach-chip \{\s*height: 18px;/);
     expect(k.attachPx).toBe(18 + 1);

@@ -19,7 +19,7 @@ import { HoverTracker } from './hoverGuard.ts';
 import { createLongPress, pressBuzz, pressTimers } from './longPress.ts';
 import { useBoardFocus } from './boardFocus.ts';
 import { useBoardMarks, useBoardStateRef, useCardActions, usePlay, type CardStackMarks, type PlayInteraction, type PlayMark } from './cardContext.ts';
-import { PILE_SHOWN, pilePlan } from './landPiles.ts';
+import { PILE_SHOWN, pilePlan, TAB_LETTERS } from './landPiles.ts';
 import { ManaCost } from './Mana.tsx';
 import { IconInfo, IconShield, IconSword, TypeGlyph } from './Icons.tsx';
 import { cardColors, colorClass, counterLabel, cx, shortType, typeKind } from './util.ts';
@@ -308,6 +308,8 @@ interface TileProps {
   dim?: boolean;
   /** A land on the desktop table: its name tab for the lands bar (ui/cards.css `.land-tab`; hidden everywhere else). */
   landTab?: boolean;
+  /** What a phone's full lands bar calls this land, when its own name would be cut to the same text as another's (`tabLabels`). */
+  tabName?: string;
 }
 
 function counterText(k: string, n: number): string {
@@ -342,7 +344,7 @@ function mergeMarks(all: (CardStackMarks | undefined)[]): CardStackMarks | undef
   return { sources: [...new Set(got.flatMap((m) => m.sources))].sort((a, b) => a - b), targets: [...new Set(got.flatMap((m) => m.targets))].sort((a, b) => a - b) };
 }
 
-function TileInner({ card, attachments, inHand, side, dim, landTab }: TileProps) {
+function TileInner({ card, attachments, inHand, side, dim, landTab, tabName }: TileProps) {
   const boardMarks = useBoardMarks();
   const stackMarks = inHand ? undefined : boardMarks?.stack.get(card.id);
   const combat = inHand ? undefined : boardMarks?.combat?.get(card.id);
@@ -459,7 +461,7 @@ function TileInner({ card, attachments, inHand, side, dim, landTab }: TileProps)
           )}
         </div>
       </div>
-      {landTab && <LandTab name={displayName(card)} count={1} />}
+      {landTab && <LandTab name={displayName(card)} short={tabName} count={1} marks={stackMarks} counters={counters} />}
       {attachments && attachments.length > 0 && (
         <div className="tile-attach">
           {attachments.map((a) => (
@@ -472,7 +474,7 @@ function TileInner({ card, attachments, inHand, side, dim, landTab }: TileProps)
 }
 
 export const CardTile = memo(TileInner, (a, b) => {
-  if (a.inHand !== b.inHand || a.side !== b.side || !!a.dim !== !!b.dim || !!a.landTab !== !!b.landTab) return false;
+  if (a.inHand !== b.inHand || a.side !== b.side || !!a.dim !== !!b.dim || !!a.landTab !== !!b.landTab || a.tabName !== b.tabName) return false;
   if (tileSig(a.card) !== tileSig(b.card)) return false;
   const aa = a.attachments ?? [];
   const bb = b.attachments ?? [];
@@ -562,45 +564,79 @@ const AttachmentChip = memo(
  * `data-card-id` is the land the next tap goes to.
  */
 export const LandPile = memo(
-  function LandPile({ cards, side, tab }: { cards: Card[]; side?: TileSide; tab?: boolean }) {
-    if (cards.length === 1) return <CardTile card={cards[0]!} side={side} landTab={tab} />;
-    return <PileStack cards={cards} side={side} tab={tab} />;
+  function LandPile({ cards, side, tab, tabName }: { cards: Card[]; side?: TileSide; tab?: boolean; tabName?: string }) {
+    if (cards.length === 1) return <CardTile card={cards[0]!} side={side} landTab={tab} tabName={tabName} />;
+    return <PileStack cards={cards} side={side} tab={tab} tabName={tabName} />;
   },
-  (a, b) => a.side === b.side && !!a.tab === !!b.tab && a.cards.length === b.cards.length && a.cards.every((c, i) => tileSig(c) === tileSig(b.cards[i])),
+  (a, b) => a.side === b.side && !!a.tab === !!b.tab && a.tabName === b.tabName && a.cards.length === b.cards.length && a.cards.every((c, i) => tileSig(c) === tileSig(b.cards[i])),
 );
-
-/**
- * How many letters of a land's name its tab keeps when a phone's bar is full: the whole name of a basic land
- * (Mountain is the longest, 8), the first 8 of a longer one. A bar whose tabs do not fit at that scrolls
- * sideways rather than cut the names further (play/play.css).
- */
-export const TAB_LETTERS = 8;
 
 /**
  * A land's tab in a lands bar (the desktop table's, ui/cards.css; the upright phone board's, play/play.css): its
  * name and how many the pile holds. On the desktop table the cards come up over the tabs while the pointer is on
- * the bar; on a phone the tabs stand alone, so the tab also says how many of its pile a choice has picked
- * (`sent`; the desktop table shows that on the card). The tab is part of the tile, so a click on it is a click
- * on the land, and a long press opens its details. Hidden for screen readers: the tile's own label says it all.
+ * the bar; on a phone the tabs stand alone. So the tab also carries what only the card showed: the numbers of
+ * the stack items that point at the land or come from it, its counters, and how many of its pile a choice has
+ * picked (`sent`). (The desktop table hides those while its cards are up, and "picked" always: the card says
+ * it.) The tab is part of the tile, so a click on it is a click on the land, and a long press opens its details.
+ * Hidden for screen readers: the tile's own label says it all.
  */
-export function LandTab({ name, count, sent = 0 }: { name: string; count: number; sent?: number }) {
-  // The sizer is never drawn. On a phone it gives the tab its least width: the first letters of the name in one
-  // piece (their spaces unbreakable), the rest breakable anywhere. Its text is CSS content, so the name is in
-  // the page once.
-  const head = name.slice(0, TAB_LETTERS).replace(/ /g, '\u00a0');
+export function LandTab({
+  name,
+  short,
+  count,
+  sent = 0,
+  marks,
+  counters,
+}: {
+  name: string;
+  /** A phone's full bar says this instead of the name (`tabLabels`: names that would be cut to the same text). */
+  short?: string;
+  count: number;
+  sent?: number;
+  marks?: CardStackMarks;
+  counters?: [string, number][];
+}) {
+  // The sizer is never drawn. On a phone it gives the tab its least width: the first letters of what the tab
+  // says in one piece (their spaces unbreakable), the rest breakable anywhere. Its text is CSS content.
+  const said = short ?? name;
+  const head = said.slice(0, TAB_LETTERS).replace(/ /g, '\u00a0');
   return (
     <span className="land-tab" aria-hidden="true">
-      <span className="land-tab-name">
+      <span className={cx('land-tab-name', short && 'has-short')}>
         <span className="land-tab-text">{name}</span>
-        <span className="land-tab-size" data-head={head} data-rest={name.slice(TAB_LETTERS)} />
+        {short && <span className="land-tab-short">{short}</span>}
+        <span className="land-tab-size" data-head={head} data-rest={said.slice(TAB_LETTERS)} />
       </span>
       {count > 1 && <span className="land-tab-count">×{count}</span>}
+      {counters && counters.length > 0 && (
+        <span className="land-tab-marks">
+          {counters.map(([k, n]) => (
+            <span key={k} className={cx('mk', k === 'M1M1' ? 'mk-minus' : 'mk-counter')}>
+              {counterText(k, n)}
+            </span>
+          ))}
+        </span>
+      )}
+      {marks && (marks.sources.length > 0 || marks.targets.length > 0) && (
+        <span className="land-tab-stack">
+          {marks.sources.map((n) => (
+            <span key={`s${n}`} className="smk smk-src">
+              {n}
+            </span>
+          ))}
+          {marks.targets.map((n) => (
+            <span key={`t${n}`} className="smk smk-tgt">
+              {n}
+            </span>
+          ))}
+        </span>
+      )}
       {sent > 0 && <span className="land-tab-sent">{sent} picked</span>}
     </span>
   );
 }
 
-function PileStack({ cards, side, tab }: { cards: Card[]; side?: TileSide; tab?: boolean }) {
+function PileStack({ cards, side, tab, tabName }: { cards: Card[]; side?: TileSide; tab?: boolean; tabName?: string }) {
   const play = usePlay();
   const ids = cards.map((c) => c.id);
   const marks = cards.map((c) => (play ? play.mark(c) : null));
@@ -619,7 +655,10 @@ function PileStack({ cards, side, tab }: { cards: Card[]; side?: TileSide; tab?:
     t.ids.add(c.id);
   }, []);
   const info = useCardInfo(top.name || null);
-  const { handlers, mark } = useOpen(top, onClicked);
+  const { handlers, mark, hint } = useOpen(top, onClicked);
+  // Chosen in the open input: any land of the pile (a pile is one tile, so its ring says so for all of them).
+  const chosen = !!play && cards.some((c) => play.chosen(c) === 'pick');
+  const pileCounters = Object.entries(top.counters ?? {}).filter(([, n]) => n > 0);
   const boardMarks = useBoardMarks();
   const stackMarks = boardMarks ? mergeMarks(ids.map((id) => boardMarks.stack.get(id))) : undefined;
   const kind = typeKind(top.types || info?.typeLine);
@@ -630,7 +669,19 @@ function PileStack({ cards, side, tab }: { cards: Card[]; side?: TileSide; tab?:
   const coachFocus = useBoardFocus(...ids);
   return (
     <div
-      className={cx('tile', 'land-pile', colorClass(colors), side && `own-${side}`, tapped && 'is-tapped', mark === 'select' && 'is-select', mark === 'act' && 'is-act', coachFocus && 'is-coach-focus')}
+      className={cx(
+        'tile',
+        'land-pile',
+        colorClass(colors),
+        side && `own-${side}`,
+        tapped && 'is-tapped',
+        mark === 'select' && 'is-select',
+        chosen && 'is-chosen',
+        mark === 'act' && 'is-act',
+        hint && 'is-hint',
+        stackMarks && (stackMarks.targets.length > 0 ? 'is-stack-target' : stackMarks.sources.length > 0 && 'is-stack-source'),
+        coachFocus && 'is-coach-focus',
+      )}
       role="button"
       tabIndex={0}
       aria-label={`${cards.length} ${displayName(top)}${tapped ? ', tapped' : ', untapped'}${plan.select ? `, ${plan.selectable} selectable: tap to select one` : ''}`}
@@ -658,7 +709,7 @@ function PileStack({ cards, side, tab }: { cards: Card[]; side?: TileSide; tab?:
           )}
         </div>
       </div>
-      {tab && <LandTab name={displayName(top)} count={cards.length} sent={sent} />}
+      {tab && <LandTab name={displayName(top)} short={tabName} count={cards.length} sent={sent} marks={stackMarks} counters={pileCounters} />}
     </div>
   );
 }

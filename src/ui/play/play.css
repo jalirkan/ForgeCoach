@@ -1204,7 +1204,8 @@ button.avatar.is-chosen {
   }
   .play-phone-main .bf-row {
     --perm-rows: 1.75;
-    --cw-fit: clamp(var(--fit-floor), calc((100cqh - var(--fit-pad, 13px)) / var(--perm-rows) * 63 / 88), 104px);
+    /* 100cqh is the side's content box; --fit-pad counts the side's own 4 px of padding, so they go back in */
+    --cw-fit: clamp(var(--fit-floor), calc((100cqh + 4px - var(--fit-pad, 13px)) / var(--perm-rows) * 63 / 88), 104px);
     --cw: var(--cw-fit);
     flex: none;
     gap: 0;
@@ -1220,8 +1221,8 @@ button.avatar.is-chosen {
   /* The lands bar: the row lies along the side's bottom edge, over the picture's near ground. The tabs are a
      grid of columns, each as wide as its name needs. A bar too full for the side shares its width out equally
      above each tab's least width, so the short names stay whole and the long ones are cut to an ellipsis. A
-     tab's least width keeps the first 8 letters of its name (every basic land's whole name; .land-tab-size
-     below) and a pile's count; when even that does not fit (five or six piles), the bar scrolls sideways under
+     tab's least width keeps the first 8 letters of what it says (the five basic lands' whole names;
+     .land-tab-size below) and a pile's count; when even that does not fit (five or six piles), the bar scrolls sideways under
      a finger, its cut edge faded (Board's useEdgeFade), rather than cut the names to nothing. The tabs start
      at the left edge and the untapped piles come first, so the pile you are tapping for mana stays under your
      finger while the tapped ones collect to its right. */
@@ -1268,7 +1269,14 @@ button.avatar.is-chosen {
     min-width: auto;
     overflow: clip;
   }
-  .play-phone-main .bf-row-lands .land-tab-text {
+  /* A full bar's short name (ui/landPiles.ts tabLabels: names that would be cut to the same text say the words
+     they differ in) takes the name's place here; the desktop table has room for the name. */
+  .play-phone-main .bf-row-lands .land-tab-name.has-short .land-tab-text {
+    display: none;
+  }
+  .play-phone-main .bf-row-lands .land-tab-text,
+  .play-phone-main .bf-row-lands .land-tab-short {
+    display: block;
     grid-area: 1 / 1;
     width: 0;
     min-width: 100%;
@@ -1302,6 +1310,10 @@ button.avatar.is-chosen {
     gap: 4px;
     padding: 0 4px;
     letter-spacing: 0;
+  }
+  /* An empty side: its one line in the middle, as before the row moved to the top. */
+  .play-phone-main .player > .battlefield > .bf-empty {
+    margin-block: auto;
   }
   .play-phone-main .midline {
     flex: none;
