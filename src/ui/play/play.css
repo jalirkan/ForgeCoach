@@ -1273,8 +1273,10 @@ button.avatar.is-chosen {
   }
   /* A land and what is attached to it are two names, and each has a slot of its own in the bar (a column each,
      so each may be as wide as 180 px): with room in the bar both are said whole, however long. In a full bar the
-     attached card's name is cut as a land's is, down to its first 8 letters after the "+" (its own sizer, as the
-     land's below) and no further; 46 px, as it was, left "+ W…". */
+     attached card's name is cut as a land's is, down to the width of its first 8 letters after the "+" (its own
+     sizer, as the land's below; the ellipsis is drawn inside that width, so about six letters are read) and no
+     further; 46 px, as it was, left "+ W…". With two or three cards on one land each chip keeps that width too
+     (min-width: auto: the base chip's 0 let the row take a short name's chip from under its name). */
   .game.play.is-narrow .play-phone-main .bf-row-lands .tile.has-attach {
     --att-min: min-content;
     grid-column: span 2;
@@ -1289,6 +1291,9 @@ button.avatar.is-chosen {
      squeeze both tabs under their least widths, so the 180 px is each tab's own max-width) */
   .game.play.is-narrow .play-phone-main .bf-row-lands .tile.has-attach > .land-tab {
     max-width: 180px;
+  }
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile-attach > .attach-chip {
+    min-width: auto;
   }
   .game.play.is-narrow .play-phone-main .bf-row-lands .tile-attach .attach-name {
     display: grid;

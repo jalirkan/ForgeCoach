@@ -1705,68 +1705,90 @@ function readBarNames(page, sel) {
       // (the box that clips the name, whatever is inside it; a canvas and the page's layout agree to about a pixel)
       const has = el.parentElement.getBoundingClientRect().width;
       const whole = wide(el, said);
-      return { text: el.textContent, attached, has, whole, least: wide(el, said.slice(0, attached ? 10 : 8)), cut: has < whole - 1.5 };
+      // What the tab is besides its name (its mark, padding, a count): the tab's width less the name's box.
+      const tab = el.closest(attached ? '.attach-chip' : '.land-tab').getBoundingClientRect();
+      const box = el.parentElement.getBoundingClientRect();
+      return { text: el.textContent, attached, has, whole, least: wide(el, said.slice(0, attached ? 10 : 8)), cut: has < whole - 1.5, chrome: tab.width - has, inside: box.x >= tab.x - 0.5 && box.right <= tab.right + 0.5 };
     });
     const tiles = [...bar.children].map((t) => t.getBoundingClientRect());
     const cs = getComputedStyle(bar);
     const used = tiles.reduce((w, r) => w + r.width, 0) + parseFloat(cs.columnGap || '0') * Math.max(0, tiles.length - 1);
     const room = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    // Each attached card's tab starts where the one before it (the land's, or another attached card's) ends.
     const joined = [...bar.querySelectorAll('.tile.has-attach')].every((t) => {
-      const tab = t.querySelector('.land-tab').getBoundingClientRect();
-      const chip = t.querySelector('.attach-chip').getBoundingClientRect();
-      return Math.abs(chip.x - tab.right) <= 2 && Math.abs(chip.y - tab.y) <= 1.5 && Math.abs(chip.height - tab.height) <= 1.5;
+      let prev = t.querySelector('.land-tab').getBoundingClientRect();
+      for (const c of t.querySelectorAll('.attach-chip')) {
+        const chip = c.getBoundingClientRect();
+        if (Math.abs(chip.x - prev.right) > 2 || Math.abs(chip.y - prev.y) > 1.5 || Math.abs(chip.height - prev.height) > 1.5) return false;
+        prev = chip;
+      }
+      return true;
     });
-    return { names, used, room, scrolls: bar.scrollWidth > bar.clientWidth + 0.5, joined };
+    // What the bar would need to say every name whole: each name, what its tab is besides, the gaps between tiles.
+    const need = names.reduce((w, x) => w + x.whole + x.chrome, 0) + parseFloat(cs.columnGap || '0') * Math.max(0, tiles.length - 1);
+    return { names, used, room, need, scrolls: bar.scrollWidth > bar.clientWidth + 0.5, joined };
   }, sel);
 }
 
 // With room in the bar, a land and the card attached to it are both said whole, however long the two names are
-// together (they shared one 180 px slot: Stomping Ground left "+ Underworl…" of Underworld Connections).
+// together (they shared one 180 px slot: Stomping Ground left "+ Underworl…" of Underworld Connections, with a
+// hundred pixels of bar unused). The e2e browser never gets the app's fonts (the run answers the font server with
+// nothing), and in the fallback font these three names are a few pixels more than a 390 px phone's bar: there the
+// bar must be used to its end before a name is cut, and no name cut under its least width.
 for (const viewport of [{ width: 430, height: 932 }, { width: 390, height: 844 }]) {
   scenarios.push({
-    name: `an aura on a land, an upright phone (${viewport.width}×${viewport.height}): a long name on a land with a long name, both whole while the bar has room`,
+    name: `an aura on a land, an upright phone (${viewport.width}×${viewport.height}): a long name on a land with a long name, whole while the bar has room, cut only when it has none`,
     engine: { scene: 'main3', landAura: 'long' },
     context: { viewport, hasTouch: true },
     async run({ page, engine, app }) {
       const u = ui(page);
       await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
       await u.mode('main');
-      await page.evaluate(() => document.fonts.ready);
       for (const [who, sel, want] of [['your', '.player-me', ['Mountain', 'Stomping Ground', 'Underworld Connections']], ["the opponent's", '.player-top', ['Mountain', 'Spreading Seas']]]) {
         const b = await readBarNames(page, sel);
         check(want.every((n) => b.names.some((x) => x.text === n)), `${who} bar says ${want.join(', ')} (${b.names.map((x) => x.text).join(', ')})`);
         check(b.joined, `${who} attached card's tab is joined to its land's tab`);
         const cut = b.names.filter((x) => x.cut).map((x) => x.text);
-        // The whole names' widths decide: a fallback font is wider than the app's, and a 390 px phone's bar may then be full.
-        const fits = b.names.reduce((w, x) => w + x.whole, 0) + 26 * b.names.length <= b.room;
-        if (viewport.width >= 430) check(fits, `the names fit a ${viewport.width} px phone's bar (${b.room.toFixed(0)} px of room)`);
-        if (fits) check(cut.length === 0 && !b.scrolls, `no name is cut in ${who} bar while it has room (cut: ${cut.join(', ') || 'none'}; ${b.used.toFixed(0)} of ${b.room.toFixed(0)} px used)`);
-        else check(b.used >= b.room - 1.5 || b.scrolls, `${who} bar cuts names only when it is full (${b.used.toFixed(0)} of ${b.room.toFixed(0)} px used)`);
+        const fits = b.need <= b.room;
+        if (viewport.width >= 430) check(fits, `the whole names fit a ${viewport.width} px phone's bar (they need ${b.need.toFixed(0)} px of ${b.room.toFixed(0)})`);
+        if (fits) check(cut.length === 0 && !b.scrolls, `no name is cut in ${who} bar while it has room (cut: ${cut.join(', ') || 'none'}; the names need ${b.need.toFixed(0)} px of ${b.room.toFixed(0)}, ${b.used.toFixed(0)} used)`);
+        else {
+          check(b.used >= b.room - 1.5, `${who} bar is used to its end before a name is cut (${b.used.toFixed(0)} of ${b.room.toFixed(0)} px; the names need ${b.need.toFixed(0)})`);
+          for (const x of b.names) check(x.has >= Math.min(x.least, x.whole) - 1.5, `${x.text} is not cut under the width of its first 8 letters (${x.has.toFixed(1)} px; ${x.least.toFixed(1)})`);
+        }
+        check(b.names.every((x) => x.inside), `every name in ${who} bar lies inside its own tab`);
       }
       await shot(page, `land-aura-long-${viewport.width}`);
     },
   });
 }
 
-// A full bar (five different lands, two of them enchanted): an attached card's name is cut as a land's is, to its
-// first 8 letters and no further (it was cut to "+ W…"), the lands keep theirs, and the bar scrolls sideways.
-scenarios.push({
-  name: 'an aura on a land, an upright phone (390×844), a full bar: the attached names keep their first 8 letters, as the lands do, and the bar scrolls',
-  engine: { scene: 'main3', landAura: 'full' },
+// A full bar (five different lands): an attached card's name is cut as a land's is, to the width of its first 8
+// letters and no further (it was cut to "+ W…"), the lands keep theirs, and the bar scrolls sideways. 'full': two
+// lands with a card each. 'two': both cards on one land (each chip keeps its own least width, inside the tile).
+for (const kind of ['full', 'two']) scenarios.push({
+  name: `an aura on a land, an upright phone (390×844), a full bar, ${kind === 'full' ? 'two enchanted lands' : 'two auras on one land'}: the attached names keep the width of their first 8 letters, as the lands do, and the bar scrolls`,
+  engine: { scene: 'main3', landAura: kind },
   context: { viewport: { width: 390, height: 844 }, hasTouch: true },
   async run({ page, engine, app }) {
     const u = ui(page);
     await page.goto(`${app}?play=1&seat=${encodeURIComponent(engine.seatUrl)}`);
     await u.mode('main');
-    await page.evaluate(() => document.fonts.ready);
     const b = await readBarNames(page, '.player-me');
     check(b.names.length === 7 && b.names.filter((x) => x.attached).length === 2, `five lands and two attached cards in your bar (${b.names.map((x) => x.text).join(', ')})`);
-    check(b.joined, 'each attached card\'s tab is joined to its land\'s tab');
+    check(b.joined, 'each attached card\'s tab is joined to the tab before it (its land\'s, or the other attached card\'s)');
     check(b.scrolls, `the bar is too full and scrolls (${b.used.toFixed(0)} px of tabs in ${b.room.toFixed(0)})`);
-    for (const x of b.names) check(x.has >= x.least - 1.5, `${x.text} keeps its first 8 letters (${x.has.toFixed(1)} px for a name whose first 8 need ${x.least.toFixed(1)})`);
+    for (const x of b.names) check(x.has >= x.least - 1.5, `${x.text} keeps the width of its first 8 letters (${x.has.toFixed(1)} px; they need ${x.least.toFixed(1)})`);
+    for (const x of b.names) check(x.inside, `${x.text} lies inside its own tab`);
     for (const x of b.names.filter((x) => !x.attached)) check(!x.cut, `${x.text}, a basic land, is said whole`);
-    await shot(page, 'land-aura-full-phone');
-    // The second enchanted land is off the bar's right edge: a swipe brings its aura's tab under a finger, and a tap on it is the aura's.
+    const tiles = await page.evaluate(() => [...document.querySelectorAll('.player-me .bf-row-lands .tile.has-attach')].map((t) => {
+      const r = t.getBoundingClientRect();
+      const last = [...t.querySelectorAll('.attach-chip')].at(-1).getBoundingClientRect();
+      return { chips: t.querySelectorAll('.attach-chip').length, r: r.right, lastR: last.right };
+    }));
+    check(tiles.length === (kind === 'full' ? 2 : 1) && tiles.every((t) => t.lastR <= t.r + 0.5), `the attached tabs end inside their land's tile (${JSON.stringify(tiles)})`);
+    await shot(page, `land-aura-${kind}-phone`);
+    // The bar's end is off the half's right edge: a swipe to it leaves the last aura's tab under a finger, and a tap on it is the aura's.
     const aura = engine.game.players[0].battlefield.find((c) => c.name === 'Underworld Connections').id;
     await page.evaluate(() => {
       const bar = document.querySelector('.player-me .bf-row-lands > .bf-cards');
@@ -1781,7 +1803,7 @@ scenarios.push({
     const sent = engine.acts().filter((x) => x.cardId === aura).length;
     await page.touchscreen.tap(r.x + r.w / 2, r.y + r.h / 2);
     await engine.waitFor(() => engine.acts().filter((x) => x.cardId === aura).length > sent, 'an act on the scrolled-to aura', STEP_MS);
-    await shot(page, 'land-aura-full-phone-end');
+    await shot(page, `land-aura-${kind}-phone-end`);
   },
 });
 

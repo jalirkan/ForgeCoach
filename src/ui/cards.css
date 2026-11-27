@@ -455,7 +455,7 @@
 @media (min-width: 1024px), (max-width: 1023px) and (orientation: portrait) {
   .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.has-attach {
     /* Two tabs, each with a least width (the land's: its card's width on the desktop, its 8 letters on a phone;
-       the attached card's: --att-min, 46 px on the desktop and its own 8 letters on a phone, play/play.css), and
+       the attached card's: --att-min, 46 px on the desktop and the width of its own first 8 letters on a phone, play/play.css), and
        a squeezed bar takes from both names alike, never the land's alone. */
     --att-min: 46px;
     display: grid;
