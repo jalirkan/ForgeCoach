@@ -8,7 +8,25 @@
  * nothing with a plain CSS transition.
  */
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { fadeBusy, fadeStack, settleFades, type FadeEntry, type FadeWant } from '../../ambience/growth.ts';
+import { fadeBusy, fadeStack, heldChange, latestPayloads, settleFades, type FadeEntry, type FadeWant, type HeldChange } from '../../ambience/growth.ts';
+
+/**
+ * What to draw of a thing that changes by a wipe of `ms`: `want`, except that a change of key while the wipe to the
+ * key drawn still runs waits for its end (growth.ts `heldChange`); the hook wakes itself then.
+ */
+export function useHeldChange<T>(want: { key: string; value: T }, ms: number): { key: string; value: T } {
+  const st = useRef<HeldChange<T> | null>(null);
+  const [, bump] = useState(0);
+  const r = heldChange(st.current, want, Date.now(), ms);
+  st.current = r.state;
+  const waiting = r.wait > 0;
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setTimeout(() => bump((n) => n + 1), r.wait + 10);
+    return () => clearTimeout(t);
+  }, [waiting, want.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return r.state;
+}
 
 /**
  * The pictures to draw for one picture slot, bottom to top: `cur` at full,
@@ -20,7 +38,16 @@ export function useFadeStack<T>(cur: FadeWant<T> | null, next: FadeWant<T> | nul
   const sig = `${cur?.key ?? ''}\n${next?.key ?? ''}\n${fade}`;
   const st = useRef<{ sig: string | null; stack: FadeEntry<T>[] }>({ sig: null, stack: [] });
   const [, bump] = useState(0);
-  if (st.current.sig !== sig) st.current = { sig, stack: fadeStack(st.current.stack, cur, next, fade, st.current.sig === null || ms <= 0) };
+  // What each wanted picture was last given. A picture that stops being wanted leaves as it was last DRAWN: the stack
+  // kept the payload from the render that first wanted it, so a place fading out fell back to how it looked when it was
+  // first drawn (a town of three lands thinned to its first hut while its place left: a ghost of its own).
+  const last = useRef(new Map<string, T>());
+  if (st.current.sig !== sig) {
+    st.current = { sig, stack: fadeStack(latestPayloads(st.current.stack, last.current), cur, next, fade, st.current.sig === null || ms <= 0) };
+    for (const k of [...last.current.keys()]) if (!st.current.stack.some((e) => e.key === k)) last.current.delete(k);
+  }
+  if (cur) last.current.set(cur.key, cur.payload);
+  if (next) last.current.set(next.key, next.payload);
   const stack = st.current.stack;
   const busy = fadeBusy(stack);
   useEffect(() => {

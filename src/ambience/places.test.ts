@@ -36,6 +36,7 @@ import { validateScenes } from './scenes.ts';
 import {
   fetchPlaces,
   MAX_PLACES_MANIFEST_BYTES,
+  neighbourPlaces,
   nextPlacePieces,
   pieceSettleIn,
   pieceSettleOut,
@@ -336,6 +337,25 @@ describe('spec 1.22: a state composed', () => {
     // A homeland's stage 1: its piece is null (the base is stage 1), and the land is still listed.
     const home = placeFor(PLACES, lands('forest1'))!;
     expect(placePieces(home.lands, false)).toEqual([{ biome: 'forest', stage: 1, piece: null }]);
+  });
+
+  it('the places one land away: a first land of each colour the state lacks, the others as they are', () => {
+    const near = neighbourPlaces(PLACES, lands('plains3+mountain1'));
+    // One for each of the three colours it lacks that the pack has a place for, that land at stage 1.
+    expect(near.length).toBeGreaterThan(0);
+    for (const c of near) {
+      expect(c.lands).toHaveLength(3);
+      const added = c.lands.filter((l) => l.biome !== 'plains' && l.biome !== 'mountain');
+      expect(added).toHaveLength(1);
+      expect(added[0]!.stage).toBe(1);
+      expect(c.lands.find((l) => l.biome === 'plains')!.stage).toBe(3);
+      expect(c.place.key).toBe(placeKeyOf(c.lands.map((l) => l.biome)));
+    }
+    expect(new Set(near.map((c) => c.place.key)).size).toBe(near.length);
+    // All five colours: nothing left to add. No state, or no pack: nothing.
+    expect(neighbourPlaces(PLACES, lands('island1+swamp1+plains1+forest1+mountain1'))).toEqual([]);
+    expect(neighbourPlaces(PLACES, [])).toEqual([]);
+    expect(neighbourPlaces(null, lands('plains1'))).toEqual([]);
   });
 });
 

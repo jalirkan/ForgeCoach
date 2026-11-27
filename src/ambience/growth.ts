@@ -149,6 +149,36 @@ export function settleFades<T>(stack: readonly FadeEntry<T>[]): FadeEntry<T>[] {
   return stack.filter((e) => (e.role === 'cur' || e.role === 'next') && e.opacity > 0).map((e) => ({ ...e, from: e.opacity }));
 }
 
+/**
+ * The stack with each entry's payload replaced by the one its key was last given (useFadeStack): a picture that
+ * stops being wanted leaves as it was last DRAWN, not as it was in the render that first wanted it.
+ */
+export function latestPayloads<T>(stack: readonly FadeEntry<T>[], last: ReadonlyMap<string, T>): FadeEntry<T>[] {
+  return stack.map((e) => (last.has(e.key) ? { ...e, payload: last.get(e.key)! } : e));
+}
+
+/** What a slot that changes by a wipe is drawing, and since when (the wipe to it began; -Infinity: no wipe). */
+export interface HeldChange<T> {
+  key: string;
+  value: T;
+  since: number;
+}
+
+/**
+ * One change at a time (a place change is a wipe, SceneryStrip's `PlacePanel`): the same key passes its value through
+ * (a stage step inside the place); another key is taken when no wipe is running, and HELD while one is (`wait` ms
+ * more: the caller draws what it drew and asks again then). A second change during a wipe would otherwise drop the
+ * place still being wiped away (its unwiped part would snap to the middle place), and a change straight back would
+ * snap the old place back whole.
+ */
+export function heldChange<T>(prev: HeldChange<T> | null, want: { key: string; value: T }, now: number, ms: number): { state: HeldChange<T>; wait: number } {
+  if (!prev) return { state: { ...want, since: -Infinity }, wait: 0 };
+  if (prev.key === want.key) return { state: { ...prev, value: want.value }, wait: 0 };
+  const left = ms > 0 ? prev.since + ms + 100 - now : 0;
+  if (left > 0) return { state: prev, wait: left };
+  return { state: { ...want, since: ms > 0 ? now : -Infinity }, wait: 0 };
+}
+
 /** Does the stack hold pictures that only last for a fade (a base, or one fading out)? */
 export function fadeBusy<T>(stack: readonly FadeEntry<T>[]): boolean {
   return stack.some((e) => e.role === 'base' || e.role === 'out');

@@ -152,6 +152,23 @@ export function placeFor(places: PlacesPack | null | undefined, lands: readonly 
   return { place, key, lands: sorted.map((l) => ({ biome: l.biome, stage: l.stage, piece: place.layers[l.biome]![l.stage - 1]! })) };
 }
 
+/**
+ * The places one land away: for each colour the state does not have yet, the place it becomes when a first land of
+ * that colour arrives (that land at stage 1, the others as they are). What a half warms while it draws its place, so
+ * a change of place starts at once instead of after its pictures have come down (a second or two on a first visit).
+ */
+export function neighbourPlaces(places: PlacesPack | null | undefined, lands: readonly SceneLand[]): PlaceComposition[] {
+  if (!places || !lands.length) return [];
+  const have = new Set(lands.map((l) => l.biome));
+  const out: PlaceComposition[] = [];
+  for (const biome of GEOGRAPHY) {
+    if (have.has(biome)) continue;
+    const c = placeFor(places, [...lands, { biome, stage: 1 }]);
+    if (c) out.push(c);
+  }
+  return out;
+}
+
 /** {@link placeFor} for a half's slots (scenes.ts `sceneLands` on the pack's thresholds). */
 export function placeForSlots(places: PlacesPack | null | undefined, slots: readonly Pick<SlotState, 'biome' | 'weight'>[], thresholds: readonly number[] | null = DEFAULT_STAGE_THRESHOLDS): PlaceComposition | null {
   return places ? placeFor(places, sceneLands(slots, thresholds)) : null;

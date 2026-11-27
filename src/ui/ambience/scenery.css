@@ -743,6 +743,28 @@
 .scn-frame {
   position: absolute;
 }
+/* A place change (SceneryStrip's PlacePanelView): the old place, opaque, is wiped away from the new land's site
+   (--scn-rx, --scn-ry: fractions of the frame) by a circle with a soft rim; the new place is whole beneath it. One
+   registered property carries the circle's radius, a percentage of the way to the frame's farthest corner; where
+   @property is missing the radius cannot be animated and the old place is simply cut away half way through. */
+@property --scn-reveal {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+.scn-frame.scn-reveal-out {
+  -webkit-mask-image: radial-gradient(circle farthest-corner at var(--scn-rx, 50%) var(--scn-ry, 60%), transparent calc(var(--scn-reveal) - 9%), #000 var(--scn-reveal));
+  mask-image: radial-gradient(circle farthest-corner at var(--scn-rx, 50%) var(--scn-ry, 60%), transparent calc(var(--scn-reveal) - 9%), #000 var(--scn-reveal));
+  animation: scn-reveal-out 900ms cubic-bezier(0.33, 0, 0.3, 1) both;
+}
+@keyframes scn-reveal-out {
+  from {
+    --scn-reveal: 0%;
+  }
+  to {
+    --scn-reveal: 109%;
+  }
+}
 .scn-half-img {
   position: absolute;
   inset: 0;
