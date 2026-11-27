@@ -33,7 +33,7 @@ import { placePieces } from '../../ambience/places.ts';
 import { ScenePieces } from './ScenePieces.tsx';
 
 const BASE = 'https://example.org/pack/';
-const PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v5/';
+const PLACES_URL = 'https://cdn.jsdelivr.net/gh/jalirkan/forgecoach-scenery@places-v6/';
 const slot = (biome: Biome, index: number, weight: number): SlotState => ({ biome, index, weight, stage: Math.min(6, Math.ceil(weight)), peak: Math.min(6, Math.ceil(weight)) });
 const piece = (src: string) => ({ src, width: 600, height: 300 });
 const biomeStages = (b: string) => [1, 2, 3, 4, 5, 6].map((k) => ({ layers: [], half: { src: `${b}/s${k}-half.webp` } }));
@@ -191,13 +191,13 @@ describe('spec 1.22: a place on the board', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Spec 1.23: the place change is a camera move, on the live pack's file (places-v5).
+// Spec 1.23: the place change is a camera move, on the live pack's file (places-v6).
 
-const V5: PlacesPack = validatePlaces(JSON.parse(readFileSync(new URL('../../ambience/testdata/places-v5.places.json', import.meta.url), 'utf8')), `${PLACES_URL}places.json`).places!;
-const packV5: ScenePack = { ...pack, places: V5 };
+const V6: PlacesPack = validatePlaces(JSON.parse(readFileSync(new URL('../../ambience/testdata/places-v6.places.json', import.meta.url), 'utf8')), `${PLACES_URL}places.json`).places!;
+const packV6: ScenePack = { ...pack, places: V6 };
 /** A place's first paint for these slots, at the desktop shape: its key (the base's file), its payload and its camera input. */
 function drawnOf(slots: SlotState[]) {
-  const plan = pairFullPlan(halfLayout(slots, packV5), null, { thresholds: packV5.stageThresholds, slots, places: V5 });
+  const plan = pairFullPlan(halfLayout(slots, packV6), null, { thresholds: packV6.stageThresholds, slots, places: V6 });
   const s = plan![0] as PairFullScene;
   const shown = planCandidates(plan, 3.2, false)![0]!;
   for (const p of placePieces(s.place!.lands, false)) if (p.piece) markPicture(p.piece.src, true);
