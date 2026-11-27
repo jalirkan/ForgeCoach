@@ -74,6 +74,9 @@ describe('land pile badge', () => {
     expect(short).toContain('<span class="land-tab-name has-short"><span class="land-tab-text">Snow-Covered Forest</span><span class="land-tab-short">…Forest</span>');
     // the sizer measures what the tab says
     expect(short).toContain('data-head="…Forest" data-rest=""');
+    // ... and carries the whole name for the desktop table, which always says the name and never cuts this one (ui/cards.css)
+    expect(short).toContain('data-name="Snow-Covered Forest"');
+    expect(plain).not.toContain('data-name');
   });
   it('a pile shows that the stack points at it, and a land with counters says so on its tab', () => {
     const pile = piles.find((p) => p.length === 2)!;

@@ -614,6 +614,9 @@ export function LandTab({
 }) {
   // The sizer is never drawn. On a phone it gives the tab its least width: the first letters of what the tab
   // says in one piece (their spaces unbreakable), the rest breakable anywhere. Its text is CSS content.
+  // The desktop table's bar has the same sizer but always says the name. A name with a short form is one that
+  // would read the same as another's once cut, so there it is never cut: the whole name rides along (data-name)
+  // and is that tab's least width.
   const said = short ?? name;
   const head = said.slice(0, TAB_LETTERS).replace(/ /g, '\u00a0');
   return (
@@ -621,7 +624,7 @@ export function LandTab({
       <span className={cx('land-tab-name', short && 'has-short')}>
         <span className="land-tab-text">{name}</span>
         {short && <span className="land-tab-short">{short}</span>}
-        <span className="land-tab-size" data-head={head} data-rest={said.slice(TAB_LETTERS)} />
+        <span className="land-tab-size" data-head={head} data-rest={said.slice(TAB_LETTERS)} data-name={short ? name.replace(/ /g, '\u00a0') : undefined} />
       </span>
       {count > 1 && <span className="land-tab-count">×{count}</span>}
       {counters && counters.length > 0 && (

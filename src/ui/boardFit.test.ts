@@ -104,6 +104,15 @@ describe('phoneSideFit', () => {
     expect(phone).toMatch(/\.land-tab-name \{\s*display: grid;\s*grid-template-columns: 1fr;\s*min-width: auto;\s*overflow: clip;/);
     expect(phone).toMatch(/\.bf-row-lands \.tile \{\s*min-width: auto;/);
     expect(css).toMatch(/\n\.land-tab-size,\s*\.land-tab-short \{\s*display: none;\s*\}/);
+    // the desktop table's bar has the same sizer: a tile's least width is its content's (its card's slot, or its
+    // tab at the name's first 8 letters), and what is attached to a land has a sizer of its own in both bars
+    const desk = css.slice(css.indexOf('@media (min-width: 1024px) {'), css.indexOf('@container side (max-height: 250px)'));
+    expect(desk).toMatch(/\.is-wide \.play-board \.bf-row-lands \.tile \{\s*flex: 0 1 auto;\s*min-width: min-content;\s*\}/);
+    expect(desk).not.toMatch(/\.bf-row-lands [^{]*\{[^}]*min-width: (var|calc)\(/);
+    expect(desk).toMatch(/\.is-wide \.play-board \.bf-row-lands \.land-tab-size \{\s*grid-area: 1 \/ 1;\s*display: block;\s*height: 0;\s*visibility: hidden;\s*white-space: normal;\s*overflow-wrap: anywhere;\s*\}/);
+    expect(desk).toMatch(/\.land-tab-name\.has-short \.land-tab-size::before \{\s*content: attr\(data-name\);/);
+    expect(css).toMatch(/:is\(\.play-board, \.play-phone-main\) \.bf-row-lands \.tile-attach \.attach-size \{\s*grid-area: 1 \/ 1;\s*display: block;\s*height: 0;/);
+    expect(css).toMatch(/grid-template-columns: minmax\(min-content, max-content\) minmax\(min-content, max-content\);/);
     // an empty side's line is centred again
     expect(phone).toMatch(/\.battlefield > \.bf-empty \{\s*margin-block: auto;/);
     // attachments: one line each (attachPx = the chip and its gap)
