@@ -103,7 +103,10 @@ export async function combatPlaced(page, tap) {
   // A band whose attacker has left combat (removed, sacrificed) keeps its blockers with no attacker
   // to draw a line from: nothing to check them by (seen against real Forge, 2026-10-12).
   for (const b of bands) if (b.attackerIds.length) for (const blk of b.blockerIds) if (!b.attackerIds.includes(blk)) pairs.push({ atk: b.attackerIds[0], blk });
-  const want = { atk: bands.flatMap((b) => b.attackerIds), aimed: bands.filter((b) => b.defender).flatMap((b) => b.attackerIds), pairs };
+  // An attacker whose target has left play (a planeswalker that died: the engine's defender is then a card with id -1)
+  // still attacks, and has nothing to point at: no arrow is right (a real game's false finding, 2026-11-27).
+  const aims = (b) => !!b.defender && (b.defender.kind !== 'card' || b.defender.id >= 0);
+  const want = { atk: bands.flatMap((b) => b.attackerIds), aimed: bands.filter(aims).flatMap((b) => b.attackerIds), pairs };
   const read = () =>
     page.evaluate(({ atk, aimed, pairs }) => {
       const out = [];
@@ -197,7 +200,12 @@ export async function hiddenLeaks(page, hidden, allowed, { tap = null, waitMs = 
   const out = [];
   for (const n of names) {
     const re = new RegExp(`(?<![A-Za-z])${esc(n)}(?![A-Za-z])`);
-    const m = re.exec(html);
+    // A hidden name that is the end or a part of a card this seat WAS shown is not a leak ("Fury" in a hand, "Phlage,
+    // Titan of Fire's Fury" on the stack: a real game's false leak): it is looked for with those longer names taken out
+    // (blanked to the same length, so the place it is found at is the page's).
+    let text = html;
+    for (const s of shown) if (s.length > n.length && s.includes(n)) text = text.split(s).join(' '.repeat(s.length));
+    const m = re.exec(text);
     if (m) out.push(`"${n}" is in the page: …${html.slice(Math.max(0, m.index - 60), m.index + n.length + 40).replace(/\s+/g, ' ')}…`);
   }
   return out;

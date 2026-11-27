@@ -11,7 +11,7 @@ import { SeatTap, namesIn } from './tap.mjs';
 import { parseScript } from './scripts.mjs';
 import { parseDck } from './decks.mjs';
 import { clickWhy, manaValue, Monkey } from './monkey.mjs';
-import { hiddenLeaks, logCovers } from './checks.mjs';
+import { combatPlaced, hiddenLeaks, logCovers } from './checks.mjs';
 import { findingShape } from './report.mjs';
 
 const input = (prompt, over = {}) => ({
@@ -260,6 +260,24 @@ describe('decks', () => {
   });
 });
 
+describe('combat on the board', () => {
+  it('an attacker whose target has left play is not asked for an arrow; one attacking a player or a card in play is', async () => {
+    // A real game: Wurmcoil Engine attacked a planeswalker that died; the engine keeps the band with a defender of id -1.
+    let asked = null;
+    const page = { evaluate: async (_fn, want) => ((asked = want), []) };
+    const bands = [
+      { attackerIds: [114], defender: { kind: 'player', id: 0 }, blockerIds: [], damageOrder: [] },
+      { attackerIds: [], defender: { kind: 'card', id: -1 }, blockerIds: [], damageOrder: [] },
+      { attackerIds: [75], defender: { kind: 'card', id: -1 }, blockerIds: [], damageOrder: [] },
+      { attackerIds: [80], defender: { kind: 'card', id: 42 }, blockerIds: [81], damageOrder: [] },
+    ];
+    expect(await combatPlaced(page, { state: { combat: { bands } }, stateSeq: 7 })).toEqual([]);
+    expect(asked.atk).toEqual([114, 75, 80]);
+    expect(asked.aimed).toEqual([114, 80]);
+    expect(asked.pairs).toEqual([{ atk: 80, blk: 81 }]);
+  });
+});
+
 describe('hidden information in the page', () => {
   const page = (text) => ({ evaluate: async () => text });
   it('a hidden card’s name on the page is a leak; one this seat was shown, or a basic land type, is not', async () => {
@@ -267,6 +285,19 @@ describe('hidden information in the page', () => {
     const leaks = await hiddenLeaks(page(text), new Set(['Counterspell', 'Lightning Bolt', 'Forest', 'Opt', 'Brainstorm']), new Set(['Lightning Bolt']));
     expect(leaks).toHaveLength(1);
     expect(leaks[0]).toMatch(/^"Counterspell" is in the page/);
+  });
+
+  it('a hidden name inside a shown card’s longer name is not a leak; the same name standing alone still is', async () => {
+    // A real game: "Fury" in the opponent's hand, "Phlage, Titan of Fire's Fury" on the stack.
+    const shown = new Set(["Phlage, Titan of Fire's Fury"]);
+    const stack = "The Stack 1 · Phlage, Titan of Fire's Fury · Search AI · TRIGGERED ABILITY";
+    expect(await hiddenLeaks(page(stack), new Set(['Fury']), shown)).toEqual([]);
+    const both = `${stack} · Hand: Fury`;
+    const leaks = await hiddenLeaks(page(both), new Set(['Fury']), shown);
+    expect(leaks).toHaveLength(1);
+    expect(leaks[0]).toMatch(/^"Fury" is in the page: .*Hand: Fury/);
+    // The longer name not shown to this seat: the hidden name in it counts (and so would the longer name itself).
+    expect(await hiddenLeaks(page(stack), new Set(['Fury']), new Set())).toHaveLength(1);
   });
 
   // The common-sense pass's one false leak: the opponent's spell went on the stack (public) while the
