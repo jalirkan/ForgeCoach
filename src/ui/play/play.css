@@ -1271,6 +1271,56 @@ button.avatar.is-chosen {
     bottom: 100%;
     height: 10px;
   }
+  /* A land and what is attached to it are two names, and each has a slot of its own in the bar (a column each,
+     so each may be as wide as 180 px): with room in the bar both are said whole, however long. In a full bar the
+     attached card's name is cut as a land's is, down to its first 8 letters after the "+" (its own sizer, as the
+     land's below) and no further; 46 px, as it was, left "+ W…". */
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile.has-attach {
+    --att-min: min-content;
+    grid-column: span 2;
+  }
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile.has-attach:has(> .tile-attach > .attach-chip:nth-child(2)) {
+    grid-column: span 3;
+  }
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile.has-attach:has(> .tile-attach > .attach-chip:nth-child(3)) {
+    grid-column: span 4;
+  }
+  /* (the tile's own two columns are least to whole name each, ui/cards.css; fit-content() there let a full bar
+     squeeze both tabs under their least widths, so the 180 px is each tab's own max-width) */
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile.has-attach > .land-tab {
+    max-width: 180px;
+  }
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile-attach .attach-name {
+    display: grid;
+    grid-template-columns: 1fr;
+    flex: 1 1 auto;
+    min-width: auto;
+    overflow: clip;
+  }
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile-attach .attach-text {
+    display: block;
+    grid-area: 1 / 1;
+    width: 0;
+    min-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile-attach .attach-size {
+    grid-area: 1 / 1;
+    display: block;
+    height: 0;
+    visibility: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile-attach .attach-size::before {
+    content: '+\00a0' attr(data-head);
+    white-space: nowrap;
+  }
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile-attach .attach-size::after {
+    content: '\200b' attr(data-rest);
+  }
   /* The name's least width, measured by the browser in the tab's own font: the sizer (never drawn, no height)
      holds the first 8 letters in one piece and the rest breakable at every letter, so the narrowest the name
      can be laid out is those 8 letters, and the widest is the whole name. The name that is read lies over it

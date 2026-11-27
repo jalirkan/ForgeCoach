@@ -455,7 +455,8 @@
 @media (min-width: 1024px), (max-width: 1023px) and (orientation: portrait) {
   .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.has-attach {
     /* Two tabs, each with a least width (the land's: its card's width on the desktop, its 8 letters on a phone;
-       the attached card's: --att-min), and a squeezed bar takes from both names alike, never the land's alone. */
+       the attached card's: --att-min, 46 px on the desktop and its own 8 letters on a phone, play/play.css), and
+       a squeezed bar takes from both names alike, never the land's alone. */
     --att-min: 46px;
     display: grid;
     grid-template-columns: minmax(var(--host-min, min-content), max-content) minmax(var(--att-min), max-content);
@@ -496,7 +497,7 @@
     box-sizing: border-box;
     flex: 1 1 auto;
     height: var(--tab-h, 24px);
-    max-width: 11em;
+    max-width: 180px; /* as a land's own name (the phone bar's slot, play/play.css): a whole name where there is room */
     padding: 0 7px 0 5px;
     border-radius: 0;
     font-size: calc(var(--tab-font, 12px) - 1px);
@@ -506,8 +507,8 @@
   .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach > .attach-chip:last-child {
     border-radius: 0 6px 3px 0;
   }
-  /* (on the name, inside its ellipsis; the chip's own ::before is the phone's tap strip, play/play.css) */
-  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach .attach-name::before {
+  /* (on the name's text, inside its ellipsis; the chip's own ::before is the phone's tap strip, play/play.css) */
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile-attach .attach-text::before {
     content: '+\00a0';
     opacity: 0.75;
   }
@@ -977,6 +978,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* (a phone's lands bar alone lays it out: play/play.css) */
+.attach-size {
+  display: none;
 }
 .attach-effect {
   color: var(--text-2);

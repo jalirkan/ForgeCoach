@@ -105,6 +105,13 @@ const DEFS = {
   // Auras on lands (landAura: true): the model never reads them; the board must draw them with their lands.
   'Wild Growth': { setCode: 'M10', manaCost: '{G}', types: 'Enchantment - Aura', cost: 1 },
   'Spreading Seas': { setCode: 'ZEN', manaCost: '{1}{U}', types: 'Enchantment - Aura', cost: 2 },
+  // Longer names and a full bar (landAura: 'long' | 'full'): what a phone's lands bar must still say.
+  'Underworld Connections': { setCode: 'RTR', manaCost: '{1}{B}{B}', types: 'Enchantment - Aura', cost: 3 },
+  'Stomping Ground': { setCode: 'RNA', manaCost: null, types: 'Land - Mountain Forest', land: true },
+  Forest: { setCode: 'M21', manaCost: null, types: 'Basic Land - Forest', land: true },
+  Island: { setCode: 'M21', manaCost: null, types: 'Basic Land - Island', land: true },
+  Plains: { setCode: 'M21', manaCost: null, types: 'Basic Land - Plains', land: true },
+  Swamp: { setCode: 'M21', manaCost: null, types: 'Basic Land - Swamp', land: true },
   // A death trigger with a mandatory player target (deathTrigger: true).
   'Blood Artist': { setCode: 'DKA', manaCost: '{1}{B}', types: 'Creature - Vampire', power: '0', toughness: '1', keywords: [], cost: 2, drain: true },
   // An activated ability from the graveyard that is no keyword (the full-game playtest's finding).
@@ -463,7 +470,20 @@ class Game {
     put(take(ai, 'Goblin Guide'), 'battlefield');
     if (this.landAura) {
       // Both auras are yours (they sit in YOUR battlefield zone); each names the land it is on, whoever controls it.
-      for (const [aura, host] of [['Wild Growth', me.battlefield.find((c) => c.name === 'Mountain')], ['Spreading Seas', ai.battlefield.find((c) => c.name === 'Mountain')]]) {
+      // 'long': your aura with the long name is on a land with a long name. 'full': five different lands of yours,
+      // two of them enchanted (a bar with no room for whole names).
+      const land = (name) => {
+        const c = this.make(name, HUMAN, 'battlefield');
+        me.battlefield.push(c);
+        return c;
+      };
+      const mine =
+        this.landAura === 'long'
+          ? [['Underworld Connections', land('Stomping Ground')]]
+          : this.landAura === 'full'
+            ? [['Wild Growth', (land('Forest'), land('Island'), me.battlefield.find((c) => c.name === 'Mountain'))], ['Underworld Connections', (land('Plains'), land('Swamp'))]]
+            : [['Wild Growth', me.battlefield.find((c) => c.name === 'Mountain')]];
+      for (const [aura, host] of [...mine, ['Spreading Seas', ai.battlefield.find((c) => c.name === 'Mountain')]]) {
         const a = this.make(aura, HUMAN, 'battlefield');
         a.attachedTo = host.id;
         host.attachments = [a.id];
