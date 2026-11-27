@@ -532,7 +532,12 @@ and its lands are a thin bar of name tabs along the **bottom** edge (28 px);
 the land cards come up over the picture only while the pointer is on the bar
 (or the game asks for a choice among them).
 So the middle and lower part of the half is clear (`ui/boardFit.ts`
-`DESK_FIT`, `ui/cards.css`). A phone's rows are as they were.
+`DESK_FIT`, `ui/cards.css`). *A phone held upright* is laid out the same way:
+one row of permanents along the top of the half, ending a little under
+halfway down, and the lands as a bar of name tabs along the bottom edge
+(30 px of tab and 3 under it); no land card ever comes up there. What the
+lands build (about 44% to 71% of the half's height in the phone picture)
+shows between the two (`PHONE_FIT`, `ui/play/play.css`).
 
 **The piece.**
 

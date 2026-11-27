@@ -1147,13 +1147,25 @@ button.avatar.is-chosen {
 }
 
 /* ---- phones held upright: the board fills the height between the top bar
-   and the dock. Each side takes half and its cards size to fit their rows
-   (lands are --land-k of a creature), so both battlefields are on screen.
-   A side never shrinks below its rows at the floor size (--side-min, from
-   ui/boardFit.ts, which mirrors the paddings here): past that the board
-   scrolls, so cards never slide under a life bar. Rows scroll sideways
-   (cards.css). In landscape the board just scrolls (the dock is
-   a side column there). */
+   and the dock, and each side takes half, so both battlefields are on screen.
+   A place's picture fills a side, and what its lands build sits in the middle
+   of it (about 44% to 71% of the side's height). So, as on the desktop table
+   (ui/cards.css): a side's creatures and other permanents are ONE ROW along
+   the top, in the sky, and its lands are a thin bar of name tabs along the
+   bottom edge: a tab a pile, with the land's name and how many it holds.
+   A tap on a tab is a tap on its land (paying mana, a choice the game asks
+   for); a long press opens its card. The land cards never come up here: a
+   finger cannot hover, and a card small enough to stand clear of the row
+   above could not be read. What a card would show while the game asks you to
+   choose (offered, chosen, how many of a pile are picked) is on the tab.
+   The permanents' width follows the side's height (--perm-rows: sized as if
+   the row shared the side with three quarters of another, so it ends a
+   little under halfway down), between a legible floor and a ceiling. A side
+   never shrinks below its row at the floor size plus the bar (min-height,
+   from --fit-pad and --fit-rows; ui/boardFit.ts mirrors the numbers here):
+   past that the board scrolls, so cards never slide under a life bar. Rows
+   scroll sideways (cards.css). In landscape the board just scrolls (the dock is a side
+   column there) and the lands are cards in a row of their own. */
 @media (max-width: 1023px) and (orientation: portrait) {
   .play-phone-main {
     display: flex;
@@ -1180,34 +1192,124 @@ button.avatar.is-chosen {
   }
   .play-phone-main .player > .battlefield {
     flex: 1 1 0;
-    /* every row at the floor size, plus the paddings (ui/boardFit.ts phoneSideFit) */
-    min-height: var(--side-min, calc(var(--fit-pad, 26px) + var(--fit-rows, 1.8) * var(--fit-floor) * 88 / 63));
+    /* the row at the floor size, plus the paddings and the lands bar (ui/boardFit.ts phoneSideFit) */
+    min-height: calc(var(--fit-pad, 13px) + var(--fit-rows, 1) * var(--fit-floor) * 88 / 63);
     container: side / size;
-    justify-content: safe center;
+    position: relative;
+    justify-content: flex-start;
   }
   .play-phone-main .battlefield,
   .play-phone-main .player-top .battlefield {
     padding: 2px 8px;
   }
   .play-phone-main .bf-row {
-    --land-k: 0.8;
-    --cw-fit: clamp(var(--fit-floor), calc((100cqh - var(--fit-pad, 26px)) / var(--fit-rows, 1.8) * 63 / 88), 104px);
+    --perm-rows: 1.75;
+    --cw-fit: clamp(var(--fit-floor), calc((100cqh - var(--fit-pad, 13px)) / var(--perm-rows) * 63 / 88), 104px);
     --cw: var(--cw-fit);
     flex: none;
     gap: 0;
   }
   .play-phone-main .bf-row + .bf-row {
-    padding-top: 4px;
-  }
-  .play-phone-main .bf-row-lands {
-    --cw: calc(var(--cw-fit) * var(--land-k));
+    border-top: 0;
+    padding-top: 0;
   }
   .play-phone-main .bf-cards {
     padding-top: 5px;
     padding-bottom: 4px;
   }
+  /* The lands bar: the row lies along the side's bottom edge, over the picture's near ground. The tabs are a
+     grid of columns, each as wide as its name needs. A bar too full for the side shares its width out equally
+     above each tab's least width, so the short names stay whole and the long ones are cut to an ellipsis. A
+     tab's least width keeps the first 8 letters of its name (every basic land's whole name; .land-tab-size
+     below) and a pile's count; when even that does not fit (five or six piles), the bar scrolls sideways under
+     a finger, its cut edge faded (Board's useEdgeFade), rather than cut the names to nothing. The tabs start
+     at the left edge and the untapped piles come first, so the pile you are tapping for mana stays under your
+     finger while the tapped ones collect to its right. */
+  .play-phone-main .bf-row-lands {
+    --tab-h: 30px;
+    --tab-font: 12px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+  }
+  .play-phone-main .bf-row-lands > .bf-cards {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: fit-content(180px);
+    justify-content: start;
+    align-items: end;
+    gap: 0 4px;
+    margin: 0;
+    padding: 0 8px 3px;
+  }
+  .play-phone-main .bf-row-lands > .bf-cards > :first-child {
+    margin-left: 0;
+  }
+  .play-phone-main .bf-row-lands > .bf-cards > :last-child {
+    margin-right: 0;
+  }
+  /* A tab is 30 px tall; its land takes a finger 10 px higher than it looks (the strip of picture above the bar,
+     which is counted in the bar's height so no permanent ever stands in it). */
+  .play-phone-main .bf-row-lands .tile {
+    min-width: auto;
+    padding-top: 10px;
+    align-items: stretch;
+  }
+  /* The name's least width, measured by the browser in the tab's own font: the sizer (never drawn, no height)
+     holds the first 8 letters in one piece and the rest breakable at every letter, so the narrowest the name
+     can be laid out is those 8 letters, and the widest is the whole name. The name that is read lies over it
+     and takes whatever width the tab was given (width 0 and min-width 100%: it asks for none itself).
+     (overflow: clip, not hidden, and none on the sizer: a box that scrolls has no least width of its own.) */
+  .game.play.is-narrow .play-phone-main .bf-row-lands .land-tab-name {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-width: auto;
+    overflow: clip;
+  }
+  .play-phone-main .bf-row-lands .land-tab-text {
+    grid-area: 1 / 1;
+    width: 0;
+    min-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .play-phone-main .bf-row-lands .land-tab-size {
+    grid-area: 1 / 1;
+    display: block;
+    height: 0;
+    visibility: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .play-phone-main .bf-row-lands .land-tab-size::before {
+    content: attr(data-head);
+    white-space: nowrap;
+  }
+  .play-phone-main .bf-row-lands .land-tab-size::after {
+    content: '\200b' attr(data-rest);
+  }
+  .play-phone-main .bf-row-lands .tile-slot {
+    display: none;
+  }
+  .play-phone-main .bf-row-lands .land-tab {
+    display: flex;
+  }
+  /* (.game.play.is-narrow: over the shared look in cards.css, which names the tab as closely as this) */
+  .game.play.is-narrow .play-phone-main .bf-row-lands .land-tab {
+    gap: 4px;
+    padding: 0 4px;
+    letter-spacing: 0;
+  }
   .play-phone-main .midline {
     flex: none;
+  }
+  /* "Waiting for …" under the opponent's half would lie on their lands bar, and their untapped lands are what
+     you read while they act. The decision panel under the board says the same line, with its own spinner. */
+  .play-phone-main .opp-waiting {
+    display: none;
   }
   /* short phones (an SE): a smaller floor, so more of both sides fits before the board scrolls */
   @media (max-height: 740px) {

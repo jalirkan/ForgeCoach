@@ -274,104 +274,11 @@
     bottom: 3px;
   }
   .game.play.is-wide .play-board .bf-row-lands .land-tab {
-    position: relative;
-    z-index: 2;
     display: flex;
-    align-items: center;
-    gap: 5px;
-    align-self: stretch;
-    box-sizing: border-box;
-    height: 24px;
-    min-width: 0;
-    padding: 0 7px 0 6px;
-    border-radius: 6px 6px 3px 3px;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: 0.01em;
-    white-space: nowrap;
-    color: #f4f0e6;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 40%, #1b1e24), color-mix(in srgb, var(--tc) 20%, #121317));
-    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 1px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.5);
-    transition: filter 0.12s, box-shadow 0.12s;
-  }
-  /* The little card at the tab's left: standing while the land is untapped, lying down (and the tab dimmed) once tapped. */
-  .game.play.is-wide .play-board .bf-row-lands .land-tab::before {
-    content: '';
-    flex: none;
-    width: 7px;
-    height: 10px;
-    border-radius: 1.5px;
-    background: color-mix(in srgb, var(--tc) 85%, #fff);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
-  }
-  .game.play.is-wide .play-board .bf-row-lands .tile.is-tapped > .land-tab {
-    color: rgba(244, 240, 230, 0.6);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 16%, #17191e), color-mix(in srgb, var(--tc) 8%, #101114));
-    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 35%, #000), 0 0 0 1px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.5);
-  }
-  .game.play.is-wide .play-board .bf-row-lands .tile.is-tapped > .land-tab::before {
-    width: 10px;
-    height: 7px;
-    background: transparent;
-    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tc) 55%, #9a9a9a);
-  }
-  .game.play.is-wide .play-board .bf-row-lands .land-tab-name {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .game.play.is-wide .play-board .bf-row-lands .land-tab-count {
-    flex: none;
-    font-variant-numeric: tabular-nums;
-    opacity: 0.85;
   }
   /* The tab already says how many; the badge on the card would say it twice. */
   .game.play.is-wide .play-board .bf-row-lands .pile-count {
     display: none;
-  }
-  /* What a click does, on the tab as on the card (`act` you may click, `select` the engine is asking for it). */
-  .game.play.is-wide .play-board .bf-row-lands .tile:hover > .land-tab {
-    filter: brightness(1.15);
-  }
-  .game.play.is-wide .play-board .bf-row-lands .tile:focus-visible > .land-tab {
-    outline: 2px solid var(--accent-2);
-    outline-offset: 1px;
-  }
-  .game.play.is-wide.mode-pay .play-board .bf-row-lands .tile.is-act > .land-tab,
-  .game.play.is-wide .play-board .bf-row-lands .tile.is-act:hover > .land-tab {
-    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px var(--accent), 0 0 10px rgba(227, 178, 95, 0.45);
-  }
-  .game.play.is-wide .play-board .bf-row-lands .tile.is-select > .land-tab {
-    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px var(--accent-2), 0 0 12px rgba(240, 199, 127, 0.6);
-  }
-  /* Already chosen in the open input: the solid ring a chosen card has. */
-  .game.play.is-wide .play-board .bf-row-lands .tile.is-chosen > .land-tab {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
-  }
-  .game.play.is-wide .play-board .bf-row-lands .tile.is-stack-target > .land-tab {
-    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px color-mix(in srgb, var(--accent) 80%, transparent), 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
-  }
-  .game.play.is-wide .play-board .bf-row-lands .tile.is-coach-focus > .land-tab {
-    outline: 3px solid var(--gold, #e0b04a);
-    outline-offset: 1px;
-  }
-  /* A land that is the source of something on the stack, one the coach's hint can afford, one the search AI's pick names. */
-  .game.play.is-wide .play-board .bf-row-lands .tile.is-stack-source > .land-tab {
-    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px color-mix(in srgb, var(--accent-2) 70%, transparent);
-  }
-  .game.play.is-wide .play-board .bf-row-lands .tile.is-hint > .land-tab {
-    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px #5cc49a, 0 0 12px rgba(92, 196, 154, 0.4);
-  }
-  .game.play.is-wide .play-board .bf-row-lands [data-search-pick] .land-tab {
-    outline: 2px dashed var(--accent);
-    outline-offset: 1px;
-  }
-  /* Selecting (attackers, targets, paying): a land that is no answer is dimmed, as its card is (play/board.css). */
-  .game.play.is-wide.is-selecting .play-board .bf-row-lands .tile:not(.is-act):not(.is-select) > .land-tab {
-    filter: brightness(0.5) saturate(0.6);
   }
 }
 @container side (max-height: 250px) {
@@ -385,9 +292,130 @@
   }
 }
 
-/* A land's name tab belongs to the desktop table's lands bar (above); nowhere else. */
+/* A land's name tab is shown by the two layouts that have a lands bar; nowhere else. */
 .land-tab {
   display: none;
+}
+/* A land's name tab (the lands bar of the desktop table above, and of the upright phone board in play/play.css):
+   how it looks and what it says about its land. Each layout turns it on (`display`) and sizes it (--tab-h). */
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .land-tab {
+  position: relative;
+  z-index: 2;
+  align-items: center;
+  gap: 5px;
+  align-self: stretch;
+  box-sizing: border-box;
+  height: var(--tab-h, 24px);
+  min-width: 0;
+  padding: 0 7px 0 6px;
+  border-radius: 6px 6px 3px 3px;
+  font-size: var(--tab-font, 12px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  color: #f4f0e6;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 40%, #1b1e24), color-mix(in srgb, var(--tc) 20%, #121317));
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 1px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: filter 0.12s, box-shadow 0.12s;
+}
+/* The little card at the tab's left: standing while the land is untapped, lying down (and the tab dimmed) once tapped. */
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .land-tab::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 10px;
+  border-radius: 1.5px;
+  background: color-mix(in srgb, var(--tc) 85%, #fff);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.is-tapped > .land-tab {
+  color: rgba(244, 240, 230, 0.6);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 16%, #17191e), color-mix(in srgb, var(--tc) 8%, #101114));
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 35%, #000), 0 0 0 1px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.is-tapped > .land-tab::before {
+  width: 10px;
+  height: 7px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tc) 55%, #9a9a9a);
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .land-tab-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* (the name's sizer: the upright phone board's, play/play.css) */
+.land-tab-size {
+  display: none;
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .land-tab-count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .land-tab-sent {
+  flex: none;
+  padding: 2px 5px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: #1b1407;
+  background: var(--accent-2);
+}
+/* On the desktop table the lands are up while a choice is open, and the card says it. */
+.game.play.is-wide .play-board .bf-row-lands .land-tab-sent {
+  display: none;
+}
+/* What a click does, on the tab as on the card (`act` you may click, `select` the engine is asking for it). */
+@media (hover: hover) {
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile:hover > .land-tab {
+    filter: brightness(1.15);
+  }
+  .game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.is-act:hover > .land-tab {
+    box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px var(--accent), 0 0 10px rgba(227, 178, 95, 0.45);
+  }
+}
+/* A finger has no hover: the tab answers while it is pressed. */
+.game.play .play-phone-main .bf-row-lands .tile:active > .land-tab {
+  filter: brightness(1.2);
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile:focus-visible > .land-tab {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 1px;
+}
+.game.play.mode-pay :is(.play-board, .play-phone-main) .bf-row-lands .tile.is-act > .land-tab {
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px var(--accent), 0 0 10px rgba(227, 178, 95, 0.45);
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.is-select > .land-tab {
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px var(--accent-2), 0 0 12px rgba(240, 199, 127, 0.6);
+}
+/* Already chosen in the open input: the solid ring a chosen card has. */
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.is-chosen > .land-tab {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.is-stack-target > .land-tab {
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px color-mix(in srgb, var(--accent) 80%, transparent), 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.is-coach-focus > .land-tab {
+  outline: 3px solid var(--gold, #e0b04a);
+  outline-offset: 1px;
+}
+/* A land that is the source of something on the stack, one the coach's hint can afford, one the search AI's pick names. */
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.is-stack-source > .land-tab {
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px color-mix(in srgb, var(--accent-2) 70%, transparent);
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands .tile.is-hint > .land-tab {
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tc) 80%, #000), 0 0 0 2px #5cc49a, 0 0 12px rgba(92, 196, 154, 0.4);
+}
+.game.play :is(.play-board, .play-phone-main) .bf-row-lands [data-search-pick] .land-tab {
+  outline: 2px dashed var(--accent);
+  outline-offset: 1px;
+}
+/* Selecting (attackers, targets, paying): a land that is no answer is dimmed, as its card is (play/board.css). */
+.game.play.is-selecting :is(.play-board, .play-phone-main) .bf-row-lands .tile:not(.is-act):not(.is-select) > .land-tab {
+  filter: brightness(0.5) saturate(0.6);
 }
 
 /* The two sides read as two places at the table. */

@@ -261,10 +261,20 @@ async function turnShot(game, seat) {
 }
 
 /**
- * --turn-shots 2: the desktop table's lands bar with the pointer on it, each side in turn (the land cards come
- * up over their tabs, ui/cards.css), then the pointer is moved off the board again.
+ * --turn-shots 2: the lands bar of each side in turn. On the desktop table, with the pointer on it (the land
+ * cards come up over their tabs, ui/cards.css), then the pointer is moved off the board again. On a phone the
+ * bar is all there is (no card comes up, play/play.css): each side is photographed by itself, as it rests, so
+ * its tabs can be read at the phone's own pixels.
  */
 async function landsShot(seat, base) {
+  if (seat.phone) {
+    for (const [who, sel] of [['me', '.play-phone-main .player-me'], ['opp', '.play-phone-main .player-top']]) {
+      const side = seat.page.locator(sel).first();
+      if (!(await side.locator('.bf-row-lands .land-tab').first().isVisible().catch(() => false))) continue;
+      await side.screenshot({ path: path.join(SHOTS, `${base}-lands-${who}.png`) }).catch(() => {});
+    }
+    return;
+  }
   for (const [who, sel] of [['me', '.player-me .bf-row-lands .land-tab'], ['opp', '.player-top .bf-row-lands .land-tab']]) {
     const box = await seat.page.locator(sel).first().boundingBox().catch(() => null);
     if (!box || box.height < 4) continue;

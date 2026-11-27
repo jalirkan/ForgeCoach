@@ -570,15 +570,32 @@ export const LandPile = memo(
 );
 
 /**
- * A land's tab in the desktop table's lands bar: its name and how many the pile holds. The bar shows the tabs
- * alone; the cards come up over them while the pointer is on the bar (ui/cards.css). The tab is part of the
- * tile, so a click on it is a click on the land. Hidden for screen readers: the tile's own label says it all.
+ * How many letters of a land's name its tab keeps when a phone's bar is full: the whole name of a basic land
+ * (Mountain is the longest, 8), the first 8 of a longer one. A bar whose tabs do not fit at that scrolls
+ * sideways rather than cut the names further (play/play.css).
  */
-function LandTab({ name, count }: { name: string; count: number }) {
+export const TAB_LETTERS = 8;
+
+/**
+ * A land's tab in a lands bar (the desktop table's, ui/cards.css; the upright phone board's, play/play.css): its
+ * name and how many the pile holds. On the desktop table the cards come up over the tabs while the pointer is on
+ * the bar; on a phone the tabs stand alone, so the tab also says how many of its pile a choice has picked
+ * (`sent`; the desktop table shows that on the card). The tab is part of the tile, so a click on it is a click
+ * on the land, and a long press opens its details. Hidden for screen readers: the tile's own label says it all.
+ */
+export function LandTab({ name, count, sent = 0 }: { name: string; count: number; sent?: number }) {
+  // The sizer is never drawn. On a phone it gives the tab its least width: the first letters of the name in one
+  // piece (their spaces unbreakable), the rest breakable anywhere. Its text is CSS content, so the name is in
+  // the page once.
+  const head = name.slice(0, TAB_LETTERS).replace(/ /g, '\u00a0');
   return (
     <span className="land-tab" aria-hidden="true">
-      <span className="land-tab-name">{name}</span>
+      <span className="land-tab-name">
+        <span className="land-tab-text">{name}</span>
+        <span className="land-tab-size" data-head={head} data-rest={name.slice(TAB_LETTERS)} />
+      </span>
       {count > 1 && <span className="land-tab-count">×{count}</span>}
+      {sent > 0 && <span className="land-tab-sent">{sent} picked</span>}
     </span>
   );
 }
@@ -641,7 +658,7 @@ function PileStack({ cards, side, tab }: { cards: Card[]; side?: TileSide; tab?:
           )}
         </div>
       </div>
-      {tab && <LandTab name={displayName(top)} count={cards.length} />}
+      {tab && <LandTab name={displayName(top)} count={cards.length} sent={sent} />}
     </div>
   );
 }

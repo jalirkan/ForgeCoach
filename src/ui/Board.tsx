@@ -182,7 +182,7 @@ const PlayerArea = memo(function PlayerArea({
   if (top) rows.reverse();
   const empty = rows.length === 0;
   const attachPx = permanents.some((p) => p.att.length > 0) ? 34 : 0;
-  // Portrait phones: the rows' height and the side's floor (ui/boardFit.ts, play.css).
+  // Portrait phones: the side's floor and what its lands bar and paddings take (ui/boardFit.ts, play.css).
   const fit = phoneSideFit({ permanents: permanents.length > 0, lands: lands.length > 0, maxAttach: Math.max(0, ...permanents.map((p) => p.att.length)) });
   return (
     <section
