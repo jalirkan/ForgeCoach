@@ -133,6 +133,13 @@ describe('what is attached to a land (an aura, a fortification) is drawn with it
     }
     expect(renderToStaticMarkup(<LandPile cards={[plain]} side="me" tab />)).not.toContain('attach');
   });
+  it('the chip carries a sizer for its name, as a land\'s tab does: the first 8 letters in one piece, the rest apart', () => {
+    const html = renderToStaticMarkup(<LandPile cards={[forest]} attachments={[growth]} side="me" tab />);
+    expect(html).toContain('<span class="attach-name"><span class="attach-text">Wild Growth</span><span class="attach-size" data-head="Wild\u00a0Gro" data-rest="wth"></span></span>');
+    // A name of 8 letters or fewer is all head.
+    const short = renderToStaticMarkup(<LandPile cards={[forest]} attachments={[{ ...growth, name: 'Overrun' }]} side="me" tab />);
+    expect(short).toMatch(/<span class="attach-size" data-head="Overrun" data-rest=""><\/span>/);
+  });
   it('a stack line to an attached card ends on its chip (it has no tile of its own): the lookup finds it after tiles and piles', () => {
     const chip = { querySelector: () => null, getBoundingClientRect: () => ({ left: 1, top: 2, right: 61, bottom: 26, width: 60, height: 24 }) };
     const asked: string[] = [];

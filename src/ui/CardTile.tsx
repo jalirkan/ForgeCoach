@@ -521,6 +521,7 @@ const AttachmentChip = memo(
         h(e);
       };
     const what = mark === 'select' ? ', selectable' : '';
+    const said = displayName(card);
     return (
       <span
         className={cx('attach-chip', colorClass(colors), card.tapped && 'is-tapped', mark === 'select' && 'is-select', mark === 'act' && 'is-act', coachFocus && 'is-coach-focus')}
@@ -540,7 +541,12 @@ const AttachmentChip = memo(
         onPointerCancel={stop(handlers.onPointerCancel)}
         onContextMenu={stop(handlers.onContextMenu)}
       >
-        <span className="attach-name">{displayName(card)}</span>
+        {/* The sizer is never drawn: in a phone's lands bar it gives the name its least width, as a land's tab
+            does (LandTab: the first letters in one piece, the rest breakable anywhere; play/play.css). */}
+        <span className="attach-name">
+          <span className="attach-text">{said}</span>
+          <span className="attach-size" data-head={said.slice(0, TAB_LETTERS).replace(/ /g, '\u00a0')} data-rest={said.slice(TAB_LETTERS)} />
+        </span>
         {effect && <span className="attach-effect">{effect}</span>}
       </span>
     );
