@@ -9,7 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { Card } from '../protocol.ts';
 import { BoardMarksContext, type BoardMarks } from './cardContext.ts';
-import { cardRect } from './BoardArrows.tsx';
+import { cardRect, domLookup } from './BoardArrows.tsx';
 import { groupBattlefield } from './Board.tsx';
 import { LandPile, LandTab } from './CardTile.tsx';
 import { groupLands, TAB_LETTERS } from './landPiles.ts';
@@ -133,9 +133,20 @@ describe('what is attached to a land (an aura, a fortification) is drawn with it
     }
     expect(renderToStaticMarkup(<LandPile cards={[plain]} side="me" tab />)).not.toContain('attach');
   });
-  it('a stack line to an attached card ends on its chip (it has no tile of its own)', () => {
-    const box = { x: 1, y: 2, width: 60, height: 24 };
-    const chip = { querySelector: () => null } as unknown as Element;
-    expect(cardRect(chip, (el) => (el === chip ? box : undefined))).toEqual(box);
+  it('a stack line to an attached card ends on its chip (it has no tile of its own): the lookup finds it after tiles and piles', () => {
+    const chip = { querySelector: () => null, getBoundingClientRect: () => ({ left: 1, top: 2, right: 61, bottom: 26, width: 60, height: 24 }) };
+    const asked: string[] = [];
+    const g = globalThis as unknown as { document?: unknown; window?: unknown };
+    const saved = { document: g.document, window: g.window };
+    g.document = { querySelector: (sel: string) => (asked.push(sel), sel.includes('.attach-chip[data-card-id="11"]') ? chip : null) };
+    g.window = { innerWidth: 1440, innerHeight: 900 };
+    try {
+      expect(domLookup('c:11')).toEqual({ x: 1, y: 2, width: 60, height: 24 });
+      expect(asked.map((sel) => (sel.includes('.tile[') ? 'tile' : sel.includes('data-card-ids') ? 'pile' : 'chip'))).toEqual(['tile', 'pile', 'chip']);
+      expect(domLookup('c:12')).toBeUndefined();
+    } finally {
+      g.document = saved.document;
+      g.window = saved.window;
+    }
   });
 });

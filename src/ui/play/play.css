@@ -1258,6 +1258,19 @@ button.avatar.is-chosen {
     padding-top: 10px;
     align-items: stretch;
   }
+  /* What is attached to a land has a tab of its own beside the land's (ui/cards.css): the 10 px above THAT tab
+     are its card's, not the land's (the strip is the chip's own ::before, so the chip's handlers take the tap). */
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile-attach > .attach-chip {
+    position: relative;
+  }
+  .game.play.is-narrow .play-phone-main .bf-row-lands .tile-attach > .attach-chip::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 10px;
+  }
   /* The name's least width, measured by the browser in the tab's own font: the sizer (never drawn, no height)
      holds the first 8 letters in one piece and the rest breakable at every letter, so the narrowest the name
      can be laid out is those 8 letters, and the widest is the whole name. The name that is read lies over it

@@ -1593,6 +1593,35 @@ function landAuraScenario({ name, viewport, tag, wide }) {
         check(v.chip.r <= v.field.r + 0.5 && v.chip.b <= v.field.b + 0.5 && v.chip.x >= v.field.x - 0.5, `${aura}'s chip lies inside its half`);
       }
       await shot(page, `land-aura-${tag}`);
+      // A tap on the aura's tab goes to the aura (its details: nothing to do with it now), never to the land; on a
+      // phone so does a tap in the 10 px above it. A tap on the land's tab goes to the land.
+      const aura = engine.game.players[0].battlefield.find((c) => c.name === 'Wild Growth').id;
+      const host = engine.game.players[0].battlefield.find((c) => c.name === 'Mountain').id;
+      const landActs = () => engine.acts().filter((x) => x.cardId === host).length;
+      const press = async (x, y) => (wide ? page.mouse.click(x, y) : page.touchscreen.tap(x, y));
+      const auraActs = () => engine.acts().filter((x) => x.cardId === aura).length;
+      // (the board can move when the engine answers a tap: every tap reads where things are now)
+      for (const [where, dy] of wide ? [['its tab', null]] : [['its tab', null], ['the strip above its tab', -5]]) {
+        const now = (await read()).me;
+        const before = landActs();
+        const sentAura = auraActs();
+        await press(now.chip.x + now.chip.w / 2, dy === null ? now.chip.y + now.chip.h / 2 : now.chip.y + dy);
+        await engine.waitFor(() => auraActs() > sentAura, `an act on the aura from ${where}`, STEP_MS);
+        await page.waitForTimeout(300);
+        check(landActs() === before, `a tap on the aura (${where}) sends nothing for the land`);
+      }
+      if (wide) {
+        // A bar too narrow for its names: the aura's tab keeps a least width inside its own tile and does not spill.
+        await page.addStyleTag({ content: '.player-me .bf-row-lands { max-width: 96px !important; }' });
+        const q = await page.evaluate(() => {
+          const chip = document.querySelector('.player-me .bf-row-lands .tile.has-attach .attach-chip');
+          const c = chip.getBoundingClientRect();
+          const t = chip.closest('.tile').getBoundingClientRect();
+          return { chipW: c.width, chipR: c.right, tileR: t.right };
+        });
+        check(q.chipW >= 40 && q.chipR <= q.tileR + 0.5, `squeezed, the aura's tab keeps its least width inside its tile (${JSON.stringify(q)})`);
+        await page.addStyleTag({ content: '.player-me .bf-row-lands { max-width: 100% !important; }' });
+      }
       if (wide) {
         // The cards come up under the pointer: the chip stays on the tabs' line, beside the card and not under it.
         const before = s.me.chip;
@@ -1611,6 +1640,16 @@ function landAuraScenario({ name, viewport, tag, wide }) {
         check(slot.b <= up.chip.y + 1.5, `the land's card stands above the tabs' line (card bottom ${slot.b.toFixed(1)}, chip top ${up.chip.y.toFixed(1)})`);
         await shot(page, `land-aura-${tag}-up`);
         await page.mouse.move(5, 5);
+      }
+      // Last (it changes the game): the land's own tab is still the land.
+      for (const [where, dy] of wide ? [['its tab', null]] : [['its tab', null], ['the strip above its tab', -5]]) {
+        const now = (await read()).me;
+        const n = landActs();
+        const sentAura = auraActs();
+        await press(now.tab.x + 12, dy === null ? now.tab.y + now.tab.h / 2 : now.tab.y + dy);
+        await engine.waitFor(() => landActs() > n, `an act on the Mountain from ${where}`, STEP_MS);
+        await page.waitForTimeout(300);
+        check(auraActs() === sentAura, `a tap on the land (${where}) sends nothing for the aura`);
       }
     },
   };
